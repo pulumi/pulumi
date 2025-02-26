@@ -121,6 +121,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/opthistory"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrename"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
@@ -856,6 +857,70 @@ func (s *Stack) PreviewDestroy(ctx context.Context, opts ...optdestroy.Option) (
 	return res, nil
 }
 
+// Rename renames the current stack.
+func (s *Stack) Rename(ctx context.Context, opts ...optrename.Option) (RenameResult, error) {
+	var res RenameResult
+
+	renameOpts := &optrename.Options{}
+	for _, o := range opts {
+		o.ApplyOption(renameOpts)
+	}
+
+	args := renameOptsToCmd(renameOpts, s)
+
+	if len(renameOpts.EventStreams) > 0 {
+		eventChannels := renameOpts.EventStreams
+		t, err := tailLogs("rename", eventChannels)
+		if err != nil {
+			return res, fmt.Errorf("failed to tail logs: %w", err)
+		}
+		defer t.Close()
+		args = append(args, "--event-log", t.Filename)
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		renameOpts.ProgressStreams,      /* additionalOutputs */
+		renameOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
+	if err != nil {
+		return res, newAutoError(fmt.Errorf("failed to rename stack: %w", err), stdout, stderr, code)
+	}
+
+	historyOpts := []opthistory.Option{}
+	if showSecrets := renameOpts.ShowSecrets; showSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	// If it's a remote workspace, explicitly set ShowSecrets to false to prevent attempting to
+	// load the project file.
+	if s.isRemote() {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(false))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
+	if err != nil {
+		return res, fmt.Errorf("failed to rename stack: %w", err)
+	}
+
+	var summary UpdateSummary
+	if len(history) > 0 {
+		summary = history[0]
+	}
+
+	res = RenameResult{
+		Summary: summary,
+		StdOut:  stdout,
+		StdErr:  stderr,
+	}
+
+	return res, nil
+}
+
+func renameOptsToCmd(renameOpts *optrename.Options, s *Stack) []string {
+	args := slice.Prealloc[string](2)
+	return append(args, "rename", renameOpts.StackName)
+}
+
 // Destroy deletes all resources in a stack, leaving all history and configuration intact.
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
@@ -1299,6 +1364,13 @@ type RefreshResult struct {
 // GetPermalink returns the permalink URL in the Pulumi Console for the refresh operation.
 func (rr *RefreshResult) GetPermalink() (string, error) {
 	return GetPermalink(rr.StdOut)
+}
+
+// RenameResult is the output of a successful Stack.Rename operation
+type RenameResult struct {
+	StdOut  string
+	StdErr  string
+	Summary UpdateSummary
 }
 
 // DestroyResult is the output of a successful Stack.Destroy operation

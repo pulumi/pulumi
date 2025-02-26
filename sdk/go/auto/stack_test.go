@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrename"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -319,6 +320,27 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	)
 
 	assert.Contains(t, args, "--clear-pending-creates")
+}
+
+func TestRename(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	args := renameOptsToCmd(
+		&optrename.Options{
+			StackName: "test-rename",
+		},
+		&stack,
+	)
+
+	assert.Equal(t, args, []string { "stack", "rename", "test-rename" })
 }
 
 func TestPreviewImportResources(t *testing.T) {
