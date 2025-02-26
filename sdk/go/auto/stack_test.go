@@ -27,8 +27,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrename"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrename"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -340,7 +340,7 @@ func TestRename(t *testing.T) {
 		&stack,
 	)
 
-	assert.Equal(t, args, []string { "stack", "rename", "test-rename" })
+	assert.Equal(t, args, []string{"stack", "rename", "test-rename"})
 }
 
 func TestPreviewImportResources(t *testing.T) {
