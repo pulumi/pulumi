@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "./log";
 import { Resource } from "./resource";
 import * as settings from "./runtime/settings";
 import * as utils from "./utils";
@@ -268,6 +269,7 @@ class OutputImpl<T> implements OutputInstance<T> {
                 throw error;
             }
             let message = error.message;
+            log.warn(message);
             message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
@@ -283,6 +285,7 @@ See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.`;
             if (utils.errorOutputString) {
                 throw new Error(message);
             }
+            log.warn(message);
             message += `\nThis function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
