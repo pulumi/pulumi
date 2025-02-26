@@ -61,7 +61,7 @@
         "namespace": {
             "description": "The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified",
             "type": "string",
-            "pattern": "^[a-zA-Z][-a-zA-Z0-9]*$"
+            "pattern": "^[a-z][-a-z0-9]*$"
         },
         "meta": {
             "description": "Format metadata about this package.",
