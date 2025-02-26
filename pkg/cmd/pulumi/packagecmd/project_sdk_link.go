@@ -371,10 +371,15 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		importName = strings.ReplaceAll(pkg.Name, "-", "_")
 	}
 
+	namespace := "pulumi"
+	fmt.Println("namespace", pkg.Namespace)
+	if pkg.Namespace != "" {
+		namespace = strings.ReplaceAll(pkg.Namespace, "-", "_")
+	}
 	fmt.Println()
 	fmt.Println("You can then import the SDK in your Python code with:")
 	fmt.Println()
-	fmt.Printf("  import pulumi_%s as %s\n", importName, importName)
+	fmt.Printf("  import %s_%s as %s\n", namespace, importName, importName)
 	fmt.Println()
 	return nil
 }
