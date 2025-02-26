@@ -542,7 +542,8 @@ func (d *Deployment) EnsureProvider(provider string) error {
 	}
 	_, has := d.GetProvider(providerRef)
 	if !has {
-		// We need to create the provider in the registry, find its old state and just "Same" it.
+		// We need to create the provider in the registry, find its old state and check if we can safely
+		// update it from latest config if its a default provider, else just same it.
 		var providerResource *resource.State
 		for _, r := range d.prev.Resources {
 			if r.URN == providerRef.URN() && r.ID == providerRef.ID() {
@@ -554,9 +555,82 @@ func (d *Deployment) EnsureProvider(provider string) error {
 			return fmt.Errorf("could not find provider %v", providerRef)
 		}
 
+		if providers.IsDefaultProvider(providerResource.URN) {
+			// If the provider is a default provider, we try to update its configuration from the latest stack configuration.
+			// We need to call DiffConfig to see if this is safe (i.e. not a replace).
+			pkg := tokens.Package(providerResource.Type.Name())
+			config, err := d.target.GetPackageConfig(pkg)
+			if err != nil {
+				return fmt.Errorf("could not get package config for %s: %w", pkg, err)
+			}
+
+			inputs := resource.PropertyMap{}
+			for k, v := range config {
+				inputs[k] = v
+			}
+			// Copy the version and internal keys from the current config
+			if _, has := providerResource.Inputs["version"]; has {
+				inputs["version"] = providerResource.Inputs["version"]
+			}
+			if _, has := providerResource.Inputs["__internal"]; has {
+				inputs["__internal"] = providerResource.Inputs["__internal"]
+			}
+
+			var ctx context.Context
+			if d.ctx == nil {
+				ctx = context.Background()
+			} else {
+				ctx = d.ctx.Base()
+			}
+
+			checkResp, err := d.providers.Check(ctx, plugin.CheckRequest{
+				URN:  providerResource.URN,
+				Name: providerResource.URN.Name(),
+				Type: providerResource.Type,
+				Olds: providerResource.Inputs,
+				News: inputs,
+				// TODO: This doesn't handle RandomSeed correctly, so won't work with update plans
+			})
+			if err != nil {
+				return fmt.Errorf("diff provider config for %s: %w", pkg, err)
+			}
+
+			diffResp, err := d.providers.Diff(ctx, plugin.DiffRequest{
+				URN:        providerResource.URN,
+				Name:       providerResource.URN.Name(),
+				ID:         providerResource.ID,
+				Type:       providerResource.Type,
+				OldInputs:  providerResource.Inputs,
+				OldOutputs: providerResource.Outputs,
+				NewInputs:  checkResp.Properties,
+			})
+			if err != nil {
+				return fmt.Errorf("diff provider config for %s: %w", pkg, err)
+			}
+
+			if !diffResp.Replace() {
+				// This isn't a replace so we can update the provider config, this won't change the ID.
+				_, err := d.providers.Update(ctx, plugin.UpdateRequest{
+					URN:        providerResource.URN,
+					Name:       providerResource.URN.Name(),
+					ID:         providerResource.ID,
+					Type:       providerResource.Type,
+					OldInputs:  providerResource.Inputs,
+					OldOutputs: providerResource.Outputs,
+					NewInputs:  inputs,
+				})
+				if err != nil {
+					return fmt.Errorf("update provider %v: %w", providerRef, err)
+				}
+				return nil
+			}
+		}
+
+		// If we get here its either an explicit provider or a default provider that we can't update the
+		// config for, so just same it.
 		err := d.SameProvider(providerResource)
 		if err != nil {
-			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
+			return fmt.Errorf("create provider %v: %w", providerRef, err)
 		}
 	}
 
