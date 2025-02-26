@@ -613,7 +613,7 @@ class Stack:
         :returns: RenameResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["stack", "rename"]
+        args = ["stack", "rename", stack_name]
         args.extend(extra_args)
 
         args.extend(self._remote_args())
