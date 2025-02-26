@@ -40,7 +40,7 @@ func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, 
 }
 
 func getCurrentStackName() (string, error) {
-	// PULUMI_STACK environment variable overrides any stack name in the pulumi settings
+	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
 		return stackName, nil
 	}
