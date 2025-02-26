@@ -604,14 +604,13 @@ class Stack:
         show_secrets: bool = True,
     ) -> RenameResult:
         """
-        Compares the current stack’s resource state with the state known to exist in the actual
-        cloud provider. Any such changes are adopted into the current stack.
+        Renames the current stack.
 
         :param stack_name: The new name for the stack.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param show_secrets: Include config secrets in the RefreshResult summary.
-        :returns: RefreshResult
+        :returns: RenameResult
         """
         extra_args = _parse_extra_args(**locals())
         args = ["stack", "rename"]
@@ -630,7 +629,7 @@ class Stack:
             log_watcher_thread.start()
 
         try:
-            refresh_result = self._run_pulumi_cmd_sync(args, on_output)
+            rename_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
@@ -639,7 +638,7 @@ class Stack:
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
         return RenameResult(
-            stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
+            stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
         )
 
     def destroy(
