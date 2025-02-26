@@ -619,9 +619,6 @@ class Stack:
 
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
-        args.extend(["--exec-kind", kind])
-
         log_watcher_thread = None
         temp_dir = None
         if on_event:
@@ -697,6 +694,9 @@ class Stack:
         args.extend(extra_args)
 
         args.extend(self._remote_args())
+
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
 
         log_watcher_thread = None
         temp_dir = None
