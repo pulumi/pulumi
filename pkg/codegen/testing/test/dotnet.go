@@ -122,7 +122,7 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 		require.NoError(t, err)
 	}
 	err = integration.RunCommand(t, "create dotnet project",
-		[]string{ex, "new", "console", "-f", "net6.0"}, dir, &integration.ProgramTestOptions{})
+		[]string{ex, "new", "console", "-f", "net8.0"}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to create C# project")
 
 	// Remove Program.cs again generated from "dotnet new console"
