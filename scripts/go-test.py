@@ -23,6 +23,7 @@ cover_packages = [
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/...",
 ]
 
+
 dryrun = os.environ.get("PULUMI_TEST_DRYRUN", None) == "true"
 
 def options(options_and_packages: List[str]):
