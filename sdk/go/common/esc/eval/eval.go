@@ -402,6 +402,10 @@ func (e *evalContext) isReserveTopLevelKey(k string) bool {
 
 // evaluate drives the evaluation of the evalContext's environment.
 func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
+	mine := &imported{evaluating: true}
+	defer func() { mine.evaluating = false }()
+	e.imports[e.name] = mine
+
 	// Evaluate context. We prepare the context values to later evaluate interpolations.
 	e.evaluateContext()
 	// Evaluate imports. We do this prior to declaration so that we can plumb base values as part of declaration.
@@ -444,10 +448,6 @@ func (e *evalContext) evaluateContext() {
 
 // evaluateImports evaluates an environment's imports.
 func (e *evalContext) evaluateImports() {
-	mine := &imported{evaluating: true}
-	defer func() { mine.evaluating = false }()
-	e.imports[e.name] = mine
-
 	myImports := map[string]*value{}
 	for _, entry := range e.env.Imports.GetElements() {
 		// If the import does not have a name, there's nothing we can do. This can happen for environments
