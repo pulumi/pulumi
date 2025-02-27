@@ -29,6 +29,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -142,14 +143,14 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 			initCmd := u.uvCommand(ctx, pyprojectTomlDir, showOutput, infoWriter, errorWriter,
 				"init", "--no-readme", "--no-package", "--no-pin-python")
 			if err := initCmd.Run(); err != nil {
-				return errorWithStderr(err, "error initializing python project")
+				return errutil.ErrorWithStderr(err, "error initializing python project")
 			}
 
 			if hasRequirementsTxt {
 				requirementsTxt := filepath.Join(requirementsTxtDir, "requirements.txt")
 				addCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "add", "-r", requirementsTxt)
 				if err := addCmd.Run(); err != nil {
-					return errorWithStderr(err, "error installing dependecies from requirements.txt")
+					return errutil.ErrorWithStderr(err, "error installing dependecies from requirements.txt")
 				}
 				// Remove the requirements.txt file, after calling `uv add`, the
 				// dependencies are tracked in pyproject.toml.
@@ -173,7 +174,7 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	// install the dependencies.
 	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
 	if err := syncCmd.Run(); err != nil {
-		return errorWithStderr(err, "error installing dependencies")
+		return errutil.ErrorWithStderr(err, "error installing dependencies")
 	}
 	return nil
 }
@@ -184,7 +185,7 @@ func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
 		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
-		return errorWithStderr(err, "error creating virtual environment")
+		return errutil.ErrorWithStderr(err, "error creating virtual environment")
 	}
 
 	return nil
@@ -229,13 +230,13 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage
 			cmd.Dir = u.root
 			pipCmd = cmd
 		} else {
-			return nil, errorWithStderr(err, "checking for pip")
+			return nil, errutil.ErrorWithStderr(err, "checking for pip")
 		}
 	}
 
 	output, err := pipCmd.Output()
 	if err != nil {
-		return nil, errorWithStderr(err, "listing packages")
+		return nil, errutil.ErrorWithStderr(err, "listing packages")
 	}
 
 	var packages []PythonPackage
