@@ -146,7 +146,6 @@ type csharpUtilitiesTemplateContext struct {
 	ParameterValue                string
 }
 
-// Use current lts framework .NET 8.0
 // TODO(pdg): parameterize package name
 const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 
@@ -163,6 +162,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <Version>{{.Version}}</Version>
     {{- end }}
 
+    {{/* TargetFramework should be kept as low as possible, it does not need updating when we change LTS support */ -}}
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
