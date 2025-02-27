@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet
-  description: Fix generating SDKs for .NET projects when using pulumi convert
