@@ -347,6 +347,14 @@ class Analyzer:
             return self.analyze_property(
                 unwrap_optional(arg), typ, name, plain=True, optional=True
             )
+        elif is_any(arg):
+            return PropertyDefinition(
+                ref="pulumi.json#/Any",
+                optional=optional,
+                plain=plain,
+                description=self.get_docstring(typ.__name__, name),
+            )
+
         elif is_list(arg):
             args = get_args(arg)
             if len(args) != 1:
@@ -559,6 +567,10 @@ def is_optional(typ: type) -> bool:
     if get_origin(typ) == Union:
         return _NoneType in get_args(typ)
     return False
+
+
+def is_any(typ: type) -> bool:
+    return typ is Any
 
 
 def unwrap_optional(typ: type) -> type:
