@@ -518,6 +518,9 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 			e.errorf(expr, "%s", err.Error())
 			return nil, false
 		}
+		if diags.HasErrors() {
+			return nil, false
+		}
 
 		// we only want to rotate the root environment, so set rotating flag to false when evaluating imports
 		imp := newEvalContext(e.ctx, e.validating, false, name, env, false, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil)
