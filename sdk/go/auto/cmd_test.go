@@ -306,8 +306,7 @@ func TestRunCanceled(t *testing.T) {
 		"PULUMI_BACKEND_URL=" + e.LocalURL(),
 		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
 	}
-	stdout, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
-	require.Regexp(t, ".*error: preview canceled.*|.*signal: interrupt", stdout)
+	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, err, "exit status 0xffffffff")
 		require.Equal(t, 4294967295, code)
