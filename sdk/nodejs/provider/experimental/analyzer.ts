@@ -589,23 +589,21 @@ function isInput(type: typescript.Type): boolean {
 }
 
 function isResourceReference(type: typescript.Type, checker: typescript.TypeChecker): boolean {
-    if (type.isClassOrInterface()) {
-        const baseTypes = checker.getBaseTypes(type as typescript.InterfaceType);
-        for (const baseType of baseTypes) {
-            const symbol = baseType.getSymbol();
-            const matchesName =
-                symbol?.escapedName === "CustomResource" ||
-                symbol?.escapedName === "ComponentResource" ||
-                symbol?.escapedName === "Resource";
-            const sourceFile = symbol?.declarations?.[0].getSourceFile();
-            const matchesSourceFile =
-                sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
-            if (matchesName && matchesSourceFile) {
-                return true;
-            }
-        }
+    if (!type.isClass()) {
+        return false;
     }
-    return false;
+    return checker.getBaseTypes(type as typescript.InterfaceType).some((baseType) => {
+        const symbol = baseType.getSymbol();
+        const matchesName =
+            symbol?.escapedName === "CustomResource" ||
+            symbol?.escapedName === "ComponentResource" ||
+            symbol?.escapedName === "Resource";
+
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
+        return (matchesName && matchesSourceFile) || isResourceReference(baseType, checker);
+    });
 }
 
 function tsTypeToPropertyType(type: typescript.Type): PropertyType {
