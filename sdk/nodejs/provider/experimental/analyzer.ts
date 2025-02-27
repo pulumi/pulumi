@@ -315,6 +315,10 @@ export class Analyzer {
                 prop.description = docString;
             }
             return prop;
+        } else if (isResourceReference(type, this.checker)) {
+            throw new Error(
+                `Resource references are not supported yet: found type '${this.checker.typeToString(type)}'`,
+            );
         } else if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
@@ -582,6 +586,24 @@ function isInput(type: typescript.Type): boolean {
         }
     }
     return hasOutput && hasPromise && hasOther;
+}
+
+function isResourceReference(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    if (!type.isClass()) {
+        return false;
+    }
+    return checker.getBaseTypes(type as typescript.InterfaceType).some((baseType) => {
+        const symbol = baseType.getSymbol();
+        const matchesName =
+            symbol?.escapedName === "CustomResource" ||
+            symbol?.escapedName === "ComponentResource" ||
+            symbol?.escapedName === "Resource";
+
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
+        return (matchesName && matchesSourceFile) || isResourceReference(baseType, checker);
+    });
 }
 
 function tsTypeToPropertyType(type: typescript.Type): PropertyType {
