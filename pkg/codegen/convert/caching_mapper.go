@@ -14,7 +14,10 @@
 
 package convert
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 // cachingMapper wraps another Mapper, caching the results of GetMapping calls by source provider name.
 type cachingMapper struct {
@@ -23,6 +26,9 @@ type cachingMapper struct {
 
 	// A cache of provider mappings, keyed by source provider name.
 	entries map[string][]byte
+
+	// Mutex to protect concurrent access to the entries map
+	mu sync.RWMutex
 }
 
 // NewCachingMapper creates a new caching mapper backed by the given Mapper.
@@ -39,7 +45,11 @@ func (m *cachingMapper) GetMapping(
 	provider string,
 	hint *MapperPackageHint,
 ) ([]byte, error) {
-	if mapping, ok := m.entries[provider]; ok {
+	m.mu.RLock()
+	mapping, ok := m.entries[provider]
+	m.mu.RUnlock()
+
+	if ok {
 		return mapping, nil
 	}
 
@@ -48,6 +58,9 @@ func (m *cachingMapper) GetMapping(
 		return nil, err
 	}
 
+	m.mu.Lock()
 	m.entries[provider] = mapping
+	m.mu.Unlock()
+
 	return mapping, nil
 }
