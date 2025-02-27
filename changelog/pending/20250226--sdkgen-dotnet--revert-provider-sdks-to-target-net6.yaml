@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/dotnet
+  description: Revert provider SDKs to target net6

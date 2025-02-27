@@ -11,7 +11,7 @@
     <PackageIcon>logo.png</PackageIcon>
     <Version>0.0.1</Version>
 
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

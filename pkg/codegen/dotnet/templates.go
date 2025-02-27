@@ -163,7 +163,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <Version>{{.Version}}</Version>
     {{- end }}
 
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
