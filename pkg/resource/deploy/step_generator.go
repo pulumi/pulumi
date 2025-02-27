@@ -1831,6 +1831,8 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
 	diff, err := prov.Diff(context.TODO(), plugin.DiffRequest{
 		URN:           urn,
+		Name:          urn.Name(),
+		Type:          urn.Type(),
 		ID:            id,
 		OldInputs:     oldInputs,
 		OldOutputs:    oldOutputs,
