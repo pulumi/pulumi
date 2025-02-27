@@ -106,21 +106,29 @@ type bulkSecretEncrypter interface {
 type cacheEntry struct {
 	plaintext  string
 	ciphertext string
+	secret     *resource.Secret
 }
 
 type cachingSecretsManager struct {
-	manager      secrets.Manager
-	encrypter    lazy.Lazy[config.Encrypter]
-	decrypter    lazy.Lazy[config.Decrypter]
-	cache        map[*resource.Secret]cacheEntry
-	encryptQueue []queuedSecret
-	isInBulkMode bool
+	manager           secrets.Manager
+	encrypter         lazy.Lazy[config.Encrypter]
+	decrypter         lazy.Lazy[config.Decrypter]
+	cacheBySecret     map[*resource.Secret]cacheEntry
+	cacheByCiphertext map[string]cacheEntry
+	encryptQueue      []queuedEncryption
+	decryptQueue      []queuedDecryption
+	isInBulkMode      bool
 }
 
-type queuedSecret struct {
+type queuedEncryption struct {
 	source    *resource.Secret
 	target    *apitype.SecretV1
 	plaintext string
+}
+
+type queuedDecryption struct {
+	ciphertext string
+	target     *resource.Secret
 }
 
 var _ bulkSecretEncrypter = (*cachingSecretsManager)(nil)
@@ -130,8 +138,9 @@ var _ bulkSecretEncrypter = (*cachingSecretsManager)(nil)
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	sm := &cachingSecretsManager{
-		manager: manager,
-		cache:   make(map[*resource.Secret]cacheEntry),
+		manager:           manager,
+		cacheBySecret:     make(map[*resource.Secret]cacheEntry),
+		cacheByCiphertext: make(map[string]cacheEntry),
 	}
 	if manager != nil {
 		sm.encrypter = lazy.New(manager.Encrypter)
@@ -171,6 +180,9 @@ func (csm *cachingSecretsManager) BulkEncrypt(ctx context.Context, plaintexts []
 }
 
 func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	if entry, ok := csm.cacheByCiphertext[ciphertext]; ok {
+		return entry.plaintext, nil
+	}
 	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
 }
 
@@ -187,14 +199,14 @@ func (csm *cachingSecretsManager) EnqueueEncryption(ctx context.Context,
 	// Otherwise, re-encrypt the plaintext and update the cache.
 	// Note: target may be nil if the caller does not need the ciphertext
 	// e.g. when priming the cache during deserialization.
-	entry, ok := csm.cache[source]
+	entry, ok := csm.cacheBySecret[source]
 	if ok && entry.plaintext == plaintext && target != nil {
 		target.Ciphertext = entry.ciphertext
 		return nil
 	}
 	// If the encrypter supports bulk encryption, queue the secret for bulk encryption during finalize.
 	if csm.isInBulkMode {
-		csm.encryptQueue = append(csm.encryptQueue, queuedSecret{source, target, plaintext})
+		csm.encryptQueue = append(csm.encryptQueue, queuedEncryption{source, target, plaintext})
 		return nil
 	}
 	// Otherwise, encrypt the secret immediately.
@@ -207,6 +219,7 @@ func (csm *cachingSecretsManager) EnqueueEncryption(ctx context.Context,
 }
 
 func (csm *cachingSecretsManager) BeginBulkEncryption(ctx context.Context) completeBulkOperation {
+	contract.Assertf(!csm.isInBulkMode, "cannot begin bulk encryption while already in bulk mode")
 	supportsBulk := csm.Encrypter().SupportsBulkEncryption(ctx)
 	if !supportsBulk {
 		// Don't enter bulk mode if the encrypter doesn't support it.
@@ -240,19 +253,78 @@ func (csm *cachingSecretsManager) BeginBulkEncryption(ctx context.Context) compl
 	}
 }
 
-// Cache the plaintext and ciphertext pair for a specific secret pointer.
-func (csm *cachingSecretsManager) cacheSecretEncryption(secret *resource.Secret, plaintext, ciphertext string) {
-	csm.cache[secret] = cacheEntry{plaintext, ciphertext}
-}
-
 // cacheAndAssign associates the given secret with the given plain- and ciphertext in the cache.
 func (csm *cachingSecretsManager) cacheAndAssign(secret *resource.Secret, target *apitype.SecretV1,
 	plaintext, ciphertext string,
 ) {
-	csm.cache[secret] = cacheEntry{plaintext, ciphertext}
+	csm.cache(plaintext, ciphertext, secret)
 	if target != nil {
 		target.Ciphertext = ciphertext
 	}
+}
+
+func (csm *cachingSecretsManager) cache(plaintext, ciphertext string, secret *resource.Secret) {
+	entry := cacheEntry{plaintext, ciphertext, secret}
+	csm.cacheBySecret[secret] = entry
+	csm.cacheByCiphertext[ciphertext] = entry
+}
+
+func (csm *cachingSecretsManager) BeginBulkDecryption(ctx context.Context) completeBulkOperation {
+	contract.Assertf(!csm.isInBulkMode, "cannot begin bulk decryption while already in bulk mode")
+	csm.isInBulkMode = true
+	return func() error {
+		if len(csm.decryptQueue) == 0 {
+			return nil
+		}
+		// Flush the decrypt queue.
+		ciphertexts := make([]string, len(csm.decryptQueue))
+		for i, q := range csm.decryptQueue {
+			ciphertexts[i] = q.ciphertext
+		}
+		plaintexts, err := csm.manager.Decrypter().BulkDecrypt(ctx, ciphertexts)
+		if err != nil {
+			return err
+		}
+		for i, q := range csm.decryptQueue {
+			ev, err := secretPropertyValueFromPlaintext(plaintexts[i])
+			if err != nil {
+				return err
+			}
+			q.target.Element = ev
+			csm.cache(plaintexts[i], q.ciphertext, q.target)
+		}
+		csm.isInBulkMode = false
+		csm.decryptQueue = nil
+		return nil
+	}
+}
+
+func (csm *cachingSecretsManager) EnqueueDecryption(ctx context.Context, ciphertext string, secret *resource.Secret) error {
+	// Try the cache first.
+	if entry, ok := csm.cacheByCiphertext[ciphertext]; ok {
+		ev, err := secretPropertyValueFromPlaintext(entry.plaintext)
+		if err != nil {
+			return err
+		}
+		secret.Element = ev
+	}
+	if csm.isInBulkMode {
+		// Add to queue
+		csm.decryptQueue = append(csm.decryptQueue, queuedDecryption{ciphertext, secret})
+		return nil
+	}
+	// Otherwise, decrypt the secret immediately.
+	plaintext, err := csm.Decrypter().DecryptValue(ctx, ciphertext)
+	if err != nil {
+		return err
+	}
+	ev, err := secretPropertyValueFromPlaintext(plaintext)
+	if err != nil {
+		return err
+	}
+	secret.Element = ev
+	csm.cache(plaintext, ciphertext, secret)
+	return nil
 }
 
 // mapDecrypter is a Decrypter with a preloaded cache. This decrypter is used specifically for deserialization,

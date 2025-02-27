@@ -166,19 +166,19 @@ func TestCachingCrypter(t *testing.T) {
 	foo1Dec, err := deserializeProperty(foo1Ser, dec)
 	assert.NoError(t, err)
 	assert.True(t, foo1.DeepEquals(foo1Dec))
-	assert.Equal(t, 1, sm.decryptCalls)
+	assert.Equal(t, 0, sm.decryptCalls, "decrypt should not be called for cached values")
 
 	// Decrypt foo2Ser. Decrypt should be called.
 	foo2Dec, err := deserializeProperty(foo2Ser, dec)
 	assert.NoError(t, err)
 	assert.True(t, foo2.DeepEquals(foo2Dec))
-	assert.Equal(t, 2, sm.decryptCalls)
+	assert.Equal(t, 0, sm.decryptCalls, "decrypt should not be called for cached values")
 
 	// Decrypt barSer. Decrypt should be called.
 	barDec, err := deserializeProperty(barSer, dec)
 	assert.NoError(t, err)
 	assert.True(t, bar.DeepEquals(barDec))
-	assert.Equal(t, 3, sm.decryptCalls)
+	assert.Equal(t, 0, sm.decryptCalls, "decrypt should not be called for cached values")
 
 	// Create a new CachingSecretsManager and re-run the decrypts. Each decrypt should insert the plain- and
 	// ciphertext into the cache with the associated secret.
@@ -190,19 +190,19 @@ func TestCachingCrypter(t *testing.T) {
 	foo1Dec, err = deserializeProperty(foo1Ser, dec)
 	assert.NoError(t, err)
 	assert.True(t, foo1.DeepEquals(foo1Dec))
-	assert.Equal(t, 4, sm.decryptCalls)
+	assert.Equal(t, 1, sm.decryptCalls, "decrypt should be called for uncached values")
 
 	// Decrypt foo2Ser. Decrypt should be called.
 	foo2Dec, err = deserializeProperty(foo2Ser, dec)
 	assert.NoError(t, err)
 	assert.True(t, foo2.DeepEquals(foo2Dec))
-	assert.Equal(t, 5, sm.decryptCalls)
+	assert.Equal(t, 2, sm.decryptCalls, "decrypt should be called for uncached values, once more than last time")
 
 	// Decrypt barSer. Decrypt should be called.
 	barDec, err = deserializeProperty(barSer, dec)
 	assert.NoError(t, err)
 	assert.True(t, bar.DeepEquals(barDec))
-	assert.Equal(t, 6, sm.decryptCalls)
+	assert.Equal(t, 3, sm.decryptCalls, "decrypt should be called for uncached values, once more than last time")
 
 	enc = csm.Encrypter()
 

@@ -144,6 +144,34 @@ func (p panicCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]
 	panic("attempt to bulk decrypt values")
 }
 
+type errorCrypter struct {
+	err string
+}
+
+func NewErrorCrypter(err string) Crypter {
+	return &errorCrypter{err}
+}
+
+func (e errorCrypter) EncryptValue(ctx context.Context, _ string) (string, error) {
+	return "", fmt.Errorf("failed to encrypt: %s", e.err)
+}
+
+func (errorCrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return false
+}
+
+func (e errorCrypter) BulkEncrypt(ctx context.Context, _ []string) ([]string, error) {
+	return nil, fmt.Errorf("failed to bulk encrypt: %s", e.err)
+}
+
+func (e errorCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
+	return "", fmt.Errorf("failed to decrypt: %s", e.err)
+}
+
+func (e errorCrypter) BulkDecrypt(ctx context.Context, _ []string) ([]string, error) {
+	return nil, fmt.Errorf("failed to bulk decrypt: %s", e.err)
+}
+
 // NewSymmetricCrypter creates a crypter that encrypts and decrypts values using AES-256-GCM.  The nonce is stored with
 // the value itself as a pair of base64 values separated by a colon and a version tag `v1` is prepended.
 func NewSymmetricCrypter(key []byte) Crypter {
