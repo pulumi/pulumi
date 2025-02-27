@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Fix merge method typing for ResourceOptions and Invoke*Options

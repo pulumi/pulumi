@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/dotnet
-  description: Update pulumi-dotnet to v3.75.2
