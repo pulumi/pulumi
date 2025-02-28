@@ -33,7 +33,7 @@ func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
 		Aliases: []string{"completion"},
 		Args:    cmdutil.ExactArgs(1),
 		Short:   "Generate completion scripts for the Pulumi CLI",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			switch {
 			case args[0] == "bash":
 				return root.GenBashCompletion(os.Stdout)

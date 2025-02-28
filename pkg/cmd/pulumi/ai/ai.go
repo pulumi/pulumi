@@ -59,7 +59,7 @@ func NewAICommand() *cobra.Command {
 		Long:   "Contains the current set of supported CLI functionality for the Pulumi AI service.",
 		Hidden: !env.Experimental.Value(),
 		Args:   cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			if len(args) == 0 {
 				return cmd.Help()

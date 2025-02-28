@@ -67,7 +67,7 @@ func newStackGraphCmd() *cobra.Command {
 			"This command can be used to view the dependency graph that a Pulumi program\n" +
 			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{

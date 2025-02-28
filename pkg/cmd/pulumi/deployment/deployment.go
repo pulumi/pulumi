@@ -31,7 +31,7 @@ func NewDeploymentCmd() *cobra.Command {
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		}),
 	}

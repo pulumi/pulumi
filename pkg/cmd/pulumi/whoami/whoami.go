@@ -42,7 +42,7 @@ func NewWhoAmICmd() *cobra.Command {
 			"\n" +
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return whocmd.Run(cmd.Context())
 		}),
 	}

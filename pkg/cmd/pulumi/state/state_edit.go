@@ -58,7 +58,7 @@ This command can be used to surgically edit a stack's state in the editor
 specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("pulumi state edit must be run in interactive mode")
 			}

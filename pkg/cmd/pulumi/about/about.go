@@ -67,7 +67,7 @@ func NewAboutCmd() *cobra.Command {
 			" - the current stack\n" +
 			" - the current backend\n",
 		Args: cmdutil.MaximumNArgs(0),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {

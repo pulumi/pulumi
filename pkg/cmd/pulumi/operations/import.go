@@ -663,7 +663,7 @@ func NewImportCmd() *cobra.Command {
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()

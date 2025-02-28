@@ -39,7 +39,7 @@ is the name of the source provider (e.g. "terraform", if a mapping was being req
 from Terraform to Pulumi). If you need to pass parameters, you must provide a provider
 key. In the event that you wish to pass none, you must therefore explicitly pass an
 empty string.`,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
 			var provider string

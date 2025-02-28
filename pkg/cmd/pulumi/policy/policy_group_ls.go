@@ -50,7 +50,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 
 			// Try to read the current project

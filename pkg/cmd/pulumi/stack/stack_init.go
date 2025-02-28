@@ -72,7 +72,7 @@ func newStackInitCmd() *cobra.Command {
 			"`--copy-config-from` flag:\n" +
 			"\n" +
 			"* `pulumi stack init --copy-config-from dev`",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return sicmd.Run(ctx, args)
 		}),

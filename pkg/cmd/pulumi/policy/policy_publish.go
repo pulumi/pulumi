@@ -43,7 +43,7 @@ func newPolicyPublishCmd() *cobra.Command {
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the default org (if set) or the current user account is used.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return policyPublishCmd.Run(cmd.Context(), cmdBackend.DefaultLoginManager, args)
 		}),
 	}

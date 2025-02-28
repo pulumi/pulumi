@@ -33,7 +33,7 @@ func newPolicyValidateCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Validate a Policy Pack configuration",
 		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, cliArgs[0], cmdBackend.DefaultLoginManager)

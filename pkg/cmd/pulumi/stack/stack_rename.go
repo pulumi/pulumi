@@ -47,7 +47,7 @@ func newStackRenameCmd() *cobra.Command {
 			"You can also rename the stack's project by passing a fully-qualified stack name as well. For example:\n" +
 			"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
 			"to update the name field of Pulumi.yaml, so the project names match.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{

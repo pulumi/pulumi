@@ -94,7 +94,7 @@ valid, and remains invalid after repair has been attempted, this command will
 not write any changes.
 `,
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			cmd.Flags().Visit(func(f *pflag.Flag) {
 				stateRepair.FlagsString += fmt.Sprintf(" --%s=%q", f.Name, f.Value)
 			})

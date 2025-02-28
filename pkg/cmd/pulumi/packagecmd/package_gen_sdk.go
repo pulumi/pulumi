@@ -45,7 +45,7 @@ func newGenSdkCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
 			wd, err := os.Getwd()

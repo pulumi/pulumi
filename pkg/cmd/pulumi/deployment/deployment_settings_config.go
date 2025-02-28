@@ -67,7 +67,7 @@ func newDeploymentSettingsCmd() *cobra.Command {
 			"Use this command to manage a stack's deployment settings like\n" +
 			"generating the deployment file, updating secrets or pushing the\n" +
 			"updated settings to Pulumi Cloud.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		}),
 	}
@@ -180,7 +180,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
@@ -293,7 +293,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(0),
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("configure command is only supported in interactive mode")
 			}

@@ -37,7 +37,7 @@ func newPackagePublishCmd() *cobra.Command {
 		Args:   cobra.RangeArgs(0, 1),
 		Short:  "Publish a package SDK to supported package registries.",
 		Hidden: !env.Dev.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return publCmd.Run(ctx, args)
 		}),
