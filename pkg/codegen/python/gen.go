@@ -2682,7 +2682,7 @@ func pyPack(namespace, name string) string {
 	if namespace == "" {
 		namespace = "pulumi"
 	} else {
-		namespace = strings.ToLower(strings.ReplaceAll(namespace, "-", "_"))
+		namespace = strings.ReplaceAll(namespace, "-", "_")
 	}
 	return namespace + "_" + strings.ReplaceAll(name, "-", "_")
 }
