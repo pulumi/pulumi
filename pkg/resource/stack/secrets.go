@@ -418,3 +418,64 @@ func (be *bulkEncrypter) SupportsBulkEncryption(ctx context.Context) bool {
 func (be *bulkEncrypter) BulkEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
 	return be.encrypter.BulkEncrypt(ctx, plaintexts)
 }
+
+type bulkDecrypter struct {
+	decrypter config.Decrypter
+	cache     *secretCache
+	queue     []queuedDecryption
+}
+
+var _ config.Decrypter = (*bulkDecrypter)(nil)
+
+func beginDecryptionBulk(decrypter config.Decrypter, cache *secretCache) *bulkDecrypter {
+	return &bulkDecrypter{decrypter: decrypter, cache: cache}
+}
+
+func (bd *bulkDecrypter) Enqueue(ctx context.Context, ciphertext string, secret *resource.Secret) error {
+	// Try the cache first.
+	if plaintext, ok := bd.cache.TryDecrypt(ciphertext); ok {
+		ev, err := secretPropertyValueFromPlaintext(plaintext)
+		if err != nil {
+			return err
+		}
+		secret.Element = ev
+		return nil
+	}
+	// Add to the queue
+	bd.queue = append(bd.queue, queuedDecryption{ciphertext, secret})
+	return nil
+}
+
+func (bd *bulkDecrypter) Complete(ctx context.Context) error {
+	if len(bd.queue) == 0 {
+		return nil
+	}
+	// Flush the decrypt queue
+	ciphertexts := make([]string, len(bd.queue))
+	for i, q := range bd.queue {
+		ciphertexts[i] = q.ciphertext
+	}
+	plaintexts, err := bd.decrypter.BulkDecrypt(ctx, ciphertexts)
+	if err != nil {
+		return err
+	}
+	for i, q := range bd.queue {
+		ev, err := secretPropertyValueFromPlaintext(plaintexts[i])
+		if err != nil {
+			return err
+		}
+		q.target.Element = ev
+		bd.cache.Write(plaintexts[i], q.ciphertext, q.target)
+	}
+	// Empty the queue
+	bd.queue = nil
+	return nil
+}
+
+func (bd *bulkDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	return bd.decrypter.DecryptValue(ctx, ciphertext)
+}
+
+func (bd *bulkDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return bd.decrypter.BulkDecrypt(ctx, ciphertexts)
+}
