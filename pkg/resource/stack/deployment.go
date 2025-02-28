@@ -116,8 +116,9 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	}
 
 	var completeBulkEncrypt completeBulkOperation
-	if eventualSecretCrypter, ok := enc.(bulkSecretEncrypter); ok {
-		completeBulkEncrypt = eventualSecretCrypter.BeginBulkEncryption(ctx)
+	if csm, ok := sm.(*cachingSecretsManager); ok {
+		// Override encrypter and defer the complete operation.
+		enc, completeBulkEncrypt = csm.BeginBulkEncryption(ctx)
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
@@ -140,7 +141,7 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	}
 
 	if completeBulkEncrypt != nil {
-		err := completeBulkEncrypt()
+		err := completeBulkEncrypt(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -260,7 +261,8 @@ func DeserializeDeploymentV3(
 
 	var completeBulkDecrypt completeBulkOperation
 	if csm, ok := secretsManager.(*cachingSecretsManager); ok {
-		completeBulkDecrypt = csm.BeginBulkDecryption(ctx)
+		// Override decrypter and defer the complete operation.
+		dec, completeBulkDecrypt = csm.BeginBulkDecryption(ctx)
 	}
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
 	resources := slice.Prealloc[*resource.State](len(deployment.Resources))
@@ -282,7 +284,7 @@ func DeserializeDeploymentV3(
 	}
 
 	if completeBulkDecrypt != nil {
-		err = completeBulkDecrypt()
+		err = completeBulkDecrypt(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -471,8 +473,8 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 			// If the encrypter is a EventualSecretEncrypter, call through its EncryptSecret method,
 			// which will populate the secret with the cyphertext immediately or defer the encryption
 			// until FinalizeEncryptions is called.
-			if secretCrypter, ok := enc.(bulkSecretEncrypter); ok {
-				err = secretCrypter.EnqueueEncryption(ctx, prop.SecretValue(), plaintext, &secret)
+			if secretCrypter, ok := enc.(*bulkEncrypter); ok {
+				err = secretCrypter.Enqueue(ctx, prop.SecretValue(), plaintext, &secret)
 				if err != nil {
 					return nil, fmt.Errorf("failed to register secret value for encryption: %w", err)
 				}
@@ -490,26 +492,6 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 
 	// All others are returned as-is.
 	return prop.V, nil
-}
-
-// collectCiphertexts collects encrypted secrets from resource properties.
-func collectCiphertexts(ciphertexts *[]string, prop interface{}) {
-	switch prop := prop.(type) {
-	case []interface{}:
-		for _, v := range prop {
-			collectCiphertexts(ciphertexts, v)
-		}
-	case map[string]interface{}:
-		if prop[resource.SigKey] == resource.SecretSig {
-			if ciphertext, cipherOk := prop["ciphertext"].(string); cipherOk {
-				*ciphertexts = append(*ciphertexts, ciphertext)
-			}
-		} else {
-			for _, v := range prop {
-				collectCiphertexts(ciphertexts, v)
-			}
-		}
-	}
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
@@ -634,8 +616,8 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						}
 						secret.Element = ev
 					} else { // We only have ciphertext, so decrypt it to get plaintext
-						if csm, ok := dec.(*cachingSecretsManager); ok { // We can delay and do this in bulk
-							err = csm.EnqueueDecryption(ctx, ciphertext, secret)
+						if csm, ok := dec.(*bulkDecrypter); ok { // We can delay and do this in bulk
+							err = csm.Enqueue(ctx, ciphertext, secret)
 							if err != nil {
 								return resource.PropertyValue{}, fmt.Errorf("error enqueuing secret value for decryption: %w", err)
 							}

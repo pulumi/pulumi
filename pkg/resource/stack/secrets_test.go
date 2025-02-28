@@ -110,35 +110,39 @@ func TestCachingCrypter(t *testing.T) {
 
 	ctx := context.Background()
 	sm := &testSecretsManager{}
-	csm := NewCachingSecretsManager(sm)
+	csm := NewCachingSecretsManager(sm).(*cachingSecretsManager)
 
 	foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
 	foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
 	bar := resource.MakeSecret(resource.NewStringProperty("bar"))
 
-	enc := csm.Encrypter()
+	enc, completeEnc := csm.BeginBulkEncryption(ctx)
 
 	// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
 	foo1Ser, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 1, sm.encryptCalls)
 
 	// Serialize the second copy of "foo". Because this is a different secret instance, Encrypt should be called
 	// a second time even though the plaintext is the same as the last value we encrypted.
 	foo2Ser, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 2, sm.encryptCalls)
 	assert.NotEqual(t, foo1Ser, foo2Ser)
 
 	// Serialize "bar". Encrypt should be called once, as this value has not yet been encrypted.
 	barSer, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// encrypted.
 	foo1Ser2, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
@@ -146,65 +150,74 @@ func TestCachingCrypter(t *testing.T) {
 	// encrypted.
 	foo2Ser2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been encrypted.
 	barSer2, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
 
-	dec := csm.Decrypter()
+	dec, completeDec := csm.BeginBulkDecryption(ctx)
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	foo1Dec, err := deserializeProperty(foo1Ser, dec)
 	assert.NoError(t, err)
+	assert.NoError(t, completeDec(ctx))
 	assert.True(t, foo1.DeepEquals(foo1Dec))
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt should not be called for cached values")
 
 	// Decrypt foo2Ser. Decrypt should be called.
 	foo2Dec, err := deserializeProperty(foo2Ser, dec)
 	assert.NoError(t, err)
+	assert.NoError(t, completeDec(ctx))
 	assert.True(t, foo2.DeepEquals(foo2Dec))
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt should not be called for cached values")
 
 	// Decrypt barSer. Decrypt should be called.
 	barDec, err := deserializeProperty(barSer, dec)
 	assert.NoError(t, err)
+	assert.NoError(t, completeDec(ctx))
 	assert.True(t, bar.DeepEquals(barDec))
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt should not be called for cached values")
 
 	// Create a new CachingSecretsManager and re-run the decrypts. Each decrypt should insert the plain- and
 	// ciphertext into the cache with the associated secret.
-	csm = NewCachingSecretsManager(sm)
+	csm = NewCachingSecretsManager(sm).(*cachingSecretsManager)
 
-	dec = csm.Decrypter()
+	dec, completeDec = csm.BeginBulkDecryption(ctx)
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	foo1Dec, err = deserializeProperty(foo1Ser, dec)
 	assert.NoError(t, err)
+	assert.NoError(t, completeDec(ctx))
 	assert.True(t, foo1.DeepEquals(foo1Dec))
 	assert.Equal(t, 1, sm.decryptCalls, "decrypt should be called for uncached values")
 
 	// Decrypt foo2Ser. Decrypt should be called.
 	foo2Dec, err = deserializeProperty(foo2Ser, dec)
 	assert.NoError(t, err)
+	assert.NoError(t, completeDec(ctx))
 	assert.True(t, foo2.DeepEquals(foo2Dec))
 	assert.Equal(t, 2, sm.decryptCalls, "decrypt should be called for uncached values, once more than last time")
 
 	// Decrypt barSer. Decrypt should be called.
 	barDec, err = deserializeProperty(barSer, dec)
 	assert.NoError(t, err)
+	assert.NoError(t, completeDec(ctx))
 	assert.True(t, bar.DeepEquals(barDec))
 	assert.Equal(t, 3, sm.decryptCalls, "decrypt should be called for uncached values, once more than last time")
 
-	enc = csm.Encrypter()
+	enc, completeEnc = csm.BeginBulkEncryption(ctx)
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
 	foo1Ser2, err = SerializePropertyValue(ctx, foo1Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
@@ -212,6 +225,7 @@ func TestCachingCrypter(t *testing.T) {
 	// cached by the earlier calls to Decrypt.
 	foo2Ser2, err = SerializePropertyValue(ctx, foo2Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
@@ -219,6 +233,7 @@ func TestCachingCrypter(t *testing.T) {
 	// earlier calls to Decrypt.
 	barSer2, err = SerializePropertyValue(ctx, barDec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
+	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
 }
@@ -246,8 +261,7 @@ func TestBulkEncrypt(t *testing.T) {
 		ctx := context.Background()
 		sm := &testSecretsManager{enableBulkEncryption: true}
 		csm := NewCachingSecretsManager(sm)
-		completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
-		enc := csm.Encrypter()
+		enc, completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
 
 		foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
 		foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
@@ -262,7 +276,7 @@ func TestBulkEncrypt(t *testing.T) {
 		assert.Equal(t, "", serializedFoo1.(*apitype.SecretV1).Ciphertext)
 		assert.Equal(t, "", serializedFoo2.(*apitype.SecretV1).Ciphertext)
 
-		err = completeBulkOperation() // Complete the operation
+		err = completeBulkOperation(ctx) // Complete the operation
 		assert.NoError(t, err)
 		assert.Equal(t, 0, sm.encryptCalls)
 		assert.Equal(t, 1, sm.bulkEncryptCalls)
@@ -275,8 +289,7 @@ func TestBulkEncrypt(t *testing.T) {
 		ctx := context.Background()
 		sm := &testSecretsManager{enableBulkEncryption: true}
 		csm := NewCachingSecretsManager(sm)
-		completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
-		enc := csm.Encrypter()
+		enc, completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
 
 		foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
 		foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
@@ -286,12 +299,12 @@ func TestBulkEncrypt(t *testing.T) {
 		assert.Equal(t, 0, sm.encryptCalls)
 		assert.Equal(t, "", serialized.(*apitype.SecretV1).Ciphertext, "not yet be populated")
 
-		err = completeBulkOperation()
+		err = completeBulkOperation(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, sm.bulkEncryptCalls)
 		assert.Equal(t, "1-1:\"foo\"", serialized.(*apitype.SecretV1).Ciphertext, "now populated in bulk")
 
-		completeBulkOperation = csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
+		enc, completeBulkOperation = csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
 		serializedFoo1, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, sm.bulkEncryptCalls, "new bulk not sent")
@@ -302,7 +315,7 @@ func TestBulkEncrypt(t *testing.T) {
 		assert.Equal(t, 1, sm.bulkEncryptCalls, "second bulk not yet sent")
 		assert.Equal(t, "", serializedFoo2.(*apitype.SecretV1).Ciphertext, "not yet be populated")
 
-		err = completeBulkOperation()
+		err = completeBulkOperation(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, sm.bulkEncryptCalls, "second batch completed")
 		assert.Equal(t, "2-1:\"foo\"", serializedFoo2.(*apitype.SecretV1).Ciphertext, "second ciphertext now populated")
