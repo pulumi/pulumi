@@ -175,7 +175,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l2-invoke-options-depends-on": "not implemented yet",
-	"l2-namespaced-provider":       "will be implemented in https://github.com/pulumi/pulumi/pull/18753",
 }
 
 func TestLanguage(t *testing.T) {
