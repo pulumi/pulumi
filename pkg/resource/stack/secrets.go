@@ -181,15 +181,22 @@ func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
 }
 
 type bulkEncrypter struct {
-	encrypter config.Encrypter
-	cache     *secretCache
-	queue     []queuedEncryption
+	encrypter     config.Encrypter
+	cache         *secretCache
+	queue         chan queuedEncryption
+	completeMutex sync.Mutex
 }
+
+const MaxBulkEncryptCount = 100000
 
 var _ config.Encrypter = (*bulkEncrypter)(nil)
 
 func beginEncryptionBulk(ctx context.Context, encrypter config.Encrypter, cache *secretCache) *bulkEncrypter {
-	return &bulkEncrypter{encrypter: encrypter, cache: cache}
+	return &bulkEncrypter{
+		encrypter: encrypter,
+		cache:     cache,
+		queue:     make(chan queuedEncryption, MaxBulkEncryptCount),
+	}
 }
 
 func (be *bulkEncrypter) Enqueue(ctx context.Context,
@@ -203,29 +210,53 @@ func (be *bulkEncrypter) Enqueue(ctx context.Context,
 		return nil
 	}
 	// Add to the queue
-	be.queue = append(be.queue, queuedEncryption{source, target, plaintext})
-	return nil
+	for {
+		select {
+		case be.queue <- queuedEncryption{source, target, plaintext}:
+			return nil
+		default:
+			// If the queue is full, process the queue to make room.
+			if err := be.Complete(ctx); err != nil {
+				return err
+			}
+			// Now retry the enqueue.
+		}
+	}
 }
 
 func (be *bulkEncrypter) Complete(ctx context.Context) error {
 	if len(be.queue) == 0 {
 		return nil
 	}
+	// Only send 1 batch at a time
+	be.completeMutex.Lock()
+	defer be.completeMutex.Unlock()
+
 	// Flush the encrypt queue
-	plaintexts := make([]string, len(be.queue))
-	for i, q := range be.queue {
-		plaintexts[i] = q.plaintext
+	dequeued := make([]queuedEncryption, 0, len(be.queue))
+	plaintexts := make([]string, 0, len(be.queue))
+	// Take up to the maximum number of items from the queue.
+	// Other items might be enqueued concurrently and will be sent in the next batch.
+dequeue:
+	for range MaxBulkEncryptCount {
+		select {
+		case q := <-be.queue:
+			dequeued = append(dequeued, q)
+			plaintexts = append(plaintexts, q.plaintext)
+		default: // Queue is empty
+			break dequeue
+		}
 	}
+
 	ciphertexts, err := be.encrypter.BulkEncrypt(ctx, plaintexts)
 	if err != nil {
 		return err
 	}
-	for i, q := range be.queue {
-		q.target.Ciphertext = ciphertexts[i]
-		be.cache.Write(q.plaintext, ciphertexts[i], q.source)
+	for i, q := range dequeued {
+		ciphertext := ciphertexts[i]
+		q.target.Ciphertext = ciphertext
+		be.cache.Write(q.plaintext, ciphertext, q.source)
 	}
-	// Empty the queue
-	be.queue = nil
 	return nil
 }
 

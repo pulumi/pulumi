@@ -116,6 +116,7 @@ func TestCachingCrypter(t *testing.T) {
 	assert.NoError(t, completeEnc(ctx))
 	assert.Equal(t, 0, sm.encryptCalls)
 	assert.Equal(t, 1, sm.bulkEncryptCalls)
+	assert.Equal(t, &apitype.SecretV1{Sig: "1b47061264138c4ac30d75fd1eb44270", Ciphertext: "1-1:\"foo\""}, foo1Ser)
 
 	// Serialize the second copy of "foo". Because this is a different secret instance, Encrypt should be called
 	// a second time even though the plaintext is the same as the last value we encrypted.
