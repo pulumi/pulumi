@@ -345,3 +345,76 @@ func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
 	}
 	return entry.(cacheEntry).plaintext, true
 }
+
+type bulkEncrypter struct {
+	encrypter    config.Encrypter
+	supportsBulk bool
+	cache        *secretCache
+	queue        []queuedEncryption
+}
+
+var _ config.Encrypter = (*bulkEncrypter)(nil)
+
+func beginEncryptionBulk(ctx context.Context, encrypter config.Encrypter, cache *secretCache) *bulkEncrypter {
+	supportsBulk := encrypter.SupportsBulkEncryption(ctx)
+	return &bulkEncrypter{encrypter: encrypter, supportsBulk: supportsBulk, cache: cache}
+}
+
+func (be *bulkEncrypter) Enqueue(ctx context.Context,
+	source *resource.Secret, plaintext string, target *apitype.SecretV1,
+) error {
+	contract.Assertf(source != nil, "source secret must not be nil")
+	// If the cache has an entry for this secret and the plaintext has not changed,
+	// re-use the previous ciphertext for this specific secret instance.
+	if ciphertext, ok := be.cache.TryEncrypt(source, plaintext); ok {
+		target.Ciphertext = ciphertext
+		return nil
+	}
+	if !be.supportsBulk {
+		// If the underlying encrypter does not support bulk encryption, encrypt the value immediately.
+		ciphertext, err := be.encrypter.EncryptValue(ctx, plaintext)
+		if err != nil {
+			return err
+		}
+		target.Ciphertext = ciphertext
+		be.cache.Write(plaintext, ciphertext, source)
+		return nil
+	}
+	// Add to the queue
+	be.queue = append(be.queue, queuedEncryption{source, target, plaintext})
+	return nil
+}
+
+func (be *bulkEncrypter) Complete(ctx context.Context) error {
+	if len(be.queue) == 0 {
+		return nil
+	}
+	// Flush the encrypt queue
+	plaintexts := make([]string, len(be.queue))
+	for i, q := range be.queue {
+		plaintexts[i] = q.plaintext
+	}
+	ciphertexts, err := be.encrypter.BulkEncrypt(ctx, plaintexts)
+	if err != nil {
+		return err
+	}
+	for i, q := range be.queue {
+		q.target.Ciphertext = ciphertexts[i]
+		be.cache.Write(q.plaintext, ciphertexts[i], q.source)
+	}
+	// Empty the queue
+	be.queue = nil
+	return nil
+}
+
+func (be *bulkEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	return be.encrypter.EncryptValue(ctx, plaintext)
+}
+
+func (be *bulkEncrypter) SupportsBulkEncryption(ctx context.Context) bool {
+	return be.encrypter.SupportsBulkEncryption(ctx)
+}
+
+func (be *bulkEncrypter) BulkEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	return be.encrypter.BulkEncrypt(ctx, plaintexts)
+}
