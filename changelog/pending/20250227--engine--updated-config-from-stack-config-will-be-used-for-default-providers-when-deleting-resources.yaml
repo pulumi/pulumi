@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Updated config from stack config will be used for default providers when deleting resources
