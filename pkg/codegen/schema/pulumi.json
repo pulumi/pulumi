@@ -58,6 +58,11 @@
             "description": "The name of the person or organization that authored and published the package.",
             "type": "string"
         },
+        "namespace": {
+            "description": "The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified",
+            "type": "string",
+            "pattern": "^([a-z][a-z0-9]*)(-[a-z0-9]+)*$"
+        },
         "meta": {
             "description": "Format metadata about this package.",
             "type": "object",
