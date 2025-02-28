@@ -54,7 +54,7 @@ func NewLogsCmd() *cobra.Command {
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		Args: cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cobraCmd *cobra.Command, args []string) error {
+		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
@@ -188,7 +188,7 @@ func NewLogsCmd() *cobra.Command {
 
 				time.Sleep(time.Second)
 			}
-		}),
+		},
 	}
 
 	logsCmd.PersistentFlags().StringVarP(

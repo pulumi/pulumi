@@ -35,7 +35,7 @@ func newPluginLsCmd() *cobra.Command {
 		Use:   "ls",
 		Short: "List plugins",
 		Args:  cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
 			var err error
@@ -71,7 +71,7 @@ func newPluginLsCmd() *cobra.Command {
 				return formatPluginsJSON(plugins)
 			}
 			return formatPluginConsole(plugins)
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(
