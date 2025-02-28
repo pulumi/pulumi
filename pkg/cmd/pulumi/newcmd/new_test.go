@@ -20,6 +20,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -830,4 +832,23 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	proj := loadProject(t, tempdir)
 	require.Equal(t, 1, len(proj.Runtime.Options()))
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
+}
+
+func TestPulumiNewWithOrgTemplates(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		default:
+			t.Logf("Unknown path %q", req.URL.Path)
+			rw.WriteHeader(404)
+			return
+		}
+	}))
+	t.Cleanup(s.Close)
+
+	t.Setenv("PULUMI_BACKEND_URL", s.URL)
+
+	newCmd := NewNewCmd()
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
 }
