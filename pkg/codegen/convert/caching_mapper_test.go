@@ -16,6 +16,7 @@ package convert
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -76,4 +77,66 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 	assert.Equal(t, 1, installCalled, "install should only be called once when a caching mapper is used")
+}
+
+// TestCachingPluginMapper_ConcurrentAccess tests that the caching mapper correctly
+// handles concurrent access from multiple goroutines.
+func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ws := &testWorkspace{}
+
+	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		t.Fatal("should not be called")
+		return nil, nil
+	}
+
+	installPlugin := func(pluginName string) *semver.Version {
+		return nil
+	}
+
+	baseMapper, err := NewBasePluginMapper(
+		ws,
+		"key", /*conversionKey*/
+		providerFactory,
+		installPlugin,
+		nil, /*mappings*/
+	)
+	mapper := NewCachingMapper(baseMapper)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	// Act.
+	// Run multiple goroutines concurrently that all try to get mappings
+	// for different providers to maximize map writes
+	const numGoroutines = 100
+
+	// Used to wait for all goroutines to complete
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Create multiple goroutines that will all try to access the map at the same time
+	for i := 0; i < numGoroutines; i++ {
+		// Use two different provider names to enforce multiple map writes
+		provider := "gcp"
+		if i%2 == 0 {
+			provider = "aws"
+		}
+
+		go func(p string) {
+			defer wg.Done()
+
+			// Get the mapping - this will cause concurrent map writes without proper locking
+			_, err := mapper.GetMapping(context.Background(), p, nil /*hint*/)
+			assert.NoError(t, err)
+		}(provider)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Assert.
+	// This test will fail with "concurrent map writes" without proper locking
+	// If it reaches here, the test passes
 }
