@@ -716,7 +716,7 @@ func NewConvertTraceCmd() *cobra.Command {
 			"inspected using `go tool pprof`.",
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !env.DebugCommands.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			store := appdash.NewMemoryStore()
 			if err := readTrace(args[0], store); err != nil {
 				return err

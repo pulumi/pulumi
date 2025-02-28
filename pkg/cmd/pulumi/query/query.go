@@ -51,7 +51,7 @@ func NewQueryCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
 		Hidden: !env.Experimental.Value() && !env.DebugCommands.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 

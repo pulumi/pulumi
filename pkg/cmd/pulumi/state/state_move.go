@@ -70,7 +70,7 @@ This command can be used to move resources from one stack to another. This can b
 splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
 		Args: cmdutil.MinimumNArgs(1),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 

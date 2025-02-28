@@ -44,7 +44,7 @@ func newDeploymentRunCmd() *cobra.Command {
 			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
 		Args: cmdutil.RangeArgs(1, 2),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 

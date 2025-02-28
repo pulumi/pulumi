@@ -100,7 +100,7 @@ func NewDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			// Destroy is always permitted to fall back to looking for secrets providers in state, since we explicitly

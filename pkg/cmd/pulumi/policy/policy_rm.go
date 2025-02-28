@@ -40,7 +40,7 @@ func newPolicyRmCmd() *cobra.Command {
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || env.SkipConfirmations.Value()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.

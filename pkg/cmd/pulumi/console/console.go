@@ -38,7 +38,7 @@ func NewConsoleCmd() *cobra.Command {
 		Use:   "console",
 		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

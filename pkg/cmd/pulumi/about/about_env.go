@@ -41,7 +41,7 @@ func newAboutEnvCmd() *cobra.Command {
 		// unhide once most existing variables are using the new env var framework and
 		// show up here.
 		Hidden: !env.Experimental.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			table := cmdutil.Table{
 				Headers: []string{"Variable", "Description", "Value"},
 			}

@@ -54,7 +54,7 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		}),

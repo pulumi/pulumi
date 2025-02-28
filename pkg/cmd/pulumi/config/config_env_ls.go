@@ -32,7 +32,7 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 		Short: "Lists imported environments.",
 		Long:  "Lists the environments imported into a stack's configuration.",
 		Args:  cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		}),

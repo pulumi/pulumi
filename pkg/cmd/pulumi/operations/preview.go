@@ -304,7 +304,7 @@ func NewPreviewCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance

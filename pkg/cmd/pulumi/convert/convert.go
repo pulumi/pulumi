@@ -77,7 +77,7 @@ func NewConvertCmd() *cobra.Command {
 			"Example command usage:" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("get current working directory: %w", err)

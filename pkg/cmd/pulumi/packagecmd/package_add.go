@@ -62,7 +62,7 @@ When <schema> is a path to a local file with a '.json', '.yml' or '.yaml'
 extension, Pulumi package schema is read from it directly:
 
   pulumi package add ./my/schema.json`,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
 			if err != nil {

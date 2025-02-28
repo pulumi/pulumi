@@ -61,7 +61,7 @@ func NewReplayEventsCmd() *cobra.Command {
 			"using either the progress view or the diff view.\n",
 		Args:   cmdutil.ExactArgs(2),
 		Hidden: !env.DebugCommands.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			var action apitype.UpdateKind
 			switch args[0] {
 			case "update":

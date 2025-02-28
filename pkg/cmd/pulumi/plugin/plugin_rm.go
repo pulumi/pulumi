@@ -52,7 +52,7 @@ func newPluginRmCmd() *cobra.Command {
 			"This removal cannot be undone.  If a deleted plugin is subsequently required\n" +
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 			"using the plugin install command.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
 			yes = yes || env.SkipConfirmations.Value()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

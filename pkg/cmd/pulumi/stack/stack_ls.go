@@ -61,7 +61,7 @@ func newStackLsCmd() *cobra.Command {
 			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, _ []string) error {
+		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
 				jsonOut:    jsonOut,
