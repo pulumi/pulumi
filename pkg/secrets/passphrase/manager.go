@@ -422,10 +422,6 @@ func (ec *errorCrypter) EncryptValue(ctx context.Context, _ string) (string, err
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
-func (*errorCrypter) SupportsBulkEncryption(ctx context.Context) bool {
-	return false
-}
-
 func (ec *errorCrypter) BulkEncrypt(ctx context.Context, _ []string) ([]string, error) {
 	return nil, errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")

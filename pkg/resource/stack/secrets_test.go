@@ -29,10 +29,9 @@ import (
 )
 
 type testSecretsManager struct {
-	encryptCalls         int
-	decryptCalls         int
-	enableBulkEncryption bool
-	bulkEncryptCalls     int
+	encryptCalls     int
+	decryptCalls     int
+	bulkEncryptCalls int
 }
 
 func (t *testSecretsManager) Type() string { return "test" }
@@ -54,16 +53,9 @@ func (t *testSecretsManager) EncryptValue(
 	return fmt.Sprintf("%v:%v", t.encryptCalls, plaintext), nil
 }
 
-func (t *testSecretsManager) SupportsBulkEncryption(ctx context.Context) bool {
-	return t.enableBulkEncryption
-}
-
 func (t *testSecretsManager) BulkEncrypt(
 	ctx context.Context, plaintexts []string,
 ) ([]string, error) {
-	if !t.enableBulkEncryption {
-		return nil, errors.New("bulk encryption not supported")
-	}
 	t.bulkEncryptCalls++
 	if len(plaintexts) == 0 {
 		return nil, nil
@@ -122,28 +114,32 @@ func TestCachingCrypter(t *testing.T) {
 	foo1Ser, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 1, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 1, sm.bulkEncryptCalls)
 
 	// Serialize the second copy of "foo". Because this is a different secret instance, Encrypt should be called
 	// a second time even though the plaintext is the same as the last value we encrypted.
 	foo2Ser, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 2, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 2, sm.bulkEncryptCalls)
 	assert.NotEqual(t, foo1Ser, foo2Ser)
 
 	// Serialize "bar". Encrypt should be called once, as this value has not yet been encrypted.
 	barSer, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// encrypted.
 	foo1Ser2, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
@@ -151,14 +147,16 @@ func TestCachingCrypter(t *testing.T) {
 	foo2Ser2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been encrypted.
 	barSer2, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 	assert.Equal(t, barSer, barSer2)
 
 	dec, completeDec := csm.BeginBulkDecryption(ctx)
@@ -218,7 +216,8 @@ func TestCachingCrypter(t *testing.T) {
 	foo1Ser2, err = SerializePropertyValue(ctx, foo1Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
@@ -226,7 +225,8 @@ func TestCachingCrypter(t *testing.T) {
 	foo2Ser2, err = SerializePropertyValue(ctx, foo2Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been cached by the
@@ -234,7 +234,8 @@ func TestCachingCrypter(t *testing.T) {
 	barSer2, err = SerializePropertyValue(ctx, barDec, enc, false /* showSecrets */)
 	assert.NoError(t, err)
 	assert.NoError(t, completeEnc(ctx))
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.Equal(t, 0, sm.encryptCalls)
+	assert.Equal(t, 3, sm.bulkEncryptCalls)
 	assert.Equal(t, barSer, barSer2)
 }
 
@@ -244,7 +245,7 @@ func TestBulkEncrypt(t *testing.T) {
 	t.Run("without beginning bulk", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		sm := &testSecretsManager{enableBulkEncryption: true}
+		sm := &testSecretsManager{}
 		csm := NewCachingSecretsManager(sm)
 		enc := csm.Encrypter()
 
@@ -259,7 +260,7 @@ func TestBulkEncrypt(t *testing.T) {
 	t.Run("delay via bulk", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		sm := &testSecretsManager{enableBulkEncryption: true}
+		sm := &testSecretsManager{}
 		csm := NewCachingSecretsManager(sm)
 		enc, completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
 
@@ -287,7 +288,7 @@ func TestBulkEncrypt(t *testing.T) {
 	t.Run("partially cached bulk", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		sm := &testSecretsManager{enableBulkEncryption: true}
+		sm := &testSecretsManager{}
 		csm := NewCachingSecretsManager(sm)
 		enc, completeBulkOperation := csm.(*cachingSecretsManager).BeginBulkEncryption(ctx)
 

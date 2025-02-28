@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 
@@ -70,14 +69,9 @@ func (c *serviceCrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func (c *serviceCrypter) SupportsBulkEncryption(ctx context.Context) bool {
-	supports, _ := c.supportsBulkEncryption.Result(ctx)
-	return supports
-}
-
 func (c *serviceCrypter) BulkEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
-	if !c.SupportsBulkEncryption(ctx) {
-		return nil, errors.New("bulk encryption is not supported")
+	if supports, _ := c.supportsBulkEncryption.Result(ctx); !supports {
+		return config.DefaultBulkEncrypt(ctx, c, plaintexts)
 	}
 	plantextBytes := make([][]byte, len(plaintexts))
 	for i, val := range plaintexts {

@@ -181,17 +181,15 @@ func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
 }
 
 type bulkEncrypter struct {
-	encrypter    config.Encrypter
-	supportsBulk bool
-	cache        *secretCache
-	queue        []queuedEncryption
+	encrypter config.Encrypter
+	cache     *secretCache
+	queue     []queuedEncryption
 }
 
 var _ config.Encrypter = (*bulkEncrypter)(nil)
 
 func beginEncryptionBulk(ctx context.Context, encrypter config.Encrypter, cache *secretCache) *bulkEncrypter {
-	supportsBulk := encrypter.SupportsBulkEncryption(ctx)
-	return &bulkEncrypter{encrypter: encrypter, supportsBulk: supportsBulk, cache: cache}
+	return &bulkEncrypter{encrypter: encrypter, cache: cache}
 }
 
 func (be *bulkEncrypter) Enqueue(ctx context.Context,
@@ -202,16 +200,6 @@ func (be *bulkEncrypter) Enqueue(ctx context.Context,
 	// re-use the previous ciphertext for this specific secret instance.
 	if ciphertext, ok := be.cache.TryEncrypt(source, plaintext); ok {
 		target.Ciphertext = ciphertext
-		return nil
-	}
-	if !be.supportsBulk {
-		// If the underlying encrypter does not support bulk encryption, encrypt the value immediately.
-		ciphertext, err := be.encrypter.EncryptValue(ctx, plaintext)
-		if err != nil {
-			return err
-		}
-		target.Ciphertext = ciphertext
-		be.cache.Write(plaintext, ciphertext, source)
 		return nil
 	}
 	// Add to the queue
@@ -243,10 +231,6 @@ func (be *bulkEncrypter) Complete(ctx context.Context) error {
 
 func (be *bulkEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
 	return be.encrypter.EncryptValue(ctx, plaintext)
-}
-
-func (be *bulkEncrypter) SupportsBulkEncryption(ctx context.Context) bool {
-	return be.encrypter.SupportsBulkEncryption(ctx)
 }
 
 func (be *bulkEncrypter) BulkEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {

@@ -77,13 +77,9 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	return "", errors.New("mock value not provided")
 }
 
-func (me *MockEncrypter) SupportsBulkEncryption(ctx context.Context) bool {
-	return me.BulkEncryptF != nil
-}
-
 func (me *MockEncrypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
 	if me.BulkEncryptF == nil {
-		return nil, errors.New("mock value not provided")
+		return nil, errors.New("bulk encrypt mock not provided")
 	}
 	return me.BulkEncryptF(), nil
 }
