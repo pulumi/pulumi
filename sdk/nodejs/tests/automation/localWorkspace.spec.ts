@@ -1462,8 +1462,8 @@ describe("LocalWorkspace", () => {
     });
     it(`correctly sets config on multiple stacks concurrently`, async () => {
         const dones = [];
-        const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"].map(x =>
-          fullyQualifiedStackName("organization", "concurrent-config", `int_test_${x}_${getTestSuffix()}`)
+        const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"].map((x) =>
+            fullyQualifiedStackName("organization", "concurrent-config", `int_test_${x}_${getTestSuffix()}`),
         );
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
         const ws = await LocalWorkspace.create({

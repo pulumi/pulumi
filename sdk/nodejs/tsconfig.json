@@ -121,6 +121,6 @@
         "types/arborist.d.ts"
     ],
     "ts-node": {
-      "files": true
+        "files": true
     }
 }

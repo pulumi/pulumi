@@ -85,12 +85,8 @@
         "node": ">=18"
     },
     "mocha": {
-        "require": [
-            "source-map-support/register"
-        ],
+        "require": ["source-map-support/register"],
         "node-option": ["import=tsx"]
     },
-    "//": [
-        "NOTE: @types/node is pinned due to grpc/grpc-node#2002"
-    ]
+    "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
 }
