@@ -238,15 +238,22 @@ func (be *bulkEncrypter) BulkEncrypt(ctx context.Context, plaintexts []string) (
 }
 
 type bulkDecrypter struct {
-	decrypter config.Decrypter
-	cache     *secretCache
-	queue     []queuedDecryption
+	decrypter     config.Decrypter
+	cache         *secretCache
+	queue         chan queuedDecryption
+	completeMutex sync.Mutex
 }
+
+const MaxBulkDecryptCount = 100000
 
 var _ config.Decrypter = (*bulkDecrypter)(nil)
 
 func beginDecryptionBulk(decrypter config.Decrypter, cache *secretCache) *bulkDecrypter {
-	return &bulkDecrypter{decrypter: decrypter, cache: cache}
+	return &bulkDecrypter{
+		decrypter: decrypter,
+		cache:     cache,
+		queue:     make(chan queuedDecryption, MaxBulkDecryptCount),
+	}
 }
 
 func (bd *bulkDecrypter) Enqueue(ctx context.Context, ciphertext string, secret *resource.Secret) error {
@@ -260,24 +267,48 @@ func (bd *bulkDecrypter) Enqueue(ctx context.Context, ciphertext string, secret 
 		return nil
 	}
 	// Add to the queue
-	bd.queue = append(bd.queue, queuedDecryption{ciphertext, secret})
-	return nil
+	for {
+		select {
+		case bd.queue <- queuedDecryption{ciphertext, secret}:
+			return nil
+		default:
+			// If the queue is full, process the queue to make room.
+			if err := bd.Complete(ctx); err != nil {
+				return err
+			}
+			// Now retry the enqueue.
+		}
+	}
 }
 
 func (bd *bulkDecrypter) Complete(ctx context.Context) error {
 	if len(bd.queue) == 0 {
 		return nil
 	}
+	// Only send 1 batch at a time
+	bd.completeMutex.Lock()
+	defer bd.completeMutex.Unlock()
+
 	// Flush the decrypt queue
-	ciphertexts := make([]string, len(bd.queue))
-	for i, q := range bd.queue {
-		ciphertexts[i] = q.ciphertext
+	dequeued := make([]queuedDecryption, 0, len(bd.queue))
+	ciphertexts := make([]string, 0, len(bd.queue))
+	// Take up to the maximum number of items from the queue.
+	// Other items might be enqueued concurrently and will be sent in the next batch.
+dequeue:
+	for range MaxBulkDecryptCount {
+		select {
+		case q := <-bd.queue:
+			dequeued = append(dequeued, q)
+			ciphertexts = append(ciphertexts, q.ciphertext)
+		default: // Queue is empty
+			break dequeue
+		}
 	}
 	plaintexts, err := bd.decrypter.BulkDecrypt(ctx, ciphertexts)
 	if err != nil {
 		return err
 	}
-	for i, q := range bd.queue {
+	for i, q := range dequeued {
 		ev, err := secretPropertyValueFromPlaintext(plaintexts[i])
 		if err != nil {
 			return err
@@ -285,8 +316,6 @@ func (bd *bulkDecrypter) Complete(ctx context.Context) error {
 		q.target.Element = ev
 		bd.cache.Write(plaintexts[i], q.ciphertext, q.target)
 	}
-	// Empty the queue
-	bd.queue = nil
 	return nil
 }
 
