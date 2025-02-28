@@ -113,7 +113,7 @@ ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 endif
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
-TEST_GREP ?= ".*"
+TEST_GREP ?= .*
 
 # Watches all the typescript files and runs the tests every time they change.
 # Can optionally be given a regex of tests to match. For example, to iterate
