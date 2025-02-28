@@ -372,7 +372,6 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	}
 
 	namespace := "pulumi"
-	fmt.Println("namespace", pkg.Namespace)
 	if pkg.Namespace != "" {
 		namespace = strings.ReplaceAll(pkg.Namespace, "-", "_")
 	}

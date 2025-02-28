@@ -49,7 +49,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modNam
 	var fqdnTypeName string
 	namespace := "pulumi"
 	if pkg.Namespace != "" {
-		namespace = strings.ToLower(strings.ReplaceAll(pkg.Namespace, "_", "-"))
+		namespace = strings.ReplaceAll(pkg.Namespace, "_", "-")
 	}
 	switch {
 	case pkg.Name != "" && modName != "":
