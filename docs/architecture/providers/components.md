@@ -66,6 +66,17 @@ generation](step-generation), etc. in exactly the same way. That is to say, once
 `Construct` has been called, the engine does not really care whether or not a
 resource registration came from the program or a remote component.
 
+```mermaid
+flowchart TB
+runprogram[Pulumi Program] -->|RegisterResource| engine
+engine[Engine] --> component
+component{Is the resource a Component?} --> |YES|construct
+component --> |NO|emit
+emit[Emit RegisterResource Event]
+construct[Construct]
+construct --> |Child Resources: RegisterResource| engine
+```
+
 :::{note}
 "Ordinary" resource providers and component providers are not mutually exclusive
 -- it is perfectly sensible for a provider to implement both the
