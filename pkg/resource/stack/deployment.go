@@ -470,9 +470,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		if showSecrets {
 			secret.Plaintext = plaintext
 		} else {
-			// If the encrypter is a EventualSecretEncrypter, call through its EncryptSecret method,
-			// which will populate the secret with the cyphertext immediately or defer the encryption
-			// until FinalizeEncryptions is called.
+			// If the encrypter is a bulkEncrypter, enqueue the secret value for bulk encryption.
 			if secretCrypter, ok := enc.(*bulkEncrypter); ok {
 				err = secretCrypter.Enqueue(ctx, prop.SecretValue(), plaintext, &secret)
 				if err != nil {
@@ -616,7 +614,8 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						}
 						secret.Element = ev
 					} else { // We only have ciphertext, so decrypt it to get plaintext
-						if csm, ok := dec.(*bulkDecrypter); ok { // We can delay and do this in bulk
+						// If the decrypter is a bulkDecrypter, enqueue the secret value for bulk decryption.
+						if csm, ok := dec.(*bulkDecrypter); ok {
 							err = csm.Enqueue(ctx, ciphertext, secret)
 							if err != nil {
 								return resource.PropertyValue{}, fmt.Errorf("error enqueuing secret value for decryption: %w", err)

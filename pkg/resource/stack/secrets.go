@@ -93,26 +93,9 @@ func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (sec
 // Process any pending encryptions that were enqueued.
 type completeBulkOperation func(ctx context.Context) error
 
-type cacheEntry struct {
-	plaintext  string
-	ciphertext string
-	secret     *resource.Secret
-}
-
 type cachingSecretsManager struct {
 	manager secrets.Manager
 	cache   *secretCache
-}
-
-type queuedEncryption struct {
-	source    *resource.Secret
-	target    *apitype.SecretV1
-	plaintext string
-}
-
-type queuedDecryption struct {
-	ciphertext string
-	target     *resource.Secret
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
@@ -126,12 +109,18 @@ func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	return sm
 }
 
+// BeginBulkEncryption returns a bulk encrypter that wraps the internal encrypter and cache with a queue.
+// This returns a bulk-compatible encrypter and a completion function that processes any pending encryption operations.
+// Complete must be called to process any pending encryption operations added by the Enqueue method.
 func (csm *cachingSecretsManager) BeginBulkEncryption(ctx context.Context) (config.Encrypter, completeBulkOperation) {
 	internalEncrypter := csm.manager.Encrypter()
-	bulkEncrypter := beginEncryptionBulk(ctx, internalEncrypter, csm.cache)
+	bulkEncrypter := beginEncryptionBulk(internalEncrypter, csm.cache)
 	return bulkEncrypter, bulkEncrypter.Complete
 }
 
+// BeginBulkDecryption returns a bulk decrypter that wraps the internal decrypter and cache with a queue.
+// This returns a bulk-compatible decrypter and a completion function that processes any pending decryption operations.
+// Complete must be called to process any pending decryption operations added by the Enqueue method.
 func (csm *cachingSecretsManager) BeginBulkDecryption(ctx context.Context) (config.Decrypter, completeBulkOperation) {
 	bulkDecrypter := beginDecryptionBulk(csm.manager.Decrypter(), csm.cache)
 	return bulkDecrypter, bulkDecrypter.Complete
@@ -153,17 +142,29 @@ func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
 	return csm.manager.Decrypter()
 }
 
+// The secretCache is a thread-safe cache for secret encryption and decryption results.
 type secretCache struct {
-	bySecret     sync.Map
-	byCiphertext sync.Map
+	bySecret     sync.Map // Contains cacheEntry values, keyed by *resource.Secret
+	byCiphertext sync.Map // Contains cacheEntry values, keyed by ciphertext string
 }
 
+type cacheEntry struct {
+	plaintext  string
+	ciphertext string
+	secret     *resource.Secret
+}
+
+// Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
 	entry := cacheEntry{plaintext, ciphertext, secret}
 	c.bySecret.Store(secret, entry)
 	c.byCiphertext.Store(ciphertext, entry)
 }
 
+// TryEncrypt returns the cached ciphertext for the given secret and plaintext, if it exists.
+// The ciphertext is returned as a string, and a boolean is returned to indicate whether the secret was found.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (c *secretCache) TryEncrypt(secret *resource.Secret, plaintext string) (string, bool) {
 	entry, ok := c.bySecret.Load(secret)
 	if !ok {
@@ -172,6 +173,9 @@ func (c *secretCache) TryEncrypt(secret *resource.Secret, plaintext string) (str
 	return entry.(cacheEntry).ciphertext, true
 }
 
+// TryDecrypt returns the cached plaintext for the given ciphertext, if it exists.
+// The plaintext is returned as a string, and a boolean is returned to indicate whether the ciphertext was found.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
 	entry, ok := c.byCiphertext.Load(ciphertext)
 	if !ok {
@@ -180,6 +184,8 @@ func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
 	return entry.(cacheEntry).plaintext, true
 }
 
+// bulkEncrypter is a wrapper around an Encrypter that queries the shared cache for previously encrypted secrets.
+// It batches encryption operations to avoid round-trips for when the underlying encrypter requires a network call.
 type bulkEncrypter struct {
 	encrypter     config.Encrypter
 	cache         *secretCache
@@ -187,11 +193,21 @@ type bulkEncrypter struct {
 	completeMutex sync.Mutex
 }
 
+type queuedEncryption struct {
+	source    *resource.Secret
+	target    *apitype.SecretV1
+	plaintext string
+}
+
+// MaxBulkEncryptCount is the maximum number of items that can be enqueued for bulk encryption.
 const MaxBulkEncryptCount = 100000
 
+// Ensure that bulkEncrypter implements the Encrypter interface for compatibility.
 var _ config.Encrypter = (*bulkEncrypter)(nil)
 
-func beginEncryptionBulk(ctx context.Context, encrypter config.Encrypter, cache *secretCache) *bulkEncrypter {
+// beginEncryptionBulk returns a new bulkEncrypter that wraps the given encrypter and cache with a queue.
+// Complete must be called to process any pending encryption operations added by the Enqueue method.
+func beginEncryptionBulk(encrypter config.Encrypter, cache *secretCache) *bulkEncrypter {
 	return &bulkEncrypter{
 		encrypter: encrypter,
 		cache:     cache,
@@ -199,6 +215,9 @@ func beginEncryptionBulk(ctx context.Context, encrypter config.Encrypter, cache 
 	}
 }
 
+// Enqueue adds a secret to the queue for encryption. If the cache has an entry for this secret and the plaintext has
+// not changed, the previous ciphertext is used immediately. Otherwise, the secret is added to the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (be *bulkEncrypter) Enqueue(ctx context.Context,
 	source *resource.Secret, plaintext string, target *apitype.SecretV1,
 ) error {
@@ -224,6 +243,8 @@ func (be *bulkEncrypter) Enqueue(ctx context.Context,
 	}
 }
 
+// Complete processes any pending encryption operations in the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (be *bulkEncrypter) Complete(ctx context.Context) error {
 	if len(be.queue) == 0 {
 		return nil
@@ -268,6 +289,8 @@ func (be *bulkEncrypter) BulkEncrypt(ctx context.Context, plaintexts []string) (
 	return be.encrypter.BulkEncrypt(ctx, plaintexts)
 }
 
+// bulkDecrypter is a wrapper around a Decrypter that queries the shared cache for previously decrypted secrets.
+// It batches decryption operations to avoid round-trips for when the underlying decrypter requires a network call.
 type bulkDecrypter struct {
 	decrypter     config.Decrypter
 	cache         *secretCache
@@ -275,10 +298,19 @@ type bulkDecrypter struct {
 	completeMutex sync.Mutex
 }
 
+type queuedDecryption struct {
+	ciphertext string
+	target     *resource.Secret
+}
+
+// MaxBulkDecryptCount is the maximum number of items that can be enqueued for bulk decryption.
 const MaxBulkDecryptCount = 100000
 
+// Ensure that bulkDecrypter implements the Decrypter interface for compatibility.
 var _ config.Decrypter = (*bulkDecrypter)(nil)
 
+// beginDecryptionBulk returns a new bulkDecrypter that wraps the given decrypter and cache with a queue.
+// Complete must be called to process any pending decryption operations added by the Enqueue method.
 func beginDecryptionBulk(decrypter config.Decrypter, cache *secretCache) *bulkDecrypter {
 	return &bulkDecrypter{
 		decrypter: decrypter,
@@ -287,6 +319,9 @@ func beginDecryptionBulk(decrypter config.Decrypter, cache *secretCache) *bulkDe
 	}
 }
 
+// Enqueue adds a ciphertext to the queue for decryption. If the cache has an entry for this ciphertext, the plaintext
+// is used immediately. Otherwise, the ciphertext is added to the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (bd *bulkDecrypter) Enqueue(ctx context.Context, ciphertext string, secret *resource.Secret) error {
 	// Try the cache first.
 	if plaintext, ok := bd.cache.TryDecrypt(ciphertext); ok {
@@ -312,6 +347,8 @@ func (bd *bulkDecrypter) Enqueue(ctx context.Context, ciphertext string, secret 
 	}
 }
 
+// Complete processes any pending decryption operations in the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
 func (bd *bulkDecrypter) Complete(ctx context.Context) error {
 	if len(bd.queue) == 0 {
 		return nil
