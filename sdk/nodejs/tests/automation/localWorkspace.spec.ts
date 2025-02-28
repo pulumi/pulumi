@@ -851,9 +851,8 @@ describe("LocalWorkspace", () => {
             fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
         );
         const stacks = await Promise.all(
-            stackNames.map(
-                async (stackName) => LocalWorkspace.createStack({ stackName, projectName, program }),
-                withTestBackend({}, "inline_node"),
+            stackNames.map(async (stackName) =>
+                LocalWorkspace.createStack({ stackName, projectName, program }, withTestBackend({}, "inline_node")),
             ),
         );
         await stacks.map((stack) => stack.workspace.removeStack(stack.name));
