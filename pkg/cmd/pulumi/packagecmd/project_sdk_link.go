@@ -202,9 +202,9 @@ func getNodeJSPkgName(pkg *schema.Package) string {
 	}
 
 	if pkg.Namespace != "" {
-		return "@" + pkg.Namespace + "/" + cgstrings.Camel(pkg.Name)
+		return "@" + pkg.Namespace + "/" + pkg.Name
 	}
-	return "@pulumi/" + cgstrings.Camel(pkg.Name)
+	return "@pulumi/" + pkg.Name
 }
 
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
