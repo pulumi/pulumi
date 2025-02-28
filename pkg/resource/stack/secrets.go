@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -110,14 +111,13 @@ type cacheEntry struct {
 }
 
 type cachingSecretsManager struct {
-	manager           secrets.Manager
-	encrypter         lazy.Lazy[config.Encrypter]
-	decrypter         lazy.Lazy[config.Decrypter]
-	cacheBySecret     map[*resource.Secret]cacheEntry
-	cacheByCiphertext map[string]cacheEntry
-	encryptQueue      []queuedEncryption
-	decryptQueue      []queuedDecryption
-	isInBulkMode      bool
+	manager      secrets.Manager
+	encrypter    lazy.Lazy[config.Encrypter]
+	decrypter    lazy.Lazy[config.Decrypter]
+	cache        *secretCache
+	encryptQueue []queuedEncryption
+	decryptQueue []queuedDecryption
+	isInBulkMode bool
 }
 
 type queuedEncryption struct {
@@ -138,9 +138,8 @@ var _ bulkSecretEncrypter = (*cachingSecretsManager)(nil)
 // in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	sm := &cachingSecretsManager{
-		manager:           manager,
-		cacheBySecret:     make(map[*resource.Secret]cacheEntry),
-		cacheByCiphertext: make(map[string]cacheEntry),
+		manager: manager,
+		cache:   &secretCache{},
 	}
 	if manager != nil {
 		sm.encrypter = lazy.New(manager.Encrypter)
@@ -180,8 +179,8 @@ func (csm *cachingSecretsManager) BulkEncrypt(ctx context.Context, plaintexts []
 }
 
 func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	if entry, ok := csm.cacheByCiphertext[ciphertext]; ok {
-		return entry.plaintext, nil
+	if plaintext, ok := csm.cache.TryDecrypt(ciphertext); ok {
+		return plaintext, nil
 	}
 	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
 }
@@ -199,9 +198,8 @@ func (csm *cachingSecretsManager) EnqueueEncryption(ctx context.Context,
 	// Otherwise, re-encrypt the plaintext and update the cache.
 	// Note: target may be nil if the caller does not need the ciphertext
 	// e.g. when priming the cache during deserialization.
-	entry, ok := csm.cacheBySecret[source]
-	if ok && entry.plaintext == plaintext && target != nil {
-		target.Ciphertext = entry.ciphertext
+	if ciphertext, ok := csm.cache.TryEncrypt(source, plaintext); ok {
+		target.Ciphertext = ciphertext
 		return nil
 	}
 	// If the encrypter supports bulk encryption, queue the secret for bulk encryption during finalize.
@@ -257,16 +255,10 @@ func (csm *cachingSecretsManager) BeginBulkEncryption(ctx context.Context) compl
 func (csm *cachingSecretsManager) cacheAndAssign(secret *resource.Secret, target *apitype.SecretV1,
 	plaintext, ciphertext string,
 ) {
-	csm.cache(plaintext, ciphertext, secret)
+	csm.cache.Write(plaintext, ciphertext, secret)
 	if target != nil {
 		target.Ciphertext = ciphertext
 	}
-}
-
-func (csm *cachingSecretsManager) cache(plaintext, ciphertext string, secret *resource.Secret) {
-	entry := cacheEntry{plaintext, ciphertext, secret}
-	csm.cacheBySecret[secret] = entry
-	csm.cacheByCiphertext[ciphertext] = entry
 }
 
 func (csm *cachingSecretsManager) BeginBulkDecryption(ctx context.Context) completeBulkOperation {
@@ -291,7 +283,7 @@ func (csm *cachingSecretsManager) BeginBulkDecryption(ctx context.Context) compl
 				return err
 			}
 			q.target.Element = ev
-			csm.cache(plaintexts[i], q.ciphertext, q.target)
+			csm.cache.Write(plaintexts[i], q.ciphertext, q.target)
 		}
 		csm.isInBulkMode = false
 		csm.decryptQueue = nil
@@ -301,8 +293,8 @@ func (csm *cachingSecretsManager) BeginBulkDecryption(ctx context.Context) compl
 
 func (csm *cachingSecretsManager) EnqueueDecryption(ctx context.Context, ciphertext string, secret *resource.Secret) error {
 	// Try the cache first.
-	if entry, ok := csm.cacheByCiphertext[ciphertext]; ok {
-		ev, err := secretPropertyValueFromPlaintext(entry.plaintext)
+	if plaintext, ok := csm.cache.TryDecrypt(ciphertext); ok {
+		ev, err := secretPropertyValueFromPlaintext(plaintext)
 		if err != nil {
 			return err
 		}
@@ -323,6 +315,33 @@ func (csm *cachingSecretsManager) EnqueueDecryption(ctx context.Context, ciphert
 		return err
 	}
 	secret.Element = ev
-	csm.cache(plaintext, ciphertext, secret)
+	csm.cache.Write(plaintext, ciphertext, secret)
 	return nil
+}
+
+type secretCache struct {
+	bySecret     sync.Map
+	byCiphertext sync.Map
+}
+
+func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
+	entry := cacheEntry{plaintext, ciphertext, secret}
+	c.bySecret.Store(secret, entry)
+	c.byCiphertext.Store(ciphertext, entry)
+}
+
+func (c *secretCache) TryEncrypt(secret *resource.Secret, plaintext string) (string, bool) {
+	entry, ok := c.bySecret.Load(secret)
+	if !ok {
+		return "", false
+	}
+	return entry.(cacheEntry).ciphertext, true
+}
+
+func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
+	entry, ok := c.byCiphertext.Load(ciphertext)
+	if !ok {
+		return "", false
+	}
+	return entry.(cacheEntry).plaintext, true
 }
