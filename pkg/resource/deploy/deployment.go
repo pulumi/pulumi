@@ -589,7 +589,7 @@ func (d *Deployment) EnsureProvider(provider string) error {
 				Type: providerResource.Type,
 				Olds: providerResource.Inputs,
 				News: inputs,
-				// TODO: This doesn't handle RandomSeed correctly, so won't work with update plans
+				// TODO(https://github.com/pulumi/pulumi/issues/18748): This doesn't handle RandomSeed correctly, so won't work with update plans
 			})
 			if err != nil {
 				return fmt.Errorf("diff provider config for %s: %w", pkg, err)
