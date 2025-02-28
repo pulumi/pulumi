@@ -1,0 +1,4 @@
+# We explicitly use this version of the SDK, whose `pulumi.runtime.Settings.__init__` does
+# not have a `root_directory` parameter, which causes the `organization` not to be set.
+# See https://github.com/pulumi/pulumi/issues/18768.
+pulumi==3.152.0
