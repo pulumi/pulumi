@@ -40,8 +40,8 @@ import (
 // helpful messages in the case of decryption or snapshot integrity errors.
 func RunCmdFunc(
 	run func(cmd *cobra.Command, args []string) error,
-) func(cmd *cobra.Command, args []string) {
-	return cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+) func(cmd *cobra.Command, args []string) error {
+	return cmdutil.RunFuncE(func(cmd *cobra.Command, args []string) error {
 		err := run(cmd, args)
 		return processCmdErrors(err)
 	})

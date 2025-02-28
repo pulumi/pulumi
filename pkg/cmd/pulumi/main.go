@@ -53,7 +53,7 @@ func main() {
 	defer panicHandler(finished)
 
 	if err := NewPulumiCmd().Execute(); err != nil {
-		os.Exit(1)
+		os.Exit(-1)
 	}
 	*finished = true
 }
