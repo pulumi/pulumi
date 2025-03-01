@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -67,9 +66,9 @@ func newDeploymentSettingsCmd() *cobra.Command {
 			"Use this command to manage a stack's deployment settings like\n" +
 			"generating the deployment file, updating secrets or pushing the\n" +
 			"updated settings to Pulumi Cloud.",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
-		}),
+		},
 	}
 
 	cmd.AddCommand(newDeploymentSettingsInitCmd())
@@ -180,7 +179,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
@@ -200,7 +199,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 				return err
 			}
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVar(
@@ -293,7 +292,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(0),
 		Short: "Updates stack's deployment settings secrets",
 		Long:  "",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("configure command is only supported in interactive mode")
 			}
@@ -349,7 +348,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(

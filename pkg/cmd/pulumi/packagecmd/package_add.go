@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -62,7 +61,7 @@ When <schema> is a path to a local file with a '.json', '.yml' or '.yaml'
 extension, Pulumi package schema is read from it directly:
 
   pulumi package add ./my/schema.json`,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
 			if err != nil {
@@ -128,7 +127,7 @@ extension, Pulumi package schema is read from it directly:
 			}
 
 			return LinkPackage(ws, language, root, pkg, out)
-		}),
+		},
 	}
 
 	return cmd

@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -51,7 +50,7 @@ func NewQueryCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args:   cmdutil.NoArgs,
 		Hidden: !env.Experimental.Value() && !env.DebugCommands.Value(),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			interactive := cmdutil.Interactive()
 
@@ -101,7 +100,7 @@ issue at https://github.com/pulumi/pulumi/issues/16964.
 			default:
 				return nil
 			}
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(

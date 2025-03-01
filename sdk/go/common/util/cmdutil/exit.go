@@ -60,26 +60,7 @@ func DetailedError(err error) string {
 	return msg
 }
 
-// RunFunc is like [RunFuncE], but it calls [os.Exit] when an error is encountered.
-//
-// Deprecated: Please switch to RunFuncE instead:
-//
-//	-Run: cmd.RunFunc(func(cmd *cobra.Command, args []string) error {
-//	+RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-//
-// RunFuncE allows better testing because it doesn't call [os.Exit] on an error.
-func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
-	return func(cmd *cobra.Command, args []string) {
-		f := RunFuncE(run)
-		if f(cmd, args) != nil {
-			// RunFuncE has already displayed any error message that needs to
-			// be displayed, so we just exit.
-			os.Exit(-1)
-		}
-	}
-}
-
-// RunFuncE wraps an error-returning run func with standard Pulumi error handling.  All
+// RunFunc wraps an error-returning run func with standard Pulumi error handling.  All
 // Pulumi commands should wrap themselves in this to ensure consistent and appropriate
 // error behavior.  In particular, we want to avoid any calls to os.Exit in the middle of
 // a callstack which might prohibit reaping of child processes, resources, etc.  And we
@@ -87,35 +68,39 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 // incorrectly and needlessly prints usage.
 //
 // If run returns a BailError, we will not print an error message.
-func RunFuncE(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		cmd.SilenceErrors = true
-		cmd.SilenceUsage = true
-
+//
+// Deprecated: Instead of using [RunFunc], you should call [DisplayErrorMessage] and then
+// manually exit with `os.Exit(-1)`
+func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
+	return func(cmd *cobra.Command, args []string) {
 		err := run(cmd, args)
-		if err == nil {
-			return nil
+		if err != nil {
+			DisplayErrorMessage(err)
+			os.Exit(-1)
 		}
-
-		// If we were asked to bail, that means we already printed out a message.  We just need
-		// to quit at this point (with an error code so no one thinks we succeeded).  Bailing
-		// always indicates a failure, just one we don't need to print a message for.
-		if result.IsBail(err) {
-			// We return the error so a non-zero exit code is printed.
-			return err
-		}
-
-		var msg string
-		if logging.LogToStderr {
-			msg = DetailedError(err)
-		} else {
-			msg = errorMessage(err)
-			logging.V(3).Info(DetailedError(err))
-		}
-
-		Diag().Errorf(diag.Message("", "%s"), msg)
-		return err
 	}
+}
+
+// DisplayErrorMessage displays an error message to the user.
+//
+// DisplayErrorMessage respects [result.IsBail] and [logging.LogToStderr].
+func DisplayErrorMessage(err error) {
+	// If we were asked to bail, that means we already printed out a message.  We just need
+	// to quit at this point (with an error code so no one thinks we succeeded).  Bailing
+	// always indicates a failure, just one we don't need to print a message for.
+	if err == nil || result.IsBail(err) {
+		return
+	}
+
+	var msg string
+	if logging.LogToStderr {
+		msg = DetailedError(err)
+	} else {
+		msg = errorMessage(err)
+		logging.V(3).Info(DetailedError(err))
+	}
+
+	Diag().Errorf(diag.Message("", "%s"), msg)
 }
 
 // Exit exits with a given error.

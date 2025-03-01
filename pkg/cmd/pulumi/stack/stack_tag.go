@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -62,7 +61,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 		Use:   "get <name>",
 		Short: "Get a single stack tag value",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			name := args[0]
@@ -94,7 +93,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			}
 
 			return fmt.Errorf("stack tag '%s' not found for stack '%s'", name, s.Ref())
-		}),
+		},
 	}
 }
 
@@ -104,7 +103,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		Use:   "ls",
 		Short: "List all stack tags",
 		Args:  cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -136,7 +135,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 
 			printStackTags(tags)
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(
@@ -168,7 +167,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 		Use:   "rm <name>",
 		Short: "Remove a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			name := args[0]
@@ -197,7 +196,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			delete(tags, name)
 
 			return backend.UpdateStackTags(ctx, s, tags)
-		}),
+		},
 	}
 }
 
@@ -206,7 +205,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 		Use:   "set <name> <value>",
 		Short: "Set a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			name := args[0]
@@ -239,6 +238,6 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			tags[name] = value
 
 			return backend.UpdateStackTags(ctx, s, tags)
-		}),
+		},
 	}
 }

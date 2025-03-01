@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -72,10 +71,10 @@ func newStackInitCmd() *cobra.Command {
 			"`--copy-config-from` flag:\n" +
 			"\n" +
 			"* `pulumi stack init --copy-config-from dev`",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return sicmd.Run(ctx, args)
-		}),
+		},
 	}
 	cmd.PersistentFlags().StringVarP(
 		&sicmd.stackName, "stack", "s", "", "The name of the stack to create")

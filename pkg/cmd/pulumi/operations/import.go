@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
@@ -663,7 +662,7 @@ func NewImportCmd() *cobra.Command {
 			"for all resources that need creating from the preview. This will fill in all the name,\n" +
 			"type, parent and provider information for you and just require you to fill in resource\n" +
 			"IDs and any properties.\n",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -1031,7 +1030,7 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVar(

@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -40,7 +39,7 @@ func newPolicyRmCmd() *cobra.Command {
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || env.SkipConfirmations.Value()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
@@ -76,7 +75,7 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(

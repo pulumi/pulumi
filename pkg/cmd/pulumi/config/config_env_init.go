@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -54,10 +53,10 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
 		Args: cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
-		}),
+		},
 	}
 
 	cmd.Flags().StringVar(

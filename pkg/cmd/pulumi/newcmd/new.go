@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -617,7 +616,7 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
 		Args: cmdutil.MaximumNArgs(1),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, cliArgs []string) error {
+		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
@@ -640,7 +639,7 @@ func NewNewCmd() *cobra.Command {
 			args.yes = args.yes || env.SkipConfirmations.Value()
 			args.interactive = isInteractive()
 			return runNew(ctx, args)
-		}),
+		},
 	}
 
 	// Add additional help that includes a list of available templates.

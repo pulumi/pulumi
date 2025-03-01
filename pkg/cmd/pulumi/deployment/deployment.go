@@ -15,7 +15,6 @@
 package deployment
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -31,9 +30,9 @@ func NewDeploymentCmd() *cobra.Command {
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		Args: cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVar(

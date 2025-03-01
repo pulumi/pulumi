@@ -54,7 +54,7 @@ func newStackHistoryCmd() *cobra.Command {
 		Long: `Display history for a stack
 
 This command displays data about previous updates for a stack.`,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
@@ -108,7 +108,7 @@ This command displays data about previous updates for a stack.`,
 			}
 
 			return displayUpdatesConsole(updates, page, opts, showFullDates)
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(
