@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Disambiguate packages with a different namespace than "pulumi"
