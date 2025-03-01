@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Fix concurrent map write panics in the caching mapper
