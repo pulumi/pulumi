@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.153.1 (2025-02-28)
+
+
+### Bug Fixes
+
+- [programgen] Fix concurrent map write panics in the caching mapper
+  [#18746](https://github.com/pulumi/pulumi/pull/18746)
+
+- [sdk/python] Fix `get_organization` returning `None` from older SDKs
+  [#18769](https://github.com/pulumi/pulumi/pull/18769)
+
 ## 3.153.0 (2025-02-27)
 
 
