@@ -18,12 +18,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/lazy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -89,16 +90,12 @@ func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (sec
 	return NewCachingSecretsManager(sm), nil
 }
 
-type cacheEntry struct {
-	plaintext  string
-	ciphertext string
-}
+// Process any pending encryptions that were enqueued.
+type completeBulkOperation func(ctx context.Context) error
 
 type cachingSecretsManager struct {
-	manager   secrets.Manager
-	encrypter lazy.Lazy[config.Encrypter]
-	decrypter lazy.Lazy[config.Decrypter]
-	cache     map[*resource.Secret]cacheEntry
+	manager secrets.Manager
+	cache   *secretCache
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
@@ -107,13 +104,26 @@ type cachingSecretsManager struct {
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	sm := &cachingSecretsManager{
 		manager: manager,
-		cache:   make(map[*resource.Secret]cacheEntry),
-	}
-	if manager != nil {
-		sm.encrypter = lazy.New(manager.Encrypter)
-		sm.decrypter = lazy.New(manager.Decrypter)
+		cache:   &secretCache{},
 	}
 	return sm
+}
+
+// BeginBulkEncryption returns a bulk encrypter that wraps the internal encrypter and cache with a queue.
+// This returns a bulk-compatible encrypter and a completion function that processes any pending encryption operations.
+// Complete must be called to process any pending encryption operations added by the Enqueue method.
+func (csm *cachingSecretsManager) BeginBulkEncryption(ctx context.Context) (config.Encrypter, completeBulkOperation) {
+	internalEncrypter := csm.manager.Encrypter()
+	bulkEncrypter := beginEncryptionBulk(internalEncrypter, csm.cache)
+	return bulkEncrypter, bulkEncrypter.Complete
+}
+
+// BeginBulkDecryption returns a bulk decrypter that wraps the internal decrypter and cache with a queue.
+// This returns a bulk-compatible decrypter and a completion function that processes any pending decryption operations.
+// Complete must be called to process any pending decryption operations added by the Enqueue method.
+func (csm *cachingSecretsManager) BeginBulkDecryption(ctx context.Context) (config.Decrypter, completeBulkOperation) {
+	bulkDecrypter := beginDecryptionBulk(csm.manager.Decrypter(), csm.cache)
+	return bulkDecrypter, bulkDecrypter.Complete
 }
 
 func (csm *cachingSecretsManager) Type() string {
@@ -125,132 +135,262 @@ func (csm *cachingSecretsManager) State() json.RawMessage {
 }
 
 func (csm *cachingSecretsManager) Encrypter() config.Encrypter {
-	csm.encrypter.Value() // Ensure the encrypter is initialized.
-	return csm            // The cachingSecretsManager is also an Encrypter itself.
+	return csm.manager.Encrypter()
 }
 
 func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
-	csm.decrypter.Value() // Ensure the decrypter is initialized.
-	return csm            // The cachingSecretsManager is also a Decrypter itself.
+	return csm.manager.Decrypter()
 }
 
-func (csm *cachingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {
-	return csm.encrypter.Value().EncryptValue(ctx, plaintext)
+// The secretCache is a thread-safe cache for secret encryption and decryption results.
+type secretCache struct {
+	bySecret     sync.Map // Contains cacheEntry values, keyed by *resource.Secret
+	byCiphertext sync.Map // Contains cacheEntry values, keyed by ciphertext string
 }
 
-func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
+type cacheEntry struct {
+	plaintext  string
+	ciphertext string
+	secret     *resource.Secret
 }
 
-func (csm *cachingSecretsManager) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return csm.decrypter.Value().BulkDecrypt(ctx, ciphertexts)
+// Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
+	entry := cacheEntry{plaintext, ciphertext, secret}
+	c.bySecret.Store(secret, entry)
+	c.byCiphertext.Store(ciphertext, entry)
 }
 
-// encryptSecret encrypts the plaintext associated with the given secret value.
-func (csm *cachingSecretsManager) encryptSecret(ctx context.Context,
-	secret *resource.Secret, plaintext string,
-) (string, error) {
-	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
-	//
-	// Otherwise, re-encrypt the plaintext and update the cache.
-	entry, ok := csm.cache[secret]
-	if ok && entry.plaintext == plaintext {
-		return entry.ciphertext, nil
+// TryEncrypt returns the cached ciphertext for the given secret and plaintext, if it exists.
+// The ciphertext is returned as a string, and a boolean is returned to indicate whether the secret was found.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (c *secretCache) TryEncrypt(secret *resource.Secret, plaintext string) (string, bool) {
+	entry, ok := c.bySecret.Load(secret)
+	if !ok {
+		return "", false
 	}
-	ciphertext, err := csm.manager.Encrypter().EncryptValue(ctx, plaintext)
-	if err != nil {
-		return "", err
+	return entry.(cacheEntry).ciphertext, true
+}
+
+// TryDecrypt returns the cached plaintext for the given ciphertext, if it exists.
+// The plaintext is returned as a string, and a boolean is returned to indicate whether the ciphertext was found.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
+	entry, ok := c.byCiphertext.Load(ciphertext)
+	if !ok {
+		return "", false
 	}
-	csm.insert(secret, plaintext, ciphertext)
-	return ciphertext, nil
+	return entry.(cacheEntry).plaintext, true
 }
 
-// insert associates the given secret with the given plain- and ciphertext in the cache.
-func (csm *cachingSecretsManager) insert(secret *resource.Secret, plaintext, ciphertext string) {
-	csm.cache[secret] = cacheEntry{plaintext, ciphertext}
+// bulkEncrypter is a wrapper around an Encrypter that queries the shared cache for previously encrypted secrets.
+// It batches encryption operations to avoid round-trips for when the underlying encrypter requires a network call.
+type bulkEncrypter struct {
+	encrypter     config.Encrypter
+	cache         *secretCache
+	queue         chan queuedEncryption
+	completeMutex sync.Mutex
 }
 
-// mapDecrypter is a Decrypter with a preloaded cache. This decrypter is used specifically for deserialization,
-// where the deserializer is expected to prime the cache by scanning each resource for secrets, then decrypting all
-// of the discovered secrets en masse. Although each call to Decrypt _should_ hit the cache, a mapDecrypter does
-// carry an underlying Decrypter in the event that a secret was missed.
-//
-// Note that this is intentionally separate from cachingCrypter. A cachingCrypter is intended to prevent repeated
-// encryption of secrets when the same snapshot is repeatedly serialized over the lifetime of an update, and
-// therefore keys on the identity of the secret value itself. A mapDecrypter is intended to allow the deserializer
-// to decrypt secrets up-front and prevent repeated calls to decrypt within the context of a single deserialization,
-// and cannot key off of secret identity because secrets do not exist when the cache is initialized.
-type mapDecrypter struct {
-	decrypter config.Decrypter
-	cache     map[string]string
+type queuedEncryption struct {
+	source    *resource.Secret
+	target    *apitype.SecretV1
+	plaintext string
 }
 
-func newMapDecrypter(decrypter config.Decrypter, cache map[string]string) config.Decrypter {
-	return &mapDecrypter{decrypter: decrypter, cache: cache}
-}
+// MaxBulkEncryptCount is the maximum number of items that can be enqueued for bulk encryption.
+const MaxBulkEncryptCount = 100000
 
-func (c *mapDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
-	if plaintext, ok := c.cache[ciphertext]; ok {
-		return plaintext, nil
+// Ensure that bulkEncrypter implements the Encrypter interface for compatibility.
+var _ config.Encrypter = (*bulkEncrypter)(nil)
+
+// beginEncryptionBulk returns a new bulkEncrypter that wraps the given encrypter and cache with a queue.
+// Complete must be called to process any pending encryption operations added by the Enqueue method.
+func beginEncryptionBulk(encrypter config.Encrypter, cache *secretCache) *bulkEncrypter {
+	return &bulkEncrypter{
+		encrypter: encrypter,
+		cache:     cache,
+		queue:     make(chan queuedEncryption, MaxBulkEncryptCount),
 	}
-
-	// The value is not currently in the cache. Decrypt it and add it to the cache.
-	plaintext, err := c.decrypter.DecryptValue(ctx, ciphertext)
-	if err != nil {
-		return "", err
-	}
-
-	if c.cache == nil {
-		c.cache = make(map[string]string)
-	}
-	c.cache[ciphertext] = plaintext
-
-	return plaintext, nil
 }
 
-func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	// Loop and find the entries that are already cached, then BulkDecrypt the rest
-	decryptedResult := make([]string, len(ciphertexts))
-	var toDecrypt []string
-	if c.cache == nil {
-		// Don't bother searching for the cached subset if the cache is nil
-		toDecrypt = ciphertexts
-	} else {
-		toDecrypt = make([]string, 0, len(ciphertexts))
-		for i, ct := range ciphertexts {
-			if plaintext, ok := c.cache[ct]; ok {
-				decryptedResult[i] = plaintext
-			} else {
-				toDecrypt = append(toDecrypt, ct)
+// Enqueue adds a secret to the queue for encryption. If the cache has an entry for this secret and the plaintext has
+// not changed, the previous ciphertext is used immediately. Otherwise, the secret is added to the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (be *bulkEncrypter) Enqueue(ctx context.Context,
+	source *resource.Secret, plaintext string, target *apitype.SecretV1,
+) error {
+	contract.Assertf(source != nil, "source secret must not be nil")
+	// If the cache has an entry for this secret and the plaintext has not changed,
+	// re-use the previous ciphertext for this specific secret instance.
+	if ciphertext, ok := be.cache.TryEncrypt(source, plaintext); ok {
+		target.Ciphertext = ciphertext
+		return nil
+	}
+	// Add to the queue
+	for {
+		select {
+		case be.queue <- queuedEncryption{source, target, plaintext}:
+			return nil
+		default:
+			// If the queue is full, process the queue to make room.
+			if err := be.Complete(ctx); err != nil {
+				return err
 			}
+			// Now retry the enqueue.
+		}
+	}
+}
+
+// Complete processes any pending encryption operations in the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (be *bulkEncrypter) Complete(ctx context.Context) error {
+	if len(be.queue) == 0 {
+		return nil
+	}
+	// Only send 1 batch at a time
+	be.completeMutex.Lock()
+	defer be.completeMutex.Unlock()
+
+	// Flush the encrypt queue
+	dequeued := make([]queuedEncryption, 0, len(be.queue))
+	plaintexts := make([]string, 0, len(be.queue))
+	// Take up to the maximum number of items from the queue.
+	// Other items might be enqueued concurrently and will be sent in the next batch.
+dequeue:
+	for range MaxBulkEncryptCount {
+		select {
+		case q := <-be.queue:
+			dequeued = append(dequeued, q)
+			plaintexts = append(plaintexts, q.plaintext)
+		default: // Queue is empty
+			break dequeue
 		}
 	}
 
-	if len(toDecrypt) == 0 {
-		return decryptedResult, nil
-	}
-
-	// try and bulk decrypt the rest
-	decrypted, err := c.decrypter.BulkDecrypt(ctx, toDecrypt)
+	ciphertexts, err := be.encrypter.BulkEncrypt(ctx, plaintexts)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	for i, q := range dequeued {
+		ciphertext := ciphertexts[i]
+		q.target.Ciphertext = ciphertext
+		be.cache.Write(q.plaintext, ciphertext, q.source)
+	}
+	return nil
+}
 
-	// And add them to the cache
-	if c.cache == nil {
-		c.cache = make(map[string]string)
-	}
-	for i, ct := range toDecrypt {
-		pt := decrypted[i]
-		c.cache[ct] = pt
-	}
+func (be *bulkEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	return be.encrypter.EncryptValue(ctx, plaintext)
+}
 
-	// Re-populate results
-	for i, ct := range ciphertexts {
-		plaintext, ok := c.cache[ct]
-		contract.Assertf(ok, "decrypted value not found in cache after bulk request")
-		decryptedResult[i] = plaintext
-	}
+func (be *bulkEncrypter) BulkEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	return be.encrypter.BulkEncrypt(ctx, plaintexts)
+}
 
-	return decryptedResult, nil
+// bulkDecrypter is a wrapper around a Decrypter that queries the shared cache for previously decrypted secrets.
+// It batches decryption operations to avoid round-trips for when the underlying decrypter requires a network call.
+type bulkDecrypter struct {
+	decrypter     config.Decrypter
+	cache         *secretCache
+	queue         chan queuedDecryption
+	completeMutex sync.Mutex
+}
+
+type queuedDecryption struct {
+	ciphertext string
+	target     *resource.Secret
+}
+
+// MaxBulkDecryptCount is the maximum number of items that can be enqueued for bulk decryption.
+const MaxBulkDecryptCount = 100000
+
+// Ensure that bulkDecrypter implements the Decrypter interface for compatibility.
+var _ config.Decrypter = (*bulkDecrypter)(nil)
+
+// beginDecryptionBulk returns a new bulkDecrypter that wraps the given decrypter and cache with a queue.
+// Complete must be called to process any pending decryption operations added by the Enqueue method.
+func beginDecryptionBulk(decrypter config.Decrypter, cache *secretCache) *bulkDecrypter {
+	return &bulkDecrypter{
+		decrypter: decrypter,
+		cache:     cache,
+		queue:     make(chan queuedDecryption, MaxBulkDecryptCount),
+	}
+}
+
+// Enqueue adds a ciphertext to the queue for decryption. If the cache has an entry for this ciphertext, the plaintext
+// is used immediately. Otherwise, the ciphertext is added to the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (bd *bulkDecrypter) Enqueue(ctx context.Context, ciphertext string, secret *resource.Secret) error {
+	// Try the cache first.
+	if plaintext, ok := bd.cache.TryDecrypt(ciphertext); ok {
+		ev, err := secretPropertyValueFromPlaintext(plaintext)
+		if err != nil {
+			return err
+		}
+		secret.Element = ev
+		return nil
+	}
+	// Add to the queue
+	for {
+		select {
+		case bd.queue <- queuedDecryption{ciphertext, secret}:
+			return nil
+		default:
+			// If the queue is full, process the queue to make room.
+			if err := bd.Complete(ctx); err != nil {
+				return err
+			}
+			// Now retry the enqueue.
+		}
+	}
+}
+
+// Complete processes any pending decryption operations in the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (bd *bulkDecrypter) Complete(ctx context.Context) error {
+	if len(bd.queue) == 0 {
+		return nil
+	}
+	// Only send 1 batch at a time
+	bd.completeMutex.Lock()
+	defer bd.completeMutex.Unlock()
+
+	// Flush the decrypt queue
+	dequeued := make([]queuedDecryption, 0, len(bd.queue))
+	ciphertexts := make([]string, 0, len(bd.queue))
+	// Take up to the maximum number of items from the queue.
+	// Other items might be enqueued concurrently and will be sent in the next batch.
+dequeue:
+	for range MaxBulkDecryptCount {
+		select {
+		case q := <-bd.queue:
+			dequeued = append(dequeued, q)
+			ciphertexts = append(ciphertexts, q.ciphertext)
+		default: // Queue is empty
+			break dequeue
+		}
+	}
+	plaintexts, err := bd.decrypter.BulkDecrypt(ctx, ciphertexts)
+	if err != nil {
+		return err
+	}
+	for i, q := range dequeued {
+		ev, err := secretPropertyValueFromPlaintext(plaintexts[i])
+		if err != nil {
+			return err
+		}
+		q.target.Element = ev
+		bd.cache.Write(plaintexts[i], q.ciphertext, q.target)
+	}
+	return nil
+}
+
+func (bd *bulkDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	return bd.decrypter.DecryptValue(ctx, ciphertext)
+}
+
+func (bd *bulkDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return bd.decrypter.BulkDecrypt(ctx, ciphertexts)
 }

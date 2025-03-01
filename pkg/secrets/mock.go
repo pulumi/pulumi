@@ -66,6 +66,7 @@ func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 
 type MockEncrypter struct {
 	EncryptValueF func() string
+	BulkEncryptF  func() []string
 }
 
 func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
@@ -74,6 +75,13 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	}
 
 	return "", errors.New("mock value not provided")
+}
+
+func (me *MockEncrypter) BulkEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	if me.BulkEncryptF == nil {
+		return nil, errors.New("bulk encrypt mock not provided")
+	}
+	return me.BulkEncryptF(), nil
 }
 
 type MockDecrypter struct {

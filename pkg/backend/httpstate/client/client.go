@@ -492,7 +492,7 @@ func (pc *Client) BulkEncrypt(ctx context.Context, stack StackIdentifier,
 ) ([][]byte, error) {
 	req := apitype.BulkEncryptRequest{Plaintexts: plaintexts}
 	var resp apitype.BulkEncryptResponse
-	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "bulk-encrypt"), nil, &req, &resp,
+	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "batch-encrypt"), nil, &req, &resp,
 		httpCallOptions{GzipCompress: true, RetryPolicy: retryAllMethods}); err != nil {
 		return nil, err
 	}
