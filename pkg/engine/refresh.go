@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -82,8 +81,8 @@ func newRefreshSource(
 	// no root directory/Pulumi.yaml (perhaps as the result of a command to which an explicit stack name has been passed),
 	// we'll populate an empty set of program plugins.
 
-	var programPackages PackageSet
-	if plugctx.Root != "" && opts.ExecKind != constant.ExecKindAutoInline {
+	programPackages := NewPackageSet()
+	if plugctx.Root != "" {
 		runtime := proj.Runtime.Name()
 		programInfo := plugin.NewProgramInfo(
 			/* rootDirectory */ plugctx.Root,
@@ -95,10 +94,9 @@ func newRefreshSource(
 		var err error
 		programPackages, err = gatherPackagesFromProgram(plugctx, runtime, programInfo)
 		if err != nil {
+			plugctx.Diag.Warningf(diag.Message("", "%v"), err)
 			programPackages = NewPackageSet()
 		}
-	} else {
-		programPackages = NewPackageSet()
 	}
 
 	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)

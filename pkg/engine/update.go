@@ -258,16 +258,17 @@ func installPlugins(
 		/* entryPoint */ main,
 		/* options */ proj.Runtime.Options(),
 	)
-	languagePackages, err := gatherPackagesFromProgram(plugctx, runtime, programInfo)
+	programPackages, err := gatherPackagesFromProgram(plugctx, runtime, programInfo)
 	if err != nil {
-		return nil, nil, err
+		plugctx.Diag.Warningf(diag.Message("", "%v"), err)
+		programPackages = NewPackageSet()
 	}
 	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	allPackages := languagePackages.Union(snapshotPackages)
+	allPackages := programPackages.Union(snapshotPackages)
 	allPlugins := allPackages.ToPluginSet().Deduplicate()
 
 	// If there are any plugins that are not available, we can attempt to install them here.
@@ -284,7 +285,7 @@ func installPlugins(
 	}
 
 	// Collect the version information for default providers.
-	defaultProviderVersions := computeDefaultProviderPackages(languagePackages, allPackages)
+	defaultProviderVersions := computeDefaultProviderPackages(programPackages, allPackages)
 
 	return allPlugins, defaultProviderVersions, nil
 }
