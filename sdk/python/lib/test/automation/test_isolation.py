@@ -27,6 +27,7 @@ import pytest
 
 import pulumi
 from pulumi import automation
+from .test_utils import get_test_org
 
 
 class BadResource(pulumi.CustomResource):
@@ -50,7 +51,9 @@ def ignore(*args, **kw):
 
 
 def check_isolation(minimal=False):
-    stack_name = f"isolation-test-{uuid.uuid4()}"
+    stack_name = automation.fully_qualified_stack_name(
+        get_test_org(), "isolation-test", f"isolation-test-{uuid.uuid4()}"
+    )
 
     stack = automation.create_stack(
         stack_name=stack_name, project_name="isolation-test", program=program
@@ -81,8 +84,12 @@ async def async_stack_destroy(stack):
 
 @pytest.mark.asyncio
 async def test_parallel_updates():
-    first_stack_name = f"stack-{uuid.uuid4()}"
-    second_stack_name = f"stack-{uuid.uuid4()}"
+    first_stack_name = automation.fully_qualified_stack_name(
+        get_test_org(), "test-parallel", f"stack-{uuid.uuid4()}"
+    )
+    second_stack_name = automation.fully_qualified_stack_name(
+        get_test_org(), "test-parallel", f"stack-{uuid.uuid4()}"
+    )
     stacks = [
         automation.create_stack(
             stack_name, project_name="test-parallel", program=program
