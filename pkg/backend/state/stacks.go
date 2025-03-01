@@ -16,6 +16,7 @@ package state
 
 import (
 	"context"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -23,13 +24,10 @@ import (
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
 func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, error) {
-	w, err := workspace.New()
+	stackName, err := getCurrentStackName()
 	if err != nil {
 		return nil, err
-	}
-
-	stackName := w.Settings().Stack
-	if stackName == "" {
+	} else if stackName == "" {
 		return nil, nil
 	}
 
@@ -39,6 +37,20 @@ func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, 
 	}
 
 	return backend.GetStack(ctx, ref)
+}
+
+func getCurrentStackName() (string, error) {
+	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
+	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
+		return stackName, nil
+	}
+
+	w, err := workspace.New()
+	if err != nil {
+		return "", err
+	}
+
+	return w.Settings().Stack, nil
 }
 
 // SetCurrentStack changes the current stack to the given stack name.
