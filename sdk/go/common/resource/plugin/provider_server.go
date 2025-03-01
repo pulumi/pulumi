@@ -415,6 +415,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
 		Autonaming:    autonaming,
+		Organization:  req.Organization,
 	})
 	if err != nil {
 		return nil, err
