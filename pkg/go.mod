@@ -20,7 +20,7 @@ require (
 	github.com/djherbis/times v1.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gofrs/uuid v4.2.0+incompatible
-	github.com/golang/glog v1.2.2
+	github.com/golang/glog v1.2.4
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-querystring v1.1.0
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317
