@@ -63,6 +63,10 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 	g.result = result
 }
 
+func (g *testRegEvent) Reject(err error) {
+	panic("unexpected reject")
+}
+
 func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		for _, s := range steps {
