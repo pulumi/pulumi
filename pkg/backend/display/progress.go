@@ -172,6 +172,8 @@ type ProgressDisplay struct {
 	shownPolicyLoadEvent bool
 
 	permalink string
+
+	accumulatedLines []string
 }
 
 type opStopwatch struct {
@@ -344,6 +346,12 @@ func RenderProgressEvents(
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
+
+	// Store the line for summarization at the end.
+	if display.accumulatedLines == nil {
+		display.accumulatedLines = make([]string, 0)
+	}
+	display.accumulatedLines = append(display.accumulatedLines, line)
 }
 
 type treeNode struct {
@@ -715,12 +723,34 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Print a link to Copilot to explain the failure.
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
+		if display.failed && !display.isPreview {
+			startTime := time.Now()
+			summary := display.GetDiagnosticsSummary()
+			// TODO: clear accumulated lines
+			elapsedMs := time.Since(startTime).Milliseconds()
+			display.println("    " + colors.SpecCreateReplacement +
+				"--------------------------------------------------------------------------------")
+			summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
+			display.println("    " + colors.SpecCreateReplacement + summaryHeader)
+			display.println("    " + colors.SpecCreateReplacement + summary)
+		}
+
 		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like additional help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 		display.println("")
 	}
+}
+
+func (display *ProgressDisplay) GetDiagnosticsSummary() string {
+	// Guard against nil or empty accumulated lines
+	if len(display.accumulatedLines) == 0 {
+		return ""
+	}
+
+	return summarize(display.accumulatedLines)
+	//return "Update failed because of invalid Protocol value"
 }
 
 type policyPackSummary struct {
