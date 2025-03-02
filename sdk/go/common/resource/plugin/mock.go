@@ -152,8 +152,6 @@ func (m *MockHost) StartDebugging(info DebuggingInfo) error {
 }
 
 type MockProvider struct {
-	NotForwardCompatibleProvider
-
 	CloseF              func() error
 	PkgF                func() tokens.Package
 	HandshakeF          func(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
@@ -178,7 +176,8 @@ type MockProvider struct {
 	GetMappingsF        func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
 }
 
-var _ Provider = (*MockProvider)(nil)
+// Must implement all methods.
+var _ UnsafeProvider = (*MockProvider)(nil)
 
 func (m *MockProvider) Close() error {
 	if m.CloseF != nil {

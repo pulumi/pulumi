@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Make new Handshake method backward-compatible with existing providers
