@@ -351,7 +351,12 @@ func GenerateProject(
 			continue
 		}
 
-		packageName := "Pulumi." + namespaceName(map[string]string{}, p.Name)
+		rootNamespace := "Pulumi"
+		if p.Namespace != "" {
+			rootNamespace = namespaceName(nil, p.Namespace)
+		}
+
+		packageName := rootNamespace + "." + namespaceName(map[string]string{}, p.Name)
 		if langInfo, found := p.Language["csharp"]; found {
 			csharpInfo, ok := langInfo.(CSharpPackageInfo)
 			if ok {
