@@ -91,7 +91,7 @@ func newDestroySource(
 		var err error
 		programPackages, err = gatherPackagesFromProgram(plugctx, runtime, programInfo)
 		if err != nil {
-			plugctx.Diag.Warningf(diag.Message("", "%v"), err)
+			plugctx.Diag.Warningf(diag.Message("", "failed to gather packages from program: %v"), err)
 			programPackages = NewPackageSet()
 		}
 	}

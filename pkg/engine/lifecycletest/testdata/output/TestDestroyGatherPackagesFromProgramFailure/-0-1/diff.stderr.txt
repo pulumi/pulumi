@@ -1,0 +1,1 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>failed to gather packages from program: failed to discover package requirements: failed to get required packages<{%reset%}>
