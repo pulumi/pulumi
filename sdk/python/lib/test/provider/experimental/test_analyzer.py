@@ -25,6 +25,7 @@ from pulumi.provider.experimental.analyzer import (
     DuplicateTypeError,
     InvalidListTypeError,
     InvalidMapKeyError,
+    InvalidMapTypeError,
     TypeNotFoundError,
     is_dict,
     is_list,
@@ -431,6 +432,23 @@ def test_analyze_dict_non_str_key():
         analyzer.analyze_component(Component, Path("test_analyzer"))
     except InvalidMapKeyError as e:
         assert str(e) == "map keys must be strings, got 'int' for 'Args.bad_dict'"
+
+
+def test_analyze_dice_no_types():
+    class Args(TypedDict):
+        bad_dict: pulumi.Input[dict]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    try:
+        analyzer.analyze_component(Component, Path("test_analyzer"))
+    except InvalidMapTypeError as e:
+        assert (
+            str(e)
+            == "map types must specify two type arguments, got 'dict' for 'Args.bad_dict'"
+        )
 
 
 def test_analyze_dict_simple():

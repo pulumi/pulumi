@@ -91,6 +91,15 @@ class InvalidMapKeyError(Exception):
         )
 
 
+class InvalidMapTypeError(Exception):
+    def __init__(self, arg: type, typ: type, property_name: str):
+        self.property = property_name
+        self.typ = typ
+        super().__init__(
+            f"map types must specify two type arguments, got '{arg.__name__}' for '{typ.__name__}.{property_name}'"
+        )
+
+
 class InvalidListTypeError(Exception):
     def __init__(self, arg: type, typ: type, property_name: str):
         self.property = property_name
@@ -369,6 +378,8 @@ class Analyzer:
             )
         elif is_dict(arg):
             args = get_args(arg)
+            if len(args) != 2:
+                raise InvalidMapTypeError(arg, typ, name)
             if args[0] is not str:
                 raise InvalidMapKeyError(args[0], typ, name)
             return PropertyDefinition(
