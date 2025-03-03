@@ -38,9 +38,9 @@ type Encrypter interface {
 type Decrypter interface {
 	DecryptValue(ctx context.Context, ciphertext string) (string, error)
 
-	// BulkDecrypt supports bulk decryption of secrets.
+	// BatchDecrypt supports decryption of secrets in a single batch round-trip, where supported.
 	// Returns a list of decrypted values in the same order as the input ciphertexts.
-	BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error)
+	BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error)
 }
 
 // Crypter can both encrypt and decrypt values.
@@ -61,8 +61,8 @@ func (nopCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, 
 	return ciphertext, nil
 }
 
-func (nopCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return DefaultBulkDecrypt(ctx, NopDecrypter, ciphertexts)
+func (nopCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return DefaultBatchDecrypt(ctx, NopDecrypter, ciphertexts)
 }
 
 func (nopCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
@@ -89,8 +89,8 @@ func (b blindingCrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	return "[secret]", nil
 }
 
-func (b blindingCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return DefaultBulkDecrypt(ctx, b, ciphertexts)
+func (b blindingCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return DefaultBatchDecrypt(ctx, b, ciphertexts)
 }
 
 // NewPanicCrypter returns a new config crypter that will panic if used.
@@ -108,7 +108,7 @@ func (p panicCrypter) DecryptValue(ctx context.Context, _ string) (string, error
 	panic("attempt to decrypt value")
 }
 
-func (p panicCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+func (p panicCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	panic("attempt to bulk decrypt values")
 }
 
@@ -178,8 +178,8 @@ func (s symmetricCrypter) DecryptValue(ctx context.Context, value string) (strin
 	return string(msg), err
 }
 
-func (s symmetricCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return DefaultBulkDecrypt(ctx, s, ciphertexts)
+func (s symmetricCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return DefaultBatchDecrypt(ctx, s, ciphertexts)
 }
 
 // encryptAES256GCGM returns the ciphertext and the generated nonce
@@ -220,14 +220,14 @@ func (c prefixCrypter) EncryptValue(ctx context.Context, plaintext string) (stri
 	return c.prefix + plaintext, nil
 }
 
-func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return DefaultBulkDecrypt(ctx, c, ciphertexts)
+func (c prefixCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return DefaultBatchDecrypt(ctx, c, ciphertexts)
 }
 
-// DefaultBulkDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted individually. The returned
+// DefaultBatchDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted individually. The returned
 // map maps from ciphertext to plaintext. This should only be used by implementers of Decrypter to implement
-// their BulkDecrypt method in cases where they can't do more efficient than just individual decryptions.
-func DefaultBulkDecrypt(ctx context.Context,
+// their BatchDecrypt method in cases where they can't do more efficient than just individual decryptions.
+func DefaultBatchDecrypt(ctx context.Context,
 	decrypter Decrypter, ciphertexts []string,
 ) ([]string, error) {
 	if len(ciphertexts) == 0 {
@@ -262,6 +262,6 @@ func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, err
 	return string(b), nil
 }
 
-func (c *base64Crypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return DefaultBulkDecrypt(ctx, c, ciphertexts)
+func (c *base64Crypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return DefaultBatchDecrypt(ctx, c, ciphertexts)
 }

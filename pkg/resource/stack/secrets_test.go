@@ -67,10 +67,10 @@ func (t *testSecretsManager) DecryptValue(
 	return ciphertext[i+1:], nil
 }
 
-func (t *testSecretsManager) BulkDecrypt(
+func (t *testSecretsManager) BatchDecrypt(
 	ctx context.Context, ciphertexts []string,
 ) ([]string, error) {
-	return config.DefaultBulkDecrypt(ctx, t, ciphertexts)
+	return config.DefaultBatchDecrypt(ctx, t, ciphertexts)
 }
 
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
@@ -202,7 +202,7 @@ func TestCachingCrypter(t *testing.T) {
 	assert.Equal(t, barSer, barSer2)
 }
 
-func TestBulkDecrypt(t *testing.T) {
+func TestBatchDecrypt(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -210,17 +210,17 @@ func TestBulkDecrypt(t *testing.T) {
 	decrypter := sm.Decrypter()
 	csm := newMapDecrypter(decrypter, map[string]string{})
 
-	decrypted, err := csm.BulkDecrypt(ctx, []string{"1:foo", "2:bar", "3:baz"})
+	decrypted, err := csm.BatchDecrypt(ctx, []string{"1:foo", "2:bar", "3:baz"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"foo", "bar", "baz"}, decrypted)
 	assert.Equal(t, 3, sm.decryptCalls)
 
-	decryptedReordered, err := csm.BulkDecrypt(ctx, []string{"2:bar", "1:foo", "3:baz"}) // Re-ordered
+	decryptedReordered, err := csm.BatchDecrypt(ctx, []string{"2:bar", "1:foo", "3:baz"}) // Re-ordered
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"bar", "foo", "baz"}, decryptedReordered)
 	assert.Equal(t, 3, sm.decryptCalls) // No additional calls made
 
-	decrypted2, err := csm.BulkDecrypt(ctx, []string{"2:bar", "1:foo", "4:qux", "3:baz"}) // Add a new value
+	decrypted2, err := csm.BatchDecrypt(ctx, []string{"2:bar", "1:foo", "4:qux", "3:baz"}) // Add a new value
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"bar", "foo", "qux", "baz"}, decrypted2)
 	assert.Equal(t, 4, sm.decryptCalls) // Only 1 additional call made
@@ -262,8 +262,8 @@ func (t *mapTestSecretsManager) Decrypter() config.Decrypter {
 type mapTestDecrypter struct {
 	d config.Decrypter
 
-	decryptCalls     int
-	bulkDecryptCalls int
+	decryptCalls      int
+	batchDecryptCalls int
 }
 
 func (t *mapTestDecrypter) DecryptValue(
@@ -273,11 +273,11 @@ func (t *mapTestDecrypter) DecryptValue(
 	return t.d.DecryptValue(ctx, ciphertext)
 }
 
-func (t *mapTestDecrypter) BulkDecrypt(
+func (t *mapTestDecrypter) BatchDecrypt(
 	ctx context.Context, ciphertexts []string,
 ) ([]string, error) {
-	t.bulkDecryptCalls++
-	return config.DefaultBulkDecrypt(ctx, t.d, ciphertexts)
+	t.batchDecryptCalls++
+	return config.DefaultBatchDecrypt(ctx, t.d, ciphertexts)
 }
 
 func TestMapCrypter(t *testing.T) {
@@ -297,6 +297,6 @@ func TestMapCrypter(t *testing.T) {
 	require.NoError(t, err)
 
 	d := prov.m.d
-	assert.Equal(t, 1, d.bulkDecryptCalls)
+	assert.Equal(t, 1, d.batchDecryptCalls)
 	assert.Equal(t, 0, d.decryptCalls)
 }
