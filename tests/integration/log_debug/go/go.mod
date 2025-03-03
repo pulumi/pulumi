@@ -2,7 +2,7 @@ module github.com/pulumi/pulumi/tests/log_debug/go
 
 go 1.22
 
-require github.com/pulumi/pulumi/sdk/v3 v3.135.1
+require github.com/pulumi/pulumi/sdk/v3 v3.156.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

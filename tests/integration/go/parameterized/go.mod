@@ -6,7 +6,7 @@ toolchain go1.22.2
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
-require github.com/pulumi/pulumi/sdk/v3 v3.129.0
+require github.com/pulumi/pulumi/sdk/v3 v3.156.0
 
 require example.com/pulumi-pkg/sdk/go v1.0.0
 

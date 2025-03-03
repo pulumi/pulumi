@@ -3,8 +3,8 @@ module github.com/pulumi/pulumi/tests/run_plugin/provider-go
 go 1.22.1
 
 require (
-	github.com/pulumi/pulumi/pkg/v3 v3.140.0
-	github.com/pulumi/pulumi/sdk/v3 v3.140.0
+	github.com/pulumi/pulumi/pkg/v3 v3.156.0
+	github.com/pulumi/pulumi/sdk/v3 v3.156.0
 )
 
 require (
