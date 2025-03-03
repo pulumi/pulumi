@@ -32,8 +32,7 @@ const (
 	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
 
 	// Indicates that the service backend supports batch encryption.
-	// These names don't match due to a historical rename for user consistency.
-	BatchEncrypt APICapability = "bulk-encrypt"
+	BatchEncrypt APICapability = "batch-encrypt"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
