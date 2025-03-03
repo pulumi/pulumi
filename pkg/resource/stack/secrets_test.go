@@ -37,6 +37,7 @@ type testSecretsManager struct {
 	encryptCalls      int
 	decryptCalls      int
 	batchEncryptCalls int
+	batchDecryptCalls int
 }
 
 func (t *testSecretsManager) Type() string { return "test" }
@@ -87,7 +88,19 @@ func (t *testSecretsManager) DecryptValue(
 func (t *testSecretsManager) BatchDecrypt(
 	ctx context.Context, ciphertexts []string,
 ) ([]string, error) {
-	return config.DefaultBatchDecrypt(ctx, t, ciphertexts)
+	t.batchDecryptCalls++
+	if len(ciphertexts) == 0 {
+		return nil, nil
+	}
+	decrypted := make([]string, len(ciphertexts))
+	for i, ciphertext := range ciphertexts {
+		j := strings.Index(ciphertext, ":")
+		if j == -1 {
+			return nil, errors.New("invalid ciphertext format")
+		}
+		decrypted[i] = ciphertext[j+1:]
+	}
+	return decrypted, nil
 }
 
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
@@ -476,7 +489,84 @@ func TestBatchEncrypter(t *testing.T) {
 		assert.NoError(t, complete(ctx), "complete")
 
 		assert.Panics(t, func() {
-			enc.Enqueue(ctx, &resource.Secret{}, "plaintext", &apitype.SecretV1{})
+			err := enc.Enqueue(ctx, &resource.Secret{}, "plaintext", &apitype.SecretV1{})
+			assert.Error(t, err) // Make lint happy
+		}, "can't write to completed batch")
+	})
+}
+
+func TestBatchDecrypter(t *testing.T) {
+	t.Parallel()
+	t.Run("empty batch", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+
+		_, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Equal(t, 0, sm.batchDecryptCalls)
+	})
+
+	t.Run("single batch", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
+
+		dec, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		assert.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext\"", secret), "enqueue")
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext")).SecretValue(), secret)
+		assert.Equal(t, 1, sm.batchDecryptCalls)
+	})
+
+	t.Run("auto-send on max batch reached", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
+		secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
+
+		dec, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 1)
+		assert.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext1\"", secret1), "enqueue 1")
+		assert.NoError(t, dec.Enqueue(ctx, "2-1:\"plaintext2\"", secret2), "enqueue 2")
+		assert.Equal(t, 1, sm.batchDecryptCalls, "first batch auto-sent on limit reached")
+		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext1")).SecretValue(), secret1)
+
+		assert.NoError(t, complete(ctx), "complete")
+		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext2")).SecretValue(), secret2)
+		assert.Equal(t, 2, sm.batchDecryptCalls)
+	})
+
+	t.Run("leverages cache", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		cache := NewSecretCache()
+		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
+
+		const ciphertext = "1-1:\"ciphertext\""
+		cache.Write("\"plaintext\"", ciphertext, &resource.Secret{}) // Pointer doesn't have to match for decryption
+		dec, complete := beginDecryptionBatch(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
+		assert.NoError(t, dec.Enqueue(ctx, ciphertext, secret), "enqueue")
+
+		assert.NoError(t, complete(ctx), "complete")
+		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext")).SecretValue(), secret)
+		assert.Equal(t, 0, sm.batchDecryptCalls)
+	})
+
+	t.Run("can't enqueue after complete", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		dec, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Panics(t, func() {
+			err := dec.Enqueue(ctx, "1-1:\"plaintext\"", resource.MakeSecret(resource.NewNullProperty()).SecretValue())
+			assert.Error(t, err) // Make lint happy
 		}, "can't write to completed batch")
 	})
 }

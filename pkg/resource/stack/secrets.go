@@ -346,6 +346,7 @@ type BatchEncrypter interface {
 	Enqueue(ctx context.Context, source *resource.Secret, plaintext string, target *apitype.SecretV1) error
 }
 
+// CompleteCrypterBatch is a function that must be called to ensure that all enqueued crypter operations are processed.
 type CompleteCrypterBatch func(context.Context) error
 
 type cachingBatchEncrypter struct {
@@ -395,11 +396,15 @@ func BeginEncryptionBatch(encrypter config.Encrypter) (BatchEncrypter, CompleteC
 //	batchEncrypter, completeCrypterBatch := BeginEncryptionBatch(encrypter)
 //	defer completeCrypterBatch(ctx)
 //	SerializeSecrets(ctx, batchEncrypter, secrets)
-func BeginEncryptionBatchWithCache(encrypter config.Encrypter, cache SecretCache) (BatchEncrypter, CompleteCrypterBatch) {
+func BeginEncryptionBatchWithCache(
+	encrypter config.Encrypter, cache SecretCache,
+) (BatchEncrypter, CompleteCrypterBatch) {
 	return beginEncryptionBatch(encrypter, cache, DefaultMaxBatchEncryptCount)
 }
 
-func beginEncryptionBatch(encrypter config.Encrypter, cache SecretCache, maxBatchSize int) (BatchEncrypter, CompleteCrypterBatch) {
+func beginEncryptionBatch(
+	encrypter config.Encrypter, cache SecretCache, maxBatchSize int,
+) (BatchEncrypter, CompleteCrypterBatch) {
 	contract.Assertf(encrypter != nil, "encrypter must not be nil")
 	contract.Assertf(cache != nil, "cache must not be nil")
 	contract.Assertf(maxBatchSize > 0, "maxBatchSize must be greater than 0")
@@ -486,4 +491,145 @@ func (be *cachingBatchEncrypter) EncryptValue(ctx context.Context, plaintext str
 
 func (be *cachingBatchEncrypter) BatchEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
 	return be.encrypter.BatchEncrypt(ctx, plaintexts)
+}
+
+// BatchDecrypter is a wrapper around a Decrypter that allows decryption operations to be batched to avoid round-trips
+// for when the underlying decrypter requires a network call. Decryptions to a secret are enqueued and processed in a
+// batch request either when the queue is full or when the wrapping transaction is committed.
+type BatchDecrypter interface {
+	config.Decrypter
+
+	// Enqueue adds a ciphertext to the queue for decryption. If the cache has an entry for this ciphertext, the
+	// plaintext is used immediately. Otherwise, the ciphertext is added to the queue.
+	// This method is thread-safe and can be called concurrently by multiple goroutines.
+	Enqueue(ctx context.Context, ciphertext string, target *resource.Secret) error
+}
+
+type cachingBatchDecrypter struct {
+	decrypter                      config.Decrypter
+	cache                          SecretCache
+	deserializeSecretPropertyValue DeserializeSecretPropertyValue
+	queue                          chan queuedDecryption
+	closed                         atomic.Bool
+	completeMutex                  sync.Mutex
+	maxBatchSize                   int
+}
+
+type queuedDecryption struct {
+	target     *resource.Secret
+	ciphertext string
+}
+
+const DefaultMaxBatchDecryptCount = 100000
+
+// Ensure that bulkDecrypter implements the Decrypter interface for compatibility.
+var _ BatchDecrypter = (*cachingBatchDecrypter)(nil)
+
+type DeserializeSecretPropertyValue func(plaintext string) (resource.PropertyValue, error)
+
+func BeginDecryptionBatch(decrypter config.Decrypter) (BatchDecrypter, CompleteCrypterBatch) {
+	return BeginDecryptionBatchWithCache(decrypter, NewSecretCache())
+}
+
+func BeginDecryptionBatchWithCache(
+	decrypter config.Decrypter, cache SecretCache,
+) (BatchDecrypter, CompleteCrypterBatch) {
+	return beginDecryptionBatch(decrypter, cache, secretPropertyValueFromPlaintext, DefaultMaxBatchDecryptCount)
+}
+
+func beginDecryptionBatch(decrypter config.Decrypter, cache SecretCache,
+	secretPropertyValueFromPlaintext DeserializeSecretPropertyValue, maxBatchSize int,
+) (BatchDecrypter, CompleteCrypterBatch) {
+	contract.Assertf(decrypter != nil, "decrypter must not be nil")
+	contract.Assertf(cache != nil, "cache must not be nil")
+	contract.Assertf(maxBatchSize > 0, "maxBatchSize must be greater than 0")
+	batchDecrypter := &cachingBatchDecrypter{
+		decrypter:                      decrypter,
+		cache:                          cache,
+		deserializeSecretPropertyValue: secretPropertyValueFromPlaintext,
+		queue:                          make(chan queuedDecryption, maxBatchSize),
+		maxBatchSize:                   maxBatchSize,
+	}
+	return batchDecrypter, func(ctx context.Context) error {
+		wasClosed := batchDecrypter.closed.Swap(true)
+		contract.Assertf(!wasClosed, "batch decrypter already completed")
+		return batchDecrypter.sendNextBatch(ctx)
+	}
+}
+
+func (bd *cachingBatchDecrypter) Enqueue(ctx context.Context, ciphertext string, target *resource.Secret) error {
+	contract.Assertf(target != nil, "target secret must not be nil")
+	contract.Assertf(!bd.closed.Load(), "batch decrypter must not be closed")
+	// If the cache has an entry for this ciphertext, re-use the previous plaintext for this specific secret instance.
+	if plaintext, ok := bd.cache.TryDecrypt(ciphertext); ok {
+		propertyValue, err := bd.deserializeSecretPropertyValue(plaintext)
+		if err != nil {
+			return err
+		}
+		target.Element = propertyValue
+		return nil
+	}
+	// Add to the queue
+	for {
+		select {
+		case bd.queue <- queuedDecryption{target, ciphertext}:
+			return nil
+		default:
+			// If the queue is full, process the queue to make room.
+			if err := bd.sendNextBatch(ctx); err != nil {
+				return err
+			}
+			// Now retry the enqueue.
+		}
+	}
+}
+
+// sendNextBatch processes any pending decryption operations in the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (bd *cachingBatchDecrypter) sendNextBatch(ctx context.Context) error {
+	if len(bd.queue) == 0 {
+		return nil
+	}
+	// Only send 1 batch at a time
+	bd.completeMutex.Lock()
+	defer bd.completeMutex.Unlock()
+
+	// Flush the decrypt queue
+	dequeued := make([]queuedDecryption, 0, len(bd.queue))
+	ciphertexts := make([]string, 0, len(bd.queue))
+	// Take up to the maximum number of items from the queue.
+	// Other items might be enqueued concurrently and will be sent in the next batch.
+dequeue:
+	for range bd.maxBatchSize {
+		select {
+		case q := <-bd.queue:
+			dequeued = append(dequeued, q)
+			ciphertexts = append(ciphertexts, q.ciphertext)
+		default: // Queue is empty
+			break dequeue
+		}
+	}
+
+	plaintexts, err := bd.decrypter.BatchDecrypt(ctx, ciphertexts)
+	if err != nil {
+		return err
+	}
+	for i, q := range dequeued {
+		plaintext := plaintexts[i]
+		propertyValue, err := bd.deserializeSecretPropertyValue(plaintext)
+		if err != nil {
+			return err
+		}
+		q.target.Element = propertyValue
+		bd.cache.Write(plaintext, q.ciphertext, q.target)
+	}
+	return nil
+}
+
+func (bd *cachingBatchDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	return bd.decrypter.DecryptValue(ctx, ciphertext)
+}
+
+func (bd *cachingBatchDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return bd.decrypter.BatchDecrypt(ctx, ciphertexts)
 }
