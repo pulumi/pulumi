@@ -217,7 +217,7 @@ func NewWatchCmd() *cobra.Command {
 		&policyPackConfigPaths, "policy-pack-config", []string{},
 		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVarP(
 		&refresh, "refresh", "r", false,
