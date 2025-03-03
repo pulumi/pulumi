@@ -121,7 +121,6 @@ TEST_GREP ?= .*
 #
 # $ make test_watch TEST_GREP="lists tag values"
 test_watch::
-	echo $(PULUMI_TEST_ORG)
 	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
 dist:: build
