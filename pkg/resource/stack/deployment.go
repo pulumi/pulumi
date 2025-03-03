@@ -642,12 +642,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						plaintext = unencryptedText
 					}
 
-					var elem interface{}
-
-					if err := json.Unmarshal([]byte(plaintext), &elem); err != nil {
-						return resource.PropertyValue{}, err
-					}
-					ev, err := DeserializePropertyValue(elem, config.NopDecrypter)
+					ev, err := secretPropertyValueFromPlaintext(plaintext)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
@@ -731,4 +726,12 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 	}
 
 	return resource.NewNullProperty(), nil
+}
+
+func secretPropertyValueFromPlaintext(plaintext string) (resource.PropertyValue, error) {
+	var elem any
+	if err := json.Unmarshal([]byte(plaintext), &elem); err != nil {
+		return resource.PropertyValue{}, err
+	}
+	return DeserializePropertyValue(elem, config.NopDecrypter)
 }
