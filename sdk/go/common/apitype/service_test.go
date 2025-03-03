@@ -103,13 +103,13 @@ func TestCapabilities(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
-				{Capability: BulkEncrypt},
+				{Capability: BatchEncrypt},
 			},
 		}
 		actual, err := response.Parse()
 		assert.NoError(t, err)
 		assert.Equal(t, Capabilities{
-			BulkEncryption: true,
+			BatchEncryption: true,
 		}, actual)
 	})
 }

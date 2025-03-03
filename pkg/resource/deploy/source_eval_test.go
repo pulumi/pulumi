@@ -1776,7 +1776,7 @@ func TestStreamInvokeQuery(t *testing.T) {
 type decrypterMock struct {
 	DecryptValueF func(
 		ctx context.Context, ciphertext string) (string, error)
-	BulkDecryptF func(
+	BatchDecryptF func(
 		ctx context.Context, ciphertexts []string) ([]string, error)
 }
 
@@ -1789,9 +1789,9 @@ func (d *decrypterMock) DecryptValue(ctx context.Context, ciphertext string) (st
 	panic("unimplemented")
 }
 
-func (d *decrypterMock) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	if d.BulkDecryptF != nil {
-		return d.BulkDecryptF(ctx, ciphertexts)
+func (d *decrypterMock) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	if d.BatchDecryptF != nil {
+		return d.BatchDecryptF(ctx, ciphertexts)
 	}
 	panic("unimplemented")
 }

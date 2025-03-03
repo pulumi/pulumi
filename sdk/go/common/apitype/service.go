@@ -31,8 +31,8 @@ const (
 	// via the PatchUpdateCheckpointDeltaRequest API to save on network bytes.
 	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
 
-	// Indicates that the service backend supports stack bulk encryption.
-	BulkEncrypt APICapability = "bulk-encrypt"
+	// Indicates that the service backend supports batch encryption.
+	BatchEncrypt APICapability = "batch-encrypt"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -61,8 +61,8 @@ type Capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
 	DeltaCheckpointUpdates *DeltaCheckpointUploadsConfigV2
 
-	// Indicates whether the service supports bulk encryption.
-	BulkEncryption bool
+	// Indicates whether the service supports batch encryption.
+	BatchEncryption bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -84,8 +84,8 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.DeltaCheckpointUpdates = &upcfg
 			}
-		case BulkEncrypt:
-			parsed.BulkEncryption = true
+		case BatchEncrypt:
+			parsed.BatchEncryption = true
 		default:
 			continue
 		}

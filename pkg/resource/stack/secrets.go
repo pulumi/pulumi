@@ -142,8 +142,8 @@ func (csm *cachingSecretsManager) DecryptValue(ctx context.Context, ciphertext s
 	return csm.decrypter.Value().DecryptValue(ctx, ciphertext)
 }
 
-func (csm *cachingSecretsManager) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	return csm.decrypter.Value().BulkDecrypt(ctx, ciphertexts)
+func (csm *cachingSecretsManager) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return csm.decrypter.Value().BatchDecrypt(ctx, ciphertexts)
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.
@@ -208,8 +208,8 @@ func (c *mapDecrypter) DecryptValue(ctx context.Context, ciphertext string) (str
 	return plaintext, nil
 }
 
-func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	// Loop and find the entries that are already cached, then BulkDecrypt the rest
+func (c *mapDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	// Loop and find the entries that are already cached, then batch decrypt the rest
 	decryptedResult := make([]string, len(ciphertexts))
 	var toDecrypt []string
 	if c.cache == nil {
@@ -230,8 +230,8 @@ func (c *mapDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([
 		return decryptedResult, nil
 	}
 
-	// try and bulk decrypt the rest
-	decrypted, err := c.decrypter.BulkDecrypt(ctx, toDecrypt)
+	// try and decrypt the rest in a single batch request
+	decrypted, err := c.decrypter.BatchDecrypt(ctx, toDecrypt)
 	if err != nil {
 		return nil, err
 	}

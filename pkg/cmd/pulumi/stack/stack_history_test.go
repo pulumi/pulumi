@@ -62,6 +62,6 @@ func (m *failingDecrypter) DecryptValue(ctx context.Context, ciphertext string) 
 	return ciphertext, errors.New("bad value")
 }
 
-func (m *failingDecrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+func (m *failingDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return []string{}, errors.New("fake failure")
 }

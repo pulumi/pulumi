@@ -372,7 +372,7 @@ func (b brokenDecrypter) DecryptValue(_ context.Context, _ string) (string, erro
 	return "", errors.New(b.ErrorMessage)
 }
 
-func (b brokenDecrypter) BulkDecrypt(_ context.Context, _ []string) ([]string, error) {
+func (b brokenDecrypter) BatchDecrypt(_ context.Context, _ []string) ([]string, error) {
 	return nil, errors.New(b.ErrorMessage)
 }
 
