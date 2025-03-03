@@ -62,6 +62,7 @@
         "nyc": "^15.1.0",
         "sinon": "^14.0.0",
         "ts-node": "^7.0.1",
+        "tsx": "^4.19.3",
         "typescript": "~3.8.3"
     },
     "peerDependencies": {
@@ -84,7 +85,8 @@
         "node": ">=18"
     },
     "mocha": {
-        "require": ["ts-node/register", "source-map-support/register"]
+        "require": ["source-map-support/register"],
+        "node-option": ["import=tsx"]
     },
     "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
 }

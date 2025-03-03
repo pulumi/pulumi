@@ -112,6 +112,17 @@ ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 
+PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
+TEST_GREP ?= .*
+
+# Watches all the typescript files and runs the tests every time they change.
+# Can optionally be given a regex of tests to match. For example, to iterate
+# on one test specifically, one could use the following command:
+#
+# $ make test_watch TEST_GREP="lists tag values"
+test_watch::
+	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
+
 dist:: build
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
