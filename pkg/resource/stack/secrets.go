@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -89,16 +90,11 @@ func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (sec
 	return NewCachingSecretsManager(sm), nil
 }
 
-type cacheEntry struct {
-	plaintext  string
-	ciphertext string
-}
-
 type cachingSecretsManager struct {
 	manager   secrets.Manager
 	encrypter lazy.Lazy[config.Encrypter]
 	decrypter lazy.Lazy[config.Decrypter]
-	cache     map[*resource.Secret]cacheEntry
+	cache     *secretCache
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
@@ -107,7 +103,7 @@ type cachingSecretsManager struct {
 func NewCachingSecretsManager(manager secrets.Manager) secrets.Manager {
 	sm := &cachingSecretsManager{
 		manager: manager,
-		cache:   make(map[*resource.Secret]cacheEntry),
+		cache:   NewSecretCache(),
 	}
 	if manager != nil {
 		sm.encrypter = lazy.New(manager.Encrypter)
@@ -154,12 +150,11 @@ func (csm *cachingSecretsManager) BatchDecrypt(ctx context.Context, ciphertexts 
 func (csm *cachingSecretsManager) encryptSecret(ctx context.Context,
 	secret *resource.Secret, plaintext string,
 ) (string, error) {
-	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
+	// If the cache has an ciphertext for this secret and the plaintext has not changed, re-use the ciphertext.
 	//
 	// Otherwise, re-encrypt the plaintext and update the cache.
-	entry, ok := csm.cache[secret]
-	if ok && entry.plaintext == plaintext {
-		return entry.ciphertext, nil
+	if ciphertext, ok := csm.cache.TryEncrypt(secret, plaintext); ok {
+		return ciphertext, nil
 	}
 	ciphertext, err := csm.manager.Encrypter().EncryptValue(ctx, plaintext)
 	if err != nil {
@@ -171,7 +166,7 @@ func (csm *cachingSecretsManager) encryptSecret(ctx context.Context,
 
 // insert associates the given secret with the given plain- and ciphertext in the cache.
 func (csm *cachingSecretsManager) insert(secret *resource.Secret, plaintext, ciphertext string) {
-	csm.cache[secret] = cacheEntry{plaintext, ciphertext}
+	csm.cache.Write(plaintext, ciphertext, secret)
 }
 
 // mapDecrypter is a Decrypter with a preloaded cache. This decrypter is used specifically for deserialization,
@@ -257,4 +252,82 @@ func (c *mapDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) (
 	}
 
 	return decryptedResult, nil
+}
+
+// SecretCache allows the bidirectional cached conversion between: `ciphertext <-> plaintext + secret pointer`.
+// The same plaintext can be associated with multiple secrets, each of which will have their own ciphertexts which
+// should not be shared.
+//
+//	cache := NewSecretCache()
+//	secret := &resource.Secret{}
+//	cache.Write("plaintext", "ciphertext", secret)
+//	plaintext, ok := cache.TryDecrypt("ciphertext") // "plaintext", true
+//	ciphertext, ok := cache.TryEncrypt(secret, "plaintext") // "ciphertext", true
+type SecretCache interface {
+	// Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
+	Write(plaintext, ciphertext string, secret *resource.Secret)
+	// TryEncrypt returns the cached ciphertext for the given secret and plaintext, if it exists.
+	TryEncrypt(secret *resource.Secret, plaintext string) (string, bool)
+	// TryDecrypt returns the cached plaintext for the given ciphertext, if it exists.
+	TryDecrypt(ciphertext string) (string, bool)
+}
+
+type secretCache struct {
+	bySecret     sync.Map
+	byCiphertext sync.Map
+}
+
+type secretCacheEntry struct {
+	plaintext  string
+	ciphertext string
+	secret     *resource.Secret
+}
+
+// NewSecretCache returns a new secretCache which allows the bidirectional cached conversion between:
+// `ciphertext <-> plaintext + secret pointer`. The same plaintext can be associated with multiple secrets, each of
+// which will have their own ciphertexts which should not be shared.
+//
+// All methods are thread-safe and can be called concurrently by multiple goroutines.
+//
+//	cache := NewSecretCache()
+//	secret := &resource.Secret{}
+//	cache.Write("plaintext", "ciphertext", secret)
+//	plaintext, ok := cache.TryDecrypt("ciphertext") // "plaintext", true
+//	ciphertext, ok := cache.TryEncrypt(secret, "plaintext") // "ciphertext", true
+func NewSecretCache() SecretCache {
+	return &secretCache{}
+}
+
+// Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
+	entry := secretCacheEntry{plaintext, ciphertext, secret}
+	c.bySecret.Store(secret, entry)
+	c.byCiphertext.Store(ciphertext, entry)
+}
+
+// TryEncrypt returns the cached ciphertext for the given secret and plaintext, if it exists.
+// The ciphertext is returned as a string, and a boolean is returned to indicate whether the secret was found.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (c *secretCache) TryEncrypt(secret *resource.Secret, plaintext string) (string, bool) {
+	entry, ok := c.bySecret.Load(secret)
+	if !ok {
+		return "", false
+	}
+	cacheEntry := entry.(secretCacheEntry)
+	if cacheEntry.plaintext != plaintext {
+		return "", false
+	}
+	return cacheEntry.ciphertext, true
+}
+
+// TryDecrypt returns the cached plaintext for the given ciphertext, if it exists.
+// The plaintext is returned as a string, and a boolean is returned to indicate whether the ciphertext was found.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
+	entry, ok := c.byCiphertext.Load(ciphertext)
+	if !ok {
+		return "", false
+	}
+	return entry.(secretCacheEntry).plaintext, true
 }

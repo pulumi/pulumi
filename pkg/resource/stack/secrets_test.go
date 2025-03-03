@@ -316,3 +316,89 @@ func TestMapCrypter(t *testing.T) {
 	assert.Equal(t, 1, d.batchDecryptCalls)
 	assert.Equal(t, 0, d.decryptCalls)
 }
+
+func TestSecretCache(t *testing.T) {
+	t.Parallel()
+	t.Run("empty cache", func(t *testing.T) {
+		t.Parallel()
+		cache := NewSecretCache()
+
+		ciphertext, encrypted := cache.TryEncrypt(&resource.Secret{}, "foo")
+		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+
+		assert.False(t, encrypted, "was encrypted")
+		assert.Equal(t, "", ciphertext, "ciphertext value")
+		assert.False(t, decrypted, "was decrypted")
+		assert.Equal(t, "", plaintext, "plaintext value")
+	})
+
+	t.Run("cache hits", func(t *testing.T) {
+		t.Parallel()
+		cache := NewSecretCache()
+		secret1 := &resource.Secret{}
+		secret2 := &resource.Secret{}
+		cache.Write("plaintext1", "ciphertext1", secret1)
+		cache.Write("plaintext2", "ciphertext2", secret2)
+
+		ciphertext1, encrypted1 := cache.TryEncrypt(secret1, "plaintext1")
+		plaintext1, decrypted1 := cache.TryDecrypt("ciphertext1")
+		assert.True(t, encrypted1, "was encrypted")
+		assert.Equal(t, "ciphertext1", ciphertext1)
+		assert.True(t, decrypted1, "was decrypted")
+		assert.Equal(t, "plaintext1", plaintext1)
+
+		ciphertext2, encrypted2 := cache.TryEncrypt(secret2, "plaintext2")
+		plaintext2, decrypted2 := cache.TryDecrypt("ciphertext2")
+		assert.True(t, encrypted2, "was encrypted")
+		assert.Equal(t, "ciphertext2", ciphertext2)
+		assert.True(t, decrypted2, "was decrypted")
+		assert.Equal(t, "plaintext2", plaintext2)
+	})
+
+	t.Run("cache miss", func(t *testing.T) {
+		t.Parallel()
+		cache := NewSecretCache()
+		secret := &resource.Secret{}
+		cache.Write("plaintext", "ciphertext", secret)
+
+		ciphertext, encrypted := cache.TryEncrypt(secret, "different plaintext")
+		plaintext, decrypted := cache.TryDecrypt("different ciphertext")
+
+		assert.False(t, encrypted, "was encrypted")
+		assert.Equal(t, "", ciphertext, "ciphertext value")
+		assert.False(t, decrypted, "was decrypted")
+		assert.Equal(t, "", plaintext, "plaintext value")
+	})
+
+	t.Run("plaintext changed", func(t *testing.T) {
+		t.Parallel()
+		cache := NewSecretCache()
+		secret := &resource.Secret{}
+
+		cache.Write("plaintext", "ciphertext", secret)
+		ciphertext, encrypted := cache.TryEncrypt(secret, "different plaintext")
+		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+
+		assert.False(t, encrypted, "was encrypted")
+		assert.Equal(t, "", ciphertext, "ciphertext value")
+		assert.True(t, decrypted, "was decrypted")
+		assert.Equal(t, "plaintext", plaintext, "original cached value")
+	})
+
+	t.Run("overwrite ciphertext", func(t *testing.T) {
+		t.Parallel()
+		cache := NewSecretCache()
+		secret := &resource.Secret{}
+
+		cache.Write("plaintext", "ciphertext", secret)
+		cache.Write("plaintext", "updated ciphertext", secret)
+
+		ciphertext, encrypted := cache.TryEncrypt(secret, "plaintext")
+		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+
+		assert.True(t, encrypted, "was encrypted")
+		assert.Equal(t, "updated ciphertext", ciphertext)
+		assert.True(t, decrypted, "was decrypted")
+		assert.Equal(t, "plaintext", plaintext)
+	})
+}
