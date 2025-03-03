@@ -76,7 +76,7 @@ func (c *serviceCrypter) BatchDecrypt(ctx context.Context, secrets []string) ([]
 		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
 	}
 
-	decryptedList, err := c.client.BulkDecryptValue(ctx, c.stack, secretsToDecrypt)
+	decryptedList, err := c.client.BatchDecryptValue(ctx, c.stack, secretsToDecrypt)
 	if err != nil {
 		return nil, err
 	}

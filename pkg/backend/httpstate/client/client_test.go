@@ -163,7 +163,7 @@ func TestGzip(t *testing.T) {
 	assert.NoError(t, err)
 
 	// POST /events/batch
-	_, err = client.BulkDecryptValue(context.Background(), identifier, nil)
+	_, err = client.BatchDecryptValue(context.Background(), identifier, nil)
 	assert.NoError(t, err)
 }
 
@@ -257,7 +257,7 @@ func TestGetCapabilities(t *testing.T) {
 				Capability:    apitype.DeltaCheckpointUploads,
 				Configuration: json.RawMessage(cfgJSON),
 			}, {
-				Capability: apitype.BulkEncrypt,
+				Capability: apitype.BatchEncrypt,
 			}},
 		}
 		respJSON, err := json.Marshal(actualResp)
@@ -273,12 +273,12 @@ func TestGetCapabilities(t *testing.T) {
 		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
-		assert.Equal(t, resp.Capabilities[1].Capability, apitype.BulkEncrypt)
+		assert.Equal(t, resp.Capabilities[1].Capability, apitype.BatchEncrypt)
 
 		parsed, err := resp.Parse()
 		require.NoError(t, err)
 		assert.Equal(t, parsed.DeltaCheckpointUpdates, &cfg)
-		assert.True(t, parsed.BulkEncryption)
+		assert.True(t, parsed.BatchEncryption)
 	})
 }
 
