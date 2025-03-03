@@ -33,8 +33,9 @@ import (
 )
 
 type testSecretsManager struct {
-	encryptCalls int
-	decryptCalls int
+	encryptCalls      int
+	decryptCalls      int
+	batchEncryptCalls int
 }
 
 func (t *testSecretsManager) Type() string { return "test" }
@@ -54,6 +55,21 @@ func (t *testSecretsManager) EncryptValue(
 ) (string, error) {
 	t.encryptCalls++
 	return fmt.Sprintf("%v:%v", t.encryptCalls, plaintext), nil
+}
+
+func (t *testSecretsManager) BatchEncrypt(
+	ctx context.Context, plaintexts []string,
+) ([]string, error) {
+	t.batchEncryptCalls++
+	if len(plaintexts) == 0 {
+		return nil, nil
+	}
+
+	encrypted := make([]string, len(plaintexts))
+	for i, plaintext := range plaintexts {
+		encrypted[i] = fmt.Sprintf("%v-%v:%v", t.batchEncryptCalls, i+1, plaintext)
+	}
+	return encrypted, nil
 }
 
 func (t *testSecretsManager) DecryptValue(
