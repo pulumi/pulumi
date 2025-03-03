@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -44,7 +43,7 @@ func newStackImportCmd() *cobra.Command {
 			"hand-edited to correct inconsistencies due to failed updates, manual changes\n" +
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -92,7 +91,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 			fmt.Printf("Import complete.\n")
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(

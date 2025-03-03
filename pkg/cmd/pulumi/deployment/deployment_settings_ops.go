@@ -17,7 +17,6 @@ package deployment
 import (
 	"errors"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -43,7 +42,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(0),
 		Short: "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:  "",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
@@ -64,7 +63,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(
@@ -85,7 +84,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Update stack deployment settings from deployment.yaml",
 		Long:       "",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			if err := verifyInteractiveMode(yes); err != nil {
@@ -114,7 +113,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(
@@ -139,7 +138,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 		Args:       cmdutil.ExactArgs(0),
 		Short:      "Delete all the stack's deployment settings",
 		Long:       "",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			if err := verifyInteractiveMode(yes); err != nil {
@@ -164,7 +163,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(
@@ -188,7 +187,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Args:  cmdutil.RangeArgs(1, 2),
 		Short: "Update stack's deployment settings secrets",
 		Long:  "",
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
 			if err != nil {
@@ -250,7 +249,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVar(

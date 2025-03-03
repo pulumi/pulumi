@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -178,7 +177,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
 		Args:    cmdutil.MaximumNArgs(2),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			yes = yes || env.SkipConfirmations.Value()
@@ -246,7 +245,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 
 			fmt.Println("Resource renamed")
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(

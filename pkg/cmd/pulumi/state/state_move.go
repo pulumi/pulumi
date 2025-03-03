@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -70,7 +69,7 @@ This command can be used to move resources from one stack to another. This can b
 splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
 		Args: cmdutil.MinimumNArgs(1),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
@@ -117,7 +116,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			}
 
 			return stateMove.Run(ctx, sourceStack, destStack, args, sourceSecretsProvider, destSecretsProvider)
-		}),
+		},
 	}
 
 	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")

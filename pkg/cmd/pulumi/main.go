@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
@@ -53,6 +54,7 @@ func main() {
 	defer panicHandler(finished)
 
 	if err := NewPulumiCmd().Execute(); err != nil {
+		cmd.DisplayErrorMessage(err)
 		os.Exit(-1)
 	}
 	*finished = true

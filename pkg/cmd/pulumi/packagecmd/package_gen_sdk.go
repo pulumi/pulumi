@@ -22,8 +22,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -45,7 +43,7 @@ func newGenSdkCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
 			wd, err := os.Getwd()
@@ -99,7 +97,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}
 			fmt.Fprintf(os.Stderr, "SDK has been written to %s", filepath.Join(out, language))
 			return nil
-		}),
+		},
 	}
 	cmd.Flags().StringVarP(&language, "language", "", "all",
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")

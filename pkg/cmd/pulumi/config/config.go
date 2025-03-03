@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -61,7 +60,7 @@ func NewConfigCmd() *cobra.Command {
 			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
 		Args: cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -113,7 +112,7 @@ func NewConfigCmd() *cobra.Command {
 				jsonOut,
 				openEnvironment,
 			)
-		}),
+		},
 	}
 
 	cmd.Flags().BoolVar(
@@ -155,7 +154,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 			"then all of the config from the current stack will be copied to the destination stack.",
 		Args: cmdutil.MaximumNArgs(1),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -243,7 +242,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cpCommand.PersistentFlags().BoolVar(
@@ -271,7 +270,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			"  - `pulumi config get --path 'names[0]'` will get the value of the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -297,7 +296,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			return getConfig(ctx, ssml, ws, s, key, path, jsonOut, open)
-		}),
+		},
 	}
 	getCmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false,
@@ -325,7 +324,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			"  - `pulumi config rm --path 'names[0]'` will remove the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -365,7 +364,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			}
 
 			return cmdStack.SaveProjectStack(stack, ps)
-		}),
+		},
 	}
 	rmCmd.PersistentFlags().BoolVar(
 		&path, "path", false,
@@ -387,7 +386,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			"  - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal" +
 			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -429,7 +428,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			}
 
 			return cmdStack.SaveProjectStack(stack, ps)
-		}),
+		},
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
 		&path, "path", false,
@@ -444,7 +443,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 		Use:   "refresh",
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -544,7 +543,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				fmt.Printf("refreshed configuration for stack '%s'\n", s.Ref().Name())
 			}
 			return err
-		}),
+		},
 	}
 	refreshCmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false, "Overwrite configuration file, if it exists, without creating a backup")
@@ -582,7 +581,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"integers are treated as numbers. All other values are treated as strings.  Top level entries\n" +
 			"are always treated as strings.",
 		Args: cmdutil.RangeArgs(1, 2),
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -608,7 +607,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			return configSetCmd.Run(ctx, args, project, s)
-		}),
+		},
 	}
 
 	setCmd.PersistentFlags().BoolVar(
@@ -741,7 +740,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
-		RunE: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -810,7 +809,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			}
 
 			return cmdStack.SaveProjectStack(stack, ps)
-		}),
+		},
 	}
 
 	setCmd.PersistentFlags().BoolVar(
