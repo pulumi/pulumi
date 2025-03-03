@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -400,5 +401,82 @@ func TestSecretCache(t *testing.T) {
 		assert.Equal(t, "updated ciphertext", ciphertext)
 		assert.True(t, decrypted, "was decrypted")
 		assert.Equal(t, "plaintext", plaintext)
+	})
+}
+
+func TestBatchEncrypter(t *testing.T) {
+	t.Parallel()
+	t.Run("empty batch", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+
+		_, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 999)
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Equal(t, 0, sm.batchEncryptCalls)
+	})
+
+	t.Run("single batch", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		secret := &resource.Secret{}
+		target := &apitype.SecretV1{}
+
+		enc, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 999)
+		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext", target), "enqueue")
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-1:plaintext"}, target)
+		assert.Equal(t, 1, sm.batchEncryptCalls)
+	})
+
+	t.Run("auto-send on max batch reached", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		secret := &resource.Secret{}
+		target1 := &apitype.SecretV1{}
+		target2 := &apitype.SecretV1{}
+
+		enc, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 1)
+		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext1", target1), "enqueue 1")
+		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext2", target2), "enqueue 2")
+		assert.Equal(t, 1, sm.batchEncryptCalls, "first batch auto-sent on limit reached")
+		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-1:plaintext1"}, target1)
+
+		assert.NoError(t, complete(ctx), "complete")
+		assert.Equal(t, &apitype.SecretV1{Ciphertext: "2-1:plaintext2"}, target2)
+		assert.Equal(t, 2, sm.batchEncryptCalls)
+	})
+
+	t.Run("leverages cache", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		cache := NewSecretCache()
+		secret := &resource.Secret{}
+		target := &apitype.SecretV1{}
+
+		cache.Write("plaintext", "ciphertext", secret)
+		enc, complete := beginEncryptionBatch(sm.Encrypter(), cache, 999)
+		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext", target), "enqueue")
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Equal(t, &apitype.SecretV1{Ciphertext: "ciphertext"}, target)
+		assert.Equal(t, 0, sm.batchEncryptCalls)
+	})
+
+	t.Run("can't enqueue after complete", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		enc, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 999)
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Panics(t, func() {
+			enc.Enqueue(ctx, &resource.Secret{}, "plaintext", &apitype.SecretV1{})
+		}, "can't write to completed batch")
 	})
 }

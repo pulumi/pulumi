@@ -19,11 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/lazy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -94,7 +96,7 @@ type cachingSecretsManager struct {
 	manager   secrets.Manager
 	encrypter lazy.Lazy[config.Encrypter]
 	decrypter lazy.Lazy[config.Decrypter]
-	cache     *secretCache
+	cache     SecretCache
 }
 
 // NewCachingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
@@ -330,4 +332,158 @@ func (c *secretCache) TryDecrypt(ciphertext string) (string, bool) {
 		return "", false
 	}
 	return entry.(secretCacheEntry).plaintext, true
+}
+
+// BatchEncrypter is a wrapper around an Encrypter that allows encryption operations to be batched to avoid round-trips
+// for when the underlying encrypter requires a network call. Encryptions to a secret are enqueued and processed in a
+// batch request either when the queue is full or when the wrapping transaction is committed.
+type BatchEncrypter interface {
+	config.Encrypter
+
+	// Enqueue adds a secret to the queue for encryption. If the cache has an entry for this secret and the plaintext has
+	// not changed, the previous ciphertext is used immediately. Otherwise, the secret is added to the queue.
+	// This method is thread-safe and can be called concurrently by multiple goroutines.
+	Enqueue(ctx context.Context, source *resource.Secret, plaintext string, target *apitype.SecretV1) error
+}
+
+type CompleteCrypterBatch func(context.Context) error
+
+type cachingBatchEncrypter struct {
+	encrypter     config.Encrypter
+	cache         SecretCache
+	queue         chan queuedEncryption
+	closed        atomic.Bool
+	completeMutex sync.Mutex
+	maxBatchSize  int
+}
+
+type queuedEncryption struct {
+	source    *resource.Secret
+	target    *apitype.SecretV1
+	plaintext string
+}
+
+// DefaultMaxBatchEncryptCount is the default maximum number of items that can be enqueued for bulk encryption.
+const DefaultMaxBatchEncryptCount = 100000
+
+// Ensure that bulkEncrypter implements the Encrypter interface for compatibility.
+var _ BatchEncrypter = (*cachingBatchEncrypter)(nil)
+
+// BeginEncryptionBatch returns a new BatchEncrypter and CompleteCrypterBatch function.
+// The BatchEncrypter allows encryption operations to be batched to avoid round-trips for when the underlying encrypter
+// requires a network call. Encryptions to a secret are enqueued and processed in a batch request either when the queue
+// is full or when the wrapping transaction is committed.
+//
+// The CompleteCrypterBatch function must be called to ensure that all enqueued encryption operations are processed.
+//
+//	batchEncrypter, completeCrypterBatch := BeginEncryptionBatch(encrypter)
+//	defer completeCrypterBatch(ctx)
+//	SerializeSecrets(ctx, batchEncrypter, secrets)
+func BeginEncryptionBatch(encrypter config.Encrypter) (BatchEncrypter, CompleteCrypterBatch) {
+	return BeginEncryptionBatchWithCache(encrypter, NewSecretCache())
+}
+
+// BeginEncryptionBatchWithCache returns a new BatchEncrypter and CompleteCrypterBatch function with a custom cache.
+// The BatchEncrypter allows encryption operations to be batched to avoid round-trips for when the underlying encrypter
+// requires a network call. Encryptions to a secret are enqueued and processed in a batch request either when the queue
+// is full or when the wrapping transaction is committed. If the cache has an entry for a secret and the plaintext has
+// not changed, the previous ciphertext is used immediately and not enqueued for the batch operation. Results are
+// also written to the provided cache.
+//
+// The CompleteCrypterBatch function must be called to ensure that all enqueued encryption operations are processed.
+//
+//	batchEncrypter, completeCrypterBatch := BeginEncryptionBatch(encrypter)
+//	defer completeCrypterBatch(ctx)
+//	SerializeSecrets(ctx, batchEncrypter, secrets)
+func BeginEncryptionBatchWithCache(encrypter config.Encrypter, cache SecretCache) (BatchEncrypter, CompleteCrypterBatch) {
+	return beginEncryptionBatch(encrypter, cache, DefaultMaxBatchEncryptCount)
+}
+
+func beginEncryptionBatch(encrypter config.Encrypter, cache SecretCache, maxBatchSize int) (BatchEncrypter, CompleteCrypterBatch) {
+	contract.Assertf(encrypter != nil, "encrypter must not be nil")
+	contract.Assertf(cache != nil, "cache must not be nil")
+	contract.Assertf(maxBatchSize > 0, "maxBatchSize must be greater than 0")
+	batchEncrypter := &cachingBatchEncrypter{
+		encrypter:    encrypter,
+		cache:        cache,
+		queue:        make(chan queuedEncryption, maxBatchSize),
+		maxBatchSize: maxBatchSize,
+	}
+	return batchEncrypter, func(ctx context.Context) error {
+		wasClosed := batchEncrypter.closed.Swap(true)
+		contract.Assertf(!wasClosed, "batch encrypter already completed")
+		return batchEncrypter.sendNextBatch(ctx)
+	}
+}
+
+func (be *cachingBatchEncrypter) Enqueue(ctx context.Context,
+	source *resource.Secret, plaintext string, target *apitype.SecretV1,
+) error {
+	contract.Assertf(source != nil, "source secret must not be nil")
+	contract.Assertf(!be.closed.Load(), "batch encrypter must not be closed")
+	// If the cache has an entry for this secret and the plaintext has not changed,
+	// re-use the previous ciphertext for this specific secret instance.
+	if ciphertext, ok := be.cache.TryEncrypt(source, plaintext); ok {
+		target.Ciphertext = ciphertext
+		return nil
+	}
+	// Add to the queue
+	for {
+		select {
+		case be.queue <- queuedEncryption{source, target, plaintext}:
+			return nil
+		default:
+			// If the queue is full, process the queue to make room.
+			if err := be.sendNextBatch(ctx); err != nil {
+				return err
+			}
+			// Now retry the enqueue.
+		}
+	}
+}
+
+// sendNextBatch processes any pending encryption operations in the queue.
+// This method is thread-safe and can be called concurrently by multiple goroutines.
+func (be *cachingBatchEncrypter) sendNextBatch(ctx context.Context) error {
+	if len(be.queue) == 0 {
+		return nil
+	}
+	// Only send 1 batch at a time
+	be.completeMutex.Lock()
+	defer be.completeMutex.Unlock()
+
+	// Flush the encrypt queue
+	dequeued := make([]queuedEncryption, 0, len(be.queue))
+	plaintexts := make([]string, 0, len(be.queue))
+	// Take up to the maximum number of items from the queue.
+	// Other items might be enqueued concurrently and will be sent in the next batch.
+dequeue:
+	for range be.maxBatchSize {
+		select {
+		case q := <-be.queue:
+			dequeued = append(dequeued, q)
+			plaintexts = append(plaintexts, q.plaintext)
+		default: // Queue is empty
+			break dequeue
+		}
+	}
+
+	ciphertexts, err := be.encrypter.BatchEncrypt(ctx, plaintexts)
+	if err != nil {
+		return err
+	}
+	for i, q := range dequeued {
+		ciphertext := ciphertexts[i]
+		q.target.Ciphertext = ciphertext
+		be.cache.Write(q.plaintext, ciphertext, q.source)
+	}
+	return nil
+}
+
+func (be *cachingBatchEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	return be.encrypter.EncryptValue(ctx, plaintext)
+}
+
+func (be *cachingBatchEncrypter) BatchEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	return be.encrypter.BatchEncrypt(ctx, plaintexts)
 }
