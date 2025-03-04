@@ -143,6 +143,35 @@ func TestCanWithCorrectArgument(t *testing.T) {
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
 	assert.NoError(t, err)
+
+	// Assert that the type of the variable is a boolean.
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
+	assert.True(t, ok, "first node is a local variable variable")
+	variableType := localVariable.Type()
+	assert.Equal(t, model.BoolType, variableType, "the type is a boolean")
+}
+
+// Tests that the PCL `can` intrinsic function binds when correctly passed one output argument.
+func TestCanWithCorrectOutputArgument(t *testing.T) {
+	t.Parallel()
+
+	// Arrange, we use secret to ensure the input to can is an output value.
+	source := "value = can(secret(1))"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
+
+	// Assert that the type of the variable is a boolean.
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
+	assert.True(t, ok, "first node is a local variable variable")
+	variableType := localVariable.Type()
+	assert.Equal(t, model.NewOutputType(model.BoolType), variableType, "the type is a an output boolean")
 }
 
 // Tests that the PCL `can` intrinsic function refuses to bind when passed too many arguments.
