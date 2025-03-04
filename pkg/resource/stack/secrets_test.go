@@ -19,18 +19,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type testSecretsManager struct {
@@ -108,13 +103,14 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
-	if err := json.Unmarshal(b, &v); err != nil {
+	var v2 any
+	if err := json.Unmarshal(b, &v2); err != nil {
 		return resource.PropertyValue{}, err
 	}
-	return DeserializePropertyValue(v, dec)
+	return DeserializePropertyValue(v2, dec)
 }
 
-func TestCachingCrypter(t *testing.T) {
+func TestCachingSecretsManager(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -125,210 +121,137 @@ func TestCachingCrypter(t *testing.T) {
 	foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
 	bar := resource.MakeSecret(resource.NewStringProperty("bar"))
 
-	enc := csm.Encrypter()
-
 	// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
+	enc, completeEnc := csm.BeginBatchEncryption()
 	foo1Ser, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 1, sm.batchEncryptCalls, "batch encrypt calls")
+	assert.Equal(t, &apitype.SecretV1{Sig: "1b47061264138c4ac30d75fd1eb44270", Ciphertext: "1-1:\"foo\""}, foo1Ser)
 
 	// Serialize the second copy of "foo". Because this is a different secret instance, Encrypt should be called
 	// a second time even though the plaintext is the same as the last value we encrypted.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	foo2Ser, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 2, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.NotEqual(t, foo1Ser, foo2Ser)
 
 	// Serialize "bar". Encrypt should be called once, as this value has not yet been encrypted.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	barSer, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// encrypted.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	foo1Ser2, err := SerializePropertyValue(ctx, foo1, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
 	// encrypted.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	foo2Ser2, err := SerializePropertyValue(ctx, foo2, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been encrypted.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	barSer2, err := SerializePropertyValue(ctx, bar, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, barSer, barSer2)
 
-	dec := csm.Decrypter()
-
-	// Decrypt foo1Ser. Decrypt should be called.
+	// Decrypt foo1Ser. Shares cache from encrypt.
+	dec, completeDec := csm.BeginBatchDecryption()
 	foo1Dec, err := deserializeProperty(foo1Ser, dec)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "deserialize")
+	assert.NoError(t, completeDec(ctx), "complete")
+	assert.Equal(t, 0, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, foo1.DeepEquals(foo1Dec))
-	assert.Equal(t, 1, sm.decryptCalls)
 
-	// Decrypt foo2Ser. Decrypt should be called.
+	// Decrypt foo2Ser. Shares cache from encrypt.
+	dec, completeDec = csm.BeginBatchDecryption()
 	foo2Dec, err := deserializeProperty(foo2Ser, dec)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "deserialize")
+	assert.NoError(t, completeDec(ctx), "complete")
+	assert.Equal(t, 0, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, foo2.DeepEquals(foo2Dec))
-	assert.Equal(t, 2, sm.decryptCalls)
 
-	// Decrypt barSer. Decrypt should be called.
+	// Decrypt barSer. Shares cache from encrypt.
+	dec, completeDec = csm.BeginBatchDecryption()
 	barDec, err := deserializeProperty(barSer, dec)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "deserialize")
+	assert.NoError(t, completeDec(ctx), "complete")
+	assert.Equal(t, 0, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, bar.DeepEquals(barDec))
-	assert.Equal(t, 3, sm.decryptCalls)
 
 	// Create a new CachingSecretsManager and re-run the decrypts. Each decrypt should insert the plain- and
 	// ciphertext into the cache with the associated secret.
 	csm = NewCachingSecretsManager(sm)
 
-	dec = csm.Decrypter()
-
 	// Decrypt foo1Ser. Decrypt should be called.
+	dec, completeDec = csm.BeginBatchDecryption()
 	foo1Dec, err = deserializeProperty(foo1Ser, dec)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "deserialize")
+	assert.NoError(t, completeDec(ctx), "complete")
+	assert.Equal(t, 1, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, foo1.DeepEquals(foo1Dec))
-	assert.Equal(t, 4, sm.decryptCalls)
 
 	// Decrypt foo2Ser. Decrypt should be called.
+	dec, completeDec = csm.BeginBatchDecryption()
 	foo2Dec, err = deserializeProperty(foo2Ser, dec)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "deserialize")
+	assert.NoError(t, completeDec(ctx), "complete")
+	assert.Equal(t, 2, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, foo2.DeepEquals(foo2Dec))
-	assert.Equal(t, 5, sm.decryptCalls)
 
 	// Decrypt barSer. Decrypt should be called.
+	dec, completeDec = csm.BeginBatchDecryption()
 	barDec, err = deserializeProperty(barSer, dec)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "deserialize")
+	assert.NoError(t, completeDec(ctx), "complete")
+	assert.Equal(t, 3, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, bar.DeepEquals(barDec))
-	assert.Equal(t, 6, sm.decryptCalls)
-
-	enc = csm.Encrypter()
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	foo1Ser2, err = SerializePropertyValue(ctx, foo1Dec, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, foo1Ser, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	foo2Ser2, err = SerializePropertyValue(ctx, foo2Dec, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, foo2Ser, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been cached by the
 	// earlier calls to Decrypt.
+	enc, completeEnc = csm.BeginBatchEncryption()
 	barSer2, err = SerializePropertyValue(ctx, barDec, enc, false /* showSecrets */)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, sm.encryptCalls)
+	assert.NoError(t, err, "serialize")
+	assert.NoError(t, completeEnc(ctx), "complete")
+	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, barSer, barSer2)
-}
-
-func TestBatchDecrypt(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	sm := &testSecretsManager{}
-	decrypter := sm.Decrypter()
-	csm := newMapDecrypter(decrypter, map[string]string{})
-
-	decrypted, err := csm.BatchDecrypt(ctx, []string{"1:foo", "2:bar", "3:baz"})
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"foo", "bar", "baz"}, decrypted)
-	assert.Equal(t, 3, sm.decryptCalls)
-
-	decryptedReordered, err := csm.BatchDecrypt(ctx, []string{"2:bar", "1:foo", "3:baz"}) // Re-ordered
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"bar", "foo", "baz"}, decryptedReordered)
-	assert.Equal(t, 3, sm.decryptCalls) // No additional calls made
-
-	decrypted2, err := csm.BatchDecrypt(ctx, []string{"2:bar", "1:foo", "4:qux", "3:baz"}) // Add a new value
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"bar", "foo", "qux", "baz"}, decrypted2)
-	assert.Equal(t, 4, sm.decryptCalls) // Only 1 additional call made
-}
-
-type mapTestSecretsProvider struct {
-	m *mapTestSecretsManager
-}
-
-func (p *mapTestSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	m, err := b64.Base64SecretsProvider.OfType(ty, state)
-	if err != nil {
-		return nil, err
-	}
-	p.m = &mapTestSecretsManager{sm: m}
-	return p.m, nil
-}
-
-type mapTestSecretsManager struct {
-	sm secrets.Manager
-
-	d *mapTestDecrypter
-}
-
-func (t *mapTestSecretsManager) Type() string { return t.sm.Type() }
-
-func (t *mapTestSecretsManager) State() json.RawMessage { return t.sm.State() }
-
-func (t *mapTestSecretsManager) Encrypter() config.Encrypter {
-	return t.sm.Encrypter()
-}
-
-func (t *mapTestSecretsManager) Decrypter() config.Decrypter {
-	d := t.sm.Decrypter()
-	t.d = &mapTestDecrypter{d: d}
-	return t.d
-}
-
-type mapTestDecrypter struct {
-	d config.Decrypter
-
-	decryptCalls      int
-	batchDecryptCalls int
-}
-
-func (t *mapTestDecrypter) DecryptValue(
-	ctx context.Context, ciphertext string,
-) (string, error) {
-	t.decryptCalls++
-	return t.d.DecryptValue(ctx, ciphertext)
-}
-
-func (t *mapTestDecrypter) BatchDecrypt(
-	ctx context.Context, ciphertexts []string,
-) ([]string, error) {
-	t.batchDecryptCalls++
-	return config.DefaultBatchDecrypt(ctx, t.d, ciphertexts)
-}
-
-func TestMapCrypter(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	bytes, err := os.ReadFile("testdata/checkpoint-secrets.json")
-	require.NoError(t, err)
-
-	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
-	require.NoError(t, err)
-
-	var prov mapTestSecretsProvider
-
-	_, err = DeserializeDeploymentV3(ctx, *chk.Latest, &prov)
-	require.NoError(t, err)
-
-	d := prov.m.d
-	assert.Equal(t, 1, d.batchDecryptCalls)
-	assert.Equal(t, 0, d.decryptCalls)
 }
 
 func TestSecretCache(t *testing.T) {
