@@ -120,23 +120,23 @@ class TestLocalWorkspace(unittest.TestCase):
 
     def test_plugin_functions(self):
         ws = LocalWorkspace()
-        # Install aws 3.0.0 plugin
-        ws.install_plugin("aws", "v3.0.0")
+        # Install aws 6.1.0 plugin
+        ws.install_plugin("aws", "v6.1.0")
         # Check the plugin is present
         plugin_list = ws.list_plugins()
-        self.assertTrue(found_plugin(plugin_list, "aws", "3.0.0"))
+        self.assertTrue(found_plugin(plugin_list, "aws", "6.1.0"))
 
         # Remove the plugin
-        ws.remove_plugin("aws", "3.0.0")
+        ws.remove_plugin("aws", "6.1.0")
         # Check that the plugin has been removed
         plugin_list = ws.list_plugins()
-        self.assertFalse(found_plugin(plugin_list, "aws", "3.0.0"))
+        self.assertFalse(found_plugin(plugin_list, "aws", "6.1.0"))
 
     def test_stack_functions(self):
         project_settings = ProjectSettings(name="python_test", runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_1_name = f"python_int_test_first_{get_test_suffix()}"
-        stack_2_name = f"python_int_test_second_{get_test_suffix()}"
+        stack_1_name = get_test_org() + "/" + f"first_{get_test_suffix()}"
+        stack_2_name = get_test_org() + "/" + f"second_{get_test_suffix()}"
 
         # Create a stack
         ws.create_stack(stack_1_name)
