@@ -135,12 +135,8 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_functions(self):
         project_settings = ProjectSettings(name="python_test", runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_1_name = fully_qualified_stack_name(
-            get_test_org(), "python_test", f"first_{get_test_suffix()}"
-        )
-        stack_2_name = fully_qualified_stack_name(
-            get_test_org(), "python_test", f"second_{get_test_suffix()}"
-        )
+        stack_1_name = get_test_org() + "/" + f"first_{get_test_suffix()}"
+        stack_2_name = get_test_org() + "/" + f"second_{get_test_suffix()}"
 
         # Create a stack
         ws.create_stack(stack_1_name)
