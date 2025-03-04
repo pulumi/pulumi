@@ -302,7 +302,8 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 			info.Server = ""
 		}
 
-		pluginSpec, err := workspace.NewPluginSpec(source, apitype.PluginKind(info.Kind), version, info.Server, info.Checksums)
+		pluginSpec, err := workspace.NewPluginSpec(
+			source, apitype.PluginKind(info.Kind), version, info.Server, info.Checksums)
 		if err != nil {
 			return nil, err
 		}
