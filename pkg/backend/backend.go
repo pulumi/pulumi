@@ -47,7 +47,17 @@ type StackAlreadyExistsError struct {
 }
 
 func (e StackAlreadyExistsError) Error() string {
-	return fmt.Sprintf("stack '%v' already exists", e.StackName)
+	return fmt.Sprintf("stack '%v' already exists. To resolve this issue, you can:\n\n"+
+		"1. Import the Existing Resource:\n"+
+		"    If you want Pulumi to manage the resource, run the following command:\n\n"+
+		"    pulumi import aws:s3/bucket:Bucket myResource existing-resource-id\n\n"+
+		"2. Change the Name of the Locally Declared Resource:\n"+
+		"    Rename the resource in your Pulumi code to avoid conflicts. Example:\n\n"+
+		"    const myNewResource = new aws.s3.Bucket(\"new-bucket-name\", {...});\n\n"+
+		"3. Manually Delete the External Resource (if applicable):\n"+
+		"    If the resource is unneeded, delete it using the cloud provider’s CLI or console, then rerun pulumi up.\n\n"+
+		"\n\n"+
+		"    AWS CLI Example: aws s3api delete-bucket --bucket existing-resource-id", e.StackName)
 }
 
 // OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
