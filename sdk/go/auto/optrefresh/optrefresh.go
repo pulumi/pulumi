@@ -122,6 +122,13 @@ func SuppressOutputs() Option {
 	})
 }
 
+// Display operation as a rich diff showing the overall change.
+func Diff() Option {
+	return optionFunc(func(o *Options) {
+		o.Diff = true
+	})
+}
+
 // ConfigFile specifies a file to use for configuration values rather than detecting the file name
 func ConfigFile(path string) Option {
 	return optionFunc(func(opts *Options) {
@@ -169,6 +176,8 @@ type Options struct {
 	SuppressOutputs bool
 	// Run using the configuration values in the specified file rather than detecting the file name
 	ConfigFile string
+	// When set, display operation as a rich diff showing the overall change
+	Diff bool
 }
 
 type optionFunc func(*Options)
