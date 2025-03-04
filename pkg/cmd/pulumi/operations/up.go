@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 
@@ -50,8 +51,26 @@ import (
 
 // The default number of parallel resource operations to run at once during an update, if --parallel is unset.
 // See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
-var defaultParallel = int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
-//                                                                  but the NumCPU function returns an int.
+
+func defaultParallel() int32 {
+	// Initialize parallel from environment if available, otherwise use defaultParallel
+	osDefaultParallel := int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
+	// but the NumCPU function returns an int.
+	var defaultParallel int32
+	if p := env.Parallel.Value(); p > 0 {
+		if p > math.MaxInt32 {
+			// Log a warning and cap at MaxInt32
+			logging.Warningf("Parallel value %d exceeds maximum allowed value, capping at %d", p, math.MaxInt32)
+			defaultParallel = math.MaxInt32
+		} else {
+			defaultParallel = int32(p) //nolint:gosec
+		}
+	} else {
+		defaultParallel = osDefaultParallel //nolint:gosec
+	}
+
+	return defaultParallel
+}
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
@@ -650,7 +669,7 @@ func NewUpCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",

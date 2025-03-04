@@ -608,7 +608,7 @@ func NewPreviewCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",

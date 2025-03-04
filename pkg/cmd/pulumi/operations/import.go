@@ -1067,7 +1067,7 @@ func NewImportCmd() *cobra.Command {
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().BoolVar(
 		&previewOnly, "preview-only", false,

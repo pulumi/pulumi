@@ -15,6 +15,7 @@
 package operations
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -58,6 +59,54 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 			t.Setenv("PULUMI_CONTINUE_ON_ERROR", test.EnvVarValue)
 			cmd := command()
 			f, err := cmd.PersistentFlags().GetBool("continue-on-error")
+			assert.Nil(t, err)
+			assert.Equal(t, test.Expected, f)
+		}
+	}
+}
+
+//nolint:paralleltest // Changes environment variables
+func TestParallelEnvVar(t *testing.T) {
+	osDefaultParallel := int32(runtime.NumCPU()) * 4 //nolint:gosec
+	commands := []func() *cobra.Command{
+		NewUpCmd,
+		NewPreviewCmd,
+		NewRefreshCmd,
+		NewDestroyCmd,
+		NewImportCmd,
+		NewWatchCmd,
+	}
+	testCases := []struct {
+		EnvVarValue string
+		Expected    int32
+	}{
+		{
+			EnvVarValue: "4",
+			Expected:    4,
+		},
+		{
+			EnvVarValue: "1",
+			Expected:    1,
+		},
+		{
+			EnvVarValue: "0",
+			Expected:    osDefaultParallel,
+		},
+		{
+			EnvVarValue: "",
+			Expected:    osDefaultParallel,
+		},
+		{
+			EnvVarValue: "16",
+			Expected:    16,
+		},
+	}
+
+	for _, command := range commands {
+		for _, test := range testCases {
+			t.Setenv("PULUMI_PARALLEL", test.EnvVarValue)
+			cmd := command()
+			f, err := cmd.PersistentFlags().GetInt32("parallel")
 			assert.Nil(t, err)
 			assert.Equal(t, test.Expected, f)
 		}
