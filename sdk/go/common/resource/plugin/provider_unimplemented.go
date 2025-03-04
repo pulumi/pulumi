@@ -27,6 +27,8 @@ import (
 //
 // Either NotForwardCompatibleProvider or [UnimplementedProvider] must be embedded to
 // implement [Provider].
+//
+// Deprecated: Use a compliance check: var _ plugin.UnsafeProvider = (*mytype)(nil)
 type NotForwardCompatibleProvider struct{}
 
 // UnimplementedProvider can be embedded to have a forward compatible implementation of
@@ -34,6 +36,9 @@ type NotForwardCompatibleProvider struct{}
 //
 // Either NotForwardCompatibleProvider or [UnimplementedProvider] must be embedded to
 // implement [Provider].
+//
+// Deprecated: This no longer needs to be embedded in Provider implementations.
+// Unimplemented is now the default behavior.
 type UnimplementedProvider struct{ NotForwardCompatibleProvider }
 
 func (p *UnimplementedProvider) Handshake(
@@ -124,8 +129,4 @@ func (p *UnimplementedProvider) GetMapping(context.Context, GetMappingRequest) (
 
 func (p *UnimplementedProvider) GetMappings(context.Context, GetMappingsRequest) (GetMappingsResponse, error) {
 	return GetMappingsResponse{}, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
-}
-
-func (p NotForwardCompatibleProvider) mustEmbedAForwardCompatibilityOption(
-	UnimplementedProvider, NotForwardCompatibleProvider) {
 }

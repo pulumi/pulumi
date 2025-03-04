@@ -34,8 +34,6 @@ import (
 // The built-in provider provides resources and functions in the `pulumi` package, such as stack references and the
 // `getResource` invoke that powers resource reference hydration.
 type builtinProvider struct {
-	plugin.NotForwardCompatibleProvider
-
 	context context.Context
 	cancel  context.CancelFunc
 	diag    diag.Sink
@@ -47,6 +45,9 @@ type builtinProvider struct {
 	// reads is a map of URNs to resource states that have been read during the current deployment.
 	reads *gsync.Map[resource.URN, *resource.State]
 }
+
+// Must implement all methods.
+var _ plugin.UnsafeProvider = (*builtinProvider)(nil)
 
 func newBuiltinProvider(
 	backendClient BackendClient,

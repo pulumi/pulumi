@@ -29,8 +29,6 @@ import (
 )
 
 type Provider struct {
-	plugin.NotForwardCompatibleProvider
-
 	Name    string
 	Package tokens.Package
 	Version semver.Version
@@ -60,6 +58,9 @@ type Provider struct {
 	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
 	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
 }
+
+// Must implement all methods.
+var _ plugin.UnsafeProvider = (*Provider)(nil)
 
 func (prov *Provider) Handshake(
 	ctx context.Context, req plugin.ProviderHandshakeRequest,
