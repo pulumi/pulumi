@@ -37,6 +37,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -554,14 +555,33 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
+func (p *plugin) healthCheck() bool {
+	if p.Conn == nil {
+		return false
+	}
+
+	// Check that the plugin looks alive by calling gRPC's Health Check service.
+	// Most plugins don't actually implement this service, which is OK as we treat
+	// an unimplemented status as OK.
+	health := grpc_health_v1.NewHealthClient(p.Conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	req := &grpc_health_v1.HealthCheckRequest{}
+	_, err := health.Check(ctx, req)
+	if err != nil && status.Code(err) != codes.Unimplemented {
+		logging.V(9).Infof("healthCheck(): failed with: %v", err)
+		return false
+	}
+
+	return true
+}
+
 func (p *plugin) Close() error {
-	pluginCrashed := true
+	// Something has gone wrong with the plugin if it is not healthy and we have not yet
+	// shut it down.
+	pluginCrashed := !p.healthCheck()
 
 	if p.Conn != nil {
-		// Something has gone wrong with the plugin if it is not ready to handle requests and we have not yet
-		// shut it down.
-		pluginCrashed = p.Conn.GetState() != connectivity.Ready
-
 		contract.IgnoreClose(p.Conn)
 	}
 

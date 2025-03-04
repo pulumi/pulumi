@@ -15,10 +15,18 @@
 package plugin
 
 import (
+	"context"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func TestLogFlowArgumentPropagation(t *testing.T) {
@@ -87,5 +95,94 @@ func TestParsePort(t *testing.T) {
 	} {
 		_, err := parsePort(port)
 		require.Error(t, err)
+	}
+}
+
+func TestHealthCheck(t *testing.T) {
+	t.Parallel()
+
+	startServer := func(healthService bool) (*grpc.Server, *plugin) {
+		listener, _ := net.Listen("tcp", "127.0.0.1:0")
+		server := grpc.NewServer()
+
+		if healthService {
+			healthServer := health.NewServer()
+			grpc_health_v1.RegisterHealthServer(server, healthServer)
+		}
+
+		go func() {
+			err := server.Serve(listener)
+			require.NoError(t, err)
+		}()
+
+		port := listener.Addr().(*net.TCPAddr).Port
+
+		type foo struct{}
+		handshake := func(context.Context, string, string, *grpc.ClientConn) (*foo, error) {
+			return &foo{}, nil
+		}
+
+		conn, _, err := dialPlugin(port, "test", "test", handshake, []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		})
+		require.NoError(t, err)
+
+		return server, &plugin{Conn: conn}
+	}
+
+	tests := []struct {
+		name           string
+		healthService  bool
+		shutdownServer bool
+		expected       bool
+	}{
+		{
+			name:           "Server with health check - running",
+			healthService:  true,
+			shutdownServer: false,
+			expected:       true,
+		},
+		{
+			name:           "Server with health check - crashed",
+			healthService:  true,
+			shutdownServer: true,
+			expected:       false,
+		},
+		{
+			name:           "Server without health check - running",
+			healthService:  false,
+			shutdownServer: false,
+			expected:       true,
+		},
+		{
+			name:           "Server without health check - crashed",
+			healthService:  false,
+			shutdownServer: true,
+			expected:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server, p := startServer(tt.healthService)
+
+			// Simulate a crash by stopping the server before calling healthCheck.
+			if tt.shutdownServer {
+				server.Stop()
+				// Give time for cleanup
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			result := p.healthCheck()
+			assert.Equal(t, tt.expected, result)
+
+			if p.Conn != nil {
+				p.Conn.Close()
+			}
+			server.Stop()
+		})
 	}
 }
