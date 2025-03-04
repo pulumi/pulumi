@@ -78,6 +78,7 @@ func NewUpCmd() *cobra.Command {
 	var eventLogPath string
 	var parallel int32
 	var refresh string
+	var registerStackOutputsOnError bool
 	var showConfig bool
 	var showPolicyRemediations bool
 	var showReplacementSteps bool
@@ -194,6 +195,7 @@ func NewUpCmd() *cobra.Command {
 			GeneratePlan:    true,
 			Experimental:    env.Experimental.Value(),
 			ContinueOnError: continueOnError,
+			RegisterStackOutputsOnError: registerStackOutputsOnError,
 			AttachDebugger:  attachDebugger,
 			Autonamer:       autonamer,
 		}
@@ -422,6 +424,8 @@ func NewUpCmd() *cobra.Command {
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
+			RegisterStackOutputsOnError: registerStackOutputsOnError,
+			
 
 			AttachDebugger: attachDebugger,
 		}
@@ -656,6 +660,10 @@ func NewUpCmd() *cobra.Command {
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
+	cmd.PersistentFlags().BoolVar(
+		&registerStackOutputsOnError, "register-stack-outputs-on-error", false,
+		"Register stack outputs even if the update fails (default is to not register outputs on failure)"
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
