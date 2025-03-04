@@ -457,33 +457,37 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 				var diagnostics hcl.Diagnostics
 
-				sig := model.StaticFunctionSignature{
-					Parameters: []model.Parameter{
-						{
-							Name: "arg",
-							Type: model.DynamicType,
-						},
-					},
-					ReturnType: model.NewOutputType(model.BoolType),
-				}
-
+				// if the input is not a single argument, we should error
 				if len(args) != 1 {
 					diagnostics = append(diagnostics, &hcl.Diagnostic{
 						Severity: hcl.DiagError,
 						Summary:  "'can' expects exactly one argument",
 					})
-
-					return sig, diagnostics
 				}
 
-				parameters := make([]model.Parameter, 1)
-				arg := args[0]
-				parameters[0] = model.Parameter{
-					Name: "arg",
-					Type: arg.Type(),
+				var argType model.Type
+				argType = model.DynamicType
+				if len(args) == 1 {
+					argType = args[0].Type()
 				}
 
-				sig.Parameters = parameters
+				// if the input type is dynamic or an output we need to return an output bool,
+				// but otherwise we can return a plain bool
+				var returnType model.Type
+				returnType = model.BoolType
+				if isOutput(argType) || argType == model.DynamicType {
+					returnType = model.NewOutputType(returnType)
+				}
+
+				sig := model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "arg",
+							Type: argType,
+						},
+					},
+					ReturnType: returnType,
+				}
 
 				return sig, diagnostics
 			},
