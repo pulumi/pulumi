@@ -26,10 +26,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -37,12 +39,29 @@ const Type = "service"
 
 // serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
-	client *client.Client
-	stack  client.StackIdentifier
+	client                  *client.Client
+	stack                   client.StackIdentifier
+	supportsBatchEncryption *promise.Promise[bool]
 }
 
 func newServiceCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
-	return &serviceCrypter{client: client, stack: stack}
+	return &serviceCrypter{
+		client: client,
+		stack:  stack,
+		supportsBatchEncryption: promise.Run(func() (bool, error) {
+			capabilitiesResponse, err := client.GetCapabilities(context.Background())
+			if err != nil {
+				logging.V(3).Infof("error requesting service capabilities: %v", err)
+				return false, nil
+			}
+			capabilities, err := capabilitiesResponse.Parse()
+			if err != nil {
+				logging.V(3).Infof("error parsing service capabilities: %v", err)
+				return false, nil
+			}
+			return capabilities.BatchEncryption, nil
+		}),
+	}
 }
 
 func (c *serviceCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
@@ -51,6 +70,25 @@ func (c *serviceCrypter) EncryptValue(ctx context.Context, plaintext string) (st
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (c *serviceCrypter) BatchEncrypt(ctx context.Context, plaintexts []string) ([]string, error) {
+	if supports, _ := c.supportsBatchEncryption.Result(ctx); !supports {
+		return config.DefaultBatchEncrypt(ctx, c, plaintexts)
+	}
+	plantextBytes := make([][]byte, len(plaintexts))
+	for i, val := range plaintexts {
+		plantextBytes[i] = []byte(val)
+	}
+	cyphertextBytes, err := c.client.BatchEncrypt(ctx, c.stack, plantextBytes)
+	if err != nil {
+		return nil, err
+	}
+	cyphertexts := make([]string, len(cyphertextBytes))
+	for i, val := range cyphertextBytes {
+		cyphertexts[i] = base64.StdEncoding.EncodeToString(val)
+	}
+	return cyphertexts, nil
 }
 
 func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) (string, error) {

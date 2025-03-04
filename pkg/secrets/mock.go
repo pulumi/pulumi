@@ -66,6 +66,7 @@ func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 
 type MockEncrypter struct {
 	EncryptValueF func() string
+	BatchEncryptF func() []string
 }
 
 func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
@@ -74,6 +75,13 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	}
 
 	return "", errors.New("mock value not provided")
+}
+
+func (me *MockEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	if me.BatchEncryptF != nil {
+		return me.BatchEncryptF(), nil
+	}
+	return nil, errors.New("batch encrypt mock not provided")
 }
 
 type MockDecrypter struct {
