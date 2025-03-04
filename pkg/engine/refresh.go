@@ -125,3 +125,48 @@ func newRefreshSource(
 	// Just return an error source. Refresh doesn't use its source.
 	return deploy.NewErrorSource(proj.Name), nil
 }
+
+func RefreshV2(
+	u UpdateInfo,
+	ctx *Context,
+	opts UpdateOptions,
+	dryRun bool,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	contract.Requiref(u != nil, "u", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
+
+	defer func() { ctx.Events <- NewCancelEvent() }()
+
+	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer info.Close()
+
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer emitter.Close()
+
+	// Force opts.Refresh and RefreshProgram to true.
+	opts.Refresh = true
+	opts.RefreshProgram = true
+
+	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
+
+	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
+		return nil, nil, err
+	}
+
+	return update(ctx, info, &deploymentOptions{
+		UpdateOptions: opts,
+		SourceFunc:    newUpdateSource,
+		Events:        emitter,
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
+		isRefresh:     true,
+		DryRun:        dryRun,
+	})
+}
