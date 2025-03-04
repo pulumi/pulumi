@@ -54,7 +54,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
-		Args:    cmdutil.MaximumNArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || env.SkipConfirmations.Value()

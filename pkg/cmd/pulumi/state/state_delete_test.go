@@ -43,6 +43,15 @@ func TestStateDeleteNoArgs(t *testing.T) {
 	assert.ErrorContains(t, err, "Must supply <resource URN> unless pulumi is run interactively")
 }
 
+func TestStateDeleteTooManyArgs(t *testing.T) {
+	t.Parallel()
+
+	cmd := newStateDeleteCommand(&pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
+	cmd.SetArgs([]string{"urn", "extra"})
+	err := cmd.ExecuteContext(context.Background())
+	assert.ErrorContains(t, err, "accepts at most 1 arg(s), received 2")
+}
+
 func TestStateDeleteAllAndURN(t *testing.T) {
 	t.Parallel()
 
