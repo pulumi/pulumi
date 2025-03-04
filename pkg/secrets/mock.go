@@ -78,10 +78,10 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 }
 
 func (me *MockEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
-	if me.BatchEncryptF == nil {
-		return nil, errors.New("batch encrypt mock not provided")
+	if me.BatchEncryptF != nil {
+		return me.BatchEncryptF(), nil
 	}
-	return me.BatchEncryptF(), nil
+	return nil, errors.New("batch encrypt mock not provided")
 }
 
 type MockDecrypter struct {
