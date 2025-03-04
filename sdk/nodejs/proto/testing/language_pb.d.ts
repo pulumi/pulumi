@@ -65,6 +65,9 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     getLanguageInfo(): string;
     setLanguageInfo(value: string): PrepareLanguageTestsRequest;
 
+    getProgramOverridesMap(): jspb.Map<string, PrepareLanguageTestsRequest.ProgramOverride>;
+    clearProgramOverridesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
     static toObject(includeInstance: boolean, msg: PrepareLanguageTestsRequest): PrepareLanguageTestsRequest.AsObject;
@@ -85,6 +88,8 @@ export namespace PrepareLanguageTestsRequest {
         coreSdkVersion: string,
         snapshotEditsList: Array<PrepareLanguageTestsRequest.Replacement.AsObject>,
         languageInfo: string,
+
+        programOverridesMap: Array<[string, PrepareLanguageTestsRequest.ProgramOverride.AsObject]>,
     }
 
 
@@ -111,6 +116,28 @@ export namespace PrepareLanguageTestsRequest {
             path: string,
             pattern: string,
             replacement: string,
+        }
+    }
+
+    export class ProgramOverride extends jspb.Message { 
+        clearPathsList(): void;
+        getPathsList(): Array<string>;
+        setPathsList(value: Array<string>): ProgramOverride;
+        addPaths(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ProgramOverride.AsObject;
+        static toObject(includeInstance: boolean, msg: ProgramOverride): ProgramOverride.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ProgramOverride, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ProgramOverride;
+        static deserializeBinaryFromReader(message: ProgramOverride, reader: jspb.BinaryReader): ProgramOverride;
+    }
+
+    export namespace ProgramOverride {
+        export type AsObject = {
+            pathsList: Array<string>,
         }
     }
 
