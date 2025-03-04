@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/tests"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -274,6 +275,17 @@ type compiledReplacement struct {
 	Replacement string
 }
 
+// programOverrides represent overrides whereby a test may specify a hardcoded or pre-generated program to be used, in
+// place of running GenerateProject on source PCL. This is useful for testing SDK functionality when the requisite
+// program code generation is not yet complete enough to support generating programs which exercise that functionality.
+type programOverride struct {
+	// The name of the test to which this override applies.
+	Test string
+
+	// A path to a directory containing the program to use for the test.
+	Path string
+}
+
 type testToken struct {
 	LanguagePluginName   string
 	LanguagePluginTarget string
@@ -283,6 +295,7 @@ type testToken struct {
 	CoreVersion          string
 	SnapshotEdits        []replacement
 	LanguageInfo         string
+	ProgramOverrides     map[string]programOverride
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -367,6 +380,18 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		})
 	}
 
+	programOverrides := map[string]programOverride{}
+	for test, override := range req.ProgramOverrides {
+		if _, has := tests.LanguageTests[test]; !has {
+			return nil, fmt.Errorf("program override for non-existent test: %s", test)
+		}
+
+		programOverrides[test] = programOverride{
+			Test: test,
+			Path: override.Path,
+		}
+	}
+
 	tokenBytes, err := json.Marshal(&testToken{
 		LanguagePluginName:   req.LanguagePluginName,
 		LanguagePluginTarget: req.LanguagePluginTarget,
@@ -376,6 +401,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		CoreVersion:          req.CoreSdkVersion,
 		SnapshotEdits:        edits,
 		LanguageInfo:         req.LanguageInfo,
+		ProgramOverrides:     programOverrides,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -784,20 +810,31 @@ func (eng *languageTestServer) RunLanguageTest(
 		programPackages := program.PackageReferences()
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
-		diagnostics, err := languageClient.GenerateProject(
-			sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
-		}
-		if diagnostics.HasErrors() {
-			return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
-		}
+		var diagnostics hcl.Diagnostics
 
-		// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
-		// them across here.
-		err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
-		if err != nil {
-			return nil, fmt.Errorf("copy testdata: %w", err)
+		// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
+		// GenerateProject to generate a program for testing.
+		if programOverride, ok := token.ProgramOverrides[req.Test]; ok {
+			err = copyDirectory(os.DirFS(programOverride.Path), ".", projectDir, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("copy override testdata: %w", err)
+			}
+		} else {
+			diagnostics, err = languageClient.GenerateProject(
+				sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
+			}
+			if diagnostics.HasErrors() {
+				return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
+			}
+
+			// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
+			// them across here.
+			err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
+			if err != nil {
+				return nil, fmt.Errorf("copy testdata: %w", err)
+			}
 		}
 
 		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
