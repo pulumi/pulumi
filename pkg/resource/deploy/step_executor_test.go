@@ -55,6 +55,10 @@ func (e *mockRegisterResourceOutputsEvent) Outputs() resource.PropertyMap {
 
 func (e *mockRegisterResourceOutputsEvent) Done() {}
 
+func (g *mockRegisterResourceOutputsEvent) Reject(err error) {
+	panic("unexpected reject")
+}
+
 type mockEvents struct {
 	OnResourceStepPreF   func(step Step) (interface{}, error)
 	OnResourceStepPostF  func(ctx interface{}, step Step, status resource.Status, err error) error
