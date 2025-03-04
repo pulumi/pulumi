@@ -772,6 +772,9 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	if o.ConfigFile != "" {
 		args = append(args, "--config-file="+o.ConfigFile)
 	}
+	if o.Diff {
+		args = append(args, "--diff")
+	}
 
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
