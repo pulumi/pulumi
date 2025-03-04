@@ -109,8 +109,13 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 
 	sm := snap.SecretsManager
 	var enc config.Encrypter
+	var completeBatch CompleteCrypterBatch
 	if sm != nil {
-		enc = sm.Encrypter()
+		if csm, ok := sm.(CachingSecretsManager); ok {
+			enc, completeBatch = csm.BeginBatchEncryption()
+		} else {
+			enc = sm.Encrypter()
+		}
 	} else {
 		enc = config.NewPanicCrypter()
 	}
@@ -148,6 +153,12 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 			Version: snap.Metadata.IntegrityErrorMetadata.Version,
 			Command: snap.Metadata.IntegrityErrorMetadata.Command,
 			Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+		}
+	}
+
+	if completeBatch != nil {
+		if err := completeBatch(ctx); err != nil {
+			return nil, err
 		}
 	}
 
@@ -240,43 +251,15 @@ func DeserializeDeploymentV3(
 	}
 
 	var dec config.Decrypter
-	if secretsManager == nil {
-		var ciphertexts []string
-		for _, res := range deployment.Resources {
-			collectCiphertexts(&ciphertexts, res.Inputs)
-			collectCiphertexts(&ciphertexts, res.Outputs)
-		}
-		if len(ciphertexts) > 0 {
-			// If there are ciphertexts, but we couldn't set up a secrets manager, error out early
-			// to avoid panic'ing later on.  This snapshot is broken and needs to be repaired
-			// manually.
-			return nil, errors.New("snapshot contains encrypted secrets but no secrets manager could be found")
-		}
-		dec = config.NewPanicCrypter()
+	if secretsManager != nil {
+		dec = secretsManager.Decrypter()
 	} else {
-		d := secretsManager.Decrypter()
+		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
+	}
 
-		// Do a first pass through state and collect all of the secrets that need decrypting.
-		// We will collect all secrets and decrypt them all at once, rather than just-in-time.
-		// We do this to avoid serial calls to the decryption endpoint which can result in long
-		// wait times in stacks with a large number of secrets.
-		var ciphertexts []string
-		for _, res := range deployment.Resources {
-			collectCiphertexts(&ciphertexts, res.Inputs)
-			collectCiphertexts(&ciphertexts, res.Outputs)
-		}
-
-		// Decrypt the collected secrets and create a decrypter that will use the result as a cache.
-		decrypted, err := d.BatchDecrypt(ctx, ciphertexts)
-		if err != nil {
-			return nil, err
-		}
-		contract.Assertf(len(decrypted) == len(ciphertexts), "decrypted secrets count does not match ciphertexts count")
-		cache := make(map[string]string)
-		for i, ciphertext := range ciphertexts {
-			cache[ciphertext] = decrypted[i]
-		}
-		dec = newMapDecrypter(d, cache)
+	var completeBatch CompleteCrypterBatch
+	if cachingCrypter, ok := secretsManager.(CachingSecretsManager); ok {
+		dec, completeBatch = cachingCrypter.BeginBatchDecryption()
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
@@ -296,6 +279,12 @@ func DeserializeDeploymentV3(
 			return nil, err
 		}
 		ops = append(ops, desop)
+	}
+
+	if completeBatch != nil {
+		if err := completeBatch(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	metadata := deploy.SnapshotMetadata{}
@@ -480,45 +469,25 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		} else {
 			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
 			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
-			var ciphertext string
-			if cachingCrypter, ok := enc.(*cachingSecretsManager); ok {
-				ciphertext, err = cachingCrypter.encryptSecret(ctx, prop.SecretValue(), plaintext)
+			if cachingCrypter, ok := enc.(BatchEncrypter); ok {
+				err = cachingCrypter.Enqueue(ctx, prop.SecretValue(), plaintext, &secret)
+				if err != nil {
+					return nil, fmt.Errorf("enqueuing secret value for encryption: %w", err)
+				}
 			} else {
-				ciphertext, err = enc.EncryptValue(ctx, plaintext)
+				ciphertext, err := enc.EncryptValue(ctx, plaintext)
+				if err != nil {
+					return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
+				}
+				secret.Ciphertext = ciphertext
 			}
-			if err != nil {
-				return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
-			}
-			contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
-
-			secret.Ciphertext = ciphertext
 		}
 
-		return secret, nil
+		return &secret, nil
 	}
 
 	// All others are returned as-is.
 	return prop.V, nil
-}
-
-// collectCiphertexts collects encrypted secrets from resource properties.
-func collectCiphertexts(ciphertexts *[]string, prop interface{}) {
-	switch prop := prop.(type) {
-	case []interface{}:
-		for _, v := range prop {
-			collectCiphertexts(ciphertexts, v)
-		}
-	case map[string]interface{}:
-		if prop[resource.SigKey] == resource.SecretSig {
-			if ciphertext, cipherOk := prop["ciphertext"].(string); cipherOk {
-				*ciphertexts = append(*ciphertexts, ciphertext)
-			}
-		} else {
-			for _, v := range prop {
-				collectCiphertexts(ciphertexts, v)
-			}
-		}
-	}
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
@@ -627,38 +596,41 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					contract.Assertf(isarchive, "resource with archive signature is not an archive")
 					return resource.NewArchiveProperty(archive), nil
 				case resource.SecretSig:
+					prop := resource.MakeSecret(resource.NewNullProperty())
+					secret := prop.SecretValue()
 					ciphertext, cipherOk := objmap["ciphertext"].(string)
 					plaintext, plainOk := objmap["plaintext"].(string)
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
 						return resource.PropertyValue{}, errors.New(
-							"malformed secret value: one of `ciphertext` or `plaintext` must be supplied")
+							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied")
 					}
 
-					if !plainOk {
-						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
+					if plainOk {
+						ev, err := secretPropertyValueFromPlaintext(plaintext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %w", err)
+							return resource.PropertyValue{}, err
 						}
-						plaintext = unencryptedText
+						secret.Element = ev
+					} else { // We only have ciphertext, so we need to decrypt it.
+						if cachingCrypter, ok := dec.(BatchDecrypter); ok {
+							// If the decrypter is a cachingCrypter, check the cache for the ciphertext.
+							err := cachingCrypter.Enqueue(ctx, ciphertext, secret)
+							if err != nil {
+								return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
+							}
+						} else {
+							unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
+							if err != nil {
+								return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
+							}
+							ev, err := secretPropertyValueFromPlaintext(unencryptedText)
+							if err != nil {
+								return resource.PropertyValue{}, err
+							}
+							secret.Element = ev
+						}
 					}
 
-					ev, err := secretPropertyValueFromPlaintext(plaintext)
-					if err != nil {
-						return resource.PropertyValue{}, err
-					}
-					prop := resource.MakeSecret(ev)
-					// If the decrypter is a cachingCrypter, insert the plain- and ciphertext into the cache with the
-					// new *resource.Secret as the key.
-					if cachingCrypter, ok := dec.(*cachingSecretsManager); ok {
-						if !cipherOk {
-							encryptedText, err := cachingCrypter.EncryptValue(ctx, plaintext)
-							if err != nil {
-								return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
-							}
-							ciphertext = encryptedText
-						}
-						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
-					}
 					return prop, nil
 				case resource.ResourceReferenceSig:
 					var packageVersion string
