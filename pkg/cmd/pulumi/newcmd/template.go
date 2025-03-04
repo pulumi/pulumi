@@ -25,11 +25,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 const (
@@ -37,10 +36,10 @@ const (
 )
 
 // ChooseTemplate will prompt the user to choose amongst the available templates.
-func ChooseTemplate(templates []workspace.Template, opts display.Options) (workspace.Template, error) {
+func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !opts.IsInteractive {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
+		return cmdTemplates.Template{}, errors.New(chooseTemplateErr)
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -58,7 +57,7 @@ func ChooseTemplate(templates []workspace.Template, opts display.Options) (works
 		Options:  options,
 		PageSize: pageSize,
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
+		return cmdTemplates.Template{}, errors.New(chooseTemplateErr)
 	}
 
 	return optionToTemplateMap[option], nil
@@ -66,31 +65,32 @@ func ChooseTemplate(templates []workspace.Template, opts display.Options) (works
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
+func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, map[string]cmdTemplates.Template) {
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
-		if len(template.Name) > maxNameLength {
-			maxNameLength = len(template.Name)
+		if len(template.Name()) > maxNameLength {
+			maxNameLength = len(template.Name())
 		}
 	}
 
 	// Build the array and map.
 	var options []string
 	var brokenOptions []string
-	nameToTemplateMap := make(map[string]workspace.Template)
+	nameToTemplateMap := make(map[string]cmdTemplates.Template)
 	for _, template := range templates {
+		projectDescription := template.ProjectDescription()
 		// If template is broken, indicate it in the project description.
-		if template.Errored() {
-			template.ProjectDescription = BrokenTemplateDescription
+		if template.Error() != nil {
+			projectDescription = BrokenTemplateDescription
 		}
 
 		// Create the option string that combines the name, padding, and description.
-		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
+		desc := pkgWorkspace.ValueOrDefaultProjectDescription("", projectDescription, template.Description())
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name(), desc)
 
 		nameToTemplateMap[option] = template
-		if template.Errored() {
+		if template.Error() != nil {
 			brokenOptions = append(brokenOptions, option)
 		} else {
 			options = append(options, option)
