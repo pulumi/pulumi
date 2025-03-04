@@ -273,16 +273,16 @@ func (c prefixCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) (
 	return DefaultBatchDecrypt(ctx, c, ciphertexts)
 }
 
-// DefaultBulkDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted sequentially. The returned
-// list of ciphertexts is in the same order as the input list. This should only be used by implementers of Decrypter
-// to implement their BulkDecrypt method in cases where they can't do more efficient than just individual operations.
-func DefaultBatchEncrypt(ctx context.Context, encrypter Encrypter, secrets []string) ([]string, error) {
-	if len(secrets) == 0 {
+// DefaultBatchEncrypt encrypts a list of plaintexts. Each plaintext is encrypted sequentially. The returned
+// list of ciphertexts is in the same order as the input list. This should only be used by implementers of Encrypter
+// to implement their BatchEncrypt method in cases where they can't do more efficient than just individual operations.
+func DefaultBatchEncrypt(ctx context.Context, encrypter Encrypter, plaintexts []string) ([]string, error) {
+	if len(plaintexts) == 0 {
 		return nil, nil
 	}
 
-	encrypted := make([]string, len(secrets))
-	for i, secret := range secrets {
+	encrypted := make([]string, len(plaintexts))
+	for i, secret := range plaintexts {
 		enc, err := encrypter.EncryptValue(ctx, secret)
 		if err != nil {
 			return nil, err

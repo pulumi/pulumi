@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -50,11 +51,13 @@ func newServiceCrypter(client *client.Client, stack client.StackIdentifier) conf
 		supportsBatchEncryption: promise.Run(func() (bool, error) {
 			capabilitiesResponse, err := client.GetCapabilities(context.Background())
 			if err != nil {
-				return false, err
+				logging.V(3).Infof("error requesting service capabilities: %v", err)
+				return false, nil
 			}
 			capabilities, err := capabilitiesResponse.Parse()
 			if err != nil {
-				return false, err
+				logging.V(3).Infof("error parsing service capabilities: %v", err)
+				return false, nil
 			}
 			return capabilities.BatchEncryption, nil
 		}),
