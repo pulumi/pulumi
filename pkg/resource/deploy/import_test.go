@@ -101,7 +101,7 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					providers: providers.NewRegistry(&mockHost{
+					providers: providers.NewRegistry(&plugin.MockHost{
 						ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 							assert.Equal(t, "foo", descriptor.Name)
 							assert.Equal(t, "1.0.0", descriptor.Version.String())
@@ -249,7 +249,7 @@ func TestImporterParameterizedProvider(t *testing.T) {
 				Name: tokens.MustParseStackName("stack-name"),
 			},
 			source: &nullSource{},
-			providers: providers.NewRegistry(&mockHost{
+			providers: providers.NewRegistry(&plugin.MockHost{
 				ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 					assert.Equal(t, "foo", descriptor.Name)
 					assert.Equal(t, "1.0.0", descriptor.Version.String())
