@@ -163,7 +163,7 @@ class PackageSpec:
 
     name: str
     displayName: str
-    version: str
+    version: Optional[str]
     resources: dict[str, Resource]
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
