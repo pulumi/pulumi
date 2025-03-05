@@ -1628,11 +1628,6 @@ export interface RenameOptions extends GlobalOpts {
     onOutput?: (out: string) => void;
 
     /**
-     * A callback to be executed when the operation yields an event.
-     */
-    onEvent?: (event: EngineEvent) => void;
-
-    /**
      * Include secrets in the UpSummary.
      */
     showSecrets?: boolean;
