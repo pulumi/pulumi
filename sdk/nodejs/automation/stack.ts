@@ -588,6 +588,30 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Rename an existing stack
+     */
+    async rename(options: RenameOptions): Promise<RenameResult> {
+        const args = ["stack", "rename", options.stackName];
+        args.push(...this.remoteArgs());
+
+        applyGlobalOpts(options, args);
+
+        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+
+        if (this.isRemote && options?.showSecrets) {
+            throw new Error("can't enable `showSecrets` for remote workspaces");
+        }
+
+        const summary = await this.info(!this.isRemote && options?.showSecrets);
+
+        return {
+            stdout: renameResult.stdout,
+            stderr: renameResult.stderr,
+            summary: summary!,
+        };
+    }
+
+    /**
      * Import resources into the stack
      *
      * @param options Options to specify resources and customize the behavior of the import.
@@ -1194,6 +1218,26 @@ export interface DestroyResult {
 }
 
 /**
+ * Output from renaming the Stack.
+ */
+export interface RenameResult {
+    /**
+     * The standard output from the rename.
+     */
+    stdout: string;
+
+    /**
+     * The standard error output from the rename.
+     */
+    stderr: string;
+
+    /**
+     * A summary of the rename.
+     */
+    summary: UpdateSummary;
+}
+
+/**
  * The output from performing an import operation.
  */
 export interface ImportResult {
@@ -1562,6 +1606,31 @@ export interface DestroyOptions extends GlobalOpts {
      * Remove the stack and its configuration after all resources in the stack have been deleted.
      */
     remove?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
+}
+
+/**
+ * Options controlling the behavior of a Stack.rename() operation.
+ */
+export interface RenameOptions extends GlobalOpts {
+    /**
+     * The new name for the stack.
+     */
+    stackName: string;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
+    onOutput?: (out: string) => void;
+
+    /**
+     * Include secrets in the UpSummary.
+     */
+    showSecrets?: boolean;
+
     /**
      * A signal to abort an ongoing operation.
      */
