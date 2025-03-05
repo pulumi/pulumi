@@ -800,7 +800,9 @@ describe("LocalWorkspace", () => {
         let returned = "";
         const renameRes = await stack.rename({
             stackName: stackRenamed,
-            onOutput: (e) => (returned += e),
+            onOutput: (e) => {
+                returned += e;
+            },
         });
 
         const after = (await stack.workspace.listStacks()).find((x) => x.name.startsWith(shortName));
