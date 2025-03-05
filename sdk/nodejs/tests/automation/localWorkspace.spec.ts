@@ -781,7 +781,7 @@ describe("LocalWorkspace", () => {
             return {};
         };
 
-        const suffix =  `int_test${getTestSuffix()}`;
+        const suffix = `int_test${getTestSuffix()}`;
 
         const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", suffix);
         const shortName = getTestOrg() + "/" + suffix;
@@ -797,17 +797,15 @@ describe("LocalWorkspace", () => {
         await stack.up({ userAgent });
         stack.workspace.selectStack(stackName);
 
-        let output = "";
+        let returned = "";
         const renameRes = await stack.rename({
-          stackName: stackRenamed,
-          onOutput: e => output += e,
+            stackName: stackRenamed,
+            onOutput: (e) => (returned += e),
         });
 
-        const after =
-          (await stack.workspace.listStacks())
-            .find(x => x.name.startsWith(shortName));
+        const after = (await stack.workspace.listStacks()).find((x) => x.name.startsWith(shortName));
 
-        assert.strictEqual(output, `Renamed ${shortName} to ${shortRenamed}\n`);
+        assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
         assert.strictEqual(after?.name, shortRenamed);
 
         assert.strictEqual(renameRes.summary.kind, "rename");

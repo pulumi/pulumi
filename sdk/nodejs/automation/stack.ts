@@ -596,11 +596,10 @@ Event: ${line}\n${e.toString()}`);
 
         applyGlobalOpts(options, args);
 
-        let renameResult: CommandResult;
-        renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
 
         if (this.isRemote && options?.showSecrets) {
-          throw new Error("can't enable `showSecrets` for remote workspaces");
+            throw new Error("can't enable `showSecrets` for remote workspaces");
         }
 
         const summary = await this.info(!this.isRemote && options?.showSecrets);
