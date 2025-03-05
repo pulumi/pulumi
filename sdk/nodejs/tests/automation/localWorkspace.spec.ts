@@ -807,14 +807,12 @@ describe("LocalWorkspace", () => {
           onOutput: e => output += e
         });
 
-        await stack.workspace.refreshConfig(stackRenamed)
-
         const after =
           (await stack.workspace.listStacks())
             .find(x => x.name.startsWith(shortName));
 
         assert.strictEqual(output, `Renamed ${shortName} to ${shortRenamed}\n`);
-        assert.equal(after.name, shortRenamed)
+        assert.strictEqual(after.name, shortRenamed)
 
         assert.strictEqual(renameRes.summary.kind, "rename");
         assert.strictEqual(renameRes.summary.result, "succeeded");
