@@ -1,8 +1,23 @@
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package display
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -22,7 +37,7 @@ var atlasBaseURLs = map[string]string{
 }
 
 const (
-	atlasApiPath = "/pulumi-ai/atlas/api/ai/chat/preview"
+	atlasAPIPath = "/pulumi-ai/atlas/api/ai/chat/preview"
 
 	// Environment variable to override the Atlas base URL for local development
 	debugAtlasBaseVar = "DEBUG_PULUMI_ATLAS_BASE"
@@ -46,8 +61,8 @@ type AtlasUpdateSummaryResponse struct {
 }
 
 type CloudContext struct {
-	OrgId string `json:"orgId"`
-	Url   string `json:"url"`
+	OrgID string `json:"orgId"`
+	URL   string `json:"url"`
 }
 
 type ClientState struct {
@@ -90,14 +105,14 @@ func getCurrentCloudURL() (string, error) {
 }
 
 // getSummaryToken retrieves the authentication token for the Atlas API
-func getSummaryToken(cloudUrl string) (string, error) {
-	account, err := workspace.GetAccount(cloudUrl)
+func getSummaryToken(cloudURL string) (string, error) {
+	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
 		return "", fmt.Errorf("getting account: %w", err)
 	}
 
 	if account.AccessToken == "" {
-		return "", fmt.Errorf("no access token found for %s", cloudUrl)
+		return "", fmt.Errorf("no access token found for %s", cloudURL)
 	}
 
 	return account.AccessToken, nil
@@ -116,8 +131,8 @@ func createAtlasRequest(content string, orgID string) AtlasUpdateSummaryRequest 
 		State: State{
 			Client: ClientState{
 				CloudContext: CloudContext{
-					OrgId: orgID,
-					Url:   "https://app.pulumi.com",
+					OrgID: orgID,
+					URL:   "https://app.pulumi.com",
 				},
 			},
 		},
@@ -131,22 +146,22 @@ func createAtlasRequest(content string, orgID string) AtlasUpdateSummaryRequest 
 }
 
 // getAtlasEndpoint returns the configured Atlas endpoint, allowing override via environment variable
-func getAtlasEndpoint(cloudUrl string) string {
-	base := atlasBaseURLs[cloudUrl]
+func getAtlasEndpoint(cloudURL string) string {
+	base := atlasBaseURLs[cloudURL]
 	if debugBase := os.Getenv(debugAtlasBaseVar); debugBase != "" {
 		base = debugBase
 	}
-	return base + atlasApiPath
+	return base + atlasAPIPath
 }
 
 // summarizeInternal handles the actual summarization logic and returns proper errors
 func summarizeInternal(lines []string, orgID string) (string, error) {
-	cloudUrl, err := getCurrentCloudURL()
+	cloudURL, err := getCurrentCloudURL()
 	if err != nil {
 		return "", fmt.Errorf("getting cloud URL: %w", err)
 	}
 
-	token, err := getSummaryToken(cloudUrl)
+	token, err := getSummaryToken(cloudURL)
 	if err != nil {
 		return "", fmt.Errorf("getting authentication token: %w", err)
 	}
@@ -161,14 +176,14 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", getAtlasEndpoint(cloudUrl), bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", getAtlasEndpoint(cloudURL), bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
 
 	req.Header.Set("X-Pulumi-Origin", "app.pulumi.com")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+	req.Header.Set("Authorization", "token "+token)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -194,13 +209,13 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 				return "", fmt.Errorf("parsing summary content: %w", err)
 			}
 			if content.Summary == "" {
-				return "", fmt.Errorf("no summary generated")
+				return "", errors.New("no summary generated")
 			}
 			return content.Summary, nil
 		}
 	}
 
-	return "", fmt.Errorf("no summarizeUpdate message found in response")
+	return "", errors.New("no summarizeUpdate message found in response")
 }
 
 // addPrefixToLines adds the given prefix to each line of the input text

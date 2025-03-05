@@ -740,8 +740,9 @@ func (display *ProgressDisplay) printDiagnostics() {
 	}
 
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
-		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like additional help with these diagnostics?")
+		display.println(
+			"    " + colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset +
+				" Would you like additional help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 		display.println("")
