@@ -16,11 +16,7 @@
 // github.com/sdk/v2/go/x/auto Stack.Rename(...optrename.Option)
 package optrename
 
-import (
-	"io"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
-)
+import "io"
 
 // The new name of the stack.
 func StackName(message string) Option {
@@ -33,13 +29,6 @@ func StackName(message string) Option {
 func ErrorProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ErrorProgressStreams = writers
-	})
-}
-
-// EventStreams allows specifying one or more channels to receive the Pulumi event stream
-func EventStreams(channels ...chan<- events.EngineEvent) Option {
-	return optionFunc(func(opts *Options) {
-		opts.EventStreams = channels
 	})
 }
 
@@ -65,8 +54,6 @@ type Options struct {
 	ProgressStreams []io.Writer
 	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stderr
 	ErrorProgressStreams []io.Writer
-	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
-	EventStreams []chan<- events.EngineEvent
 	// Show config secrets when they appear.
 	ShowSecrets *bool
 }

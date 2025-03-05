@@ -868,16 +868,6 @@ func (s *Stack) Rename(ctx context.Context, opts ...optrename.Option) (RenameRes
 
 	args := renameOptsToCmd(renameOpts, s)
 
-	if len(renameOpts.EventStreams) > 0 {
-		eventChannels := renameOpts.EventStreams
-		t, err := tailLogs("rename", eventChannels)
-		if err != nil {
-			return res, fmt.Errorf("failed to tail logs: %w", err)
-		}
-		defer t.Close()
-		args = append(args, "--event-log", t.Filename)
-	}
-
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
 		renameOpts.ProgressStreams,      /* additionalOutputs */
