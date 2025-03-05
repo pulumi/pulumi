@@ -521,7 +521,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if pkg == "pulumi" {
 				continue
 			}
-			packageName := "pulumi_" + makeValidIdentifier(pkg)
+			var packageName string
 			if r.Schema != nil && r.Schema.PackageReference != nil {
 				pkg, err := r.Schema.PackageReference.Definition()
 				if err == nil {
@@ -529,6 +529,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 						packageName = pkgInfo.PackageName
 					}
 				}
+				if packageName == "" {
+					packageName = pyPack(pkg.Namespace, pkg.Name)
+				}
+			} else {
+				packageName = "pulumi_" + makeValidIdentifier(pkg)
 			}
 			importSet[packageName] = Import{ImportAs: true, Pkg: makeValidIdentifier(pkg)}
 		}
