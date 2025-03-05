@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"runtime"
 	"sort"
@@ -725,7 +726,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
 		if display.failed && !display.isPreview {
 			startTime := time.Now()
-			summary := display.GetDiagnosticsSummary()
+			summary := display.GetDiagnosticsSummary(display.proj)
 			// TODO: clear accumulated lines
 			elapsedMs := time.Since(startTime).Milliseconds()
 			display.println("    " + colors.SpecCreateReplacement +
@@ -749,14 +750,44 @@ func (display *ProgressDisplay) printDiagnostics() {
 	}
 }
 
-func (display *ProgressDisplay) GetDiagnosticsSummary() string {
+// extractOrgFromPermalink extracts the organization name from a Pulumi permalink URL.
+// For example, given "https://app.pulumi.com/myorg/project/stack/updates/1",
+// it returns "myorg". Returns empty string if the permalink is invalid or empty.
+func extractOrgFromPermalink(permalink string) string {
+	if permalink == "" {
+		return ""
+	}
+
+	// Parse the URL
+	u, err := url.Parse(permalink)
+	if err != nil {
+		return ""
+	}
+
+	// Split the path into segments and ensure we have enough segments
+	segments := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+	if len(segments) < 1 {
+		return ""
+	}
+
+	// The first segment after the domain is the org name
+	return segments[0]
+}
+
+func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName) string {
 	// Guard against nil or empty accumulated lines
 	if len(display.accumulatedLines) == 0 {
 		return ""
 	}
 
-	return summarize(display.accumulatedLines, "    ")
-	// return "Update failed because of invalid Protocol value"
+	// Extract org from permalink for now as a hack
+	orgID := extractOrgFromPermalink(display.permalink)
+	if orgID == "" {
+		fmt.Fprintf(os.Stderr, "No org ID found in permalink: %s\n", display.permalink)
+		return ""
+	}
+
+	return summarize(orgID, display.accumulatedLines, "    ")
 }
 
 type policyPackSummary struct {

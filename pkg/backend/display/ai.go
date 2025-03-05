@@ -118,12 +118,6 @@ func getSummaryToken(cloudURL string) (string, error) {
 	return account.AccessToken, nil
 }
 
-// TODO(atlas): Replace with actual org ID from stack context
-// Using pulumi_local as temporary default for development
-func getOrgID() (string, error) {
-	return "pulumi_local", nil
-}
-
 // createAtlasRequest creates a new AtlasUpdateSummaryRequest with the given content and org ID
 func createAtlasRequest(content string, orgID string) AtlasUpdateSummaryRequest {
 	return AtlasUpdateSummaryRequest{
@@ -231,14 +225,8 @@ func addPrefixToLines(text, prefix string) string {
 }
 
 // summarize generates a summary of the update output
-func summarize(lines []string, outputPrefix string) string {
+func summarize(orgID string, lines []string, outputPrefix string) string {
 	if len(lines) == 0 {
-		return ""
-	}
-
-	orgID, err := getOrgID()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting org ID: %v\n", err)
 		return ""
 	}
 
