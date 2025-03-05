@@ -122,7 +122,7 @@ as examples of applying the above principles and tracking down issues:
 Pulumi has first-class support for secrets within state which are encrypted and
 decrypted via pluggable secret backends. Secrets are identified with the
 signature property ("4dabf18193072939515e22adb298388d") set to the value
-`1b47061264138c4ac30d75fd1eb44270`. A secret will then have either a
+`"1b47061264138c4ac30d75fd1eb44270"`. A secret will then have either a
 `ciphertext` or `plaintext` property alongside the signature. These are either
 an encrypted or unencrypted JSON serialized string, respectively, of the property
 within the secret. Any nested secrets will only have a `plaintext` field as the
