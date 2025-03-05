@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 
@@ -156,6 +157,7 @@ type SecretCache interface {
 }
 
 type secretCache struct {
+	disableCache bool
 	bySecret     sync.Map
 	byCiphertext sync.Map
 }
@@ -171,6 +173,7 @@ type secretCacheEntry struct {
 // which will have their own ciphertexts which should not be shared.
 //
 // All methods are thread-safe and can be called concurrently by multiple goroutines.
+// The cache can be disabled by setting the environment variable PULUMI_DISABLE_SECRET_CACHE to "true".
 //
 //	cache := NewSecretCache()
 //	secret := &resource.Secret{}
@@ -178,12 +181,19 @@ type secretCacheEntry struct {
 //	plaintext, ok := cache.TryDecrypt("ciphertext") // "plaintext", true
 //	ciphertext, ok := cache.TryEncrypt(secret, "plaintext") // "ciphertext", true
 func NewSecretCache() SecretCache {
-	return &secretCache{}
+	// If the environment variable PULUMI_DISABLE_SECRET_CACHE is set to "true", the secret cache will be disabled and
+	// no entries will be stored. This is a short-term escape hatch in case there's unforeseen issues with expanded
+	// caching scopes and should be removable once we're confident that customers are not affected.
+	disableCache := os.Getenv("PULUMI_DISABLE_SECRET_CACHE") == "true"
+	return &secretCache{disableCache: disableCache}
 }
 
 // Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
 // This method is thread-safe and can be called concurrently by multiple goroutines.
 func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
+	if c.disableCache {
+		return
+	}
 	entry := secretCacheEntry{plaintext, ciphertext, secret}
 	c.bySecret.Store(secret, entry)
 	c.byCiphertext.Store(ciphertext, entry)
