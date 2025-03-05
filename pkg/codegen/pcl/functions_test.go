@@ -128,7 +128,7 @@ func TestTryWithCorrectArguments(t *testing.T) {
 	assert.Equal(t, expectedType, variableType, "the type is a plain union")
 }
 
-// Tests that the PCL `try` intrinsic function binds when correctly passed any non-zero number of arguments.
+// Tests that the PCL `try` intrinsic function binds when correctly passed an output based argument.
 func TestTryWithCorrectOutputArguments(t *testing.T) {
 	t.Parallel()
 
@@ -154,7 +154,7 @@ func TestTryWithCorrectOutputArguments(t *testing.T) {
 	assert.Equal(t, expectedType, variableType, "the type is an output union")
 }
 
-// Tests that the PCL `try` intrinsic function binds when correctly passed any non-zero number of arguments.
+// Tests that the PCL `try` intrinsic function binds when correctly passed a dynamically typed arguments.
 func TestTryWithCorrectDynamicArguments(t *testing.T) {
 	t.Parallel()
 
