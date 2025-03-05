@@ -721,8 +721,8 @@ func (display *ProgressDisplay) printDiagnostics() {
 	}
 
 	// Print a link to Copilot to explain the failure.
-	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
+	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
 		if display.failed && !display.isPreview {
 			startTime := time.Now()
 			summary := display.GetDiagnosticsSummary()
@@ -737,7 +737,9 @@ func (display *ProgressDisplay) printDiagnostics() {
 			display.println(colors.SpecCreateReplacement + summary)
 			display.println("")
 		}
+	}
 
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like additional help with these diagnostics?")
 		display.println("    " +

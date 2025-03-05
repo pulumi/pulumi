@@ -599,6 +599,10 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
+			// Copilot summary will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
+			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_SUMMARY=%v", env.SuppressCopilotSummary.Value())
+			opts.Display.ShowCopilotSummary = !env.SuppressCopilotSummary.Value()
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
 					ctx,

@@ -44,6 +44,7 @@ func defaultOpts() Options {
 		ShowReads:            true,
 		DeterministicOutput:  true,
 		ShowLinkToCopilot:    false,
+		ShowCopilotSummary:   false,
 		RenderOnDirty:        true,
 	}
 }

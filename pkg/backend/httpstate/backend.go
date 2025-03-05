@@ -1317,8 +1317,15 @@ func (b *cloudBackend) createAndStartUpdate(
 			continuationString = " but the environment variable PULUMI_SUPPRESS_COPILOT_LINK" +
 				" suppresses the link to Copilot in diagnostics"
 		}
+		if env.SuppressCopilotSummary.Value() {
+			// Copilot is enabled in user's org, but the environment variable to suppress the Copilot summary is set.
+			op.Opts.Display.ShowCopilotSummary = false
+			continuationString = " but the environment variable PULUMI_SUPPRESS_COPILOT_SUMMARY" +
+				" suppresses the Copilot summary in diagnostics"
+		}
 	} else {
 		op.Opts.Display.ShowLinkToCopilot = false
+		op.Opts.Display.ShowCopilotSummary = false
 		copilotEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",

@@ -99,6 +99,9 @@ var BackendURL = env.String("BACKEND_URL",
 var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
 
+var SuppressCopilotSummary = env.Bool("SUPPRESS_COPILOT_SUMMARY",
+	"Suppress showing the Copilot summary in the CLI output.")
+
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
 	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
 
