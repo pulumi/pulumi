@@ -1380,6 +1380,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			News:          s.new.Inputs,
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
+			Organization:  string(s.deployment.target.Organization),
 		})
 		if err != nil {
 			return rst, nil, err
@@ -1428,6 +1429,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		News:          s.new.Inputs,
 		AllowUnknowns: s.deployment.opts.DryRun,
 		RandomSeed:    s.randomSeed,
+		Organization:  string(s.deployment.target.Organization),
 	})
 	if err != nil {
 		return rst, nil, err

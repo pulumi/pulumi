@@ -707,6 +707,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
+				Organization:  string(sg.deployment.target.Organization),
 			})
 		} else {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
@@ -716,6 +717,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
+				Organization:  string(sg.deployment.target.Organization),
 			})
 		}
 		inputs = resp.Properties
@@ -1238,6 +1240,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
+					Organization:  string(sg.deployment.target.Organization),
 				})
 				failures := resp.Failures
 				inputs := resp.Properties
