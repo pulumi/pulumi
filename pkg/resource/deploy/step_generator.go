@@ -44,6 +44,12 @@ import (
 type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
 
+	// true if this is a refresh generation
+	isRefresh bool
+
+	// true if this is a destroy generation
+	isDestroy bool
+
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
 	// report them all at once.
@@ -56,6 +62,8 @@ type stepGenerator struct {
 	updates  map[resource.URN]bool // set of URNs updated in this deployment
 	creates  map[resource.URN]bool // set of URNs created in this deployment
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+
+	refreshes map[resource.URN]Step // set of URNs that were refreshed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target
@@ -590,6 +598,33 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		for _, aliasURN := range aliasUrns {
 			sg.providers[aliasURN] = new
 		}
+	}
+
+	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
+	// custom non-provider resources.
+	if sg.isRefresh && goal.Custom && !providers.IsProviderType(goal.Type) {
+		// Custom resources that aren't in state just have to be skipped.
+		if !hasOld {
+			sg.sames[urn] = true
+			sg.skippedCreates[urn] = true
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+		}
+		// Else do a refresh step
+		step := NewRefreshStep(sg.deployment, event, old)
+		sg.refreshes[urn] = step
+		return []Step{step}, nil
+	}
+	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for
+	// custom non-provider resources.
+	if sg.isDestroy && goal.Custom && !providers.IsProviderType(goal.Type) {
+		sg.sames[urn] = true
+		// Custom resources that aren't in state just have to be skipped creates.
+		if !hasOld {
+			sg.skippedCreates[urn] = true
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+		}
+		// Others are just sames.
+		return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
 	}
 
 	// Fetch the provider for this resource.
@@ -1428,8 +1463,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
-			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
-				!sg.reads[res.URN] && !aliased {
+			} else if _, aliased := sg.aliased[res.URN]; sg.isDestroy || (!sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
+				!sg.reads[res.URN] && !aliased) {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
@@ -2273,9 +2308,11 @@ func (sg *stepGenerator) hasGeneratedStep(urn resource.URN) bool {
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
-func newStepGenerator(deployment *Deployment) *stepGenerator {
+func newStepGenerator(deployment *Deployment, isRefresh bool, isDestroy bool) *stepGenerator {
 	return &stepGenerator{
 		deployment:           deployment,
+		isRefresh:            isRefresh,
+		isDestroy:            isDestroy,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
@@ -2283,6 +2320,7 @@ func newStepGenerator(deployment *Deployment) *stepGenerator {
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
+		refreshes:            make(map[resource.URN]Step),
 		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
