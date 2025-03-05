@@ -1,0 +1,6 @@
+name: l2-resource-simple-component
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
