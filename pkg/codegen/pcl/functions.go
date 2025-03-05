@@ -435,6 +435,31 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}}
 				}
 
+				// Return a type that is a union of all argument types.
+				argTypes := make([]model.Type, len(args))
+				for i, arg := range args {
+					argTypes[i] = arg.Type()
+				}
+				returnType, _ := model.UnifyTypes(argTypes...)
+				// If this results in a union of a dynamic type and another type, we should just return output dynamic.
+				var containsDynamic func(t model.Type) bool
+				containsDynamic = func(t model.Type) bool {
+					if u, ok := t.(*model.UnionType); ok {
+						for _, e := range u.ElementTypes {
+							if containsDynamic(e) {
+								return true
+							}
+						}
+					}
+					if o, ok := t.(*model.OutputType); ok {
+						return containsDynamic(o.ElementType)
+					}
+					return t == model.DynamicType
+				}
+				if containsDynamic(returnType) {
+					returnType = model.NewOutputType(model.DynamicType)
+				}
+
 				parameters := make([]model.Parameter, len(args))
 				for i, arg := range args {
 					parameters[i] = model.Parameter{
@@ -443,11 +468,9 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}
 				}
 
-				// TODO[#18555] perhaps the return type should be an OutputType so
-				// apply can be called on it (since it may be an output).
 				sig := model.StaticFunctionSignature{
 					Parameters: parameters,
-					ReturnType: model.NewOutputType(model.DynamicType),
+					ReturnType: returnType,
 				}
 
 				return sig, diagnostics

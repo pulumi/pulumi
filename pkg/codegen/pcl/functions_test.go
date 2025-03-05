@@ -15,12 +15,14 @@
 package pcl_test
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestSingleOrNoneErrorsWithoutArguments(t *testing.T) {
@@ -113,6 +115,69 @@ func TestTryWithCorrectArguments(t *testing.T) {
 	// Assert.
 	assert.NotNil(t, program, "The program binds")
 	assert.NoError(t, err)
+
+	// Assert that the type of the variable is a plain number.
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
+	assert.True(t, ok, "first node is a local variable variable")
+	variableType := localVariable.Type()
+	num := func(i int) *model.ConstType {
+		return model.NewConstType(model.NumberType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
+	}
+	expectedType := model.NewUnionType(num(1), num(2), num(3))
+	assert.Equal(t, expectedType, variableType, "the type is a plain union")
+}
+
+// Tests that the PCL `try` intrinsic function binds when correctly passed any non-zero number of arguments.
+func TestTryWithCorrectOutputArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := "value = try(1, 2, secret(3))"
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
+
+	// Assert that the type of the variable is an output number.
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	localVariable, ok := program.Nodes[0].(*pcl.LocalVariable)
+	assert.True(t, ok, "first node is a local variable variable")
+	variableType := localVariable.Type()
+	num := func(i int) *model.ConstType {
+		return model.NewConstType(model.NumberType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
+	}
+	expectedType := model.NewOutputType(model.NewUnionType(num(1), num(2), num(3)))
+	assert.Equal(t, expectedType, variableType, "the type is an output union")
+}
+
+// Tests that the PCL `try` intrinsic function binds when correctly passed any non-zero number of arguments.
+func TestTryWithCorrectDynamicArguments(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	source := `
+	config "obj" {}
+	value = try(1, obj)
+	`
+
+	// Act.
+	program, _, err := ParseAndBindProgram(t, source, "program.pp")
+
+	// Assert.
+	assert.NotNil(t, program, "The program binds")
+	assert.NoError(t, err)
+
+	// Assert that the type of the variable is a plain number.
+	assert.Equal(t, len(program.Nodes), 2, "there are two nodes")
+	localVariable, ok := program.Nodes[1].(*pcl.LocalVariable)
+	assert.True(t, ok, "second node is a local variable variable")
+	variableType := localVariable.Type()
+	expectedType := model.NewOutputType(model.DynamicType)
+	assert.Equal(t, expectedType, variableType, "the type is a dynamic output")
 }
 
 // Tests that the PCL `can` intrinsic function refuses to bind when passed no arguments.
