@@ -338,6 +338,21 @@ func TestSecretCache(t *testing.T) {
 		assert.True(t, decrypted, "was decrypted")
 		assert.Equal(t, "plaintext", plaintext)
 	})
+
+	t.Run("disable cache", func(t *testing.T) {
+		t.Parallel()
+		cache := secretCache{disableCache: true}
+		secret := &resource.Secret{}
+
+		cache.Write("plaintext", "ciphertext", secret)
+		ciphertext, encrypted := cache.TryEncrypt(secret, "plaintext")
+		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+
+		assert.False(t, encrypted, "was encrypted")
+		assert.Equal(t, "", ciphertext, "ciphertext value")
+		assert.False(t, decrypted, "was decrypted")
+		assert.Equal(t, "", plaintext, "plaintext value")
+	})
 }
 
 func TestBatchEncrypter(t *testing.T) {
