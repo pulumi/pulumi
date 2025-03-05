@@ -600,15 +600,13 @@ class Stack:
         self,
         stack_name: str,
         on_output: Optional[OnOutput] = None,
-        on_event: Optional[OnEvent] = None,
-        show_secrets: bool = True,
+        show_secrets: bool = False,
     ) -> RenameResult:
         """
         Renames the current stack.
 
         :param stack_name: The new name for the stack.
         :param on_output: A function to process the stdout stream.
-        :param on_event: A function to process structured events from the Pulumi event stream.
         :param show_secrets: Include config secrets in the RefreshResult summary.
         :returns: RenameResult
         """
@@ -617,24 +615,11 @@ class Stack:
         args.extend(extra_args)
 
         args.extend(self._remote_args())
+        rename_result = self._run_pulumi_cmd_sync(args, on_output)
 
-        log_watcher_thread = None
-        temp_dir = None
-        if on_event:
-            log_file, temp_dir = _create_log_file("refresh")
-            args.extend(["--event-log", log_file])
-            log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event)
-            )
-            log_watcher_thread.start()
+        if self._remote and show_secrets:
+            raise RuntimeError("can't enable `showSecrets` for remote workspaces")
 
-        try:
-            rename_result = self._run_pulumi_cmd_sync(args, on_output)
-        finally:
-            _cleanup(temp_dir, log_watcher_thread)
-
-        # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
-        # load the project file.
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
         return RenameResult(

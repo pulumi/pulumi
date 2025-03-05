@@ -216,6 +216,8 @@ class TestLocalWorkspace(unittest.TestCase):
 
         stack = Stack.create(stack_name, ws)
         stack.rename(stack_name + "_renamed")
+
+        # This will throw if the renamed stack doesn't exist.
         ws.remove_stack(stack_name + "_renamed")
 
     def test_config_env_functions(self):
