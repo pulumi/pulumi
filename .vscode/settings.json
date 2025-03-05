@@ -20,6 +20,7 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "markdownlint.config": {
-        "line-length": true
+        "line-length": true,
+        "blanks-around-headings": false,
     },
 }
