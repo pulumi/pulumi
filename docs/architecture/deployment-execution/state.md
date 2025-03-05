@@ -116,6 +116,54 @@ as examples of applying the above principles and tracking down issues:
 * [Better handle property dependencies and `deletedWith`](gh-issue:pulumi#16088)
 * [Rewrite `DeletedWith` properties when renaming stacks](gh-issue:pulumi#16216)
 
+(secrets-encryption)=
+## Secrets & encryption
+
+Pulumi has first-class support for secrets within state which are encrypted and
+decrypted via pluggable secret backends. Secrets are identified with the
+signature property ("4dabf18193072939515e22adb298388d") set to the value
+`"1b47061264138c4ac30d75fd1eb44270"`. A secret will then have either a
+`ciphertext` or `plaintext` property alongside the signature. These are either
+an encrypted or unencrypted JSON serialized string, respectively, of the property
+within the secret. Any nested secrets will only have a `plaintext` field as the
+outer secret's encryption already covers it.
+
+The process of encrypting and decrypting secrets is managed through crypters
+(`config.Encrypter` & `config.Decrypter`) (interface defined in
+`sdk/go/common/resource/config/crypt.go`). The most important crypters to be
+aware of are:
+
+* `serviceCrypter` in `pkg/secrets/service/manager.go` - performs all encryption
+   operations within Pulumi's cloud service.
+* `symmetricCrypter` - used for all passphrase & cloud backends (including AWS,
+   Azure, GCP & HashiVault). Created with key bytes to perform encryption tasks
+   locally.
+* `blindingCrypter` - returns `[secret]` for all encryption operations e.g. for
+   use in default CLI display
+* `nopCrypter` - returns the ciphertext as the plaintext - useful for operations
+   where we might not have access to the encryption key but can work without
+   modifying or fully deserializing the secrets.
+
+Crypters for use on stack state are typically created from a `secret.Manager`
+except in special circumstances where a blinding or noop crypter might suffice.
+There are three production secret managers:
+
+1. `serviceSecretsManager` for providing `serviceCrypter` instances for
+   interacting with Pulumi's cloud service.
+2. "Cloud Secrets Manager" which uses `gocloud.dev/secrets` to construct
+   `symmetricCrypter` instances from popular cloud platforms.
+3. `localSecretsManager` (in the `passphrase` module) to construct
+   `symmetricCrypter` instances from a simple configured passphrase.
+
+Secret managers are constructed from a `secrets.Provider` using the `OfType`
+method (as defined in `pkg/secrets/provider.go`). This is almost always the
+`DefaultSecretsProvider` except for when moving state, when we use the
+`NamedStackSecretsProvider`. The `OfType` method is only called at the point we
+first deserialize the stack state, then the returned secrets manager is included
+within the `deploy.Snapshot` object. Both implementations of the
+`secrets.Provider` type wrap the underlying secrets manager implementation in a
+`CachingSecretsManager`.
+
 [^sie-p1]:
     Snapshot integrity issues are generally "P1" issues, meaning that they are
     picked up as soon as possible in the development process.
