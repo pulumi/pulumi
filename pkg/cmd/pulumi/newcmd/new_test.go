@@ -20,6 +20,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -252,6 +255,9 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
+		},
 	})
 
 	args := newArgs{
@@ -275,6 +281,9 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
@@ -306,6 +315,9 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
@@ -402,6 +414,9 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
+		},
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "", nil, nil, nil
 		},
 	})
 
@@ -744,14 +759,14 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			chdir(t, tempdir)
 			uniqueProjectName := filepath.Base(tempdir) + "test"
 
-			chooseTemplateMock := func(templates []workspace.Template, opts display.Options,
-			) (workspace.Template, error) {
+			chooseTemplateMock := func(templates []cmdTemplates.Template, opts display.Options,
+			) (cmdTemplates.Template, error) {
 				for _, template := range templates {
-					if template.Name == tt.prompted {
+					if template.Name() == tt.prompted {
 						return template, nil
 					}
 				}
-				return workspace.Template{}, errors.New("template not found")
+				return cmdTemplates.Template{}, errors.New("template not found")
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
@@ -817,4 +832,23 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	proj := loadProject(t, tempdir)
 	require.Equal(t, 1, len(proj.Runtime.Options()))
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
+}
+
+func TestPulumiNewWithOrgTemplates(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		default:
+			t.Logf("Unknown path %q", req.URL.Path)
+			rw.WriteHeader(404)
+			return
+		}
+	}))
+	t.Cleanup(s.Close)
+
+	t.Setenv("PULUMI_BACKEND_URL", s.URL)
+
+	newCmd := NewNewCmd()
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
 }
