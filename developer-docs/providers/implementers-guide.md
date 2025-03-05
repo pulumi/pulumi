@@ -641,10 +641,10 @@ CLI cooperates with the provider to perform these steps for each Custom resource
    confirmation. Once the user confirms the operation, the candidate state is written as the actual state to the state
    store.
 
-For a concrete example, suppose we have an AWS S3 bucket with tagged "a" that has drifted to have tag "b" in the cloud.
+For a concrete example, suppose we have an AWS S3 bucket with tag "a" that has drifted to have tag "b" in the cloud.
 
-Pulumi will call the provider `Read` method, passing "a" as old state. In the case of S3 buckets, tagged are modeled as
-both inputs and matching outputs, so the information is duplicated. Slightly simplifying, the call will look like this:
+Pulumi will call the provider `Read` method, passing "a" as old state. In the case of S3 buckets, tags are modeled as
+both inputs and (matching) outputs, duplicating the information. Slightly simplifying, the call will look like this:
 
 ```shell
 {
