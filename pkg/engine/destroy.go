@@ -78,7 +78,7 @@ func newDestroySource(
 	// no root directory/Pulumi.yaml (perhaps as the result of a command to which an explicit stack name has been passed),
 	// we'll populate an empty set of program plugins.
 
-	var programPackages PackageSet
+	programPackages := NewPackageSet()
 	if plugctx.Root != "" {
 		runtime := proj.Runtime.Name()
 		programInfo := plugin.NewProgramInfo(
@@ -91,10 +91,9 @@ func newDestroySource(
 		var err error
 		programPackages, err = gatherPackagesFromProgram(plugctx, runtime, programInfo)
 		if err != nil {
+			plugctx.Diag.Warningf(diag.Message("", "failed to gather packages from program: %v"), err)
 			programPackages = NewPackageSet()
 		}
-	} else {
-		programPackages = NewPackageSet()
 	}
 
 	snapshotPackages, err := gatherPackagesFromSnapshot(plugctx, target)

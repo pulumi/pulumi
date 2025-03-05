@@ -16,8 +16,10 @@ package plugin
 
 import (
 	"context"
+	"io"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -334,4 +336,140 @@ func (m *MockProvider) GetMappings(ctx context.Context, req GetMappingsRequest) 
 		return m.GetMappingsF(ctx, req)
 	}
 	return GetMappingsResponse{}, errors.New("GetMappings not implemented")
+}
+
+type MockLanguageRuntime struct {
+	CloseF                  func() error
+	GetRequiredPackagesF    func(info ProgramInfo) ([]workspace.PackageDescriptor, error)
+	RunF                    func(info RunInfo) (string, bool, error)
+	GetPluginInfoF          func() (workspace.PluginInfo, error)
+	InstallDependenciesF    func(options InstallDependenciesRequest) (io.Reader, io.Reader, <-chan error, error)
+	RuntimeOptionsPromptsF  func(info ProgramInfo) ([]RuntimeOptionPrompt, error)
+	AboutF                  func(info ProgramInfo) (AboutInfo, error)
+	GetProgramDependenciesF func(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
+	RunPluginF              func(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
+	PackF                   func(packageDirectory string, destinationDirectory string) (string, error)
+
+	GenerateProgramF func(
+		program map[string]string, loaderTarget string,
+	) (map[string][]byte, hcl.Diagnostics, error)
+	GenerateProjectF func(
+		sourceDirectory, targetDirectory, project string,
+		strict bool, loaderTarget string, localDependencies map[string]string,
+	) (hcl.Diagnostics, error)
+	GeneratePackageF func(
+		directory string, schema string, extraFiles map[string][]byte,
+		loaderTarget string, localDependencies map[string]string, local bool,
+	) (hcl.Diagnostics, error)
+}
+
+var _ LanguageRuntime = (*MockLanguageRuntime)(nil)
+
+func (m *MockLanguageRuntime) Close() error {
+	if m.CloseF != nil {
+		return m.CloseF()
+	}
+	return errors.New("Close not implemented")
+}
+
+func (m *MockLanguageRuntime) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error) {
+	if m.GetRequiredPackagesF != nil {
+		return m.GetRequiredPackagesF(info)
+	}
+	return []workspace.PackageDescriptor{}, errors.New("GetRequiredPackages not implemented")
+}
+
+func (m *MockLanguageRuntime) Run(info RunInfo) (string, bool, error) {
+	if m.RunF != nil {
+		return m.RunF(info)
+	}
+	return "", false, errors.New("Run not implemented")
+}
+
+func (m *MockLanguageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+	if m.GetPluginInfoF != nil {
+		return m.GetPluginInfoF()
+	}
+	return workspace.PluginInfo{}, errors.New("GetPluginInfo not implemented")
+}
+
+func (m *MockLanguageRuntime) InstallDependencies(
+	request InstallDependenciesRequest,
+) (io.Reader, io.Reader, <-chan error, error) {
+	if m.InstallDependenciesF != nil {
+		return m.InstallDependenciesF(request)
+	}
+	return nil, nil, nil, errors.New("InstallDependencies not implemented")
+}
+
+func (m *MockLanguageRuntime) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error) {
+	if m.RuntimeOptionsPromptsF != nil {
+		return m.RuntimeOptionsPromptsF(info)
+	}
+	return nil, errors.New("RuntimeOptionsPrompts not implemented")
+}
+
+func (m *MockLanguageRuntime) About(info ProgramInfo) (AboutInfo, error) {
+	if m.AboutF != nil {
+		return m.AboutF(info)
+	}
+	return AboutInfo{}, errors.New("About not implemented")
+}
+
+func (m *MockLanguageRuntime) GetProgramDependencies(
+	info ProgramInfo, transitiveDependencies bool,
+) ([]DependencyInfo, error) {
+	if m.GetProgramDependenciesF != nil {
+		return m.GetProgramDependenciesF(info, transitiveDependencies)
+	}
+	return nil, errors.New("GetProgramDependencies not implemented")
+}
+
+func (m *MockLanguageRuntime) RunPlugin(
+	info RunPluginInfo,
+) (io.Reader, io.Reader, context.CancelFunc, error) {
+	if m.RunPluginF != nil {
+		return m.RunPluginF(info)
+	}
+	return nil, nil, nil, errors.New("RunPlugin not implemented")
+}
+
+func (m *MockLanguageRuntime) GenerateProject(
+	sourceDirectory, targetDirectory, project string,
+	strict bool, loaderTarget string, localDependencies map[string]string,
+) (hcl.Diagnostics, error) {
+	if m.GenerateProjectF != nil {
+		return m.GenerateProjectF(
+			sourceDirectory, targetDirectory, project, strict, loaderTarget, localDependencies)
+	}
+	return nil, errors.New("GenerateProject not implemented")
+}
+
+func (m *MockLanguageRuntime) GeneratePackage(
+	directory string, schema string, extraFiles map[string][]byte,
+	loaderTarget string, localDependencies map[string]string,
+	local bool,
+) (hcl.Diagnostics, error) {
+	if m.GeneratePackageF != nil {
+		return m.GeneratePackageF(directory, schema, extraFiles, loaderTarget, localDependencies, local)
+	}
+	return nil, errors.New("GeneratePackage not implemented")
+}
+
+func (m *MockLanguageRuntime) GenerateProgram(
+	program map[string]string, loaderTarget string, strict bool,
+) (map[string][]byte, hcl.Diagnostics, error) {
+	if m.GenerateProgramF != nil {
+		return m.GenerateProgramF(program, loaderTarget)
+	}
+	return nil, nil, errors.New("GenerateProgram not implemented")
+}
+
+func (m *MockLanguageRuntime) Pack(
+	packageDirectory string, destinationDirectory string,
+) (string, error) {
+	if m.PackF != nil {
+		return m.PackF(packageDirectory, destinationDirectory)
+	}
+	return "", errors.New("Pack not implemented")
 }
