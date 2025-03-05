@@ -24,7 +24,7 @@ class Metadata:
 
     name: str
     """The name of the provider"""
-    version: str
+    version: Optional[str] = None
     """The version of the provider"""
     display_name: Optional[str] = None
     """The display name of the provider"""

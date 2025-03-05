@@ -299,6 +299,22 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	assert.Contains(t, args, "--config-file="+configFilePath)
 }
 
+func TestRefreshOptsDiff(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pDir := filepath.Join(".", "test", "testproj")
+
+	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
+	require.NoError(t, err)
+
+	argsUp := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
+	assert.Contains(t, argsUp, "--diff", argsUp)
+
+	argsPreview := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
+	assert.Contains(t, argsPreview, "--diff", argsUp)
+}
+
 func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	t.Parallel()
 

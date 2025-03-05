@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/install
+  description: Correctly marshal PluginSpec in GetRequiredPackages, so pulumi install can install git plugins

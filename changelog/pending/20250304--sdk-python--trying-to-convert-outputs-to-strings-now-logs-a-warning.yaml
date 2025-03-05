@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Log a warning when trying to convert outputs to strings now logs a warning

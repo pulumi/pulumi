@@ -1753,22 +1753,21 @@ global___ErrorResourceInitFailed = ErrorResourceInitFailed
 
 @typing_extensions.final
 class GetMappingRequest(google.protobuf.message.Message):
-    """GetMappingRequest allows providers to return ecosystem specific information to allow the provider to be
-    converted from a source markup to Pulumi. It's expected that provider bridges that target a given ecosystem
-    (e.g. Terraform, Kubernetes) would also publish a conversion plugin to convert markup from that ecosystem
-    to Pulumi, using the bridged providers.
-    """
+    """`GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     KEY_FIELD_NUMBER: builtins.int
     PROVIDER_FIELD_NUMBER: builtins.int
     key: builtins.str
-    """the conversion key for the mapping being requested."""
+    """The conversion key for the mapping being requested. This typically corresponds to the source language, such as
+    `terraform` in the case of mapping Terraform names to Pulumi names.
+    """
     provider: builtins.str
-    """the optional provider key for the mapping being requested, if this is empty the provider should assume this
-    request is from an old engine from before GetMappings and should return it's "primary" mapping. If this is set
-    then the `provider` field in GetMappingResponse should be the same.
+    """An optional *source provider key* for the mapping being requested. If this is empty, the provider should assume
+    that this request is from an old engine prior to the introduction of [](pulumirpc.ResourceProvider.GetMappings).
+    In these cases the request should be answered with the "primary" mapping. If this field is set, the `provider`
+    field in the corresponding [](pulumirpc.GetMappingResponse) should contain the same value.
     """
     def __init__(
         self,
@@ -1782,8 +1781,9 @@ global___GetMappingRequest = GetMappingRequest
 
 @typing_extensions.final
 class GetMappingResponse(google.protobuf.message.Message):
-    """GetMappingResponse returns convert plugin specific data for this provider. This will normally be human
-    readable JSON, but the engine doesn't mandate any form.
+    """`GetMappingResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMapping) call. The data
+    within a `GetMappingResponse` will normally be human-readable JSON (e.g. an object mapping names from the source to
+    Pulumi), but the engine doesn't mandate any specific format.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -1791,9 +1791,9 @@ class GetMappingResponse(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     DATA_FIELD_NUMBER: builtins.int
     provider: builtins.str
-    """the provider key this is mapping for. For example the Pulumi provider "terraform-template" would return "template" for this."""
+    """The *source provider key* that this mapping contains data for."""
     data: builtins.bytes
-    """the conversion plugin specific data."""
+    """Mapping data in a format specific to the conversion plugin/source language."""
     def __init__(
         self,
         *,
@@ -1806,15 +1806,15 @@ global___GetMappingResponse = GetMappingResponse
 
 @typing_extensions.final
 class GetMappingsRequest(google.protobuf.message.Message):
-    """GetMappingsRequest allows providers to return ecosystem specific information without having to send back large data
-    blobs for provider mappings that the engine doesn't then need.
-    """
+    """`GetMappingsRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMappings) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     KEY_FIELD_NUMBER: builtins.int
     key: builtins.str
-    """the conversion key for the mapping being requested."""
+    """The conversion key for the mapping being requested. This typically corresponds to the source language, such as
+    `terraform` in the case of mapping Terraform names to Pulumi names.
+    """
     def __init__(
         self,
         *,
@@ -1826,15 +1826,15 @@ global___GetMappingsRequest = GetMappingsRequest
 
 @typing_extensions.final
 class GetMappingsResponse(google.protobuf.message.Message):
-    """GetMappingsRequest returns a list of providers that this provider can provide mapping information for."""
+    """`GetMappingsResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMappings) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROVIDERS_FIELD_NUMBER: builtins.int
     @property
     def providers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """the provider keys this provider can supply mappings for. For example the Pulumi provider "terraform-template"
-        would return ["template"] for this.
+        """The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
+        `terraform-template` would return `["template"]` for this.
         """
     def __init__(
         self,

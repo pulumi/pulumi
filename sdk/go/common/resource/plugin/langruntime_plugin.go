@@ -296,14 +296,20 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 			}
 		}
 
+		source := info.Name
+		if strings.HasPrefix(info.Server, "git://") {
+			source = strings.TrimPrefix(info.Server, "git://")
+			info.Server = ""
+		}
+
+		pluginSpec, err := workspace.NewPluginSpec(
+			source, apitype.PluginKind(info.Kind), version, info.Server, info.Checksums)
+		if err != nil {
+			return nil, err
+		}
+
 		results = append(results, workspace.PackageDescriptor{
-			PluginSpec: workspace.PluginSpec{
-				Name:              info.Name,
-				Kind:              apitype.PluginKind(info.Kind),
-				Version:           version,
-				PluginDownloadURL: info.Server,
-				Checksums:         info.Checksums,
-			},
+			PluginSpec:       pluginSpec,
 			Parameterization: parameterization,
 		})
 	}
