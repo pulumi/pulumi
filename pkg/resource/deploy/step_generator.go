@@ -607,8 +607,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 	}
 
-	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for
-	// custom non-provider resources.
+	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom
+	// non-provider resources. This is because we don't want to actually create any cloud resources as part of
+	// the destroy, but its fine to just edit state and "create/update" providers and component resources.
 	if sg.mode == destroyMode {
 		if goal.Custom && !providers.IsProviderType(goal.Type) {
 			sg.sames[urn] = true

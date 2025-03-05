@@ -101,11 +101,6 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
 					op := e.Step.Op()
-					contract.Assertf(
-						op == deploy.OpDiscardReplaced || op == deploy.OpReadDiscard ||
-							op == deploy.OpDeleteReplaced || op == deploy.OpDelete,
-						"unexpected step.Op(): %q", op)
-
 					if op == deploy.OpDelete || op == deploy.OpReadDiscard {
 						deletes[old] = true
 					}
