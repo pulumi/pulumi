@@ -609,7 +609,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom
 	// non-provider resources. This is because we don't want to actually create any cloud resources as part of
-	// the destroy, but its fine to just edit state and "create/update" providers and component resources.
+	// the destroy, but we do want to "create/update" providers, construct component resources and it's fine
+	// to make the relevant state edits off the back of these.
 	if sg.mode == destroyMode {
 		if goal.Custom && !providers.IsProviderType(goal.Type) {
 			sg.sames[urn] = true
@@ -624,7 +625,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			new.Inputs = old.Inputs
 			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
 		}
-		// All other resources need to be tagged as 'toDestroy' for after we create/update them.
+		// All other resources need to be tagged as 'toDelete' for after we create/update them.
 		sg.toDelete = append(sg.toDelete, new)
 	}
 
@@ -1487,7 +1488,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 		}
 	}
 
-	// We also need to delete all the new resources that we created/updated/samed if this is a destroy operation.
+	// We also need to delete all the new resources that we created/updated/samed if this is a destroy
+	// operation. We add these in reverse order, the same as we do for the old resource loop above.
 	for i := len(sg.toDelete) - 1; i >= 0; i-- {
 		res := sg.toDelete[i]
 		sg.deletes[res.URN] = true

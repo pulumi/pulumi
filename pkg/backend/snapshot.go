@@ -74,7 +74,9 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	deletes map[*resource.State]bool // The set of resources that have been deleted.
+	// The set of resources that have been deleted. These resources could also have been added to `resources`
+	// by other operations but need to be filtered out before writing the snapshot.
+	deletes map[*resource.State]bool
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -440,8 +442,10 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 				step.Old().Protect, step.Op())
 
 			if !step.Old().PendingReplacement {
-				// if this is a delete-replaced operation, we don't want to mark the resource as deleted
-				// because we want to keep the new resource
+				// If this is a delete-replace operation, we don't want to mark the resource as deleted
+				// because we want to keep the new resource. If this is a normal delete/discard operation we
+				// need to add the resource to the "deletes" set so that we can filter it out when writing the
+				// snapshot.
 				op := step.Op()
 				contract.Assertf(
 					op == deploy.OpDiscardReplaced || op == deploy.OpReadDiscard ||

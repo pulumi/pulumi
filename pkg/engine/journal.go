@@ -122,7 +122,11 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
-	// Filter any resources that had an operation (like same or update) but then were deleted by a later operations
+	// Filter any resources that had an operation (like same or update) but then were deleted by a later
+	// operations. This can happen from program based destroy operations were we'll see an event come in to
+	// Same/Update/Create a resource and so add it to the `resources` list, but then later see a delete
+	// operation for that same resource. In that case, we want to filter out the resource from the list of
+	// resources before writing the actual snapshot.
 	filteredResources := []*resource.State{}
 	for _, res := range resources {
 		if !deletes[res] {

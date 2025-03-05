@@ -130,6 +130,8 @@ func newDestroySource(
 	return deploy.NewNullSource(proj.Name), nil
 }
 
+// DestroyV2 is a version of Destroy that uses the a normal update source (i.e. it runs the user program) and
+// the step generator in "destroy" mode.
 func DestroyV2(
 	u UpdateInfo,
 	ctx *Context,
