@@ -411,7 +411,7 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
         if self.provider.version is None:
-            raise Exception("provider version not set")
+            return proto.PluginInfo(version="")
         return proto.PluginInfo(version=self.provider.version)
 
     async def GetSchema(
