@@ -1394,9 +1394,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 	// dependencies prior to their dependent nodes.
 	var dels []Step
 	if prev := sg.deployment.prev; prev != nil {
-		for i := len(prev.Resources) - 1; i >= 0; i-- {
+		for _, res := range prev.Resources {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
-			res := prev.Resources[i]
 			if res.Delete {
 				// The below assert is commented-out because it's believed to be wrong.
 				//
