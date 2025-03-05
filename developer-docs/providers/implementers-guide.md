@@ -616,34 +616,33 @@ None.
 
 ### Refresh
 
-The goal of `pulumi refresh` is to detect and remediate resource drift.
+The goal of `pulumi refresh` is to detect and remediate resource drift, a situation the actual state of the resource
+differs from the state tracked by Pulumi.
 
-Drift happens when the actual state of the resource differs from the desired state encoded in the IAC program. Pulumi
-CLI cooperates with the provider to perform these steps for each Custom resource found in the state:
+Pulumi cooperates with the provider to perform these steps for each Custom resource found in the state:
 
-1. Pulumi calls the provider `Read` method, passing resource inputs and outputs stored in the state.
+1. Pulumi calls the provider `Read` method, passing the current resource inputs and outputs stored in the state.
 
 2. If `Read` method returns an empty `id`, the provider is indicating that the resource no longer exists. In this case,
    Pulumi shows the resource as being deleted, and if the user confirms the operation, deletes it from the state.
 
-3. Otherwise, `Read` returns the candidate state - the updated actual inputs and outputs of the resource.
+3. Otherwise, `Read` returns the refreshed candidate state, the actual input and output values of the resource.
 
-4. Pulumi compares the candidate state with the current inputs as found in the program by calling the provider `Diff`
-   method. The candidate state is passed as `olds` and `oldInputs`, and the configuration found in the program is
-   passed as `news`. Note the possible confusion: `olds` and `oldInputs` represent the candidate state in this call,
-   not the state prior to the `pulumi refresh` operation.
+4. Pulumi compares the candidate state with the pre-refresh state by calling the provider `Diff` method. There is a
+   confusing inversion here: the candidate state received from `Read` is passed as `olds` and `oldInputs`, and the
+   pre-refresh inputs are passed as `news`. It makes it appear that the engine is planning a change away from the
+   candidate state to the pre-refresh state, when in fact the opposite change is being planned.
 
-5. If the provider responds with `DIFF_NONE` to the `Diff` call, Pulumi assumes that no drift has occurred and any
-   differences, if any, between the candidate state and the program are immaterial. Pulumi omits the resource from diff
-   display. The user receives a message that nothing has changed. However, while resource outputs are indeed unchanged,
-   resource inputs are silently rewritten in the state to the value of inputs returned by `Read`, the candidate inputs.
+5. If the provider responds with `DIFF_NONE` to the `Diff` call, Pulumi assumes that no drift has occurred. Any
+   differences, if any, between the candidate state and the pre-refresh state are deemed immaterial. Pulumi omits the
+   resource from diff display. The user receives a message that nothing has changed.
 
-   This behavior is similar to `pulumi up` that will rewrite the inputs in state to the newly checked inputs even if
-   the provider responds with `DIFF_NONE` to the `Diff` call.
+   While resource outputs indeed remain unchanged, Pulumi rewrites resource inputs to the candidate state values
+   returned by `Read`. This behavior is similar to `pulumi up` that will rewrite the inputs in state to the newly
+   checked inputs even if the provider responds with `DIFF_NONE` to the `Diff` call.
 
 6. If the provider responds with `DIFF_SOME` to the `Diff` call, Pulumi renders the changes to the user asking for a
-   confirmation. Once the user confirms the operation, the candidate state is written as the actual state to the state
-   store.
+   confirmation. Once the user confirms the operation, the candidate state replaces the actual state.
 
 For a concrete example, suppose we have an AWS S3 bucket with tag "a" that has drifted to have tag "b" in the cloud.
 
@@ -671,7 +670,7 @@ both inputs and (matching) outputs, duplicating the information. Slightly simpli
 
 
 The provider will locate the bucket in the cloud, and determine that the real tag value is "b". It will respond to
-`Read` call with the output (properties) and input values as found in the cloud:
+`Read` call with the outputs ("properties") and inputs as found in the cloud:
 
 ```json
 {
@@ -690,9 +689,9 @@ The provider will locate the bucket in the cloud, and determine that the real ta
 ```
 
 The results of the `Read` method constitute the new candidate state. The engine will then ask the provider to compare
-the candidate state against the program inputs. This gives the provider a chance to respond with a DIFF_NONE indicating
-that the changes discovered by `Read` are not essential. It also allows the provider to do some domain-specific
-formatting on the diff to improve how it is displayed in Pulumi CLI.
+the candidate state against the pre-refresh inputs. This gives the provider a chance to respond with a DIFF_NONE
+indicating that the changes discovered by `Read` are not essential. It also allows the provider to do some
+domain-specific formatting on the diff to improve how it is displayed in Pulumi CLI.
 
 Following our example, `Diff` call may look like this:
 
@@ -738,8 +737,8 @@ And the provider may respond with this data, confirming that there is a differen
 ```
 
 
-Once the user confirms the diff, Pulumi will write it to the state. Note the possible confusion: the changes are
-reversed in polarity; the `Diff` call was comparing old state "b" and finding that it is changing to "a", but Pulumi
+Once the user confirms the diff, Pulumi will write it to the state. Note again the confusing inversion: the changes are
+reversed in polarity. The `Diff` call was comparing old state "b" and finding that it is changing to "a", but Pulumi
 renders it as "a" changing to "b", which is what the user expects, because here state is currently "a" and will become
 "b".
 
