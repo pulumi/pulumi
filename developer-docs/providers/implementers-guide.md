@@ -616,8 +616,8 @@ None.
 
 ### Refresh
 
-The goal of `pulumi refresh` is to detect and remediate resource drift, a situation the actual state of the resource
-differs from the state tracked by Pulumi.
+The goal of `pulumi refresh` is to detect and remediate resource drift, a situation when the actual state of the
+resource differs from the state tracked by Pulumi.
 
 Pulumi cooperates with the provider to perform these steps for each Custom resource found in the state:
 
