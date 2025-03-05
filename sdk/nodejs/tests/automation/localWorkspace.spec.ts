@@ -780,23 +780,44 @@ describe("LocalWorkspace", () => {
             new MyResource("res");
             return {};
         };
-        const projectName = "inline_node";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+
+        const suffix =  `int_test${getTestSuffix()}`;
+
+        const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", suffix);
+        const shortName = getTestOrg() + "/" + suffix;
+
+        const stackRenamed = stackName + "_renamed";
+        const shortRenamed = shortName + "_renamed";
+
         const stack = await LocalWorkspace.createStack(
-            { stackName, projectName, program },
+            { stackName, projectName: "inline_node", program },
             withTestBackend({}, "inline_node"),
         );
 
-        const renamed = stackName + "_renamed";
-        const renameRes = await stack.rename({ stackName: renamed });
+        await stack.up({ userAgent });
+        stack.workspace.selectStack(stackName);
+
+        const before =
+          (await stack.workspace.listStacks())
+            .find(x => x.name.startsWith(shortName));
+
+        let output = ""
+        const renameRes = await stack.rename({
+          stackName: stackRenamed,
+          onOutput: e => output += e
+        });
+
+        await stack.workspace.refreshConfig(stackRenamed)
+
+        const after =
+          (await stack.workspace.listStacks())
+            .find(x => x.name.startsWith(shortName));
+
+        assert.strictEqual(output, `Renamed ${shortName} to ${shortRenamed}\n`);
+        assert.equal(after.name, shortRenamed)
 
         assert.strictEqual(renameRes.summary.kind, "rename");
         assert.strictEqual(renameRes.summary.result, "succeeded");
-
-        // The stack selection should be a no-op as it's the already-selected
-        // stack.
-        await stack.up({ userAgent });
-        await stack.workspace.selectStack(renamed);
 
         // pulumi destroy
         const destroyRes = await stack.destroy({ userAgent });

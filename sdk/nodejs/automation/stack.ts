@@ -596,29 +596,13 @@ Event: ${line}\n${e.toString()}`);
 
         applyGlobalOpts(options, args);
 
-        let logPromise: Promise<ReadlineResult> | undefined;
-        let logFile: string | undefined;
-
-        // Set up event log tailing
-        if (options?.onEvent) {
-            const onEvent = options.onEvent;
-            logFile = createLogFile("rename");
-            args.push("--event-log", logFile);
-
-            logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
-            });
-        }
-
         let renameResult: CommandResult;
-        try {
-            renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
-        } finally {
-            await cleanUp(logFile, await logPromise);
+        renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+
+        if (this.isRemote && options?.showSecrets) {
+          throw new Error("can't enable `showSecrets` for remote workspaces");
         }
 
-        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
-        // load the project file.
         const summary = await this.info(!this.isRemote && options?.showSecrets);
 
         return {
