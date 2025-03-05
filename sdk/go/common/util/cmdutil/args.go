@@ -27,7 +27,7 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := argsValidator(cmd, args)
 		if err != nil {
-			contract.IgnoreError(cmd.Help())
+			return errors.Join(cmd.Help(), err)
 		}
 		return err
 	}
