@@ -179,6 +179,12 @@ class RefreshResult(BaseResult):
         self.summary = summary
 
 
+class RenameResult(BaseResult):
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+
+
 class DestroyResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
         super().__init__(stdout, stderr)
@@ -588,6 +594,36 @@ class Stack:
         assert summary is not None
         return RefreshResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
+        )
+
+    def rename(
+        self,
+        stack_name: str,
+        on_output: Optional[OnOutput] = None,
+        show_secrets: bool = False,
+    ) -> RenameResult:
+        """
+        Renames the current stack.
+
+        :param stack_name: The new name for the stack.
+        :param on_output: A function to process the stdout stream.
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :returns: RenameResult
+        """
+        extra_args = _parse_extra_args(**locals())
+        args = ["stack", "rename", stack_name]
+        args.extend(extra_args)
+
+        args.extend(self._remote_args())
+        rename_result = self._run_pulumi_cmd_sync(args, on_output)
+
+        if self._remote and show_secrets:
+            raise RuntimeError("can't enable `showSecrets` for remote workspaces")
+
+        summary = self.info(show_secrets and not self._remote)
+        assert summary is not None
+        return RenameResult(
+            stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
         )
 
     def destroy(
