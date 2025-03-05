@@ -28,10 +28,8 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 		err := argsValidator(cmd, args)
 		if err != nil {
 			contract.IgnoreError(cmd.Help())
-			Exit(err)
 		}
-
-		return nil
+		return err
 	}
 }
 
