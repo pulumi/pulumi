@@ -203,8 +203,20 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 	return "", fmt.Errorf("no summarizeUpdate message found in response")
 }
 
+// addPrefixToLines adds the given prefix to each line of the input text
+func addPrefixToLines(text, prefix string) string {
+	if text == "" {
+		return ""
+	}
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
+}
+
 // summarize generates a summary of the update output
-func summarize(lines []string) string {
+func summarize(lines []string, outputPrefix string) string {
 	if len(lines) == 0 {
 		return ""
 	}
@@ -221,5 +233,6 @@ func summarize(lines []string) string {
 		fmt.Fprintf(os.Stderr, "Error generating summary: %v\n", err)
 		return ""
 	}
-	return summary
+
+	return addPrefixToLines(summary, outputPrefix)
 }

@@ -732,7 +732,10 @@ func (display *ProgressDisplay) printDiagnostics() {
 				"--------------------------------------------------------------------------------")
 			summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
 			display.println("    " + colors.SpecCreateReplacement + summaryHeader)
-			display.println("    " + colors.SpecCreateReplacement + summary)
+			display.println("")
+			// Summary itself provider the prefix for each line
+			display.println(colors.SpecCreateReplacement + summary)
+			display.println("")
 		}
 
 		display.println("    " +
@@ -749,8 +752,8 @@ func (display *ProgressDisplay) GetDiagnosticsSummary() string {
 		return ""
 	}
 
-	return summarize(display.accumulatedLines)
-	//return "Update failed because of invalid Protocol value"
+	return summarize(display.accumulatedLines, "    ")
+	// return "Update failed because of invalid Protocol value"
 }
 
 type policyPackSummary struct {
