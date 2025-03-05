@@ -1389,14 +1389,11 @@ func (sg *stepGenerator) generateStepsFromDiff(
 }
 
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
-	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
-	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
-	// dependencies prior to their dependent nodes.
+	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
 	var dels []Step
 	if prev := sg.deployment.prev; prev != nil {
-		for i := len(prev.Resources) - 1; i >= 0; i-- {
+		for _, res := range prev.Resources {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
-			res := prev.Resources[i]
 			if res.Delete {
 				// The below assert is commented-out because it's believed to be wrong.
 				//
