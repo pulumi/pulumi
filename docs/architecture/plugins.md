@@ -17,9 +17,10 @@ following kinds of plugins:
 * *Analyzer plugins* are used to analyze Pulumi programs for potential issues
   before they are executed. Analyzers underpin [CrossGuard, Pulumi's Policy as
   Code](https://www.pulumi.com/docs/using-pulumi/crossguard/) product.
-* *Converter plugins* support the conversion of existing infrastructure as code
-  (e.g. [Terraform](https://github.com/pulumi/pulumi-converter-terraform)) to
-  Pulumi programs.
+* [*Converter plugins*](converters) support the conversion of existing
+  infrastructure as code (e.g.
+  [Terraform](https://github.com/pulumi/pulumi-converter-terraform)) to Pulumi
+  programs.
 * *Tool plugins* allow integrating Pulumi with arbitrary tools.
 
 (plugin-loading-execution)=
