@@ -635,7 +635,11 @@ CLI cooperates with the provider to perform these steps for each Custom resource
 
 5. If the provider responds with `DIFF_NONE` to the `Diff` call, Pulumi assumes that no drift has occurred and any
    differences, if any, between the candidate state and the program are immaterial. Pulumi omits the resource from diff
-   display and leaves its state intact as before.
+   display. The user receives a message that nothing has changed. However, while resource outputs are indeed unchanged,
+   resource inputs are silently rewritten in the state to the value of inputs returned by `Read`, the candidate inputs.
+
+   This behavior is similar to `pulumi up` that will rewrite the inputs in state to the newly checked inputs even if
+   the provider responds with `DIFF_NONE` to the `Diff` call.
 
 6. If the provider responds with `DIFF_SOME` to the `Diff` call, Pulumi renders the changes to the user asking for a
    confirmation. Once the user confirms the operation, the candidate state is written as the actual state to the state
