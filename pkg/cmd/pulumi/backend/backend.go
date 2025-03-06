@@ -28,11 +28,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// BackendInstance is used to inject a backend mock from tests.
-var BackendInstance backend.Backend
+type mockBackendType struct{}
 
-func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
-	if BackendInstance != nil {
+var mockBackendKey mockBackendType
+
+// Inject a mocked [backend.Backend] into the [context.Context].
+func InjectMockBackend(ctx context.Context, backend backend.Backend) context.Context {
+	return context.WithValue(ctx, mockBackendKey, backend)
+}
+
+func getMockBackend(ctx context.Context) backend.Backend {
+	v := ctx.Value(mockBackendKey)
+	if v == nil {
+		return nil
+	}
+	return v.(backend.Backend)
+}
+
+func IsDIYBackend(ctx context.Context, ws pkgWorkspace.Context, opts display.Options) (bool, error) {
+	if mock := getMockBackend(ctx); mock != nil {
 		return false, nil
 	}
 
@@ -53,8 +67,8 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 func NonInteractiveCurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 ) (backend.Backend, error) {
-	if BackendInstance != nil {
-		return BackendInstance, nil
+	if mock := getMockBackend(ctx); mock != nil {
+		return mock, nil
 	}
 
 	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
@@ -70,8 +84,8 @@ func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 	opts display.Options,
 ) (backend.Backend, error) {
-	if BackendInstance != nil {
-		return BackendInstance, nil
+	if mock := getMockBackend(ctx); mock != nil {
+		return mock, nil
 	}
 
 	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)

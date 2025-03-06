@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +27,7 @@ import (
 func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -41,8 +42,6 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	}
 
 	assert.ErrorContains(t,
-		runNew(
-			context.Background(), testNewArgs,
-		),
+		runNew(ctx, testNewArgs),
 		"please log in to Pulumi Cloud to use Pulumi AI")
 }

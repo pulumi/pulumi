@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -139,7 +140,7 @@ func TestListStacksPagination(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -154,7 +155,6 @@ func TestListStacksPagination(t *testing.T) {
 
 	// Execute the command, which will use our mocked backend. Confirm the expected number of
 	// backend calls were made.
-	ctx := context.Background()
 	args := stackLSArgs{
 		orgFilter:  testOrgName,
 		projFilter: testProjName,
@@ -189,11 +189,12 @@ func TestListStacksPagination(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksJsonProgress(t *testing.T) {
+	t.Parallel()
+
 	mockTime := time.Unix(1, 0)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -226,7 +227,6 @@ func TestListStacksJsonProgress(t *testing.T) {
 	})
 
 	var buff bytes.Buffer
-	ctx := context.Background()
 	args := stackLSArgs{
 		jsonOut:   true,
 		allStacks: true,
@@ -254,11 +254,12 @@ func TestListStacksJsonProgress(t *testing.T) {
 		]`, buff.String())
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksJsonNoProgress(t *testing.T) {
+	t.Parallel()
+
 	mockTime := time.Unix(1, 0)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -284,7 +285,6 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 	})
 
 	var buff bytes.Buffer
-	ctx := context.Background()
 	args := stackLSArgs{
 		jsonOut:   true,
 		allStacks: true,

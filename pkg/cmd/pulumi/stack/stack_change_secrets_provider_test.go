@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -129,7 +130,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
@@ -147,7 +148,7 @@ runtime: mock
 
 	// passphrase will read from stdin for the new passphrase
 	mockStdin(t, "password123\npassword123\n")
-	err = cmd.Run(context.Background(), []string{"passphrase"})
+	err = cmd.Run(ctx, []string{"passphrase"})
 	require.NoError(t, err)
 	require.Equal(t, "Migrating old configuration and state to new secrets provider\n", stdoutBuff.String())
 
@@ -233,7 +234,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx = cmdBackend.InjectMockBackend(ctx, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},

@@ -40,14 +40,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockBackendInstance sets the backend instance for the test and cleans it up after.
-func mockBackendInstance(t *testing.T, b backend.Backend) {
-	t.Cleanup(func() {
-		cmdBackend.BackendInstance = nil
-	})
-	cmdBackend.BackendInstance = b
-}
-
 //nolint:paralleltest // changes directory for process
 func TestFailInInteractiveWithoutYes(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
@@ -224,7 +216,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -239,18 +231,18 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(ctx, args)
 	assert.ErrorContains(t, err, "project with this name already exists")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -264,18 +256,18 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(ctx, args)
 	assert.ErrorContains(t, err, "Try again")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -293,21 +285,21 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(ctx, args)
 	assert.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -323,7 +315,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(ctx, args)
 	assert.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
@@ -369,14 +361,14 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	removeStack(t, tempdir, stackName)
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -393,18 +385,18 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(context.Background(), args)
+	err := runNew(ctx, args)
 	assert.ErrorContains(t, err, "project names may only contain")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -412,7 +404,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	err := runNew(context.Background(), newArgs{
+	err := runNew(ctx, newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("not#valid", ""),
@@ -421,7 +413,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	})
 	assert.ErrorContains(t, err, "project names may only contain")
 
-	err = runNew(context.Background(), newArgs{
+	err = runNew(ctx, newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("", ""),
@@ -825,9 +817,10 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 
-//nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
-	mockBackendInstance(t, &backend.MockBackend{
+	t.Parallel()
+
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1", "personal"}, nil, nil
@@ -873,6 +866,7 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
 	newCmd.SetArgs([]string{"--list-templates"})
+	newCmd.SetContext(ctx)
 	err := newCmd.Execute()
 	require.NoError(t, err)
 
@@ -935,9 +929,10 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
-	mockBackendInstance(t, &backend.MockBackend{
+	t.Parallel()
+
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return false },
 	})
 
@@ -946,6 +941,7 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
 	newCmd.SetArgs([]string{"--list-templates"})
+	newCmd.SetContext(ctx)
 	err := newCmd.Execute()
 	require.NoError(t, err)
 
@@ -957,11 +953,11 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a global mock backend, changes the directory
+//nolint:paralleltest // Changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
-	mockBackendInstance(t, &backend.MockBackend{
+	ctx := cmdBackend.InjectMockBackend(context.Background(), &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1"}, nil, nil
@@ -1018,6 +1014,7 @@ resources:
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
 	newCmd.SetArgs([]string{"template-1", "--generate-only", "--yes"})
+	newCmd.SetContext(ctx)
 	err := newCmd.Execute()
 	require.NoError(t, err)
 
