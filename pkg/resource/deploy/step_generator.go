@@ -1427,7 +1427,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
-	var dels []Step
+	dels := slice.Prealloc[Step](len(sg.toDelete))
 	if prev := sg.deployment.prev; prev != nil {
 		for _, res := range prev.Resources {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
