@@ -253,7 +253,7 @@ type Backend interface {
 	// secrets manager for that stack.
 	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	// GetPackageRegistry returns a PackageRegistry object tied to this backend, or nil if it cannot be found.
+	// GetPackageRegistry returns a PackageRegistry object tied to this backend
 	GetPackageRegistry() (PackageRegistry, error)
 }
 

@@ -52,7 +52,6 @@ type publishPackageArgs struct {
 type packagePublishCmd struct {
 	defaultOrg    func(*workspace.Project) (string, error)
 	extractSchema func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error)
-	loginManager  cmdBackend.LoginManager
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -85,7 +84,6 @@ func newPackagePublishCmd() *cobra.Command {
 			ctx := cmd.Context()
 			pkgPublishCmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
 			pkgPublishCmd.extractSchema = SchemaFromSchemaSource
-			pkgPublishCmd.loginManager = cmdBackend.DefaultLoginManager
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], cliArgs[1:])
 		},
 	}
@@ -122,7 +120,7 @@ func (cmd *packagePublishCmd) Run(
 		return errors.New("no readme specified, please provide the path to the readme file")
 	}
 
-	b, err := login(ctx, cmd.loginManager)
+	b, err := login(ctx)
 	if err != nil {
 		return err
 	}
@@ -215,12 +213,12 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to publish package: %w", err)
 	}
 
-	fmt.Printf("Successfully published package %s/%s@%s\n", publisher, name, version.String())
+	fmt.Printf("Successfully published package %s/%s@%s\n", publisher, name, version)
 
 	return nil
 }
 
-func login(ctx context.Context, lm cmdBackend.LoginManager) (backend.Backend, error) {
+func login(ctx context.Context) (backend.Backend, error) {
 	// Try to read the current project. If we can't find a project, we'll use the default cloud URL.
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
@@ -228,16 +226,9 @@ func login(ctx context.Context, lm cmdBackend.LoginManager) (backend.Backend, er
 		return nil, err
 	}
 
-	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-	if err != nil {
-		return nil, fmt.Errorf("`pulumi package publish` requires the user to be logged into Pulumi Cloud: %w", err)
-	}
-
-	displayOptions := display.Options{
-		Color: cmdutil.GetGlobalColorization(),
-	}
-
-	b, err := lm.Login(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/, displayOptions.Color)
+	b, err := cmdBackend.CurrentBackend(
+		ctx, ws, cmdBackend.DefaultLoginManager, project,
+		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return nil, err
 	}
