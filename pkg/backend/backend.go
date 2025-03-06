@@ -262,7 +262,7 @@ type Backend interface {
 	// to ListTemplates.
 	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 
-	// GetPackageRegistry returns a PackageRegistry object tied to this backend, or nil if it cannot be found.
+	// GetPackageRegistry returns a PackageRegistry object tied to this backend
 	GetPackageRegistry() (PackageRegistry, error)
 }
 
