@@ -261,6 +261,9 @@ type Backend interface {
 	// Templates are valid to download if and only if they would be returned by a call
 	// to ListTemplates.
 	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
+
+	// GetPackageRegistry returns a PackageRegistry object tied to this backend, or nil if it cannot be found.
+	GetPackageRegistry() (PackageRegistry, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.

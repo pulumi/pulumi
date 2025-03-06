@@ -1499,3 +1499,7 @@ func (b *diyBackend) getParallel() int {
 	}
 	return parallel
 }
+
+func (b *diyBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
+	return nil, errors.New("package registry is not supported by diy backends")
+}
