@@ -211,6 +211,7 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	if err != nil {
 		return nil, err
 	}
+	p.def.Name = descriptor.Name
 	return p, nil
 }
 
