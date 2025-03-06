@@ -339,12 +339,6 @@ func (be *cachingBatchEncrypter) Enqueue(ctx context.Context,
 ) error {
 	contract.Assertf(source != nil, "source secret must not be nil")
 	contract.Assertf(!be.closed.Load(), "batch encrypter must not be closed")
-	// If the cache has an entry for this secret and the plaintext has not changed,
-	// re-use the previous ciphertext for this specific secret instance.
-	if ciphertext, ok := be.cache.LookupCiphertext(source, plaintext); ok {
-		target.Ciphertext = ciphertext
-		return nil
-	}
 	// Add to the queue
 	for {
 		select {
@@ -386,9 +380,24 @@ dequeue:
 		}
 	}
 
-	ciphertexts, err := be.encrypter.BatchEncrypt(ctx, plaintexts)
-	if err != nil {
-		return err
+	ciphertexts := make([]string, len(dequeued))
+	// If the cache has entries for all secrets, re-use the previous ciphertexts to save the re-encryption cost.
+	cacheMissed := false
+	for i, q := range dequeued {
+		if ciphertext, ok := be.cache.LookupCiphertext(q.source, q.plaintext); ok {
+			ciphertexts[i] = ciphertext
+		} else {
+			cacheMissed = true
+			ciphertexts = nil
+			break
+		}
+	}
+	if cacheMissed {
+		var err error
+		ciphertexts, err = be.encrypter.BatchEncrypt(ctx, plaintexts)
+		if err != nil {
+			return err
+		}
 	}
 	for i, q := range dequeued {
 		ciphertext := ciphertexts[i]
@@ -495,15 +504,6 @@ func beginDecryptionBatch(decrypter config.Decrypter, cache SecretCache,
 func (bd *cachingBatchDecrypter) Enqueue(ctx context.Context, ciphertext string, target *resource.Secret) error {
 	contract.Assertf(target != nil, "target secret must not be nil")
 	contract.Assertf(!bd.closed.Load(), "batch decrypter must not be closed")
-	// If the cache has an entry for this ciphertext, re-use the previous plaintext for this specific secret instance.
-	if plaintext, ok := bd.cache.LookupPlaintext(ciphertext); ok {
-		propertyValue, err := bd.deserializeSecretPropertyValue(plaintext)
-		if err != nil {
-			return err
-		}
-		target.Element = propertyValue
-		return nil
-	}
 	// Add to the queue
 	for {
 		select {
@@ -545,9 +545,24 @@ dequeue:
 		}
 	}
 
-	plaintexts, err := bd.decrypter.BatchDecrypt(ctx, ciphertexts)
-	if err != nil {
-		return err
+	plaintexts := make([]string, len(dequeued))
+	// If the cache has entries for all ciphertexts, re-use the previous plaintexts to save the re-decryption cost.
+	cacheMissed := false
+	for i, q := range dequeued {
+		if plaintext, ok := bd.cache.LookupPlaintext(q.ciphertext); ok {
+			plaintexts[i] = plaintext
+		} else {
+			cacheMissed = true
+			plaintexts = nil
+			break
+		}
+	}
+	if cacheMissed {
+		var err error
+		plaintexts, err = bd.decrypter.BatchDecrypt(ctx, ciphertexts)
+		if err != nil {
+			return err
+		}
 	}
 	for i, q := range dequeued {
 		plaintext := plaintexts[i]
