@@ -59,7 +59,7 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
 	}
 
-	return NewBatchingSecretsManager(sm), nil
+	return NewBatchingCachingSecretsManager(sm), nil
 }
 
 // NamedStackSecretsProvider is the same as the default secrets provider,
@@ -89,7 +89,7 @@ func (s NamedStackSecretsProvider) OfType(ty string, state json.RawMessage) (sec
 		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
 	}
 
-	return NewBatchingSecretsManager(sm), nil
+	return NewBatchingCachingSecretsManager(sm), nil
 }
 
 // BatchingSecretsManager is a secrets.Manager that supports batch encryption and decryption operations.
@@ -119,43 +119,44 @@ type BatchingSecretsManager interface {
 	BeginBatchDecryption() (BatchDecrypter, CompleteCrypterBatch)
 }
 
-type cachingSecretsManager struct {
+type batchingCachingSecretsManager struct {
 	manager secrets.Manager
 	cache   SecretCache
 }
 
-// NewBatchingSecretsManager returns a new secrets.Manager that caches the ciphertext for secret property values. A
-// secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be wrapped
-// in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
-func NewBatchingSecretsManager(manager secrets.Manager) BatchingSecretsManager {
-	sm := &cachingSecretsManager{
+// NewBatchingCachingSecretsManager returns a new BatchingSecretsManager that caches the ciphertext for secret property
+// values. A secrets.Manager that will be used to encrypt and decrypt values stored in a serialized deployment can be
+// wrapped in a caching secrets manager in order to avoid re-encrypting secrets each time the deployment is serialized.
+// When secrets values are not cached, then operations can be batched when using the batch transaction methods.
+func NewBatchingCachingSecretsManager(manager secrets.Manager) BatchingSecretsManager {
+	sm := &batchingCachingSecretsManager{
 		manager: manager,
 		cache:   NewSecretCache(),
 	}
 	return sm
 }
 
-func (csm *cachingSecretsManager) Type() string {
+func (csm *batchingCachingSecretsManager) Type() string {
 	return csm.manager.Type()
 }
 
-func (csm *cachingSecretsManager) State() json.RawMessage {
+func (csm *batchingCachingSecretsManager) State() json.RawMessage {
 	return csm.manager.State()
 }
 
-func (csm *cachingSecretsManager) Encrypter() config.Encrypter {
+func (csm *batchingCachingSecretsManager) Encrypter() config.Encrypter {
 	return csm.manager.Encrypter()
 }
 
-func (csm *cachingSecretsManager) Decrypter() config.Decrypter {
+func (csm *batchingCachingSecretsManager) Decrypter() config.Decrypter {
 	return csm.manager.Decrypter()
 }
 
-func (csm *cachingSecretsManager) BeginBatchEncryption() (BatchEncrypter, CompleteCrypterBatch) {
+func (csm *batchingCachingSecretsManager) BeginBatchEncryption() (BatchEncrypter, CompleteCrypterBatch) {
 	return BeginEncryptionBatchWithCache(csm.manager.Encrypter(), csm.cache)
 }
 
-func (csm *cachingSecretsManager) BeginBatchDecryption() (BatchDecrypter, CompleteCrypterBatch) {
+func (csm *batchingCachingSecretsManager) BeginBatchDecryption() (BatchDecrypter, CompleteCrypterBatch) {
 	return BeginDecryptionBatchWithCache(csm.manager.Decrypter(), csm.cache)
 }
 
@@ -177,8 +178,18 @@ type SecretCache interface {
 	LookupPlaintext(ciphertext string) (string, bool)
 }
 
+type nullSecretCache struct{}
+
+func (nullSecretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {}
+func (nullSecretCache) LookupCiphertext(secret *resource.Secret, plaintext string) (string, bool) {
+	return "", false
+}
+
+func (nullSecretCache) LookupPlaintext(ciphertext string) (string, bool) {
+	return "", false
+}
+
 type secretCache struct {
-	disableCache bool
 	bySecret     sync.Map
 	byCiphertext sync.Map
 }
@@ -205,16 +216,15 @@ func NewSecretCache() SecretCache {
 	// If the environment variable PULUMI_DISABLE_SECRET_CACHE is set to "true", the secret cache will be disabled and
 	// no entries will be stored. This is a short-term escape hatch in case there's unforeseen issues with expanded
 	// caching scopes and should be removable once we're confident that customers are not affected.
-	disableCache := os.Getenv("PULUMI_DISABLE_SECRET_CACHE") == "true"
-	return &secretCache{disableCache: disableCache}
+	if os.Getenv("PULUMI_DISABLE_SECRET_CACHE") == "true" {
+		return nullSecretCache{}
+	}
+	return &secretCache{}
 }
 
 // Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
 // This method is thread-safe and can be called concurrently by multiple goroutines.
 func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
-	if c.disableCache {
-		return
-	}
 	entry := secretCacheEntry{plaintext, ciphertext, secret}
 	c.bySecret.Store(secret, entry)
 	c.byCiphertext.Store(ciphertext, entry)
@@ -294,7 +304,7 @@ var _ BatchEncrypter = (*cachingBatchEncrypter)(nil)
 //	SerializeSecrets(ctx, batchEncrypter, secrets)
 //	err := completeCrypterBatch(ctx)
 func BeginEncryptionBatch(encrypter config.Encrypter) (BatchEncrypter, CompleteCrypterBatch) {
-	return BeginEncryptionBatchWithCache(encrypter, NewSecretCache())
+	return BeginEncryptionBatchWithCache(encrypter, nullSecretCache{})
 }
 
 // BeginEncryptionBatchWithCache returns a new BatchEncrypter and CompleteCrypterBatch function with a custom cache.
@@ -461,7 +471,7 @@ type DeserializeSecretPropertyValue func(plaintext string) (resource.PropertyVal
 //	DeserializeSecrets(ctx, batchDecrypter, secrets)
 //	err := completeCrypterBatch(ctx)
 func BeginDecryptionBatch(decrypter config.Decrypter) (BatchDecrypter, CompleteCrypterBatch) {
-	return BeginDecryptionBatchWithCache(decrypter, NewSecretCache())
+	return BeginDecryptionBatchWithCache(decrypter, nullSecretCache{})
 }
 
 // BeginDecryptionBatchWithCache returns a new BatchDecrypter and CompleteCrypterBatch function with a custom cache.

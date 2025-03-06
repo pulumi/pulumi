@@ -115,7 +115,7 @@ func TestCachingSecretsManager(t *testing.T) {
 
 	ctx := context.Background()
 	sm := &testSecretsManager{}
-	csm := NewBatchingSecretsManager(sm)
+	csm := NewBatchingCachingSecretsManager(sm)
 
 	foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
 	foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
@@ -200,7 +200,7 @@ func TestCachingSecretsManager(t *testing.T) {
 
 	// Create a new CachingSecretsManager and re-run the decrypts. Each decrypt should insert the plain- and
 	// ciphertext into the cache with the associated secret.
-	csm = NewBatchingSecretsManager(sm)
+	csm = NewBatchingCachingSecretsManager(sm)
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
@@ -341,7 +341,7 @@ func TestSecretCache(t *testing.T) {
 
 	t.Run("disable cache", func(t *testing.T) {
 		t.Parallel()
-		cache := secretCache{disableCache: true}
+		cache := nullSecretCache{}
 		secret := &resource.Secret{}
 
 		cache.Write("plaintext", "ciphertext", secret)
