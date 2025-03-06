@@ -697,8 +697,8 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	contract.Assertf(provider != nil, "provider must not be nil")
 
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
-		URN:    urn,
-		ID:     res.ID,
+		URN:    &urn,
+		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
 		closeErr := r.host.CloseProvider(provider)
@@ -776,8 +776,8 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 
 	filteredProperties := FilterProviderConfig(req.Properties)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
-		URN:    req.URN,
-		ID:     id,
+		URN:    &req.URN,
+		ID:     &id,
 		Inputs: filteredProperties,
 	}); err != nil {
 		return plugin.CreateResponse{Status: resource.StatusOK}, err
@@ -807,8 +807,8 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 
 	filteredProperties := FilterProviderConfig(req.NewInputs)
 	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
-		URN:    req.URN,
-		ID:     req.ID,
+		URN:    &req.URN,
+		ID:     &req.ID,
 		Inputs: filteredProperties,
 	})
 	if err != nil {

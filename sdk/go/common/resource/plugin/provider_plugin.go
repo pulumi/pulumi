@@ -190,8 +190,9 @@ func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir s
 			req := &ProviderHandshakeRequest{
 				EngineAddress: host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:    nil,
-				ProgramDirectory: nil,
+				RootDirectory:      nil,
+				ProgramDirectory:   nil,
+				ConfigureWithUrnID: true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -244,9 +245,10 @@ func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir s
 		) (*ProviderHandshakeResponse, error) {
 			dir := filepath.Dir(bin)
 			req := &ProviderHandshakeRequest{
-				EngineAddress:    host.ServerAddr(),
-				RootDirectory:    &dir,
-				ProgramDirectory: &dir,
+				EngineAddress:      host.ServerAddr(),
+				RootDirectory:      &dir,
+				ProgramDirectory:   &dir,
+				ConfigureWithUrnID: true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -302,9 +304,10 @@ func handshake(
 ) (*ProviderHandshakeResponse, error) {
 	client := pulumirpc.NewResourceProviderClient(conn)
 	_, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
+		EngineAddress:      req.EngineAddress,
+		RootDirectory:      req.RootDirectory,
+		ProgramDirectory:   req.ProgramDirectory,
+		ConfigureWithUrnId: req.ConfigureWithUrnID,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -352,9 +355,10 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	) (*ProviderHandshakeResponse, error) {
 		dir := filepath.Dir(bin)
 		req := &ProviderHandshakeRequest{
-			EngineAddress:    host.ServerAddr(),
-			RootDirectory:    &dir,
-			ProgramDirectory: &dir,
+			EngineAddress:      host.ServerAddr(),
+			RootDirectory:      &dir,
+			ProgramDirectory:   &dir,
+			ConfigureWithUrnID: true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -449,9 +453,10 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 
 func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
 	_, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
+		EngineAddress:      req.EngineAddress,
+		RootDirectory:      req.RootDirectory,
+		ProgramDirectory:   req.ProgramDirectory,
+		ConfigureWithUrnId: req.ConfigureWithUrnID,
 	})
 	if err != nil {
 		return nil, err
@@ -933,9 +938,19 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
+		var urn, id *string
+		if req.URN != nil {
+			urnVal := string(*req.URN)
+			urn = &urnVal
+		}
+		if req.ID != nil {
+			idVal := string(*req.ID)
+			id = &idVal
+		}
+
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			Urn:                    string(req.URN),
-			Id:                     string(req.ID),
+			Urn:                    urn,
+			Id:                     id,
 			AcceptSecrets:          true,
 			AcceptResources:        true,
 			SendsOldInputs:         true,

@@ -136,9 +136,10 @@ func (p *providerServer) Handshake(
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	_, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
+		EngineAddress:      req.EngineAddress,
+		RootDirectory:      req.RootDirectory,
+		ProgramDirectory:   req.ProgramDirectory,
+		ConfigureWithUrnID: req.ConfigureWithUrnId,
 	})
 	if err != nil {
 		return nil, err
@@ -360,9 +361,20 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 	}
 
+	var urn *resource.URN
+	if req.Urn != nil {
+		urnVal := resource.URN(*req.Urn)
+		urn = &urnVal
+	}
+	var id *resource.ID
+	if req.Id != nil {
+		idVal := resource.ID(*req.Id)
+		id = &idVal
+	}
+
 	_, err := p.provider.Configure(ctx, ConfigureRequest{
-		URN:    resource.URN(req.Urn),
-		ID:     resource.ID(req.Id),
+		URN:    urn,
+		ID:     id,
 		Inputs: inputs,
 	})
 	if err != nil {

@@ -259,6 +259,9 @@ message ProviderHandshakeRequest {
     // in the case that the engine has been asked to attach to an existing running provider instance via a host/port
     // number), this field will be empty.
     optional string program_directory = 3;
+
+    // If true the engine will send URN and ID references to the provider as part of the configuration.
+    bool configure_with_urn_id = 4;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -386,10 +389,10 @@ message ConfigureRequest {
     bool sends_old_inputs_to_delete = 6;
 
     // The ID of the provider being configured. N.B. This will be the empty string for engines before v3.154.0.
-    string id = 7;
+    optional string id = 7;
 
     // The URN of the provider being configured. N.B. This will be the empty string for engines before v3.154.0.
-    string urn = 8;
+    optional string urn = 8;
 }
 
 // `ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary

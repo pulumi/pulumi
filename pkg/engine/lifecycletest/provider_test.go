@@ -1881,8 +1881,9 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					if req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0" &&
-						req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::provA" {
+					if req.URN == nil ||
+						*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0" &&
+							*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::provA" {
 						t.Fatalf("unexpected URN %s", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
@@ -1905,8 +1906,9 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					if req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0" &&
-						req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::provA" {
+					if req.URN == nil ||
+						*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0" &&
+							*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::provA" {
 						t.Fatalf("unexpected URN %s", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
