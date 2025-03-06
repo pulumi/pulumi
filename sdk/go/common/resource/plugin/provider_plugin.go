@@ -192,6 +192,7 @@ func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir s
 				// If we're attaching then we don't know the root or program directory.
 				RootDirectory:    nil,
 				ProgramDirectory: nil,
+				ConfigureWithUrn: true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -247,6 +248,7 @@ func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir s
 				EngineAddress:    host.ServerAddr(),
 				RootDirectory:    &dir,
 				ProgramDirectory: &dir,
+				ConfigureWithUrn: true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -305,6 +307,7 @@ func handshake(
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
+		ConfigureWithUrn: req.ConfigureWithUrn,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -355,6 +358,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			EngineAddress:    host.ServerAddr(),
 			RootDirectory:    &dir,
 			ProgramDirectory: &dir,
+			ConfigureWithUrn: true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -452,6 +456,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
+		ConfigureWithUrn: req.ConfigureWithUrn,
 	})
 	if err != nil {
 		return nil, err
@@ -933,7 +938,25 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
+		var urn, typ, id *string
+		if req.URN != nil {
+			urnVal := string(*req.URN)
+			urn = &urnVal
+		}
+		if req.ID != nil {
+			idVal := string(*req.ID)
+			id = &idVal
+		}
+		if req.Type != nil {
+			typVal := string(*req.Type)
+			typ = &typVal
+		}
+
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+			Urn:                    urn,
+			Name:                   req.Name,
+			Type:                   typ,
+			Id:                     id,
 			AcceptSecrets:          true,
 			AcceptResources:        true,
 			SendsOldInputs:         true,

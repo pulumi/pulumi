@@ -139,6 +139,7 @@ func (p *providerServer) Handshake(
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
+		ConfigureWithUrn: req.ConfigureWithUrn,
 	})
 	if err != nil {
 		return nil, err
@@ -360,7 +361,30 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 	}
 
-	if _, err := p.provider.Configure(ctx, ConfigureRequest{inputs}); err != nil {
+	var urn *resource.URN
+	if req.Urn != nil {
+		urnVal := resource.URN(*req.Urn)
+		urn = &urnVal
+	}
+	var id *resource.ID
+	if req.Id != nil {
+		idVal := resource.ID(*req.Id)
+		id = &idVal
+	}
+	var typ *tokens.Type
+	if req.Type != nil {
+		typVal := tokens.Type(*req.Type)
+		typ = &typVal
+	}
+
+	_, err := p.provider.Configure(ctx, ConfigureRequest{
+		URN:    urn,
+		Name:   req.Name,
+		Type:   typ,
+		ID:     id,
+		Inputs: inputs,
+	})
+	if err != nil {
 		return nil, err
 	}
 

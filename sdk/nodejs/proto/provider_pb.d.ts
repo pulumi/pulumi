@@ -22,6 +22,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     clearProgramDirectory(): void;
     getProgramDirectory(): string | undefined;
     setProgramDirectory(value: string): ProviderHandshakeRequest;
+    getConfigureWithUrn(): boolean;
+    setConfigureWithUrn(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -38,6 +40,7 @@ export namespace ProviderHandshakeRequest {
         engineAddress: string,
         rootDirectory?: string,
         programDirectory?: string,
+        configureWithUrn: boolean,
     }
 }
 
@@ -235,6 +238,26 @@ export class ConfigureRequest extends jspb.Message {
     getSendsOldInputsToDelete(): boolean;
     setSendsOldInputsToDelete(value: boolean): ConfigureRequest;
 
+    hasId(): boolean;
+    clearId(): void;
+    getId(): string | undefined;
+    setId(value: string): ConfigureRequest;
+
+    hasUrn(): boolean;
+    clearUrn(): void;
+    getUrn(): string | undefined;
+    setUrn(value: string): ConfigureRequest;
+
+    hasName(): boolean;
+    clearName(): void;
+    getName(): string | undefined;
+    setName(value: string): ConfigureRequest;
+
+    hasType(): boolean;
+    clearType(): void;
+    getType(): string | undefined;
+    setType(value: string): ConfigureRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConfigureRequest): ConfigureRequest.AsObject;
@@ -254,6 +277,10 @@ export namespace ConfigureRequest {
         acceptresources: boolean,
         sendsOldInputs: boolean,
         sendsOldInputsToDelete: boolean,
+        id?: string,
+        urn?: string,
+        name?: string,
+        type?: string,
     }
 }
 

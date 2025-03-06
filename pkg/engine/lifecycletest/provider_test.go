@@ -1881,6 +1881,12 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if req.URN == nil ||
+						*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0" &&
+							*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::provA" {
+						t.Fatalf("unexpected URN %v", req.URN)
+					}
+					assert.NotEmpty(t, req.ID)
 					assert.NotContains(t, req.Inputs, internalKey)
 					return plugin.ConfigureResponse{}, nil
 				},
@@ -1900,6 +1906,12 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if req.URN == nil ||
+						*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::default_1_1_0" &&
+							*req.URN != "urn:pulumi:test::test::pulumi:providers:pkgA::provA" {
+						t.Fatalf("unexpected URN %v", req.URN)
+					}
+					assert.NotEmpty(t, req.ID)
 					assert.NotContains(t, req.Inputs, internalKey)
 					return plugin.ConfigureResponse{}, nil
 				},
@@ -1963,6 +1975,8 @@ func TestProviderSameStep(t *testing.T) {
 					return plugin.DiffConfigResponse{Changes: plugin.DiffNone}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					expected := resource.URN("urn:pulumi:test::test::pulumi:providers:pkg::provA")
+					assert.Equal(t, &expected, req.URN)
 					assert.Equal(t, "100", req.Inputs["value"].StringValue())
 					return plugin.ConfigureResponse{}, nil
 				},
