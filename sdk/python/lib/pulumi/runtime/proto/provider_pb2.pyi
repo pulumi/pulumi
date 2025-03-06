@@ -41,7 +41,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
-    CONFIGURE_WITH_URN_ID_FIELD_NUMBER: builtins.int
+    CONFIGURE_WITH_URN_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -57,18 +57,18 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     in the case that the engine has been asked to attach to an existing running provider instance via a host/port
     number), this field will be empty.
     """
-    configure_with_urn_id: builtins.bool
-    """If true the engine will send URN and ID references to the provider as part of the configuration."""
+    configure_with_urn: builtins.bool
+    """If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration."""
     def __init__(
         self,
         *,
         engine_address: builtins.str = ...,
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
-        configure_with_urn_id: builtins.bool = ...,
+        configure_with_urn: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn_id", b"configure_with_urn_id", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
     @typing.overload
@@ -268,6 +268,8 @@ class ConfigureRequest(google.protobuf.message.Message):
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
     ID_FIELD_NUMBER: builtins.int
     URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """:::{warning}
@@ -326,9 +328,23 @@ class ConfigureRequest(google.protobuf.message.Message):
     these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     """
     id: builtins.str
-    """The ID of the provider being configured. N.B. This will be the empty string for engines before v3.154.0."""
+    """The ID of the provider being configured. N.B. This will be null for engines before
+    v3.155.0.
+    """
     urn: builtins.str
-    """The URN of the provider being configured. N.B. This will be the empty string for engines before v3.154.0."""
+    """The URN of the provider being configured. N.B. This will be null for engines before
+    v3.155.0.
+    """
+    name: builtins.str
+    """The name of the provider being configured. This must match the name specified by the `urn` field, and is
+    passed so that providers do not have to implement URN parsing in order to extract the name of the
+    provider.  N.B. This will be null for engines before v3.155.0.
+    """
+    type: builtins.str
+    """The type of the provider being configured. This must match the type specified by the `urn` field, and is
+    passed so that providers do not have to implement URN parsing in order to extract the type of the
+    provider. N.B. This will be null for engines before v3.155.0.
+    """
     def __init__(
         self,
         *,
@@ -340,11 +356,17 @@ class ConfigureRequest(google.protobuf.message.Message):
         sends_old_inputs_to_delete: builtins.bool = ...,
         id: builtins.str | None = ...,
         urn: builtins.str | None = ...,
+        name: builtins.str | None = ...,
+        type: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_id", b"_id", "_urn", b"_urn", "args", b"args", "id", b"id", "urn", b"urn"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_id", b"_id", "_urn", b"_urn", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "id", b"id", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "urn", b"urn", "variables", b"variables"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_id", b"_id", "_name", b"_name", "_type", b"_type", "_urn", b"_urn", "args", b"args", "id", b"id", "name", b"name", "type", b"type", "urn", b"urn"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_id", b"_id", "_name", b"_name", "_type", b"_type", "_urn", b"_urn", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "id", b"id", "name", b"name", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "type", b"type", "urn", b"urn", "variables", b"variables"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_id", b"_id"]) -> typing_extensions.Literal["id"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_name", b"_name"]) -> typing_extensions.Literal["name"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_type", b"_type"]) -> typing_extensions.Literal["type"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_urn", b"_urn"]) -> typing_extensions.Literal["urn"] | None: ...
 

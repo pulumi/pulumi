@@ -136,10 +136,10 @@ func (p *providerServer) Handshake(
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	_, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
-		EngineAddress:      req.EngineAddress,
-		RootDirectory:      req.RootDirectory,
-		ProgramDirectory:   req.ProgramDirectory,
-		ConfigureWithUrnID: req.ConfigureWithUrnId,
+		EngineAddress:    req.EngineAddress,
+		RootDirectory:    req.RootDirectory,
+		ProgramDirectory: req.ProgramDirectory,
+		ConfigureWithUrn: req.ConfigureWithUrn,
 	})
 	if err != nil {
 		return nil, err

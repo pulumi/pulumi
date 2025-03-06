@@ -696,8 +696,13 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	}
 	contract.Assertf(provider != nil, "provider must not be nil")
 
+	name := urn.Name()
+	typ := urn.Type()
+
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &urn,
+		Name:   &name,
+		Type:   &typ,
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
@@ -774,9 +779,14 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		contract.Assertf(id != UnknownID, "resource ID must not be unknown")
 	}
 
+	name := req.URN.Name()
+	typ := req.URN.Type()
+
 	filteredProperties := FilterProviderConfig(req.Properties)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &req.URN,
+		Name:   &name,
+		Type:   &typ,
 		ID:     &id,
 		Inputs: filteredProperties,
 	}); err != nil {
@@ -805,9 +815,14 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	provider, ok := r.deleteProvider(mustNewReference(req.URN, UnconfiguredID))
 	contract.Assertf(ok, "'Check' and 'Diff' must be called before 'Update' (%v)", req.URN)
 
+	name := req.URN.Name()
+	typ := req.URN.Type()
+
 	filteredProperties := FilterProviderConfig(req.NewInputs)
 	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
 		URN:    &req.URN,
+		Name:   &name,
+		Type:   &typ,
 		ID:     &req.ID,
 		Inputs: filteredProperties,
 	})

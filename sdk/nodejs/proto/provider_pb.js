@@ -984,7 +984,7 @@ proto.pulumirpc.ProviderHandshakeRequest.toObject = function(includeInstance, ms
     engineAddress: jspb.Message.getFieldWithDefault(msg, 1, ""),
     rootDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
     programDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    configureWithUrnId: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -1035,7 +1035,7 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
       break;
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setConfigureWithUrnId(value);
+      msg.setConfigureWithUrn(value);
       break;
     default:
       reader.skipField();
@@ -1087,7 +1087,7 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
       f
     );
   }
-  f = message.getConfigureWithUrnId();
+  f = message.getConfigureWithUrn();
   if (f) {
     writer.writeBool(
       4,
@@ -1188,10 +1188,10 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.hasProgramDirectory = functio
 
 
 /**
- * optional bool configure_with_urn_id = 4;
+ * optional bool configure_with_urn = 4;
  * @return {boolean}
  */
-proto.pulumirpc.ProviderHandshakeRequest.prototype.getConfigureWithUrnId = function() {
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getConfigureWithUrn = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
@@ -1200,7 +1200,7 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.getConfigureWithUrnId = funct
  * @param {boolean} value
  * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
  */
-proto.pulumirpc.ProviderHandshakeRequest.prototype.setConfigureWithUrnId = function(value) {
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setConfigureWithUrn = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
@@ -2423,7 +2423,9 @@ proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
     sendsOldInputs: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
     sendsOldInputsToDelete: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
     id: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 8, "")
+    urn: jspb.Message.getFieldWithDefault(msg, 8, ""),
+    name: jspb.Message.getFieldWithDefault(msg, 9, ""),
+    type: jspb.Message.getFieldWithDefault(msg, 10, "")
   };
 
   if (includeInstance) {
@@ -2494,6 +2496,14 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setUrn(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
+    case 10:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setType(value);
       break;
     default:
       reader.skipField();
@@ -2575,6 +2585,20 @@ proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, wri
   if (f != null) {
     writer.writeString(
       8,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 9));
+  if (f != null) {
+    writer.writeString(
+      9,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 10));
+  if (f != null) {
+    writer.writeString(
+      10,
       f
     );
   }
@@ -2781,6 +2805,78 @@ proto.pulumirpc.ConfigureRequest.prototype.clearUrn = function() {
  */
 proto.pulumirpc.ConfigureRequest.prototype.hasUrn = function() {
   return jspb.Message.getField(this, 8) != null;
+};
+
+
+/**
+ * optional string name = 9;
+ * @return {string}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.setName = function(value) {
+  return jspb.Message.setField(this, 9, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.clearName = function() {
+  return jspb.Message.setField(this, 9, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.hasName = function() {
+  return jspb.Message.getField(this, 9) != null;
+};
+
+
+/**
+ * optional string type = 10;
+ * @return {string}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getType = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.setType = function(value) {
+  return jspb.Message.setField(this, 10, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.clearType = function() {
+  return jspb.Message.setField(this, 10, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.hasType = function() {
+  return jspb.Message.getField(this, 10) != null;
 };
 
 

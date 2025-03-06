@@ -53,8 +53,8 @@ type ProviderHandshakeRequest struct {
 	// field will be empty.
 	ProgramDirectory *string
 
-	// If true the engine will send URN and ID references to the provider as part of the configuration.
-	ConfigureWithUrnID bool
+	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
+	ConfigureWithUrn bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -118,6 +118,8 @@ type DiffConfigResponse = DiffResult
 
 type ConfigureRequest struct {
 	URN    *resource.URN
+	Name   *string
+	Type   *tokens.Type
 	ID     *resource.ID
 	Inputs resource.PropertyMap
 }
