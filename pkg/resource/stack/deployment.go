@@ -111,7 +111,8 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	var enc config.Encrypter
 	var completeBatch CompleteCrypterBatch
 	if sm != nil {
-		if csm, ok := sm.(CachingSecretsManager); ok {
+		// If the secrets manager supports batching, start the batch operation.
+		if csm, ok := sm.(BatchingSecretsManager); ok {
 			enc, completeBatch = csm.BeginBatchEncryption()
 		} else {
 			enc = sm.Encrypter()
@@ -156,7 +157,7 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 		}
 	}
 
-	if completeBatch != nil {
+	if completeBatch != nil { // If we started a batch operation, complete it.
 		if err := completeBatch(ctx); err != nil {
 			return nil, err
 		}
@@ -258,8 +259,9 @@ func DeserializeDeploymentV3(
 	}
 
 	var completeBatch CompleteCrypterBatch
-	if cachingCrypter, ok := secretsManager.(CachingSecretsManager); ok {
-		dec, completeBatch = cachingCrypter.BeginBatchDecryption()
+	if batchingSecretsManager, ok := secretsManager.(BatchingSecretsManager); ok {
+		// If the secrets manager supports batching, start a batch operation.
+		dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
@@ -282,6 +284,7 @@ func DeserializeDeploymentV3(
 	}
 
 	if completeBatch != nil {
+		// If we started a batch operation, complete it.
 		if err := completeBatch(ctx); err != nil {
 			return nil, err
 		}
@@ -467,10 +470,9 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		if showSecrets {
 			secret.Plaintext = plaintext
 		} else {
-			// If the encrypter is a cachingCrypter, call through its encryptSecret method, which will look for a matching
-			// *resource.Secret + plaintext in its cache in order to avoid re-encrypting the value.
-			if cachingCrypter, ok := enc.(BatchEncrypter); ok {
-				err = cachingCrypter.Enqueue(ctx, prop.SecretValue(), plaintext, &secret)
+			// If the encrypter is a batchEncrypter, use the Enqueue method to asynchronously encrypt the secret value.
+			if batchEncrypter, ok := enc.(BatchEncrypter); ok {
+				err = batchEncrypter.Enqueue(ctx, prop.SecretValue(), plaintext, &secret)
 				if err != nil {
 					return nil, fmt.Errorf("enqueuing secret value for encryption: %w", err)
 				}
@@ -612,9 +614,9 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						}
 						secret.Element = ev
 					} else { // We only have ciphertext, so we need to decrypt it.
-						if cachingCrypter, ok := dec.(BatchDecrypter); ok {
-							// If the decrypter is a cachingCrypter, check the cache for the ciphertext.
-							err := cachingCrypter.Enqueue(ctx, ciphertext, secret)
+						// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
+						if batchDecrypter, ok := dec.(BatchDecrypter); ok {
+							err := batchDecrypter.Enqueue(ctx, ciphertext, secret)
 							if err != nil {
 								return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
 							}

@@ -76,19 +76,19 @@ func (c *serviceCrypter) BatchEncrypt(ctx context.Context, plaintexts []string) 
 	if supports, _ := c.supportsBatchEncryption.Result(ctx); !supports {
 		return config.DefaultBatchEncrypt(ctx, c, plaintexts)
 	}
-	plantextBytes := make([][]byte, len(plaintexts))
+	plaintextBytes := make([][]byte, len(plaintexts))
 	for i, val := range plaintexts {
-		plantextBytes[i] = []byte(val)
+		plaintextBytes[i] = []byte(val)
 	}
-	cyphertextBytes, err := c.client.BatchEncrypt(ctx, c.stack, plantextBytes)
+	ciphertextBytes, err := c.client.BatchEncrypt(ctx, c.stack, plaintextBytes)
 	if err != nil {
 		return nil, err
 	}
-	cyphertexts := make([]string, len(cyphertextBytes))
-	for i, val := range cyphertextBytes {
-		cyphertexts[i] = base64.StdEncoding.EncodeToString(val)
+	ciphertexts := make([]string, len(ciphertextBytes))
+	for i, val := range ciphertextBytes {
+		ciphertexts[i] = base64.StdEncoding.EncodeToString(val)
 	}
-	return cyphertexts, nil
+	return ciphertexts, nil
 }
 
 func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) (string, error) {
@@ -122,7 +122,7 @@ func (c *serviceCrypter) BatchDecrypt(ctx context.Context, secrets []string) ([]
 	decryptedSecrets := make([]string, len(secrets))
 	for i, ciphertext := range secrets {
 		decrypted, ok := decryptedList[ciphertext]
-		contract.Assertf(ok, "decrypted value not found in bulk response")
+		contract.Assertf(ok, "decrypted value not found in batch response")
 		decryptedSecrets[i] = string(decrypted)
 	}
 

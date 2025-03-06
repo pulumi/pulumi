@@ -35,7 +35,7 @@ type Encrypter interface {
 
 	// BatchEncrypt supports encryption of multiple secrets in a single batch request, if supported by the implementation.
 	// Returns a list of encrypted values in the same order as the input secrets.
-	// Each secret is encrypted individually and duplicate secret values will result in different ciphertext.
+	// Each secret is encrypted individually and duplicate secret values will result in different ciphertexts.
 	BatchEncrypt(ctx context.Context, secrets []string) ([]string, error)
 }
 
@@ -118,7 +118,7 @@ func (p panicCrypter) EncryptValue(ctx context.Context, _ string) (string, error
 }
 
 func (p panicCrypter) BatchEncrypt(ctx context.Context, _ []string) ([]string, error) {
-	panic("attempt to bulk encrypt values")
+	panic("attempt to batch encrypt values")
 }
 
 func (p panicCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
@@ -126,7 +126,7 @@ func (p panicCrypter) DecryptValue(ctx context.Context, _ string) (string, error
 }
 
 func (p panicCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	panic("attempt to bulk decrypt values")
+	panic("attempt to batch decrypt values")
 }
 
 type errorCrypter struct {
@@ -142,7 +142,7 @@ func (e errorCrypter) EncryptValue(ctx context.Context, _ string) (string, error
 }
 
 func (e errorCrypter) BatchEncrypt(ctx context.Context, _ []string) ([]string, error) {
-	return nil, fmt.Errorf("failed to bulk encrypt: %s", e.err)
+	return nil, fmt.Errorf("failed to batch encrypt: %s", e.err)
 }
 
 func (e errorCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
@@ -150,7 +150,7 @@ func (e errorCrypter) DecryptValue(ctx context.Context, _ string) (string, error
 }
 
 func (e errorCrypter) BatchDecrypt(ctx context.Context, _ []string) ([]string, error) {
-	return nil, fmt.Errorf("failed to bulk decrypt: %s", e.err)
+	return nil, fmt.Errorf("failed to batch decrypt: %s", e.err)
 }
 
 // NewSymmetricCrypter creates a crypter that encrypts and decrypts values using AES-256-GCM.  The nonce is stored with
@@ -323,7 +323,7 @@ func (c *base64Crypter) EncryptValue(ctx context.Context, s string) (string, err
 }
 
 func (c *base64Crypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
-	return nil, errors.New("BulkEncrypt not supported for base64Crypter")
+	return nil, errors.New("BatchEncrypt not supported for base64Crypter")
 }
 
 func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, error) {

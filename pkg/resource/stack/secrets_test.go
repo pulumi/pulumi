@@ -115,7 +115,7 @@ func TestCachingSecretsManager(t *testing.T) {
 
 	ctx := context.Background()
 	sm := &testSecretsManager{}
-	csm := NewCachingSecretsManager(sm)
+	csm := NewBatchingSecretsManager(sm)
 
 	foo1 := resource.MakeSecret(resource.NewStringProperty("foo"))
 	foo2 := resource.MakeSecret(resource.NewStringProperty("foo"))
@@ -200,7 +200,7 @@ func TestCachingSecretsManager(t *testing.T) {
 
 	// Create a new CachingSecretsManager and re-run the decrypts. Each decrypt should insert the plain- and
 	// ciphertext into the cache with the associated secret.
-	csm = NewCachingSecretsManager(sm)
+	csm = NewBatchingSecretsManager(sm)
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
@@ -260,8 +260,8 @@ func TestSecretCache(t *testing.T) {
 		t.Parallel()
 		cache := NewSecretCache()
 
-		ciphertext, encrypted := cache.TryEncrypt(&resource.Secret{}, "foo")
-		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+		ciphertext, encrypted := cache.LookupCiphertext(&resource.Secret{}, "foo")
+		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
 		assert.Equal(t, "", ciphertext, "ciphertext value")
@@ -277,15 +277,15 @@ func TestSecretCache(t *testing.T) {
 		cache.Write("plaintext1", "ciphertext1", secret1)
 		cache.Write("plaintext2", "ciphertext2", secret2)
 
-		ciphertext1, encrypted1 := cache.TryEncrypt(secret1, "plaintext1")
-		plaintext1, decrypted1 := cache.TryDecrypt("ciphertext1")
+		ciphertext1, encrypted1 := cache.LookupCiphertext(secret1, "plaintext1")
+		plaintext1, decrypted1 := cache.LookupPlaintext("ciphertext1")
 		assert.True(t, encrypted1, "was encrypted")
 		assert.Equal(t, "ciphertext1", ciphertext1)
 		assert.True(t, decrypted1, "was decrypted")
 		assert.Equal(t, "plaintext1", plaintext1)
 
-		ciphertext2, encrypted2 := cache.TryEncrypt(secret2, "plaintext2")
-		plaintext2, decrypted2 := cache.TryDecrypt("ciphertext2")
+		ciphertext2, encrypted2 := cache.LookupCiphertext(secret2, "plaintext2")
+		plaintext2, decrypted2 := cache.LookupPlaintext("ciphertext2")
 		assert.True(t, encrypted2, "was encrypted")
 		assert.Equal(t, "ciphertext2", ciphertext2)
 		assert.True(t, decrypted2, "was decrypted")
@@ -298,8 +298,8 @@ func TestSecretCache(t *testing.T) {
 		secret := &resource.Secret{}
 		cache.Write("plaintext", "ciphertext", secret)
 
-		ciphertext, encrypted := cache.TryEncrypt(secret, "different plaintext")
-		plaintext, decrypted := cache.TryDecrypt("different ciphertext")
+		ciphertext, encrypted := cache.LookupCiphertext(secret, "different plaintext")
+		plaintext, decrypted := cache.LookupPlaintext("different ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
 		assert.Equal(t, "", ciphertext, "ciphertext value")
@@ -313,8 +313,8 @@ func TestSecretCache(t *testing.T) {
 		secret := &resource.Secret{}
 
 		cache.Write("plaintext", "ciphertext", secret)
-		ciphertext, encrypted := cache.TryEncrypt(secret, "different plaintext")
-		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+		ciphertext, encrypted := cache.LookupCiphertext(secret, "different plaintext")
+		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
 		assert.Equal(t, "", ciphertext, "ciphertext value")
@@ -330,8 +330,8 @@ func TestSecretCache(t *testing.T) {
 		cache.Write("plaintext", "ciphertext", secret)
 		cache.Write("plaintext", "updated ciphertext", secret)
 
-		ciphertext, encrypted := cache.TryEncrypt(secret, "plaintext")
-		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+		ciphertext, encrypted := cache.LookupCiphertext(secret, "plaintext")
+		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.True(t, encrypted, "was encrypted")
 		assert.Equal(t, "updated ciphertext", ciphertext)
@@ -345,8 +345,8 @@ func TestSecretCache(t *testing.T) {
 		secret := &resource.Secret{}
 
 		cache.Write("plaintext", "ciphertext", secret)
-		ciphertext, encrypted := cache.TryEncrypt(secret, "plaintext")
-		plaintext, decrypted := cache.TryDecrypt("ciphertext")
+		ciphertext, encrypted := cache.LookupCiphertext(secret, "plaintext")
+		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
 		assert.Equal(t, "", ciphertext, "ciphertext value")
