@@ -1,0 +1,15 @@
+{
+  "name": "mypkg",
+  "version": "1.0.0",
+  "namespace": "example",
+  "resources": {
+    "mypkg::Resource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
