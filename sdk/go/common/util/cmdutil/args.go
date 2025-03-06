@@ -29,7 +29,7 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 		if err != nil {
 			return errors.Join(cmd.Help(), err)
 		}
-		return err
+		return nil
 	}
 }
 
