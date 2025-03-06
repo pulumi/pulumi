@@ -371,9 +371,16 @@ func (p *providerServer) Configure(ctx context.Context,
 		idVal := resource.ID(*req.Id)
 		id = &idVal
 	}
+	var typ *tokens.Type
+	if req.Type != nil {
+		typVal := tokens.Type(*req.Type)
+		typ = &typVal
+	}
 
 	_, err := p.provider.Configure(ctx, ConfigureRequest{
 		URN:    urn,
+		Name:   req.Name,
+		Type:   typ,
 		ID:     id,
 		Inputs: inputs,
 	})

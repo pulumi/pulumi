@@ -654,19 +654,19 @@ type ConfigureRequest struct {
 	// [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
 	// these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
 	SendsOldInputsToDelete bool `protobuf:"varint,6,opt,name=sends_old_inputs_to_delete,json=sendsOldInputsToDelete,proto3" json:"sends_old_inputs_to_delete,omitempty"`
-	// The ID of the provider being configured. N.B. This will be null for engines before
-	// v3.155.0.
+	// The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
+	// Handshake.
 	Id *string `protobuf:"bytes,7,opt,name=id,proto3,oneof" json:"id,omitempty"`
-	// The URN of the provider being configured. N.B. This will be null for engines before
-	// v3.155.0.
+	// The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
+	// Handshake.
 	Urn *string `protobuf:"bytes,8,opt,name=urn,proto3,oneof" json:"urn,omitempty"`
-	// The name of the provider being configured. This must match the name specified by the `urn` field, and is
-	// passed so that providers do not have to implement URN parsing in order to extract the name of the
-	// provider.  N.B. This will be null for engines before v3.155.0.
+	// The name of the provider being configured. This must match the name specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the name of the
+	// provider.  N.B. This will be null if configure_with_urn was false in Handshake.
 	Name *string `protobuf:"bytes,9,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	// The type of the provider being configured. This must match the type specified by the `urn` field, and is
-	// passed so that providers do not have to implement URN parsing in order to extract the type of the
-	// provider. N.B. This will be null for engines before v3.155.0.
+	// The type of the provider being configured. This must match the type specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the type of the
+	// provider. N.B. This will be null if configure_with_urn was false in Handshake.
 	Type *string `protobuf:"bytes,10,opt,name=type,proto3,oneof" json:"type,omitempty"`
 }
 

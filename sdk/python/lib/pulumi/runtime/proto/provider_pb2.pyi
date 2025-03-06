@@ -328,22 +328,22 @@ class ConfigureRequest(google.protobuf.message.Message):
     these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     """
     id: builtins.str
-    """The ID of the provider being configured. N.B. This will be null for engines before
-    v3.155.0.
+    """The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
+    Handshake.
     """
     urn: builtins.str
-    """The URN of the provider being configured. N.B. This will be null for engines before
-    v3.155.0.
+    """The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
+    Handshake.
     """
     name: builtins.str
-    """The name of the provider being configured. This must match the name specified by the `urn` field, and is
-    passed so that providers do not have to implement URN parsing in order to extract the name of the
-    provider.  N.B. This will be null for engines before v3.155.0.
+    """The name of the provider being configured. This must match the name specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the name of the
+    provider.  N.B. This will be null if configure_with_urn was false in Handshake.
     """
     type: builtins.str
-    """The type of the provider being configured. This must match the type specified by the `urn` field, and is
-    passed so that providers do not have to implement URN parsing in order to extract the type of the
-    provider. N.B. This will be null for engines before v3.155.0.
+    """The type of the provider being configured. This must match the type specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the type of the
+    provider. N.B. This will be null if configure_with_urn was false in Handshake.
     """
     def __init__(
         self,
