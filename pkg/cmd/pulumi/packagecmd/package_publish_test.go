@@ -33,9 +33,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:paralleltest // This test uses the global backendInstance variable
 func TestPackagePublishCmd_Run(t *testing.T) {
-	t.Parallel()
-
 	version := semver.MustParse("1.0.0")
 
 	tests := []struct {
@@ -258,7 +257,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					schemaBytes, err := io.ReadAll(op.Schema)
 					require.NoError(t, err)
 					packageSpec, err := unmarshalSchema(schemaBytes)
-	
+
 					if len(packageSpec.Types) == 0 {
 						packageSpec.Types = map[string]schema.ComplexTypeSpec{}
 					}
@@ -272,7 +271,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					expectedSpec, err := tt.mockSchema.MarshalSpec()
 					require.NoError(t, err)
 					assert.Equal(t, expectedSpec, packageSpec, "package schema should match input package spec")
-	
+
 					// Verify readme and install docs content
 					if tt.args.readmePath != "" {
 						actualContents, err := io.ReadAll(op.Readme)
@@ -284,7 +283,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 						require.NoError(t, err)
 						assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
 					}
-	
+
 					// Verify publisher is set correctly
 					if tt.args.publisher != "" {
 						assert.Equal(t, tt.args.publisher, op.Publisher, "publisher should match command line argument")
