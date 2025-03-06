@@ -1015,6 +1015,11 @@ func TestImportParameterizedSmokeFreshState(t *testing.T) {
 func TestParallelCgroups(t *testing.T) {
 	t.Parallel()
 
+	// This test mounts the pulumi binary into a linux docker container so the host needs to be linux as well.
+	if runtime.GOOS != "linux" {
+		t.Skip("skipping test on non-linux host")
+	}
+
 	// This test uses docker so skip if we can't find that
 	_, err := exec.LookPath("docker")
 	if err != nil {
