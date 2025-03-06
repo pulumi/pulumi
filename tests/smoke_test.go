@@ -18,9 +18,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1007,4 +1009,39 @@ func TestImportParameterizedSmoke(t *testing.T) {
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestImportParameterizedSmokeFreshState(t *testing.T) {
 	testImportParameterizedSmoke(t, false)
+}
+
+// Test for https://github.com/pulumi/pulumi/issues/18814, check that --parallel respects cgroups limits.
+func TestParallelCgroups(t *testing.T) {
+	t.Parallel()
+
+	// This test uses docker so skip if we can't find that
+	_, err := exec.LookPath("docker")
+	if err != nil {
+		t.Skip("docker not found, skipping test")
+	}
+
+	// Extracts the default --parallel value from `pulumi up --help`
+	getParallelCount := func(output string) int {
+		re := regexp.MustCompile(`--parallel.+\(default (\d+)\)`)
+		matches := re.FindStringSubmatch(output)
+		require.Len(t, matches, 2, "failed to parse --parallel count")
+		i, err := strconv.Atoi(matches[1])
+		require.NoError(t, err)
+		return i
+	}
+
+	// Work out the folder for pulumi so we can mount it
+	path, err := exec.LookPath("pulumi")
+	require.NoError(t, err)
+	path = filepath.Dir(path)
+
+	// Runs `pulumi up --help` inside a limited CPU context
+	cmd := exec.Command("docker", "run", "--rm", "--cpus=1", "-v", path+":/mnt", "ubuntu", "/mnt/pulumi", "up", "--help")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	limitedParallel := getParallelCount(string(output))
+
+	// Assert that the limited parallel count is 4, i.e. 1 CPU x 4.
+	assert.Equal(t, 4, limitedParallel, "Expected --parallel=4 in limited CPU context")
 }
