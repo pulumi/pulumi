@@ -360,7 +360,12 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 	}
 
-	if _, err := p.provider.Configure(ctx, ConfigureRequest{inputs}); err != nil {
+	_, err := p.provider.Configure(ctx, ConfigureRequest{
+		URN:    resource.URN(req.Urn),
+		ID:     resource.ID(req.Id),
+		Inputs: inputs,
+	})
+	if err != nil {
 		return nil, err
 	}
 

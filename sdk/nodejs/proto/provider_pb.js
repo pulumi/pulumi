@@ -2391,7 +2391,9 @@ proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
     sendsOldInputs: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    sendsOldInputsToDelete: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
+    sendsOldInputsToDelete: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
+    id: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -2454,6 +2456,14 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
     case 6:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSendsOldInputsToDelete(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setId(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUrn(value);
       break;
     default:
       reader.skipField();
@@ -2521,6 +2531,20 @@ proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, wri
   if (f) {
     writer.writeBool(
       6,
+      f
+    );
+  }
+  f = message.getId();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
+      f
+    );
+  }
+  f = message.getUrn();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
       f
     );
   }
@@ -2655,6 +2679,42 @@ proto.pulumirpc.ConfigureRequest.prototype.getSendsOldInputsToDelete = function(
  */
 proto.pulumirpc.ConfigureRequest.prototype.setSendsOldInputsToDelete = function(value) {
   return jspb.Message.setProto3BooleanField(this, 6, value);
+};
+
+
+/**
+ * optional string id = 7;
+ * @return {string}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.setId = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional string urn = 8;
+ * @return {string}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getUrn = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.setUrn = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

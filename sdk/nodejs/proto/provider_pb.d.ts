@@ -234,6 +234,10 @@ export class ConfigureRequest extends jspb.Message {
     setSendsOldInputs(value: boolean): ConfigureRequest;
     getSendsOldInputsToDelete(): boolean;
     setSendsOldInputsToDelete(value: boolean): ConfigureRequest;
+    getId(): string;
+    setId(value: string): ConfigureRequest;
+    getUrn(): string;
+    setUrn(value: string): ConfigureRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureRequest.AsObject;
@@ -254,6 +258,8 @@ export namespace ConfigureRequest {
         acceptresources: boolean,
         sendsOldInputs: boolean,
         sendsOldInputsToDelete: boolean,
+        id: string,
+        urn: string,
     }
 }
 

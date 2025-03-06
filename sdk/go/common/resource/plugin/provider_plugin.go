@@ -934,6 +934,8 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+			Urn:                    string(req.URN),
+			Id:                     string(req.ID),
 			AcceptSecrets:          true,
 			AcceptResources:        true,
 			SendsOldInputs:         true,

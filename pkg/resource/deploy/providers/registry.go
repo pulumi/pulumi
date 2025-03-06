@@ -697,6 +697,8 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	contract.Assertf(provider != nil, "provider must not be nil")
 
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
+		URN:    urn,
+		ID:     res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
 		closeErr := r.host.CloseProvider(provider)
@@ -761,13 +763,6 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		}
 	}
 
-	filteredProperties := FilterProviderConfig(req.Properties)
-	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
-		Inputs: filteredProperties,
-	}); err != nil {
-		return plugin.CreateResponse{Status: resource.StatusOK}, err
-	}
-
 	id := resource.ID(UnknownID)
 	if !req.Preview {
 		// generate a new uuid
@@ -777,6 +772,15 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		}
 		id = resource.ID(uuid.String())
 		contract.Assertf(id != UnknownID, "resource ID must not be unknown")
+	}
+
+	filteredProperties := FilterProviderConfig(req.Properties)
+	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
+		URN:    req.URN,
+		ID:     id,
+		Inputs: filteredProperties,
+	}); err != nil {
+		return plugin.CreateResponse{Status: resource.StatusOK}, err
 	}
 
 	r.setProvider(mustNewReference(req.URN, id), provider)
@@ -802,7 +806,12 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	contract.Assertf(ok, "'Check' and 'Diff' must be called before 'Update' (%v)", req.URN)
 
 	filteredProperties := FilterProviderConfig(req.NewInputs)
-	if _, err := provider.Configure(ctx, plugin.ConfigureRequest{Inputs: filteredProperties}); err != nil {
+	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
+		URN:    req.URN,
+		ID:     req.ID,
+		Inputs: filteredProperties,
+	})
+	if err != nil {
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
 	}
 

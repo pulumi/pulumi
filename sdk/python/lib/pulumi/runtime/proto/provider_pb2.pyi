@@ -262,6 +262,8 @@ class ConfigureRequest(google.protobuf.message.Message):
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """:::{warning}
@@ -319,6 +321,10 @@ class ConfigureRequest(google.protobuf.message.Message):
     [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
     these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     """
+    id: builtins.str
+    """The ID of the provider being configured. N.B. This will be the empty string for engines before v3.154.0."""
+    urn: builtins.str
+    """The URN of the provider being configured. N.B. This will be the empty string for engines before v3.154.0."""
     def __init__(
         self,
         *,
@@ -328,9 +334,11 @@ class ConfigureRequest(google.protobuf.message.Message):
         acceptResources: builtins.bool = ...,
         sends_old_inputs: builtins.bool = ...,
         sends_old_inputs_to_delete: builtins.bool = ...,
+        id: builtins.str = ...,
+        urn: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "variables", b"variables"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "id", b"id", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "urn", b"urn", "variables", b"variables"]) -> None: ...
 
 global___ConfigureRequest = ConfigureRequest
 

@@ -114,6 +114,8 @@ type DiffConfigRequest struct {
 type DiffConfigResponse = DiffResult
 
 type ConfigureRequest struct {
+	URN    resource.URN
+	ID     resource.ID
 	Inputs resource.PropertyMap
 }
 

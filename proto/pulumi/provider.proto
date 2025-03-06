@@ -384,6 +384,12 @@ message ConfigureRequest {
     // [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
     // these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     bool sends_old_inputs_to_delete = 6;
+
+    // The ID of the provider being configured. N.B. This will be the empty string for engines before v3.154.0.
+    string id = 7;
+
+    // The URN of the provider being configured. N.B. This will be the empty string for engines before v3.154.0.
+    string urn = 8;
 }
 
 // `ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
