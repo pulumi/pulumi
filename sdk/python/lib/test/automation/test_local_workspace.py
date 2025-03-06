@@ -206,6 +206,20 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(Stack.create_or_select(stack_name, ws).name, stack_name)
         ws.remove_stack(stack_name)
 
+    # If we rename a stack, we should be able to delete the stack by using the
+    # new name.
+    def test_stack_rename(self):
+        project_name = "python_rename_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+
+        stack = Stack.create(stack_name, ws)
+        stack.rename(stack_name + "_renamed")
+
+        # This will throw if the renamed stack doesn't exist.
+        ws.remove_stack(stack_name + "_renamed")
+
     def test_config_env_functions(self):
         if get_test_org() != "moolumi":
             self.skipTest(
