@@ -907,8 +907,8 @@ func (s *Stack) Rename(ctx context.Context, opts ...optrename.Option) (RenameRes
 }
 
 func renameOptsToCmd(renameOpts *optrename.Options, s *Stack) []string {
-	args := slice.Prealloc[string](2)
-	return append(args, "rename", renameOpts.StackName)
+	args := slice.Prealloc[string](3)
+	return append(args, "stack", "rename", renameOpts.StackName)
 }
 
 // Destroy deletes all resources in a stack, leaving all history and configuration intact.
