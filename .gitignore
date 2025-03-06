@@ -84,8 +84,12 @@ __pycache__
 
 # File targets for make
 .make
+.*.phony
 
 # Temporary files
 *.tmp
 test-results/
 yarn-error.log
+
+# Local environment settings
+.env

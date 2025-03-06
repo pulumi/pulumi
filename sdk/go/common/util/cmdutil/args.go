@@ -15,10 +15,10 @@
 package cmdutil
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -27,11 +27,9 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := argsValidator(cmd, args)
 		if err != nil {
-			contract.IgnoreError(cmd.Help())
-			Exit(err)
+			return errors.Join(cmd.Help(), err)
 		}
-
-		return nil
+		return err
 	}
 }
 

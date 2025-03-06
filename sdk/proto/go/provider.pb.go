@@ -2780,20 +2780,19 @@ func (x *ErrorResourceInitFailed) GetInputs() *structpb.Struct {
 	return nil
 }
 
-// GetMappingRequest allows providers to return ecosystem specific information to allow the provider to be
-// converted from a source markup to Pulumi. It's expected that provider bridges that target a given ecosystem
-// (e.g. Terraform, Kubernetes) would also publish a conversion plugin to convert markup from that ecosystem
-// to Pulumi, using the bridged providers.
+// `GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call.
 type GetMappingRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the conversion key for the mapping being requested.
+	// The conversion key for the mapping being requested. This typically corresponds to the source language, such as
+	// `terraform` in the case of mapping Terraform names to Pulumi names.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// the optional provider key for the mapping being requested, if this is empty the provider should assume this
-	// request is from an old engine from before GetMappings and should return it's "primary" mapping. If this is set
-	// then the `provider` field in GetMappingResponse should be the same.
+	// An optional *source provider key* for the mapping being requested. If this is empty, the provider should assume
+	// that this request is from an old engine prior to the introduction of [](pulumirpc.ResourceProvider.GetMappings).
+	// In these cases the request should be answered with the "primary" mapping. If this field is set, the `provider`
+	// field in the corresponding [](pulumirpc.GetMappingResponse) should contain the same value.
 	Provider string `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
 }
 
@@ -2843,16 +2842,17 @@ func (x *GetMappingRequest) GetProvider() string {
 	return ""
 }
 
-// GetMappingResponse returns convert plugin specific data for this provider. This will normally be human
-// readable JSON, but the engine doesn't mandate any form.
+// `GetMappingResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMapping) call. The data
+// within a `GetMappingResponse` will normally be human-readable JSON (e.g. an object mapping names from the source to
+// Pulumi), but the engine doesn't mandate any specific format.
 type GetMappingResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the provider key this is mapping for. For example the Pulumi provider "terraform-template" would return "template" for this.
+	// The *source provider key* that this mapping contains data for.
 	Provider string `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
-	// the conversion plugin specific data.
+	// Mapping data in a format specific to the conversion plugin/source language.
 	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
 }
 
@@ -2902,14 +2902,14 @@ func (x *GetMappingResponse) GetData() []byte {
 	return nil
 }
 
-// GetMappingsRequest allows providers to return ecosystem specific information without having to send back large data
-// blobs for provider mappings that the engine doesn't then need.
+// `GetMappingsRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMappings) call.
 type GetMappingsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the conversion key for the mapping being requested.
+	// The conversion key for the mapping being requested. This typically corresponds to the source language, such as
+	// `terraform` in the case of mapping Terraform names to Pulumi names.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 }
 
@@ -2952,14 +2952,14 @@ func (x *GetMappingsRequest) GetKey() string {
 	return ""
 }
 
-// GetMappingsRequest returns a list of providers that this provider can provide mapping information for.
+// `GetMappingsResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMappings) call.
 type GetMappingsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the provider keys this provider can supply mappings for. For example the Pulumi provider "terraform-template"
-	// would return ["template"] for this.
+	// The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
+	// `terraform-template` would return `["template"]` for this.
 	Providers []string `protobuf:"bytes,1,rep,name=providers,proto3" json:"providers,omitempty"`
 }
 

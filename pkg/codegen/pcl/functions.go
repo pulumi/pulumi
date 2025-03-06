@@ -435,6 +435,31 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}}
 				}
 
+				// Return a type that is a union of all argument types.
+				argTypes := make([]model.Type, len(args))
+				for i, arg := range args {
+					argTypes[i] = arg.Type()
+				}
+				returnType, _ := model.UnifyTypes(argTypes...)
+				// If this results in a union of a dynamic type and another type, we should just return output dynamic.
+				var containsDynamic func(t model.Type) bool
+				containsDynamic = func(t model.Type) bool {
+					if u, ok := t.(*model.UnionType); ok {
+						for _, e := range u.ElementTypes {
+							if containsDynamic(e) {
+								return true
+							}
+						}
+					}
+					if o, ok := t.(*model.OutputType); ok {
+						return containsDynamic(o.ElementType)
+					}
+					return t == model.DynamicType
+				}
+				if containsDynamic(returnType) {
+					returnType = model.NewOutputType(model.DynamicType)
+				}
+
 				parameters := make([]model.Parameter, len(args))
 				for i, arg := range args {
 					parameters[i] = model.Parameter{
@@ -443,11 +468,9 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}
 				}
 
-				// TODO[#18555] perhaps the return type should be an OutputType so
-				// apply can be called on it (since it may be an output).
 				sig := model.StaticFunctionSignature{
 					Parameters: parameters,
-					ReturnType: model.NewOutputType(model.DynamicType),
+					ReturnType: returnType,
 				}
 
 				return sig, diagnostics
@@ -457,33 +480,37 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 				var diagnostics hcl.Diagnostics
 
-				sig := model.StaticFunctionSignature{
-					Parameters: []model.Parameter{
-						{
-							Name: "arg",
-							Type: model.DynamicType,
-						},
-					},
-					ReturnType: model.NewOutputType(model.BoolType),
-				}
-
+				// if the input is not a single argument, we should error
 				if len(args) != 1 {
 					diagnostics = append(diagnostics, &hcl.Diagnostic{
 						Severity: hcl.DiagError,
 						Summary:  "'can' expects exactly one argument",
 					})
-
-					return sig, diagnostics
 				}
 
-				parameters := make([]model.Parameter, 1)
-				arg := args[0]
-				parameters[0] = model.Parameter{
-					Name: "arg",
-					Type: arg.Type(),
+				var argType model.Type
+				argType = model.DynamicType
+				if len(args) == 1 {
+					argType = args[0].Type()
 				}
 
-				sig.Parameters = parameters
+				// if the input type is dynamic or an output we need to return an output bool,
+				// but otherwise we can return a plain bool
+				var returnType model.Type
+				returnType = model.BoolType
+				if isOutput(argType) || argType == model.DynamicType {
+					returnType = model.NewOutputType(returnType)
+				}
+
+				sig := model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "arg",
+							Type: argType,
+						},
+					},
+					ReturnType: returnType,
+				}
 
 				return sig, diagnostics
 			},

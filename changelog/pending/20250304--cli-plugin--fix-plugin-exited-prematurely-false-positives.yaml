@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: Fix plugin "exited prematurely" false positives

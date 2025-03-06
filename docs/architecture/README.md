@@ -122,9 +122,10 @@ well as discussing how they are verified and tested.
 
 /docs/architecture/deployment-execution/README
 /docs/architecture/types/README
-/docs/architecture/languages
-/docs/architecture/providers/README
 /docs/architecture/plugins
+/docs/architecture/providers/README
+/docs/architecture/languages
+/docs/architecture/converters
 /pkg/codegen/README
 /docs/architecture/testing/README
 :::

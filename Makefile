@@ -78,7 +78,7 @@ build:: bin/pulumi build_display_wasm
 ifneq (${GOBIN},)
 	cp $< ${GOBIN}/pulumi
 else
-	cp $< $(shell go env GOPATH)/pulumi
+	cp $< $(shell go env GOPATH)/bin/pulumi
 endif
 
 build_display_wasm:: .make/ensure/go
