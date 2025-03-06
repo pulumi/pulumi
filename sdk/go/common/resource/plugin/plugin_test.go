@@ -110,10 +110,13 @@ func TestHealthCheck(t *testing.T) {
 			grpc_health_v1.RegisterHealthServer(server, healthServer)
 		}
 
+		ready := make(chan struct{})
 		go func() {
+			close(ready) // Signal that server is ready
 			err := server.Serve(listener)
 			require.NoError(t, err)
 		}()
+		<-ready // Wait until the server is ready before continuing
 
 		port := listener.Addr().(*net.TCPAddr).Port
 
@@ -179,9 +182,7 @@ func TestHealthCheck(t *testing.T) {
 			result := p.healthCheck()
 			assert.Equal(t, tt.expected, result)
 
-			if p.Conn != nil {
-				p.Conn.Close()
-			}
+			p.Conn.Close()
 			server.Stop()
 		})
 	}

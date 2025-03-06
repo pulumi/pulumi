@@ -563,17 +563,39 @@ func (p *plugin) healthCheck() bool {
 	// Check that the plugin looks alive by calling gRPC's Health Check service.
 	// Most plugins don't actually implement this service, which is OK as we treat
 	// an unimplemented status as OK.
-	health := grpc_health_v1.NewHealthClient(p.Conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	req := &grpc_health_v1.HealthCheckRequest{}
-	_, err := health.Check(ctx, req)
-	if err != nil && status.Code(err) != codes.Unimplemented {
-		logging.V(9).Infof("healthCheck(): failed with: %v", err)
+
+	healthy := make(chan bool, 1)
+	go func() {
+		health := grpc_health_v1.NewHealthClient(p.Conn)
+		req := &grpc_health_v1.HealthCheckRequest{}
+
+		resp, err := health.Check(ctx, req)
+		if err != nil {
+			// Treat this as healthy as most plugins don't implement gRPC's Health
+			// Check service. An unimplemented status is enough for us to know the
+			// plugin is alive.
+			if status.Code(err) == codes.Unimplemented {
+				healthy <- true
+				return
+			}
+
+			logging.V(9).Infof("healthCheck(): failed with: %v", err)
+			healthy <- false
+			return
+		}
+
+		healthy <- resp.Status == grpc_health_v1.HealthCheckResponse_SERVING
+	}()
+
+	select {
+	case result := <-healthy:
+		return result
+	case <-ctx.Done(): // hit deadline
 		return false
 	}
-
-	return true
 }
 
 func (p *plugin) Close() error {
