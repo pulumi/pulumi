@@ -1486,9 +1486,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 	}
 
 	// We also need to delete all the new resources that we created/updated/samed if this is a destroy
-	// operation. We add these in reverse order, the same as we do for the old resource loop above.
-	for i := len(sg.toDelete) - 1; i >= 0; i-- {
-		res := sg.toDelete[i]
+	// operation.
+	for _, res := range sg.toDelete {
 		sg.deletes[res.URN] = true
 		dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
 	}
