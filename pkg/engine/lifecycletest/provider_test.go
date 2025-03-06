@@ -1975,7 +1975,8 @@ func TestProviderSameStep(t *testing.T) {
 					return plugin.DiffConfigResponse{Changes: plugin.DiffNone}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkg::provA"), req.URN)
+					expected := resource.URN("urn:pulumi:test::test::pulumi:providers:pkg::provA")
+					assert.Equal(t, &expected, req.URN)
 					assert.Equal(t, "100", req.Inputs["value"].StringValue())
 					return plugin.ConfigureResponse{}, nil
 				},
