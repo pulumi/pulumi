@@ -137,9 +137,9 @@ class ResourceProviderServicer(object):
     def Handshake(self, request, context):
         """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
         provider so that it may establish its own connections back, and to establish protocol configuration that will be
-        used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
-        feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
-        references.
+        used to communicate between the two parties. Providers that support `Handshake` should return responses
+        consistent with those returned in response to [](pulumirpc.ResourceProvider.Configure) calls where there is
+        overlap due to the use of `Configure` prior to `Handshake`'s introduction.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

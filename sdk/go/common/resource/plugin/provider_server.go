@@ -135,7 +135,7 @@ func (p *providerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	_, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
+	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
@@ -145,7 +145,16 @@ func (p *providerServer) Handshake(
 		return nil, err
 	}
 
-	return &pulumirpc.ProviderHandshakeResponse{}, nil
+	return &pulumirpc.ProviderHandshakeResponse{
+		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
+		// in Configure.
+		AcceptSecrets:   true,
+		AcceptResources: true,
+		AcceptOutputs:   true,
+
+		// For features we don't shim, we just pass through the response from the provider as expected.
+		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+	}, nil
 }
 
 func (p *providerServer) Parameterize(
@@ -391,7 +400,12 @@ func (p *providerServer) Configure(ctx context.Context,
 	p.keepSecrets = req.GetAcceptSecrets()
 	p.keepResources = req.GetAcceptResources()
 	return &pulumirpc.ConfigureResponse{
-		AcceptSecrets: true, SupportsPreview: true, AcceptResources: true, AcceptOutputs: true,
+		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
+		// in Handshake (though Handshake implies SupportsPreview, so we don't shim that there).
+		AcceptSecrets:   true,
+		SupportsPreview: true,
+		AcceptResources: true,
+		AcceptOutputs:   true,
 	}, nil
 }
 
