@@ -402,7 +402,7 @@ func TestBatchEncrypter(t *testing.T) {
 		assert.Equal(t, 2, sm.batchEncryptCalls)
 	})
 
-	t.Run("leverages cache", func(t *testing.T) {
+	t.Run("leverages cache if whole batch cached", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		sm := &testSecretsManager{}
@@ -417,6 +417,27 @@ func TestBatchEncrypter(t *testing.T) {
 
 		assert.Equal(t, &apitype.SecretV1{Ciphertext: "ciphertext"}, target)
 		assert.Equal(t, 0, sm.batchEncryptCalls)
+	})
+
+	t.Run("bypass cache on partial miss", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		cache := NewSecretCache()
+		secret1 := &resource.Secret{}
+		secret2 := &resource.Secret{}
+		target1 := &apitype.SecretV1{}
+		target2 := &apitype.SecretV1{}
+
+		cache.Write("0-1:plaintext", "ciphertext 1", secret1) // Add one value to the cache
+		enc, complete := beginEncryptionBatch(sm.Encrypter(), cache, 999)
+		assert.NoError(t, enc.Enqueue(ctx, secret1, "plaintext", target1), "enqueue 1")
+		assert.NoError(t, enc.Enqueue(ctx, secret2, "plaintext", target2), "enqueue 2")
+		assert.NoError(t, complete(ctx), "complete")
+
+		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-1:plaintext"}, target1)
+		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-2:plaintext"}, target2)
+		assert.Equal(t, 1, sm.batchEncryptCalls)
 	})
 
 	t.Run("can't enqueue after complete", func(t *testing.T) {
@@ -478,7 +499,7 @@ func TestBatchDecrypter(t *testing.T) {
 		assert.Equal(t, 2, sm.batchDecryptCalls)
 	})
 
-	t.Run("leverages cache", func(t *testing.T) {
+	t.Run("leverages cache if whole batch cached", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		sm := &testSecretsManager{}
@@ -493,6 +514,27 @@ func TestBatchDecrypter(t *testing.T) {
 		assert.NoError(t, complete(ctx), "complete")
 		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext")).SecretValue(), secret)
 		assert.Equal(t, 0, sm.batchDecryptCalls)
+	})
+
+	t.Run("bypass cache on partial miss", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		sm := &testSecretsManager{}
+		cache := NewSecretCache()
+		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
+		secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
+
+		const ciphertext1 = "1:\"plaintext 1\""
+		const ciphertext2 = "2:\"plaintext 2\""
+		cache.Write("\"plaintext from cache\"", ciphertext1, &resource.Secret{})
+		dec, complete := beginDecryptionBatch(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
+		assert.NoError(t, dec.Enqueue(ctx, ciphertext1, secret1), "enqueue 1")
+		assert.NoError(t, dec.Enqueue(ctx, ciphertext2, secret2), "enqueue 2")
+
+		assert.NoError(t, complete(ctx), "complete")
+		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext 1")).SecretValue(), secret1)
+		assert.Equal(t, resource.MakeSecret(resource.NewStringProperty("plaintext 2")).SecretValue(), secret2)
+		assert.Equal(t, 1, sm.batchDecryptCalls)
 	})
 
 	t.Run("can't enqueue after complete", func(t *testing.T) {
