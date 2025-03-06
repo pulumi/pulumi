@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Add the ability to rename the given stack to the Go Automation API
