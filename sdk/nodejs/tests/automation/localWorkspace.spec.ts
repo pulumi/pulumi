@@ -770,6 +770,54 @@ describe("LocalWorkspace", () => {
 
         await stack.destroy();
     });
+    it(`renames a stack`, async () => {
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
+        };
+
+        const suffix = `int_test${getTestSuffix()}`;
+
+        const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", suffix);
+        const shortName = getTestOrg() + "/" + suffix;
+
+        const stackRenamed = stackName + "_renamed";
+        const shortRenamed = shortName + "_renamed";
+
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName: "inline_node", program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up({ userAgent });
+        stack.workspace.selectStack(stackName);
+
+        let returned = "";
+        const renameRes = await stack.rename({
+            stackName: stackRenamed,
+            onOutput: (e) => {
+                returned += e;
+            },
+        });
+
+        const after = (await stack.workspace.listStacks()).find((x) => x.name.startsWith(shortName));
+
+        assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
+        assert.strictEqual(after?.name, shortRenamed);
+
+        assert.strictEqual(renameRes.summary.kind, "rename");
+        assert.strictEqual(renameRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+    });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
