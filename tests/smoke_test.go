@@ -1037,7 +1037,9 @@ func TestParallelCgroups(t *testing.T) {
 	path = filepath.Dir(path)
 
 	// Runs `pulumi up --help` inside a limited CPU context
-	cmd := exec.Command("docker", "run", "--rm", "--cpus=1", "-v", path+":/mnt", "ubuntu", "/mnt/pulumi", "up", "--help")
+	cmd := exec.Command( //nolint:gosec
+		"docker", "run", "--rm", "--cpus=1", "-v", path+":/mnt", "ubuntu",
+		"/mnt/pulumi", "up", "--help")
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err)
 	limitedParallel := getParallelCount(string(output))

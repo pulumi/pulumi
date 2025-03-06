@@ -54,7 +54,7 @@ func panicHandler(finished *bool) {
 func main() {
 	// Fix for https://github.com/pulumi/pulumi/issues/18814, set GOMAXPROCs to the number of CPUs available
 	// taking into account quotes and cgroup limits.
-	maxprocs.Set()
+	maxprocs.Set() //nolint:errcheck // we don't care if this fails
 
 	finished := new(bool)
 	defer panicHandler(finished)
