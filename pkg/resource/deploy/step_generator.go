@@ -625,7 +625,38 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 			new.Inputs = old.Inputs
 			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
 		}
-		// All other resources need to be tagged as 'toDelete' for after we create/update them.
+		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we create/update them.
+		// The only special case is that if the resource depends on a resource we've had to skip, then we _also_ have to skip that resource.
+
+		provider, allDeps := new.GetAllDependencies()
+		allDepURNs := make([]resource.URN, len(allDeps))
+		for i, dep := range allDeps {
+			allDepURNs[i] = dep.URN
+		}
+
+		if provider != "" {
+			prov, err := providers.ParseReference(provider)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"could not parse provider reference %s for %s: %w",
+					provider, new.URN, err)
+			}
+			allDepURNs = append(allDepURNs, prov.URN())
+		}
+
+		for _, depURN := range allDepURNs {
+			if sg.skippedCreates[depURN] {
+				// This isn't an error (unlike when we hit this case in normal target runs), we just need to also skip this resource and not delete it later (because we never created it).
+				if !hasOld {
+					sg.skippedCreates[urn] = true
+					return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+				} else {
+					sg.toDelete = append(sg.toDelete, new)
+					return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+				}
+			}
+		}
+
 		sg.toDelete = append(sg.toDelete, new)
 	}
 
