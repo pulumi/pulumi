@@ -283,7 +283,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		state = SecretsManagerUnchanged
 	}
 
-	return stack.NewCachingSecretsManager(sm), state, nil
+	return stack.NewBatchingSecretsManager(sm), state, nil
 }
 
 func needsSaveProjectStackAfterSecretManger(
