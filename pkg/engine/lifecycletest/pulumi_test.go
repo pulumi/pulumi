@@ -1311,7 +1311,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 		deploytest.NewProviderLoaderWithHost("pkgA", semver.MustParse("1.0.0"),
 			func(host plugin.Host) (plugin.Provider, error) {
 				return &deploytest.Provider{
-					ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 						go func() {
 							<-release
 							host.Log(diag.Info, "", "configuring pkgA provider...", 0)
