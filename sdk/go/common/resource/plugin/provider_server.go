@@ -135,7 +135,12 @@ func (p *providerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	_, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
+	h, ok := p.provider.(handshaker)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+	}
+
+	_, err := h.Handshake(ctx, ProviderHandshakeRequest{
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
