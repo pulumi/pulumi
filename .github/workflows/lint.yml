@@ -43,7 +43,6 @@ jobs:
           use-flake8: false
           use-black: false
           use-mypy: false
-          use-mypy: false
 
       - if: steps.changes.outputs.actions == 'true'
         uses: devops-actions/actionlint@v0.1.9
