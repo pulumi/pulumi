@@ -53,7 +53,7 @@ jobs:
 
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
         name: Lint JS/TS
-        run: npx eslint . -c .eslintrc.js --ext .js,.jsx,.ts,.tsx
+        run: yarn run eslint . -c .eslintrc.js --ext .js,.jsx,.ts,.tsx
         working-directory: sdk/nodejs
 
       - if: ${{ steps.changes.outputs.python == 'true' }}
