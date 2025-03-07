@@ -288,27 +288,37 @@ func RetrieveTemplates(ctx context.Context, templateNamePathOrURL string, offlin
 		return RetrieveZIPTemplates(templateNamePathOrURL)
 	}
 	if IsTemplateURL(templateNamePathOrURL) {
-		return retrieveURLTemplates(ctx, templateNamePathOrURL, offline, templateKind)
+		return retrieveURLTemplates(ctx, templateNamePathOrURL, offline)
 	}
 	if isTemplateFileOrDirectory(templateNamePathOrURL) {
 		return retrieveFileTemplates(templateNamePathOrURL)
 	}
-	return retrievePulumiTemplates(ctx, templateNamePathOrURL, offline, templateKind)
+
+	// We now assume that templateNamePathOrURL is a template name that points to the
+	// global templates set.
+
+	pulumiTemplates, err := retrievePulumiTemplates(ctx, offline, templateKind)
+	if err != nil {
+		return TemplateRepository{}, err
+	}
+
+	if templateNamePathOrURL != "" {
+		return findSpecificTemplate(pulumiTemplates, templateNamePathOrURL)
+	}
+
+	return pulumiTemplates, nil
 }
 
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
 func retrieveURLTemplates(
-	ctx context.Context, rawurl string, offline bool, templateKind TemplateKind,
+	ctx context.Context, rawurl string, offline bool,
 ) (TemplateRepository, error) {
 	if offline {
 		return TemplateRepository{}, fmt.Errorf("cannot use %s offline", rawurl)
 	}
 
-	var err error
-
-	// Create a temp dir.
-	var temp string
-	if temp, err = os.MkdirTemp("", "pulumi-template-"); err != nil {
+	temp, err := os.MkdirTemp("", "pulumi-template-")
+	if err != nil {
 		return TemplateRepository{}, err
 	}
 
@@ -337,10 +347,8 @@ func retrieveFileTemplates(path string) (TemplateRepository, error) {
 // Instead of retrieving to a temporary directory, the Pulumi templates are managed from
 // ~/.pulumi/templates.
 func retrievePulumiTemplates(
-	ctx context.Context, templateName string, offline bool, templateKind TemplateKind,
+	ctx context.Context, offline bool, templateKind TemplateKind,
 ) (TemplateRepository, error) {
-	templateName = strings.ToLower(templateName)
-
 	// Cleanup the template directory.
 	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
 		return TemplateRepository{}, err
@@ -371,25 +379,27 @@ func retrievePulumiTemplates(
 		}
 	}
 
-	subDir := templateDir
-	if templateName != "" {
-		subDir = filepath.Join(subDir, templateName)
-
-		// Provide a nicer error message when the template can't be found (dir doesn't exist).
-		_, err := os.Stat(subDir)
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				return TemplateRepository{}, newTemplateNotFoundError(templateDir, templateName)
-			}
-			contract.IgnoreError(err)
-		}
-	}
-
 	return TemplateRepository{
 		Root:         templateDir,
-		SubDirectory: subDir,
+		SubDirectory: templateDir,
 		ShouldDelete: false,
 	}, nil
+}
+
+func findSpecificTemplate(repo TemplateRepository, name string) (TemplateRepository, error) {
+	subDir := filepath.Join(repo.Root, name)
+
+	// Provide a nicer error message when the template can't be found (dir doesn't exist).
+	_, err := os.Stat(subDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return TemplateRepository{}, newTemplateNotFoundError(repo.Root, name)
+		}
+		contract.IgnoreError(err)
+	}
+
+	repo.SubDirectory = subDir
+	return repo, nil
 }
 
 // RetrieveGitFolder downloads the repo to path and returns the full path on disk.
@@ -697,16 +707,41 @@ func newExistingFilesError(existing []string) error {
 	return errors.New(message)
 }
 
+type TemplateNotFoundError struct {
+	templateName string
+	suggestions  []string
+}
+
+func (err TemplateNotFoundError) Error() string {
+	message := fmt.Sprintf("template '%s' not found", err.templateName)
+	if len(err.suggestions) == 0 {
+		return message
+	}
+	// Build-up error message with suggestions.
+	message = message + "\n\nDid you mean this?\n"
+	for _, suggestion := range err.suggestions {
+		message = message + fmt.Sprintf("\t%s\n", suggestion)
+	}
+
+	return message
+}
+
+func (TemplateNotFoundError) Is(target error) bool {
+	_, v := target.(TemplateNotFoundError)
+	_, p := target.(*TemplateNotFoundError)
+	return v || p
+}
+
 // newTemplateNotFoundError returns an error for when the template doesn't exist,
 // offering distance-based suggestions in the error message.
-func newTemplateNotFoundError(templateDir string, templateName string) error {
-	message := fmt.Sprintf("template '%s' not found", templateName)
-
+func newTemplateNotFoundError(templateDir string, templateName string) TemplateNotFoundError {
 	// Attempt to read the directory to offer suggestions.
 	entries, err := os.ReadDir(templateDir)
 	if err != nil {
-		contract.IgnoreError(err)
-		return errors.New(message)
+		// We failed to build suggestions, so just return the error we have.
+		return TemplateNotFoundError{
+			templateName: templateName,
+		}
 	}
 
 	// Get suggestions based on levenshtein distance.
@@ -720,15 +755,7 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 		}
 	}
 
-	// Build-up error message with suggestions.
-	if len(suggestions) > 0 {
-		message = message + "\n\nDid you mean this?\n"
-		for _, suggestion := range suggestions {
-			message = message + fmt.Sprintf("\t%s\n", suggestion)
-		}
-	}
-
-	return errors.New(message)
+	return TemplateNotFoundError{templateName, suggestions}
 }
 
 // transform returns a new string with ${PROJECT} and ${DESCRIPTION} replaced by
