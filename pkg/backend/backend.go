@@ -15,9 +15,11 @@
 package backend
 
 import (
+	"archive/tar"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -252,6 +254,16 @@ type Backend interface {
 	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
 	// secrets manager for that stack.
 	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
+
+	// SupportsTemplates checks if the backend supports listing and downloading templates.
+	SupportsTemplates() bool
+	// ListTemplates returns the list of templates associated with an organization.
+	ListTemplates(ctx context.Context, orgName string) (apitype.ListTemplatesResult, error)
+	// DownloadTemplate downloads a template.
+	//
+	// Templates are valid to download if and only if they would be returned by a call
+	// to ListTemplates.
+	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
@@ -446,4 +458,13 @@ type CreateStackOptions struct {
 	// The backend may return ErrTeamsNotSupported
 	// if Teams is specified but not supported.
 	Teams []string
+}
+
+// TarReaderCloser is a [tar.Reader] that owns it's backing memory.
+//
+// Calling close invalidates the [tar.Reader] returned by Tar.
+type TarReaderCloser interface {
+	io.Closer
+	// Tar will always return a non-nil [tar.Reader].
+	Tar() *tar.Reader
 }
