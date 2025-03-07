@@ -47,7 +47,43 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 			t.Parallel()
 
 			_, err := RetrieveTemplates(context.Background(), templateName, false, tt.templateKind)
+			assert.ErrorAs(t, err, &TemplateNotFoundError{})
 			assert.EqualError(t, err, fmt.Sprintf("template '%s' not found", templateName))
+		})
+	}
+}
+
+//nolint:paralleltest // uses shared state in pulumi dir
+func TestRetrieveNonExistingTemplateSimilar(t *testing.T) {
+	tests := []struct {
+		templateName string
+		expected     string
+	}{
+		{
+			templateName: "aws-goo",
+			expected: `template 'aws-goo' not found
+
+Did you mean this?
+	aws-go
+`,
+		},
+		{
+			templateName: "aws-xsharp",
+			expected: `template 'aws-xsharp' not found
+
+Did you mean this?
+	aws-csharp
+	aws-fsharp
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.templateName, func(t *testing.T) {
+			_, err := RetrieveTemplates(context.Background(), tt.templateName, false, TemplateKindPulumiProject)
+			assert.ErrorAs(t, err, &TemplateNotFoundError{})
+			assert.EqualError(t, err, tt.expected)
 		})
 	}
 }
