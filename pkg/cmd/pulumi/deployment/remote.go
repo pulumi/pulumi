@@ -75,6 +75,7 @@ func ValidateUnsupportedRemoteFlags(
 	suppressOutputs bool,
 	secretsProvider string,
 	targets *[]string,
+	excludes *[]string,
 	replaces []string,
 	targetReplaces []string,
 	targetDependents bool,
@@ -129,6 +130,9 @@ func ValidateUnsupportedRemoteFlags(
 	}
 	if targets != nil && len(*targets) > 0 {
 		return errors.New("--target is not supported with --remote")
+	}
+	if excludes != nil && len(*excludes) > 0 {
+		return errors.New("--exclude is not supported with --remote")
 	}
 	if len(replaces) > 0 {
 		return errors.New("--replace is not supported with --remote")

@@ -74,7 +74,9 @@ func NewDestroyCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var targets *[]string
+	var excludes *[]string
 	var targetDependents bool
+	var excludeDependents bool
 	var excludeProtected bool
 	var continueOnError bool
 
@@ -155,7 +157,7 @@ func NewDestroyCmd() *cobra.Command {
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
-					suppressOutputs, "default", targets, nil, nil,
+					suppressOutputs, "default", targets, nil, nil, nil,
 					targetDependents, "", cmdStack.ConfigFile)
 				if err != nil {
 					return err
@@ -257,6 +259,7 @@ func NewDestroyCmd() *cobra.Command {
 
 			var protectedCount int
 			targetUrns := *targets
+			excludeUrns := *excludes
 			if excludeProtected {
 				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
@@ -280,7 +283,9 @@ func NewDestroyCmd() *cobra.Command {
 				Debug:                     debug,
 				Refresh:                   refreshOption,
 				Targets:                   deploy.NewUrnTargets(targetUrns),
+				Excludes: 								 deploy.NewUrnTargets(excludeUrns),
 				TargetDependents:          targetDependents,
+				ExcludeDependents:         excludeDependents,
 				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
 				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
 				DisableProviderPreview:    env.DisableProviderPreview.Value(),

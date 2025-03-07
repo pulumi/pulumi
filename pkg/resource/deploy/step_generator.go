@@ -93,6 +93,12 @@ type stepGenerator struct {
 	// a map from current URN of the resource to the old URN that it was aliased from.
 	aliases map[resource.URN]resource.URN
 
+	// excludesActual is the set of targets explicitly ignored by the engine. This
+	// can be different from deployment.opts.excludes if --excludes-dependents is
+	// true. This does _not_ exclude resources that have been implicitly targeted,
+	// like providers.
+	excludesActual UrnTargets
+
 	// targetsActual is the set of targets explicitly targeted by the engine. This
 	// can be different from deployment.opts.targets if --target-dependents is
 	// true. This does _not_ include resources that have been implicitly targeted,
@@ -100,10 +106,10 @@ type stepGenerator struct {
 	targetsActual UrnTargets
 }
 
-// isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
-// `--target-dependents`.
+// Check whether `res` is explicitly (via `targets`) or implicitly (via
+// `--target-dependents`) targeted for update.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
-	if sg.deployment.opts.Targets.Contains(res.URN) {
+  if sg.deployment.opts.Targets.Contains(res.URN) {
 		return true
 	} else if !sg.deployment.opts.TargetDependents {
 		return false
@@ -111,9 +117,9 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 
 	ref, allDeps := res.GetAllDependencies()
 	if ref != "" {
-		proivderRef, err := providers.ParseReference(ref)
+		providerRef, err := providers.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		providerURN := proivderRef.URN()
+		providerURN := providerRef.URN()
 		if sg.targetsActual.Contains(providerURN) {
 			return true
 		}
@@ -121,6 +127,34 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 
 	for _, dep := range allDeps {
 		if sg.targetsActual.Contains(dep.URN) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Check whether `res` is explicitly (via `excludes`) or implicitly (via
+// `--exclude-dependents`) excluded from the update.
+func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
+  if sg.deployment.opts.Excludes.Contains(res.URN) {
+		return true
+	} else if !sg.deployment.opts.ExcludeDependents {
+		return false
+	}
+
+	ref, allDeps := res.GetAllDependencies()
+	if ref != "" {
+		providerRef, err := providers.ParseReference(ref)
+		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
+		providerURN := providerRef.URN()
+		if sg.excludesActual.Contains(providerURN) {
+			return true
+		}
+	}
+
+	for _, dep := range allDeps {
+		if sg.excludesActual.Contains(dep.URN) {
 			return true
 		}
 	}
@@ -768,11 +802,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// the user, we also implicitly target providers (both default and explicit, see
 	// https://github.com/pulumi/pulumi/issues/13557 and https://github.com/pulumi/pulumi/issues/13591 for
 	// context on why).
-
-	// Resources are targeted by default
 	isTargeted := true
-	if sg.deployment.opts.Targets.IsConstrained() && !isImplicitlyTargetedResource {
+
+	// If targets are constrained, we need to make sure the targets include the
+	// current object. If the _excludes_ are constrained, we need to make sure
+	// the excludes _don't_ include the current object.
+	if !isImplicitlyTargetedResource && sg.deployment.opts.Targets.IsConstrained() {
 		isTargeted = sg.isTargetedForUpdate(new)
+	} else if !isImplicitlyTargetedResource && sg.deployment.opts.Excludes.IsConstrained() {
+		isTargeted = !sg.isExcludedFromUpdate(new)
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -2474,10 +2512,11 @@ func newStepGenerator(deployment *Deployment, mode stepGeneratorMode, events cha
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
 
-		// We clone the targets passed as options because we will modify this set as
-		// we compute the full set (e.g. by expanding globs, or traversing
+		// We clone the targets passed as options because we will modify these sets as
+		// we compute the full sets (e.g. by expanding globs, or traversing
 		// dependents).
 		targetsActual: deployment.opts.Targets.Clone(),
+		excludesActual: deployment.opts.Excludes.Clone(),
 
 		events: events,
 	}

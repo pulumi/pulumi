@@ -89,6 +89,85 @@ func TestDestroyTarget(t *testing.T) {
 		func(urns []resource.URN, deleted map[resource.URN]bool) {})
 }
 
+func TestExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	var singleURN resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC"
+
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { singleURN })
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.NotContains(t, snap.Resources, singleURN)
+}
+
+func TestExcludeChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	var parent resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"
+	var child resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC"
+
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { parent })
+	opts.UpdateOptions.ExcludeDependents = true
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	assert.NotContains(t, snap.Resources, parent)
+	assert.NotContains(t, snap.Resources, child)
+}
+
 func destroySpecificTargets(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool),
