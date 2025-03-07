@@ -1,0 +1,77 @@
+name: Lint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            go:
+              - '.github/workflows/lint.yml'
+              - '**/*.go'
+            gomods:
+              - '.github/workflows/lint.yml'
+              - '**/go.mod'
+            python:
+              - '.github/workflows/lint.yml'
+              - '**/*.py'
+            typescript:
+              - '.github/workflows/lint.yml'
+              - '**/*.js'
+              - '**/*.ts'
+            actions:
+              - '.github/workflows/*'
+
+      - if: ${{ steps.changes.outputs.typescript == 'true' }}
+        name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23
+
+      - if: ${{ steps.changes.outputs.go == 'true' }}
+        name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - if: ${{ steps.changes.outputs.go == 'true' }}
+        name: Lint Go
+        uses: golangci/golangci-lint-action@v6.5.0
+        with:
+          working-directory: pkg
+
+      - if: ${{ steps.changes.outputs.typescript == 'true' }}
+        name: Lint JS/TS
+        run: yarn run eslint . -c .eslintrc.js --ext .js,.jsx,.ts,.tsx
+        working-directory: sdk/nodejs
+
+      - if: ${{ steps.changes.outputs.python == 'true' }}
+        name: Lint Python
+        uses: ricardochaves/python-lint@v1.4.0
+        with:
+          use-pycodestyle: false
+          use-flake8: false
+          use-black: false
+          use-mypy: false
+
+      - if: ${{ steps.changes.outputs.actions == 'true' }}
+        name: Lint Actions
+        uses: devops-actions/actionlint@v0.1.9
+
+      - if: ${{ steps.changes.outputs.gomods == 'true' }}
+        name: Lint go.mod
+        uses: evantorrie/mott-the-tidier@v1-beta
+        with:
+          gomods: |
+            **/go.mod
