@@ -34,21 +34,23 @@ jobs:
               - '.github/workflows/*'
 
       - if: ${{ steps.changes.outputs.go == 'true' }}
+        name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
 
       - if: ${{ steps.changes.outputs.go == 'true' }}
+        name: Lint Go
         uses: golangci/golangci-lint-action@v6.5.0
         with:
           working-directory: pkg
 
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        uses: actionsx/prettier@v2
-        with:
-          args: --check "**/*.js" --check "**/*.ts"
+        name: Lint JS/TS
+        run: eslint . -c sdk/nodejs/.eslintrc.js --ext .js,.jsx,.ts,.tsx
 
       - if: ${{ steps.changes.outputs.python == 'true' }}
+        name: Lint Python
         uses: ricardochaves/python-lint@v1.4.0
         with:
           use-pycodestyle: false
@@ -57,9 +59,11 @@ jobs:
           use-mypy: false
 
       - if: ${{ steps.changes.outputs.actions == 'true' }}
+        name: Lint Actions
         uses: devops-actions/actionlint@v0.1.9
 
       - if: ${{ steps.changes.outputs.gomods == 'true' }}
+        name: Lint go.mod
         uses: evantorrie/mott-the-tidier@v1-beta
         with:
           gomods: |
