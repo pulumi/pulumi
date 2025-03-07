@@ -66,8 +66,6 @@ import (
 const (
 	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
 	defaultURLEnvVar = "PULUMI_API"
-	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
-	AccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
 )
 
 type PulumiAILanguage string
@@ -375,7 +373,7 @@ func (m defaultLoginManager) Current(
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
-	accessToken := os.Getenv(AccessTokenEnvVar)
+	accessToken := env.AccessToken.Value()
 
 	// If we have a saved access token, and it is valid, and it
 	// either matches PULUMI_ACCESS_TOKEN or PULUMI_ACCESS_TOKEN
@@ -421,7 +419,7 @@ func (m defaultLoginManager) Current(
 	}
 
 	// If there's already a token from the environment, use it.
-	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
+	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", env.AccessToken.Var().Name())
 	contract.IgnoreError(err)
 
 	// Try and use the credentials to see if they are valid.
@@ -474,7 +472,7 @@ func (m defaultLoginManager) Login(
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
-		return nil, fmt.Errorf("%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
+		return nil, backend.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
 	}
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
