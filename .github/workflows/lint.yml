@@ -46,7 +46,7 @@ jobs:
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
         uses: actionsx/prettier@v2
         with:
-          args: --check **/*.{j,t}s
+          args: --check "**/*.js" --check "**/*.ts"
 
       - if: ${{ steps.changes.outputs.python == 'true' }}
         uses: ricardochaves/python-lint@v1.4.0
