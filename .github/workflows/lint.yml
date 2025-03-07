@@ -3,6 +3,9 @@ name: Lint
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -29,7 +32,7 @@ jobs:
               - '.github/workflows/*'
 
       - if: steps.changes.outputs.go == 'true' || steps.changes.outputs.workflow == 'true'
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6.5.0
 
       - if: steps.changes.outputs.typescript == 'true' || steps.changes.outputs.workflow == 'true'
         uses: actionsx/prettier@v2
