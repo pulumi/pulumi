@@ -92,6 +92,7 @@ type MockBackend struct {
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
+	GetPackageRegistryF   func() (PackageRegistry, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -447,6 +448,13 @@ func (be *MockBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets
 	panic("not implemented")
 }
 
+func (be *MockBackend) GetPackageRegistry() (PackageRegistry, error) {
+	if be.GetPackageRegistryF != nil {
+		return be.GetPackageRegistryF()
+	}
+	panic("not implemented")
+}
+
 var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 
 type MockEnvironmentsBackend struct {
@@ -780,6 +788,19 @@ func (mp *MockPolicyPack) Validate(ctx context.Context, op PolicyPackOperation) 
 func (mp *MockPolicyPack) Remove(ctx context.Context, op PolicyPackOperation) error {
 	if mp.RemoveF != nil {
 		return mp.RemoveF(ctx, op)
+	}
+	panic("not implemented")
+}
+
+type MockPackageRegistry struct {
+	PublishF func(context.Context, PackagePublishOp) error
+}
+
+var _ PackageRegistry = (*MockPackageRegistry)(nil)
+
+func (mr *MockPackageRegistry) Publish(ctx context.Context, op PackagePublishOp) error {
+	if mr.PublishF != nil {
+		return mr.PublishF(ctx, op)
 	}
 	panic("not implemented")
 }

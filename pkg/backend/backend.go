@@ -252,6 +252,9 @@ type Backend interface {
 	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
 	// secrets manager for that stack.
 	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
+
+	// GetPackageRegistry returns a PackageRegistry object tied to this backend
+	GetPackageRegistry() (PackageRegistry, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
