@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Stack selections will now always be saved as if `stack select` had been used
