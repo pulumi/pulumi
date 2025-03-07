@@ -275,9 +275,44 @@ func IsTemplateURL(templateNamePathOrURL string) bool {
 }
 
 // isTemplateFileOrDirectory returns true if templateNamePathOrURL is the name of a valid file or directory.
-func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
-	_, err := os.Stat(templateNamePathOrURL)
-	return err == nil
+func isTemplateFileOrDirectory(templateNamePathOrURL string) (bool, error) {
+	if _, err := os.Stat(templateNamePathOrURL); err == nil {
+		return true, nil
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return false, err
+	}
+
+	// We now want to check if the user was trying to specify a template or directory,
+	// but didn't quite get it right.
+	//
+	// We believe that the user was trying to type a path if:
+	//
+	// - The string "looks" like a path
+	// - *and* one directory up is a valid path
+
+	looksLikePath := strings.HasPrefix(templateNamePathOrURL, "~/") ||
+		strings.HasPrefix(templateNamePathOrURL, "/") ||
+		strings.HasPrefix(templateNamePathOrURL, "./")
+
+	if !looksLikePath {
+		return false, nil
+	}
+
+	dir := filepath.Dir(templateNamePathOrURL)
+	name := filepath.Base(templateNamePathOrURL)
+	if dir == "" || name == "" {
+		return false, nil
+	}
+
+	if stat, err := os.Stat(dir); err == nil && stat.IsDir() {
+		err := newTemplateNotFoundError(dir, name)
+		for i, s := range err.suggestions {
+			err.suggestions[i] = filepath.Join(dir, s)
+		}
+		return false, err
+	}
+
+	return false, nil
 }
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
@@ -290,8 +325,10 @@ func RetrieveTemplates(ctx context.Context, templateNamePathOrURL string, offlin
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(ctx, templateNamePathOrURL, offline)
 	}
-	if isTemplateFileOrDirectory(templateNamePathOrURL) {
+	if b, err := isTemplateFileOrDirectory(templateNamePathOrURL); err == nil && b {
 		return retrieveFileTemplates(templateNamePathOrURL)
+	} else if err != nil {
+		return TemplateRepository{}, err
 	}
 
 	// We now assume that templateNamePathOrURL is a template name that points to the

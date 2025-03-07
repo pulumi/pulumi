@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // uses shared state in pulumi dir
@@ -244,6 +246,23 @@ func TestRetrieveFileTemplate(t *testing.T) {
 			assert.Equal(t, ".", repository.SubDirectory)
 		})
 	}
+}
+
+//nolint:paralleltest // uses shared state in pulumi dir
+func TestRetrieveFileTypoTemplate(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "opt1"), 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "opt2"), 0o700))
+
+	_, err := RetrieveTemplates(context.Background(), filepath.Join(dir, "op1"), false, TemplateKindPulumiProject)
+	assert.ErrorIs(t, err, TemplateNotFoundError{})
+
+	errString := strings.ReplaceAll(err.Error(), dir, "${TEMP_DIR}")
+	assert.Equal(t, `template 'op1' not found
+
+Did you mean this?
+	${TEMP_DIR}/opt1
+`, errString)
 }
 
 //nolint:paralleltest
