@@ -612,22 +612,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 	// the destroy, but we do want to "create/update" providers, construct component resources and it's fine
 	// to make the relevant state edits off the back of these.
 	if sg.mode == destroyMode {
-		if goal.Custom && !providers.IsProviderType(goal.Type) {
-			sg.sames[urn] = true
-			// Custom resources that aren't in state just have to be skipped creates.
-			if !hasOld {
-				sg.skippedCreates[urn] = true
-				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
-			}
-			// Others are just sames that need to be deleted.
-			sg.toDelete = append(sg.toDelete, new)
-			// For deletes we want to maintain the old inputs
-			new.Inputs = old.Inputs
-			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
-		}
-		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we create/update them.
-		// The only special case is that if the resource depends on a resource we've had to skip, then we _also_ have to skip that resource.
-
+		// We need to check if this resource is trying to depend on another resource that has already been
+		// skipped. In that case we have to skip this resource as well.
 		provider, allDeps := new.GetAllDependencies()
 		allDepURNs := make([]resource.URN, len(allDeps))
 		for i, dep := range allDeps {
@@ -646,17 +632,35 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 
 		for _, depURN := range allDepURNs {
 			if sg.skippedCreates[depURN] {
-				// This isn't an error (unlike when we hit this case in normal target runs), we just need to also skip this resource and not delete it later (because we never created it).
-				if !hasOld {
-					sg.skippedCreates[urn] = true
-					return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
-				} else {
-					sg.toDelete = append(sg.toDelete, new)
-					return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+				// This isn't an error (unlike when we hit this case in normal target runs), we just need to
+				// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
+				// an old state, but skipped create actually behaves as a general skip just fine.
+				sg.skippedCreates[urn] = true
+				if hasOld {
+					// If this has an old state maintain the old outputs to return to the program
+					new.Outputs = old.Outputs
 				}
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
 			}
 		}
 
+		// Otherwise we've got our dependencies, if this is a custom non-provider resource we can either same
+		// it or skip create it (we don't want to actually do real resource creates and updates in destroy).
+		if goal.Custom && !providers.IsProviderType(goal.Type) {
+			// Custom resources that aren't in state just have to be skipped creates.
+			if !hasOld {
+				sg.skippedCreates[urn] = true
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+			}
+			// Others are just sames that need to be deleted later.
+			sg.sames[urn] = true
+			sg.toDelete = append(sg.toDelete, new)
+			// For deletes we want to maintain the old inputs
+			new.Inputs = old.Inputs
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+		}
+		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
+		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
 	}
 
@@ -1493,8 +1497,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
-			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
-				!sg.reads[res.URN] && !aliased {
+			} else if alias, aliased := sg.aliased[res.URN];
+			// If this URN isn't an alias see if it directly had any operation. If it was aliased see if it's
+			// new name had any operations, against it. It's possible in a destroy to see a new resource and
+			// thus fill in `aliased` but then skip the operation on it, the resource still needs deleting
+			// though.
+			(!aliased && !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN]) ||
+				(aliased && !sg.sames[alias] && !sg.updates[alias] && !sg.replaces[alias] && !sg.reads[alias]) {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
