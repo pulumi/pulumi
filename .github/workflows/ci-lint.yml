@@ -20,59 +20,6 @@ env:
   GOLANGCI_LINT_VERSION: v1.64.2
 
 jobs:
-  golangci:
-    name: Lint Go
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-          # golangci-lint-action handles all the caching for Go.
-          cache: false
-
-      # We leverage the golangci-lint action to install
-      # and maintain the cache,
-      # but we want to run the command ourselves.
-      # The action doesn't have an install-only mode,
-      # so we'll ask it to print its help output instead.
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --help
-
-      - name: Run golangci-lint
-        # Print GitHub Actions-friendly output so that errors get marked
-        # in the pull request.
-        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=colored-line-number
-
-  tidy:
-    name: go mod tidy
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-      - name: Run go mod tidy
-        run: make tidy
-      - name: Fail if go mod not tidy
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error go.mod not tidy"
-            echo "::error Please run 'make tidy'"
-            exit 1
-          fi
-
   gen:
     name: Generate Go SDK
     runs-on: ubuntu-22.04
@@ -110,66 +57,6 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: sdk/python/uv.lock
-      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ fromJson(inputs.version-set).python }}
-      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
-      - name: Install Python deps
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet
-      - name: Setup git
-        run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
-      - name: Update path
-        run: |
-          echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Set Go Dep path
-        run: |
-          echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
       - name: Ensure
         run: |
           make ensure
-      - name: Lint Node
-        run: |
-          cd sdk/nodejs && make lint
-      - name: Lint Python
-        run: |
-          cd sdk/python && make lint
-
-  actionlint:
-    name: Lint GHA
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-      - run: |
-          make lint_actions

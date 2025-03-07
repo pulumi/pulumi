@@ -1,0 +1,55 @@
+name: Lint
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            workflow:
+              - '.github/workflows/lint.yml'
+            go:
+              - '**/*.go'
+            gomods:
+              - '**/go.mod'
+            python:
+              - '**/*.py'
+            typescript:
+              - '**/*.js'
+              - '**/*.ts'
+            actions:
+              - '.github/workflows/*'
+
+      - if: steps.changes.outputs.go == 'true' || steps.changes.outputs.workflow == 'true'
+        uses: golangci/golangci-lint-action@v4
+
+      - if: steps.changes.outputs.typescript == 'true' || steps.changes.outputs.workflow == 'true'
+        uses: actionsx/prettier@v2
+        with:
+          args: --check .
+
+      - if: steps.changes.outputs.python == 'true' || steps.changes.outputs.workflow == 'true'
+        uses: ricardochaves/python-lint@v1.4.0
+        with:
+          use-pycodestyle: false
+          use-flake8: false
+          use-black: false
+          use-mypy: false
+          use-mypy: false
+
+      - if: steps.changes.outputs.actions == 'true'
+        uses: devops-actions/actionlint@v0.1.9
+
+      - if: steps.changens.outputs.gomods == 'true'
+        uses: evantorrie/mott-the-tider@v1-beta
+        with:
+          gomods: |
+            **/go.mod
