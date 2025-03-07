@@ -277,10 +277,11 @@ func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir s
 
 	if handshakeRes != nil {
 		p.protocol = &pluginProtocol{
-			acceptSecrets:   true,
-			acceptResources: true,
-			supportsPreview: true,
-			acceptOutputs:   true,
+			acceptSecrets:                   handshakeRes.AcceptSecrets,
+			acceptResources:                 handshakeRes.AcceptResources,
+			supportsPreview:                 true,
+			acceptOutputs:                   handshakeRes.AcceptOutputs,
+			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 		}
 	}
 
@@ -303,7 +304,7 @@ func handshake(
 	req *ProviderHandshakeRequest,
 ) (*ProviderHandshakeResponse, error) {
 	client := pulumirpc.NewResourceProviderClient(conn)
-	_, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
+	res, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
@@ -319,7 +320,12 @@ func handshake(
 	}
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
-	return &ProviderHandshakeResponse{}, nil
+	return &ProviderHandshakeResponse{
+		AcceptSecrets:                   res.GetAcceptSecrets(),
+		AcceptResources:                 res.GetAcceptResources(),
+		AcceptOutputs:                   res.GetAcceptOutputs(),
+		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+	}, nil
 }
 
 func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
@@ -383,10 +389,11 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	if handshakeRes != nil {
 		p.protocol = &pluginProtocol{
-			acceptSecrets:   true,
-			acceptResources: true,
-			supportsPreview: true,
-			acceptOutputs:   true,
+			acceptSecrets:                   handshakeRes.AcceptSecrets,
+			acceptResources:                 handshakeRes.AcceptResources,
+			supportsPreview:                 true,
+			acceptOutputs:                   handshakeRes.AcceptOutputs,
+			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 		}
 	}
 
@@ -452,7 +459,7 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 }
 
 func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
-	_, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
+	res, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
 		EngineAddress:    req.EngineAddress,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
@@ -462,7 +469,12 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		return nil, err
 	}
 
-	return &ProviderHandshakeResponse{}, nil
+	return &ProviderHandshakeResponse{
+		AcceptSecrets:                   res.GetAcceptSecrets(),
+		AcceptResources:                 res.GetAcceptResources(),
+		AcceptOutputs:                   res.GetAcceptOutputs(),
+		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+	}, nil
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {

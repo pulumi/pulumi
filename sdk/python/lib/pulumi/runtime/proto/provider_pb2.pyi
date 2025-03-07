@@ -82,9 +82,37 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    ACCEPT_SECRETS_FIELD_NUMBER: builtins.int
+    ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
+    ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
+    SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
+    accept_secrets: builtins.bool
+    """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+    values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
+    """
+    accept_resources: builtins.bool
+    """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+    strongly typed values to the provider. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Configure).
+    """
+    accept_outputs: builtins.bool
+    """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+    to the provider where possible. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Configure).
+    """
+    supports_autonaming_configuration: builtins.bool
+    """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
+    user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
+    """
     def __init__(
         self,
+        *,
+        accept_secrets: builtins.bool = ...,
+        accept_resources: builtins.bool = ...,
+        accept_outputs: builtins.bool = ...,
+        supports_autonaming_configuration: builtins.bool = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
@@ -387,7 +415,8 @@ class ConfigureResponse(google.protobuf.message.Message):
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
-    values to the provider. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
+    values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake)
+    if the provider supports handshaking.
     """
     supportsPreview: builtins.bool
     """True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
@@ -396,16 +425,19 @@ class ConfigureResponse(google.protobuf.message.Message):
     """
     acceptResources: builtins.bool
     """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
-    strongly typed values to the provider. *Must* be true if the provider implements
-    [](pulumirpc.ResourceProvider.Handshake).
+    strongly typed values to the provider. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Handshake) if the provider supports handshaking.
     """
     acceptOutputs: builtins.bool
     """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
-    to the provider where possible. *Must* be true if the provider implements
-    [](pulumirpc.ResourceProvider.Handshake).
+    to the provider where possible. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Handshake) if the provider supports handshaking.
     """
     supports_autonaming_configuration: builtins.bool
-    """True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user."""
+    """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
+    user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake) if the provider
+    supports handshaking.
+    """
     def __init__(
         self,
         *,

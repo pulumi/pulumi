@@ -45,6 +45,14 @@ export namespace ProviderHandshakeRequest {
 }
 
 export class ProviderHandshakeResponse extends jspb.Message { 
+    getAcceptSecrets(): boolean;
+    setAcceptSecrets(value: boolean): ProviderHandshakeResponse;
+    getAcceptResources(): boolean;
+    setAcceptResources(value: boolean): ProviderHandshakeResponse;
+    getAcceptOutputs(): boolean;
+    setAcceptOutputs(value: boolean): ProviderHandshakeResponse;
+    getSupportsAutonamingConfiguration(): boolean;
+    setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -58,6 +66,10 @@ export class ProviderHandshakeResponse extends jspb.Message {
 
 export namespace ProviderHandshakeResponse {
     export type AsObject = {
+        acceptSecrets: boolean,
+        acceptResources: boolean,
+        acceptOutputs: boolean,
+        supportsAutonamingConfiguration: boolean,
     }
 }
 

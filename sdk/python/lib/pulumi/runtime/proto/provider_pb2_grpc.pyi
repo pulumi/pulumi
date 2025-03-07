@@ -38,9 +38,9 @@ class ResourceProviderStub:
     ]
     """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
     provider so that it may establish its own connections back, and to establish protocol configuration that will be
-    used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
-    feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
-    references.
+    used to communicate between the two parties. Providers that support `Handshake` should return responses
+    consistent with those returned in response to [](pulumirpc.ResourceProvider.Configure) calls where there is
+    overlap due to the use of `Configure` prior to `Handshake`'s introduction.
     """
     Parameterize: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ParameterizeRequest,
@@ -321,9 +321,9 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.provider_pb2.ProviderHandshakeResponse:
         """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
         provider so that it may establish its own connections back, and to establish protocol configuration that will be
-        used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
-        feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
-        references.
+        used to communicate between the two parties. Providers that support `Handshake` should return responses
+        consistent with those returned in response to [](pulumirpc.ResourceProvider.Configure) calls where there is
+        overlap due to the use of `Configure` prior to `Handshake`'s introduction.
         """
     
     def Parameterize(
