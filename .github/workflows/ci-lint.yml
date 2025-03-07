@@ -52,11 +52,3 @@ jobs:
       - name: Check Protobufs
         run: |
           make check_proto
-
-  sdk-lint:
-    name: Lint SDKs
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Ensure
-        run: |
-          make ensure
