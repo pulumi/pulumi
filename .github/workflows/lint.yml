@@ -48,7 +48,7 @@ jobs:
         uses: devops-actions/actionlint@v0.1.9
 
       - if: steps.changens.outputs.gomods == 'true'
-        uses: evantorrie/mott-the-tider@v1-beta
+        uses: evantorrie/mott-the-tidier@v1-beta
         with:
           gomods: |
             **/go.mod
