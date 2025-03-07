@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Automation API for Go now permits setting --diff flag on refresh

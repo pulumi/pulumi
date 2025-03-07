@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/config,state
-  description: Support a PULUMI_STACK environment variable for selecting your stack

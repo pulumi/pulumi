@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.154.0 (2025-03-07)
+
+
+### Features
+
+- [cli] Set the --parallel flag with PULUMI_PARALLEL environment variable
+  [#18782](https://github.com/pulumi/pulumi/pull/18782)
+
+- [engine] Pass URN and ID to providers Configure method
+  [#18807](https://github.com/pulumi/pulumi/pull/18807)
+
+- [yaml] Upgrade pulumi-yaml to 1.14.1
+  [#18819](https://github.com/pulumi/pulumi/pull/18819)
+
+- [cli/{config,state}] Support a PULUMI_STACK environment variable for selecting your stack
+  [#18717](https://github.com/pulumi/pulumi/pull/18717)
+
+- [auto/go] Add the ability to rename the given stack to the Go Automation API
+  [#18723](https://github.com/pulumi/pulumi/pull/18723)
+
+- [auto/go] Automation API for Go now permits setting --diff flag on refresh
+  [#18792](https://github.com/pulumi/pulumi/pull/18792)
+
+- [cli/install] Correctly marshal PluginSpec in GetRequiredPackages, so pulumi install can install git plugins
+  [#18786](https://github.com/pulumi/pulumi/pull/18786)
+
+- [auto/nodejs] Add `stack rename` to the NodeJS Automation API
+  [#18696](https://github.com/pulumi/pulumi/pull/18696)
+
+- [auto/python] Add the ability to rename the given stack to the Python Automation API
+  [#18712](https://github.com/pulumi/pulumi/pull/18712)
+
+- [sdk/python] Log a warning when trying to convert outputs to strings now logs a warning
+  [#18790](https://github.com/pulumi/pulumi/pull/18790)
+
+
+### Bug Fixes
+
+- [cli] Stack selections will now always be saved as if `stack select` had been used
+  [#14519](https://github.com/pulumi/pulumi/pull/14519)
+
+- [cli/plugin] Fix plugin "exited prematurely" false positives
+  [#18793](https://github.com/pulumi/pulumi/pull/18793)
+
 ## 3.153.1 (2025-02-28)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Set the --parallel flag with PULUMI_PARALLEL environment variable

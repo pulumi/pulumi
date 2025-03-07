@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Pass URN and ID to providers Configure method
