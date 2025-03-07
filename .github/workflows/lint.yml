@@ -31,15 +31,20 @@ jobs:
             actions:
               - '.github/workflows/*'
 
-      - if: steps.changes.outputs.go == 'true' || steps.changes.outputs.workflow == 'true'
+      - if: ${{ (steps.changes.outputs.go == 'true') || (steps.changes.outputs.workflow == 'true') }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - if: ${{ (steps.changes.outputs.go == 'true') || (steps.changes.outputs.workflow == 'true') }}
         uses: golangci/golangci-lint-action@v6.5.0
 
-      - if: steps.changes.outputs.typescript == 'true' || steps.changes.outputs.workflow == 'true'
+      - if: ${{ (steps.changes.outputs.typescript == 'true') || (steps.changes.outputs.workflow == 'true') }}
         uses: actionsx/prettier@v2
         with:
           args: --check .
 
-      - if: steps.changes.outputs.python == 'true' || steps.changes.outputs.workflow == 'true'
+      - if: ${{ (steps.changes.outputs.python == 'true') || (steps.changes.outputs.workflow == 'true') }}
         uses: ricardochaves/python-lint@v1.4.0
         with:
           use-pycodestyle: false
@@ -47,10 +52,10 @@ jobs:
           use-black: false
           use-mypy: false
 
-      - if: steps.changes.outputs.actions == 'true'
+      - if: ${{ steps.changes.outputs.actions == 'true' }}
         uses: devops-actions/actionlint@v0.1.9
 
-      - if: steps.changens.outputs.gomods == 'true'
+      - if: ${{ steps.changes.outputs.gomods == 'true' || steps.changes.outputs.workflow == 'true' }}
         uses: evantorrie/mott-the-tidier@v1-beta
         with:
           gomods: |
