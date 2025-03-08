@@ -122,6 +122,11 @@ type stepExecutor struct {
 	erroredStepLock sync.RWMutex
 	erroredSteps    []Step
 
+	// If true, the step executor will skip all incoming events until it reaches the stack outputs event. This is used when
+	// --register-stack-outputs-on-error is set to true.
+	skipUntilStackOutputs     bool
+	skipUntilStackOutputsLock sync.RWMutex
+
 	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
 	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
 	// deployment succeeded. If there were errors, we update any stack outputs that were updated, but don't delete
@@ -167,6 +172,12 @@ func (se *stepExecutor) GetErroredSteps() []Step {
 	return se.erroredSteps
 }
 
+func (se *stepExecutor) GetSkipUntilStackOutputs() bool {
+	se.skipUntilStackOutputsLock.RLock()
+	defer se.skipUntilStackOutputsLock.RUnlock()
+	return se.skipUntilStackOutputs
+}
+
 // ExecuteParallel submits an antichain for parallel execution. All of the steps within the antichain are submitted for
 // concurrent execution.
 func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
@@ -203,7 +214,6 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	finalizingStackOutputs bool,
 ) error {
 	urn := e.URN()
-
 	if finalizingStackOutputs {
 		contract.Assertf(urn.QualifiedType() == resource.RootStackType, "expected a stack resource urn, got %v", urn)
 	}
@@ -386,6 +396,11 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 		se.erroredStepLock.Lock()
 		defer se.erroredStepLock.Unlock()
 		se.erroredSteps = append(se.erroredSteps, step)
+	} else if se.deployment.opts.RegisterStackOutputsOnError {
+		step.Fail()
+		se.skipUntilStackOutputsLock.Lock()
+		defer se.skipUntilStackOutputsLock.Unlock()
+		se.skipUntilStackOutputs = true
 	} else {
 		se.cancel()
 	}
@@ -425,7 +440,6 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
 				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.Op(), step.Op())
 			}
-
 			se.pendingNews.Store(step.URN(), step)
 		}
 	}
