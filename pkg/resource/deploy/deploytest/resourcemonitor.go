@@ -124,7 +124,7 @@ func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor
 
 type ResourceOptions struct {
 	Parent                  resource.URN
-	Protect                 bool
+	Protect                 *bool
 	Dependencies            []resource.URN
 	Provider                string
 	Inputs                  resource.PropertyMap
