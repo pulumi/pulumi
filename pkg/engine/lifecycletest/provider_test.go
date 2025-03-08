@@ -1574,7 +1574,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			programF := deploytest.NewLanguageRuntimeF(c.prog, c.packages...)
+			programF := deploytest.NewLanguageRuntimeF(c.prog, deploytest.LanguageRuntimeOptions{RequiredPackages: c.packages})
 			loaders := []*deploytest.ProviderLoader{}
 			for _, v := range c.versions {
 				loaders = append(loaders,
