@@ -252,6 +252,10 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 func TestResourceOptionComposite(t *testing.T) {
 	t.Parallel()
 
+	ptr := func(b bool) *bool {
+		return &b
+	}
+
 	tests := []struct {
 		name  string
 		input []ResourceOption
@@ -300,7 +304,7 @@ func TestResourceOptionComposite(t *testing.T) {
 			},
 			want: &resourceOptions{
 				DeleteBeforeReplace: true,
-				Protect:             true,
+				Protect:             ptr(true),
 			},
 		},
 	}
@@ -947,6 +951,10 @@ func TestNewResourceOptions(t *testing.T) {
 	// referential equality.
 	sampleResourceInput := NewResourceInput(&testRes{foo: "foo"})
 
+	ptr := func(b bool) *bool {
+		return &b
+	}
+
 	tests := []struct {
 		desc string
 		give ResourceOption
@@ -1034,7 +1042,7 @@ func TestNewResourceOptions(t *testing.T) {
 		{
 			desc: "Protect",
 			give: Protect(true),
-			want: ResourceOptions{Protect: true},
+			want: ResourceOptions{Protect: ptr(true)},
 		},
 		{
 			desc: "Provider",

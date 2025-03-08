@@ -1911,8 +1911,8 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getProtect();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 6));
+  if (f != null) {
     writer.writeBool(
       6,
       f
@@ -2574,7 +2574,25 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getProtect = function() {
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setProtect = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 6, value);
+  return jspb.Message.setField(this, 6, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearProtect = function() {
+  return jspb.Message.setField(this, 6, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasProtect = function() {
+  return jspb.Message.getField(this, 6) != null;
 };
 
 
@@ -5128,8 +5146,8 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
       f
     );
   }
-  f = message.getProtect();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 2));
+  if (f != null) {
     writer.writeBool(
       2,
       f
@@ -5276,7 +5294,25 @@ proto.pulumirpc.TransformResourceOptions.prototype.getProtect = function() {
  * @return {!proto.pulumirpc.TransformResourceOptions} returns this
  */
 proto.pulumirpc.TransformResourceOptions.prototype.setProtect = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
+  return jspb.Message.setField(this, 2, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearProtect = function() {
+  return jspb.Message.setField(this, 2, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.hasProtect = function() {
+  return jspb.Message.getField(this, 2) != null;
 };
 
 

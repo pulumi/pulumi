@@ -562,7 +562,9 @@ export function registerResource(
                 req.setParent(resop.parentURN || "");
                 req.setCustom(custom);
                 req.setObject(gstruct.Struct.fromJavaScript(resop.serializedProps));
-                req.setProtect(opts.protect || false);
+                if (opts.protect !== undefined) {
+                    req.setProtect(opts.protect);
+                }
                 req.setProvider(resop.providerRef || "");
                 req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
                 req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);

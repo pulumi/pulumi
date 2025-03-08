@@ -9316,8 +9316,8 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
       f
     );
   }
-  f = message.getProtect();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 12));
+  if (f != null) {
     writer.writeBool(
       12,
       f
@@ -10089,7 +10089,25 @@ proto.pulumirpc.ConstructRequest.prototype.getProtect = function() {
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
 proto.pulumirpc.ConstructRequest.prototype.setProtect = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 12, value);
+  return jspb.Message.setField(this, 12, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.clearProtect = function() {
+  return jspb.Message.setField(this, 12, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.hasProtect = function() {
+  return jspb.Message.getField(this, 12) != null;
 };
 
 

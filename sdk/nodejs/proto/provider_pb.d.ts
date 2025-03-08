@@ -1145,7 +1145,10 @@ export class ConstructRequest extends jspb.Message {
     addConfigsecretkeys(value: string, index?: number): string;
     getOrganization(): string;
     setOrganization(value: string): ConstructRequest;
-    getProtect(): boolean;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
     setProtect(value: boolean): ConstructRequest;
     clearAliasesList(): void;
     getAliasesList(): Array<string>;
@@ -1207,7 +1210,7 @@ export namespace ConstructRequest {
         dependenciesList: Array<string>,
         configsecretkeysList: Array<string>,
         organization: string,
-        protect: boolean,
+        protect?: boolean,
         aliasesList: Array<string>,
         additionalsecretoutputsList: Array<string>,
         customtimeouts?: ConstructRequest.CustomTimeouts.AsObject,

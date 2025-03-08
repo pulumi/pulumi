@@ -52,13 +52,14 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 		assert.NoError(t, err)
 
 		if creating {
+			protect := true
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Protect: true,
+				Protect: &protect,
 			})
 			assert.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Protect: true,
+				Protect: &protect,
 			})
 			assert.NoError(t, err)
 		}
@@ -115,4 +116,60 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	_, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
 	assert.Error(t, err)
+}
+
+// TestProtectInheritance tests that the protect option is inherited from parent resources but can be overridden.
+func TestProtectInheritance(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		protect := true
+		resp, err := monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
+			Protect: &protect,
+		})
+		assert.NoError(t, err)
+
+		// Inherit protect true from parent
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		assert.NoError(t, err)
+
+		// Override protect true from parent
+		protectB := false
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent:  resp.URN,
+			Protect: &protectB,
+		})
+		assert.NoError(t, err)
+
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	// Run the update
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
+	// Assert that parent and resA are protected and resB is not
+	assert.Equal(t, "parent", snap.Resources[0].URN.Name())
+	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
+	assert.Equal(t, "resB", snap.Resources[3].URN.Name())
+	assert.True(t, snap.Resources[0].Protect)
+	assert.True(t, snap.Resources[2].Protect)
+	assert.False(t, snap.Resources[3].Protect)
+	// Assert that resA and resB have the correct parent
+	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
+	assert.Equal(t, snap.Resources[0].URN, snap.Resources[3].Parent)
 }
