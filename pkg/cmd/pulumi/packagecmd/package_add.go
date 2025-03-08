@@ -15,10 +15,12 @@
 package packagecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/hcl/v2"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -88,6 +90,10 @@ extension, Pulumi package schema is read from it directly:
 
 			pkg, err := SchemaFromSchemaSource(pctx, plugin, parameters)
 			if err != nil {
+				var diagErr hcl.Diagnostics
+				if errors.As(err, &diagErr) {
+					return fmt.Errorf("failed to get schema.  Diagnostics: %w", errors.Join(diagErr.Errs()...))
+				}
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
 
