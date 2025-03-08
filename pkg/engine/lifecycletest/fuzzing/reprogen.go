@@ -271,6 +271,8 @@ func writeSnapshotTestFunction(
 				operation = "engine.Refresh"
 			case PlanOperationDestroy:
 				operation = "engine.Destroy"
+			case PlanOperationDestroyV2:
+				operation = "engine.DestroyV2"
 			}
 
 			g.writeLine("")
@@ -425,6 +427,8 @@ func writeFrameworkTestFunction(
 				operation = "engine.Refresh"
 			case PlanOperationDestroy:
 				operation = "engine.Destroy"
+			case PlanOperationDestroyV2:
+				operation = "engine.DestroyV2"
 			}
 
 			g.writeLine("")

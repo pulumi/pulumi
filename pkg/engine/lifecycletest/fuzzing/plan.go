@@ -44,6 +44,8 @@ const (
 	PlanOperationRefresh OperationSpec = "plan.refresh"
 	// A destroy operation.
 	PlanOperationDestroy OperationSpec = "plan.destroy"
+	// A destroy operation with program execution.
+	PlanOperationDestroyV2 OperationSpec = "plan.destroyV2"
 )
 
 // Returns a set of test options and a test operation that can be used to execute this PlanSpec as part of a lifecycle
@@ -68,6 +70,8 @@ func (ps *PlanSpec) Executors(t lt.TB, hostF deploytest.PluginHostFactory) (lt.T
 		op = lt.TestOp(engine.Refresh)
 	case PlanOperationDestroy:
 		op = lt.TestOp(engine.Destroy)
+	case PlanOperationDestroyV2:
+		op = lt.TestOp(engine.DestroyV2)
 	}
 
 	return opts, op
@@ -129,6 +133,7 @@ var operationSpecs = []OperationSpec{
 	PlanOperationUpdate,
 	PlanOperationRefresh,
 	PlanOperationDestroy,
+	PlanOperationDestroyV2,
 }
 
 // Given a SnapshotSpec and a set of options, returns a rapid.Generator that will produce PlanSpecs that can be executed

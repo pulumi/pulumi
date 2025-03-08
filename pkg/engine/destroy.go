@@ -129,3 +129,48 @@ func newDestroySource(
 	// engine to destroy the entire existing state.
 	return deploy.NewNullSource(proj.Name), nil
 }
+
+// DestroyV2 is a version of Destroy that uses the a normal update source (i.e. it runs the user program) and
+// the step generator in "destroy" mode.
+func DestroyV2(
+	u UpdateInfo,
+	ctx *Context,
+	opts UpdateOptions,
+	dryRun bool,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	contract.Requiref(u != nil, "u", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
+
+	defer func() { ctx.Events <- NewCancelEvent() }()
+
+	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer info.Close()
+
+	emitter, err := makeEventEmitter(ctx.Events, u)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer emitter.Close()
+
+	// Force opt.DestroyProgram to true
+	opts.DestroyProgram = true
+
+	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
+
+	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
+		return nil, nil, err
+	}
+
+	return update(ctx, info, &deploymentOptions{
+		UpdateOptions: opts,
+		SourceFunc:    newUpdateSource,
+		Events:        emitter,
+		Diag:          newEventSink(emitter, false),
+		StatusDiag:    newEventSink(emitter, true),
+		DryRun:        dryRun,
+	})
+}
