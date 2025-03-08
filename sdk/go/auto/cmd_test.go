@@ -71,12 +71,11 @@ func TestOptionDefaults(t *testing.T) {
 func TestInstallTwice(t *testing.T) {
 	t.Parallel()
 
-	dir, err := os.MkdirTemp("", "automation-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
+
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
-	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
 
 	require.NoError(t, err)
 	pulumiPath := filepath.Join(dir, "bin", "pulumi")
@@ -99,11 +98,9 @@ func TestInstallTwice(t *testing.T) {
 func TestErrorIncompatibleVersion(t *testing.T) {
 	t.Parallel()
 
-	dir, err := os.MkdirTemp("", "automation-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	installedVersion := semver.Version{Major: 3, Minor: 98, Patch: 0}
-	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: installedVersion})
+	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: installedVersion})
 	require.NoError(t, err)
 	requestedVersion := semver.Version{Major: 3, Minor: 101, Patch: 0}
 
@@ -120,13 +117,11 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestNoGlobalPulumi(t *testing.T) {
-	dir, err := os.MkdirTemp("", "automation-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}
 
 	// Install before we mutate path, we need some system binaries available to run the install script.
-	_, err = InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
+	_, err := InstallPulumiCommand(context.Background(), &PulumiCommandOptions{Root: dir, Version: version})
 	require.NoError(t, err)
 
 	t.Setenv("PATH", "") // Clear path so we don't have access to a globally installed pulumi command.

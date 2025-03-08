@@ -267,16 +267,13 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	// Leftover temp dirs.
-	tempDir1, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
-	assert.NoError(t, err)
-	tempDir2, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
-	assert.NoError(t, err)
-	tempDir3, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
-	assert.NoError(t, err)
+	tempDir1 := t.TempDir()
+	tempDir2 := t.TempDir()
+	tempDir3 := t.TempDir()
 
 	// Leftover partial file.
 	partialPath := filepath.Join(dir, plugin.Dir()+".partial")
-	err = os.WriteFile(partialPath, nil, 0o600)
+	err := os.WriteFile(partialPath, nil, 0o600)
 	assert.NoError(t, err)
 
 	err = plugin.Install(tarball, false)
