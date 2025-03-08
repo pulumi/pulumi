@@ -103,6 +103,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.22.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	go.pennock.tech/tabular v1.1.3
+	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/mod v0.19.0
 	golang.org/x/sys v0.28.0

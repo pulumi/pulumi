@@ -215,6 +215,10 @@ func rootSpanTags() []opentracing.Tag {
 			Value: runtime.GOARCH,
 		},
 		{
+			Key:   "runtime.GOMAXPROCS",
+			Value: runtime.GOMAXPROCS(0),
+		},
+		{
 			Key:   "runtime.NumCPU",
 			Value: runtime.NumCPU(),
 		},
