@@ -117,7 +117,10 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		if len(dependencies) > 0 {
 			ro.DependsOn = append(ro.DependsOn, resourceDependencySet(dependencies))
 		}
-		ro.Protect = req.GetProtect()
+		// TODO: This is wrong, we're always setting protect on this resource even if it wasn't set in the user program
+		// that called construct.
+		protect := req.GetProtect()
+		ro.Protect = &protect
 		ro.Providers = providers
 		ro.Parent = parent
 

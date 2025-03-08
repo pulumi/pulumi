@@ -2696,7 +2696,7 @@ func TestProtect(t *testing.T) {
 		if createResource {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:  ins,
-				Protect: shouldProtect,
+				Protect: &shouldProtect,
 			})
 			assert.NoError(t, err)
 		}
