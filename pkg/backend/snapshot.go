@@ -73,6 +73,9 @@ type SnapshotManager struct {
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+
+	oldMapping map[*resource.State]*resource.State // A mapping of new resource states to their old state.
+	deletes    map[*resource.State]bool            // The set of resources that have been deleted.
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -143,6 +146,10 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Requiref(step != nil, "step", "cannot be nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
+
+	if step.Old() != nil && step.New() != nil {
+		sm.oldMapping[step.New()] = step.Old()
+	}
 
 	switch step.Op() {
 	case deploy.OpSame:
@@ -438,6 +445,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 				step.Old().Protect, step.Op())
 
 			if !step.Old().PendingReplacement {
+				dsm.manager.deletes[step.Old()] = true
 				dsm.manager.markDone(step.Old())
 			}
 		}
@@ -615,8 +623,15 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	//           they would have been appended to the list before r.
 
 	// Start with a copy of the resources produced during the evaluation of the current plan.
-	resources := make([]*resource.State, len(sm.resources))
-	copy(resources, sm.resources)
+	resources := make([]*resource.State, 0, len(sm.resources))
+
+	// if any resources have been deleted we need to filter them out here
+	for _, res := range sm.resources {
+		old := sm.oldMapping[res]
+		if old == nil || !sm.deletes[old] {
+			resources = append(resources, res)
+		}
+	}
 
 	// Append any resources from the base plan that were not produced by the current plan.
 	if base := sm.baseSnapshot; base != nil {
@@ -783,6 +798,8 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
+		oldMapping:       make(map[*resource.State]*resource.State),
+		deletes:          make(map[*resource.State]bool),
 	}
 
 	serviceLoop := manager.defaultServiceLoop

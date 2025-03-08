@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -151,8 +152,142 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if ex.deployment.opts.Refresh {
-		if err := ex.refresh(callerCtx); err != nil {
-			return nil, err
+		if ex.deployment.opts.RefreshProgram {
+			// Begin iterating the source.
+			src, err := ex.deployment.source.Iterate(callerCtx, ex.deployment)
+			if err != nil {
+				return nil, err
+			}
+
+			// Set up a step generator for this deployment.
+			ex.stepGen = newStepGenerator(ex.deployment, true, false)
+
+			// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
+			// deployment's execution fails.
+			ctx, cancel := context.WithCancel(callerCtx)
+
+			// Set up an executor for this deployment.
+			ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
+
+			// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
+			// respond to cancellation requests promptly.
+			type nextEvent struct {
+				Event SourceEvent
+				Error error
+			}
+			incomingEvents := make(chan nextEvent)
+			go func() {
+				for {
+					event, err := src.Next()
+					select {
+					case incomingEvents <- nextEvent{event, err}:
+						if event == nil {
+							return
+						}
+					case <-done:
+						logging.V(4).Infof("deploymentExecutor.Execute(...): incoming events goroutine exiting")
+						return
+					}
+				}
+			}()
+
+			// The main loop. We'll continuously select for incoming events and the cancellation signal. There are
+			// a three ways we can exit this loop:
+			//  1. The SourceIterator sends us a `nil` event. This means that we're done processing source events and
+			//     we should begin processing deletes.
+			//  2. The SourceIterator sends us an error. This means some error occurred in the source program and we
+			//     should bail.
+			//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
+			//     and we need to bail. This can also happen if the user hits Ctrl-C.
+			canceled, err := func() (bool, error) {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+				for {
+					select {
+					case event := <-incomingEvents:
+						logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil,
+							event.Error)
+
+						if event.Error != nil {
+							if !result.IsBail(event.Error) {
+								ex.reportError("", event.Error)
+							}
+							cancel()
+
+							// We reported any errors above.  So we can just bail now.
+							return false, result.BailError(event.Error)
+						}
+
+						if event.Event == nil {
+							err := ex.refresh(callerCtx)
+							if err != nil {
+								if !result.IsBail(err) {
+									logging.V(4).Infof("deploymentExecutor.Execute(...): error performing refreshes: %v", err)
+									ex.reportError("", err)
+									return false, result.BailError(err)
+								}
+							}
+							return false, err
+						}
+
+						if err := ex.handleSingleEvent(event.Event); err != nil {
+							if !result.IsBail(err) {
+								logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+								ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+							}
+							cancel()
+							return false, result.BailError(err)
+						}
+					case <-ctx.Done():
+						logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
+
+						// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
+						// cancellation from internally-initiated cancellation.
+						return callerCtx.Err() != nil, nil
+					}
+				}
+			}()
+
+			ex.stepExec.WaitForCompletion()
+
+			stepExecutorError := ex.stepExec.Errored()
+
+			// Finalize the stack outputs.
+			if e := ex.stepExec.stackOutputsEvent; e != nil {
+				errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()
+				finalizingStackOutputs := true
+				if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
+					return nil, result.BailError(err)
+				}
+			}
+
+			logging.V(4).Infof("deploymentExecutor.Execute(...): step executor has completed")
+
+			// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
+			if err != nil || stepExecutorError != nil || ex.stepGen.Errored() {
+				// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
+				// we be doing a merge here?
+				ex.reportExecResult("failed")
+				if err != nil {
+					return nil, result.BailError(err)
+				}
+				if stepExecutorError != nil {
+					return nil, result.BailErrorf("step executor errored: %w", stepExecutorError)
+				}
+				return nil, result.BailErrorf("step generator errored")
+			} else if canceled {
+				ex.reportExecResult("canceled")
+				return nil, result.BailErrorf("canceled")
+			}
+
+			// Else carry on to the proper deployment
+		} else {
+			// Fire up a worker pool and issue each refresh in turn.
+			ctx, cancel := context.WithCancel(callerCtx)
+			ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, true)
+
+			if err := ex.refresh(callerCtx); err != nil {
+				return nil, err
+			}
 		}
 		if ex.deployment.opts.RefreshOnly {
 			return nil, nil
@@ -175,7 +310,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment)
+	ex.stepGen = newStepGenerator(ex.deployment, false, ex.deployment.opts.DestroyProgram)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -537,6 +672,15 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.
 func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
+	waitForStepExec := true
+	defer func() {
+		// If we exit early out of this function we still need to signal and wait for the step executor
+		if waitForStepExec {
+			ex.stepExec.SignalCompletion()
+			ex.stepExec.WaitForCompletion()
+		}
+	}()
+
 	prev := ex.deployment.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
@@ -553,26 +697,67 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
+		// If we've already refreshed this resource then skip it
+		if ex.stepGen != nil && ex.stepGen.urns[res.URN] {
+			if step, ok := ex.stepGen.refreshes[res.URN]; ok {
+				// This resource was refreshed
+				resourceToStep[res] = step
+				continue
+			}
+		}
+
 		if ex.deployment.opts.Targets.Contains(res.URN) {
-			// For each resource we're going to refresh we need to ensure we have a provider for it
-			err := ex.deployment.EnsureProvider(res.Provider)
-			if err != nil {
-				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+			// For each resource we're going to refresh we need to ensure we have a provider for it,
+			// for default provider we want to pull the latest config, which may trigger an update.
+			if res.Provider != "" {
+				providerRef, err := providers.ParseReference(res.Provider)
+				if err != nil {
+					return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
+				}
+
+				_, has := ex.deployment.GetProvider(providerRef)
+				if !has {
+					// We need to create the provider in the registry, find its old state and just "Same" it.
+					var providerResource *resource.State
+					for _, r := range ex.deployment.prev.Resources {
+						if r.URN == providerRef.URN() && r.ID == providerRef.ID() {
+							providerResource = r
+							break
+						}
+					}
+					if providerResource == nil {
+						return fmt.Errorf("could not find provider %v", providerRef)
+					}
+					// Unless its a default provider, in which case we want to update it's config
+					if providers.IsDefaultProvider(providerResource.URN) {
+						pkg := tokens.Package(providerResource.Type.Name())
+						inputs, err := ex.deployment.target.GetPackageConfig(pkg)
+						if err != nil {
+							return err
+						}
+
+						for k := range inputs {
+							providerResource.Inputs[k] = inputs[k]
+						}
+					}
+					// TODO: THIS IS WRONG WE NEED TO SEND TO STEPGEN
+					err := ex.deployment.SameProvider(providerResource)
+					if err != nil {
+						return fmt.Errorf("could not create provider %v: %w", providerRef, err)
+					}
+				}
 			}
 
-			step := NewRefreshStep(ex.deployment, res)
+			step := NewRefreshStep(ex.deployment, nil, res)
 			steps = append(steps, step)
 			resourceToStep[res] = step
 		}
 	}
 
-	// Fire up a worker pool and issue each refresh in turn.
-	ctx, cancel := context.WithCancel(callerCtx)
-
-	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
-	stepExec.ExecuteParallel(steps)
-	stepExec.SignalCompletion()
-	stepExec.WaitForCompletion()
+	ex.stepExec.ExecuteParallel(steps)
+	ex.stepExec.SignalCompletion()
+	ex.stepExec.WaitForCompletion()
+	waitForStepExec = false
 
 	ex.rebuildBaseState(resourceToStep)
 
@@ -580,7 +765,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil
 
-	stepExecutorError := stepExec.Errored()
+	stepExecutorError := ex.stepExec.Errored()
 	if stepExecutorError != nil {
 		ex.reportExecResult("failed")
 		return result.BailErrorf("step executor errored: %w", stepExecutorError)
@@ -591,7 +776,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	return nil
 }
 
-func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step) {
+func (ex *deploymentExecutor) rebuildBaseState(
+	resourceToStep map[*resource.State]Step,
+) {
 	// Rebuild this deployment's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
