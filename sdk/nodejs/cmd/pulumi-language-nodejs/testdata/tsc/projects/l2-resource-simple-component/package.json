@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-simple-component",
+	"devDependencies": {
+		"@types/node": "^14"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/simple-component": "ROOT/artifacts/pulumi-simple-component-15.0.0.tgz"
+	}
+}
