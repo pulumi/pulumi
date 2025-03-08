@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -2017,4 +2018,269 @@ func TestProviderSameStep(t *testing.T) {
 	prov := snap.Resources[0]
 	assert.Equal(t, "200", prov.Inputs["value"].StringValue())
 	assert.Equal(t, "100", prov.Outputs["value"].StringValue())
+}
+
+// Test that when a resource is deleted we're consistent about which provider is used to delete it. This can
+// vary based on if the provider is a default provider or explicit, and for defaults if there's any other
+// resources left using the provider or not.
+func TestProviderUpdateWithDelete(t *testing.T) {
+	t.Parallel()
+
+	providerInputs := resource.PropertyMap{"auth": resource.NewStringProperty("up1")}
+	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+
+	deleteCalled := 0
+	expectedAuth := "up1"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			var auth string
+			return &deploytest.Provider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					auth = req.Inputs["auth"].StringValue()
+					return plugin.ConfigureResponse{}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if req.Name == "resC" {
+						// resC will delete with the old provider version and old provider config
+						assert.Equal(t, "up1", auth)
+
+						deleteCalled++
+						assert.Equal(t, createInputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.Outputs)
+
+						return plugin.DeleteResponse{
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.DeleteResponse{}, fmt.Errorf("should not have called delete on 1.0 for %s", req.URN)
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					assert.Equal(t, expectedAuth, auth)
+
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if !strings.HasPrefix(req.Name, "res") {
+						return plugin.CreateResponse{}, fmt.Errorf("unexpected resource name %s", req.Name)
+					}
+
+					assert.Equal(t, programInputs, req.Properties)
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: createOutputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), func() (plugin.Provider, error) {
+			var auth string
+			return &deploytest.Provider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					auth = req.Inputs["auth"].StringValue()
+					return plugin.ConfigureResponse{}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, expectedAuth, auth)
+
+					if req.Name == "resD" {
+						// resD will delete with the new provider version and config
+
+						deleteCalled++
+						assert.Equal(t, createInputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.Outputs)
+
+						return plugin.DeleteResponse{
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.DeleteResponse{}, fmt.Errorf("should not have called delete on 2.0 for %s", req.URN)
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("should not have called create")
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			var auth string
+			return &deploytest.Provider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					auth = req.Inputs["auth"].StringValue()
+					return plugin.ConfigureResponse{}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if req.Name == "resE" || req.Name == "resF" {
+						// resE and resF will delete with the old provider version and old provider config
+						assert.Equal(t, "up1", auth)
+
+						deleteCalled++
+						assert.Equal(t, createInputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.Outputs)
+
+						return plugin.DeleteResponse{
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.DeleteResponse{}, fmt.Errorf("should not have called delete on 1.0 for %s", req.URN)
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					assert.Equal(t, expectedAuth, auth)
+
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if !strings.HasPrefix(req.Name, "res") {
+						return plugin.CreateResponse{}, fmt.Errorf("unexpected resource name %s", req.Name)
+					}
+
+					assert.Equal(t, programInputs, req.Properties)
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: createOutputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// We run the program below twice (both normal Updates).
+	// resA is a resource using a default pkgA provider that is registered in both runs.
+	// resB is a resource using an explicit pkgA provider that is registered in both runs.
+	// resC is a resource using a default pkgA provider that is deleted in the second run.
+	// - it is deleted by the v1 pkgA provider with the old config from state
+	// resD is a resource using an explicit pkgA provider that is deleted in the second run.
+	// - it is deleted by the v2 pkgA provider with the new config
+	// resE is a resource using a default pkgB provider that is deleted in the second run, thus the pkgB default
+	// provider is also deleted.
+	// resF is a resource using an explicit pkgB provider, both the resource and provider are deleted in the second run.
+	// - both are deleted by the v1 pkgB provider with the old config from state
+
+	programExecutions := 0
+	pkgVersion := "1.0.0"
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs:  providerInputs,
+			Version: pkgVersion,
+		})
+		assert.NoError(t, err)
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
+		assert.NoError(t, err)
+
+		resp, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:  programInputs,
+			Version: pkgVersion,
+		})
+		assert.NoError(t, err)
+		// Should see the create outputs both times we run this program
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:   programInputs,
+			Version:  pkgVersion,
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+		// Should see the create outputs both times we run this program
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		// Only register resC, resD, resE, and resF on the first run
+		if programExecutions == 1 {
+			resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+				Inputs:  programInputs,
+				Version: pkgVersion,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, createOutputs, resp.Outputs)
+
+			resp, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
+				Inputs:   programInputs,
+				Version:  pkgVersion,
+				Provider: provRef.String(),
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, createOutputs, resp.Outputs)
+
+			resp, err = monitor.RegisterResource("pulumi:providers:pkgB", "prov", true, deploytest.ResourceOptions{
+				Inputs:  providerInputs,
+				Version: pkgVersion,
+			})
+			assert.NoError(t, err)
+			provRef, err := providers.NewReference(resp.URN, resp.ID)
+			assert.NoError(t, err)
+
+			resp, err = monitor.RegisterResource("pkgB:m:typA", "resE", true, deploytest.ResourceOptions{
+				Inputs:  programInputs,
+				Version: pkgVersion,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, createOutputs, resp.Outputs)
+
+			resp, err = monitor.RegisterResource("pkgB:m:typA", "resF", true, deploytest.ResourceOptions{
+				Inputs:   programInputs,
+				Version:  pkgVersion,
+				Provider: provRef.String(),
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, createOutputs, resp.Outputs)
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+		Config: config.Map{
+			config.MustMakeKey("pkgA", "auth"): config.NewValue("up1"),
+			config.MustMakeKey("pkgB", "auth"): config.NewValue("up1"),
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	assert.Equal(t, resource.NewStringProperty("up1"), snap.Resources[0].Inputs["auth"])
+	assert.Equal(t, resource.NewStringProperty("up1"), snap.Resources[1].Inputs["auth"])
+	for i := 2; i <= 5; i++ {
+		assert.Equal(t, programInputs, snap.Resources[i].Inputs)
+		assert.Equal(t, createOutputs, snap.Resources[i].Outputs)
+	}
+
+	// Run another update with the new provider version
+	pkgVersion = "2.0.0"
+	expectedAuth = "up2"
+	p.Config = config.Map{
+		config.MustMakeKey("pkgA", "auth"): config.NewValue("up2"),
+		config.MustMakeKey("pkgB", "auth"): config.NewValue("up2"),
+	}
+	providerInputs = resource.PropertyMap{"auth": resource.NewStringProperty("up2")}
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have deleted resC, D, E, and F
+	assert.Equal(t, 4, deleteCalled)
+	// ResA and B and the default and explicit provider for them should be left
+	assert.Len(t, snap.Resources, 4)
 }
