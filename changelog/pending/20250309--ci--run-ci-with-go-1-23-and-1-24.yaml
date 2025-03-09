@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Run CI with Go 1.23 and 1.24
