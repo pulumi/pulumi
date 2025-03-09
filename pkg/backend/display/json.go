@@ -91,18 +91,16 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
-func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowJSONEvents(events <-chan engine.StampedEvent, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
-	sequence := 0
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetEscapeHTML(false)
 	for e := range events {
-		if err := logJSONEvent(encoder, e, opts, sequence); err != nil {
+		if err := logJSONEvent(encoder, e, opts); err != nil {
 			logging.V(7).Infof("failed to log event: %v", err)
 		}
-		sequence++
 
 		// In the event of cancellation, break out of the loop.
 		if e.Type == engine.CancelEvent {
