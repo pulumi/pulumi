@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/cmd/pulumi-test-language
 
-go 1.22
+go 1.23
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../sdk
 
@@ -17,7 +17,6 @@ require (
 	github.com/pulumi/pulumi/sdk/v3 v3.154.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -185,6 +184,7 @@ require (
 	gocloud.dev v0.37.0 // indirect
 	gocloud.dev/secrets/hashivault v0.37.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
