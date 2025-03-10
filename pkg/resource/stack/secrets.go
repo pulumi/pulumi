@@ -158,7 +158,8 @@ func (csm *batchingCachingSecretsManager) BeginBatchEncryption() (BatchEncrypter
 }
 
 func (csm *batchingCachingSecretsManager) BeginBatchDecryption() (BatchDecrypter, CompleteCrypterBatch) {
-	return BeginBatchDecryptionWithCache(csm.manager.Decrypter(), csm.cache)
+	// We don't use the cache here to ensure that we always re-encrypt all secrets at least once per operation.
+	return BeginDecryptionBatch(csm.manager.Decrypter())
 }
 
 // SecretCache allows the bidirectional cached conversion between: `ciphertext <-> plaintext + secret pointer`.

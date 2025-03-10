@@ -171,12 +171,12 @@ func TestCachingSecretsManager(t *testing.T) {
 	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
 	assert.Equal(t, barSer, barSer2)
 
-	// Decrypt foo1Ser. Shares cache from encrypt.
+	// Decrypt foo1Ser. Doesn't cache.
 	dec, completeDec := csm.BeginBatchDecryption()
 	foo1Dec, err := deserializeProperty(foo1Ser, dec)
 	assert.NoError(t, err, "deserialize")
 	assert.NoError(t, completeDec(ctx), "complete")
-	assert.Equal(t, 0, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 1, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, foo1.DeepEquals(foo1Dec))
 
@@ -185,7 +185,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	foo2Dec, err := deserializeProperty(foo2Ser, dec)
 	assert.NoError(t, err, "deserialize")
 	assert.NoError(t, completeDec(ctx), "complete")
-	assert.Equal(t, 0, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 2, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, foo2.DeepEquals(foo2Dec))
 
@@ -194,7 +194,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	barDec, err := deserializeProperty(barSer, dec)
 	assert.NoError(t, err, "deserialize")
 	assert.NoError(t, completeDec(ctx), "complete")
-	assert.Equal(t, 0, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 3, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, bar.DeepEquals(barDec))
 
@@ -207,7 +207,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	foo1Dec, err = deserializeProperty(foo1Ser, dec)
 	assert.NoError(t, err, "deserialize")
 	assert.NoError(t, completeDec(ctx), "complete")
-	assert.Equal(t, 1, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 4, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, foo1.DeepEquals(foo1Dec))
 
 	// Decrypt foo2Ser. Decrypt should be called.
@@ -215,7 +215,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	foo2Dec, err = deserializeProperty(foo2Ser, dec)
 	assert.NoError(t, err, "deserialize")
 	assert.NoError(t, completeDec(ctx), "complete")
-	assert.Equal(t, 2, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 5, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, foo2.DeepEquals(foo2Dec))
 
 	// Decrypt barSer. Decrypt should be called.
@@ -223,7 +223,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	barDec, err = deserializeProperty(barSer, dec)
 	assert.NoError(t, err, "deserialize")
 	assert.NoError(t, completeDec(ctx), "complete")
-	assert.Equal(t, 3, sm.batchDecryptCalls, "batch decrypt calls")
+	assert.Equal(t, 6, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, bar.DeepEquals(barDec))
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
@@ -232,8 +232,8 @@ func TestCachingSecretsManager(t *testing.T) {
 	foo1Ser2, err = SerializePropertyValue(ctx, foo1Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err, "serialize")
 	assert.NoError(t, completeEnc(ctx), "complete")
-	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
-	assert.Equal(t, foo1Ser, foo1Ser2)
+	assert.Equal(t, 4, sm.batchEncryptCalls, "batch encrypt calls")
+	assert.Equal(t, &apitype.SecretV1{Sig: "1b47061264138c4ac30d75fd1eb44270", Ciphertext: "4-1:\"foo\""}, foo1Ser2)
 
 	// Serialize the second copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.
@@ -241,8 +241,8 @@ func TestCachingSecretsManager(t *testing.T) {
 	foo2Ser2, err = SerializePropertyValue(ctx, foo2Dec, enc, false /* showSecrets */)
 	assert.NoError(t, err, "serialize")
 	assert.NoError(t, completeEnc(ctx), "complete")
-	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
-	assert.Equal(t, foo2Ser, foo2Ser2)
+	assert.Equal(t, 5, sm.batchEncryptCalls, "batch encrypt calls")
+	assert.Equal(t, &apitype.SecretV1{Sig: "1b47061264138c4ac30d75fd1eb44270", Ciphertext: "5-1:\"foo\""}, foo2Ser2)
 
 	// Serialize "bar" again. Encrypt should not be called, as this value has already been cached by the
 	// earlier calls to Decrypt.
@@ -250,8 +250,8 @@ func TestCachingSecretsManager(t *testing.T) {
 	barSer2, err = SerializePropertyValue(ctx, barDec, enc, false /* showSecrets */)
 	assert.NoError(t, err, "serialize")
 	assert.NoError(t, completeEnc(ctx), "complete")
-	assert.Equal(t, 3, sm.batchEncryptCalls, "batch encrypt calls")
-	assert.Equal(t, barSer, barSer2)
+	assert.Equal(t, 6, sm.batchEncryptCalls, "batch encrypt calls")
+	assert.Equal(t, &apitype.SecretV1{Sig: "1b47061264138c4ac30d75fd1eb44270", Ciphertext: "6-1:\"bar\""}, barSer2)
 }
 
 func TestSecretCache(t *testing.T) {
