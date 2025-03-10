@@ -520,6 +520,15 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
+			usesTargets := opts.Engine.Targets.IsConstrained() || opts.Engine.TargetDependents
+			usesExcludes := opts.Engine.Excludes.IsConstrained() || opts.Engine.ExcludeDependents
+
+			if usesTargets && usesExcludes {
+				return errors.New(
+					"--target and --target-dependents can't be used with --exclude or --exclude-dependents",
+				)
+			}
+
 			if err = validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
 			}
