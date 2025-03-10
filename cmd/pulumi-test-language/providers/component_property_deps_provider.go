@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/blang/semver"
@@ -28,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -80,11 +80,8 @@ func (p *ComponentPropertyDepsProvider) GetSchema(
 			inputs map[string]schema.PropertySpec,
 			outputs map[string]schema.PropertySpec,
 		) schema.ResourceSpec {
-			requiredInputs := maps.Keys(inputs)
-			slices.Sort(requiredInputs)
-
-			requiredOutputs := maps.Keys(outputs)
-			slices.Sort(requiredOutputs)
+			requiredInputs := slices.Sorted(maps.Keys(inputs))
+			requiredOutputs := slices.Sorted(maps.Keys(outputs))
 
 			return schema.ResourceSpec{
 				IsComponent: isComponent,
@@ -108,8 +105,7 @@ func (p *ComponentPropertyDepsProvider) GetSchema(
 		inputs map[string]schema.PropertySpec,
 		returnType schema.ReturnTypeSpec,
 	) schema.FunctionSpec {
-		requiredInputs := maps.Keys(inputs)
-		slices.Sort(requiredInputs)
+		requiredInputs := slices.Sorted(maps.Keys(inputs))
 
 		return schema.FunctionSpec{
 			Description: description,
