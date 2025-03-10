@@ -64,9 +64,9 @@ type Options struct {
 	// whether or not to exit after refreshing (i.e. this is specifically a
 	// refresh operation).
 	RefreshOnly bool
-	// whether or not to use program based refresh.
+	// true if the plan should run the program as part of refresh.
 	RefreshProgram bool
-	// whether or not to use program based destroy.
+	// true if the plan should run the program as part of destroy.
 	DestroyProgram bool
 	// if specified, only operate on the specified resources.
 	Targets UrnTargets

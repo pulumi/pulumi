@@ -415,6 +415,7 @@ func TestUpdateStep(t *testing.T) {
 			s := &UpdateStep{
 				old: &resource.State{},
 				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
@@ -439,6 +440,7 @@ func TestUpdateStep(t *testing.T) {
 			s := &UpdateStep{
 				old: &resource.State{},
 				new: &resource.State{
+					URN:    "urn:pulumi:stack::project::some-type::some-urn",
 					Custom: true,
 					// Use denydefaultprovider ID to ensure failure.
 					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",

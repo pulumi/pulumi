@@ -42,7 +42,7 @@ on:
         # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
         default: |
           {
-            "dotnet": "6.0.x",
+            "dotnet": "8.0.x",
             "go": "1.18.x",
             "nodejs": "16.x",
             "python": "3.9.x"

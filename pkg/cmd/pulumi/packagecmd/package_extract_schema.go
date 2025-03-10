@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 
-	cmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,7 +35,7 @@ func newExtractSchemaCommand() *cobra.Command {
 <schema_source> can be a package name or the path to a plugin binary or folder.
 If a folder either the plugin binary must match the folder name (e.g. 'aws' and 'pulumi-resource-aws')` +
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
 			wd, err := os.Getwd()
@@ -73,7 +72,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return fmt.Errorf("only wrote %d/%d bytes of the schema", len(bytes), n)
 			}
 			return nil
-		}),
+		},
 	}
 	return cmd
 }

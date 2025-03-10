@@ -413,9 +413,16 @@ def call(
             # Serialize out all props to their final values. In doing so, we'll also collect all the Resources pointed to
             # by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
             property_dependencies_resources: Dict[str, List["Resource"]] = {}
-            # We keep output values when serializing inputs for call.
+
             inputs = await rpc.serialize_properties(
-                props, property_dependencies_resources, keep_output_values=True
+                props,
+                property_dependencies_resources,
+                # We keep output values when serializing inputs for call.
+                keep_output_values=True,
+                # We exclude resource references from `argDependencies` when serializing inputs for call.
+                # This way, providers creating output instances based on `argDependencies` won't create
+                # outputs for properties that only contain resource references.
+                exclude_resource_refs_from_deps=True,
             )
 
             property_dependencies = {}

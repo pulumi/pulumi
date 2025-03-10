@@ -66,7 +66,7 @@ func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) 
 	return string(plaintext), nil
 }
 
-func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) ([]string, error) {
+func (c *serviceCrypter) BatchDecrypt(ctx context.Context, secrets []string) ([]string, error) {
 	secretsToDecrypt := slice.Prealloc[[]byte](len(secrets))
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
@@ -76,7 +76,7 @@ func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) ([]s
 		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
 	}
 
-	decryptedList, err := c.client.BulkDecryptValue(ctx, c.stack, secretsToDecrypt)
+	decryptedList, err := c.client.BatchDecryptValue(ctx, c.stack, secretsToDecrypt)
 	if err != nil {
 		return nil, err
 	}

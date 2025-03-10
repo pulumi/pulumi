@@ -215,10 +215,10 @@ func (d passThroughDecrypter) DecryptValue(
 	return ciphertext, nil
 }
 
-func (d passThroughDecrypter) BulkDecrypt(
+func (d passThroughDecrypter) BatchDecrypt(
 	ctx context.Context, ciphertexts []string,
 ) ([]string, error) {
-	return DefaultBulkDecrypt(ctx, d, ciphertexts)
+	return DefaultBatchDecrypt(ctx, d, ciphertexts)
 }
 
 func TestSecureValues(t *testing.T) {

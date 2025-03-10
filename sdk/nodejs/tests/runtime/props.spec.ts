@@ -349,6 +349,50 @@ describe("runtime", () => {
                 custom: customID,
             });
         });
+
+        describe("determines resource reference dependencies correctly", async () => {
+            runtime.setMocks(new TestMocks());
+
+            const custom1 = new TestCustomResource("custom1");
+            const custom2 = new TestCustomResource("custom1");
+
+            const inputs: Inputs = {
+                resources: [custom1, custom2],
+            };
+
+            const tests = [
+                {
+                    supports: true,
+                    exclude: true,
+                    expected: [],
+                },
+                {
+                    supports: true,
+                    exclude: false,
+                    expected: [custom1, custom2],
+                },
+                {
+                    supports: false,
+                    exclude: true,
+                    expected: [custom1, custom2],
+                },
+                {
+                    supports: false,
+                    exclude: false,
+                    expected: [custom1, custom2],
+                },
+            ];
+
+            for (const test of tests) {
+                it(`supportsResourceRefs=${test.supports}, excludeResourceRefsFromDeps=${test.exclude}`, async () => {
+                    state.getStore().supportsResourceReferences = test.supports;
+                    const [_, deps] = await runtime.serializePropertiesReturnDeps("test", inputs, {
+                        excludeResourceReferencesFromDependencies: test.exclude,
+                    });
+                    assert.deepEqual(deps, new Map().set("resources", new Set(test.expected)));
+                });
+            }
+        });
     });
 
     describe("deserializeProperty", () => {

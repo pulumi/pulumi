@@ -17,7 +17,6 @@ package config
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -32,10 +31,10 @@ func newConfigEnvLsCmd(parent *configEnvCmd) *cobra.Command {
 		Short: "Lists imported environments.",
 		Long:  "Lists the environments imported into a stack's configuration.",
 		Args:  cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
-		}),
+		},
 	}
 
 	cmd.Flags().BoolVarP(

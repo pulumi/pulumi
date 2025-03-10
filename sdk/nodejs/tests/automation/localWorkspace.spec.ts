@@ -83,10 +83,10 @@ describe("LocalWorkspace", () => {
 
     it(`adds/removes/lists plugins successfully`, async () => {
         const ws = await LocalWorkspace.create(withTestBackend({}));
-        await ws.installPlugin("aws", "v3.0.0");
+        await ws.installPlugin("aws", "v6.1.0");
         // See https://github.com/pulumi/pulumi/issues/11013 for why this is disabled
         //await ws.installPluginFromServer("scaleway", "v1.2.0", "github://api.github.com/lbrlabs");
-        await ws.removePlugin("aws", "3.0.0");
+        await ws.removePlugin("aws", "6.1.0");
         await ws.listPlugins();
     });
 
@@ -770,6 +770,54 @@ describe("LocalWorkspace", () => {
 
         await stack.destroy();
     });
+    it(`renames a stack`, async () => {
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            new MyResource("res");
+            return {};
+        };
+
+        const suffix = `int_test${getTestSuffix()}`;
+
+        const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", suffix);
+        const shortName = getTestOrg() + "/" + suffix;
+
+        const stackRenamed = stackName + "_renamed";
+        const shortRenamed = shortName + "_renamed";
+
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName: "inline_node", program },
+            withTestBackend({}, "inline_node"),
+        );
+
+        await stack.up({ userAgent });
+        stack.workspace.selectStack(stackName);
+
+        let returned = "";
+        const renameRes = await stack.rename({
+            stackName: stackRenamed,
+            onOutput: (e) => {
+                returned += e;
+            },
+        });
+
+        const after = (await stack.workspace.listStacks()).find((x) => x.name.startsWith(shortName));
+
+        assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
+        assert.strictEqual(after?.name, shortRenamed);
+
+        assert.strictEqual(renameRes.summary.kind, "rename");
+        assert.strictEqual(renameRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+    });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
@@ -851,9 +899,8 @@ describe("LocalWorkspace", () => {
             fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
         );
         const stacks = await Promise.all(
-            stackNames.map(
-                async (stackName) => LocalWorkspace.createStack({ stackName, projectName, program }),
-                withTestBackend({}, "inline_node"),
+            stackNames.map(async (stackName) =>
+                LocalWorkspace.createStack({ stackName, projectName, program }, withTestBackend({}, "inline_node")),
             ),
         );
         await stacks.map((stack) => stack.workspace.removeStack(stack.name));
@@ -1313,7 +1360,7 @@ describe("LocalWorkspace", () => {
 
     it("can import resources into a stack using resource definitions", async () => {
         const workDir = upath.joinSafe(__dirname, "data", "import");
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), "node_test", `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ workDir, stackName }, withTestBackend({}));
         const pulumiRandomVersion = "4.16.3";
         await stack.workspace.installPlugin("random", pulumiRandomVersion);
@@ -1344,7 +1391,7 @@ describe("LocalWorkspace", () => {
 
     it("can import resources into a stack without generating code", async () => {
         const workDir = upath.joinSafe(__dirname, "data", "import");
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), "node_test", `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ workDir, stackName }, withTestBackend({}));
         const pulumiRandomVersion = "4.16.3";
         await stack.workspace.installPlugin("random", pulumiRandomVersion);
@@ -1462,7 +1509,9 @@ describe("LocalWorkspace", () => {
     });
     it(`correctly sets config on multiple stacks concurrently`, async () => {
         const dones = [];
-        const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"];
+        const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"].map((x) =>
+            fullyQualifiedStackName("organization", "concurrent-config", `int_test_${x}_${getTestSuffix()}`),
+        );
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
         const ws = await LocalWorkspace.create({
             workDir,

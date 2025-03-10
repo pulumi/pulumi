@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Correctly deal with subdirs in package add when no version number is specified

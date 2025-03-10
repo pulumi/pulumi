@@ -74,8 +74,9 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	oldMapping map[*resource.State]*resource.State // A mapping of new resource states to their old state.
-	deletes    map[*resource.State]bool            // The set of resources that have been deleted.
+	// The set of resources that have been deleted. These resources could also have been added to `resources`
+	// by other operations but need to be filtered out before writing the snapshot.
+	deletes map[*resource.State]bool
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -146,10 +147,6 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Requiref(step != nil, "step", "cannot be nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
-
-	if step.Old() != nil && step.New() != nil {
-		sm.oldMapping[step.New()] = step.Old()
-	}
 
 	switch step.Op() {
 	case deploy.OpSame:
@@ -445,7 +442,19 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 				step.Old().Protect, step.Op())
 
 			if !step.Old().PendingReplacement {
-				dsm.manager.deletes[step.Old()] = true
+				// If this is a delete-replace operation, we don't want to mark the resource as deleted
+				// because we want to keep the new resource. If this is a normal delete/discard operation we
+				// need to add the resource to the "deletes" set so that we can filter it out when writing the
+				// snapshot.
+				op := step.Op()
+				contract.Assertf(
+					op == deploy.OpDiscardReplaced || op == deploy.OpReadDiscard ||
+						op == deploy.OpDeleteReplaced || op == deploy.OpDelete,
+					"unexpected step.Op(): %q", op)
+
+				if op == deploy.OpDelete || op == deploy.OpReadDiscard {
+					dsm.manager.deletes[step.Old()] = true
+				}
 				dsm.manager.markDone(step.Old())
 			}
 		}
@@ -627,8 +636,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 	// if any resources have been deleted we need to filter them out here
 	for _, res := range sm.resources {
-		old := sm.oldMapping[res]
-		if old == nil || !sm.deletes[old] {
+		if !sm.deletes[res] {
 			resources = append(resources, res)
 		}
 	}
@@ -798,7 +806,6 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
-		oldMapping:       make(map[*resource.State]*resource.State),
 		deletes:          make(map[*resource.State]bool),
 	}
 

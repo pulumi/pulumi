@@ -39,7 +39,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -716,7 +715,7 @@ func NewConvertTraceCmd() *cobra.Command {
 			"inspected using `go tool pprof`.",
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !env.DebugCommands.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			store := appdash.NewMemoryStore()
 			if err := readTrace(args[0], store); err != nil {
 				return err
@@ -725,7 +724,7 @@ func NewConvertTraceCmd() *cobra.Command {
 				return exportTraceToOtel(store, ignoreLogSpans)
 			}
 			return convertTraceToPprof(quantum, store)
-		}),
+		},
 	}
 
 	cmd.Flags().DurationVarP(&quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")

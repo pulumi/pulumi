@@ -14,10 +14,13 @@
         // Uses https://github.com/mvdan/gofumpt for formatting.
         "formatting.gofumpt": true,
     },
-
     "python.testing.pytestArgs": [
         "sdk/python/lib/test"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "markdownlint.config": {
+        "line-length": true,
+        "blanks-around-headings": false,
+    },
 }

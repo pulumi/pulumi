@@ -48,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -186,8 +185,10 @@ func NewPulumiCmd() *cobra.Command {
 	updateCheckResult := make(chan *diag.Diag)
 
 	cmd := &cobra.Command{
-		Use:   "pulumi",
-		Short: "Pulumi command line",
+		Use:           "pulumi",
+		Short:         "Pulumi command line",
+		SilenceErrors: true,
+		SilenceUsage:  true,
 		Long: "Pulumi - Modern Infrastructure as Code\n" +
 			"\n" +
 			"To begin working with Pulumi, run the `pulumi new` command:\n" +
@@ -204,7 +205,7 @@ func NewPulumiCmd() *cobra.Command {
 			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
-		PersistentPreRun: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
 			_, _, _ = term.StdStreams()
@@ -286,7 +287,7 @@ func NewPulumiCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")

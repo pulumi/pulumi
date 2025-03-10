@@ -536,11 +536,6 @@ class ResourceOptions:
                if specified resource is being deleted as well.
         """
 
-        # Expose 'merge' again this this object, but this time as an instance method.
-        # TODO[python/mypy#2427]: mypy disallows method assignment
-        self.merge = self._merge_instance  # type: ignore
-        self.merge.__func__.__doc__ = ResourceOptions.merge.__doc__  # type: ignore
-
         self.parent = parent
         self.protect = protect
         self.provider = provider
@@ -572,9 +567,6 @@ class ResourceOptions:
                     raise TypeError(
                         f"'depends_on' was passed a value {dep} that was not a Resource."
                     )
-
-    def _merge_instance(self, opts: "ResourceOptions") -> "ResourceOptions":
-        return ResourceOptions.merge(self, opts)
 
     def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
         if self.depends_on is None:
@@ -619,12 +611,8 @@ class ResourceOptions:
         # The fix is to re-assign merge after the copy.
 
         out = copy.copy(self)
-        # Expose 'merge' again this this object, but this time as an instance method.
-        # TODO[python/mypy#2427]: mypy disallows method assignment
-        out.merge = out._merge_instance  # type: ignore
         return out
 
-    @staticmethod
     def merge(
         opts1: Optional["ResourceOptions"], opts2: Optional["ResourceOptions"]
     ) -> "ResourceOptions":

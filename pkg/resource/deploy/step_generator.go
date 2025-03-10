@@ -38,17 +38,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+// The mode in which the step generator is running.
+// Either a normal update, or a destroy operation.
+type stepGeneratorMode int
+
+const (
+	updateMode stepGeneratorMode = iota
+	destroyMode
+	refreshMode
+)
+
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
 // It does this by consulting the deployment and calculating the appropriate step action based on the requested goal
 // state and the existing state of the world.
 type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
 
-	// true if this is a refresh generation
-	isRefresh bool
-
-	// true if this is a destroy generation
-	isDestroy bool
+	// what mode to run the step generator in
+	mode stepGeneratorMode
 
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
@@ -66,8 +73,12 @@ type stepGenerator struct {
 	refreshes map[resource.URN]Step // set of URNs that were refreshed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
-	// specify them with --target
+	// specify them with --target, or because they were skipped as part of a destroy run where we
+	// can't create any new resources.
 	skippedCreates map[resource.URN]bool
+
+	// the set of resources that need to be destroyed in this deployment after running other steps on them.
+	toDelete []*resource.State
 
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
@@ -602,29 +613,75 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
 	// custom non-provider resources.
-	if sg.isRefresh && goal.Custom && !providers.IsProviderType(goal.Type) {
-		// Custom resources that aren't in state just have to be skipped.
-		if !hasOld {
-			sg.sames[urn] = true
-			sg.skippedCreates[urn] = true
-			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+	if sg.mode == refreshMode {
+		if goal.Custom && !providers.IsProviderType(goal.Type) {
+			// Custom resources that aren't in state just have to be skipped.
+			if !hasOld {
+				sg.sames[urn] = true
+				sg.skippedCreates[urn] = true
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+			}
+			// Else do a refresh step
+			step := NewRefreshStep(sg.deployment, event, old)
+			sg.refreshes[urn] = step
+			return []Step{step}, nil
 		}
-		// Else do a refresh step
-		step := NewRefreshStep(sg.deployment, event, old)
-		sg.refreshes[urn] = step
-		return []Step{step}, nil
 	}
-	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for
-	// custom non-provider resources.
-	if sg.isDestroy && goal.Custom && !providers.IsProviderType(goal.Type) {
-		sg.sames[urn] = true
-		// Custom resources that aren't in state just have to be skipped creates.
-		if !hasOld {
-			sg.skippedCreates[urn] = true
-			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom
+	// non-provider resources. This is because we don't want to actually create any cloud resources as part of
+	// the destroy, but we do want to "create/update" providers, construct component resources and it's fine
+	// to make the relevant state edits off the back of these.
+	if sg.mode == destroyMode {
+		// We need to check if this resource is trying to depend on another resource that has already been
+		// skipped. In that case we have to skip this resource as well.
+		provider, allDeps := new.GetAllDependencies()
+		allDepURNs := make([]resource.URN, len(allDeps))
+		for i, dep := range allDeps {
+			allDepURNs[i] = dep.URN
 		}
-		// Others are just sames.
-		return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+
+		if provider != "" {
+			prov, err := providers.ParseReference(provider)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"could not parse provider reference %s for %s: %w",
+					provider, new.URN, err)
+			}
+			allDepURNs = append(allDepURNs, prov.URN())
+		}
+
+		for _, depURN := range allDepURNs {
+			if sg.skippedCreates[depURN] {
+				// This isn't an error (unlike when we hit this case in normal target runs), we just need to
+				// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
+				// an old state, but skipped create actually behaves as a general skip just fine.
+				sg.skippedCreates[urn] = true
+				if hasOld {
+					// If this has an old state maintain the old outputs to return to the program
+					new.Outputs = old.Outputs
+				}
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+			}
+		}
+
+		// Otherwise we've got our dependencies, if this is a custom non-provider resource we can either same
+		// it or skip create it (we don't want to actually do real resource creates and updates in destroy).
+		if goal.Custom && !providers.IsProviderType(goal.Type) {
+			// Custom resources that aren't in state just have to be skipped creates.
+			if !hasOld {
+				sg.skippedCreates[urn] = true
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+			}
+			// Others are just sames that need to be deleted later.
+			sg.sames[urn] = true
+			sg.toDelete = append(sg.toDelete, new)
+			// For deletes we want to maintain the old inputs
+			new.Inputs = old.Inputs
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+		}
+		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
+		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
+		sg.toDelete = append(sg.toDelete, new)
 	}
 
 	// Fetch the provider for this resource.
@@ -1424,14 +1481,11 @@ func (sg *stepGenerator) generateStepsFromDiff(
 }
 
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
-	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
-	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
-	// dependencies prior to their dependent nodes.
-	var dels []Step
+	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
+	dels := slice.Prealloc[Step](len(sg.toDelete))
 	if prev := sg.deployment.prev; prev != nil {
-		for i := len(prev.Resources) - 1; i >= 0; i-- {
+		for _, res := range prev.Resources {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
-			res := prev.Resources[i]
 			if res.Delete {
 				// The below assert is commented-out because it's believed to be wrong.
 				//
@@ -1463,8 +1517,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
-			} else if _, aliased := sg.aliased[res.URN]; sg.isDestroy || (!sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
-				!sg.reads[res.URN] && !aliased) {
+			} else if alias, aliased := sg.aliased[res.URN];
+			// If this URN isn't an alias see if it directly had any operation. If it was aliased see if it's
+			// new name had any operations, against it. It's possible in a destroy to see a new resource and
+			// thus fill in `aliased` but then skip the operation on it, the resource still needs deleting
+			// though.
+			(!aliased && !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN]) ||
+				(aliased && !sg.sames[alias] && !sg.updates[alias] && !sg.replaces[alias] && !sg.reads[alias]) {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
@@ -1484,6 +1543,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 				}
 			}
 		}
+	}
+
+	// We also need to delete all the new resources that we created/updated/samed if this is a destroy
+	// operation.
+	for _, res := range sg.toDelete {
+		sg.deletes[res.URN] = true
+		dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
 	}
 
 	// Check each proposed delete against the relevant resource plan
@@ -1583,8 +1649,10 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 		}
 	}
 
-	// Produce a dependency graph of resources.
-	dg := graph.NewDependencyGraph(sg.deployment.prev.Resources)
+	// Produce a dependency graph of resources, we need to graph over the new "toDelete" resources and the old
+	// resources.
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)
 
 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
 	targets := make(map[resource.URN]bool)
@@ -1688,8 +1756,10 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the deployment executor for safe execution.
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
-	var antichains []antichain                    // the list of parallelizable steps we intend to return.
-	dg := sg.deployment.depGraph                  // the current deployment's dependency graph.
+	var antichains []antichain // the list of parallelizable steps we intend to return.
+
+	allResources := append(sg.toDelete, sg.deployment.prev.Resources...)
+	dg := graph.NewDependencyGraph(allResources)  // the current deployment's dependency graph.
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
 	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 
@@ -1866,6 +1936,8 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
 	diff, err := prov.Diff(context.TODO(), plugin.DiffRequest{
 		URN:           urn,
+		Name:          urn.Name(),
+		Type:          urn.Type(),
 		ID:            id,
 		OldInputs:     oldInputs,
 		OldOutputs:    oldOutputs,
@@ -2306,11 +2378,10 @@ func (sg *stepGenerator) hasGeneratedStep(urn resource.URN) bool {
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
-func newStepGenerator(deployment *Deployment, isRefresh bool, isDestroy bool) *stepGenerator {
+func newStepGenerator(deployment *Deployment, mode stepGeneratorMode) *stepGenerator {
 	return &stepGenerator{
 		deployment:           deployment,
-		isRefresh:            isRefresh,
-		isDestroy:            isDestroy,
+		mode:                 mode,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),

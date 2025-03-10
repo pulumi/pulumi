@@ -54,15 +54,19 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 		require.NoError(t, err)
 	}
 
-	// dotnet build requires exclusive access to shared nuget package:
-	// https://github.com/pulumi/pulumi/runs/5436354735?check_suite_focus=true#step:36:277
+	// dotnet build requires exclusive access to shared nuget package
+	// See: https://github.com/pulumi/pulumi/issues/18738
 	buildMutex.Lock()
 	defer buildMutex.Unlock()
 	test.RunCommand(t, "dotnet build", pwd, "dotnet", "build")
 }
 
 func testGeneratedPackage(t *testing.T, pwd string) {
-	test.RunCommand(t, "dotnet build", pwd, "dotnet", "test")
+	// dotnet test requires exclusive access to shared nuget package
+	// See: https://github.com/pulumi/pulumi/issues/18738
+	buildMutex.Lock()
+	defer buildMutex.Unlock()
+	test.RunCommand(t, "dotnet test", pwd, "dotnet", "test")
 }
 
 func TestGenerateType(t *testing.T) {

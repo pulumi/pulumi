@@ -770,11 +770,17 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		return info.Mode()&0o111 != 0 && !info.IsDir()
 	}
 
-	// No file separators, so we try to look up the schema
-	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
-	// We also always go here when we have a git URL, so we can download it.
+	// We check based on the name and pluginDownload URL whether we should try to load
+	// the plugin from the provider host, or whether we should try to get a local plugin.
+	// If the plugin matches the plugin regexp, we try to load it from the provider host,
+	// and similarly if we have a pluginDownloadURL that starts with 'git://', as we know
+	// that's going to be a downloadable plugin.
+	//
+	// Note that if a local folder has a name that could match an downloadable plugin, we
+	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
+	// name.
 	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
-		!strings.ContainsRune(descriptor.Name, filepath.Separator) && !strings.ContainsRune(descriptor.Name, '/') {
+		workspace.PluginNameRegexp.MatchString(descriptor.Name) {
 		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, "")
 		if err != nil {
 			return nil, err
@@ -782,8 +788,8 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		// We assume this was a plugin and not a path, so load the plugin.
 		provider, err := host.Provider(descriptor)
 		if err != nil {
-			// There is an executable with the same name, so suggest that
-			if info, statErr := os.Stat(descriptor.Name); statErr == nil && isExecutable(info) {
+			// There is an executable or directory with the same name, so suggest that
+			if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", descriptor.Name, err)
 			}
 

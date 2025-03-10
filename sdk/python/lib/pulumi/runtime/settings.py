@@ -60,6 +60,7 @@ class Settings:
         dry_run: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
         organization: Optional[str] = None,
+        root_directory: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
         self.outputs = deque()
@@ -67,6 +68,7 @@ class Settings:
 
         # Save the metadata information.
         self.project = project
+        self.root_directory = root_directory
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
@@ -125,6 +127,9 @@ class Settings:
     def project(self) -> Optional[str]: ...
 
     @contextproperty
+    def root_directory(self) -> Optional[str]: ...
+
+    @contextproperty
     def stack(self) -> Optional[str]: ...
 
     @contextproperty
@@ -147,7 +152,12 @@ class Settings:
 
 
 # default to "empty" settings.
-SETTINGS = Settings(stack="stack", project="project", organization="organization")
+SETTINGS = Settings(
+    stack="stack",
+    project="project",
+    root_directory="root_directory",
+    organization="organization",
+)
 
 
 def configure(settings: Settings):
@@ -190,6 +200,13 @@ def get_project() -> str:
     Returns the current project name.
     """
     return SETTINGS.project
+
+
+def get_root_directory() -> str:
+    """
+    Returns the project root, the location of Pulumi.yaml.
+    """
+    return SETTINGS.root_directory
 
 
 def _set_project(v: Optional[str]):
@@ -342,6 +359,7 @@ def _sync_monitor_supports_parameterization() -> bool:
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
+    root_directory: Optional[str] = None,
     parallel: Optional[int] = None,
     engine_address: Optional[str] = None,
     monitor_address: Optional[str] = None,
@@ -358,6 +376,7 @@ def reset_options(
             monitor=monitor_address,
             engine=engine_address,
             stack=stack,
+            root_directory=root_directory,
             parallel=parallel,
             dry_run=preview,
             organization=organization,

@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.152.1",
+    "version": "3.155.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -19,7 +19,6 @@
         "@opentelemetry/resources": "^1.28",
         "@opentelemetry/sdk-trace-base": "^1.28",
         "@opentelemetry/sdk-trace-node": "^1.28",
-        "@opentelemetry/semantic-conventions": "^1.28",
         "@pulumi/query": "^0.3.0",
         "@types/google-protobuf": "^3.15.5",
         "@types/semver": "^7.5.6",
@@ -62,6 +61,7 @@
         "nyc": "^15.1.0",
         "sinon": "^14.0.0",
         "ts-node": "^7.0.1",
+        "tsx": "^4.19.3",
         "typescript": "~3.8.3"
     },
     "peerDependencies": {
@@ -84,7 +84,8 @@
         "node": ">=18"
     },
     "mocha": {
-        "require": ["ts-node/register", "source-map-support/register"]
+        "require": ["source-map-support/register"],
+        "node-option": ["import=tsx"]
     },
     "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
 }

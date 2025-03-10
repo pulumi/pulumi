@@ -36,6 +36,7 @@ from typing import (
     overload,
 )
 
+from . import log
 from . import _types
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
@@ -842,6 +843,7 @@ To get the value of an Output[T] as an Output[str] consider:
 See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
         if os.getenv("PULUMI_ERROR_OUTPUT_STRING", "").lower() in ["1", "true"]:
             raise TypeError(msg)
+        log.warn(msg)
         msg += "\nThis function may throw in a future version of Pulumi."
         return msg
 

@@ -16,10 +16,12 @@ package backend
 
 import (
 	"fmt"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
 // ConflictingUpdateError represents an error which occurred while starting an update/destroy operation.
-// Another update of the same stack was in progress, so the operation got cancelled due to this conflict.
+// Another update of the same stack was in progress, so the operation got canceled due to this conflict.
 type ConflictingUpdateError struct {
 	Err error // The error that occurred while starting the operation.
 }
@@ -27,4 +29,14 @@ type ConflictingUpdateError struct {
 func (c ConflictingUpdateError) Error() string {
 	return fmt.Sprintf("%s\nTo learn more about possible reasons and resolution, visit "+
 		"https://www.pulumi.com/docs/troubleshooting/#conflict", c.Err)
+}
+
+// MissingEnvVarForNonInteractiveError represents a situation where the CLI is run in
+// non-interactive mode and that requires certain env vars to be set.
+type MissingEnvVarForNonInteractiveError struct {
+	Var env.Var
+}
+
+func (err MissingEnvVarForNonInteractiveError) Error() string {
+	return err.Var.Name() + " must be set for login during non-interactive CLI sessions"
 }

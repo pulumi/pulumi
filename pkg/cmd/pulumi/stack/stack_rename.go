@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -47,7 +46,7 @@ func newStackRenameCmd() *cobra.Command {
 			"You can also rename the stack's project by passing a fully-qualified stack name as well. For example:\n" +
 			"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
 			"to update the name field of Pulumi.yaml, so the project names match.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -102,7 +101,7 @@ func newStackRenameCmd() *cobra.Command {
 
 			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(

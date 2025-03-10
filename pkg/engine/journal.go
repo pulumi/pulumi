@@ -45,15 +45,11 @@ type JournalEntries []JournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
-	oldMapping, deletes := make(map[*resource.State]*resource.State), make(map[*resource.State]bool)
+	deletes := make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
-
-		if e.Step.Old() != nil && e.Step.New() != nil {
-			oldMapping[e.Step.New()] = e.Step.Old()
-		}
 
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
@@ -104,7 +100,10 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				}
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
-					deletes[old] = true
+					op := e.Step.Op()
+					if op == deploy.OpDelete || op == deploy.OpReadDiscard {
+						deletes[old] = true
+					}
 					dones[old] = true
 				}
 			case deploy.OpReplace:
@@ -123,11 +122,14 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
-	// Filter any resources that had an operation (like same or update) but then were deleted by a later operations
+	// Filter any resources that had an operation (like same or update) but then were deleted by a later
+	// operations. This can happen from program based destroy operations were we'll see an event come in to
+	// Same/Update/Create a resource and so add it to the `resources` list, but then later see a delete
+	// operation for that same resource. In that case, we want to filter out the resource from the list of
+	// resources before writing the actual snapshot.
 	filteredResources := []*resource.State{}
 	for _, res := range resources {
-		old := oldMapping[res]
-		if old == nil || !deletes[old] {
+		if !deletes[res] {
 			filteredResources = append(filteredResources, res)
 		}
 	}
@@ -136,7 +138,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// See backend.SnapshotManager.snap for why this works.
 	if base != nil {
 		for _, res := range base.Resources {
-			if !dones[res] && !deletes[res] {
+			if !dones[res] {
 				filteredResources = append(filteredResources, res)
 			}
 		}

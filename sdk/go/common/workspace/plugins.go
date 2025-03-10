@@ -1039,7 +1039,7 @@ func NewPluginSpec(
 			// a consistent experience once the plugin is installed, and won't have any problems when the repo
 			// is updated.  The version will then be added to the plugins SDK, and will be reused when the NewPluginSpec
 			// is used, so the user gets a consistent experience.
-			if versionStr == "" {
+			if versionStr == "" && version == nil {
 				var err error
 				version, err = gitutil.GetLatestTagOrHash(context.Background(), url)
 				if err != nil {
@@ -2507,6 +2507,8 @@ func getCandidateExtensions() []string {
 
 	return []string{""}
 }
+
+var PluginNameRegexp = regexp.MustCompile(`^(?P<Name>[a-zA-Z0-9-][a-zA-Z0-9-_.]*[a-zA-Z0-9])$`)
 
 // pluginRegexp matches plugin directory names: pulumi-KIND-NAME-VERSION.
 var pluginRegexp = regexp.MustCompile(

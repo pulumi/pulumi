@@ -52,10 +52,29 @@ type ProviderHandshakeRequest struct {
 	// that the engine has been asked to attach to an existing running provider instance via a host/port number), this
 	// field will be empty.
 	ProgramDirectory *string
+
+	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
+	ConfigureWithUrn bool
 }
 
 // The type of responses sent as part of a Handshake call.
-type ProviderHandshakeResponse struct{}
+type ProviderHandshakeResponse struct {
+	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+	// values to the provider.
+	AcceptSecrets bool
+
+	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+	// strongly typed values to the provider.
+	AcceptResources bool
+
+	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+	// to the provider where possible.
+	AcceptOutputs bool
+
+	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
+	// user.
+	SupportsAutonamingConfiguration bool
+}
 
 type ParameterizeParameters interface {
 	isParameterizeParameters()
@@ -114,6 +133,21 @@ type DiffConfigRequest struct {
 type DiffConfigResponse = DiffResult
 
 type ConfigureRequest struct {
+	// The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
+	// Handshake.
+	URN *resource.URN
+	// The name of the provider being configured. This must match the name specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the name of the
+	// provider.  N.B. This will be null if configure_with_urn was false in Handshake.
+	Name *string
+	// The type of the provider being configured. This must match the type specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the type of the
+	// provider. N.B. This will be null if configure_with_urn was false in Handshake.
+	Type *tokens.Type
+	// The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
+	// Handshake.
+	ID *resource.ID
+	// A map of input properties for the provider.
 	Inputs resource.PropertyMap
 }
 
@@ -315,9 +349,9 @@ type Provider interface {
 
 	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
 	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
-	// used to communicate between the two parties. Providers that support Handshake implicitly support the set of
-	// feature flags previously handled by Configure prior to Handshake's introduction, such as secrets and resource
-	// references.
+	// used to communicate between the two parties. Providers that support Handshake should return a response consistent
+	// with those returned in response to Configure calls where there is overlap due to the use of Configure prior to
+	// Handshake's introduction.
 	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 
 	// Parameterize adds a sub-package to this provider instance.

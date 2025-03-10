@@ -78,14 +78,14 @@ type EncryptValueResponse struct {
 	Ciphertext []byte `json:"ciphertext"`
 }
 
-// BulkEncryptRequest defines the request body for encrypting multiple values.
-type BulkEncryptRequest struct {
+// BatchEncryptRequest defines the request body for encrypting multiple values.
+type BatchEncryptRequest struct {
 	// The values to encrypt.
 	Plaintexts [][]byte `json:"plaintexts"`
 }
 
-// BulkEncryptResponse defines the response body for multiple encrypted values.
-type BulkEncryptResponse struct {
+// BatchEncryptResponse defines the response body for multiple encrypted values.
+type BatchEncryptResponse struct {
 	// The encrypted values, in order of the plaintexts from the request.
 	Ciphertexts [][]byte `json:"ciphertexts"`
 }
@@ -108,14 +108,14 @@ type Log3rdPartyDecryptionEvent struct {
 	CommandName string `json:"commandName,omitempty"`
 }
 
-// BulkDecryptValueRequest defines the request body for bulk decrypting secret values.
-type BulkDecryptValueRequest struct {
+// BatchDecryptRequest defines the request body for bulk decrypting secret values.
+type BatchDecryptRequest struct {
 	Ciphertexts [][]byte `json:"ciphertexts"`
 }
 
-// BulkDecryptValueResponse defines the response body for bulk decrypted secret values. The key in
+// BatchDecryptResponse defines the response body for bulk decrypted secret values. The key in
 // the map is the base64 encoding of the ciphertext.
-type BulkDecryptValueResponse struct {
+type BatchDecryptResponse struct {
 	Plaintexts map[string][]byte `json:"plaintexts"`
 }
 

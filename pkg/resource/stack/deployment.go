@@ -267,7 +267,7 @@ func DeserializeDeploymentV3(
 		}
 
 		// Decrypt the collected secrets and create a decrypter that will use the result as a cache.
-		decrypted, err := d.BulkDecrypt(ctx, ciphertexts)
+		decrypted, err := d.BatchDecrypt(ctx, ciphertexts)
 		if err != nil {
 			return nil, err
 		}

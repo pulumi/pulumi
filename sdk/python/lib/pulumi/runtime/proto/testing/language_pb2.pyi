@@ -78,6 +78,48 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["path", b"path", "pattern", b"pattern", "replacement", b"replacement"]) -> None: ...
 
+    @typing_extensions.final
+    class ProgramOverride(google.protobuf.message.Message):
+        """ProgramOverrides represent overrides whereby a test may specify a set of hardcoded or pre-generated programs to
+        be used, in place of running GenerateProject on source PCL. This is useful for testing SDK functionality when the
+        requisite program code generation is not yet complete enough to support generating programs which exercise that
+        functionality.
+        """
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        PATHS_FIELD_NUMBER: builtins.int
+        @property
+        def paths(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+            """A list of paths to directories containing programs to use for the test. The length of this list should
+            correspond to the number of `Runs` in the test, with each entry being used for the corresponding run (e.g.
+            entry 0 for run 0, entry 1 for run 1, etc.).
+            """
+        def __init__(
+            self,
+            *,
+            paths: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["paths", b"paths"]) -> None: ...
+
+    @typing_extensions.final
+    class ProgramOverridesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___PrepareLanguageTestsRequest.ProgramOverride: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___PrepareLanguageTestsRequest.ProgramOverride | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     LANGUAGE_PLUGIN_NAME_FIELD_NUMBER: builtins.int
     LANGUAGE_PLUGIN_TARGET_FIELD_NUMBER: builtins.int
     SNAPSHOT_DIRECTORY_FIELD_NUMBER: builtins.int
@@ -86,6 +128,7 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     CORE_SDK_VERSION_FIELD_NUMBER: builtins.int
     SNAPSHOT_EDITS_FIELD_NUMBER: builtins.int
     LANGUAGE_INFO_FIELD_NUMBER: builtins.int
+    PROGRAM_OVERRIDES_FIELD_NUMBER: builtins.int
     language_plugin_name: builtins.str
     language_plugin_target: builtins.str
     snapshot_directory: builtins.str
@@ -99,6 +142,14 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
     the "Languages[language_plugin_name]" field. This can be used to test language specific options such as
     inputTypes in python.
     """
+    @property
+    def program_overrides(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PrepareLanguageTestsRequest.ProgramOverride]:
+        """A map of test names to program overrides. This may be used to specify tests for which program generation should
+        not be run (e.g. because it does not support the necessary features), but where the test can still execute and
+        pass. This is useful in cases where e.g. a language's code SDK is relatively feature complete (and thus it's
+        desirable to test that feature set) but where program code generation is not yet complete enough to support
+        generating programs which exercise that functionality.
+        """
     def __init__(
         self,
         *,
@@ -110,8 +161,9 @@ class PrepareLanguageTestsRequest(google.protobuf.message.Message):
         core_sdk_version: builtins.str = ...,
         snapshot_edits: collections.abc.Iterable[global___PrepareLanguageTestsRequest.Replacement] | None = ...,
         language_info: builtins.str = ...,
+        program_overrides: collections.abc.Mapping[builtins.str, global___PrepareLanguageTestsRequest.ProgramOverride] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["core_sdk_directory", b"core_sdk_directory", "core_sdk_version", b"core_sdk_version", "language_info", b"language_info", "language_plugin_name", b"language_plugin_name", "language_plugin_target", b"language_plugin_target", "program_overrides", b"program_overrides", "snapshot_directory", b"snapshot_directory", "snapshot_edits", b"snapshot_edits", "temporary_directory", b"temporary_directory"]) -> None: ...
 
 global___PrepareLanguageTestsRequest = PrepareLanguageTestsRequest
 

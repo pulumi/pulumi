@@ -19,6 +19,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 
@@ -53,6 +54,9 @@ func TestMakeExecutablePromptChoices(t *testing.T) {
 type MockLanguageRuntimeClient struct {
 	RunPluginF (func(ctx context.Context, info *pulumirpc.RunPluginRequest,
 	) (pulumirpc.LanguageRuntime_RunPluginClient, error))
+
+	GetRequiredPackagesF (func(ctx context.Context, in *pulumirpc.GetRequiredPackagesRequest,
+		opts ...grpc.CallOption) (*pulumirpc.GetRequiredPackagesResponse, error))
 }
 
 func (m *MockLanguageRuntimeClient) RunPlugin(
@@ -64,6 +68,9 @@ func (m *MockLanguageRuntimeClient) RunPlugin(
 func (m *MockLanguageRuntimeClient) GetRequiredPackages(
 	ctx context.Context, in *pulumirpc.GetRequiredPackagesRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	if m.GetRequiredPackagesF != nil {
+		return m.GetRequiredPackagesF(ctx, in, opts...)
+	}
 	panic("not implemented")
 }
 
@@ -166,4 +173,47 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		WorkingDirectory: "/tmp",
 	})
 	require.Equal(t, returnErr, err)
+}
+
+func TestRequiredPackagesReturnsCorrectNameForGitPlugins(t *testing.T) {
+	t.Parallel()
+
+	mockLanguageRuntime := &MockLanguageRuntimeClient{
+		GetRequiredPackagesF: func(
+			ctx context.Context, in *pulumirpc.GetRequiredPackagesRequest, _ ...grpc.CallOption,
+		) (*pulumirpc.GetRequiredPackagesResponse, error) {
+			gitPackage := pulumirpc.PackageDependency{
+				Name:    "test",
+				Kind:    "resource",
+				Version: "v0.0.1",
+				Server:  "git://github.com/pulumi/test",
+			}
+			otherPackage := pulumirpc.PackageDependency{
+				Name:    "another",
+				Kind:    "resource",
+				Version: "v0.0.2",
+				Server:  "https://github.com/pulumi/another",
+			}
+			return &pulumirpc.GetRequiredPackagesResponse{
+				Packages: []*pulumirpc.PackageDependency{&gitPackage, &otherPackage},
+			}, nil
+		},
+	}
+	pCtx, err := NewContext(nil, nil, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+	host := &langhost{
+		ctx:     pCtx,
+		runtime: "go",
+		plug:    nil,
+		client:  mockLanguageRuntime,
+	}
+	descriptors, err := host.GetRequiredPackages(ProgramInfo{})
+	require.NoError(t, err)
+	require.Equal(t, 2, len(descriptors))
+	require.Equal(t, "github.com_pulumi_test.git", descriptors[0].Name)
+	require.Equal(t, apitype.PluginKind("resource"), descriptors[0].Kind)
+	require.Equal(t, "git://github.com/pulumi/test", descriptors[0].PluginDownloadURL)
+	require.Equal(t, "another", descriptors[1].Name)
+	require.Equal(t, apitype.PluginKind("resource"), descriptors[1].Kind)
+	require.Equal(t, "https://github.com/pulumi/another", descriptors[1].PluginDownloadURL)
 }
