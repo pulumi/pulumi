@@ -651,7 +651,7 @@ func NewUpCmd() *cobra.Command {
 			" Multiple resources can be specified using --target urn1 --target urn2."+
 			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVarP(
-		&excludes, "exclude", "e", []string{},
+		&excludes, "exclude", "x", []string{},
 		"Specify a resource URN to ignore. These resources will not be updated."+
 			" Multiple resources can be specified using --exclude urn1 --exclude urn2."+
 			" Wildcards (*, **) are also supported")
