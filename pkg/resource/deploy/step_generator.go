@@ -70,7 +70,8 @@ type stepGenerator struct {
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
-	// specify them with --target
+	// specify them with --target, or because they were skipped as part of a destroy run where we
+	// can't create any new resources.
 	skippedCreates map[resource.URN]bool
 
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
