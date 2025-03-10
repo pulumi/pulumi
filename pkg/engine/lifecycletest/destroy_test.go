@@ -113,9 +113,8 @@ func TestDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -222,9 +221,8 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -354,9 +352,8 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -458,9 +455,8 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -574,9 +570,8 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -694,9 +689,8 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
