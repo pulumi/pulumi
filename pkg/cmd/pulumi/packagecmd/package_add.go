@@ -92,7 +92,7 @@ extension, Pulumi package schema is read from it directly:
 			if err != nil {
 				var diagErr hcl.Diagnostics
 				if errors.As(err, &diagErr) {
-					return fmt.Errorf("failed to get schema.  Diagnostics: %w", errors.Join(diagErr.Errs()...))
+					return fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 				}
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
