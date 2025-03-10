@@ -1511,3 +1511,24 @@ export function pkgFromType(type: string): string | undefined {
     }
     return undefined;
 }
+
+
+/**
+ * The type assigned to the resource at construction.
+ */
+export function resourceType(res: Resource): string {
+    return res.__pulumiType;
+}
+
+/**
+ * The name assigned to the resource at construction.
+ */
+export function resourceName(res: Resource): string {
+    if (res.__name === undefined) {
+        throw new ResourceError(
+            "Resource name is not available, this resource instance must have been constructed by an old SDK",
+            res,
+        );
+    }
+    return res.__name;
+}
