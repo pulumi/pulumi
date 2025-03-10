@@ -219,20 +219,21 @@ func newDeployment(
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
 	deplOpts := &deploy.Options{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		Refresh:                   opts.Refresh,
-		RefreshOnly:               opts.isRefresh,
-		ReplaceTargets:            opts.ReplaceTargets,
-		Targets:                   opts.Targets,
-		TargetDependents:          opts.TargetDependents,
-		UseLegacyDiff:             opts.UseLegacyDiff,
-		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		GeneratePlan:              opts.UpdateOptions.GeneratePlan,
-		ContinueOnError:           opts.ContinueOnError,
-		Autonamer:                 opts.Autonamer,
+		DryRun:                      opts.DryRun,
+		Parallel:                    opts.Parallel,
+		Refresh:                     opts.Refresh,
+		RefreshOnly:                 opts.isRefresh,
+		ReplaceTargets:              opts.ReplaceTargets,
+		Targets:                     opts.Targets,
+		TargetDependents:            opts.TargetDependents,
+		UseLegacyDiff:               opts.UseLegacyDiff,
+		UseLegacyRefreshDiff:        opts.UseLegacyRefreshDiff,
+		DisableResourceReferences:   opts.DisableResourceReferences,
+		DisableOutputValues:         opts.DisableOutputValues,
+		GeneratePlan:                opts.UpdateOptions.GeneratePlan,
+		ContinueOnError:             opts.ContinueOnError,
+		RegisterStackOutputsOnError: opts.RegisterStackOutputsOnError,
+		Autonamer:                   opts.Autonamer,
 	}
 
 	var depl *deploy.Deployment

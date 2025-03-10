@@ -469,6 +469,16 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	if err != nil {
 		return err
 	}
+
+	// If a step failed but we still want to register stack outputs at the end, we do not cancel the execution,
+	// instead we skip all the steps untill the end.
+	if ex.stepExec.GetSkipUntilStackOutputs() && len(steps) > 0 {
+		for _, step := range steps {
+			step.Skip()
+		}
+		return nil
+	}
+
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
 	newSteps := slice.Prealloc[Step](len(steps))
 	skipped := false
