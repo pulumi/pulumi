@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/ccojocar/zxcvbn-go"
 	"github.com/spf13/cobra"
@@ -20,6 +21,7 @@ import (
 func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var secret bool
 	var plaintext bool
+	var rawString bool
 
 	cmd := &cobra.Command{
 		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> <value>",
@@ -57,17 +59,25 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("path must contain at least one element")
 			}
 
+			input := args[1]
 			var yamlValue yaml.Node
-			if err := yaml.Unmarshal([]byte(args[1]), &yamlValue); err != nil {
-				return fmt.Errorf("invalid value: %w", err)
+			if rawString {
+				yamlValue.SetString(input)
+				if mustEscape := strings.ContainsFunc(input, func(r rune) bool { return !strconv.IsPrint(r) }); mustEscape {
+					yamlValue.Style = yaml.DoubleQuotedStyle
+				}
+			} else {
+				if err := yaml.Unmarshal([]byte(input), &yamlValue); err != nil {
+					return fmt.Errorf("invalid value: %w", err)
+				}
+				if len(yamlValue.Content) == 0 {
+					// This can happen when the value is empty (e.g. when "" is present on the command line). Treat this
+					// as the empty string.
+					err = yaml.Unmarshal([]byte(`""`), &yamlValue)
+					contract.IgnoreError(err)
+				}
+				yamlValue = *yamlValue.Content[0]
 			}
-			if len(yamlValue.Content) == 0 {
-				// This can happen when the value is empty (e.g. when "" is present on the command line). Treat this
-				// as the empty string.
-				err = yaml.Unmarshal([]byte(`""`), &yamlValue)
-				contract.IgnoreError(err)
-			}
-			yamlValue = *yamlValue.Content[0]
 
 			if looksLikeSecret(path, yamlValue) && !secret && !plaintext {
 				return fmt.Errorf("value looks like a secret; rerun with --secret to mark it as such, or --plaintext if you meant to leave it as plaintext")
@@ -147,6 +157,9 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&plaintext, "plaintext", false,
 		"true to leave the value in plaintext")
+	cmd.Flags().BoolVar(
+		&rawString, "string", false,
+		"true to treat the value as a string rather than attempting to parse it as YAML")
 
 	return cmd
 }
