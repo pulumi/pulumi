@@ -59,7 +59,7 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modNam
 		path = modName
 		fqdnTypeName = fmt.Sprintf("%s.%s", modName, typeName)
 	case pkg.Name != "" && modName == "":
-		path = namespace + "_" + pkg.Name
+		path = fmt.Sprintf("%s_%s", namespace, pkg.Name)
 		fqdnTypeName = fmt.Sprintf("%s_%s.%s", namespace, pkg.Name, typeName)
 	}
 
