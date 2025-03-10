@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sync"
 	"sync/atomic"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -97,8 +97,9 @@ type BatchingSecretsManager interface {
 	secrets.Manager
 	// BeginBatchEncryption returns a new BatchEncrypter and CompleteCrypterBatch function.
 	// The BatchEncrypter allows encryption operations to be enqueued then processed in a batch request to avoid
-	// round-trips for when the underlying encrypter requires a network call. Encryptions to a secret are enqueued and
-	// processed in a batch request either when the queue is full or when the wrapping transaction is committed.
+	// round-trips for when doing so with the underlying encrypter incurs overhead. Encryptions to a secret are enqueued
+	// and processed in a batch request either when the wrapping transaction is committed or earlier if an implementation
+	// supports or requires it.
 	//
 	// The CompleteCrypterBatch function must be called to ensure that all enqueued encryption operations are processed.
 	//
@@ -107,9 +108,9 @@ type BatchingSecretsManager interface {
 	//	err = completeCrypterBatch(ctx)
 	BeginBatchEncryption() (BatchEncrypter, CompleteCrypterBatch)
 	// BeginBatchDecryption returns a new BatchDecrypter and CompleteCrypterBatch function.
-	// The BatchDecrypter allows decryption operations to be batched to avoid round-trips for when the underlying decrypter
-	// requires a network call. Decryptions to a secret are enqueued and processed in a batch request either when the queue
-	// is full or when the wrapping transaction is committed.
+	// The BatchDecrypter allows decryption operations to be batched to avoid round-trips for when the underlying
+	// decrypter incurs overhead. Decryptions to a secret are enqueued and processed in a batch request either when the
+	// queue is full or earlier if an implementation supports or requires it.
 	//
 	// The CompleteCrypterBatch function must be called to ensure that all enqueued decryption operations are processed.
 	//
@@ -153,11 +154,11 @@ func (csm *batchingCachingSecretsManager) Decrypter() config.Decrypter {
 }
 
 func (csm *batchingCachingSecretsManager) BeginBatchEncryption() (BatchEncrypter, CompleteCrypterBatch) {
-	return BeginEncryptionBatchWithCache(csm.manager.Encrypter(), csm.cache)
+	return BeginBatchEncryptionWithCache(csm.manager.Encrypter(), csm.cache)
 }
 
 func (csm *batchingCachingSecretsManager) BeginBatchDecryption() (BatchDecrypter, CompleteCrypterBatch) {
-	return BeginDecryptionBatchWithCache(csm.manager.Decrypter(), csm.cache)
+	return BeginBatchDecryptionWithCache(csm.manager.Decrypter(), csm.cache)
 }
 
 // SecretCache allows the bidirectional cached conversion between: `ciphertext <-> plaintext + secret pointer`.
@@ -167,8 +168,8 @@ func (csm *batchingCachingSecretsManager) BeginBatchDecryption() (BatchDecrypter
 //	cache := NewSecretCache()
 //	secret := &resource.Secret{}
 //	cache.Write("plaintext", "ciphertext", secret)
-//	plaintext, ok := cache.TryDecrypt("ciphertext") // "plaintext", true
-//	ciphertext, ok := cache.TryEncrypt(secret, "plaintext") // "ciphertext", true
+//	plaintext, ok := cache.LookupPlaintext("ciphertext") // "plaintext", true
+//	ciphertext, ok := cache.LookupCiphertext(secret, "plaintext") // "ciphertext", true
 type SecretCache interface {
 	// Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
 	Write(plaintext, ciphertext string, secret *resource.Secret)
@@ -210,13 +211,13 @@ type secretCacheEntry struct {
 //	cache := NewSecretCache()
 //	secret := &resource.Secret{}
 //	cache.Write("plaintext", "ciphertext", secret)
-//	plaintext, ok := cache.TryDecrypt("ciphertext") // "plaintext", true
-//	ciphertext, ok := cache.TryEncrypt(secret, "plaintext") // "ciphertext", true
+//	plaintext, ok := cache.LookupPlaintext("ciphertext") // "plaintext", true
+//	ciphertext, ok := cache.LookupCiphertext(secret, "plaintext") // "ciphertext", true
 func NewSecretCache() SecretCache {
 	// If the environment variable PULUMI_DISABLE_SECRET_CACHE is set to "true", the secret cache will be disabled and
 	// no entries will be stored. This is a short-term escape hatch in case there's unforeseen issues with expanded
 	// caching scopes and should be removable once we're confident that customers are not affected.
-	if os.Getenv("PULUMI_DISABLE_SECRET_CACHE") == "true" {
+	if env.DisableSecretCache.Value() {
 		return nullSecretCache{}
 	}
 	return &secretCache{}
@@ -256,10 +257,8 @@ func (c *secretCache) LookupPlaintext(ciphertext string) (string, bool) {
 	return entry.(secretCacheEntry).plaintext, true
 }
 
-// BatchEncrypter is a wrapper around an Encrypter which will then call the BatchEncrypt method on the underlying
-// Encrypter. This allows encryption operations to be batched to avoid round-trips for when the underlying encrypter
-// requires a network call. Encryptions to a secret are enqueued and processed in a batch request either when the queue
-// is full or when the wrapping transaction is committed.
+// BatchEncrypter is an extension of an Encrypter which supports processing secret encryption operations in batches.
+// This is constructed by calling BatchingSecretsManager.BeginBatchEncryption.
 type BatchEncrypter interface {
 	config.Encrypter
 
@@ -293,21 +292,7 @@ const DefaultMaxBatchEncryptCount = 100000
 // Ensure that cachingBatchEncrypter implements the BatchEncrypter interface for compatibility.
 var _ BatchEncrypter = (*cachingBatchEncrypter)(nil)
 
-// BeginEncryptionBatch returns a new BatchEncrypter and CompleteCrypterBatch function.
-// The BatchEncrypter allows encryption operations to be batched to avoid round-trips for when the underlying encrypter
-// requires a network call. Encryptions to a secret are enqueued and processed in a batch request either when the queue
-// is full or when the wrapping transaction is committed.
-//
-// The CompleteCrypterBatch function must be called to ensure that all enqueued encryption operations are processed.
-//
-//	batchEncrypter, completeCrypterBatch := BeginEncryptionBatch(encrypter)
-//	SerializeSecrets(ctx, batchEncrypter, secrets)
-//	err := completeCrypterBatch(ctx)
-func BeginEncryptionBatch(encrypter config.Encrypter) (BatchEncrypter, CompleteCrypterBatch) {
-	return BeginEncryptionBatchWithCache(encrypter, nullSecretCache{})
-}
-
-// BeginEncryptionBatchWithCache returns a new BatchEncrypter and CompleteCrypterBatch function with a custom cache.
+// BeginBatchEncryptionWithCache returns a new BatchEncrypter and CompleteCrypterBatch function with a custom cache.
 // The BatchEncrypter allows encryption operations to be batched to avoid round-trips for when the underlying encrypter
 // requires a network call. Encryptions to a secret are enqueued and processed in a batch request either when the queue
 // is full or when the wrapping transaction is committed. If the cache has an entry for a secret and the plaintext has
@@ -319,13 +304,13 @@ func BeginEncryptionBatch(encrypter config.Encrypter) (BatchEncrypter, CompleteC
 //	batchEncrypter, completeCrypterBatch := BeginEncryptionBatch(encrypter)
 //	SerializeSecrets(ctx, batchEncrypter, secrets)
 //	err := completeCrypterBatch(ctx)
-func BeginEncryptionBatchWithCache(
+func BeginBatchEncryptionWithCache(
 	encrypter config.Encrypter, cache SecretCache,
 ) (BatchEncrypter, CompleteCrypterBatch) {
-	return beginEncryptionBatch(encrypter, cache, DefaultMaxBatchEncryptCount)
+	return beginBatchEncryption(encrypter, cache, DefaultMaxBatchEncryptCount)
 }
 
-func beginEncryptionBatch(
+func beginBatchEncryption(
 	encrypter config.Encrypter, cache SecretCache, maxBatchSize int,
 ) (BatchEncrypter, CompleteCrypterBatch) {
 	contract.Assertf(encrypter != nil, "encrypter must not be nil")
@@ -425,10 +410,8 @@ func (be *cachingBatchEncrypter) BatchEncrypt(ctx context.Context, plaintexts []
 	return be.encrypter.BatchEncrypt(ctx, plaintexts)
 }
 
-// BatchDecrypter is a wrapper around a Decrypter which will then call the BatchDecrypt method on the underlying
-// Decrypter. This allows decryption operations to be batched to avoid round-trips for when the underlying decrypter
-// requires a network call. Decryptions to a secret pointer are enqueued and processed in a batch request either when
-// the queue is full or when the wrapping transaction is committed.
+// BatchDecrypter is an extension of a Decrypter which supports processing secret decryption operations in batches.
+// This is constructed by calling BatchingSecretsManager.BeginBatchDecryption.
 type BatchDecrypter interface {
 	config.Decrypter
 
@@ -471,10 +454,10 @@ type DeserializeSecretPropertyValue func(plaintext string) (resource.PropertyVal
 //	DeserializeSecrets(ctx, batchDecrypter, secrets)
 //	err := completeCrypterBatch(ctx)
 func BeginDecryptionBatch(decrypter config.Decrypter) (BatchDecrypter, CompleteCrypterBatch) {
-	return BeginDecryptionBatchWithCache(decrypter, nullSecretCache{})
+	return BeginBatchDecryptionWithCache(decrypter, nullSecretCache{})
 }
 
-// BeginDecryptionBatchWithCache returns a new BatchDecrypter and CompleteCrypterBatch function with a custom cache.
+// BeginBatchDecryptionWithCache returns a new BatchDecrypter and CompleteCrypterBatch function with a custom cache.
 // The BatchDecrypter allows decryption operations to be batched to avoid round-trips for when the underlying decrypter
 // requires a network call. Decryptions to a secret are enqueued and processed in a batch request either when the queue
 // is full or when the wrapping transaction is committed. If the cache has an entry for a ciphertext, the plaintext is
@@ -485,13 +468,13 @@ func BeginDecryptionBatch(decrypter config.Decrypter) (BatchDecrypter, CompleteC
 //	batchDecrypter, completeCrypterBatch := BeginDecryptionBatch(decrypter)
 //	DeserializeSecrets(ctx, batchDecrypter, secrets)
 //	err := completeCrypterBatch(ctx)
-func BeginDecryptionBatchWithCache(
+func BeginBatchDecryptionWithCache(
 	decrypter config.Decrypter, cache SecretCache,
 ) (BatchDecrypter, CompleteCrypterBatch) {
-	return beginDecryptionBatch(decrypter, cache, secretPropertyValueFromPlaintext, DefaultMaxBatchDecryptCount)
+	return beginBatchDecryption(decrypter, cache, secretPropertyValueFromPlaintext, DefaultMaxBatchDecryptCount)
 }
 
-func beginDecryptionBatch(decrypter config.Decrypter, cache SecretCache,
+func beginBatchDecryption(decrypter config.Decrypter, cache SecretCache,
 	secretPropertyValueFromPlaintext DeserializeSecretPropertyValue, maxBatchSize int,
 ) (BatchDecrypter, CompleteCrypterBatch) {
 	contract.Assertf(decrypter != nil, "decrypter must not be nil")

@@ -112,8 +112,8 @@ func SerializeDeployment(ctx context.Context, snap *deploy.Snapshot, showSecrets
 	var completeBatch CompleteCrypterBatch
 	if sm != nil {
 		// If the secrets manager supports batching, start the batch operation.
-		if csm, ok := sm.(BatchingSecretsManager); ok {
-			enc, completeBatch = csm.BeginBatchEncryption()
+		if batchingSecretsManager, ok := sm.(BatchingSecretsManager); ok {
+			enc, completeBatch = batchingSecretsManager.BeginBatchEncryption()
 		} else {
 			enc = sm.Encrypter()
 		}
@@ -252,16 +252,17 @@ func DeserializeDeploymentV3(
 	}
 
 	var dec config.Decrypter
-	if secretsManager != nil {
-		dec = secretsManager.Decrypter()
-	} else {
-		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
-	}
-
 	var completeBatch CompleteCrypterBatch
-	if batchingSecretsManager, ok := secretsManager.(BatchingSecretsManager); ok {
-		// If the secrets manager supports batching, start a batch operation.
-		dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
+	if secretsManager != nil {
+		if batchingSecretsManager, ok := secretsManager.(BatchingSecretsManager); ok {
+			// If the secrets manager supports batching, start a batch operation.
+			dec, completeBatch = batchingSecretsManager.BeginBatchDecryption()
+		} else {
+			dec = secretsManager.Decrypter()
+		}
+	} else {
+		// We'll attempt to continue without a decrypter, but fail if we encounter encrypted secrets.
+		dec = config.NewErrorCrypter("snapshot contains encrypted secrets but no secrets manager could be found")
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
@@ -608,12 +609,12 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					}
 
 					if plainOk {
-						ev, err := secretPropertyValueFromPlaintext(plaintext)
+						propertyValue, err := secretPropertyValueFromPlaintext(plaintext)
 						if err != nil {
 							return resource.PropertyValue{}, err
 						}
-						secret.Element = ev
-					} else { // We only have ciphertext, so we need to decrypt it.
+						secret.Element = propertyValue
+					} else {
 						// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
 						if batchDecrypter, ok := dec.(BatchDecrypter); ok {
 							err := batchDecrypter.Enqueue(ctx, ciphertext, secret)

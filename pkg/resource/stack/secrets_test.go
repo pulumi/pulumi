@@ -362,7 +362,7 @@ func TestBatchEncrypter(t *testing.T) {
 		ctx := context.Background()
 		sm := &testSecretsManager{}
 
-		_, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 999)
+		_, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 999)
 		assert.NoError(t, complete(ctx), "complete")
 
 		assert.Equal(t, 0, sm.batchEncryptCalls)
@@ -375,7 +375,7 @@ func TestBatchEncrypter(t *testing.T) {
 		secret := &resource.Secret{}
 		target := &apitype.SecretV1{}
 
-		enc, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 999)
+		enc, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 999)
 		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext", target), "enqueue")
 		assert.NoError(t, complete(ctx), "complete")
 
@@ -391,7 +391,7 @@ func TestBatchEncrypter(t *testing.T) {
 		target1 := &apitype.SecretV1{}
 		target2 := &apitype.SecretV1{}
 
-		enc, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 1)
+		enc, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 1)
 		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext1", target1), "enqueue 1")
 		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext2", target2), "enqueue 2")
 		assert.Equal(t, 1, sm.batchEncryptCalls, "first batch auto-sent on limit reached")
@@ -411,7 +411,7 @@ func TestBatchEncrypter(t *testing.T) {
 		target := &apitype.SecretV1{}
 
 		cache.Write("plaintext", "ciphertext", secret)
-		enc, complete := beginEncryptionBatch(sm.Encrypter(), cache, 999)
+		enc, complete := beginBatchEncryption(sm.Encrypter(), cache, 999)
 		assert.NoError(t, enc.Enqueue(ctx, secret, "plaintext", target), "enqueue")
 		assert.NoError(t, complete(ctx), "complete")
 
@@ -430,7 +430,7 @@ func TestBatchEncrypter(t *testing.T) {
 		target2 := &apitype.SecretV1{}
 
 		cache.Write("0-1:plaintext", "ciphertext 1", secret1) // Add one value to the cache
-		enc, complete := beginEncryptionBatch(sm.Encrypter(), cache, 999)
+		enc, complete := beginBatchEncryption(sm.Encrypter(), cache, 999)
 		assert.NoError(t, enc.Enqueue(ctx, secret1, "plaintext", target1), "enqueue 1")
 		assert.NoError(t, enc.Enqueue(ctx, secret2, "plaintext", target2), "enqueue 2")
 		assert.NoError(t, complete(ctx), "complete")
@@ -444,7 +444,7 @@ func TestBatchEncrypter(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		sm := &testSecretsManager{}
-		enc, complete := beginEncryptionBatch(sm.Encrypter(), NewSecretCache(), 999)
+		enc, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 999)
 		assert.NoError(t, complete(ctx), "complete")
 
 		assert.Panics(t, func() {
@@ -461,7 +461,7 @@ func TestBatchDecrypter(t *testing.T) {
 		ctx := context.Background()
 		sm := &testSecretsManager{}
 
-		_, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		_, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
 		assert.NoError(t, complete(ctx), "complete")
 
 		assert.Equal(t, 0, sm.batchDecryptCalls)
@@ -473,7 +473,7 @@ func TestBatchDecrypter(t *testing.T) {
 		sm := &testSecretsManager{}
 		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
-		dec, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
 		assert.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext\"", secret), "enqueue")
 		assert.NoError(t, complete(ctx), "complete")
 
@@ -488,7 +488,7 @@ func TestBatchDecrypter(t *testing.T) {
 		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 		secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
-		dec, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 1)
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 1)
 		assert.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext1\"", secret1), "enqueue 1")
 		assert.NoError(t, dec.Enqueue(ctx, "2-1:\"plaintext2\"", secret2), "enqueue 2")
 		assert.Equal(t, 1, sm.batchDecryptCalls, "first batch auto-sent on limit reached")
@@ -508,7 +508,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 		const ciphertext = "1-1:\"ciphertext\""
 		cache.Write("\"plaintext\"", ciphertext, &resource.Secret{}) // Pointer doesn't have to match for decryption
-		dec, complete := beginDecryptionBatch(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
+		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
 		assert.NoError(t, dec.Enqueue(ctx, ciphertext, secret), "enqueue")
 
 		assert.NoError(t, complete(ctx), "complete")
@@ -527,7 +527,7 @@ func TestBatchDecrypter(t *testing.T) {
 		const ciphertext1 = "1:\"plaintext 1\""
 		const ciphertext2 = "2:\"plaintext 2\""
 		cache.Write("\"plaintext from cache\"", ciphertext1, &resource.Secret{})
-		dec, complete := beginDecryptionBatch(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
+		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
 		assert.NoError(t, dec.Enqueue(ctx, ciphertext1, secret1), "enqueue 1")
 		assert.NoError(t, dec.Enqueue(ctx, ciphertext2, secret2), "enqueue 2")
 
@@ -541,7 +541,7 @@ func TestBatchDecrypter(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		sm := &testSecretsManager{}
-		dec, complete := beginDecryptionBatch(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
 		assert.NoError(t, complete(ctx), "complete")
 
 		assert.Panics(t, func() {
