@@ -9,23 +9,25 @@ environments:
   test-user/default/test:
     values:
       foo: bar
-stdout: |+
-  > esc env edit default/test --editor my-editor
-  Environment updated.
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": "baz"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo: baz
 
-  ```
+---
+> esc env edit default/test --editor my-editor
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "baz"
+}
+```
+# Definition
+```yaml
+values:
+  foo: baz
 
-stderr: |
-  > esc env edit default/test --editor my-editor
-  > esc env get default/test
+```
+
+
+---
+> esc env edit default/test --editor my-editor
+> esc env get default/test

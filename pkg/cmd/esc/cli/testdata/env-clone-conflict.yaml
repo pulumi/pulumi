@@ -31,8 +31,10 @@ environments:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
     tags:
       team: pulumi
-stdout: |
-  > esc env clone default/src a
-stderr: |
-  > esc env clone default/src a
-  Error: cloning environment: already exists
+
+---
+> esc env clone default/src a
+
+---
+> esc env clone default/src a
+Error: cloning environment: already exists

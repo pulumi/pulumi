@@ -64,372 +64,374 @@ environments:
             environmentVariables:
               FOO: bar
               BAR: qux
-stdout: |
-  > esc env diff default/test
-  > esc env diff default/test@latest
-  > esc env diff default/test@stable
-  # Value
-  ```diff
-  --- test-user/default/test@stable
-  +++ test-user/default/test@latest
-  @@ -1,6 +1,19 @@
-   {
-  +  "array": [
-  +    "hello",
-  +    "world"
-  +  ],
-  +  "boolean": true,
-     "environmentVariables": {
-  -    "FOO": "bar"
-  +    "BAR": "qux",
-  +    "FOO": "baz"
-     },
-  -  "string": "hello, world!"
-  +  "null": null,
-  +  "number": 42,
-  +  "object": {
-  +    "hello": "world"
-  +  },
-  +  "open": "[unknown]",
-  +  "secret": "[secret]",
-  +  "string": "esc"
-   }
-  \ No newline at end of file
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@stable
-  +++ test-user/default/test@latest
-  @@ -1,4 +1,19 @@
-  +imports:
-  +  - a
-  +  - b
-   values:
-  -  string: hello, world!
-  +  # comment
-  +  "null": null
-  +  boolean: true
-  +  number: 42
-  +  string: esc
-  +  array: [hello, world]
-  +  object: {hello: world}
-  +  open:
-  +    fn::open::test: echo
-  +  secret:
-  +    fn::secret:
-  +      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-     environmentVariables:
-  -    FOO: bar
-  +    FOO: baz
-  +    BAR: qux
+---
+> esc env diff default/test
+> esc env diff default/test@latest
+> esc env diff default/test@stable
+# Value
+```diff
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1,6 +1,19 @@
+ {
++  "array": [
++    "hello",
++    "world"
++  ],
++  "boolean": true,
+   "environmentVariables": {
+-    "FOO": "bar"
++    "BAR": "qux",
++    "FOO": "baz"
+   },
+-  "string": "hello, world!"
++  "null": null,
++  "number": 42,
++  "object": {
++    "hello": "world"
++  },
++  "open": "[unknown]",
++  "secret": "[secret]",
++  "string": "esc"
+ }
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test@1
-  # Value
-  ```diff
-  --- test-user/default/test@1
-  +++ test-user/default/test@latest
-  @@ -1 +1,19 @@
-  +{
-  +  "array": [
-  +    "hello",
-  +    "world"
-  +  ],
-  +  "boolean": true,
-  +  "environmentVariables": {
-  +    "BAR": "qux",
-  +    "FOO": "baz"
-  +  },
-  +  "null": null,
-  +  "number": 42,
-  +  "object": {
-  +    "hello": "world"
-  +  },
-  +  "open": "[unknown]",
-  +  "secret": "[secret]",
-  +  "string": "esc"
-  +}
-  \ No newline at end of file
+```
+# Definition
+```diff
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1,4 +1,19 @@
++imports:
++  - a
++  - b
+ values:
+-  string: hello, world!
++  # comment
++  "null": null
++  boolean: true
++  number: 42
++  string: esc
++  array: [hello, world]
++  object: {hello: world}
++  open:
++    fn::open::test: echo
++  secret:
++    fn::secret:
++      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+   environmentVariables:
+-    FOO: bar
++    FOO: baz
++    BAR: qux
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@1
-  +++ test-user/default/test@latest
-  @@ -1 +1,19 @@
-  +imports:
-  +  - a
-  +  - b
-  +values:
-  +  # comment
-  +  "null": null
-  +  boolean: true
-  +  number: 42
-  +  string: esc
-  +  array: [hello, world]
-  +  object: {hello: world}
-  +  open:
-  +    fn::open::test: echo
-  +  secret:
-  +    fn::secret:
-  +      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-  +  environmentVariables:
-  +    FOO: baz
-  +    BAR: qux
+```
+> esc env diff default/test@1
+# Value
+```diff
+--- test-user/default/test@1
++++ test-user/default/test@latest
+@@ -1 +1,19 @@
++{
++  "array": [
++    "hello",
++    "world"
++  ],
++  "boolean": true,
++  "environmentVariables": {
++    "BAR": "qux",
++    "FOO": "baz"
++  },
++  "null": null,
++  "number": 42,
++  "object": {
++    "hello": "world"
++  },
++  "open": "[unknown]",
++  "secret": "[secret]",
++  "string": "esc"
++}
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test@2
-  # Value
-  ```diff
-  --- test-user/default/test@2
-  +++ test-user/default/test@latest
-  @@ -1,6 +1,19 @@
-   {
-  +  "array": [
-  +    "hello",
-  +    "world"
-  +  ],
-  +  "boolean": true,
-     "environmentVariables": {
-  -    "FOO": "bar"
-  +    "BAR": "qux",
-  +    "FOO": "baz"
-     },
-  -  "string": "hello, world!"
-  +  "null": null,
-  +  "number": 42,
-  +  "object": {
-  +    "hello": "world"
-  +  },
-  +  "open": "[unknown]",
-  +  "secret": "[secret]",
-  +  "string": "esc"
-   }
-  \ No newline at end of file
+```
+# Definition
+```diff
+--- test-user/default/test@1
++++ test-user/default/test@latest
+@@ -1 +1,19 @@
++imports:
++  - a
++  - b
++values:
++  # comment
++  "null": null
++  boolean: true
++  number: 42
++  string: esc
++  array: [hello, world]
++  object: {hello: world}
++  open:
++    fn::open::test: echo
++  secret:
++    fn::secret:
++      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
++  environmentVariables:
++    FOO: baz
++    BAR: qux
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@2
-  +++ test-user/default/test@latest
-  @@ -1,4 +1,19 @@
-  +imports:
-  +  - a
-  +  - b
-   values:
-  -  string: hello, world!
-  +  # comment
-  +  "null": null
-  +  boolean: true
-  +  number: 42
-  +  string: esc
-  +  array: [hello, world]
-  +  object: {hello: world}
-  +  open:
-  +    fn::open::test: echo
-  +  secret:
-  +    fn::secret:
-  +      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-     environmentVariables:
-  -    FOO: bar
-  +    FOO: baz
-  +    BAR: qux
+```
+> esc env diff default/test@2
+# Value
+```diff
+--- test-user/default/test@2
++++ test-user/default/test@latest
+@@ -1,6 +1,19 @@
+ {
++  "array": [
++    "hello",
++    "world"
++  ],
++  "boolean": true,
+   "environmentVariables": {
+-    "FOO": "bar"
++    "BAR": "qux",
++    "FOO": "baz"
+   },
+-  "string": "hello, world!"
++  "null": null,
++  "number": 42,
++  "object": {
++    "hello": "world"
++  },
++  "open": "[unknown]",
++  "secret": "[secret]",
++  "string": "esc"
+ }
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test@3
-  > esc env diff default/test@1 @2
-  # Value
-  ```diff
-  --- test-user/default/test@1
-  +++ test-user/default/test@2
-  @@ -1 +1,6 @@
-  +{
-  +  "environmentVariables": {
-  +    "FOO": "bar"
-  +  },
-  +  "string": "hello, world!"
-  +}
-  \ No newline at end of file
+```
+# Definition
+```diff
+--- test-user/default/test@2
++++ test-user/default/test@latest
+@@ -1,4 +1,19 @@
++imports:
++  - a
++  - b
+ values:
+-  string: hello, world!
++  # comment
++  "null": null
++  boolean: true
++  number: 42
++  string: esc
++  array: [hello, world]
++  object: {hello: world}
++  open:
++    fn::open::test: echo
++  secret:
++    fn::secret:
++      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+   environmentVariables:
+-    FOO: bar
++    FOO: baz
++    BAR: qux
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@1
-  +++ test-user/default/test@2
-  @@ -1 +1,4 @@
-  +values:
-  +  string: hello, world!
-  +  environmentVariables:
-  +    FOO: bar
+```
+> esc env diff default/test@3
+> esc env diff default/test@1 @2
+# Value
+```diff
+--- test-user/default/test@1
++++ test-user/default/test@2
+@@ -1 +1,6 @@
++{
++  "environmentVariables": {
++    "FOO": "bar"
++  },
++  "string": "hello, world!"
++}
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test@1 @stable
-  # Value
-  ```diff
-  --- test-user/default/test@1
-  +++ test-user/default/test@stable
-  @@ -1 +1,6 @@
-  +{
-  +  "environmentVariables": {
-  +    "FOO": "bar"
-  +  },
-  +  "string": "hello, world!"
-  +}
-  \ No newline at end of file
+```
+# Definition
+```diff
+--- test-user/default/test@1
++++ test-user/default/test@2
+@@ -1 +1,4 @@
++values:
++  string: hello, world!
++  environmentVariables:
++    FOO: bar
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@1
-  +++ test-user/default/test@stable
-  @@ -1 +1,4 @@
-  +values:
-  +  string: hello, world!
-  +  environmentVariables:
-  +    FOO: bar
+```
+> esc env diff default/test@1 @stable
+# Value
+```diff
+--- test-user/default/test@1
++++ test-user/default/test@stable
+@@ -1 +1,6 @@
++{
++  "environmentVariables": {
++    "FOO": "bar"
++  },
++  "string": "hello, world!"
++}
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test@stable default/test-v2@stable
-  # Value
-  ```diff
-  --- test-user/default/test@stable
-  +++ test-user/default/test-v2@stable
-  @@ -2,5 +2,5 @@
-     "environmentVariables": {
-       "FOO": "bar"
-     },
-  -  "string": "hello, world!"
-  +  "string": "bonjour, monde!"
-   }
-  \ No newline at end of file
+```
+# Definition
+```diff
+--- test-user/default/test@1
++++ test-user/default/test@stable
+@@ -1 +1,4 @@
++values:
++  string: hello, world!
++  environmentVariables:
++    FOO: bar
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@stable
-  +++ test-user/default/test-v2@stable
-  @@ -1,4 +1,4 @@
-   values:
-  -  string: hello, world!
-  +  string: bonjour, monde!
-     environmentVariables:
-       FOO: bar
+```
+> esc env diff default/test@stable default/test-v2@stable
+# Value
+```diff
+--- test-user/default/test@stable
++++ test-user/default/test-v2@stable
+@@ -2,5 +2,5 @@
+   "environmentVariables": {
+     "FOO": "bar"
+   },
+-  "string": "hello, world!"
++  "string": "bonjour, monde!"
+ }
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test default/test-v2
-  # Value
-  ```diff
-  --- test-user/default/test@latest
-  +++ test-user/default/test-v2
-  @@ -1,19 +1,7 @@
-   {
-  -  "array": [
-  -    "hello",
-  -    "world"
-  -  ],
-  -  "boolean": true,
-     "environmentVariables": {
-       "BAR": "qux",
-  -    "FOO": "baz"
-  +    "FOO": "bar"
-     },
-  -  "null": null,
-  -  "number": 42,
-  -  "object": {
-  -    "hello": "world"
-  -  },
-  -  "open": "[unknown]",
-  -  "secret": "[secret]",
-  -  "string": "esc"
-  +  "string": "cse"
-   }
-  \ No newline at end of file
+```
+# Definition
+```diff
+--- test-user/default/test@stable
++++ test-user/default/test-v2@stable
+@@ -1,4 +1,4 @@
+ values:
+-  string: hello, world!
++  string: bonjour, monde!
+   environmentVariables:
+     FOO: bar
 
-  ```
-  # Definition
-  ```diff
-  --- test-user/default/test@latest
-  +++ test-user/default/test-v2
-  @@ -3,17 +3,7 @@
-     - b
-   values:
-     # comment
-  -  "null": null
-  -  boolean: true
-  -  number: 42
-  -  string: esc
-  -  array: [hello, world]
-  -  object: {hello: world}
-  -  open:
-  -    fn::open::test: echo
-  -  secret:
-  -    fn::secret:
-  -      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-  +  string: cse
-     environmentVariables:
-  -    FOO: baz
-  +    FOO: bar
-       BAR: qux
+```
+> esc env diff default/test default/test-v2
+# Value
+```diff
+--- test-user/default/test@latest
++++ test-user/default/test-v2
+@@ -1,19 +1,7 @@
+ {
+-  "array": [
+-    "hello",
+-    "world"
+-  ],
+-  "boolean": true,
+   "environmentVariables": {
+     "BAR": "qux",
+-    "FOO": "baz"
++    "FOO": "bar"
+   },
+-  "null": null,
+-  "number": 42,
+-  "object": {
+-    "hello": "world"
+-  },
+-  "open": "[unknown]",
+-  "secret": "[secret]",
+-  "string": "esc"
++  "string": "cse"
+ }
+\ No newline at end of file
 
-  ```
-  > esc env diff default/test@stable --format json
-  --- test-user/default/test@stable
-  +++ test-user/default/test@latest
-  @@ -1,6 +1,19 @@
-   {
-  +  "array": [
-  +    "hello",
-  +    "world"
-  +  ],
-  +  "boolean": true,
-     "environmentVariables": {
-  -    "FOO": "bar"
-  +    "BAR": "qux",
-  +    "FOO": "baz"
-     },
-  -  "string": "hello, world!"
-  +  "null": null,
-  +  "number": 42,
-  +  "object": {
-  +    "hello": "world"
-  +  },
-  +  "open": "[unknown]",
-  +  "secret": "[secret]",
-  +  "string": "esc"
-   }
-  > esc env diff default/test@stable --format string
-  --- test-user/default/test@stable
-  +++ test-user/default/test@latest
-  @@ -1 +1 @@
-  -"environmentVariables"="\"FOO\"=\"bar\"","string"="hello, world!"
-  +"array"="\"hello\",\"world\"","boolean"="true","environmentVariables"="\"BAR\"=\"qux\",\"FOO\"=\"baz\"","null"="","number"="42","object"="\"hello\"=\"world\"","open"="[unknown]","secret"="[secret]","string"="esc"
-  > esc env diff default/test@stable --format dotenv
-  --- test-user/default/test@stable
-  +++ test-user/default/test@latest
-  @@ -1 +1,2 @@
-  -FOO="bar"
-  +BAR="qux"
-  +FOO="baz"
-  > esc env diff default/test@stable --format shell
-  --- test-user/default/test@stable
-  +++ test-user/default/test@latest
-  @@ -1 +1,2 @@
-  -export FOO="bar"
-  +export BAR="qux"
-  +export FOO="baz"
-stderr: |
-  > esc env diff default/test
-  > esc env diff default/test@latest
-  > esc env diff default/test@stable
-  > esc env diff default/test@1
-  > esc env diff default/test@2
-  > esc env diff default/test@3
-  > esc env diff default/test@1 @2
-  > esc env diff default/test@1 @stable
-  > esc env diff default/test@stable default/test-v2@stable
-  > esc env diff default/test default/test-v2
-  > esc env diff default/test@stable --format json
-  > esc env diff default/test@stable --format string
-  > esc env diff default/test@stable --format dotenv
-  > esc env diff default/test@stable --format shell
+```
+# Definition
+```diff
+--- test-user/default/test@latest
++++ test-user/default/test-v2
+@@ -3,17 +3,7 @@
+   - b
+ values:
+   # comment
+-  "null": null
+-  boolean: true
+-  number: 42
+-  string: esc
+-  array: [hello, world]
+-  object: {hello: world}
+-  open:
+-    fn::open::test: echo
+-  secret:
+-    fn::secret:
+-      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
++  string: cse
+   environmentVariables:
+-    FOO: baz
++    FOO: bar
+     BAR: qux
+
+```
+> esc env diff default/test@stable --format json
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1,6 +1,19 @@
+ {
++  "array": [
++    "hello",
++    "world"
++  ],
++  "boolean": true,
+   "environmentVariables": {
+-    "FOO": "bar"
++    "BAR": "qux",
++    "FOO": "baz"
+   },
+-  "string": "hello, world!"
++  "null": null,
++  "number": 42,
++  "object": {
++    "hello": "world"
++  },
++  "open": "[unknown]",
++  "secret": "[secret]",
++  "string": "esc"
+ }
+> esc env diff default/test@stable --format string
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1 +1 @@
+-"environmentVariables"="\"FOO\"=\"bar\"","string"="hello, world!"
++"array"="\"hello\",\"world\"","boolean"="true","environmentVariables"="\"BAR\"=\"qux\",\"FOO\"=\"baz\"","null"="","number"="42","object"="\"hello\"=\"world\"","open"="[unknown]","secret"="[secret]","string"="esc"
+> esc env diff default/test@stable --format dotenv
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1 +1,2 @@
+-FOO="bar"
++BAR="qux"
++FOO="baz"
+> esc env diff default/test@stable --format shell
+--- test-user/default/test@stable
++++ test-user/default/test@latest
+@@ -1 +1,2 @@
+-export FOO="bar"
++export BAR="qux"
++export FOO="baz"
+
+---
+> esc env diff default/test
+> esc env diff default/test@latest
+> esc env diff default/test@stable
+> esc env diff default/test@1
+> esc env diff default/test@2
+> esc env diff default/test@3
+> esc env diff default/test@1 @2
+> esc env diff default/test@1 @stable
+> esc env diff default/test@stable default/test-v2@stable
+> esc env diff default/test default/test-v2
+> esc env diff default/test@stable --format json
+> esc env diff default/test@stable --format string
+> esc env diff default/test@stable --format dotenv
+> esc env diff default/test@stable --format shell

@@ -8,39 +8,41 @@ environments:
   test-user/default/test:
     values:
       foo: bar
-stdout: |+
-  > esc env edit default/test -f=-
-  Environment updated.
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": "baz"
-  }
-  ```
-  # Definition
-  ```yaml
-  {"values": {"foo": "baz"}}
 
-  ```
+---
+> esc env edit default/test -f=-
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "baz"
+}
+```
+# Definition
+```yaml
+{"values": {"foo": "baz"}}
 
-  > esc env edit default/test -f=def.yaml
-  Environment updated.
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": "qux"
-  }
-  ```
-  # Definition
-  ```yaml
-  {"values": {"foo": "qux"}}
+```
 
-  ```
+> esc env edit default/test -f=def.yaml
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "qux"
+}
+```
+# Definition
+```yaml
+{"values": {"foo": "qux"}}
 
-stderr: |
-  > esc env edit default/test -f=-
-  > esc env get default/test
-  > esc env edit default/test -f=def.yaml
-  > esc env get default/test
+```
+
+
+---
+> esc env edit default/test -f=-
+> esc env get default/test
+> esc env edit default/test -f=def.yaml
+> esc env get default/test

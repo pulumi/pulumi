@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -1248,9 +1247,6 @@ type cliTestcaseYAML struct {
 	Process *cliTestcaseProcess `yaml:"process,omitempty"`
 
 	Environments map[string]yaml.Node `yaml:"environments,omitempty"`
-
-	Stdout string `yaml:"stdout,omitempty"`
-	Stderr string `yaml:"stderr,omitempty"`
 }
 
 type cliTestcase struct {
@@ -1262,14 +1258,23 @@ type cliTestcase struct {
 }
 
 func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
-	f, err := os.Open(path)
+	contents, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer contract.IgnoreClose(f)
+
+	header, stdout, stderr := "", "", ""
+	switch components := strings.Split(string(contents), "\n---\n"); len(components) {
+	case 1:
+		header = components[0]
+	case 2:
+		header, stdout = components[0], components[1]
+	case 3:
+		header, stdout, stderr = components[0], components[1], components[2]
+	}
 
 	var testcase cliTestcaseYAML
-	if err := yaml.NewDecoder(f).Decode(&testcase); err != nil {
+	if err := yaml.NewDecoder(strings.NewReader(header)).Decode(&testcase); err != nil {
 		return nil, nil, err
 	}
 
@@ -1368,8 +1373,8 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 	return &testcase, &cliTestcase{
 		exec:           &exec,
 		script:         testcase.Run,
-		expectedStdout: testcase.Stdout,
-		expectedStderr: testcase.Stderr,
+		expectedStdout: stdout,
+		expectedStderr: stderr,
 	}, nil
 }
 
@@ -1400,14 +1405,16 @@ func TestCLI(t *testing.T) {
 					def.Error = ""
 				}
 
-				def.Stdout = stdout.String()
-				def.Stderr = stderr.String()
-
 				var b bytes.Buffer
 				enc := yaml.NewEncoder(&b)
 				enc.SetIndent(2)
 				err := enc.Encode(def)
 				require.NoError(t, err)
+
+				fmt.Fprintf(&b, "\n---\n")
+				b.Write(stdout.Bytes())
+				fmt.Fprintf(&b, "\n---\n")
+				b.Write(stderr.Bytes())
 
 				err = os.WriteFile(path, b.Bytes(), 0o600)
 				require.NoError(t, err)

@@ -25,30 +25,32 @@ environments:
       open:
         fn::open::test:
           foo: bar
-stdout: |+
-  > esc env get default/test imports
-  # Definition
-  ```yaml
-  - a
-  - b
 
-  ```
+---
+> esc env get default/test imports
+# Definition
+```yaml
+- a
+- b
 
-  > esc env get default/test imports[0]
-  # Definition
-  ```yaml
-  a
+```
 
-  ```
+> esc env get default/test imports[0]
+# Definition
+```yaml
+a
 
-  > esc env get default/test imports[1]
-  # Definition
-  ```yaml
-  b
+```
 
-  ```
+> esc env get default/test imports[1]
+# Definition
+```yaml
+b
 
-stderr: |
-  > esc env get default/test imports
-  > esc env get default/test imports[0]
-  > esc env get default/test imports[1]
+```
+
+
+---
+> esc env get default/test imports
+> esc env get default/test imports[0]
+> esc env get default/test imports[1]

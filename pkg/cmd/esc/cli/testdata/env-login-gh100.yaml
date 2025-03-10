@@ -1,24 +1,24 @@
-# This is a regression default/test for #100 that aims to capture issues logging in when no existing Pulumi
-# credentials exist.
 run: |
   esc logout --all
   esc login
   esc env ls
   esc logout
   esc logout
-stdout: |
-  > esc logout --all
-  Logged out of all clouds
-  > esc login
-  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
-  > esc env ls
-  > esc logout
-  Logged out of https://api.pulumi.com
-  > esc logout
-  Already logged out.
-stderr: |
-  > esc logout --all
-  > esc login
-  > esc env ls
-  > esc logout
-  > esc logout
+
+---
+> esc logout --all
+Logged out of all clouds
+> esc login
+Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
+> esc env ls
+> esc logout
+Logged out of https://api.pulumi.com
+> esc logout
+Already logged out.
+
+---
+> esc logout --all
+> esc login
+> esc env ls
+> esc logout
+> esc logout

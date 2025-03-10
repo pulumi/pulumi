@@ -3,8 +3,10 @@ error: exit status 1
 process:
   environ:
     EDITOR: my-editor
-stdout: |
-  > esc env edit default/test
-stderr: |
-  > esc env edit default/test
-  Error: finding "my-editor" on path: command not found
+
+---
+> esc env edit default/test
+
+---
+> esc env edit default/test
+Error: finding "my-editor" on path: command not found

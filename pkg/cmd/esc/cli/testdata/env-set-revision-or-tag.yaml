@@ -2,11 +2,13 @@ run: |
   (esc env set default/test@1 string foo || exit 0)
   esc env set default/test@foo string foo
 error: exit status 1
-stdout: |
-  > esc env set default/test@1 string foo
-  > esc env set default/test@foo string foo
-stderr: |
-  > esc env set default/test@1 string foo
-  Error: the set command does not accept versions
-  > esc env set default/test@foo string foo
-  Error: the set command does not accept versions
+
+---
+> esc env set default/test@1 string foo
+> esc env set default/test@foo string foo
+
+---
+> esc env set default/test@1 string foo
+Error: the set command does not accept versions
+> esc env set default/test@foo string foo
+Error: the set command does not accept versions

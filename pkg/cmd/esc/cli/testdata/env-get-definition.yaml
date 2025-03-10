@@ -9,14 +9,16 @@ environments:
       string: esc
       files:
         FILE: ${string}
-stdout: |
-  > esc env get default/test --definition
-  imports:
-    - a
-  values:
-    # comment
-    string: esc
-    files:
-      FILE: ${string}
-stderr: |
-  > esc env get default/test --definition
+
+---
+> esc env get default/test --definition
+imports:
+  - a
+values:
+  # comment
+  string: esc
+  files:
+    FILE: ${string}
+
+---
+> esc env get default/test --definition

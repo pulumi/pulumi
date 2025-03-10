@@ -1,7 +1,9 @@
 run: esc env get default/test --definition --value=json
 error: exit status 1
-stdout: |
-  > esc env get default/test --definition --value=json
-stderr: |
-  > esc env get default/test --definition --value=json
-  Error: `--value` and `--definition` flags cannot be used together
+
+---
+> esc env get default/test --definition --value=json
+
+---
+> esc env get default/test --definition --value=json
+Error: `--value` and `--definition` flags cannot be used together

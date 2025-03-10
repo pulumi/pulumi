@@ -15,511 +15,513 @@ run: |
   esc env set default/test 'imports[0]' default/test2 && esc env get default/test
   esc env init default/test3
   esc env set default/test 'imports[1]' default/test3 && esc env get default/test
-stdout: |+
-  > esc env init default/test
-  Environment created: test-user/default/test
-  > esc env set default/test foo.bar.baz qux
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": {
-      "bar": {
-        "baz": "qux"
-      }
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test foo.bar.baz qux
+> esc env get default/test
+# Value
+```json
+{
+  "foo": {
+    "bar": {
+      "baz": "qux"
     }
   }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
 
-  ```
+```
 
-  > esc env set default/test foo.bar.alpha zed
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      }
+> esc env set default/test foo.bar.alpha zed
+> esc env get default/test
+# Value
+```json
+{
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
     }
   }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
 
-  ```
+```
 
-  > esc env set default/test foo.beta[0] gamma
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma"
-      ]
+> esc env set default/test foo.beta[0] gamma
+> esc env get default/test
+# Value
+```json
+{
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma"
+    ]
+  }
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+
+```
+
+> esc env set default/test foo.beta[1] 42
+> esc env get default/test
+# Value
+```json
+{
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  }
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+
+```
+
+> esc env set default/test open {"fn::open::test": "esc"}
+> esc env get default/test
+# Value
+```json
+{
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "esc"
+
+```
+
+> esc env set default/test open["fn::open::test"] cse
+> esc env get default/test
+# Value
+```json
+{
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+
+```
+
+> esc env set default/test array [hello, world]
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - world
+
+```
+
+> esc env set default/test array[1] esc
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "esc"
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - esc
+
+```
+
+> esc env set default/test array[2] {}
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "esc",
+    {}
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - esc
+    - {}
+
+```
+
+> esc env set default/test array[2].foo bar
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "esc",
+    {
+      "foo": "bar"
     }
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
+    },
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - esc
+    - {foo: bar}
 
-  ```
+```
 
-  > esc env set default/test foo.beta[1] 42
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
+> esc env set default/test array[2].foo 
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "esc",
+    {
+      "foo": ""
     }
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-
-  ```
-
-  > esc env set default/test open {"fn::open::test": "esc"}
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
     },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "esc"
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - esc
+    - {foo: ""}
 
-  ```
+```
 
-  > esc env set default/test open["fn::open::test"] cse
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
+> esc env init default/test2
+Environment created: test-user/default/test2
+> esc env set default/test imports[0] default/test2
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "esc",
+    {
+      "foo": ""
+    }
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
     },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - esc
+    - {foo: ""}
+imports:
+  - default/test2
 
-  ```
+```
 
-  > esc env set default/test array [hello, world]
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
+> esc env init default/test3
+Environment created: test-user/default/test3
+> esc env set default/test imports[1] default/test3
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "esc",
+    {
+      "foo": ""
+    }
+  ],
+  "foo": {
+    "bar": {
+      "alpha": "zed",
+      "baz": "qux"
     },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - world
+    "beta": [
+      "gamma",
+      42
+    ]
+  },
+  "open": "[unknown]"
+}
+```
+# Definition
+```yaml
+values:
+  foo:
+    bar:
+      baz: qux
+      alpha: zed
+    beta:
+      - gamma
+      - 42
+  open:
+    "fn::open::test": "cse"
+  array:
+    - hello
+    - esc
+    - {foo: ""}
+imports:
+  - default/test2
+  - default/test3
 
-  ```
+```
 
-  > esc env set default/test array[1] esc
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "esc"
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
-    },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - esc
 
-  ```
-
-  > esc env set default/test array[2] {}
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "esc",
-      {}
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
-    },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - esc
-      - {}
-
-  ```
-
-  > esc env set default/test array[2].foo bar
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "esc",
-      {
-        "foo": "bar"
-      }
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
-    },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - esc
-      - {foo: bar}
-
-  ```
-
-  > esc env set default/test array[2].foo 
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "esc",
-      {
-        "foo": ""
-      }
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
-    },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - esc
-      - {foo: ""}
-
-  ```
-
-  > esc env init default/test2
-  Environment created: test-user/default/test2
-  > esc env set default/test imports[0] default/test2
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "esc",
-      {
-        "foo": ""
-      }
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
-    },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - esc
-      - {foo: ""}
-  imports:
-    - default/test2
-
-  ```
-
-  > esc env init default/test3
-  Environment created: test-user/default/test3
-  > esc env set default/test imports[1] default/test3
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "esc",
-      {
-        "foo": ""
-      }
-    ],
-    "foo": {
-      "bar": {
-        "alpha": "zed",
-        "baz": "qux"
-      },
-      "beta": [
-        "gamma",
-        42
-      ]
-    },
-    "open": "[unknown]"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo:
-      bar:
-        baz: qux
-        alpha: zed
-      beta:
-        - gamma
-        - 42
-    open:
-      "fn::open::test": "cse"
-    array:
-      - hello
-      - esc
-      - {foo: ""}
-  imports:
-    - default/test2
-    - default/test3
-
-  ```
-
-stderr: |
-  > esc env init default/test
-  > esc env set default/test foo.bar.baz qux
-  > esc env get default/test
-  > esc env set default/test foo.bar.alpha zed
-  > esc env get default/test
-  > esc env set default/test foo.beta[0] gamma
-  > esc env get default/test
-  > esc env set default/test foo.beta[1] 42
-  > esc env get default/test
-  > esc env set default/test open {"fn::open::test": "esc"}
-  > esc env get default/test
-  > esc env set default/test open["fn::open::test"] cse
-  > esc env get default/test
-  > esc env set default/test array [hello, world]
-  > esc env get default/test
-  > esc env set default/test array[1] esc
-  > esc env get default/test
-  > esc env set default/test array[2] {}
-  > esc env get default/test
-  > esc env set default/test array[2].foo bar
-  > esc env get default/test
-  > esc env set default/test array[2].foo 
-  > esc env get default/test
-  > esc env init default/test2
-  > esc env set default/test imports[0] default/test2
-  > esc env get default/test
-  > esc env init default/test3
-  > esc env set default/test imports[1] default/test3
-  > esc env get default/test
+---
+> esc env init default/test
+> esc env set default/test foo.bar.baz qux
+> esc env get default/test
+> esc env set default/test foo.bar.alpha zed
+> esc env get default/test
+> esc env set default/test foo.beta[0] gamma
+> esc env get default/test
+> esc env set default/test foo.beta[1] 42
+> esc env get default/test
+> esc env set default/test open {"fn::open::test": "esc"}
+> esc env get default/test
+> esc env set default/test open["fn::open::test"] cse
+> esc env get default/test
+> esc env set default/test array [hello, world]
+> esc env get default/test
+> esc env set default/test array[1] esc
+> esc env get default/test
+> esc env set default/test array[2] {}
+> esc env get default/test
+> esc env set default/test array[2].foo bar
+> esc env get default/test
+> esc env set default/test array[2].foo 
+> esc env get default/test
+> esc env init default/test2
+> esc env set default/test imports[0] default/test2
+> esc env get default/test
+> esc env init default/test3
+> esc env set default/test imports[1] default/test3
+> esc env get default/test

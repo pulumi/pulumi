@@ -34,28 +34,29 @@ environments:
           export F_PLAIN=${plain}
         BOOL_FILE: ${yup}
         NUM_FILE: ${pi}
-stdout: |-
-  > esc env run default/test dump-env
-  secret: [secret], plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
-  > esc env run -i default/test dump-env
-  secret: hunter2, plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
-  > esc env run default/test echo secret: ${secret}, plain: ${plain}
-  secret: [secret], plain: plaintext
-  > esc env run -i default/test echo secret: ${secret}, plain: ${plain}
-  secret: hunter2, plain: plaintext
-  > esc env run default/test source-file
-  secret: [secret], plain: plaintext
-  > esc env run -i default/test source-file
-  secret: hunter2, plain: plaintext
-  > esc env run default/test -- echo -n hunter2
-  [secret]> esc env run default/test -i -- echo -n hunter2
-  hunter2
-stderr: |
-  > esc env run default/test dump-env
-  > esc env run -i default/test dump-env
-  > esc env run default/test echo secret: ${secret}, plain: ${plain}
-  > esc env run -i default/test echo secret: ${secret}, plain: ${plain}
-  > esc env run default/test source-file
-  > esc env run -i default/test source-file
-  > esc env run default/test -- echo -n hunter2
-  > esc env run default/test -i -- echo -n hunter2
+
+---
+> esc env run default/test dump-env
+secret: [secret], plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
+> esc env run -i default/test dump-env
+secret: hunter2, plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
+> esc env run default/test echo secret: ${secret}, plain: ${plain}
+secret: [secret], plain: plaintext
+> esc env run -i default/test echo secret: ${secret}, plain: ${plain}
+secret: hunter2, plain: plaintext
+> esc env run default/test source-file
+secret: [secret], plain: plaintext
+> esc env run -i default/test source-file
+secret: hunter2, plain: plaintext
+> esc env run default/test -- echo -n hunter2
+[secret]> esc env run default/test -i -- echo -n hunter2
+hunter2
+---
+> esc env run default/test dump-env
+> esc env run -i default/test dump-env
+> esc env run default/test echo secret: ${secret}, plain: ${plain}
+> esc env run -i default/test echo secret: ${secret}, plain: ${plain}
+> esc env run default/test source-file
+> esc env run -i default/test source-file
+> esc env run default/test -- echo -n hunter2
+> esc env run default/test -i -- echo -n hunter2

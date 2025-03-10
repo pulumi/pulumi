@@ -34,31 +34,33 @@ environments:
             secret:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-stdout: |
-  > esc env version rollback default/test@stable
-  Environment updated.
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "string": "hello, world!"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    string: hello, world!
 
-  ```
+---
+> esc env version rollback default/test@stable
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "string": "hello, world!"
+}
+```
+# Definition
+```yaml
+values:
+  string: hello, world!
 
-  > esc env version rollback default/test@2
-stderr: |
-  > esc env version rollback default/test@stable
-  > esc env get default/test
-  > esc env version rollback default/test@2
-  Error: not found
+```
 
-    on test line 2:
-     2:     - c
+> esc env version rollback default/test@2
 
-  Error: could not roll back: too many errors
+---
+> esc env version rollback default/test@stable
+> esc env get default/test
+> esc env version rollback default/test@2
+Error: not found
+
+  on test line 2:
+   2:     - c
+
+Error: could not roll back: too many errors

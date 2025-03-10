@@ -7,29 +7,31 @@ run: |
   esc login https://api.pulumi.com
   esc logout --all
   esc login || echo ok
-stdout: |
-  > esc login
-  Logged in to http://fake.pulumi.api as test-user ()
-  > esc login https://api.pulumi.com
-  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
-  > esc login http://fake.pulumi.api
-  Logged in to http://fake.pulumi.api as test-user ()
-  > esc logout
-  Logged out of http://fake.pulumi.api
-  > esc login
-  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
-  > esc login https://api.pulumi.com
-  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
-  > esc logout --all
-  Logged out of all clouds
-  > esc login
-  Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
-stderr: |
-  > esc login
-  > esc login https://api.pulumi.com
-  > esc login http://fake.pulumi.api
-  > esc logout
-  > esc login
-  > esc login https://api.pulumi.com
-  > esc logout --all
-  > esc login
+
+---
+> esc login
+Logged in to http://fake.pulumi.api as test-user ()
+> esc login https://api.pulumi.com
+Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
+> esc login http://fake.pulumi.api
+Logged in to http://fake.pulumi.api as test-user ()
+> esc logout
+Logged out of http://fake.pulumi.api
+> esc login
+Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
+> esc login https://api.pulumi.com
+Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
+> esc logout --all
+Logged out of all clouds
+> esc login
+Logged in to pulumi.com as test-user (https://app.pulumi.com/test-user)
+
+---
+> esc login
+> esc login https://api.pulumi.com
+> esc login http://fake.pulumi.api
+> esc logout
+> esc login
+> esc login https://api.pulumi.com
+> esc logout --all
+> esc login

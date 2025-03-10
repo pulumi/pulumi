@@ -5,8 +5,10 @@ process:
     EDITOR: my-editor
   commands:
     my-editor: exit 1
-stdout: |
-  > esc env edit default/test
-stderr: |
-  > esc env edit default/test
-  Error: getting environment definition: not found
+
+---
+> esc env edit default/test
+
+---
+> esc env edit default/test
+Error: getting environment definition: not found

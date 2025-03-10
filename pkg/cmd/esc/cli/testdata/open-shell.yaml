@@ -22,14 +22,16 @@ environments:
         HELLO: ${hello}
       files:
         FILE: bar
-stdout: |
-  > esc open default/test --format shell
-  export BOOL="true"
-  export FOO="bar"
-  export HELLO="world"
-  export NUM="3.14"
-  export BOOL_FILE="temp/esc-temp-0"
-  export FILE="temp/esc-temp-1"
-  export NUM_FILE="temp/esc-temp-2"
-stderr: |
-  > esc open default/test --format shell
+
+---
+> esc open default/test --format shell
+export BOOL="true"
+export FOO="bar"
+export HELLO="world"
+export NUM="3.14"
+export BOOL_FILE="temp/esc-temp-0"
+export FILE="temp/esc-temp-1"
+export NUM_FILE="temp/esc-temp-2"
+
+---
+> esc open default/test --format shell

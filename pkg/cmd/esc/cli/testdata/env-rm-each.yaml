@@ -34,350 +34,352 @@ environments:
         fn::open::test:
           foo: bar
           baz: qux
-stdout: |+
-  > esc env rm default/test null
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "boolean": true,
-    "number": 42,
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    boolean: true
-    number: 42
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
 
-  ```
+---
+> esc env rm default/test null
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "boolean": true,
+  "number": 42,
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  boolean: true
+  number: 42
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test boolean
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "number": 42,
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    number: 42
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test boolean
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "number": 42,
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  number: 42
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test number
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test number
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test string
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test string
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test array[1]
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello"
-    ],
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    array: [hello]
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test array[1]
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello"
+  ],
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  array: [hello]
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test array[0]
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [],
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    array: []
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test array[0]
+> esc env get default/test
+# Value
+```json
+{
+  "array": [],
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  array: []
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test array
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "object": {
-      "goodbye": "all",
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    object: {hello: world}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test array
+> esc env get default/test
+# Value
+```json
+{
+  "object": {
+    "goodbye": "all",
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  object: {hello: world}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test object.hello
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "object": {
-      "goodbye": "all",
-      "hello": "esc"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    object: {}
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test object.hello
+> esc env get default/test
+# Value
+```json
+{
+  "object": {
+    "goodbye": "all",
+    "hello": "esc"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  object: {}
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test object
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "object": {
-      "goodbye": "all",
-      "hello": "esc"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    open:
-      fn::open::test:
-        foo: bar
-        baz: qux
+```
 
-  ```
+> esc env rm default/test object
+> esc env get default/test
+# Value
+```json
+{
+  "object": {
+    "goodbye": "all",
+    "hello": "esc"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  open:
+    fn::open::test:
+      foo: bar
+      baz: qux
 
-  > esc env rm default/test open["fn::open::test"].foo
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "object": {
-      "goodbye": "all",
-      "hello": "esc"
-    },
-    "open": "[unknown]",
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    open:
-      fn::open::test:
-        baz: qux
+```
 
-  ```
+> esc env rm default/test open["fn::open::test"].foo
+> esc env get default/test
+# Value
+```json
+{
+  "object": {
+    "goodbye": "all",
+    "hello": "esc"
+  },
+  "open": "[unknown]",
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  open:
+    fn::open::test:
+      baz: qux
 
-  > esc env rm default/test open
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "object": {
-      "goodbye": "all",
-      "hello": "esc"
-    },
-    "string": "foo"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values: {}
+```
 
-  ```
+> esc env rm default/test open
+> esc env get default/test
+# Value
+```json
+{
+  "object": {
+    "goodbye": "all",
+    "hello": "esc"
+  },
+  "string": "foo"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values: {}
 
-stderr: |
-  > esc env rm default/test null
-  > esc env get default/test
-  > esc env rm default/test boolean
-  > esc env get default/test
-  > esc env rm default/test number
-  > esc env get default/test
-  > esc env rm default/test string
-  > esc env get default/test
-  > esc env rm default/test array[1]
-  > esc env get default/test
-  > esc env rm default/test array[0]
-  > esc env get default/test
-  > esc env rm default/test array
-  > esc env get default/test
-  > esc env rm default/test object.hello
-  > esc env get default/test
-  > esc env rm default/test object
-  > esc env get default/test
-  > esc env rm default/test open["fn::open::test"].foo
-  > esc env get default/test
-  > esc env rm default/test open
-  > esc env get default/test
+```
+
+
+---
+> esc env rm default/test null
+> esc env get default/test
+> esc env rm default/test boolean
+> esc env get default/test
+> esc env rm default/test number
+> esc env get default/test
+> esc env rm default/test string
+> esc env get default/test
+> esc env rm default/test array[1]
+> esc env get default/test
+> esc env rm default/test array[0]
+> esc env get default/test
+> esc env rm default/test array
+> esc env get default/test
+> esc env rm default/test object.hello
+> esc env get default/test
+> esc env rm default/test object
+> esc env get default/test
+> esc env rm default/test open["fn::open::test"].foo
+> esc env get default/test
+> esc env rm default/test open
+> esc env get default/test

@@ -13,23 +13,25 @@ environments:
       - a
     values:
       foo: bar
-stdout: |+
-  > esc env edit default/test
-  Environment updated.
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "foo": "baz"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    foo: baz
 
-  ```
+---
+> esc env edit default/test
+Environment updated.
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "baz"
+}
+```
+# Definition
+```yaml
+values:
+  foo: baz
 
-stderr: |
-  > esc env edit default/test
-  > esc env get default/test
+```
+
+
+---
+> esc env edit default/test
+> esc env get default/test

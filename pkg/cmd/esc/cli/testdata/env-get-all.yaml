@@ -37,205 +37,207 @@ environments:
             secret:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-stdout: |+
-  > esc env get default/test
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "baseSecret": "[secret]",
-    "boolean": true,
-    "null": null,
-    "number": 42,
-    "object": {
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "secret": "[secret]",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    # comment
-    "null": null
-    boolean: true
-    number: 42
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test: echo
-    secret:
-      fn::secret:
-        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 
-  ```
+---
+> esc env get default/test
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "baseSecret": "[secret]",
+  "boolean": true,
+  "null": null,
+  "number": 42,
+  "object": {
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "secret": "[secret]",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  # comment
+  "null": null
+  boolean: true
+  number: 42
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test: echo
+  secret:
+    fn::secret:
+      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 
-  > esc env get default/test@latest
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "baseSecret": "[secret]",
-    "boolean": true,
-    "null": null,
-    "number": 42,
-    "object": {
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "secret": "[secret]",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    # comment
-    "null": null
-    boolean: true
-    number: 42
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test: echo
-    secret:
-      fn::secret:
-        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+```
 
-  ```
+> esc env get default/test@latest
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "baseSecret": "[secret]",
+  "boolean": true,
+  "null": null,
+  "number": 42,
+  "object": {
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "secret": "[secret]",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  # comment
+  "null": null
+  boolean: true
+  number: 42
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test: echo
+  secret:
+    fn::secret:
+      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 
-  > esc env get default/test@stable
-  # Value
-  ```json
-  {
-    "string": "hello, world!"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    string: hello, world!
+```
 
-  ```
+> esc env get default/test@stable
+# Value
+```json
+{
+  "string": "hello, world!"
+}
+```
+# Definition
+```yaml
+values:
+  string: hello, world!
 
-  > esc env get default/test@1
+```
 
-  > esc env get default/test@2
-  # Value
-  ```json
-  {
-    "string": "hello, world!"
-  }
-  ```
-  # Definition
-  ```yaml
-  values:
-    string: hello, world!
+> esc env get default/test@1
 
-  ```
+> esc env get default/test@2
+# Value
+```json
+{
+  "string": "hello, world!"
+}
+```
+# Definition
+```yaml
+values:
+  string: hello, world!
 
-  > esc env get default/test@3
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "baseSecret": "[secret]",
-    "boolean": true,
-    "null": null,
-    "number": 42,
-    "object": {
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "secret": "[secret]",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    # comment
-    "null": null
-    boolean: true
-    number: 42
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test: echo
-    secret:
-      fn::secret:
-        ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+```
 
-  ```
+> esc env get default/test@3
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "baseSecret": "[secret]",
+  "boolean": true,
+  "null": null,
+  "number": 42,
+  "object": {
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "secret": "[secret]",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  # comment
+  "null": null
+  boolean: true
+  number: 42
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test: echo
+  secret:
+    fn::secret:
+      ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
 
-  > esc env get default/test@latest --show-secrets
-  # Value
-  ```json
-  {
-    "array": [
-      "hello",
-      "world"
-    ],
-    "baseSecret": "secretAccessKey",
-    "boolean": true,
-    "null": null,
-    "number": 42,
-    "object": {
-      "hello": "world"
-    },
-    "open": "[unknown]",
-    "secret": "secretAccessKey",
-    "string": "esc"
-  }
-  ```
-  # Definition
-  ```yaml
-  imports:
-    - a
-    - b
-  values:
-    # comment
-    "null": null
-    boolean: true
-    number: 42
-    string: esc
-    array: [hello, world]
-    object: {hello: world}
-    open:
-      fn::open::test: echo
-    secret:
-      fn::secret: secretAccessKey
+```
 
-  ```
+> esc env get default/test@latest --show-secrets
+# Value
+```json
+{
+  "array": [
+    "hello",
+    "world"
+  ],
+  "baseSecret": "secretAccessKey",
+  "boolean": true,
+  "null": null,
+  "number": 42,
+  "object": {
+    "hello": "world"
+  },
+  "open": "[unknown]",
+  "secret": "secretAccessKey",
+  "string": "esc"
+}
+```
+# Definition
+```yaml
+imports:
+  - a
+  - b
+values:
+  # comment
+  "null": null
+  boolean: true
+  number: 42
+  string: esc
+  array: [hello, world]
+  object: {hello: world}
+  open:
+    fn::open::test: echo
+  secret:
+    fn::secret: secretAccessKey
 
-stderr: |
-  > esc env get default/test
-  > esc env get default/test@latest
-  > esc env get default/test@stable
-  > esc env get default/test@1
-  > esc env get default/test@2
-  > esc env get default/test@3
-  > esc env get default/test@latest --show-secrets
+```
+
+
+---
+> esc env get default/test
+> esc env get default/test@latest
+> esc env get default/test@stable
+> esc env get default/test@1
+> esc env get default/test@2
+> esc env get default/test@3
+> esc env get default/test@latest --show-secrets

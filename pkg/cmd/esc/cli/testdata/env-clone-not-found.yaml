@@ -31,8 +31,10 @@ environments:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
     tags:
       team: pulumi
-stdout: |
-  > esc env clone not/found dest
-stderr: |
-  > esc env clone not/found dest
-  Error: cloning environment: source env not found
+
+---
+> esc env clone not/found dest
+
+---
+> esc env clone not/found dest
+Error: cloning environment: source env not found

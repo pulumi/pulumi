@@ -2,11 +2,13 @@ run: |
   (esc env init default/test-env@1 || exit 0)
   esc env init default/test-env@foo
 error: exit status 1
-stdout: |
-  > esc env init default/test-env@1
-  > esc env init default/test-env@foo
-stderr: |
-  > esc env init default/test-env@1
-  Error: the init command does not accept versions
-  > esc env init default/test-env@foo
-  Error: the init command does not accept versions
+
+---
+> esc env init default/test-env@1
+> esc env init default/test-env@foo
+
+---
+> esc env init default/test-env@1
+Error: the init command does not accept versions
+> esc env init default/test-env@foo
+Error: the init command does not accept versions

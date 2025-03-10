@@ -1,7 +1,9 @@
 run: esc env edit default/test
 error: exit status 1
-stdout: |
-  > esc env edit default/test
-stderr: |
-  > esc env edit default/test
-  Error: No available editor. Please use the --editor flag or set one of the VISUAL or EDITOR environment variables.
+
+---
+> esc env edit default/test
+
+---
+> esc env edit default/test
+Error: No available editor. Please use the --editor flag or set one of the VISUAL or EDITOR environment variables.

@@ -9,14 +9,16 @@ environments:
   test-user/default/test:
     values:
       foo: bar
-stdout: |
-  > esc env edit default/test
-stderr: |
-  > esc env edit default/test
-  Error: imports must be a list
 
-    on test line 1:
-     1: imports:
+---
+> esc env edit default/test
 
-  Press ENTER to continue editing or ^D to exit
-  Aborting edit.
+---
+> esc env edit default/test
+Error: imports must be a list
+
+  on test line 1:
+   1: imports:
+
+Press ENTER to continue editing or ^D to exit
+Aborting edit.

@@ -1,41 +1,43 @@
 run: esc
-stdout: |
-  > esc
-  Pulumi ESC - Manage environments, secrets, and configuration
 
-  To begin working with Pulumi ESC, run the `esc env init` command:
+---
+> esc
+Pulumi ESC - Manage environments, secrets, and configuration
 
-      $ esc env init
+To begin working with Pulumi ESC, run the `esc env init` command:
 
-  This will prompt you to create a new environment to hold secrets and configuration.
+    $ esc env init
 
-  The most common commands from there are:
+This will prompt you to create a new environment to hold secrets and configuration.
 
-      - esc env get  : Get a property in an environment definition
-      - esc env set  : Set a property in an environment definition
-      - esc env edit : Edit an environment definition
-      - esc env ls   : List available environments
-      - esc run      : Run a command within the context of an environment
-      - esc open     : Open an environment and access its contents
+The most common commands from there are:
 
-  For more information, please visit the project page: https://www.pulumi.com/docs/esc
+    - esc env get  : Get a property in an environment definition
+    - esc env set  : Set a property in an environment definition
+    - esc env edit : Edit an environment definition
+    - esc env ls   : List available environments
+    - esc run      : Run a command within the context of an environment
+    - esc open     : Open an environment and access its contents
 
-  Usage:
-    esc [command]
+For more information, please visit the project page: https://www.pulumi.com/docs/esc
 
-  Available Commands:
-    completion  Generate the autocompletion script for the specified shell
-    env         Manage environments
-    help        Help about any command
-    login       Log in to the Pulumi Cloud
-    logout      Log out of the Pulumi Cloud
-    open        Open the environment with the given name.
-    run         Open the environment with the given name and run a command.
-    version     Print esc's version number
+Usage:
+  esc [command]
 
-  Flags:
-    -h, --help   help for esc
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  env         Manage environments
+  help        Help about any command
+  login       Log in to the Pulumi Cloud
+  logout      Log out of the Pulumi Cloud
+  open        Open the environment with the given name.
+  run         Open the environment with the given name and run a command.
+  version     Print esc's version number
 
-  Use "esc [command] --help" for more information about a command.
-stderr: |
-  > esc
+Flags:
+  -h, --help   help for esc
+
+Use "esc [command] --help" for more information about a command.
+
+---
+> esc

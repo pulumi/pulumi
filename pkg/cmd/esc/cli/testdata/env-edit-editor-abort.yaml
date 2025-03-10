@@ -9,8 +9,10 @@ environments:
   test-user/default/test:
     values:
       foo: bar
-stdout: |
-  > esc env edit default/test
-stderr: |
-  > esc env edit default/test
-  Aborting edit due to empty definition.
+
+---
+> esc env edit default/test
+
+---
+> esc env edit default/test
+Aborting edit due to empty definition.

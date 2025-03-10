@@ -6,45 +6,47 @@ run: |
   echo '{"values":{"foo":"bar"}}' >def.yaml
   esc env init default/test-file -f def.yaml
   esc env get default/test-file
-stdout: |+
-  > esc env init default/test-env
-  Environment created: test-user/default/test-env
-  > esc env get default/test-env
 
-  > esc env init default/test-stdin -f=-
-  Environment created: test-user/default/test-stdin
-  > esc env get default/test-stdin
-  # Value
-  ```json
-  {
-    "foo": "bar"
-  }
-  ```
-  # Definition
-  ```yaml
-  {"values": {"foo": "bar"}}
+---
+> esc env init default/test-env
+Environment created: test-user/default/test-env
+> esc env get default/test-env
 
-  ```
+> esc env init default/test-stdin -f=-
+Environment created: test-user/default/test-stdin
+> esc env get default/test-stdin
+# Value
+```json
+{
+  "foo": "bar"
+}
+```
+# Definition
+```yaml
+{"values": {"foo": "bar"}}
 
-  > esc env init default/test-file -f def.yaml
-  Environment created: test-user/default/test-file
-  > esc env get default/test-file
-  # Value
-  ```json
-  {
-    "foo": "bar"
-  }
-  ```
-  # Definition
-  ```yaml
-  {"values": {"foo": "bar"}}
+```
 
-  ```
+> esc env init default/test-file -f def.yaml
+Environment created: test-user/default/test-file
+> esc env get default/test-file
+# Value
+```json
+{
+  "foo": "bar"
+}
+```
+# Definition
+```yaml
+{"values": {"foo": "bar"}}
 
-stderr: |
-  > esc env init default/test-env
-  > esc env get default/test-env
-  > esc env init default/test-stdin -f=-
-  > esc env get default/test-stdin
-  > esc env init default/test-file -f def.yaml
-  > esc env get default/test-file
+```
+
+
+---
+> esc env init default/test-env
+> esc env get default/test-env
+> esc env init default/test-stdin -f=-
+> esc env get default/test-stdin
+> esc env init default/test-file -f def.yaml
+> esc env get default/test-file

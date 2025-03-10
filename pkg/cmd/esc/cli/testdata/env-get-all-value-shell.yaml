@@ -30,23 +30,25 @@ environments:
         SECRET: ${secret}
       files:
         FILE: ${string}
-stdout: |
-  > esc env get default/test --value=shell
-  export BOOLEAN="true"
-  export NULLV=""
-  export NUMBER="3.14"
-  export OBJECT="{\"hello\":\"world\"}"
-  export SECRET="[secret]"
-  export STRING="esc"
-  export FILE="[unknown]"
-  > esc env get default/test --value=shell --show-secrets
-  export BOOLEAN="true"
-  export NULLV=""
-  export NUMBER="3.14"
-  export OBJECT="{\"hello\":\"world\"}"
-  export SECRET="secretAccessKey"
-  export STRING="esc"
-  export FILE="[unknown]"
-stderr: |
-  > esc env get default/test --value=shell
-  > esc env get default/test --value=shell --show-secrets
+
+---
+> esc env get default/test --value=shell
+export BOOLEAN="true"
+export NULLV=""
+export NUMBER="3.14"
+export OBJECT="{\"hello\":\"world\"}"
+export SECRET="[secret]"
+export STRING="esc"
+export FILE="[unknown]"
+> esc env get default/test --value=shell --show-secrets
+export BOOLEAN="true"
+export NULLV=""
+export NUMBER="3.14"
+export OBJECT="{\"hello\":\"world\"}"
+export SECRET="secretAccessKey"
+export STRING="esc"
+export FILE="[unknown]"
+
+---
+> esc env get default/test --value=shell
+> esc env get default/test --value=shell --show-secrets

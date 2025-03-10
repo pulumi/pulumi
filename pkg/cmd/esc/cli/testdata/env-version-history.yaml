@@ -41,135 +41,137 @@ environments:
             secret:
               fn::secret:
                 ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
-stdout: |+
-  > esc env version history default/test --utc
-  revision 5
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 05:00:00 +0000 UTC
 
-  revision 4 (tag: stable)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 04:00:00 +0000 UTC
+---
+> esc env version history default/test --utc
+revision 5
+Author: Test Tester <test-tester>
+Date:   1970-01-01 05:00:00 +0000 UTC
 
-  revision 3 (retracted)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 03:00:00 +0000 UTC
+revision 4 (tag: stable)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 04:00:00 +0000 UTC
 
-      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
+revision 3 (retracted)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 03:00:00 +0000 UTC
 
-      leaked secret
+    Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
 
-  revision 2
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 02:00:00 +0000 UTC
+    leaked secret
 
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+revision 2
+Author: Test Tester <test-tester>
+Date:   1970-01-01 02:00:00 +0000 UTC
 
-  > esc env version history default/test@latest --utc
-  revision 5
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 05:00:00 +0000 UTC
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
 
-  revision 4 (tag: stable)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 04:00:00 +0000 UTC
+> esc env version history default/test@latest --utc
+revision 5
+Author: Test Tester <test-tester>
+Date:   1970-01-01 05:00:00 +0000 UTC
 
-  revision 3 (retracted)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 03:00:00 +0000 UTC
+revision 4 (tag: stable)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 04:00:00 +0000 UTC
 
-      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
+revision 3 (retracted)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 03:00:00 +0000 UTC
 
-      leaked secret
+    Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
 
-  revision 2
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 02:00:00 +0000 UTC
+    leaked secret
 
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+revision 2
+Author: Test Tester <test-tester>
+Date:   1970-01-01 02:00:00 +0000 UTC
 
-  > esc env version history default/test@stable --utc
-  revision 4 (tag: stable)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 04:00:00 +0000 UTC
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
 
-  revision 3 (retracted)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 03:00:00 +0000 UTC
+> esc env version history default/test@stable --utc
+revision 4 (tag: stable)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 04:00:00 +0000 UTC
 
-      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
+revision 3 (retracted)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 03:00:00 +0000 UTC
 
-      leaked secret
+    Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
 
-  revision 2
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 02:00:00 +0000 UTC
+    leaked secret
 
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+revision 2
+Author: Test Tester <test-tester>
+Date:   1970-01-01 02:00:00 +0000 UTC
 
-  > esc env version history default/test@1 --utc
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
 
-  > esc env version history default/test@2 --utc
-  revision 2
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 02:00:00 +0000 UTC
+> esc env version history default/test@1 --utc
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
 
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+> esc env version history default/test@2 --utc
+revision 2
+Author: Test Tester <test-tester>
+Date:   1970-01-01 02:00:00 +0000 UTC
 
-  > esc env version history default/test@3 --utc
-  revision 3 (retracted)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 03:00:00 +0000 UTC
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
 
-      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
+> esc env version history default/test@3 --utc
+revision 3 (retracted)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 03:00:00 +0000 UTC
 
-      leaked secret
+    Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
 
-  revision 2
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 02:00:00 +0000 UTC
+    leaked secret
 
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+revision 2
+Author: Test Tester <test-tester>
+Date:   1970-01-01 02:00:00 +0000 UTC
 
-  > esc env version history default/test@4 --utc
-  revision 4 (tag: stable)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 04:00:00 +0000 UTC
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
 
-  revision 3 (retracted)
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 03:00:00 +0000 UTC
+> esc env version history default/test@4 --utc
+revision 4 (tag: stable)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 04:00:00 +0000 UTC
 
-      Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
+revision 3 (retracted)
+Author: Test Tester <test-tester>
+Date:   1970-01-01 03:00:00 +0000 UTC
 
-      leaked secret
+    Retracted by Test Tester <test-tester> at 1970-01-01 03:00:00 +0000 UTC and replaced with revision 3.
 
-  revision 2
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 02:00:00 +0000 UTC
+    leaked secret
 
-  revision 1
-  Author: Test Tester <test-tester>
-  Date:   1970-01-01 01:00:00 +0000 UTC
+revision 2
+Author: Test Tester <test-tester>
+Date:   1970-01-01 02:00:00 +0000 UTC
 
-stderr: |
-  > esc env version history default/test --utc
-  > esc env version history default/test@latest --utc
-  > esc env version history default/test@stable --utc
-  > esc env version history default/test@1 --utc
-  > esc env version history default/test@2 --utc
-  > esc env version history default/test@3 --utc
-  > esc env version history default/test@4 --utc
+revision 1
+Author: Test Tester <test-tester>
+Date:   1970-01-01 01:00:00 +0000 UTC
+
+
+---
+> esc env version history default/test --utc
+> esc env version history default/test@latest --utc
+> esc env version history default/test@stable --utc
+> esc env version history default/test@1 --utc
+> esc env version history default/test@2 --utc
+> esc env version history default/test@3 --utc
+> esc env version history default/test@4 --utc

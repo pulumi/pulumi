@@ -35,198 +35,200 @@ environments:
       open:
         fn::open::test:
           foo: bar
-stdout: |+
-  > esc env get default/test null
-  # Value
-  ```json
-  null
-  ```
-  # Definition
-  ```yaml
-  null
 
-  ```
+---
+> esc env get default/test null
+# Value
+```json
+null
+```
+# Definition
+```yaml
+null
 
-  # Defined at
-  - test:6:13
+```
 
-  > esc env get default/test boolean
-  # Value
-  ```json
-  true
-  ```
-  # Definition
-  ```yaml
-  true
+# Defined at
+- test:6:13
 
-  ```
+> esc env get default/test boolean
+# Value
+```json
+true
+```
+# Definition
+```yaml
+true
 
-  # Defined at
-  - test:7:14
+```
 
-  > esc env get default/test number
-  # Value
-  ```json
-  42
-  ```
-  # Definition
-  ```yaml
-  42
+# Defined at
+- test:7:14
 
-  ```
+> esc env get default/test number
+# Value
+```json
+42
+```
+# Definition
+```yaml
+42
 
-  # Defined at
-  - test:8:13
+```
 
-  > esc env get default/test string
-  # Value
-  ```json
-  "esc"
-  ```
-  # Definition
-  ```yaml
-  esc
+# Defined at
+- test:8:13
 
-  ```
+> esc env get default/test string
+# Value
+```json
+"esc"
+```
+# Definition
+```yaml
+esc
 
-  # Defined at
-  - test:9:13
-  - b:2:13
+```
 
-  > esc env get default/test array
-  # Value
-  ```json
-  [
-    "hello",
-    "world"
-  ]
-  ```
-  # Definition
-  ```yaml
-  [hello, world]
+# Defined at
+- test:9:13
+- b:2:13
 
-  ```
-
-  # Defined at
-  - test:10:12
-
-  > esc env get default/test array[0]
-  # Value
-  ```json
-  "hello"
-  ```
-  # Definition
-  ```yaml
-  hello
-
-  ```
-
-  # Defined at
-  - test:10:13
-
-  > esc env get default/test array[1]
-  # Value
-  ```json
+> esc env get default/test array
+# Value
+```json
+[
+  "hello",
   "world"
-  ```
-  # Definition
-  ```yaml
-  world
+]
+```
+# Definition
+```yaml
+[hello, world]
 
-  ```
+```
 
-  # Defined at
-  - test:10:20
+# Defined at
+- test:10:12
 
-  > esc env get default/test object
-  # Value
-  ```json
-  {
-    "goodbye": "all",
-    "hello": "world"
-  }
-  ```
-  # Definition
-  ```yaml
-  {hello: world}
+> esc env get default/test array[0]
+# Value
+```json
+"hello"
+```
+# Definition
+```yaml
+hello
 
-  ```
+```
 
-  # Defined at
-  - test:11:13
-  - b:3:13
+# Defined at
+- test:10:13
 
-  > esc env get default/test object.hello
-  # Value
-  ```json
-  "world"
-  ```
-  # Definition
-  ```yaml
-  world
+> esc env get default/test array[1]
+# Value
+```json
+"world"
+```
+# Definition
+```yaml
+world
 
-  ```
+```
 
-  # Defined at
-  - test:11:21
-  - a:2:21
+# Defined at
+- test:10:20
 
-  > esc env get default/test object.goodbye
-  # Value
-  ```json
-  "all"
-  ```
+> esc env get default/test object
+# Value
+```json
+{
+  "goodbye": "all",
+  "hello": "world"
+}
+```
+# Definition
+```yaml
+{hello: world}
 
-  # Defined at
-  - b:3:23
-  - a:2:35
+```
 
-  > esc env get default/test open
-  # Value
-  ```json
-  "[unknown]"
-  ```
-  # Definition
-  ```yaml
-  fn::open::test:
-    foo: bar
+# Defined at
+- test:11:13
+- b:3:13
 
-  ```
+> esc env get default/test object.hello
+# Value
+```json
+"world"
+```
+# Definition
+```yaml
+world
 
-  # Defined at
-  - test:13:9
+```
 
-  > esc env get default/test open["fn::open::test"]
-  # Definition
-  ```yaml
+# Defined at
+- test:11:21
+- a:2:21
+
+> esc env get default/test object.goodbye
+# Value
+```json
+"all"
+```
+
+# Defined at
+- b:3:23
+- a:2:35
+
+> esc env get default/test open
+# Value
+```json
+"[unknown]"
+```
+# Definition
+```yaml
+fn::open::test:
   foo: bar
 
-  ```
+```
 
-  # Defined at
-  - test:14:13
+# Defined at
+- test:13:9
 
-  > esc env get default/test open["fn::open::test"].foo
-  # Definition
-  ```yaml
-  bar
+> esc env get default/test open["fn::open::test"]
+# Definition
+```yaml
+foo: bar
 
-  ```
+```
 
-  # Defined at
-  - test:14:18
+# Defined at
+- test:14:13
 
-stderr: |
-  > esc env get default/test null
-  > esc env get default/test boolean
-  > esc env get default/test number
-  > esc env get default/test string
-  > esc env get default/test array
-  > esc env get default/test array[0]
-  > esc env get default/test array[1]
-  > esc env get default/test object
-  > esc env get default/test object.hello
-  > esc env get default/test object.goodbye
-  > esc env get default/test open
-  > esc env get default/test open["fn::open::test"]
-  > esc env get default/test open["fn::open::test"].foo
+> esc env get default/test open["fn::open::test"].foo
+# Definition
+```yaml
+bar
+
+```
+
+# Defined at
+- test:14:18
+
+
+---
+> esc env get default/test null
+> esc env get default/test boolean
+> esc env get default/test number
+> esc env get default/test string
+> esc env get default/test array
+> esc env get default/test array[0]
+> esc env get default/test array[1]
+> esc env get default/test object
+> esc env get default/test object.hello
+> esc env get default/test object.goodbye
+> esc env get default/test open
+> esc env get default/test open["fn::open::test"]
+> esc env get default/test open["fn::open::test"].foo

@@ -2,14 +2,16 @@ run: |
   echo '{"values":{"foo":"${bar}"}}' | esc env init default/test-stdin -f=-
   esc env get default/test-stdin
 error: exit status 1
-stdout: |
-  > esc env init default/test-stdin -f=-
-  Environment created: test-user/default/test-stdin
-stderr: |
-  > esc env init default/test-stdin -f=-
-  Error: unknown property "bar"
 
-    on test-stdin line 1:
-     1: {"values":{"foo":"${bar}"}}
+---
+> esc env init default/test-stdin -f=-
+Environment created: test-user/default/test-stdin
 
-  Error: updating environment definition: too many errors
+---
+> esc env init default/test-stdin -f=-
+Error: unknown property "bar"
+
+  on test-stdin line 1:
+   1: {"values":{"foo":"${bar}"}}
+
+Error: updating environment definition: too many errors

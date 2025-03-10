@@ -2,5 +2,10 @@ run: esc env tag test-org/default/env "" ""
 error: exit status 1
 environments:
   test-org/default/env: {}
-stdout: "> esc env tag test-org/default/env  \n"
-stderr: "> esc env tag test-org/default/env  \nError: environment tag name cannot be empty\n"
+
+---
+> esc env tag test-org/default/env  
+
+---
+> esc env tag test-org/default/env  
+Error: environment tag name cannot be empty

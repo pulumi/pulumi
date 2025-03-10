@@ -10,11 +10,13 @@ environments:
   test-user/default/test:
     values:
       foo: bar
-stdout: |
-  > esc env edit default/test@1 --editor my-editor
-  > esc env edit default/test@foo --editor my-editor
-stderr: |
-  > esc env edit default/test@1 --editor my-editor
-  Error: the edit command does not accept versions
-  > esc env edit default/test@foo --editor my-editor
-  Error: the edit command does not accept versions
+
+---
+> esc env edit default/test@1 --editor my-editor
+> esc env edit default/test@foo --editor my-editor
+
+---
+> esc env edit default/test@1 --editor my-editor
+Error: the edit command does not accept versions
+> esc env edit default/test@foo --editor my-editor
+Error: the edit command does not accept versions

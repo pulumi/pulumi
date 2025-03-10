@@ -5,9 +5,11 @@ environments:
       object: {}
       missing: ${foo}
       invalid: {'fn::toBase64': "${object}"}
-stdout: |
-  > esc open default/test --format json
-stderr: |
-  > esc open default/test --format json
-  test:3:16: unknown property "foo"
-  test:4:31: expected string, got object
+
+---
+> esc open default/test --format json
+
+---
+> esc open default/test --format json
+test:3:16: unknown property "foo"
+test:4:31: expected string, got object
