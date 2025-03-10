@@ -580,11 +580,9 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			dir, err := os.MkdirTemp("", "pulumi-git-test")
-			require.NoError(t, err)
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
-			err = GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			err := GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
