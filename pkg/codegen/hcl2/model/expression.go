@@ -1050,13 +1050,16 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
-	// Unless the function is already automatically using an
-	// Output-returning version, modify the signature to account
-	// for automatic lifting to Promise or Output.
-	_, isOutput := x.Signature.ReturnType.(*OutputType)
-	if !isOutput {
-		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+	// Unless the function is already automatically using an Output-returning version, modify the signature to account
+	// for automatic lifting to Promise or Output. Note we skip this for pulumiResourceName and pulumiResourceType as
+	// they should return a plain string even with an output input.
+	if x.Name != "pulumiResourceName" && x.Name != "pulumiResourceType" {
+		_, isOutput := x.Signature.ReturnType.(*OutputType)
+		if !isOutput {
+			x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+		}
 	}
+
 	return diagnostics
 }
 

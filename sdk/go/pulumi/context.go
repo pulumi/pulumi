@@ -1779,7 +1779,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 		parentAliases := parent.getAliases()
 		for i := range parentAliases {
 			parentAlias := parentAliases[i]
-			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, parentAlias)
+			urn := inheritedChildAlias(name, parent.PulumiResourceName(), t, project, stack, parentAlias)
 			aliasURNs = append(aliasURNs, urn)
 			for j := range aliases {
 				childAlias := aliases[j]
@@ -1790,7 +1790,8 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
 					aliasedChildName := resource.URN(urn).Name()
 					aliasedChildType := string(resource.URN(urn).Type())
-					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
+					return inheritedChildAlias(
+						aliasedChildName, parent.PulumiResourceName(), aliasedChildType, project, stack, parentAlias)
 				}).ApplyT(func(urn interface{}) URN {
 					return urn.(URN)
 				}).(URNOutput)
@@ -1910,6 +1911,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
+		rs.typ = t
 		rs.aliases = aliases
 		state.transformations = transformations
 		rs.transformations = transformations

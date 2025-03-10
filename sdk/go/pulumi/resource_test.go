@@ -1225,7 +1225,7 @@ func assertHasDeps(
 	res Resource,
 	expectedDeps ...Resource,
 ) {
-	name := res.getName()
+	name := res.PulumiResourceName()
 	resDeps := depTracker.dependencies(urnForRes(t, ctx, res))
 
 	expDeps := slice.Prealloc[URN](len(expectedDeps))

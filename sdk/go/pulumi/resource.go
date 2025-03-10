@@ -66,6 +66,7 @@ type ResourceState struct {
 	pluginDownloadURL string
 	aliases           []URNOutput
 	name              string
+	typ               string
 	transformations   []ResourceTransformation
 
 	keepDep bool
@@ -75,6 +76,16 @@ var _ Resource = (*ResourceState)(nil)
 
 func (s *ResourceState) URN() URNOutput {
 	return s.urn
+}
+
+// The name assigned to the resource at construction.
+func (s *ResourceState) PulumiResourceName() string {
+	return s.name
+}
+
+// The type assigned to the resource at construction.
+func (s *ResourceState) PulumiResourceType() string {
+	return s.typ
 }
 
 func (s *ResourceState) GetProvider(token string) ProviderResource {
@@ -136,10 +147,6 @@ func (s *ResourceState) getPluginDownloadURL() string {
 
 func (s *ResourceState) getAliases() []URNOutput {
 	return s.aliases
-}
-
-func (s *ResourceState) getName() string {
-	return s.name
 }
 
 func (s *ResourceState) getTransformations() []ResourceTransformation {
@@ -223,6 +230,12 @@ type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
 	URN() URNOutput
 
+	// PulumiResourceName returns the name of the resource.
+	PulumiResourceName() string
+
+	// PulumiResourceType returns the type token of the resource.
+	PulumiResourceType() string
+
 	// getChildren returns the resource's children.
 	getChildren() []Resource
 
@@ -246,9 +259,6 @@ type Resource interface {
 
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
-
-	// getName returns the name of the resource
-	getName() string
 
 	// getTransformations returns the transformations for the resource.
 	getTransformations() []ResourceTransformation
@@ -468,7 +478,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 	}
 
 	sort.Slice(dependsOn, func(i, j int) bool {
-		return dependsOn[i].getName() < dependsOn[j].getName()
+		return dependsOn[i].PulumiResourceName() < dependsOn[j].PulumiResourceName()
 	})
 
 	var providers []ProviderResource
@@ -580,7 +590,7 @@ func invokeOptionsSnapshot(io *invokeOptions) *InvokeOptions {
 	}
 
 	sort.Slice(dependsOn, func(i, j int) bool {
-		return dependsOn[i].getName() < dependsOn[j].getName()
+		return dependsOn[i].PulumiResourceName() < dependsOn[j].PulumiResourceName()
 	})
 
 	return &InvokeOptions{

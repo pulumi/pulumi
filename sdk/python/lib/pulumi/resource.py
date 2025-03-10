@@ -1040,6 +1040,20 @@ class Resource:
         return provider, providers
 
     @property
+    def pulumi_resource_type(self) -> str:
+        """
+        The type assigned to the resource at construction.
+        """
+        return self._type
+
+    @property
+    def pulumi_resource_name(self) -> str:
+        """
+        The name assigned to the resource at construction.
+        """
+        return self._name
+
+    @property
     def urn(self) -> "Output[str]":
         """
         The stable, logical URN used to distinctly address a resource, both before and after
