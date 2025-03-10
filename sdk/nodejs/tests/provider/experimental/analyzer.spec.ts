@@ -16,6 +16,7 @@ import * as assert from "node:assert";
 import * as path from "node:path";
 import * as execa from "execa";
 import { Analyzer } from "../../../provider/experimental/analyzer";
+import { InputOutput } from "../../../provider/experimental/analyzer";
 
 describe("Analyzer", function () {
     before(() => {
@@ -302,7 +303,19 @@ describe("Analyzer", function () {
     it("errors nicely for resource references", async function () {
         const dir = path.join(__dirname, "testdata", "resource-reference");
         const analyzer = new Analyzer(dir, "provider");
-        assert.throws(() => analyzer.analyze(), /Resource references are not supported yet: found type 'MyResource'/);
+        assert.throws(
+            () => analyzer.analyze(),
+            /Resource references are not supported yet: component 'MyComponent' property 'aResource' has type 'MyResource'/,
+        );
+    });
+
+    it("errors nicely for invalid property types", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(
+            () => analyzer.analyze(),
+            /Union types are not supported: component 'MyComponent' input 'invalidProp' has type 'string | boolean'/,
+        );
     });
 
     it("infers component description", async function () {
@@ -370,5 +383,56 @@ describe("Analyzer", function () {
                 description: "myClassType comment",
             },
         });
+    });
+});
+
+describe("formatErrorContext", () => {
+    // We need to create an analyzer instance to test the private method
+    const analyzer = new Analyzer(__dirname, "provider");
+    // Use any to access private method
+    const formatErrorContext = (analyzer as any).formatErrorContext.bind(analyzer);
+
+    it("formats basic component context", () => {
+        assert.strictEqual(formatErrorContext({ component: "MyComponent" }), "component 'MyComponent'");
+    });
+
+    it("formats property context", () => {
+        assert.strictEqual(
+            formatErrorContext({ component: "MyComponent", property: "myProp" }),
+            "component 'MyComponent' property 'myProp'",
+        );
+    });
+
+    it("formats input property context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                property: "myProp",
+                inputOutput: InputOutput.Input,
+            }),
+            "component 'MyComponent' input 'myProp'",
+        );
+    });
+
+    it("formats output property context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                property: "myProp",
+                inputOutput: InputOutput.Output,
+            }),
+            "component 'MyComponent' output 'myProp'",
+        );
+    });
+
+    it("formats type context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                typeName: "MyType",
+                property: "myProp",
+            }),
+            "component 'MyComponent' type 'MyType' property 'myProp'",
+        );
     });
 });
