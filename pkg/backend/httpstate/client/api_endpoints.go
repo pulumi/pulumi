@@ -96,6 +96,7 @@ func init() {
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-decrypt", "batchDecrypt")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-encrypt", "batchEncrypt")
 
 	// The APIs for performing updates of various kind all have the same set of API endpoints. Only
 	// differentiate the "create update of kind X" APIs, and introduce a pseudo route param "updateKind".
