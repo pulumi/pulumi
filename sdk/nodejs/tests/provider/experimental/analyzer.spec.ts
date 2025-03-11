@@ -305,16 +305,29 @@ describe("Analyzer", function () {
         const analyzer = new Analyzer(dir, "provider");
         assert.throws(
             () => analyzer.analyze(),
-            /Resource references are not supported yet: component 'MyComponent' property 'aResource' has type 'MyResource'/,
+            /Resource references are not supported yet: component 'MyComponent' property 'MyComponentArgs.aResource' has type 'MyResource'/,
         );
     });
 
-    it("errors nicely for invalid property types", async function () {
-        const dir = path.join(__dirname, "testdata", "bad-property-type");
+    it("errors nicely for invalid property types for top-level properties", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type", "top-level");
         const analyzer = new Analyzer(dir, "provider");
         assert.throws(
             () => analyzer.analyze(),
-            /Union types are not supported: component 'MyComponent' input 'invalidProp' has type 'string | boolean'/,
+            (err) =>
+                err.message ===
+                "Union types are not supported: component 'MyComponent' input 'MyComponentArgs.invalidProp' has type 'string | boolean'",
+        );
+    });
+
+    it("errors nicely for invalid property types for sub-type properties", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type", "sub-type");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) =>
+                err.message ===
+                "Unsupported type: component 'MyComponent' input 'MyOtherArgs.invalidProp[key]' has type '\"fixed value\"'",
         );
     });
 
@@ -432,7 +445,7 @@ describe("formatErrorContext", () => {
                 typeName: "MyType",
                 property: "myProp",
             }),
-            "component 'MyComponent' type 'MyType' property 'myProp'",
+            "component 'MyComponent' property 'MyType.myProp'",
         );
     });
 });

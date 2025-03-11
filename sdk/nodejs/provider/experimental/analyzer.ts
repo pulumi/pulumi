@@ -171,7 +171,7 @@ export class Analyzer {
         let inputs: Record<string, PropertyDefinition> = {};
         if (argsSymbol.members) {
             inputs = this.analyzeSymbols(
-                { component: componentName, inputOutput: InputOutput.Input },
+                { component: componentName, inputOutput: InputOutput.Input, typeName: argsSymbol.getName() },
                 symbolTableToSymbols(argsSymbol.members),
                 argsParam,
             );
@@ -221,7 +221,7 @@ export class Analyzer {
     }
 
     private analyzeSymbols(
-        context: { component: string; inputOutput: InputOutput },
+        context: { component: string; inputOutput: InputOutput; typeName?: string },
         symbols: typescript.Symbol[],
         location: typescript.Node,
     ): Record<string, PropertyDefinition> {
@@ -237,7 +237,7 @@ export class Analyzer {
     }
 
     private analyzeSymbol(
-        context: { component: string; property: string; inputOutput: InputOutput },
+        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
         symbol: typescript.Symbol,
         location: typescript.Node,
     ): PropertyDefinition {
@@ -499,10 +499,6 @@ export class Analyzer {
         const parts: string[] = [];
         parts.push(`component '${context.component}'`);
 
-        if (context.typeName) {
-            parts.push(`type '${context.typeName}'`);
-        }
-
         if (context.property) {
             let propType = "property";
             if (context.inputOutput !== undefined) {
@@ -512,7 +508,13 @@ export class Analyzer {
                     propType = "output";
                 }
             }
-            parts.push(`${propType} '${context.property}'`);
+            parts.push(propType);
+
+            let propName = context.property;
+            if (context.typeName) {
+                propName = `${context.typeName}.${propName}`;
+            }
+            parts.push(`'${propName}'`);
         }
 
         return parts.join(" ");
