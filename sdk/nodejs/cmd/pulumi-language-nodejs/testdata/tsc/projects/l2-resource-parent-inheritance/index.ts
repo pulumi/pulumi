@@ -15,4 +15,8 @@ const parent2 = new simple.Resource("parent2", {value: true}, {
 const child2 = new simple.Resource("child2", {value: true}, {
     parent: parent2,
 });
+const child3 = new simple.Resource("child3", {value: true}, {
+    parent: parent2,
+    protect: false,
+});
 const orphan2 = new simple.Resource("orphan2", {value: true});
