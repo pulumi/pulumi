@@ -74,6 +74,18 @@ func (p *ParameterizedProvider) GetSchema(
 	}
 
 	token := fmt.Sprintf("%s:index:%s", subpackage, parameterizedResource)
+	componentToken := fmt.Sprintf("%sComponent", token)
+	parameterizedResourceSpec := schema.ObjectTypeSpec{
+		Type: "object",
+		Properties: map[string]schema.PropertySpec{
+			"parameterValue": {
+				TypeSpec: schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+		Required: []string{"parameterValue"},
+	}
 
 	pkg := schema.PackageSpec{
 		Name:    subpackage,
@@ -89,17 +101,11 @@ func (p *ParameterizedProvider) GetSchema(
 		},
 		Resources: map[string]schema.ResourceSpec{
 			token: {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]schema.PropertySpec{
-						"parameterValue": {
-							TypeSpec: schema.TypeSpec{
-								Type: "string",
-							},
-						},
-					},
-					Required: []string{"parameterValue"},
-				},
+				ObjectTypeSpec: parameterizedResourceSpec,
+			},
+			componentToken: {
+				IsComponent:    true,
+				ObjectTypeSpec: parameterizedResourceSpec,
 			},
 		},
 		Parameterization: &schema.ParameterizationSpec{
@@ -237,6 +243,21 @@ func (p *ParameterizedProvider) GetPluginInfo(context.Context) (workspace.Plugin
 	ver := semver.MustParse("1.2.3")
 	return workspace.PluginInfo{
 		Version: &ver,
+	}, nil
+}
+
+func (p *ParameterizedProvider) Construct(
+	ctx context.Context,
+	req plugin.ConstructRequest,
+) (plugin.ConstructResponse, error) {
+	token := fmt.Sprintf("%s:index:%sComponent", p.parameterPackage, string(p.parameterValue))
+	urn := resource.CreateURN(req.Name, token, req.Parent, req.Info.Project, req.Info.Stack)
+
+	return plugin.ConstructResponse{
+		URN: resource.URN(urn),
+		Outputs: resource.PropertyMap{
+			"parameterValue": resource.NewStringProperty(string(p.parameterValue) + "Component"),
+		},
 	}, nil
 }
 
