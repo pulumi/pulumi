@@ -74,7 +74,7 @@ func (p *ParameterizedProvider) GetSchema(
 	}
 
 	token := fmt.Sprintf("%s:index:%s", subpackage, parameterizedResource)
-	componentToken := fmt.Sprintf("%sComponent", token)
+	componentToken := token + "Component"
 	parameterizedResourceSpec := schema.ObjectTypeSpec{
 		Type: "object",
 		Properties: map[string]schema.PropertySpec{
@@ -254,7 +254,7 @@ func (p *ParameterizedProvider) Construct(
 	urn := resource.CreateURN(req.Name, token, req.Parent, req.Info.Project, req.Info.Stack)
 
 	return plugin.ConstructResponse{
-		URN: resource.URN(urn),
+		URN: urn,
 		Outputs: resource.PropertyMap{
 			"parameterValue": resource.NewStringProperty(string(p.parameterValue) + "Component"),
 		},
