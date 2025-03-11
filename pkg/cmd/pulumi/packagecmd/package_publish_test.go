@@ -365,17 +365,17 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					require.NoError(t, err)
 					assert.Equal(t, expectedSpec, packageSpec, "package schema should match input package spec")
 
-				// Verify readme and install docs content
-				if tt.args.readmePath != "" {
-					actualContents, err := io.ReadAll(op.Readme)
-					require.NoError(t, err)
-					assert.Equal(t, expectedReadmeContent, string(actualContents), "readme should match the provided markdown file")
-				}
-				if tt.args.installDocsPath != "" {
-					actualContents, err := io.ReadAll(op.InstallDocs)
-					require.NoError(t, err)
-					assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
-				}
+					// Verify readme and install docs content
+					if tt.args.readmePath != "" {
+						actualContents, err := io.ReadAll(op.Readme)
+						require.NoError(t, err)
+						assert.Equal(t, expectedReadmeContent, string(actualContents), "readme should match the provided markdown file")
+					}
+					if tt.args.installDocsPath != "" {
+						actualContents, err := io.ReadAll(op.InstallDocs)
+						require.NoError(t, err)
+						assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
+					}
 
 					// Verify publisher is set correctly
 					if tt.args.publisher != "" {

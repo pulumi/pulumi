@@ -263,8 +263,10 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 }
 
 // findReadme attempts to find a readme file in the given package source.
-// It first checks if the source is a directory and then checks if the installed plugin directory contains a readme.
-// If no readme is found, it returns an empty string.
+// It tries to find a readme in the following order and returns the path to the first one it finds:
+// 1. The package source if it is a directory
+// 2. The installed plugin directory
+// If no readme is found, an empty string is returned.
 func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
 	findReadmeInDir := func(dir string) string {
 		info, err := os.Stat(dir)
