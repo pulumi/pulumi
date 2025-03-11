@@ -30,6 +30,10 @@ for file in workflow_files:
                 if "steps" in specification:
                     save_use(file, specification["steps"])
 
+# For Mermaid, we need to generate unique names for each of the nodes in the
+# graph, but we can't just use their filepath as they must be `[A-Z]+`. As we
+# have over 26 files, we can't just use a straightforward index-to-character,
+# so we use two characters instead.
 def label(file):
     index = workflow_files.index(file)
     return chr(65 + (index // 26)) + chr(65 + (index % 26))
