@@ -89,6 +89,167 @@ func TestDestroyTarget(t *testing.T) {
 		func(urns []resource.URN, deleted map[resource.URN]bool) {})
 }
 
+// We should be able to create a simple `A > B > C` hierarchy and ignore the
+// `C` descendant.
+func TestExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	var singleURN resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC"
+
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { singleURN })
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, res.URN, singleURN)
+	}
+}
+
+// We should be able to create a simple `A > B > C` hierarchy and ignore the
+// `B` and `C` descendants.
+func TestExcludeChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	var parent resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"
+	var child resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC"
+
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { parent })
+	opts.UpdateOptions.ExcludeDependents = true
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, res.URN, parent)
+		assert.NotEqual(t, res.URN, child)
+	}
+}
+
+// We should be able to create a simple `A > B` hierarchy and ignore the `A`
+// parent without ignoring the `B` child.
+func TestExcludeTargetIncludeChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	var parent resource.URN = "urn:pulumi:test::test::pkgA:m:typA::resA"
+	var child resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[1].URN, parent)
+	assert.Equal(t, snap.Resources[2].URN, child)
+
+	loaders = []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.2.3"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions {
+			Version: "1.2.3",
+		})
+
+		assert.NoError(t, err)
+		return nil
+	})
+
+	hostF = deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	parent = "urn:pulumi:test::test::pkgA:m:typA::resA"
+	child = "urn:pulumi:test::test::pkgA:m:typA::resB"
+
+	opts = lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { parent })
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, res.URN, parent)
+	}
+}
+
 func destroySpecificTargets(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool),
