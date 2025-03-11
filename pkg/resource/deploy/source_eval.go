@@ -812,14 +812,11 @@ func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req p
 	rawProviderRef string,
 ) (providers.Reference, error) {
 	if rawProviderRef != "" {
-		// Check if this is a real provider ref (URN::ID) or a package reference (a dashed uuid)
-		if strings.Contains(rawProviderRef, "::") {
-			ref, err := providers.ParseReference(rawProviderRef)
-			if err != nil {
-				return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
-			}
-			return ref, nil
+		ref, err := providers.ParseReference(rawProviderRef)
+		if err != nil {
+			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
 		}
+		return ref, nil
 	}
 
 	ref, err := defaultProviders.getDefaultProviderRef(req)
