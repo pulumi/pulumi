@@ -55,22 +55,7 @@ func getHelperMethodIfNeeded(functionName string, functionArgs []model.Expressio
 		// Much like try, but instead of returning the result only returns true or
 		// false if the one argument has no error.  The "too safe" problem
 		// described above exists for can as well.
-		return fmt.Sprintf(`%[1]sfunction can_(
-%[1]s    fn: () => unknown
-%[1]s): boolean {
-%[1]s    try {
-%[1]s        const result = fn();
-%[1]s        if (result === undefined) {
-%[1]s            return false;
-%[1]s        }
-%[1]s        return true;
-%[1]s    } catch (e) {
-%[1]s        return false;
-%[1]s    }
-%[1]s}
-`,
-			indent,
-		), true
+		return generateCanFunction(functionArgs, indent)
 	default:
 		return "", false
 	}
@@ -113,5 +98,38 @@ func generateTryFunction(functionArgs []model.Expression, indent string) (string
 %[1]s}
 `,
 		indent, returnTypeString, returnValue, functionName,
+	), true
+}
+
+func generateCanFunction(functionArgs []model.Expression, indent string) (string, bool) {
+	returnType := pcl.TryReturnTypeFromArgs(functionArgs)
+	shouldReturnOutput := pcl.TypeContainsOutput(returnType)
+
+	functionName := "can_"
+	returnTypeString := "boolean"
+	returnValueTrue := "true"
+	returnValueFalse := "false"
+	if shouldReturnOutput {
+		functionName = "canOutput_"
+		returnTypeString = "pulumi.Output<boolean>"
+		returnValueTrue = "pulumi.output(true)"
+		returnValueFalse = "pulumi.output(false)"
+	}
+
+	return fmt.Sprintf(`%[1]sfunction %[2]s(
+%[1]s    fn: () => unknown
+%[1]s): %[3]s {
+%[1]s    try {
+%[1]s        const result = fn();
+%[1]s        if (result === undefined) {
+%[1]s            return %[4]s
+%[1]s        }
+%[1]s        return %[5]s
+%[1]s    } catch (e) {
+%[1]s        return %[4]s
+%[1]s    }
+%[1]s}
+`,
+		indent, functionName, returnTypeString, returnValueFalse, returnValueTrue,
 	), true
 }

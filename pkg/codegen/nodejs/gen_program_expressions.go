@@ -621,10 +621,16 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 // which returns a bool indicating if the closure ran successfully.
 func (g *generator) genCan(w io.Writer, args []model.Expression) {
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+	shouldUseOutputCan := pcl.TypeContainsOutput(pcl.TryReturnTypeFromArgs(args))
+
+	functionName := "can_"
+	if shouldUseOutputCan {
+		functionName = "canOutput_"
+	}
 
 	arg := args[0]
 	g.Fprintf(w, "// @ts-ignore")
-	g.Fgenf(w, "\ncan_(() => %v)", g.lowerExpression(arg, arg.Type()))
+	g.Fgenf(w, "\n%s(() => %v)", functionName, g.lowerExpression(arg, arg.Type()))
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
