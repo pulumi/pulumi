@@ -95,6 +95,8 @@ func init() {
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}", "getStackUpdate")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
+	addEndpoint("GET", "/api/orgs/{orgName}/templates", "listTemplates")
+	addEndpoint("GET", "/api/orgs/{orgName}/templates/download", "downloadTemplates")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-decrypt", "batchDecrypt")
 
 	// The APIs for performing updates of various kind all have the same set of API endpoints. Only
