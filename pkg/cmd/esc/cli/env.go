@@ -16,7 +16,6 @@ import (
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 type ambiguousIdentifierError struct {
@@ -56,7 +55,7 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/esc",
 
-		Args: cmdutil.NoArgs,
+		Args: cobra.NoArgs,
 	}
 
 	env := &envCommand{esc: esc}

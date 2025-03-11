@@ -12,8 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Used to replace the `## <command>` line in generated markdown files.
@@ -27,10 +25,10 @@ var h3Pattern = regexp.MustCompile(`(?m)^###\s`)
 func newGenDocsCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:    "gen-docs <DIR>",
-		Args:   cmdutil.ExactArgs(1),
+		Args:   cobra.ExactArgs(1),
 		Short:  "Generate ESC CLI documentation as Markdown (one file per command)",
 		Hidden: true,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var files []string
 
 			// filePrepender is used to add front matter to each file, and to keep track of all
@@ -84,6 +82,6 @@ func newGenDocsCmd(root *cobra.Command) *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 }
