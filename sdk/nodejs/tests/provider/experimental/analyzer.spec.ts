@@ -260,6 +260,24 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers any type", async function () {
+        const dir = path.join(__dirname, "testdata", "any-type");
+        const analyzer = new Analyzer(dir, "provider");
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    anAny: { $ref: "pulumi.json#/Any" },
+                    anyInput: { $ref: "pulumi.json#/Any" },
+                },
+                outputs: {
+                    outAny: { $ref: "pulumi.json#/Any" },
+                },
+            },
+        });
+    });
+
     it("infers asset/archive types", async function () {
         const dir = path.join(__dirname, "testdata", "asset-archive-types");
         const analyzer = new Analyzer(dir, "provider");
@@ -281,16 +299,75 @@ describe("Analyzer", function () {
         });
     });
 
+    it("errors nicely for resource references", async function () {
+        const dir = path.join(__dirname, "testdata", "resource-reference");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(() => analyzer.analyze(), /Resource references are not supported yet: found type 'MyResource'/);
+    });
+
     it("infers component description", async function () {
         const dir = path.join(__dirname, "testdata", "component-description");
         const analyzer = new Analyzer(dir, "provider");
-        const { components } = analyzer.analyze();
+        const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
                 name: "MyComponent",
                 description: "This is a description of MyComponent\nIt can span multiple lines",
-                inputs: {},
-                outputs: {},
+                inputs: {
+                    anInterfaceType: {
+                        $ref: "#/types/provider:index:MyInterfaceType",
+                        plain: true,
+                        description: "anInterfaceType doc comment",
+                    },
+                    aClassType: {
+                        $ref: "#/types/provider:index:MyClassType",
+                        plain: true,
+                        description: "aClassType comment",
+                    },
+                    inputMapOfInterfaceTypes: {
+                        type: "object",
+                        additionalProperties: { $ref: "#/types/provider:index:MyInterfaceType" },
+                        description: "inputMap comment",
+                    },
+                    anArchive: {
+                        $ref: "pulumi.json#/Archive",
+                        plain: true,
+                        description: "anArchive comment",
+                    },
+                    anAsset: {
+                        $ref: "pulumi.json#/Asset",
+                        plain: true,
+                        description: "anAsset comment",
+                    },
+                    anArray: {
+                        description: "anArray comment",
+                        items: {
+                            plain: true,
+                            type: "string",
+                        },
+                        plain: true,
+                        type: "array",
+                    },
+                },
+                outputs: {
+                    outStringMap: {
+                        type: "object",
+                        additionalProperties: { type: "number" },
+                        description: "out_string_map comment",
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            MyInterfaceType: {
+                name: "MyInterfaceType",
+                properties: { aNumber: { type: "number", plain: true, description: "aNumber comment" } },
+                description: "myInterfaceType comment",
+            },
+            MyClassType: {
+                name: "MyClassType",
+                properties: { aString: { type: "string", plain: true, description: "aString comment" } },
+                description: "myClassType comment",
             },
         });
     });

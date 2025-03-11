@@ -38,9 +38,9 @@ class ResourceProviderStub:
     ]
     """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
     provider so that it may establish its own connections back, and to establish protocol configuration that will be
-    used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
-    feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
-    references.
+    used to communicate between the two parties. Providers that support `Handshake` should return responses
+    consistent with those returned in response to [](pulumirpc.ResourceProvider.Configure) calls where there is
+    overlap due to the use of `Configure` prior to `Handshake`'s introduction.
     """
     Parameterize: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.ParameterizeRequest,
@@ -272,14 +272,38 @@ class ResourceProviderStub:
     ]
     """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
     response (not an error) if it doesn't have a mapping for the given key.
+
+    `GetMapping` returns mappings designed to aid in [converting programs and state from other
+    ecosystems](converters). It accepts a "conversion key", which effectively corresponds to a source language, such
+    as `terraform`, and a *source provider name*, which is the name of the provider *in the source language*. Given
+    these, it returns source-specific mapping data for the provider requested. As an example, the Pulumi AWS
+    provider, which is bridged from the Terraform AWS provider and thus capable of mapping names between the two,
+    might respond to a call with key `terraform` and source provider name `aws` with mapping data for transforming
+    (among other things) Terraform AWS names such as `aws_s3_bucket` into Pulumi AWS types such as
+    `aws:s3/bucket:Bucket`. If a provider only supports a single source provider, or has some sensible default, it
+    may respond also to a call in which the source provider name is empty (`""`), which will be made when the engine
+    does not have sufficient knowledge to work out which provider offers a specific mapping.
+
+    In general, it is expected that providers implemented by bridging an equivalent provider from another ecosystem
+    (such as bridged Terraform providers built atop the `pulumi-terraform-bridge`, for instance) implement
+    `GetMapping` to support conversion from that ecosystem into Pulumi using the same logic that underpins the
+    bridging itself.
     """
     GetMappings: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.GetMappingsRequest,
         pulumi.provider_pb2.GetMappingsResponse,
     ]
-    """GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
-    implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
-    If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
+    """`GetMappings` is an optional method designed to aid in [converting programs and state from other
+    ecosystems](converters). `GetMappings` accepts a "conversion key". This corresponds to a source language, for
+    which we want to retrieve mappings for names etc. from that source language into Pulumi. An example key might
+    therefore be `terraform` in the event that we wish to map e.g. Terraform resource names to Pulumi resource types.
+    Given a key, `GetMappings` returns a list of *source provider names* for which calls to `GetMapping` will return
+    mappings. So, continuing the Terraform example, the Pulumi AWS provider, which is bridged from the Terraform AWS
+    provider and thus capable of mapping names between the two, might return the list `["aws"]` in response to a call
+    with key `terraform`.
+
+    If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
+    a source provider name (that is, with the value `""`).
     """
 
 class ResourceProviderServicer(metaclass=abc.ABCMeta):
@@ -297,9 +321,9 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.provider_pb2.ProviderHandshakeResponse:
         """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
         provider so that it may establish its own connections back, and to establish protocol configuration that will be
-        used to communicate between the two parties. Providers that support `Handshake` implicitly support the set of
-        feature flags previously handled by `Configure` prior to `Handshake`'s introduction, such as secrets and resource
-        references.
+        used to communicate between the two parties. Providers that support `Handshake` should return responses
+        consistent with those returned in response to [](pulumirpc.ResourceProvider.Configure) calls where there is
+        overlap due to the use of `Configure` prior to `Handshake`'s introduction.
         """
     
     def Parameterize(
@@ -569,6 +593,22 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.provider_pb2.GetMappingResponse:
         """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
         response (not an error) if it doesn't have a mapping for the given key.
+
+        `GetMapping` returns mappings designed to aid in [converting programs and state from other
+        ecosystems](converters). It accepts a "conversion key", which effectively corresponds to a source language, such
+        as `terraform`, and a *source provider name*, which is the name of the provider *in the source language*. Given
+        these, it returns source-specific mapping data for the provider requested. As an example, the Pulumi AWS
+        provider, which is bridged from the Terraform AWS provider and thus capable of mapping names between the two,
+        might respond to a call with key `terraform` and source provider name `aws` with mapping data for transforming
+        (among other things) Terraform AWS names such as `aws_s3_bucket` into Pulumi AWS types such as
+        `aws:s3/bucket:Bucket`. If a provider only supports a single source provider, or has some sensible default, it
+        may respond also to a call in which the source provider name is empty (`""`), which will be made when the engine
+        does not have sufficient knowledge to work out which provider offers a specific mapping.
+
+        In general, it is expected that providers implemented by bridging an equivalent provider from another ecosystem
+        (such as bridged Terraform providers built atop the `pulumi-terraform-bridge`, for instance) implement
+        `GetMapping` to support conversion from that ecosystem into Pulumi using the same logic that underpins the
+        bridging itself.
         """
     
     def GetMappings(
@@ -576,9 +616,17 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.GetMappingsRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.GetMappingsResponse:
-        """GetMappings is an optional method that returns what mappings (if any) a provider supports. If a provider does not
-        implement this method the engine falls back to the old behaviour of just calling GetMapping without a name.
-        If this method is implemented than the engine will then call GetMapping only with the names returned from this method.
+        """`GetMappings` is an optional method designed to aid in [converting programs and state from other
+        ecosystems](converters). `GetMappings` accepts a "conversion key". This corresponds to a source language, for
+        which we want to retrieve mappings for names etc. from that source language into Pulumi. An example key might
+        therefore be `terraform` in the event that we wish to map e.g. Terraform resource names to Pulumi resource types.
+        Given a key, `GetMappings` returns a list of *source provider names* for which calls to `GetMapping` will return
+        mappings. So, continuing the Terraform example, the Pulumi AWS provider, which is bridged from the Terraform AWS
+        provider and thus capable of mapping names between the two, might return the list `["aws"]` in response to a call
+        with key `terraform`.
+
+        If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
+        a source provider name (that is, with the value `""`).
         """
 
 def add_ResourceProviderServicer_to_server(servicer: ResourceProviderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

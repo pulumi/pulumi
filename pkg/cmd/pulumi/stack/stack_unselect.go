@@ -17,7 +17,6 @@ package stack
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -34,7 +33,7 @@ func newStackUnselectCmd() *cobra.Command {
 			"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
 			"from.\n",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			currentWorkspace, err := workspace.New()
 			if err != nil {
 				return err
@@ -57,6 +56,6 @@ func newStackUnselectCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 }

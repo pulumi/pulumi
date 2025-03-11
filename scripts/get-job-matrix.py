@@ -136,7 +136,7 @@ ALL_PLATFORMS = ["ubuntu-22.04", "windows-latest", "macos-latest"]
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
-    "go": "1.22.x",
+    "go": "1.23.x",
     "nodejs": "18.x",
     # When updating the minimum Python version here, also update `pyproject.toml`, including the
     # `mypy` and `ruff` sections.
@@ -145,7 +145,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
 
 ALL_VERSION_SET = {
     "dotnet": ["6", "8", "9"],
-    "go": ["1.22.x", "1.23.x"],
+    "go": ["1.23.x", "1.24.x"],
     "nodejs": ["18.x", "20.x", "22.x", "23.x"],
     "python": ["3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
 }
@@ -153,7 +153,7 @@ ALL_VERSION_SET = {
 CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "9",
-    "go": "1.23.x",
+    "go": "1.24.x",
     "nodejs": "23.x",
     "python": "3.13.x",
 }

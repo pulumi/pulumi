@@ -18,7 +18,9 @@
 
 package env
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+)
 
 // Re-export some types and functions from the env library.
 
@@ -99,6 +101,12 @@ var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
 	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+
+var Parallel = env.Int("PARALLEL",
+	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
+
+var AccessToken = env.String("ACCESS_TOKEN",
+	"The access token used to authenticate with the Pulumi Service.")
 
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`

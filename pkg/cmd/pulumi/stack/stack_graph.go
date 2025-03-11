@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -67,7 +66,7 @@ func newStackGraphCmd() *cobra.Command {
 			"This command can be used to view the dependency graph that a Pulumi program\n" +
 			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
@@ -110,7 +109,7 @@ func newStackGraphCmd() *cobra.Command {
 			cmd.Printf("%sWrote stack dependency graph to `%s`", cmdutil.EmojiOr("🔍 ", ""), args[0])
 			cmd.Println()
 			return file.Close()
-		}),
+		},
 	}
 	cmd.PersistentFlags().StringVarP(
 		&cmdOpts.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")

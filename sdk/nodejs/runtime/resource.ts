@@ -857,8 +857,13 @@ export async function prepareResource(
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
     const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
         // To initially scope the use of this new feature, we only keep output values when
-        // remote is true (for multi-lang components).
+        // remote is true (for multi-lang components, i.e. MLCs).
         keepOutputValues: remote,
+        // When remote is true, exclude resource references from 'propertyDependencies'.
+        // This way, component providers creating outputs for component inputs based
+        // on 'propertyDependencies' won't create outputs for properties that only
+        // contain resource references.
+        excludeResourceReferencesFromDependencies: remote,
     });
 
     // Wait for the parent to complete.

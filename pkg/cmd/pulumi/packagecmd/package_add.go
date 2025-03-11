@@ -15,11 +15,12 @@
 package packagecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/hashicorp/hcl/v2"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -62,7 +63,7 @@ When <schema> is a path to a local file with a '.json', '.yml' or '.yaml'
 extension, Pulumi package schema is read from it directly:
 
   pulumi package add ./my/schema.json`,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()
 			if err != nil {
@@ -89,6 +90,10 @@ extension, Pulumi package schema is read from it directly:
 
 			pkg, err := SchemaFromSchemaSource(pctx, plugin, parameters)
 			if err != nil {
+				var diagErr hcl.Diagnostics
+				if errors.As(err, &diagErr) {
+					return fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
+				}
 				return fmt.Errorf("failed to get schema: %w", err)
 			}
 
@@ -128,7 +133,7 @@ extension, Pulumi package schema is read from it directly:
 			}
 
 			return LinkPackage(ws, language, root, pkg, out)
-		}),
+		},
 	}
 
 	return cmd

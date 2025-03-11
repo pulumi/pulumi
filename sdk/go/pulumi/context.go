@@ -278,6 +278,9 @@ func (ctx *Context) Organization() string {
 // Project returns the current project name.
 func (ctx *Context) Project() string { return ctx.state.info.Project }
 
+// RootDirectory returns the root of the current project, the location of the Pulumi.yaml.
+func (ctx *Context) RootDirectory() string { return ctx.state.info.RootDirectory }
+
 // Stack returns the current stack name being deployed into.
 func (ctx *Context) Stack() string { return ctx.state.info.Stack }
 
@@ -421,7 +424,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			if umProperties == nil {
 				umProperties = Map{}
 			}
-			mProperties, _, err := marshalInput(umProperties, anyType, true)
+			mProperties, _, err := marshalInput(umProperties, anyType)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling properties: %w", err)
 			}
@@ -596,7 +599,7 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 			if umArgs == nil {
 				umArgs = Map{}
 			}
-			mArgs, _, err := marshalInput(umArgs, anyType, true)
+			mArgs, _, err := marshalInput(umArgs, anyType)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling properties: %w", err)
 			}
@@ -697,7 +700,9 @@ func (ctx *Context) invokePackageRaw(
 	if args == nil {
 		args = struct{}{}
 	}
-	resolvedArgs, _, err := marshalInput(args, anyType, false)
+	resolvedArgs, _, err := marshalInputOptions(args, anyType, &marshalOptions{
+		ErrorOnOutput: true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling arguments: %w", err)
 	}
@@ -972,7 +977,12 @@ func (ctx *Context) CallPackage(
 		}
 
 		// Serialize all args, first by awaiting them, and then marshaling them to the requisite gRPC values.
-		resolvedArgs, argDeps, _, err := marshalInputs(args)
+		resolvedArgs, argDeps, _, err := marshalInputsOptions(args, &marshalOptions{
+			// Exclude resource references from `argDependencies` when serializing inputs for call.
+			// This way, providers creating output instances based on `argDependencies` won't create
+			// outputs for properties that only contain resource references.
+			ExcludeResourceRefsFromDeps: ctx.state.keepResources,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("marshaling args: %w", err)
 		}
@@ -980,7 +990,12 @@ func (ctx *Context) CallPackage(
 		// If we have a value for self, add it to the arguments.
 		if self != nil {
 			var deps []URN
-			resolvedSelf, selfDeps, err := marshalInput(self, reflect.TypeOf(self), true)
+			resolvedSelf, selfDeps, err := marshalInputOptions(self, reflect.TypeOf(self), &marshalOptions{
+				// Exclude resource references from `argDependencies` when serializing inputs for call.
+				// This way, providers creating output instances based on `argDependencies` won't create
+				// outputs for properties that only contain resource references.
+				ExcludeResourceRefsFromDeps: ctx.state.keepResources,
+			})
 			if err != nil {
 				return nil, fmt.Errorf("marshaling __self__: %w", err)
 			}
@@ -2186,7 +2201,14 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	}
 
 	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	resolvedProps, propertyDeps, rpcDeps, err := marshalInputs(props)
+	resolvedProps, propertyDeps, rpcDeps, err := marshalInputsOptions(props, &marshalOptions{
+		// When remote is true (and the monitor supports resource references),
+		// exclude resource references from `propertyDependencies`. This way,
+		// component providers creating outputs for component inputs based on
+		// `propertyDependencies` won't create outputs for properties that only
+		// contain resource references.
+		ExcludeResourceRefsFromDeps: remote && ctx.state.keepResources,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -2431,7 +2453,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			return
 		}
 
-		outsResolved, _, err := marshalInput(outs, anyType, true)
+		outsResolved, _, err := marshalInput(outs, anyType)
 		if err != nil {
 			return
 		}

@@ -29,6 +29,7 @@ const ts: typeof typescript = require("../../typescript-shim");
 export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
 
 export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
+    description?: string;
     optional?: boolean;
     plain?: boolean;
     additionalProperties?: PropertyDefinition;
@@ -45,6 +46,7 @@ export type ComponentDefinition = {
 export type TypeDefinition = {
     name: string;
     properties: Record<string, PropertyDefinition>;
+    description?: string;
 };
 
 export type AnalyzeResult = {
@@ -52,7 +54,7 @@ export type AnalyzeResult = {
     typeDefinitions: Record<string, TypeDefinition>;
 };
 
-interface docNode extends typescript.Node {
+interface docNode {
     jsDoc?: typescript.JSDoc[];
 }
 
@@ -68,6 +70,7 @@ export class Analyzer {
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
     private typeDefinitions: Record<string, TypeDefinition> = {};
+    private docStrings: Record<string, string> = {};
 
     constructor(dir: string, providerName: string) {
         const configPath = `${dir}/tsconfig.json`;
@@ -126,6 +129,15 @@ export class Analyzer {
             if (ts.isClassDeclaration(node) && this.isPulumiComponent(node) && node.name) {
                 const component = this.analyzeComponent(node);
                 this.components[component.name] = component;
+            } else if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
+                const dNode = node as docNode;
+                let typeDocString: string | undefined = undefined;
+                if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
+                    typeDocString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+                }
+                if (typeDocString) {
+                    this.docStrings[node.name?.text] = typeDocString;
+                }
             }
         });
     }
@@ -220,7 +232,12 @@ export class Analyzer {
         // defined on the symbol, not the type.
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
         const optional = isOptional(symbol);
-        return this.analyzeType(propType, location, optional);
+        const dNode = symbol.valueDeclaration as docNode;
+        let docString: string | undefined = undefined;
+        if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
+            docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+        }
+        return this.analyzeType(propType, location, optional, InputOutput.Neither, docString);
     }
 
     private analyzeType(
@@ -228,6 +245,7 @@ export class Analyzer {
         location: typescript.Node,
         optional: boolean = false,
         inputOutput: InputOutput = InputOutput.Neither,
+        docString: string | undefined = undefined,
     ): PropertyDefinition {
         if (isSimpleType(type)) {
             const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
@@ -236,6 +254,9 @@ export class Analyzer {
             }
             if (inputOutput === InputOutput.Neither) {
                 prop.plain = true;
+            }
+            if (docString) {
+                prop.description = docString;
             }
             return prop;
         } else if (isInput(type)) {
@@ -250,14 +271,24 @@ export class Analyzer {
                 throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}'`);
             }
             const innerType = this.unwrapTypeReference(base);
-            return this.analyzeType(innerType, location, optional, InputOutput.Input);
+            return this.analyzeType(innerType, location, optional, InputOutput.Input, docString);
         } else if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
             // be plain anymore, since it's wrapped in an output.
             const innerType = this.unwrapTypeReference(type);
-            return this.analyzeType(innerType, location, optional, InputOutput.Output);
+            return this.analyzeType(innerType, location, optional, InputOutput.Output, docString);
+        } else if (isAny(type)) {
+            const $ref = "pulumi.json#/Any";
+            const prop: PropertyDefinition = { $ref };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (docString) {
+                prop.description = docString;
+            }
+            return prop;
         } else if (isAsset(type)) {
             const $ref = "pulumi.json#/Asset";
             const prop: PropertyDefinition = { $ref };
@@ -266,6 +297,9 @@ export class Analyzer {
             }
             if (inputOutput === InputOutput.Neither) {
                 prop.plain = true;
+            }
+            if (docString) {
+                prop.description = docString;
             }
             return prop;
         } else if (isArchive(type)) {
@@ -277,7 +311,14 @@ export class Analyzer {
             if (inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
+            if (docString) {
+                prop.description = docString;
+            }
             return prop;
+        } else if (isResourceReference(type, this.checker)) {
+            throw new Error(
+                `Resource references are not supported yet: found type '${this.checker.typeToString(type)}'`,
+            );
         } else if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
@@ -299,6 +340,9 @@ export class Analyzer {
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
             this.typeDefinitions[name] = { name, properties: {} };
+            if (this.docStrings[name]) {
+                this.typeDefinitions[name].description = this.docStrings[name];
+            }
             const properties = this.analyzeSymbols(type.getProperties(), location);
             this.typeDefinitions[name].properties = properties;
             const $ref = `#/types/${this.providerName}:index:${name}`;
@@ -308,6 +352,9 @@ export class Analyzer {
             }
             if (inputOutput === InputOutput.Neither) {
                 prop.plain = true;
+            }
+            if (docString) {
+                prop.description = docString;
             }
             return prop;
         } else if (isArrayType(type)) {
@@ -333,6 +380,9 @@ export class Analyzer {
                 false /* optional */,
                 inputOutput === InputOutput.Output ? inputOutput : InputOutput.Neither,
             );
+            if (docString) {
+                prop.description = docString;
+            }
             return prop;
         } else if (isMapType(type, this.checker)) {
             const prop: PropertyDefinition = { type: "object" };
@@ -348,6 +398,9 @@ export class Analyzer {
             if (!indexInfo) {
                 // We can't actually get here because isMapType checks for indexInfo
                 throw new Error(`Map type has no index info`);
+            }
+            if (docString) {
+                prop.description = docString;
             }
             prop.additionalProperties = this.analyzeType(indexInfo.type, location, false /* optional */, inputOutput);
             return prop;
@@ -423,6 +476,10 @@ function isString(type: typescript.Type): boolean {
 
 function isBoolean(type: typescript.Type): boolean {
     return (type.flags & ts.TypeFlags.Boolean) === ts.TypeFlags.Boolean;
+}
+
+function isAny(type: typescript.Type): boolean {
+    return (type.flags & ts.TypeFlags.Any) === ts.TypeFlags.Any;
 }
 
 function isSimpleType(type: typescript.Type): boolean {
@@ -529,6 +586,24 @@ function isInput(type: typescript.Type): boolean {
         }
     }
     return hasOutput && hasPromise && hasOther;
+}
+
+function isResourceReference(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    if (!type.isClass()) {
+        return false;
+    }
+    return checker.getBaseTypes(type as typescript.InterfaceType).some((baseType) => {
+        const symbol = baseType.getSymbol();
+        const matchesName =
+            symbol?.escapedName === "CustomResource" ||
+            symbol?.escapedName === "ComponentResource" ||
+            symbol?.escapedName === "Resource";
+
+        const sourceFile = symbol?.declarations?.[0].getSourceFile();
+        const matchesSourceFile =
+            sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
+        return (matchesName && matchesSourceFile) || isResourceReference(baseType, checker);
+    });
 }
 
 function tsTypeToPropertyType(type: typescript.Type): PropertyType {

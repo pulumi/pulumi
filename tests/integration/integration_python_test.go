@@ -2121,3 +2121,17 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/18768
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestOrganization(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("python", "organization"),
+		Dependencies: []string{
+			// We explicitly do not depend on the local Python SDK here.
+			// Instead, the version specified in requirements.txt is used.
+		},
+		Quick: true,
+	})
+}

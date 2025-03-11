@@ -17,7 +17,6 @@ package version
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/spf13/cobra"
@@ -28,9 +27,9 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print Pulumi's version number",
 		Args:  cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("%v\n", version.Version)
 			return nil
-		}),
+		},
 	}
 }

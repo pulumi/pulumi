@@ -25,6 +25,7 @@ from pulumi.provider.experimental.analyzer import (
     DuplicateTypeError,
     InvalidListTypeError,
     InvalidMapKeyError,
+    InvalidMapTypeError,
     TypeNotFoundError,
     is_dict,
     is_list,
@@ -433,6 +434,23 @@ def test_analyze_dict_non_str_key():
         assert str(e) == "map keys must be strings, got 'int' for 'Args.bad_dict'"
 
 
+def test_analyze_dice_no_types():
+    class Args(TypedDict):
+        bad_dict: pulumi.Input[dict]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    try:
+        analyzer.analyze_component(Component, Path("test_analyzer"))
+    except InvalidMapTypeError as e:
+        assert (
+            str(e)
+            == "map types must specify two type arguments, got 'dict' for 'Args.bad_dict'"
+        )
+
+
 def test_analyze_dict_simple():
     class Args(TypedDict):
         dict_input: pulumi.Input[dict[str, int]]
@@ -655,6 +673,31 @@ def test_analyze_asset():
         inputs_mapping={"inputArchive": "input_archive"},
         outputs={"outputArchive": PropertyDefinition(ref="pulumi.json#/Asset")},
         outputs_mapping={"outputArchive": "output_archive"},
+    )
+
+
+def test_analyze_any():
+    class Args(TypedDict):
+        input_any: pulumi.Input[Any]
+        regular_any: Any
+
+    class Component(pulumi.ComponentResource):
+        output_any: pulumi.Input[Any]
+
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer(metadata)
+    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "inputAny": PropertyDefinition(ref="pulumi.json#/Any"),
+            "regularAny": PropertyDefinition(ref="pulumi.json#/Any", plain=True),
+        },
+        inputs_mapping={"inputAny": "input_any", "regularAny": "regular_any"},
+        outputs={"outputAny": PropertyDefinition(ref="pulumi.json#/Any")},
+        outputs_mapping={"outputAny": "output_any"},
     )
 
 

@@ -20,7 +20,6 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -52,7 +51,7 @@ func newStackRmCmd() *cobra.Command {
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 			yes = yes || env.SkipConfirmations.Value()
@@ -78,6 +77,10 @@ func newStackRmCmd() *cobra.Command {
 			)
 			if err != nil {
 				return err
+			}
+
+			if !cmdutil.Interactive() && !yes {
+				return errors.New("non-interactive mode requires --yes flag")
 			}
 
 			// Ensure the user really wants to do this.
@@ -117,7 +120,7 @@ func newStackRmCmd() *cobra.Command {
 
 			contract.IgnoreError(state.SetCurrentStack(""))
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(

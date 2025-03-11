@@ -302,7 +302,7 @@ func TestStackEnvConfig(t *testing.T) {
 				DecryptValueF: func() string {
 					return "plaintext"
 				},
-				BulkDecryptF: func() []string {
+				BatchDecryptF: func() []string {
 					return []string{
 						"whatiamdoing",
 					}
@@ -387,7 +387,7 @@ func TestCopyConfig(t *testing.T) {
 				DecryptValueF: func() string {
 					return "plaintext"
 				},
-				BulkDecryptF: func() []string {
+				BatchDecryptF: func() []string {
 					return []string{
 						"whatiamdoing",
 					}

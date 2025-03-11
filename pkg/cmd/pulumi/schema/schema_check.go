@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -43,7 +42,7 @@ func newSchemaCheckCommand() *cobra.Command {
 			"Ensure that a Pulumi package schema meets the requirements imposed by the\n" +
 			"schema spec as well as additional requirements imposed by the supported\n" +
 			"target languages.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			file := args[0]
 
 			// Read from stdin or a specified file
@@ -78,7 +77,7 @@ func newSchemaCheckCommand() *cobra.Command {
 				return errors.New("schema validation failed")
 			}
 			return err
-		}),
+		},
 	}
 
 	return cmd

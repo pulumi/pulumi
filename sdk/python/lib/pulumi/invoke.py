@@ -72,20 +72,11 @@ class InvokeOptions:
                URL will be used to service the invocation. This will override the URL sourced from the host package, and
                should be rarely used.
         """
-        # Expose 'merge' on this object as an instance method.
-        # TODO[python/mypy#2427]: mypy disallows method assignment
-        self.merge = self._merge_instance  # type: ignore
-        self.merge.__func__.__doc__ = InvokeOptions.merge.__doc__  # type: ignore
-
         self.parent = parent
         self.provider = provider
         self.version = version
         self.plugin_download_url = plugin_download_url
 
-    def _merge_instance(self, opts: "InvokeOptions") -> "InvokeOptions":
-        return InvokeOptions.merge(self, opts)
-
-    @staticmethod
     def merge(
         opts1: Optional["InvokeOptions"],
         opts2: Optional["InvokeOptions"],
@@ -167,17 +158,6 @@ class InvokeOutputOptions(InvokeOptions):
         )
         self.depends_on = depends_on
 
-        # Expose 'merge' on this object as an instance method.
-        # TODO[python/mypy#2427]: mypy disallows method assignment
-        self.merge = self._merge_instance  # type: ignore
-        self.merge.__func__.__doc__ = InvokeOptions.merge.__doc__  # type: ignore
-
-    def _merge_instance(
-        self, opts: "Union[InvokeOptions, InvokeOutputOptions]"
-    ) -> "InvokeOutputOptions":
-        return InvokeOutputOptions.merge(self, opts)
-
-    @staticmethod
     def merge(
         opts1: Optional[Union["InvokeOptions", "InvokeOutputOptions"]],
         opts2: Optional[Union["InvokeOptions", "InvokeOutputOptions"]],

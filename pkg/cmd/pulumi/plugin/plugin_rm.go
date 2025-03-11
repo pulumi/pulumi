@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -52,7 +51,7 @@ func newPluginRmCmd() *cobra.Command {
 			"This removal cannot be undone.  If a deleted plugin is subsequently required\n" +
 			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 			"using the plugin install command.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			yes = yes || env.SkipConfirmations.Value()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -130,7 +129,7 @@ func newPluginRmCmd() *cobra.Command {
 				}
 			}
 			return result
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(

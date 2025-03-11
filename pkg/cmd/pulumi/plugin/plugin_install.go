@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -56,10 +55,10 @@ func newPluginInstallCmd() *cobra.Command {
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
 			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
 			"the plugin, though the result is not guaranteed.",
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return picmd.Run(ctx, args)
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVar(&picmd.serverURL,

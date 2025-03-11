@@ -61,7 +61,7 @@ func newStackLsCmd() *cobra.Command {
 			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
 				jsonOut:    jsonOut,
@@ -71,7 +71,7 @@ func newStackLsCmd() *cobra.Command {
 				tagFilter:  tagFilter,
 			}
 			return runStackLS(ctx, cmdArgs)
-		}),
+		},
 	}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")

@@ -146,6 +146,15 @@ export interface SerializationOptions {
      * output values, they will not be kept, even when this is set to true.
      */
     keepOutputValues?: boolean;
+
+    /**
+     * True if we should exclude resource references from the set of dependencies
+     * identified during serialization. This is useful for remote components where
+     * we want propertyDependencies to be empty for a property that only contains
+     * resource references. If the monitor does not support resource references,
+     * this will have no effect.
+     */
+    excludeResourceReferencesFromDependencies?: boolean;
 }
 
 /**
@@ -376,7 +385,7 @@ export function serializeSecretValue(value: any): any {
 export async function serializeProperty(
     ctx: string,
     prop: Input<any>,
-    dependentResources: Set<Resource>,
+    dependentResources?: Set<Resource>,
     opts?: SerializationOptions,
 ): Promise<any> {
     // IMPORTANT:
@@ -431,7 +440,9 @@ export async function serializeProperty(
 
         const propResources = await getAllResources(prop);
         for (const resource of propResources) {
-            dependentResources.add(resource);
+            if (dependentResources) {
+                dependentResources.add(resource);
+            }
         }
 
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
@@ -451,7 +462,9 @@ export async function serializeProperty(
         });
         for (const resource of promiseDeps) {
             propResources.add(resource);
-            dependentResources.add(resource);
+            if (dependentResources) {
+                dependentResources.add(resource);
+            }
         }
 
         if (opts?.keepOutputValues && getStore().supportsOutputValues) {
@@ -463,7 +476,9 @@ export async function serializeProperty(
             }
             for (const resource of urnDeps) {
                 propResources.add(resource);
-                dependentResources.add(resource);
+                if (dependentResources) {
+                    dependentResources.add(resource);
+                }
             }
 
             const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources, new Set<Resource>());
@@ -502,7 +517,19 @@ export async function serializeProperty(
             log.debug(`Serialize property [${ctx}]: custom resource urn`);
         }
 
-        dependentResources.add(prop);
+        if (opts?.excludeResourceReferencesFromDependencies && getStore().supportsResourceReferences) {
+            // If excluding resource references from dependencies and the monitor supports resource
+            // references, we don't want to track this dependency, so we set `dependentResources`
+            // to undefined so when serializing the `id` and `urn` the resource won't be included
+            // in the caller's `dependentResources`.
+            dependentResources = undefined;
+        } else {
+            // Otherwise, track the dependency.
+            if (dependentResources) {
+                dependentResources.add(prop);
+            }
+        }
+
         const id = await serializeProperty(`${ctx}.id`, prop.id, dependentResources, {
             keepOutputValues: false,
         });
@@ -518,6 +545,7 @@ export async function serializeProperty(
                 id: id,
             };
         }
+
         // Else, return the id for backward compatibility.
         return id;
     }
@@ -542,6 +570,14 @@ export async function serializeProperty(
         }
 
         if (getStore().supportsResourceReferences) {
+            if (opts?.excludeResourceReferencesFromDependencies) {
+                // If excluding resource references from dependencies and the monitor supports resource
+                // references, we don't want to track this dependency, so we set `dependentResources`
+                // to undefined so when serializing the `urn` the resource won't be included in the
+                // caller's `dependentResources`.
+                dependentResources = undefined;
+            }
+
             // If we are keeping resources, emit a strongly typed wrapper over the URN
             const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
                 keepOutputValues: false,

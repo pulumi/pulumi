@@ -1,0 +1,3 @@
+name: pulumi-python-organization
+description: A simple Python Pulumi program that expects the organization to be set
+runtime: python

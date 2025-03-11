@@ -15,7 +15,6 @@
 package packagecmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -31,48 +29,39 @@ import (
 )
 
 func newPackagePublishCmd() *cobra.Command {
-	var publCmd publishCmd
+	var path string
 	cmd := &cobra.Command{
 		Use:    "publish-sdk <language>",
 		Args:   cobra.RangeArgs(0, 1),
 		Short:  "Publish a package SDK to supported package registries.",
 		Hidden: !env.Dev.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			return publCmd.Run(ctx, args)
-		}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			lang := "all"
+			if len(args) > 0 {
+				lang = args[0]
+			}
+
+			switch lang {
+			case "nodejs":
+				err := publishToNPM(path)
+				if err != nil {
+					return err
+				}
+			case "all", "python", "java", "dotnet":
+				return fmt.Errorf("support for %q coming soon", lang)
+
+			default:
+				return fmt.Errorf("unsupported language %q", lang)
+			}
+
+			return nil
+		},
 	}
-	cmd.PersistentFlags().StringVar(&publCmd.Path, "path", "",
+	cmd.PersistentFlags().StringVar(&path, "path", "",
 		`The path to the root of your package.
 	Example: ./sdk/nodejs
 	`)
 	return cmd
-}
-
-type publishCmd struct {
-	Path string
-}
-
-func (cmd *publishCmd) Run(ctx context.Context, args []string) error {
-	lang := "all"
-	if len(args) > 0 {
-		lang = args[0]
-	}
-
-	switch lang {
-	case "nodejs":
-		err := publishToNPM(cmd.Path)
-		if err != nil {
-			return err
-		}
-	case "all", "python", "java", "dotnet":
-		return fmt.Errorf("support for %q coming soon", lang)
-
-	default:
-		return fmt.Errorf("unsupported language %q", lang)
-	}
-
-	return nil
 }
 
 func publishToNPM(path string) error {

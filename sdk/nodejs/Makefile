@@ -65,14 +65,14 @@ install_plugin:: build
 install:: install_package install_plugin
 
 unit_tests:: $(TEST_ALL_DEPS)
-	yarn run nyc -s mocha --timeout 120000 \
+	yarn run nyc --no-clean -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
 		'bin/tests/**/*.spec.js'
-	yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc --no-clean -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
@@ -111,6 +111,17 @@ test_all:: sxs_tests unit_tests test_auto test_go test_integration
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
+
+PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
+TEST_GREP ?= .*
+
+# Watches all the typescript files and runs the tests every time they change.
+# Can optionally be given a regex of tests to match. For example, to iterate
+# on one test specifically, one could use the following command:
+#
+# $ make test_watch TEST_GREP="lists tag values"
+test_watch::
+	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
 dist:: build
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/

@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -58,7 +57,7 @@ This command can be used to surgically edit a stack's state in the editor
 specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("pulumi state edit must be run in interactive mode")
 			}
@@ -82,7 +81,7 @@ a preview showing a diff of the altered state.`,
 				return err
 			}
 			return nil
-		}),
+		},
 	}
 	cmd.PersistentFlags().StringVar(
 		&stackName, "stack", "",

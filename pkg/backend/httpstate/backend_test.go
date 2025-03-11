@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -70,6 +71,27 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, expected, actual)
+}
+
+//nolint:paralleltest // mutates env vars and global state
+func TestMissingPulumiAccessToken(t *testing.T) {
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	{ // Disable interactive mode
+		disableInteractive := cmdutil.DisableInteractive
+		cmdutil.DisableInteractive = true
+		t.Cleanup(func() {
+			cmdutil.DisableInteractive = disableInteractive
+		})
+	}
+
+	ctx := context.Background()
+
+	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
+	var expectedErr backend.MissingEnvVarForNonInteractiveError
+	if assert.ErrorAs(t, err, &expectedErr) {
+		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
+	}
 }
 
 //nolint:paralleltest // mutates global configuration

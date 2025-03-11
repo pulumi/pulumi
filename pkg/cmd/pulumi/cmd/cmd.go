@@ -30,21 +30,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/spf13/cobra"
 )
 
-// RunCmdFunc wraps cmdutil.RunFunc. While cmdutil.RunFunc provides a standard
-// wrapper for dealing with and logging errors before exiting with an
-// appropriate error code, RunCmdFunc extends this with additional error
-// handling specific to the Pulumi CLI. This includes e.g. specific and more
-// helpful messages in the case of decryption or snapshot integrity errors.
-func RunCmdFunc(
-	run func(cmd *cobra.Command, args []string) error,
-) func(cmd *cobra.Command, args []string) {
-	return cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-		err := run(cmd, args)
-		return processCmdErrors(err)
-	})
+// Display an error to the user.
+//
+// DisplayErrorMessage respects [result.IsBail].
+//
+// DisplayErrorMessage adds additional error handling specific to the Pulumi CLI. This
+// includes e.g. specific and more helpful messages in the case of decryption or snapshot
+// integrity errors.
+func DisplayErrorMessage(err error) {
+	err = processCmdErrors(err)
+	cmdutil.DisplayErrorMessage(err)
 }
 
 // Processes errors that may be returned from commands, providing a central

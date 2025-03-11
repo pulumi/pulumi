@@ -137,6 +137,9 @@ async function addTransitivelyReferencedChildResourcesOfComponentResources(
     exclude: Set<Resource>,
     result: Set<Resource>,
 ) {
+    // We can collect the resources out of the loop
+    const promises: Promise<void>[] = [];
+
     if (resources) {
         for (const resource of resources) {
             if (!result.has(resource)) {
@@ -152,11 +155,20 @@ async function addTransitivelyReferencedChildResourcesOfComponentResources(
                     // This await is safe even if __isConstructed is undefined. Ensure that the
                     // resource has completely finished construction.  That way all parent/child
                     // relationships will have been setup.
-                    await resource.__data;
-                    const children = resource.__childResources;
-                    addTransitivelyReferencedChildResourcesOfComponentResources(children, exclude, result);
+                    promises.push(
+                        resource.__data.then(() => {
+                            const children = resource.__childResources;
+                            return addTransitivelyReferencedChildResourcesOfComponentResources(
+                                children,
+                                exclude,
+                                result,
+                            );
+                        }),
+                    );
                 }
             }
         }
     }
+
+    await Promise.all(promises);
 }

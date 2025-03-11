@@ -64,6 +64,8 @@ type Options struct {
 	// whether or not to exit after refreshing (i.e. this is specifically a
 	// refresh operation).
 	RefreshOnly bool
+	// true if the plan should run the program as part of destroy.
+	DestroyProgram bool
 	// if specified, only operate on the specified resources.
 	Targets UrnTargets
 	// if specified, mark the specified resources for replacement.

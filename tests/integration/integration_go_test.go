@@ -1594,3 +1594,41 @@ func TestErrorNoMainPackage(t *testing.T) {
 		},
 	})
 }
+
+// TODO[pulumi/pulumi#18202]: Delete this integration test when we can enable
+// the `l2-component-property-deps` go conformance test.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestConstructPropertyDepsGo(t *testing.T) {
+	testDir := "construct_component_property_deps"
+	runComponentSetup(t, testDir)
+
+	localProvider := integration.LocalDependency{
+		Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go"),
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			expected := map[string]any{
+				"resource":     []any{},
+				"resourceList": []any{},
+				"resourceMap":  []any{},
+			}
+			foundComponent := false
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.URN.Name() == "component1" {
+					foundComponent = true
+					assert.Equal(t, expected, res.Outputs["propertyDeps"])
+				}
+			}
+			assert.True(t, foundComponent)
+
+			assert.Equal(t, expected, stackInfo.Outputs["propertyDepsFromCall"])
+		},
+	})
+}

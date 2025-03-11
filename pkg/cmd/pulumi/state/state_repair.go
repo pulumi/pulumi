@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -94,7 +93,7 @@ valid, and remains invalid after repair has been attempted, this command will
 not write any changes.
 `,
 		Args: cmdutil.NoArgs,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.Flags().Visit(func(f *pflag.Flag) {
 				stateRepair.FlagsString += fmt.Sprintf(" --%s=%q", f.Name, f.Value)
 			})
@@ -103,7 +102,7 @@ not write any changes.
 			err := stateRepair.run(ctx)
 
 			return err
-		}),
+		},
 	}
 
 	cmd.Flags().StringVarP(&stateRepair.Args.Stack,

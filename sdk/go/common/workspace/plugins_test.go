@@ -1983,6 +1983,10 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
+	require.Equal(t, "path/", header.Name)
+
+	header, err = tarReader.Next()
+	require.NoError(t, err)
 	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
@@ -2022,6 +2026,10 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
+	require.Equal(t, "path/", header.Name)
+
+	header, err = tarReader.Next()
+	require.NoError(t, err)
 	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
@@ -2060,6 +2068,10 @@ func TestGitSourceDownloadHash(t *testing.T) {
 
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
+	require.NoError(t, err)
+	require.Equal(t, "path/", header.Name)
+
+	header, err = tarReader.Next()
 	require.NoError(t, err)
 	require.Equal(t, "path/test", header.Name)
 

@@ -41,6 +41,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    CONFIGURE_WITH_URN_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -56,15 +57,18 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     in the case that the engine has been asked to attach to an existing running provider instance via a host/port
     number), this field will be empty.
     """
+    configure_with_urn: builtins.bool
+    """If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration."""
     def __init__(
         self,
         *,
         engine_address: builtins.str = ...,
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
+        configure_with_urn: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
     @typing.overload
@@ -78,9 +82,37 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    ACCEPT_SECRETS_FIELD_NUMBER: builtins.int
+    ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
+    ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
+    SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
+    accept_secrets: builtins.bool
+    """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+    values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
+    """
+    accept_resources: builtins.bool
+    """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+    strongly typed values to the provider. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Configure).
+    """
+    accept_outputs: builtins.bool
+    """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+    to the provider where possible. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Configure).
+    """
+    supports_autonaming_configuration: builtins.bool
+    """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
+    user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
+    """
     def __init__(
         self,
+        *,
+        accept_secrets: builtins.bool = ...,
+        accept_resources: builtins.bool = ...,
+        accept_outputs: builtins.bool = ...,
+        supports_autonaming_configuration: builtins.bool = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
@@ -262,6 +294,10 @@ class ConfigureRequest(google.protobuf.message.Message):
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_FIELD_NUMBER: builtins.int
     SENDS_OLD_INPUTS_TO_DELETE_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
     @property
     def variables(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """:::{warning}
@@ -319,6 +355,24 @@ class ConfigureRequest(google.protobuf.message.Message):
     [](pulumirpc.ResourceProvider.Delete) calls. If true, the provider should expect these fields to be populated in
     these calls. *Must* be true if the caller has previously called [](pulumirpc.ResourceProvider.Handshake).
     """
+    id: builtins.str
+    """The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
+    Handshake.
+    """
+    urn: builtins.str
+    """The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
+    Handshake.
+    """
+    name: builtins.str
+    """The name of the provider being configured. This must match the name specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the name of the
+    provider.  N.B. This will be null if configure_with_urn was false in Handshake.
+    """
+    type: builtins.str
+    """The type of the provider being configured. This must match the type specified by the `urn` field, and
+    is passed so that providers do not have to implement URN parsing in order to extract the type of the
+    provider. N.B. This will be null if configure_with_urn was false in Handshake.
+    """
     def __init__(
         self,
         *,
@@ -328,9 +382,21 @@ class ConfigureRequest(google.protobuf.message.Message):
         acceptResources: builtins.bool = ...,
         sends_old_inputs: builtins.bool = ...,
         sends_old_inputs_to_delete: builtins.bool = ...,
+        id: builtins.str | None = ...,
+        urn: builtins.str | None = ...,
+        name: builtins.str | None = ...,
+        type: builtins.str | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "variables", b"variables"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_id", b"_id", "_name", b"_name", "_type", b"_type", "_urn", b"_urn", "args", b"args", "id", b"id", "name", b"name", "type", b"type", "urn", b"urn"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_id", b"_id", "_name", b"_name", "_type", b"_type", "_urn", b"_urn", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "args", b"args", "id", b"id", "name", b"name", "sends_old_inputs", b"sends_old_inputs", "sends_old_inputs_to_delete", b"sends_old_inputs_to_delete", "type", b"type", "urn", b"urn", "variables", b"variables"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_id", b"_id"]) -> typing_extensions.Literal["id"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_name", b"_name"]) -> typing_extensions.Literal["name"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_type", b"_type"]) -> typing_extensions.Literal["type"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_urn", b"_urn"]) -> typing_extensions.Literal["urn"] | None: ...
 
 global___ConfigureRequest = ConfigureRequest
 
@@ -349,7 +415,8 @@ class ConfigureResponse(google.protobuf.message.Message):
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
     acceptSecrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
-    values to the provider. *Must* be true if the provider implements [](pulumirpc.ResourceProvider.Handshake).
+    values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake)
+    if the provider supports handshaking.
     """
     supportsPreview: builtins.bool
     """True if and only if the provider supports the `preview` field on [](pulumirpc.ResourceProvider.Create) and
@@ -358,16 +425,19 @@ class ConfigureResponse(google.protobuf.message.Message):
     """
     acceptResources: builtins.bool
     """True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
-    strongly typed values to the provider. *Must* be true if the provider implements
-    [](pulumirpc.ResourceProvider.Handshake).
+    strongly typed values to the provider. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Handshake) if the provider supports handshaking.
     """
     acceptOutputs: builtins.bool
     """True if and only if the provider supports output values as inputs. If true, the engine should pass output values
-    to the provider where possible. *Must* be true if the provider implements
-    [](pulumirpc.ResourceProvider.Handshake).
+    to the provider where possible. *Must* match the value returned in response to
+    [](pulumirpc.ResourceProvider.Handshake) if the provider supports handshaking.
     """
     supports_autonaming_configuration: builtins.bool
-    """True if the provider accepts and respects Autonaming configuration that the engine provides on behalf of user."""
+    """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
+    user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake) if the provider
+    supports handshaking.
+    """
     def __init__(
         self,
         *,
@@ -1753,22 +1823,21 @@ global___ErrorResourceInitFailed = ErrorResourceInitFailed
 
 @typing_extensions.final
 class GetMappingRequest(google.protobuf.message.Message):
-    """GetMappingRequest allows providers to return ecosystem specific information to allow the provider to be
-    converted from a source markup to Pulumi. It's expected that provider bridges that target a given ecosystem
-    (e.g. Terraform, Kubernetes) would also publish a conversion plugin to convert markup from that ecosystem
-    to Pulumi, using the bridged providers.
-    """
+    """`GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     KEY_FIELD_NUMBER: builtins.int
     PROVIDER_FIELD_NUMBER: builtins.int
     key: builtins.str
-    """the conversion key for the mapping being requested."""
+    """The conversion key for the mapping being requested. This typically corresponds to the source language, such as
+    `terraform` in the case of mapping Terraform names to Pulumi names.
+    """
     provider: builtins.str
-    """the optional provider key for the mapping being requested, if this is empty the provider should assume this
-    request is from an old engine from before GetMappings and should return it's "primary" mapping. If this is set
-    then the `provider` field in GetMappingResponse should be the same.
+    """An optional *source provider key* for the mapping being requested. If this is empty, the provider should assume
+    that this request is from an old engine prior to the introduction of [](pulumirpc.ResourceProvider.GetMappings).
+    In these cases the request should be answered with the "primary" mapping. If this field is set, the `provider`
+    field in the corresponding [](pulumirpc.GetMappingResponse) should contain the same value.
     """
     def __init__(
         self,
@@ -1782,8 +1851,9 @@ global___GetMappingRequest = GetMappingRequest
 
 @typing_extensions.final
 class GetMappingResponse(google.protobuf.message.Message):
-    """GetMappingResponse returns convert plugin specific data for this provider. This will normally be human
-    readable JSON, but the engine doesn't mandate any form.
+    """`GetMappingResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMapping) call. The data
+    within a `GetMappingResponse` will normally be human-readable JSON (e.g. an object mapping names from the source to
+    Pulumi), but the engine doesn't mandate any specific format.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -1791,9 +1861,9 @@ class GetMappingResponse(google.protobuf.message.Message):
     PROVIDER_FIELD_NUMBER: builtins.int
     DATA_FIELD_NUMBER: builtins.int
     provider: builtins.str
-    """the provider key this is mapping for. For example the Pulumi provider "terraform-template" would return "template" for this."""
+    """The *source provider key* that this mapping contains data for."""
     data: builtins.bytes
-    """the conversion plugin specific data."""
+    """Mapping data in a format specific to the conversion plugin/source language."""
     def __init__(
         self,
         *,
@@ -1806,15 +1876,15 @@ global___GetMappingResponse = GetMappingResponse
 
 @typing_extensions.final
 class GetMappingsRequest(google.protobuf.message.Message):
-    """GetMappingsRequest allows providers to return ecosystem specific information without having to send back large data
-    blobs for provider mappings that the engine doesn't then need.
-    """
+    """`GetMappingsRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMappings) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     KEY_FIELD_NUMBER: builtins.int
     key: builtins.str
-    """the conversion key for the mapping being requested."""
+    """The conversion key for the mapping being requested. This typically corresponds to the source language, such as
+    `terraform` in the case of mapping Terraform names to Pulumi names.
+    """
     def __init__(
         self,
         *,
@@ -1826,15 +1896,15 @@ global___GetMappingsRequest = GetMappingsRequest
 
 @typing_extensions.final
 class GetMappingsResponse(google.protobuf.message.Message):
-    """GetMappingsRequest returns a list of providers that this provider can provide mapping information for."""
+    """`GetMappingsResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.GetMappings) call."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROVIDERS_FIELD_NUMBER: builtins.int
     @property
     def providers(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """the provider keys this provider can supply mappings for. For example the Pulumi provider "terraform-template"
-        would return ["template"] for this.
+        """The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
+        `terraform-template` would return `["template"]` for this.
         """
     def __init__(
         self,

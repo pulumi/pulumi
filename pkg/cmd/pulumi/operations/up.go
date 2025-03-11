@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
@@ -51,8 +51,26 @@ import (
 
 // The default number of parallel resource operations to run at once during an update, if --parallel is unset.
 // See https://github.com/pulumi/pulumi/issues/14989 for context around the cpu * 4 choice.
-var defaultParallel = int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
-//                                                                  but the NumCPU function returns an int.
+
+func defaultParallel() int32 {
+	// Initialize parallel from environment if available, otherwise use defaultParallel
+	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4 //nolint:gosec
+	// GOMAXPROCS is an int32 internally, but the GOMAXPROCS function returns an int.
+	var defaultParallel int32
+	if p := env.Parallel.Value(); p > 0 {
+		if p > math.MaxInt32 {
+			// Log a warning and cap at MaxInt32
+			logging.Warningf("Parallel value %d exceeds maximum allowed value, capping at %d", p, math.MaxInt32)
+			defaultParallel = math.MaxInt32
+		} else {
+			defaultParallel = int32(p) //nolint:gosec
+		}
+	} else {
+		defaultParallel = osDefaultParallel
+	}
+
+	return defaultParallel
+}
 
 // intentionally disabling here for cleaner err declaration/assignment.
 //
@@ -471,7 +489,7 @@ func NewUpCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
@@ -586,7 +604,7 @@ func NewUpCmd() *cobra.Command {
 				opts,
 				cmd,
 			)
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(
@@ -651,7 +669,7 @@ func NewUpCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().Int32VarP(
-		&parallel, "parallel", "p", defaultParallel,
+		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",

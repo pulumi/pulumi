@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 from typing import Optional
+import inspect
 import logging
 import os
 import sys
@@ -66,6 +67,7 @@ if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
     ap = argparse.ArgumentParser(description='Execute a Pulumi Python program')
     ap.add_argument('--project', help='Set the project name')
+    ap.add_argument('--root_directory', help='Set the project root directory, location of Pulumi.yaml')
     ap.add_argument('--stack', help='Set the stack name')
     ap.add_argument('--parallel', help='Run P resource operations in parallel (default=none)')
     ap.add_argument('--dry_run', help='Simulate resource changes, but without making them')
@@ -91,26 +93,30 @@ if __name__ == "__main__":
             pulumi.runtime.set_config(k, v)
 
     # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
-    # New versions of pulumi python support setting organization, old versions do not
+    # Note that older versions of the `pulumi` python SDK do not support newer
+    # parameters like `organization` and `root_directory`. We automatically fall back
+    # to excluding unsupported parameters, if needed.
+    settings_kwargs = {
+        "monitor": args.monitor,
+        "engine": args.engine,
+        "project": args.project,
+        "stack": args.stack,
+        "parallel": int(args.parallel),
+        "dry_run": args.dry_run == "true",
+        "organization": args.organization,
+        "root_directory": args.root_directory,
+    }
     try:
-        settings = pulumi.runtime.Settings(
-            monitor=args.monitor,
-            engine=args.engine,
-            project=args.project,
-            stack=args.stack,
-            parallel=int(args.parallel),
-            dry_run=args.dry_run == "true",
-            organization=args.organization,
-        )
+        # Try to create the `Settings` object with all possible parameters.
+        settings = pulumi.runtime.Settings(**settings_kwargs)
     except TypeError:
-        settings = pulumi.runtime.Settings(
-            monitor=args.monitor,
-            engine=args.engine,
-            project=args.project,
-            stack=args.stack,
-            parallel=int(args.parallel),
-            dry_run=args.dry_run == "true"
-        )
+        # The `Settings` class didn't support some of the parameters we passed in.
+        # Fall back to a slower path that inspects the valid parameters from the
+        # signature, filters out unsupported parameters, and tries to create the
+        # `Settings` object again with only supported parameters.
+        settings_params = inspect.signature(pulumi.runtime.Settings.__init__).parameters
+        filtered_kwargs = {k: v for k, v in settings_kwargs.items() if k in settings_params}
+        settings = pulumi.runtime.Settings(**filtered_kwargs)
 
     pulumi.runtime.configure(settings)
 

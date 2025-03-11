@@ -95,7 +95,7 @@ func NewLoginCmd() *cobra.Command {
 			"\n" +
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -191,7 +191,7 @@ func NewLoginCmd() *cobra.Command {
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log in to")

@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/appdash/traceapp"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -43,7 +42,7 @@ func NewViewTraceCmd() *cobra.Command {
 			"port 8008; the --port flag can be used to change this if necessary.",
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !env.DebugCommands.Value(),
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 			if err != nil {
 				return err
@@ -62,7 +61,7 @@ func NewViewTraceCmd() *cobra.Command {
 
 			fmt.Printf("Displaying trace at %v\n", url)
 			return http.ListenAndServe(fmt.Sprintf(":%d", port), app) //nolint:gosec
-		}),
+		},
 	}
 
 	cmd.PersistentFlags().IntVar(&port, "port", 8008,

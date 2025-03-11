@@ -630,6 +630,8 @@ type Package struct {
 	PluginDownloadURL string
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string
+	// Namespace is the namespace of the package, that's used to diambiguate the package name.
+	Namespace string
 	// A list of allowed package name in addition to the Name property.
 	AllowedPackageNames []string
 
@@ -991,6 +993,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Version:             version,
 		DisplayName:         pkg.DisplayName,
 		Publisher:           pkg.Publisher,
+		Namespace:           pkg.Namespace,
 		Description:         pkg.Description,
 		Keywords:            pkg.Keywords,
 		Homepage:            pkg.Homepage,
@@ -1977,6 +1980,8 @@ type PackageInfoSpec struct {
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
+	// Namespace is the namespace of the package, that's used to diambiguate the package name.
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
@@ -2039,6 +2044,8 @@ type PackageSpec struct {
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
+	// Namespace is the namespace of the package, that's used to diambiguate the package name.
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
@@ -2079,6 +2086,7 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		LogoURL:             p.LogoURL,
 		PluginDownloadURL:   p.PluginDownloadURL,
 		Publisher:           p.Publisher,
+		Namespace:           p.Namespace,
 		Meta:                p.Meta,
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,

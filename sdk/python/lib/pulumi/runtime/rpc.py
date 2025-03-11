@@ -176,7 +176,8 @@ async def serialize_properties(
     resource_obj: Optional["Resource"] = None,
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
-    keep_output_values: Optional[bool] = None,
+    keep_output_values: bool = False,
+    exclude_resource_refs_from_deps: bool = False,
 ) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
@@ -192,7 +193,22 @@ async def serialize_properties(
 
     :param Dict[str, List[Resource]] property_deps: Dependencies are set here.
 
-    :param input_transfomer: Optional name translator.
+    :param Optional[Resource] resource_obj: Optional resource object to use to provide
+    better error messages.
+
+    :param Optional[Callable[[str], str]] input_transfomer: Optional name translator.
+
+    :param Optional[type] typ: Optional input type to use for name translations rather
+    than using the input_transformer.
+
+    :param bool keep_output_values: If true, output values will be kept (only if the
+    monitor supports output values).
+
+    :param bool exclude_resource_refs_from_deps: If true, resource references will not be
+    added to `property_deps` during serialization (only if the monitor supports resource
+    references). This is useful for remote components (i.e. MLCs) and resource method
+    calls where we want property dependencies to be empty for a property that only
+    contains resource references.
     """
 
     # Default implementation of get_type that always returns None.
@@ -222,6 +238,7 @@ async def serialize_properties(
                 input_transformer,
                 get_type(k),
                 keep_output_values,
+                exclude_resource_refs_from_deps,
             )
         except ValueError as e:
             raise ValueError(
@@ -344,12 +361,13 @@ async def _expand_dependencies(
 
 async def serialize_property(
     value: "Input[Any]",
-    deps: List["Resource"],
+    deps: Optional[List["Resource"]],
     property_key: Optional[str],
     resource_obj: Optional["Resource"] = None,
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
-    keep_output_values: Optional[bool] = None,
+    keep_output_values: bool = False,
+    exclude_resource_refs_from_deps: bool = False,
 ) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
@@ -358,7 +376,26 @@ async def serialize_property(
     When `typ` is specified, the metadata from the type is used to translate Python snake_case
     names to Pulumi camelCase names, rather than using the `input_transformer`.
 
-    If `keep_output_values` is true and the monitor supports output values, they will be kept.
+    :param Input[Any] value: The value to serialize.
+
+    :param Optional[List["Resource"]] deps: Dependent resources discovered during serialization are added to this list.
+
+    :param Optional[str] property_key: The name of the property being serialized.
+
+    :param Optional[Resource] resource_obj: Optional resource object to use to provide better error messages.
+
+    :param Optional[Callable[[str], str]]input_transformer: Optional name translator.
+
+    :param Optional[type] typ: Optional input type to use for name translations rather than using the
+    input_transformer.
+
+    :param bool keep_output_values: If true, output values will be kept (only if the monitor
+    supports output values).
+
+    :param bool exclude_resource_refs_from_deps: If true, resource references will not be added to
+    `deps` during serialization (only if the monitor supports resource references). This is
+    useful for remote components (i.e. MLCs) and resource method calls where we want property
+    dependencies to be empty for a property that only contains resource references.
     """
 
     # Set typ to T if it's Optional[T], Input[T], or InputType[T].
@@ -386,6 +423,7 @@ async def serialize_property(
                     input_transformer,
                     element_type,
                     keep_output_values,
+                    exclude_resource_refs_from_deps,
                 )
             )
 
@@ -399,6 +437,15 @@ async def serialize_property(
 
         is_custom = known_types.is_custom_resource(value)
         resource_id = cast("CustomResource", value).id if is_custom else None
+
+        if (
+            exclude_resource_refs_from_deps
+            and await settings.monitor_supports_resource_references()
+        ):
+            # If excluding resource references from dependencies and the monitor supports resource
+            # references, we don't want to track this dependency, so we set `deps` to `None` so when
+            # serializing the `id` and `urn` the resource won't be included in the caller's `deps`.
+            deps = None
 
         # If we're retaining resources, serialize the resource as a reference.
         if await settings.monitor_supports_resource_references():
@@ -449,6 +496,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                exclude_resource_refs_from_deps=False,
             )
         elif hasattr(value, "text"):
             str_asset = cast("StringAsset", value)
@@ -459,6 +507,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                exclude_resource_refs_from_deps=False,
             )
         elif hasattr(value, "uri"):
             remote_asset = cast("RemoteAsset", value)
@@ -469,6 +518,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                exclude_resource_refs_from_deps=False,
             )
         else:
             raise AssertionError(f"unknown asset type: {value!r}")
@@ -490,6 +540,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                exclude_resource_refs_from_deps=False,
             )
         elif hasattr(value, "path"):
             file_archive = cast("FileArchive", value)
@@ -500,6 +551,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                exclude_resource_refs_from_deps=False,
             )
         elif hasattr(value, "uri"):
             remote_archive = cast("RemoteArchive", value)
@@ -510,6 +562,7 @@ async def serialize_property(
                 resource_obj,
                 input_transformer,
                 keep_output_values=False,
+                exclude_resource_refs_from_deps=False,
             )
         else:
             raise AssertionError(f"unknown archive type: {value!r}")
@@ -533,12 +586,14 @@ async def serialize_property(
             input_transformer,
             typ,
             keep_output_values,
+            exclude_resource_refs_from_deps,
         )
 
     if known_types.is_output(value):
         output = cast("Output", value)
         value_resources: Set["Resource"] = await output.resources()
-        deps.extend(value_resources)
+        if deps is not None:
+            deps.extend(value_resources)
 
         # When serializing an Output, we will either serialize it as its resolved value or the
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
@@ -556,7 +611,8 @@ async def serialize_property(
             typ,
             keep_output_values=False,
         )
-        deps.extend(promise_deps)
+        if deps is not None:
+            deps.extend(promise_deps)
         value_resources.update(promise_deps)
 
         if keep_output_values and await settings.monitor_supports_output_values():
@@ -609,6 +665,7 @@ async def serialize_property(
                 input_transformer,
                 types.get(k),
                 keep_output_values,
+                exclude_resource_refs_from_deps,
             )
             for k, v in value.items()
         }
@@ -664,6 +721,7 @@ async def serialize_property(
                 input_transformer,
                 get_type(transformed_key),
                 keep_output_values,
+                exclude_resource_refs_from_deps,
             )
 
         return obj

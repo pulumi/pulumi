@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -39,7 +38,7 @@ is the name of the source provider (e.g. "terraform", if a mapping was being req
 from Terraform to Pulumi). If you need to pass parameters, you must provide a provider
 key. In the event that you wish to pass none, you must therefore explicitly pass an
 empty string.`,
-		Run: cmd.RunCmdFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			source := args[1]
 			var provider string
@@ -107,7 +106,7 @@ empty string.`,
 			}
 
 			return nil
-		}),
+		},
 	}
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")

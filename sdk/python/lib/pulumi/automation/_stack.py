@@ -179,6 +179,12 @@ class RefreshResult(BaseResult):
         self.summary = summary
 
 
+class RenameResult(BaseResult):
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+
+
 class DestroyResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
         super().__init__(stdout, stderr)
@@ -513,6 +519,7 @@ class Stack:
         self,
         parallel: Optional[int] = None,
         message: Optional[str] = None,
+        preview_only: Optional[bool] = None,
         target: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         clear_pending_creates: Optional[bool] = None,
@@ -535,6 +542,7 @@ class Stack:
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the refresh operation.
+        :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param clear_pending_creates: Clear all pending creates, dropping them from the state.
@@ -552,9 +560,14 @@ class Stack:
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes", "--skip-preview"]
-        args.extend(extra_args)
+        args = ["refresh", "--yes"]
 
+        if preview_only:
+            args.append("--preview-only")
+        else:
+            args.append("--skip-preview")
+
+        args.extend(extra_args)
         args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
@@ -581,6 +594,36 @@ class Stack:
         assert summary is not None
         return RefreshResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
+        )
+
+    def rename(
+        self,
+        stack_name: str,
+        on_output: Optional[OnOutput] = None,
+        show_secrets: bool = False,
+    ) -> RenameResult:
+        """
+        Renames the current stack.
+
+        :param stack_name: The new name for the stack.
+        :param on_output: A function to process the stdout stream.
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :returns: RenameResult
+        """
+        extra_args = _parse_extra_args(**locals())
+        args = ["stack", "rename", stack_name]
+        args.extend(extra_args)
+
+        args.extend(self._remote_args())
+        rename_result = self._run_pulumi_cmd_sync(args, on_output)
+
+        if self._remote and show_secrets:
+            raise RuntimeError("can't enable `showSecrets` for remote workspaces")
+
+        summary = self.info(show_secrets and not self._remote)
+        assert summary is not None
+        return RenameResult(
+            stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
         )
 
     def destroy(
