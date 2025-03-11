@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -54,6 +56,7 @@ type publishPackageArgs struct {
 type packagePublishCmd struct {
 	defaultOrg    func(*workspace.Project) (string, error)
 	extractSchema func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error)
+	pluginDir     string
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -102,7 +105,6 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.readmePath, "readme", "",
 		"Path to the package readme/index markdown file")
-	contract.AssertNoErrorf(cmd.MarkFlagRequired("readme"), "failed to mark 'readme' as a required flag")
 	cmd.Flags().StringVar(
 		&args.installDocsPath, "installation-configuration", "",
 		"Path to the installation configuration markdown file")
@@ -144,6 +146,18 @@ func (cmd *packagePublishCmd) Run(
 	pkg, err := cmd.extractSchema(pctx, packageSrc, packageParams)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
+	}
+
+	// If no readme path is provided, check if there's a readme in the package source or plugin directory we can slurp up.
+	if args.readmePath == "" {
+		readmePath, err := cmd.findReadme(packageSrc)
+		if err != nil {
+			return fmt.Errorf("failed to find readme: %w", err)
+		}
+		args.readmePath = readmePath
+	}
+	if args.readmePath == "" {
+		return errors.New("no readme specified, please provide the path to the readme file or add one to the package")
 	}
 
 	var publisher string
@@ -246,4 +260,56 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 	}
 
 	return b, nil
+}
+
+// findReadme attempts to find a readme file in the given package source.
+// It first checks if the source is a directory and then checks if the installed plugin directory contains a readme.
+// If no readme is found, it returns an empty string.
+func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
+	findReadmeInDir := func(dir string) string {
+		info, err := os.Stat(dir)
+		if err != nil && errors.Is(err, os.ErrNotExist) {
+			return ""
+		} else if err != nil {
+			return ""
+		}
+		if !info.IsDir() {
+			return ""
+		}
+		entries, err := os.ReadDir(dir)
+		if err == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					name := strings.ToLower(entry.Name())
+					if name == "readme.md" {
+						return filepath.Join(dir, entry.Name())
+					}
+				}
+			}
+		}
+		return ""
+	}
+
+	// If the source is a directory, check if it contains a readme.
+	if readmeFromPackage := findReadmeInDir(packageSrc); readmeFromPackage != "" {
+		return readmeFromPackage, nil
+	}
+
+	// Otherwise, try to retrieve the readme from the installed plugin.
+	pluginSpec, err := workspace.NewPluginSpec(packageSrc, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create plugin spec: %w", err)
+	}
+	pluginSpec.PluginDir = cmd.pluginDir
+
+	dir, err := pluginSpec.DirPath()
+	if err != nil {
+		return "", fmt.Errorf("failed to get plugin directory: %w", err)
+	}
+
+	if readmeFromPlugin := findReadmeInDir(dir); readmeFromPlugin != "" {
+		return readmeFromPlugin, nil
+	}
+
+	return "", nil
 }

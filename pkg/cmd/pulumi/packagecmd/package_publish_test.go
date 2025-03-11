@@ -30,6 +30,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,6 +53,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 		expectedErr         string
 		readmeContent       string
 		installContent      string
+		sourceDir      func(t *testing.T) string
+		pluginDir      func(t *testing.T) string
 	}{
 		{
 			name: "successful publish with publisher from schema",
@@ -115,6 +118,54 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				Provider: &schema.Resource{},
 			},
 			readmeContent: "# Test README\nThis is a test readme.",
+		},
+		{
+			name: "loads readme from package source",
+			args: publishPackageArgs{
+				source:    "pulumi",
+				publisher: "publisher",
+			},
+			mockSchema: &schema.Package{
+				Name:     "testpkg",
+				Version:  &version,
+				Provider: &schema.Resource{},
+			},
+			sourceDir: func(t *testing.T) string {
+				t.Helper()
+				dir := t.TempDir()
+				readmeFile, err := os.Create(path.Join(dir, "README.md"))
+				require.NoError(t, err)
+				defer contract.IgnoreClose(readmeFile)
+				_, err = readmeFile.WriteString("# README from the package source\nThis is a test readme.")
+				require.NoError(t, err)
+				return dir
+			},
+		},
+		{
+			name: "loads readme from installed plugin",
+			args: publishPackageArgs{
+				source:    "pulumi",
+				publisher: "publisher",
+			},
+			packageParams: []string{},
+			mockSchema: &schema.Package{
+				Name:     "testpkg",
+				Version:  &version,
+				Provider: &schema.Resource{},
+			},
+			pluginDir: func(t *testing.T) string {
+				t.Helper()
+				dir := t.TempDir()
+				testPlugin := path.Join(dir, "resource-testpackage")
+				err := os.MkdirAll(testPlugin, 0o755)
+				require.NoError(t, err)
+				readmeFile, err := os.Create(path.Join(testPlugin, "README.md"))
+				require.NoError(t, err)
+				defer contract.IgnoreClose(readmeFile)
+				_, err = readmeFile.WriteString("# README from the installed plugin\nThis is a test readme.")
+				require.NoError(t, err)
+				return dir
+			},
 		},
 		{
 			name: "error when no publisher available",
@@ -207,7 +258,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				Version:  &version,
 				Provider: &schema.Resource{},
 			},
-			expectedErr: "no readme specified, please provide the path to the readme file",
+			expectedErr: "no readme specified, please provide the path to the readme file or add one to the package",
 		},
 		{
 			name: "error when publish fails",
@@ -249,7 +300,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := t.TempDir()
 
+			packageSource := "testpackage"
 			var readmePath string
+			var expectedReadmeContent string
 			if tt.readmeContent != "" {
 				readmeFile, err := os.Create(path.Join(tempDir, "readme.md"))
 				require.NoError(t, err)
@@ -258,6 +311,27 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				require.NoError(t, readmeFile.Close())
 				readmePath = readmeFile.Name()
 				tt.args.readmePath = readmePath
+				expectedReadmeContent = tt.readmeContent
+			}
+			if tt.sourceDir != nil {
+				packageSource = tt.sourceDir(t)
+
+				readmePath = path.Join(packageSource, "README.md")
+				if readmeFile, err := os.Stat(readmePath); err == nil && !readmeFile.IsDir() {
+					readmeData, err := os.ReadFile(readmePath)
+					require.NoError(t, err)
+					expectedReadmeContent = string(readmeData)
+				}
+			}
+			var pluginDir string
+			if tt.pluginDir != nil {
+				pluginDir = tt.pluginDir(t)
+				readmePath = path.Join(pluginDir, "resource-"+tt.packageSource, "README.md")
+				if readmeFile, err := os.Stat(readmePath); err == nil && !readmeFile.IsDir() {
+					readmeData, err := os.ReadFile(readmePath)
+					require.NoError(t, err)
+					expectedReadmeContent = string(readmeData)
+				}
 			}
 
 			var installDocsPath string
@@ -291,17 +365,17 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					require.NoError(t, err)
 					assert.Equal(t, expectedSpec, packageSpec, "package schema should match input package spec")
 
-					// Verify readme and install docs content
-					if tt.args.readmePath != "" {
-						actualContents, err := io.ReadAll(op.Readme)
-						require.NoError(t, err)
-						assert.Equal(t, tt.readmeContent, string(actualContents), "readme should match the provided markdown file")
-					}
-					if tt.args.installDocsPath != "" {
-						actualContents, err := io.ReadAll(op.InstallDocs)
-						require.NoError(t, err)
-						assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
-					}
+				// Verify readme and install docs content
+				if tt.args.readmePath != "" {
+					actualContents, err := io.ReadAll(op.Readme)
+					require.NoError(t, err)
+					assert.Equal(t, expectedReadmeContent, string(actualContents), "readme should match the provided markdown file")
+				}
+				if tt.args.installDocsPath != "" {
+					actualContents, err := io.ReadAll(op.InstallDocs)
+					require.NoError(t, err)
+					assert.Equal(t, tt.installContent, string(actualContents), "install docs should match the provided markdown file")
+				}
 
 					// Verify publisher is set correctly
 					if tt.args.publisher != "" {
@@ -334,9 +408,10 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					}
 					return tt.mockSchema, tt.schemaExtractionErr
 				},
+				pluginDir: pluginDir,
 			}
 
-			err := cmd.Run(context.Background(), tt.args, tt.packageSource, tt.packageParams)
+			err := cmd.Run(context.Background(), tt.args, packageSource, tt.packageParams)
 			if tt.expectedErr != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErr)
