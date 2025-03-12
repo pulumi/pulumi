@@ -316,7 +316,7 @@ describe("Analyzer", function () {
             () => analyzer.analyze(),
             (err) =>
                 err.message ===
-                "Union types are not supported: component 'MyComponent' input 'MyComponentArgs.invalidProp' has type 'string | boolean'",
+                "Union types are not supported for component 'MyComponent' input 'MyComponentArgs.invalidProp': type 'string | boolean'",
         );
     });
 
@@ -327,7 +327,7 @@ describe("Analyzer", function () {
             () => analyzer.analyze(),
             (err) =>
                 err.message ===
-                "Unsupported type: component 'MyComponent' input 'MyOtherArgs.invalidProp[key]' has type '\"fixed value\"'",
+                "Unsupported type for component 'MyComponent' input 'MyOtherArgs.invalidProp values': type '\"fixed value\"'",
         );
     });
 

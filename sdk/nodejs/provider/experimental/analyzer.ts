@@ -443,7 +443,10 @@ export class Analyzer {
                 prop.description = docString;
             }
             prop.additionalProperties = this.analyzeType(
-                { ...context, property: `${context.property || ""}[key]` },
+                {
+                    ...context,
+                    property: `${context.property} values`,
+                },
                 indexInfo.type,
                 location,
                 false,
@@ -460,16 +463,16 @@ export class Analyzer {
             return this.analyzeType(context, nonUndefinedType, location, true, docString);
         } else if (type.isUnion()) {
             throw new Error(
-                `Union types are not supported: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
+                `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
         } else if (type.isIntersection()) {
             throw new Error(
-                `Intersection types are not supported: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
+                `Intersection types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
         }
 
         throw new Error(
-            `Unsupported type: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
+            `Unsupported type for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
         );
     }
 
