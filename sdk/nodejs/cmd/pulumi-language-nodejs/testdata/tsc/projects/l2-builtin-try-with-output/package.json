@@ -6,6 +6,7 @@
 	"dependencies": {
 		"typescript": "^4.0.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/component": "ROOT/artifacts/pulumi-component-13.3.7.tgz"
+		"@pulumi/component": "ROOT/artifacts/pulumi-component-13.3.7.tgz",
+		"@pulumi/simple-invoke": "ROOT/artifacts/pulumi-simple-invoke-10.0.0.tgz"
 	}
 }

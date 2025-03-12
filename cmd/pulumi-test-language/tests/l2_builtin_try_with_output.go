@@ -27,7 +27,7 @@ import (
 
 func init() {
 	LanguageTests["l2-builtin-try-with-output"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProvider{}},
+		Providers: []plugin.Provider{&providers.ComponentProvider{}, &providers.SimpleInvokeProvider{}},
 		Runs: []TestRun{
 			{
 				Config: config.Map{
