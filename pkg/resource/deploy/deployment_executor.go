@@ -42,6 +42,9 @@ type deploymentExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this deployment
 
 	skipped mapset.Set[urn.URN] // The set of resources that have failed
+
+	// Counter for the step generator, this tells us we're expecting async work from the step generator still.
+	asyncCounter int32
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -179,7 +182,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if ex.deployment.opts.DestroyProgram {
 		mode = destroyMode
 	}
-	ex.stepGen = newStepGenerator(ex.deployment, mode)
+	// The step generator can also self-generate events
+	stepGenEvents := make(chan SourceEvent)
+	ex.stepGen = newStepGenerator(ex.deployment, mode, stepGenEvents)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -220,8 +225,21 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+		seenNil := false
 		for {
 			select {
+			case event := <-stepGenEvents:
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event")
+
+				if err := ex.handleSingleEvent(event); err != nil {
+					if !result.IsBail(err) {
+						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+						ex.reportError(ex.deployment.generateEventURN(event), err)
+					}
+					cancel()
+					return false, result.BailError(err)
+				}
+
 			case event := <-incomingEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil,
 					event.Error)
@@ -237,32 +255,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				}
 
 				if event.Event == nil {
-					// Check targets before performDeletes mutates the initial Snapshot.
-					targetErr := ex.checkTargets(ex.deployment.opts.Targets)
-
-					err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
-					if err != nil {
+					seenNil = true
+				} else {
+					if err := ex.handleSingleEvent(event.Event); err != nil {
 						if !result.IsBail(err) {
-							logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
-							ex.reportError("", err)
-							return false, result.BailError(err)
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
 						}
+						cancel()
+						return false, result.BailError(err)
 					}
-
-					if targetErr != nil {
-						// Propagate the target error as it hasn't been reported yet.
-						return false, targetErr
-					}
-					return false, nil
-				}
-
-				if err := ex.handleSingleEvent(event.Event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
-					}
-					cancel()
-					return false, result.BailError(err)
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -270,6 +272,26 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
 				return callerCtx.Err() != nil, nil
+			}
+
+			if seenNil && ex.asyncCounter == 0 {
+				// Check targets before performDeletes mutates the initial Snapshot.
+				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
+
+				err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
+				if err != nil {
+					if !result.IsBail(err) {
+						logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
+						ex.reportError("", err)
+						return false, result.BailError(err)
+					}
+				}
+
+				if targetErr != nil {
+					// Propagate the target error as it hasn't been reported yet.
+					return false, targetErr
+				}
+				return false, nil
 			}
 		}
 	}()
@@ -459,9 +481,18 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	var steps []Step
 	var err error
 	switch e := event.(type) {
+	case ContinueResourceDiffEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
+		ex.asyncCounter--
+		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, err = ex.stepGen.GenerateSteps(e)
+		var async bool
+		steps, async, err = ex.stepGen.GenerateSteps(e)
+		if async {
+			ex.asyncCounter++
+			return nil
+		}
 	case ReadResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, err = ex.stepGen.GenerateReadSteps(e)
