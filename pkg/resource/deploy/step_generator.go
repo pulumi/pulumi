@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -356,11 +357,11 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, boo
 	steps, async, err := sg.generateSteps(event)
 	if err != nil {
 		contract.Assertf(len(steps) == 0, "expected no steps if there is an error")
-		return nil, async, err
+		contract.Assertf(!async, "expected no async marker if there is an error")
+		return nil, false, err
 	}
 	if async {
-		contract.Assertf(len(steps) == 0, "expected no steps if this was async")
-		return nil, async, nil
+		return steps, async, nil
 	}
 
 	steps, err = sg.validateSteps(steps)
@@ -375,8 +376,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
-					return nil, fmt.Errorf(
-						"%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+					return nil, fmt.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
 				constraint := resourcePlan.Ops[0]
 				// We remove the Op from the list before doing the constraint check.
@@ -384,13 +384,11 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 				// This op has been attempted, it just might fail its constraint.
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, fmt.Errorf(
-						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					return nil, fmt.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, fmt.Errorf(
-						"%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					return nil, fmt.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
 		}
@@ -1307,14 +1305,13 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
-	allowUnknowns := sg.deployment.opts.DryRun
-
-	diff, async, err := sg.diff(
+	diff, pcs, err := sg.diff(
 		event, goal, autonaming, randomSeed,
-		urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
-	if async {
-		return nil, true, nil
+		urn, old, new, oldInputs, inputs, prov)
+	if pcs != nil {
+		return []Step{
+			NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
+		}, true, nil
 	}
 
 	updateSteps, err := sg.continueStepsFromDiff(
@@ -2004,41 +2001,43 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 func (sg *stepGenerator) diff(
 	event RegisterResourceEvent,
 	goal *resource.Goal, autonaming *plugin.AutonamingOptions, randomSeed []byte,
-	urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string,
-) (plugin.DiffResult, bool, error) {
+	urn resource.URN, old, new *resource.State, oldInputs,
+	newInputs resource.PropertyMap, prov plugin.Provider,
+) (plugin.DiffResult, *promise.CompletionSource[plugin.DiffResult], error) {
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
 	if sg.isTargetedReplace(urn) {
-		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, false, nil
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil, nil
 	}
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
 	// not need to replace the resource.
 	providerChanged, err := sg.providerChanged(urn, old, new)
 	if err != nil {
-		return plugin.DiffResult{}, false, err
+		return plugin.DiffResult{}, nil, err
 	} else if providerChanged {
-		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, false, nil
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil, nil
 	}
 
 	// Apply legacy diffing behavior if requested. In this mode, if the provider-calculated inputs for a resource did
 	// not change, then the resource is considered to have no diff between its desired and actual state.
 	if sg.deployment.opts.UseLegacyDiff && oldInputs.DeepEquals(newInputs) {
-		return plugin.DiffResult{Changes: plugin.DiffNone}, false, nil
+		return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
 	}
 
 	// If there is no provider for this resource (which should only happen for component resources), simply return a
 	// "diffs exist" result.
 	if prov == nil {
 		if oldInputs.DeepEquals(newInputs) {
-			return plugin.DiffResult{Changes: plugin.DiffNone}, false, nil
+			return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
 		}
-		return plugin.DiffResult{Changes: plugin.DiffSome}, false, nil
+		return plugin.DiffResult{Changes: plugin.DiffSome}, nil, nil
 	}
 
+	pcs := &promise.CompletionSource[plugin.DiffResult]{}
 	go func() {
-		diff, err := diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
+		// if promise had an "ContinueWith" we'd use it here, but a goroutine blocked on Result and then
+		// posting to a channel is very cheap.
+		diff, err := pcs.Promise().Result(context.Background())
 		sg.events <- &continueDiffResourceEvent{
 			evt:        event,
 			err:        err,
@@ -2052,7 +2051,7 @@ func (sg *stepGenerator) diff(
 			randomSeed: randomSeed,
 		}
 	}()
-	return plugin.DiffResult{}, true, nil
+	return plugin.DiffResult{}, pcs, nil
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.

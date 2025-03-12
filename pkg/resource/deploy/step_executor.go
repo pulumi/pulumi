@@ -407,7 +407,12 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	var payload interface{}
 	events := se.deployment.events
-	if events != nil {
+
+	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
+	// the system.
+	_, isDiff := step.(*DiffStep)
+
+	if events != nil && !isDiff {
 		var err error
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
@@ -418,6 +423,9 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
 	status, stepComplete, err := step.Apply()
+	if isDiff {
+		return nil
+	}
 
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.

@@ -491,7 +491,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		steps, async, err = ex.stepGen.GenerateSteps(e)
 		if async {
 			ex.asyncCounter++
-			return nil
 		}
 	case ReadResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ReadResourceEvent")
