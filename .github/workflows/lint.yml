@@ -46,7 +46,7 @@ jobs:
         uses: wearerequired/lint-action@v2
         with:
           eslint: true
-          linter_dir: ./sdk/nodejs
+          eslint_dir: ./sdk/nodejs
 
       # Go
 
@@ -74,6 +74,7 @@ jobs:
         name: Lint Python
         uses: wearerequired/lint-action@v2
         with:
+          pylint_dir: ./sdk/python
           pylint: true
 
       # Actions
