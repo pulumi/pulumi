@@ -1388,8 +1388,11 @@ type PublishPackageInput struct {
 }
 
 func (pc *Client) PublishPackage(ctx context.Context, input PublishPackageInput) error {
+	req := apitype.StartPackagePublishRequest{
+		Version: input.Version.String(),
+	}
 	var resp apitype.StartPackagePublishResponse
-	err := pc.restCall(ctx, "POST", publishPackagePath(input.Source, input.Publisher, input.Name), nil, nil, &resp)
+	err := pc.restCall(ctx, "POST", publishPackagePath(input.Source, input.Publisher, input.Name), nil, req, &resp)
 	if err != nil {
 		return fmt.Errorf("publish package failed: %w", err)
 	}

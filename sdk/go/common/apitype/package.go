@@ -14,6 +14,11 @@
 
 package apitype
 
+type StartPackagePublishRequest struct {
+	// Version is the semver-compliant version of the package to publish.
+	Version string `json:"version"`
+}
+
 // StartPackagePublishResponse is the response from initiating a package publish.
 // It returns presigned URLs to upload package artifacts.
 type StartPackagePublishResponse struct {
