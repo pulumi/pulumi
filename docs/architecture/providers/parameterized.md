@@ -1,14 +1,46 @@
 (parameterized-providers)=
 # Parameterized providers
 
-*Parameterized providers* are a feature of Pulumi that allows a caller to change
-a provider's behaviour at runtime in response to a
-[](pulumirpc.ResourceProvider.Parameterize) call. Where a
-[](pulumirpc.ResourceProvider.Configure) call allows a caller to influence
-provider behaviour at a high level (e.g. by specifying the region in which an
-AWS provider should operate), a [](pulumirpc.ResourceProvider.Parameterize) call
-may change the set of resources and functions that a provider offers (that is,
-its schema). A couple of examples of where this is useful are:
+*Parameterized providers* are a provider feature where a user can generate and
+use a custom SDK based on some custom input.
+
+Key rules:
+
+* Each provider parameterization is run in its own provider instance.
+* Parameterized package names must be unique within the program where its added.
+* Parameterize is always called before Configure.
+* Parameterize is always called before GetSchema.
+
+For a provider to support parameterization it must implement the
+[](pulumirpc.ResourceProvider.Parameterize) call. The
+[](pulumirpc.ParameterizeRequest) will either contain the args passed via the
+CLI from `pulumi package add` or `pulumi package gen-sdk`; or will be passed a
+previous parameterization result (a binary blob). Parameterize will always be
+called before either Configure or GetSchema are called.
+[](pulumirpc.ParameterizeResponse) must return a response with the *package*
+name and version, which must match the generated SDK (from the schema). The name
+of the parameterized package must be unique and will be used as the first part of
+all resource tokens and used to route RegisterResourceRequests back to the
+Parameterized provider instance. The version of the parameterized package can be
+anything the provider would like and does not have to align to the version of the
+base provider. The version does not have any specific purpose right now - it's
+purely informational, but is required to be set.
+
+Once [](pulumirpc.ResourceProvider.Parameterize) has been called (in either mode)
+the engine must be able to call GetSchema and Configure to start to use the
+provider or generate the SDK. For replacement parameterization, once Parameterize
+has been called, the provider will only be used in its parameterized form.
+
+Once parameterized, GetSchema can be called by the engine. The GetSchema request
+will contain the same name and version information as was returned from
+[](pulumirpc.ResourceProvider.Parameterize) in the SubpackageName and
+SubpackageVersion fields, respectively. The generated schema *must* have the same
+name and version as the SubpackageName and SubpackageVersion. GetSchema must be
+callable after either the "args" or "value" mode of parameterize was called. It's
+expected that GetSchema doesn't have to be fast and that the engine will cache
+schemas as required.
+
+## Example uses of parameterization
 
 * Dynamically bridging Terraform providers. The
   [`pulumi-terraform-bridge`](https://github.com/pulumi/pulumi-terraform-bridge)
@@ -39,24 +71,6 @@ its schema). A couple of examples of where this is useful are:
   a parameter describing a set of CRDs, enabling it to then extend its schema to
   expose them to programs and SDK generation.
 
-As hinted at by the above examples, [](pulumirpc.ResourceProvider.Parameterize)
-encodes a provider-specific *parameter* that is used to influence the provider's
-behaviour. The parameter passed in the [](pulumirpc.ParameterizeRequest) can
-take two forms, corresponding to the two contexts in which parameterization
-typically occurs:
-
-* When generating an SDK (e.g. using a `pulumi package add` command), we need to
-  boot up a provider and parameterize it using only information from the
-  command-line invocation. In this case, the parameter is a string array
-  representing the command-line arguments (`args`).
-* When interacting with a provider as part of program execution, the parameter
-  is *embedded in the SDK*, so as to free the program author from having to know
-  whether a provider is parameterized or not. In this case, the parameter is a
-  provider-specific bytestring (`value`). This is intended to allow a provider
-  to store arbitrary data that may be more efficient or practical at program
-  execution time, after SDK generation has taken place. This value is
-  base-64-encoded when embedded in the SDK.
-
 :::{warning}
 In the absence of parameterized providers, it is generally safe to assume that a
 resource's package name matches exactly the name of the provider
@@ -72,3 +86,19 @@ for example).
 
 (replacement-extension-providers)=
 ## Replacement and extension parameterization
+
+Currently, the only kind of parameterization is *replacement parameterization*.
+In this mode, once the provider has been parameterized, it will only be used for
+that parameter only; and not without the parameter or with another parameter.
+
+In the future we might creation the option for a parameterization to be an
+"extension" of the original schema. Details are yet to be worked out here, but we
+expect the following differences from the replacement parameterization:
+
+* The provider for the extension SDK might have to be the same as the base provider
+* Tokens in the extension schema must have the same provider name as the base
+  schema & SDKs.
+* The same instance of the provider will be used from both the base SDK and the
+  extension SDKs.
+* GetSchema might be called multiple times - once for each of the extensions.
+* Parameterize will be called once for each extension.
