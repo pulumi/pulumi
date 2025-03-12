@@ -42,17 +42,17 @@ jobs:
           node-version: 23
 
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        name: Setup Biome
-        uses: biomejs/setup-biome@v2
-        with:
-          node-version: 23
-
-      - if: ${{ steps.changes.outputs.typescript == 'true' }}
         name: Install dependencies
         run: yarn
 
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        run: eslint --ext .ts .
+        name: ESLint
+        run: yarn eslint --ext .ts .
+        working-directory: ./sdk/nodejs
+
+      - if: ${{ steps.changes.outputs.typescript == 'true' }}
+        name: Biome
+        run: yarn biome ci
         working-directory: ./sdk/nodejs
 
       # Go
