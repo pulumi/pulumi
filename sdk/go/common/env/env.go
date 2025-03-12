@@ -111,6 +111,9 @@ var AccessToken = env.String("ACCESS_TOKEN",
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 
+var DisableParallelDiff = env.Bool("DISABLE_PARALLEL_DIFF",
+	"Disable running diff calculations in parallel.")
+
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
 //

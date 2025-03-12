@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -2031,6 +2032,12 @@ func (sg *stepGenerator) diff(
 			return plugin.DiffResult{Changes: plugin.DiffNone}, nil, nil
 		}
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil, nil
+	}
+
+	if env.DisableParallelDiff.Value() {
+		// Just do the diff directly
+		diff, err := diffResource(urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges)
+		return diff, nil, err
 	}
 
 	pcs := &promise.CompletionSource[plugin.DiffResult]{}
