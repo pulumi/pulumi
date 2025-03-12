@@ -288,7 +288,7 @@ type queuedEncryption struct {
 }
 
 // DefaultMaxBatchEncryptCount is the default maximum number of items that can be enqueued for batch encryption.
-const DefaultMaxBatchEncryptCount = 100000
+const DefaultMaxBatchEncryptCount = 1000
 
 // Ensure that cachingBatchEncrypter implements the BatchEncrypter interface for compatibility.
 var _ BatchEncrypter = (*cachingBatchEncrypter)(nil)
@@ -437,7 +437,7 @@ type queuedDecryption struct {
 	ciphertext string
 }
 
-const DefaultMaxBatchDecryptCount = 100000
+const DefaultMaxBatchDecryptCount = 1000
 
 // Ensure that cachingBatchDecrypter implements the BatchDecrypter interface for compatibility.
 var _ BatchDecrypter = (*cachingBatchDecrypter)(nil)
