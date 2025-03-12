@@ -58,7 +58,7 @@ interface docNode {
     jsDoc?: typescript.JSDoc[];
 }
 
-enum InputOutput {
+export enum InputOutput {
     Neither = 0,
     Input = 1,
     Output = 2,
@@ -143,7 +143,7 @@ export class Analyzer {
     }
 
     private analyzeComponent(node: typescript.ClassDeclaration): ComponentDefinition {
-        const componentName = node.name?.text;
+        const componentName = node.name?.text!;
 
         // We expect exactly 1 constructor, and it must have and 'args'
         // parameter that has an interface type.
@@ -170,14 +170,22 @@ export class Analyzer {
 
         let inputs: Record<string, PropertyDefinition> = {};
         if (argsSymbol.members) {
-            inputs = this.analyzeSymbols(symbolTableToSymbols(argsSymbol.members), argsParam);
+            inputs = this.analyzeSymbols(
+                { component: componentName, inputOutput: InputOutput.Input, typeName: argsSymbol.getName() },
+                symbolTableToSymbols(argsSymbol.members),
+                argsParam,
+            );
         }
 
         let outputs: Record<string, PropertyDefinition> = {};
         const classType = this.checker.getTypeAtLocation(node);
         const classSymbol = classType.getSymbol();
         if (classSymbol?.members) {
-            outputs = this.analyzeSymbols(symbolTableToSymbols(classSymbol.members), node);
+            outputs = this.analyzeSymbols(
+                { component: componentName, inputOutput: InputOutput.Output },
+                symbolTableToSymbols(classSymbol.members),
+                node,
+            );
         }
 
         const definition: ComponentDefinition = {
@@ -213,6 +221,7 @@ export class Analyzer {
     }
 
     private analyzeSymbols(
+        context: { component: string; inputOutput: InputOutput; typeName?: string },
         symbols: typescript.Symbol[],
         location: typescript.Node,
     ): Record<string, PropertyDefinition> {
@@ -222,12 +231,16 @@ export class Analyzer {
                 return;
             }
             const name = member.escapedName as string;
-            properties[name] = this.analyzeSymbol(member, location);
+            properties[name] = this.analyzeSymbol({ ...context, property: name }, member, location);
         });
         return properties;
     }
 
-    private analyzeSymbol(symbol: typescript.Symbol, location: typescript.Node): PropertyDefinition {
+    private analyzeSymbol(
+        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        symbol: typescript.Symbol,
+        location: typescript.Node,
+    ): PropertyDefinition {
         // Check if the property is optional, e.g.: myProp?: string; This is
         // defined on the symbol, not the type.
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
@@ -237,14 +250,20 @@ export class Analyzer {
         if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
             docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
         }
-        return this.analyzeType(propType, location, optional, InputOutput.Neither, docString);
+        return this.analyzeType(
+            { ...context, inputOutput: InputOutput.Neither },
+            propType,
+            location,
+            optional,
+            docString,
+        );
     }
 
     private analyzeType(
+        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
         type: typescript.Type,
         location: typescript.Node,
         optional: boolean = false,
-        inputOutput: InputOutput = InputOutput.Neither,
         docString: string | undefined = undefined,
     ): PropertyDefinition {
         if (isSimpleType(type)) {
@@ -252,7 +271,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (inputOutput === InputOutput.Neither) {
+            if (context.inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
             if (docString) {
@@ -268,17 +287,31 @@ export class Analyzer {
             const base = (type as typescript.UnionType)?.types?.find(isPromise);
             if (!base) {
                 // unreachable due to the isInput check
-                throw new Error(`Input type union must include a Promise, got '${this.checker.typeToString(type)}'`);
+                throw new Error(
+                    `Input type union must include a Promise: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
+                );
             }
-            const innerType = this.unwrapTypeReference(base);
-            return this.analyzeType(innerType, location, optional, InputOutput.Input, docString);
+            const innerType = this.unwrapTypeReference(context, base);
+            return this.analyzeType(
+                { ...context, inputOutput: InputOutput.Input },
+                innerType,
+                location,
+                optional,
+                docString,
+            );
         } else if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
             // be plain anymore, since it's wrapped in an output.
-            const innerType = this.unwrapTypeReference(type);
-            return this.analyzeType(innerType, location, optional, InputOutput.Output, docString);
+            const innerType = this.unwrapTypeReference(context, type);
+            return this.analyzeType(
+                { ...context, inputOutput: InputOutput.Output },
+                innerType,
+                location,
+                optional,
+                docString,
+            );
         } else if (isAny(type)) {
             const $ref = "pulumi.json#/Any";
             const prop: PropertyDefinition = { $ref };
@@ -295,7 +328,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (inputOutput === InputOutput.Neither) {
+            if (context.inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
             if (docString) {
@@ -308,7 +341,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (inputOutput === InputOutput.Neither) {
+            if (context.inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
             if (docString) {
@@ -317,14 +350,16 @@ export class Analyzer {
             return prop;
         } else if (isResourceReference(type, this.checker)) {
             throw new Error(
-                `Resource references are not supported yet: found type '${this.checker.typeToString(type)}'`,
+                `Resource references are not supported yet: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
             );
         } else if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
             const name = type.getSymbol()?.escapedName as string | undefined;
             if (!name) {
-                throw new Error(`Class or interface '${this.checker.typeToString(type)}}' has no name`);
+                throw new Error(
+                    `Class or interface has no name: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
+                );
             }
             if (this.typeDefinitions[name]) {
                 // Type already exists, just reference it and we're done.
@@ -332,7 +367,7 @@ export class Analyzer {
                 if (optional) {
                     refProp.optional = true;
                 }
-                if (inputOutput === InputOutput.Neither) {
+                if (context.inputOutput === InputOutput.Neither) {
                     refProp.plain = true;
                 }
                 return refProp;
@@ -343,14 +378,15 @@ export class Analyzer {
             if (this.docStrings[name]) {
                 this.typeDefinitions[name].description = this.docStrings[name];
             }
-            const properties = this.analyzeSymbols(type.getProperties(), location);
+            const typeContext = { ...context, typeName: name };
+            const properties = this.analyzeSymbols(typeContext, type.getProperties(), location);
             this.typeDefinitions[name].properties = properties;
             const $ref = `#/types/${this.providerName}:index:${name}`;
             const prop: PropertyDefinition = { $ref };
             if (optional) {
                 prop.optional = true;
             }
-            if (inputOutput === InputOutput.Neither) {
+            if (context.inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
             if (docString) {
@@ -362,23 +398,27 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (inputOutput === InputOutput.Neither) {
+            if (context.inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
 
             const typeArguments = (type as typescript.TypeReference).typeArguments;
             if (!typeArguments || typeArguments.length !== 1) {
                 throw new Error(
-                    `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+                    `Expected exactly one type argument in '${this.checker.typeToString(type)}': ${this.formatErrorContext(context)} has ${typeArguments?.length || 0} type arguments`,
                 );
             }
 
             const innerType = typeArguments[0];
             prop.items = this.analyzeType(
+                {
+                    ...context,
+                    property: `${context.property}[]`,
+                    inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
+                },
                 innerType,
                 location,
                 false /* optional */,
-                inputOutput === InputOutput.Output ? inputOutput : InputOutput.Neither,
             );
             if (docString) {
                 prop.description = docString;
@@ -389,7 +429,7 @@ export class Analyzer {
             if (optional) {
                 prop.optional = true;
             }
-            if (inputOutput === InputOutput.Neither) {
+            if (context.inputOutput === InputOutput.Neither) {
                 prop.plain = true;
             }
 
@@ -402,38 +442,85 @@ export class Analyzer {
             if (docString) {
                 prop.description = docString;
             }
-            prop.additionalProperties = this.analyzeType(indexInfo.type, location, false /* optional */, inputOutput);
+            prop.additionalProperties = this.analyzeType(
+                {
+                    ...context,
+                    property: `${context.property} values`,
+                },
+                indexInfo.type,
+                location,
+                false,
+            );
             return prop;
         } else if (isOptionalType(type, this.checker)) {
             const unionType = type as typescript.UnionType;
             const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
             if (!nonUndefinedType) {
                 throw new Error(
-                    `Expected exactly one type to not be undefined in '${this.checker.typeToString(type)}'`,
+                    `Expected exactly one type to not be undefined: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
                 );
             }
-            return this.analyzeType(nonUndefinedType, location, true, inputOutput);
+            return this.analyzeType(context, nonUndefinedType, location, true, docString);
         } else if (type.isUnion()) {
-            throw new Error(`Union types are not supported, got '${this.checker.typeToString(type)}'`);
+            throw new Error(
+                `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
+            );
         } else if (type.isIntersection()) {
-            throw new Error(`Intersection types are not supported, got '${this.checker.typeToString(type)}'`);
+            throw new Error(
+                `Intersection types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
+            );
         }
 
-        throw new Error(`Unsupported type '${this.checker.typeToString(type)}'`);
+        throw new Error(
+            `Unsupported type for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
+        );
     }
 
-    unwrapTypeReference(type: typescript.Type): typescript.Type {
+    unwrapTypeReference(
+        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        type: typescript.Type,
+    ): typescript.Type {
         let typeArguments = (type as typescript.TypeReference).typeArguments;
         if (!typeArguments) {
             typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
         }
         if (!typeArguments || typeArguments.length !== 1) {
             throw new Error(
-                `Expected exactly one type argument in '${this.checker.typeToString(type)}', got '${typeArguments?.length}'`,
+                `Expected exactly one type argument in '${this.checker.typeToString(type)}': ${this.formatErrorContext(context)} has ${typeArguments?.length || 0} type arguments`,
             );
         }
         const innerType = typeArguments[0];
         return innerType;
+    }
+
+    private formatErrorContext(context: {
+        component: string;
+        property?: string;
+        inputOutput?: InputOutput;
+        typeName?: string;
+    }): string {
+        const parts: string[] = [];
+        parts.push(`component '${context.component}'`);
+
+        if (context.property) {
+            let propType = "property";
+            if (context.inputOutput !== undefined) {
+                if (context.inputOutput === InputOutput.Input) {
+                    propType = "input";
+                } else if (context.inputOutput === InputOutput.Output) {
+                    propType = "output";
+                }
+            }
+            parts.push(propType);
+
+            let propName = context.property;
+            if (context.typeName) {
+                propName = `${context.typeName}.${propName}`;
+            }
+            parts.push(`'${propName}'`);
+        }
+
+        return parts.join(" ");
     }
 }
 
