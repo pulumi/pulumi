@@ -15,11 +15,12 @@ jobs:
 
       # Setup
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 23
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: yarn
         working-directory: ./sdk/nodejs
 
@@ -32,6 +33,9 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.8
+
+      - name: Install Python dependencies
+        run: pip install pylint
 
       # Linting
 
