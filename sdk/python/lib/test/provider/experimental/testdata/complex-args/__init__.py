@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, TypedDict
+from typing import Any, List, Optional, Dict, TypedDict
 import pulumi
 
 
@@ -6,6 +6,7 @@ class SubArgs(TypedDict):
     two_words: str
     optional_prop: Optional[str]
     input_prop: pulumi.Input[Optional[str]]
+    any_prop: Optional[Any]
 
 
 class ComplexSubArgs(TypedDict):

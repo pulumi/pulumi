@@ -89,8 +89,9 @@ class ComponentProvider(Provider):
         if not prop.ref:
             raise ValueError(f"property {prop} is not a complex type")
 
-        # Handle built-in types like Asset and Archive
-        if prop.ref in ("pulumi.json#/Asset", "pulumi.json#/Archive"):
+        # Handle built-in types that don't have a colon in their reference
+        # This includes types like Any, Asset, Archive, etc. (e.g. pulumi.json#/Asset)
+        if ":" not in prop.ref:
             return None
 
         name = prop.ref.split(":")[-1]
@@ -122,6 +123,12 @@ class ComponentProvider(Provider):
         and validate required properties are present.
 
         This handles both top-level inputs and nested complex types.
+
+        :param inputs: The inputs to map.
+        :param properties: The property definitions that define the shape of the inputs.
+        :param mapping: The mapping from schema property names to Python property names.
+        :param component_name: The name of the component these inputs belong to.
+        :param property_path: The path to the current property being mapped, used for error messages.
         """
         mapped_value: dict[str, Input[Any]] = {}
         for schema_name, prop in properties.items():

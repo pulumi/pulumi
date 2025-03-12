@@ -79,7 +79,11 @@ def test_map_complex_inputs():
         "complexProp": {
             "oneItem": {"twoWords": "one", "inputProp": "complex1opt"},
             "manyItems": [
-                {"twoWords": "many1", "optionalProp": "many1opt"},
+                {
+                    "twoWords": "many1",
+                    "optionalProp": "many1opt",
+                    "anyProp": "anything",
+                },
                 {"twoWords": "many2", "inputProp": "complex2opt"},
             ],
             "keyItems": {
@@ -104,7 +108,11 @@ def test_map_complex_inputs():
         "complex_prop": {
             "one_item": {"two_words": "one", "input_prop": "complex1opt"},
             "many_items": [
-                {"two_words": "many1", "optional_prop": "many1opt"},
+                {
+                    "two_words": "many1",
+                    "optional_prop": "many1opt",
+                    "any_prop": "anything",
+                },
                 {"two_words": "many2", "input_prop": "complex2opt"},
             ],
             "key_items": {
