@@ -44,8 +44,7 @@ jobs:
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
         name: Install dependencies
         run: yarn
-        with:
-          working-directory: ./sdk/nodejs
+        working-directory: ./sdk/nodejs
 
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
         name: Lint NodeJS
