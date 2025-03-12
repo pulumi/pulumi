@@ -42,6 +42,12 @@ jobs:
           node-version: 23
 
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
+        name: Install dependencies
+        run: yarn
+        with:
+          working-directory: ./sdk/nodejs
+
+      - if: ${{ steps.changes.outputs.typescript == 'true' }}
         name: Lint NodeJS
         uses: wearerequired/lint-action@v2
         with:
