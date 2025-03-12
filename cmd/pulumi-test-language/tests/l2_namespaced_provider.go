@@ -34,7 +34,7 @@ func init() {
 				) {
 					RequireStackResource(l, err, changes)
 
-					// Check we have the one namespaced resource in the snapshot, its provider and the stack.
+					// Check we have the one resource of the namespaced provider in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					provider := snap.Resources[1]
