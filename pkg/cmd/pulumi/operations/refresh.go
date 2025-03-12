@@ -272,6 +272,7 @@ func NewRefreshCmd() *cobra.Command {
 			targetUrns = append(targetUrns, *targets...)
 
 			opts.Engine = engine.UpdateOptions{
+				ParallelDiff:              !env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
 				UseLegacyDiff:             env.EnableLegacyDiff.Value(),

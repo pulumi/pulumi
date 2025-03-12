@@ -53,6 +53,8 @@ type BackendClient interface {
 
 // Options controls the deployment process.
 type Options struct {
+	// true if the step generator should use parallel diff.
+	ParallelDiff bool
 	// true if the process is a dry run (that is, won't make any changes), such as
 	// during a preview action or when previewing another action like refresh or
 	// destroy.

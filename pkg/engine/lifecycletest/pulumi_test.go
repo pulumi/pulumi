@@ -4375,3 +4375,70 @@ func TestStackOutputsResourceError(t *testing.T) {
 		"second": resource.NewProperty("step 3"),
 	})
 }
+
+// Test that the step generator can issue diffs in parallel.
+func TestParallelDiff(t *testing.T) {
+	t.Parallel()
+
+	var wg sync.WaitGroup
+	// We're going to expect to see two calls to diff, but we won't return from either till we see both
+	wg.Add(2)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
+					wg.Done()
+					wg.Wait()
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Issue these register resources in parallel, neither will return till both are issued
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			assert.NoError(t, err)
+		}()
+
+		go func() {
+			defer wg.Done()
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			assert.NoError(t, err)
+		}()
+
+		wg.Wait()
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			UpdateOptions: engine.UpdateOptions{
+				ParallelDiff: true,
+				// Need at least two workers for this
+				Parallel: 2,
+			},
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+	}
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	// Now run a preview, expect the diff to be done in parallel.
+	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil)
+	assert.NoError(t, err)
+	wg.Wait()
+}

@@ -275,6 +275,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
+				ParallelDiff:              !env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
 				Refresh:                   refreshOption,
