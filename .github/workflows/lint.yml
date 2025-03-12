@@ -33,11 +33,22 @@ jobs:
             actions:
               - '.github/workflows/*'
 
+      # JavaScript / TypeScript
+
       - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        name: Setup Node
+        name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
           node-version: 23
+
+      - if: ${{ steps.changes.outputs.typescript == 'true' }}
+        name: Lint NodeJS
+        uses: wearerequired/lint-action@v2
+        with:
+          eslint: true
+          linter_dir: ./sdk/nodejs
+
+      # Go
 
       - if: ${{ steps.changes.outputs.go == 'true' }}
         name: Setup Go
@@ -51,25 +62,27 @@ jobs:
         with:
           working-directory: pkg
 
-      - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        name: Lint JS/TS
-        run: |
-          yarn install
-          yarn run eslint . -c .eslintrc.js --ext .js,.jsx,.ts,.tsx
-        working-directory: ./sdk/nodejs
+      # Python
+
+      - if: ${{ steps.changes.outputs.python == 'true' }}
+        name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
 
       - if: ${{ steps.changes.outputs.python == 'true' }}
         name: Lint Python
-        uses: ricardochaves/python-lint@v1.4.0
+        uses: wearerequired/lint-action@v2
         with:
-          use-pycodestyle: false
-          use-flake8: false
-          use-black: false
-          use-mypy: false
+          pylint: true
+
+      # Actions
 
       - if: ${{ steps.changes.outputs.actions == 'true' }}
         name: Lint Actions
         uses: devops-actions/actionlint@v0.1.9
+
+      # ... and, last but not least, go.mod
 
       - if: ${{ steps.changes.outputs.gomods == 'true' }}
         name: Lint go.mod
