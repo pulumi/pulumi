@@ -280,7 +280,7 @@ func pulumiAPICall(ctx context.Context,
 	// backwards compatibility.
 	req.Header.Set("User-Agent", UserAgent())
 	// Specify the specific API version we accept.
-	req.Header.Set("Accept", "application/vnd.pulumi+8")
+	req.Header.Add("Accept", "application/vnd.pulumi+8")
 
 	// Apply credentials if provided.
 	creds, err := tok.Get(ctx)
@@ -303,7 +303,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	// Opt-in to accepting gzip-encoded responses from the service.
-	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Add("Accept-Encoding", "gzip")
 	if opts.GzipCompress {
 		// If we're sending something that's gzipped, set that header too.
 		req.Header.Set("Content-Encoding", "gzip")
@@ -432,9 +432,14 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	if err != nil {
 		return err
 	}
-	if respPtr, ok := respObj.(**http.Response); ok {
-		*respPtr = resp
+
+	switch respObj := respObj.(type) {
+	case **http.Response:
+		*respObj = resp
 		return nil
+	case *io.ReadCloser:
+		*respObj, err = bodyIntoReader(resp)
+		return err
 	}
 
 	// Read API response
@@ -467,11 +472,19 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 // readBody reads the contents of an http.Response into a byte array, returning an error if one occurred while in the
 // process of doing so. readBody uses the Content-Encoding of the response to pick the correct reader to use.
 func readBody(resp *http.Response) ([]byte, error) {
-	contentEncoding, ok := resp.Header["Content-Encoding"]
+	reader, err := bodyIntoReader(resp)
 	defer contract.IgnoreClose(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(reader)
+}
+
+func bodyIntoReader(resp *http.Response) (io.ReadCloser, error) {
+	contentEncoding, ok := resp.Header["Content-Encoding"]
 	if !ok {
 		// No header implies that there's no additional encoding on this response.
-		return io.ReadAll(resp.Body)
+		return resp.Body, nil
 	}
 
 	if len(contentEncoding) > 1 {
@@ -493,7 +506,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 			return nil, fmt.Errorf("reading gzip-compressed body: %w", err)
 		}
 
-		return io.ReadAll(reader)
+		return reader, nil
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}

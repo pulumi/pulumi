@@ -15,7 +15,10 @@
 package backend
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -92,6 +96,10 @@ type MockBackend struct {
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
+
+	SupportsTemplatesF func() bool
+	ListTemplatesF     func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF  func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -447,6 +455,27 @@ func (be *MockBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets
 	panic("not implemented")
 }
 
+func (be *MockBackend) SupportsTemplates() bool {
+	if be.SupportsTemplatesF != nil {
+		return be.SupportsTemplatesF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+	if be.ListTemplatesF != nil {
+		return be.ListTemplatesF(ctx, orgName)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) DownloadTemplate(ctx context.Context, orgName, templateSource string) (TarReaderCloser, error) {
+	if be.DownloadTemplateF != nil {
+		return be.DownloadTemplateF(ctx, orgName, templateSource)
+	}
+	panic("not implemented")
+}
+
 var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 
 type MockEnvironmentsBackend struct {
@@ -782,4 +811,38 @@ func (mp *MockPolicyPack) Remove(ctx context.Context, op PolicyPackOperation) er
 		return mp.RemoveF(ctx, op)
 	}
 	panic("not implemented")
+}
+
+type MockTarReader map[string]MockTarFile
+
+type MockTarFile struct{ Content string }
+
+func (m MockTarReader) Close() error { return nil }
+
+func (m MockTarReader) Tar() *tar.Reader {
+	paths := make([]string, 0, len(m))
+	for k := range m {
+		paths = append(paths, k)
+	}
+	slices.Sort(paths)
+
+	var b bytes.Buffer
+	w := tar.NewWriter(&b)
+
+	for _, p := range paths {
+		f := m[p]
+		err := w.WriteHeader(&tar.Header{
+			Name:     p,
+			Size:     int64(len(f.Content)),
+			Typeflag: tar.TypeReg,
+			Mode:     0o600,
+		})
+		contract.AssertNoErrorf(err, "impossible")
+
+		_, err = w.Write([]byte(f.Content))
+		contract.AssertNoErrorf(err, "impossible")
+	}
+
+	contract.AssertNoErrorf(w.Close(), "impossible")
+	return tar.NewReader(&b)
 }
