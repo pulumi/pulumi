@@ -3,7 +3,6 @@ module.exports = {
         es6: true,
         node: true,
     },
-    files: ["**/*.ts"],
     parser: "@typescript-eslint/parser",
     parserOptions: {
         project: "tsconfig.json",

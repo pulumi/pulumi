@@ -52,6 +52,7 @@ jobs:
         with:
           eslint: true
           eslint_dir: ./sdk/nodejs
+          eslint_args: --ext .ts
 
       # Go
 
