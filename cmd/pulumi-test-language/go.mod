@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/cmd/pulumi-test-language
 
-go 1.23
+go 1.23.7
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../sdk
 
