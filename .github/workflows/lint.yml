@@ -13,86 +13,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            go:
-              - '.github/workflows/lint.yml'
-              - '**/*.go'
-            gomods:
-              - '.github/workflows/lint.yml'
-              - '**/go.mod'
-            python:
-              - '.github/workflows/lint.yml'
-              - '**/*.py'
-            typescript:
-              - '.github/workflows/lint.yml'
-              - '**/*.js'
-              - '**/*.ts'
-            actions:
-              - '.github/workflows/*'
+      # Setup
 
-      # JavaScript / TypeScript
-
-      - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        name: Setup NodeJS
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 23
 
-      - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        name: Install dependencies
+      - name: Install dependencies
         run: yarn
         working-directory: ./sdk/nodejs
 
-      - if: ${{ steps.changes.outputs.typescript == 'true' }}
-        name: Lint NodeJS
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+
+      # Linting
+
+      - name: Lint NodeJS
         uses: wearerequired/lint-action@v2
         with:
           eslint: true
           eslint_dir: ./sdk/nodejs
           eslint_extensions: ts
 
-      # Go
-
-      - if: ${{ steps.changes.outputs.go == 'true' }}
-        name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      - if: ${{ steps.changes.outputs.go == 'true' }}
-        name: Lint Go
-        uses: golangci/golangci-lint-action@v6.5.0
-        with:
-          working-directory: pkg
-
-      # Python
-
-      - if: ${{ steps.changes.outputs.python == 'true' }}
-        name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.8
-
-      - if: ${{ steps.changes.outputs.python == 'true' }}
-        name: Lint Python
-        uses: wearerequired/lint-action@v2
-        with:
           pylint_dir: ./sdk/python
           pylint: true
 
-      # Actions
-
-      - if: ${{ steps.changes.outputs.actions == 'true' }}
-        name: Lint Actions
+      - name: Lint Actions
         uses: devops-actions/actionlint@v0.1.9
 
-      # ... and, last but not least, go.mod
-
-      - if: ${{ steps.changes.outputs.gomods == 'true' }}
-        name: Lint go.mod
+      - name: Lint go.mod
         uses: evantorrie/mott-the-tidier@v1-beta
         with:
           gomods: |
