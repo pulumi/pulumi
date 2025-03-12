@@ -3,6 +3,7 @@ module.exports = {
         es6: true,
         node: true,
     },
+    files: ["**/*.ts"],
     parser: "@typescript-eslint/parser",
     parserOptions: {
         project: "tsconfig.json",
@@ -17,7 +18,6 @@ module.exports = {
         "tests/automation/data/tcfg/*.ts",
         "tests/sxs_ts_test/*.ts",
         "tests/runtime/testdata/closure-tests/**/*.ts",
-        "tests/runtime/testdata/closure-tests/**/*.js",
         "tests/provider/experimental/testdata/**/*.ts",
         "vendor/",
     ],
