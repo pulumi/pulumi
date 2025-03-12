@@ -2035,12 +2035,13 @@ func (sg *stepGenerator) diff(
 	}
 
 	if !env.ParallelDiff.Value() {
-		// If parallel diff isn't enable just do the diff directly
-		diff, err := diffResource(urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges)
+		// If parallel diff isn't enabled just do the diff directly.
+		diff, err := diffResource(
+			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges)
 		return diff, nil, err
 	}
 
-	// Else setup a promise for it so our caller will yield a DiffStep
+	// Else setup a promise for it so our caller will yield a DiffStep.
 	pcs := &promise.CompletionSource[plugin.DiffResult]{}
 	go func() {
 		// if promise had an "ContinueWith" we'd use it here, but a goroutine blocked on Result and then
