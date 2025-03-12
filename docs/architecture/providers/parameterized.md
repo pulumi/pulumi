@@ -1,5 +1,5 @@
 (parameterized-providers)=
-# Parameterized providers
+# Parameterized Providers
 
 *Parameterized providers* are a provider feature where a user can generate and
 use a custom SDK based on some custom input.
