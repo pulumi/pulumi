@@ -68,12 +68,22 @@ type Client interface {
 	// GetRevisionNumber returns the revision number for version.
 	GetRevisionNumber(ctx context.Context, orgName, projectName, envName, version string) (int, error)
 
-	// ListEnvironments lists all environments in the given org that are accessible to the calling user.
+	// ListEnvironments lists all environments that are accessible to the calling user.
 	//
 	// Each call to ListEnvironments returns a page of results and a continuation token. If there are no
 	// more results, the continuation token will be empty. Otherwise, the continuattion token should be
 	// passed to the next call to ListEnvironments to fetch the next page of results.
 	ListEnvironments(
+		ctx context.Context,
+		continuationToken string,
+	) (environments []OrgEnvironment, nextToken string, err error)
+
+	// ListOrganizationEnvironments lists all environments in the given org that are accessible to the calling user.
+	//
+	// Each call to ListOrganizationEnvironments returns a page of results and a continuation token. If there are no
+	// more results, the continuation token will be empty. Otherwise, the continuattion token should be
+	// passed to the next call to ListOrganizationEnvironments to fetch the next page of results.
+	ListOrganizationEnvironments(
 		ctx context.Context,
 		orgName string,
 		continuationToken string,
@@ -445,19 +455,35 @@ func (pc *client) GetRevisionNumber(ctx context.Context, orgName, projectName, e
 
 func (pc *client) ListEnvironments(
 	ctx context.Context,
+	continuationToken string,
+) ([]OrgEnvironment, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{
+		ContinuationToken: continuationToken,
+	}
+
+	var resp ListEnvironmentsResponse
+	err := pc.restCall(ctx, http.MethodGet, "/api/esc/environments", queryObj, nil, &resp)
+	if err != nil {
+		return nil, "", err
+	}
+	return resp.Environments, resp.NextToken, nil
+}
+
+func (pc *client) ListOrganizationEnvironments(
+	ctx context.Context,
 	orgName string,
 	continuationToken string,
 ) ([]OrgEnvironment, string, error) {
 	queryObj := struct {
 		ContinuationToken string `url:"continuationToken,omitempty"`
-		Organization      string `url:"organization,omitempty"`
 	}{
 		ContinuationToken: continuationToken,
-		Organization:      orgName,
 	}
 
 	var resp ListEnvironmentsResponse
-	err := pc.restCall(ctx, http.MethodGet, "/api/esc/environments", queryObj, nil, &resp)
+	err := pc.restCall(ctx, http.MethodGet, "/api/esc/environments/"+orgName, queryObj, nil, &resp)
 	if err != nil {
 		return nil, "", err
 	}

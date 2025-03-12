@@ -69,7 +69,18 @@ func (env *envCommand) listEnvironments(ctx context.Context, orgFilter, projectF
 	user := env.esc.account.Username
 	continuationToken, allEnvs := "", []client.OrgEnvironment(nil)
 	for {
-		envs, nextToken, err := env.esc.client.ListEnvironments(ctx, orgFilter, continuationToken)
+		var envs []client.OrgEnvironment
+		var nextToken string
+		var err error
+
+		// If orgFilter is specified, use ListOrganizationEnvironments endpoint, so that we receive proper errors
+		// like 404 when environment doesn't exist, instead of an empty array
+		if orgFilter != "" {
+			envs, nextToken, err = env.esc.client.ListOrganizationEnvironments(ctx, orgFilter, continuationToken)
+		} else {
+			envs, nextToken, err = env.esc.client.ListEnvironments(ctx, continuationToken)
+		}
+
 		if err != nil {
 			return []client.OrgEnvironment(nil), fmt.Errorf("listing environments: %w", err)
 		}

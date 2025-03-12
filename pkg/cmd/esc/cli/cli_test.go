@@ -474,6 +474,13 @@ func (c *testPulumiClient) GetRevisionNumber(ctx context.Context, orgName, proje
 
 func (c *testPulumiClient) ListEnvironments(
 	ctx context.Context,
+	continuationToken string,
+) ([]client.OrgEnvironment, string, error) {
+	return c.ListOrganizationEnvironments(ctx, "", continuationToken)
+}
+
+func (c *testPulumiClient) ListOrganizationEnvironments(
+	ctx context.Context,
 	orgName string,
 	continuationToken string,
 ) ([]client.OrgEnvironment, string, error) {

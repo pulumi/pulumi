@@ -114,7 +114,7 @@ func TestListEnvironments(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		actual, token, err := client.ListEnvironments(context.Background(), "", "")
+		actual, token, err := client.ListEnvironments(context.Background(), "")
 		require.NoError(t, err)
 		assert.Equal(t, expected, actual)
 		assert.Equal(t, expectedToken, token)
@@ -129,9 +129,8 @@ func TestListEnvironments(t *testing.T) {
 
 		expectedToken := "next-token"
 
-		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments/org-1", func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "", r.URL.Query().Get("continuationToken"))
-			assert.Equal(t, org, r.URL.Query().Get("organization"))
 
 			err := json.NewEncoder(w).Encode(ListEnvironmentsResponse{
 				Environments: expected,
@@ -140,7 +139,7 @@ func TestListEnvironments(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		actual, token, err := client.ListEnvironments(context.Background(), org, "")
+		actual, token, err := client.ListOrganizationEnvironments(context.Background(), org, "")
 		require.NoError(t, err)
 		assert.Equal(t, expected, actual)
 		assert.Equal(t, expectedToken, token)
@@ -157,7 +156,7 @@ func TestListEnvironments(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		actual, token, err := client.ListEnvironments(context.Background(), "", token)
+		actual, token, err := client.ListEnvironments(context.Background(), token)
 		require.NoError(t, err)
 		assert.Nil(t, actual)
 		assert.Equal(t, "", token)
