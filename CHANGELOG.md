@@ -44,6 +44,10 @@
 - [cli/plugin] Fix plugin "exited prematurely" false positives
   [#18793](https://github.com/pulumi/pulumi/pull/18793)
 
+### Miscellaneous
+
+- Fix broken link on `README.md`
+
 ## 3.153.1 (2025-02-28)
 
 
