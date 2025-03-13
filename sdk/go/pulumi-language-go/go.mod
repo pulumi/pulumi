@@ -12,7 +12,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/hashicorp/go-version v1.6.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pulumi/pulumi/pkg/v3 v3.131.0
+	github.com/pulumi/pulumi/pkg/v3 v3.156.0
 	github.com/pulumi/pulumi/sdk/v3 v3.156.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/mod v0.19.0
@@ -47,7 +47,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.1 // indirect
 	github.com/go-git/go-git/v5 v5.13.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.2.2 // indirect
+	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect

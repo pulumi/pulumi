@@ -2,7 +2,7 @@ module go-no-main-package
 
 go 1.23
 
-require github.com/pulumi/pulumi/sdk/v3 v3.147.0
+require github.com/pulumi/pulumi/sdk/v3 v3.156.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

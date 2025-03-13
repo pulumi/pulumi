@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1
-	github.com/pulumi/pulumi/sdk/v3 v3.113.3
+	github.com/pulumi/pulumi/sdk/v3 v3.156.0
 	github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go v0.0.0
 )
 
