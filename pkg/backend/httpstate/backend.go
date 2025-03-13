@@ -684,6 +684,20 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
+func (b *cloudBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+	return b.client.ListOrgTemplates(ctx, orgName)
+}
+
+func (b *cloudBackend) DownloadTemplate(
+	ctx context.Context, orgName, sourceURL string,
+) (backend.TarReaderCloser, error) {
+	t, err := b.client.DownloadOrgTemplate(ctx, orgName, sourceURL)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (b *cloudBackend) SupportsTags() bool {
 	return true
 }
@@ -697,6 +711,10 @@ func (b *cloudBackend) SupportsProgress() bool {
 }
 
 func (b *cloudBackend) SupportsDeployments() bool {
+	return true
+}
+
+func (b *cloudBackend) SupportsTemplates() bool {
 	return true
 }
 

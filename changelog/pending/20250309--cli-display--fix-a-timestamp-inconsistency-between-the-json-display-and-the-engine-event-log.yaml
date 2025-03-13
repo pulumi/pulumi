@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Fix a timestamp inconsistency between the JSON display and the engine event log

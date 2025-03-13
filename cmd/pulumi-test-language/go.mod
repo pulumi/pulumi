@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/pulumi/pulumi/pkg/v3 v3.131.0
-	github.com/pulumi/pulumi/sdk/v3 v3.154.0
+	github.com/pulumi/pulumi/sdk/v3 v3.155.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.67.1

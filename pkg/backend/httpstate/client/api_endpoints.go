@@ -95,6 +95,8 @@ func init() {
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}", "getStackUpdate")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
+	addEndpoint("GET", "/api/orgs/{orgName}/templates", "listTemplates")
+	addEndpoint("GET", "/api/orgs/{orgName}/templates/download", "downloadTemplates")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-decrypt", "batchDecrypt")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-encrypt", "batchEncrypt")
 

@@ -4,7 +4,7 @@
     </a>
 </p>
 
-[![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=slack+badge)
+[![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com/)
 [![GitHub Discussions](https://img.shields.io/github/discussions/pulumi/pulumi)](https://github.com/pulumi/pulumi/discussions)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
 [![Python version](https://badge.fury.io/py/pulumi.svg)](https://pypi.org/project/pulumi)
@@ -14,18 +14,18 @@
 
 # Infrastructure as Code in any Programming Language
 
-<a href="https://www.pulumi.com/docs/iac/get-started/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=get+started+button" title="Get Started">
+<a href="https://www.pulumi.com/docs/iac/get-started/>
     <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
 </a>
 
-**Pulumi Infrastructure as Code** is the easiest way to build and deploy infrastructure, of any architecture and on any cloud, using programming languages that you already know and love. Code and ship infrastructure faster with your favorite languages and tools, and embed IaC anywhere with [Automation API](https://www.pulumi.com/docs/iac/using-pulumi/automation-api/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=automation+api).
+**Pulumi Infrastructure as Code** is the easiest way to build and deploy infrastructure, of any architecture and on any cloud, using programming languages that you already know and love. Code and ship infrastructure faster with your favorite languages and tools, and embed IaC anywhere with [Automation API](https://www.pulumi.com/docs/iac/using-pulumi/automation-api/).
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your resources on
-[AWS](https://www.pulumi.com/docs/iac/clouds/aws/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=aws+reference+link),
-[Azure](https://www.pulumi.com/docs/iac/clouds/azure/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=azure+reference+link),
-[Google Cloud Platform](https://www.pulumi.com/docs/iac/clouds/gcp/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=gcp+reference+link), 
-[Kubernetes](https://www.pulumi.com/docs/iac/clouds/kubernetes/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=kuberneters+reference+link), and [120+ providers](https://www.pulumi.com/registry/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=providers+reference+link) using an
-[infrastructure-as-code](https://www.pulumi.com/what-is/what-is-infrastructure-as-code/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=infrastructure+as+code) approach.
+[AWS](https://www.pulumi.com/docs/iac/clouds/aws/),
+[Azure](https://www.pulumi.com/docs/iac/clouds/azure/),
+[Google Cloud Platform](https://www.pulumi.com/docs/iac/clouds/gcp/), 
+[Kubernetes](https://www.pulumi.com/docs/iac/clouds/kubernetes/), and [120+ providers](https://www.pulumi.com/registry/) using an
+[infrastructure-as-code](https://www.pulumi.com/what-is/what-is-infrastructure-as-code/) approach.
 Skip the YAML, and use standard language features like loops, functions, classes,
 and package management that you already know and love.
 
@@ -81,22 +81,22 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 <img align="right" width="400" src="https://www.pulumi.com/images/docs/quickstart/console.png" />
 
-* **[Get Started with Pulumi](https://www.pulumi.com/docs/iac/get-started/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=get+started+with+pulumi)**: Deploy a simple application in AWS, Azure, Google Cloud, or Kubernetes using Pulumi.
+* **[Get Started with Pulumi](https://www.pulumi.com/docs/iac/get-started/)**: Deploy a simple application in AWS, Azure, Google Cloud, or Kubernetes using Pulumi.
 
-* **[Learn](https://www.pulumi.com/tutorials/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=learn)**: Follow Pulumi learning pathways to learn best practices and architectural patterns through authentic examples.
+* **[Learn](https://www.pulumi.com/tutorials/)**: Follow Pulumi learning pathways to learn best practices and architectural patterns through authentic examples.
 
 * **[Examples](https://github.com/pulumi/examples)**: Browse several examples across many languages,
   clouds, and scenarios including containers, serverless, and infrastructure.
 
-* **[Docs](https://www.pulumi.com/docs/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=docs)**: Learn about Pulumi concepts, follow user-guides, and consult the reference documentation.
+* **[Docs](https://www.pulumi.com/docs/)**: Learn about Pulumi concepts, follow user-guides, and consult the reference documentation.
 
-* **[Registry](https://www.pulumi.com/registry/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=registry)**: Find the Pulumi Package with the resources you need. Install the package directly into your project, browse the API documentation, and start building.
+* **[Registry](https://www.pulumi.com/registry/)**: Find the Pulumi Package with the resources you need. Install the package directly into your project, browse the API documentation, and start building.
 
-* **[Secrets Management](https://www.pulumi.com/product/secrets-management/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=secrets+management)**: Tame secrets sprawl and configuration complexity securely across all your cloud infrastructure and applications with Pulumi ESC.
+* **[Secrets Management](https://www.pulumi.com/product/secrets-management/)**: Tame secrets sprawl and configuration complexity securely across all your cloud infrastructure and applications with Pulumi ESC.
 
 * **[Pulumi Roadmap](https://github.com/orgs/pulumi/projects/44)**: Review the planned work for the upcoming quarter and a selected backlog of issues that are on our mind but not yet scheduled.
 
-* **[Community Slack](https://slack.pulumi.com/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=welcome+slack)**: Join us in Pulumi Community Slack. All conversations and questions are welcome.
+* **[Community Slack](https://slack.pulumi.com/)**: Join us in Pulumi Community Slack. All conversations and questions are welcome.
 
 * **[GitHub Discussions](https://github.com/pulumi/pulumi/discussions)**: Ask questions or share what you're building with Pulumi.
 
@@ -104,7 +104,7 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 [![Watch the video](/youtube_preview_image.png)](https://www.youtube.com/watch?v=6f8KF6UGN7g)
 
-See the [Get Started](https://www.pulumi.com/docs/iac/get-started/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=getting+started+quickstart) guide to quickly get started with
+See the [Get Started](https://www.pulumi.com/docs/iac/get-started/) guide to quickly get started with
 Pulumi on your platform and cloud of choice.
 
 Otherwise, the following steps demonstrate how to deploy your first Pulumi program, using AWS
@@ -113,7 +113,7 @@ Serverless Lambdas, in minutes:
 1. **Install**:
 
     To install the latest Pulumi release, run the following (see full
-    [installation instructions](https://www.pulumi.com/docs/iac/download-install/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=getting+started+install) for additional installation options):
+    [installation instructions](https://www.pulumi.com/docs/iac/download-install/) for additional installation options):
 
     ```bash
     $ curl -fsSL https://get.pulumi.com/ | sh
@@ -166,9 +166,9 @@ Serverless Lambdas, in minutes:
     $ pulumi destroy -y
     ```
 
-To learn more, head over to [pulumi.com](https://pulumi.com/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=getting+started+learn+more+home) for much more information, including
-[tutorials](https://www.pulumi.com/tutorials/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=getting+started+learn+more+tutorials), [examples](https://github.com/pulumi/examples), and
-details of the core Pulumi CLI and [programming model concepts](https://www.pulumi.com/docs/iac/concepts/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=getting+started+learn+more+concepts).
+To learn more, head over to [pulumi.com](https://pulumi.com/) for much more information, including
+[tutorials](https://www.pulumi.com/tutorials/), [examples](https://github.com/pulumi/examples), and
+details of the core Pulumi CLI and [programming model concepts](https://www.pulumi.com/docs/iac/concepts/).
 
 ## <a name="platform"></a>Platform
 
@@ -176,23 +176,23 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 |    | Language | Status | Runtime | Versions |
 | -- | -------- | ------ | ------- | -------- |
-| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](https://www.pulumi.com/docs/iac/languages-sdks/javascript/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+javascript) | Stable  | Node.js | [Current, Active and Maintenance LTS versions](https://nodejs.org/en/about/previous-releases)  |
-| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](https://www.pulumi.com/docs/iac/languages-sdks/javascript/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+typescript) | Stable  | Node.js | [Current, Active and Maintenance LTS versions](https://nodejs.org/en/about/previous-releases)  |
-| <img src="https://www.pulumi.com/logos/tech/logo-python.svg" height=38 /> | [Python](https://www.pulumi.com/docs/iac/languages-sdks/python/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+python)     | Stable  | Python | [Supported versions](https://devguide.python.org/versions/#versions) |
-| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](https://www.pulumi.com/docs/iac/languages-sdks/go/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+go)             | Stable  | Go | [Supported versions](https://go.dev/doc/devel/release#policy) |
-| <img src="https://www.pulumi.com/logos/tech/dotnet.svg" height=38 />      | [.NET (C#/F#/VB.NET)](https://www.pulumi.com/docs/iac/languages-sdks/dotnet/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+dotnet)     | Stable  | .NET | [Supported versions](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core#lifecycle)  |
-| <img src="https://www.pulumi.com/logos/tech/java.svg" height=38 />      | [Java](https://www.pulumi.com/docs/iac/languages-sdks/java/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+java)     | Public Preview  | JDK | 11+  |
-| <img src="https://www.pulumi.com/logos/tech/yaml.svg" height=38 />      | [YAML](https://www.pulumi.com/docs/iac/languages-sdks/yaml/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=languages+yaml)     | Stable  | n/a  | n/a  |
+| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](https://www.pulumi.com/docs/iac/languages-sdks/javascript/) | Stable  | Node.js | [Current, Active and Maintenance LTS versions](https://nodejs.org/en/about/previous-releases)  |
+| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](https://www.pulumi.com/docs/iac/languages-sdks/javascript/) | Stable  | Node.js | [Current, Active and Maintenance LTS versions](https://nodejs.org/en/about/previous-releases)  |
+| <img src="https://www.pulumi.com/logos/tech/logo-python.svg" height=38 /> | [Python](https://www.pulumi.com/docs/iac/languages-sdks/python/)     | Stable  | Python | [Supported versions](https://devguide.python.org/versions/#versions) |
+| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](https://www.pulumi.com/docs/iac/languages-sdks/go/)             | Stable  | Go | [Supported versions](https://go.dev/doc/devel/release#policy) |
+| <img src="https://www.pulumi.com/logos/tech/dotnet.svg" height=38 />      | [.NET (C#/F#/VB.NET)](https://www.pulumi.com/docs/iac/languages-sdks/dotnet/)     | Stable  | .NET | [Supported versions](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core#lifecycle)  |
+| <img src="https://www.pulumi.com/logos/tech/java.svg" height=38 />      | [Java](https://www.pulumi.com/docs/iac/languages-sdks/java/)     | Public Preview  | JDK | 11+  |
+| <img src="https://www.pulumi.com/logos/tech/yaml.svg" height=38 />      | [YAML](https://www.pulumi.com/docs/iac/languages-sdks/yaml/)     | Stable  | n/a  | n/a  |
 
 ### EOL Releases
 
 The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
 
-* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/iac/download-install/migrating-3.0/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=v3+migration+guide).
+* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/iac/download-install/migrating-3.0/).
 
 ### Clouds
 
-Visit the [Registry](https://www.pulumi.com/registry/?utm_source=github.com&utm_medium=referral&utm_campaign=pulumi-pulumi-github-repo&utm_content=registry) for the full list of supported cloud and infrastructure providers.
+Visit the [Registry](https://www.pulumi.com/registry/) for the full list of supported cloud and infrastructure providers.
 
 ## Contributing
 
