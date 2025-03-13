@@ -76,35 +76,55 @@ type ProviderHandshakeResponse struct {
 	SupportsAutonamingConfiguration bool
 }
 
+// ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
+// a provider from either the command line or from within a Pulumi program, respectively.
 type ParameterizeParameters interface {
 	isParameterizeParameters()
 }
 
 type (
+	// ParameterizeArgs is used when parameterizing a provider from command line arguments.
 	ParameterizeArgs struct {
+		// The arguments passed on the command line following the provider name.
 		Args []string
 	}
 
+	// ParameterizeValue is used when parameterizing a provider from within a Pulumi program.
 	ParameterizeValue struct {
-		Name    string
+		// The name of the parameterization.
+		Name string
+		// The version of the parameterization.
 		Version semver.Version
-		Value   []byte
+		// The provider metadata embedded in the parameterization.
+		Value []byte
 	}
 )
 
-func (*ParameterizeArgs) isParameterizeParameters()  {}
+// isParameterizeParameters is a no-op method that marks ParameterizeArgs as implementing ParameterizeParameters.
+func (*ParameterizeArgs) isParameterizeParameters() {}
+
+// isParameterizeParameters is a no-op method that marks ParameterizeValue as implementing ParameterizeParameters.
 func (*ParameterizeValue) isParameterizeParameters() {}
 
+// The type of requests sent as part of a Parameterize call.
 type ParameterizeRequest struct {
+	// The parameters to use when parameterizing the provider instance.
 	Parameters ParameterizeParameters
 }
 
+// The type of responses sent as part of a Parameterize call.
 type ParameterizeResponse struct {
-	Name    string
+	// The name of the parameterization. This must be unique in the context of a program.
+	// If the request parameter was a ParameterizeValue, then this field must match the input name.
+	Name string
+	// The version of the parameterization. This is required to be set by the provider. It does not have to match
+	// the version of the provider itself, but can be used however the provider sees fit.
 	Version semver.Version
 }
 
+// GetSchemaResponse is the response to a GetSchema call.
 type GetSchemaResponse struct {
+	// The bytes of the JSON serialized Pulumi schema for generating the provider's SDK.
 	Schema []byte
 }
 
