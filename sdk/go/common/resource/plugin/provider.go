@@ -95,7 +95,9 @@ type (
 		Name string
 		// The version of the parameterization.
 		Version semver.Version
-		// The provider metadata embedded in the parameterization.
+		// The binary parameterization value as returned from a previous parameterization call.
+		// This can be any data the provider needs to parameterize itself - such as the data needed to turn resource
+		// requests into API calls.
 		Value []byte
 	}
 )
@@ -117,8 +119,9 @@ type ParameterizeResponse struct {
 	// The name of the parameterization. This must be unique in the context of a program.
 	// If the request parameter was a ParameterizeValue, then this field must match the input name.
 	Name string
-	// The version of the parameterization. This is required to be set by the provider. It does not have to match
-	// the version of the provider itself, but can be used however the provider sees fit.
+	// The version of the parameterization. This is required to be set by the provider. It does not have to match the
+	// version of the provider itself, but can be used however the provider sees fit. If the request parameter was a
+	// ParameterizeValue, then this field must match the input version.
 	Version semver.Version
 }
 
