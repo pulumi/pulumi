@@ -130,8 +130,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	}
 	currentBackend := cmd.currentBackend // shadow the top-level function
 
-	opts := backend.QueryOptions{}
-	opts.Display = display.Options{
+	displayOpts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: interactive,
 		Type:          display.DisplayQuery,
@@ -143,7 +142,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts.Display)
+	backend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}
