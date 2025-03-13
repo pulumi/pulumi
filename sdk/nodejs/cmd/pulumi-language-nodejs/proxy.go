@@ -195,29 +195,6 @@ func (p *monitorProxy) Invoke(
 	return p.target.Invoke(ctx, req)
 }
 
-func (p *monitorProxy) StreamInvoke(
-	req *pulumirpc.ResourceInvokeRequest, server pulumirpc.ResourceMonitor_StreamInvokeServer,
-) error {
-	client, err := p.target.StreamInvoke(context.Background(), req)
-	if err != nil {
-		return err
-	}
-
-	for {
-		in, err := client.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := server.Send(in); err != nil {
-			return err
-		}
-	}
-}
-
 func (p *monitorProxy) Call(
 	ctx context.Context, req *pulumirpc.ResourceCallRequest,
 ) (*pulumirpc.CallResponse, error) {

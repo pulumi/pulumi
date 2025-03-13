@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1905,82 +1904,6 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		Properties: ret,
 		Failures:   failures,
 	}, nil
-}
-
-// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream of
-// responses.
-func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (StreamInvokeResponse, error) {
-	contract.Assertf(req.Tok != "", "StreamInvoke requires a token")
-
-	label := fmt.Sprintf("%s.StreamInvoke(%s)", p.label(), req.Tok)
-	logging.V(7).Infof("%s executing (#args=%d)", label, len(req.Args))
-
-	// Ensure that the plugin is configured.
-	client := p.clientRaw
-	protocol, pcfg, err := p.getPluginConfig(context.Background())
-	if err != nil {
-		return StreamInvokeResponse{}, err
-	}
-
-	// If the provider is not fully configured, return an empty property map.
-	if !pcfg.known {
-		return StreamInvokeResponse{}, req.OnNext(resource.PropertyMap{})
-	}
-
-	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-	})
-	if err != nil {
-		return StreamInvokeResponse{}, err
-	}
-
-	streamClient, err := client.StreamInvoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:  string(req.Tok),
-		Args: margs,
-	})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
-		return StreamInvokeResponse{}, rpcError
-	}
-
-	for {
-		in, err := streamClient.Recv()
-		if err == io.EOF {
-			return StreamInvokeResponse{}, nil
-		}
-		if err != nil {
-			return StreamInvokeResponse{}, err
-		}
-
-		// Unmarshal response.
-		ret, err := UnmarshalProperties(in.GetReturn(), MarshalOptions{
-			Label:          label + ".returns",
-			RejectUnknowns: true,
-			KeepSecrets:    true,
-			KeepResources:  true,
-		})
-		if err != nil {
-			return StreamInvokeResponse{}, err
-		}
-
-		// Check properties that failed verification.
-		var failures []CheckFailure
-		for _, failure := range in.GetFailures() {
-			failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
-		}
-
-		if len(failures) > 0 {
-			return StreamInvokeResponse{Failures: failures}, nil
-		}
-
-		// Send stream message back to whoever is consuming the stream.
-		if err := req.OnNext(ret); err != nil {
-			return StreamInvokeResponse{}, err
-		}
-	}
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.

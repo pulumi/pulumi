@@ -55,7 +55,6 @@ type Provider struct {
 	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
 	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
 	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
-	StreamInvokeF func(context.Context, plugin.StreamInvokeRequest) (plugin.StreamInvokeResponse, error)
 	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
 	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
 	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
@@ -220,16 +219,6 @@ func (prov *Provider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plu
 		}, nil
 	}
 	return prov.InvokeF(ctx, req)
-}
-
-func (prov *Provider) StreamInvoke(
-	ctx context.Context,
-	req plugin.StreamInvokeRequest,
-) (plugin.StreamInvokeResponse, error) {
-	if prov.StreamInvokeF == nil {
-		return plugin.StreamInvokeResponse{}, errors.New("StreamInvoke unimplemented")
-	}
-	return prov.StreamInvokeF(ctx, req)
 }
 
 func (prov *Provider) Call(ctx context.Context, req plugin.CallRequest) (plugin.CallResponse, error) {

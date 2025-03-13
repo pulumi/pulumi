@@ -16,7 +16,6 @@ import * as pulumi_callback_pb from "./callback_pb";
 interface IResourceMonitorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     supportsFeature: IResourceMonitorService_ISupportsFeature;
     invoke: IResourceMonitorService_IInvoke;
-    streamInvoke: IResourceMonitorService_IStreamInvoke;
     call: IResourceMonitorService_ICall;
     readResource: IResourceMonitorService_IReadResource;
     registerResource: IResourceMonitorService_IRegisterResource;
@@ -39,15 +38,6 @@ interface IResourceMonitorService_IInvoke extends grpc.MethodDefinition<pulumi_r
     path: "/pulumirpc.ResourceMonitor/Invoke";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<pulumi_resource_pb.ResourceInvokeRequest>;
-    requestDeserialize: grpc.deserialize<pulumi_resource_pb.ResourceInvokeRequest>;
-    responseSerialize: grpc.serialize<pulumi_provider_pb.InvokeResponse>;
-    responseDeserialize: grpc.deserialize<pulumi_provider_pb.InvokeResponse>;
-}
-interface IResourceMonitorService_IStreamInvoke extends grpc.MethodDefinition<pulumi_resource_pb.ResourceInvokeRequest, pulumi_provider_pb.InvokeResponse> {
-    path: "/pulumirpc.ResourceMonitor/StreamInvoke";
-    requestStream: false;
-    responseStream: true;
     requestSerialize: grpc.serialize<pulumi_resource_pb.ResourceInvokeRequest>;
     requestDeserialize: grpc.deserialize<pulumi_resource_pb.ResourceInvokeRequest>;
     responseSerialize: grpc.serialize<pulumi_provider_pb.InvokeResponse>;
@@ -122,7 +112,6 @@ export const ResourceMonitorService: IResourceMonitorService;
 export interface IResourceMonitorServer extends grpc.UntypedServiceImplementation {
     supportsFeature: grpc.handleUnaryCall<pulumi_resource_pb.SupportsFeatureRequest, pulumi_resource_pb.SupportsFeatureResponse>;
     invoke: grpc.handleUnaryCall<pulumi_resource_pb.ResourceInvokeRequest, pulumi_provider_pb.InvokeResponse>;
-    streamInvoke: grpc.handleServerStreamingCall<pulumi_resource_pb.ResourceInvokeRequest, pulumi_provider_pb.InvokeResponse>;
     call: grpc.handleUnaryCall<pulumi_resource_pb.ResourceCallRequest, pulumi_provider_pb.CallResponse>;
     readResource: grpc.handleUnaryCall<pulumi_resource_pb.ReadResourceRequest, pulumi_resource_pb.ReadResourceResponse>;
     registerResource: grpc.handleUnaryCall<pulumi_resource_pb.RegisterResourceRequest, pulumi_resource_pb.RegisterResourceResponse>;
@@ -139,8 +128,6 @@ export interface IResourceMonitorClient {
     invoke(request: pulumi_resource_pb.ResourceInvokeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.InvokeResponse) => void): grpc.ClientUnaryCall;
     invoke(request: pulumi_resource_pb.ResourceInvokeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.InvokeResponse) => void): grpc.ClientUnaryCall;
     invoke(request: pulumi_resource_pb.ResourceInvokeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.InvokeResponse) => void): grpc.ClientUnaryCall;
-    streamInvoke(request: pulumi_resource_pb.ResourceInvokeRequest, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.InvokeResponse>;
-    streamInvoke(request: pulumi_resource_pb.ResourceInvokeRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.InvokeResponse>;
     call(request: pulumi_resource_pb.ResourceCallRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CallResponse) => void): grpc.ClientUnaryCall;
     call(request: pulumi_resource_pb.ResourceCallRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CallResponse) => void): grpc.ClientUnaryCall;
     call(request: pulumi_resource_pb.ResourceCallRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CallResponse) => void): grpc.ClientUnaryCall;
@@ -172,8 +159,6 @@ export class ResourceMonitorClient extends grpc.Client implements IResourceMonit
     public invoke(request: pulumi_resource_pb.ResourceInvokeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.InvokeResponse) => void): grpc.ClientUnaryCall;
     public invoke(request: pulumi_resource_pb.ResourceInvokeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.InvokeResponse) => void): grpc.ClientUnaryCall;
     public invoke(request: pulumi_resource_pb.ResourceInvokeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.InvokeResponse) => void): grpc.ClientUnaryCall;
-    public streamInvoke(request: pulumi_resource_pb.ResourceInvokeRequest, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.InvokeResponse>;
-    public streamInvoke(request: pulumi_resource_pb.ResourceInvokeRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.InvokeResponse>;
     public call(request: pulumi_resource_pb.ResourceCallRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CallResponse) => void): grpc.ClientUnaryCall;
     public call(request: pulumi_resource_pb.ResourceCallRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CallResponse) => void): grpc.ClientUnaryCall;
     public call(request: pulumi_resource_pb.ResourceCallRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CallResponse) => void): grpc.ClientUnaryCall;

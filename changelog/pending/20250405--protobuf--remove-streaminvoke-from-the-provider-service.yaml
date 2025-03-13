@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: protobuf
+  description: Remove StreamInvoke from the Provider service
