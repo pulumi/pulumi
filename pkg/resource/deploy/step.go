@@ -1697,6 +1697,8 @@ func getProvider(s Step, override plugin.Provider) (plugin.Provider, error) {
 	return provider, nil
 }
 
+// DiffStep isn't really a step like a normal step. It's just a way to get access to the parallel but bounded step
+// workers. We use this step to call `provider.Diff` in parallel with other steps.
 type DiffStep struct {
 	deployment    *Deployment                                  // the deployment that produced this diff
 	pcs           *promise.CompletionSource[plugin.DiffResult] // the completion source for this diff
