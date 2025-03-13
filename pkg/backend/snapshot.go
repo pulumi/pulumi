@@ -32,12 +32,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
 // recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
+
+// SnapshotWriter is an interface for writing a snapshot from an update. Some services may be able to be more
+// efficent then writing a whole snapshot on each EndOperation.
+type SnapshotWriter interface {
+	StartOperation(resource.Operation) (string, error)
+	EndOperation(operation string, state *resource.State, deleteOld int, deleteNew string) (string, error)
+	Close() error
+}
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
 // persistence. In order to fit into our current model, snapshot persisters have two functions:
@@ -47,48 +57,57 @@ type SnapshotPersister interface {
 	Save(snapshot *deploy.Snapshot) error
 }
 
-// SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
-// mutations on the global snapshot object serially. This implementation maintains two bits of state: the "base"
-// snapshot, which is completely immutable and represents the state of the world prior to the application
-// of the current plan, and a "new" list of resources, which consists of the resources that were operated upon
-// by the current plan.
-//
-// Important to note is that, although this SnapshotManager is designed to be easily convertible into a thread-safe
-// implementation, the code as it is today is *not thread safe*. In particular, it is not legal for there to be
-// more than one `SnapshotMutation` active at any point in time. This is because this SnapshotManager invalidates
-// the last persisted snapshot in `BeginSnapshot`. This is designed to match existing behavior and will not
-// be the state of things going forward.
-//
-// The resources stored in the `resources` slice are pointers to resource objects allocated by the engine.
-// This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
-// that it creates and expects those mutations to be persisted directly to the snapshot.
-type SnapshotManager struct {
-	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
-	secretsManager   secrets.Manager          // The default secrets manager to use
-	resources        []*resource.State        // The list of resources operated upon by this plan
-	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
-	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
-	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
-	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+// DefaultSnapshotWriter is a default implementation of snapshot writing that just uses SnapshotPersister.
+func NewDefaultSnapshotWriter(persister SnapshotPersister, secretsManager secrets.Manager, baseSnapshot *deploy.Snapshot) SnapshotWriter {
+	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
-	// The set of resources that have been deleted. These resources could also have been added to `resources`
-	// by other operations but need to be filtered out before writing the snapshot.
-	deletes map[*resource.State]bool
+	dsw := &defaultSnapshotWriter{
+		persister:      persister,
+		secretsManager: secretsManager,
+		baseSnapshot:   baseSnapshot,
+
+		done:             done,
+		cancel:           cancel,
+		mutationRequests: mutationRequests,
+	}
+
+	serviceLoop := dsw.defaultServiceLoop
+
+	if env.SkipCheckpoints.Value() {
+		serviceLoop = dsw.unsafeServiceLoop
+	}
+
+	go serviceLoop(mutationRequests, done)
+
+	return dsw
 }
-
-var _ engine.SnapshotManager = (*SnapshotManager)(nil)
 
 type mutationRequest struct {
 	mutator func() bool
 	result  chan<- error
 }
 
-func (sm *SnapshotManager) Close() error {
-	close(sm.cancel)
-	return <-sm.done
+type defaultSnapshotWriter struct {
+	persister      SnapshotPersister // The persister responsible for invalidating and persisting the snapshot
+	baseSnapshot   *deploy.Snapshot  // The base snapshot for this plan
+	secretsManager secrets.Manager   // The default secrets manager to use
+
+	cancel chan bool    // A channel used to request cancellation of any new mutation requests.
+	done   <-chan error // A channel that sends a single result when the manager has shut down.
+
+	mutationRequests chan<- mutationRequest // The queue of mutation requests, to be retired serially by the manager
+}
+
+func (dsw *defaultSnapshotWriter) StartOperation(op resource.Operation) (string, error) {
+	return "", nil
+}
+
+func (dsw *defaultSnapshotWriter) EndOperation(operation string, state *resource.State, deleteOld int, deleteNew string) (string, error) {
+	return "", nil
+}
+
+func (dsw *defaultSnapshotWriter) Close() error {
+	return nil
 }
 
 // If you need to understand what's going on in this file, start here!
@@ -108,14 +127,233 @@ func (sm *SnapshotManager) Close() error {
 //
 // You should never observe or mutate the global snapshot without using this function unless
 // you have a very good justification.
-func (sm *SnapshotManager) mutate(mutator func() bool) error {
+func (dsw *defaultSnapshotWriter) mutate(mutator func() bool) error {
 	result := make(chan error)
 	select {
-	case sm.mutationRequests <- mutationRequest{mutator: mutator, result: result}:
+	case dsw.mutationRequests <- mutationRequest{mutator: mutator, result: result}:
 		return <-result
-	case <-sm.cancel:
+	case <-dsw.cancel:
 		return errors.New("snapshot manager closed")
 	}
+}
+
+// snap produces a new Snapshot given the base snapshot and a list of resources that the current
+// plan has created.
+func (dsw *defaultSnapshotWriter) snap() *deploy.Snapshot {
+	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
+	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
+	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
+	//
+	// - Begin with an empty merged DAG.
+	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG.
+	// - For each resource r in the base DAG:
+	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the
+	//       current DAG, which accurately captures its current dependencies.
+	//     - If r is not in the merged DAG, insert it and its outgoing edges into the merged DAG.
+	//
+	// Physically, however, each DAG is represented as list of resources without explicit dependency edges. In place of
+	// edges, it is assumed that the list represents a valid topological sort of its source DAG. Thus, any resource r at
+	// index i in a list L must be assumed to be dependent on all resources in L with index j s.t. j < i. Due to this
+	// representation, we implement the algorithm above as follows to produce a merged list that represents a valid
+	// topological sort of the merged DAG:
+	//
+	// - Begin with an empty merged list.
+	// - For each resource r in the current list, append r to the merged list. r must be in a correct location in the
+	//   merged list, as its position relative to its assumed dependencies has not changed.
+	// - For each resource r in the base list:
+	//     - If r is in the merged list, we are done by the logic given in the original algorithm.
+	//     - If r is not in the merged list, append r to the merged list. r must be in a correct location in the merged
+	//       list:
+	//         - If any of r's dependencies were in the current list, they must already be in the merged list and their
+	//           relative order w.r.t. r has not changed.
+	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
+	//           they would have been appended to the list before r.
+
+	// Start with a copy of the resources produced during the evaluation of the current plan.
+	resources := make([]*resource.State, 0, len(sm.resources))
+
+	// if any resources have been deleted we need to filter them out here
+	for _, res := range sm.resources {
+		if !sm.deletes[res] {
+			resources = append(resources, res)
+		}
+	}
+
+	// Append any resources from the base plan that were not produced by the current plan.
+	if base := sm.baseSnapshot; base != nil {
+		for _, res := range base.Resources {
+			if !sm.dones[res] {
+				resources = append(resources, res)
+			}
+		}
+	}
+
+	// Record any pending operations, if there are any outstanding that have not completed yet.
+	var operations []resource.Operation
+	for _, op := range sm.operations {
+		if !sm.completeOps[op.Resource] {
+			operations = append(operations, op)
+		}
+	}
+
+	// Track pending create operations from the base snapshot
+	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+	// because these must require user intervention to be cleared or resolved.
+	if base := sm.baseSnapshot; base != nil {
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == resource.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+			}
+		}
+	}
+
+	manifest := deploy.Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
+	}
+
+	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
+	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
+	// to ensure that secrets are not re-encrypted on each update.
+	secretsManager := sm.secretsManager
+	if sm.baseSnapshot != nil && secrets.AreCompatible(secretsManager, sm.baseSnapshot.SecretsManager) {
+		secretsManager = sm.baseSnapshot.SecretsManager
+	}
+
+	var metadata deploy.SnapshotMetadata
+	if sm.baseSnapshot != nil {
+		metadata = sm.baseSnapshot.Metadata
+	}
+
+	manifest.Magic = manifest.NewMagic()
+	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
+}
+
+// saveSnapshot persists the current snapshot. If integrity checking is enabled,
+// the snapshot's integrity is also verified. If the snapshot is invalid,
+// metadata about this write operation is added to the snapshot before it is
+// written, in order to aid debugging should future operations fail with an
+// error.
+func (dsw *defaultSnapshotWriter) saveSnapshot() error {
+	snap, err := sm.snap().NormalizeURNReferences()
+	if err != nil {
+		return fmt.Errorf("failed to normalize URN references: %w", err)
+	}
+
+	// In order to persist metadata about snapshot integrity issues, we check the
+	// snapshot's validity *before* we write it. However, should an error occur,
+	// we will only raise this *after* the write has completed. In the event that
+	// integrity checking is disabled, we still actually perform the check (and
+	// write metadata appropriately), but we will not raise the error following a
+	// successful write.
+	//
+	// If the actual write fails for any reason, this error will supersede any
+	// integrity error. This matches behaviour prior to when integrity metadata
+	// writing was introduced.
+	//
+	// Metadata will be cleared out by a successful operation (even if integrity
+	// checking is being enforced).
+	integrityError := snap.VerifyIntegrity()
+	if integrityError == nil {
+		snap.Metadata.IntegrityErrorMetadata = nil
+	} else {
+		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
+			Version: version.Version,
+			Command: strings.Join(os.Args, " "),
+			Error:   integrityError.Error(),
+		}
+	}
+
+	if err := sm.persister.Save(snap); err != nil {
+		return fmt.Errorf("failed to save snapshot: %w", err)
+	}
+	if !DisableIntegrityChecking && integrityError != nil {
+		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
+	}
+	return nil
+}
+
+// defaultServiceLoop saves a Snapshot whenever a mutation occurs
+func (dsw *defaultSnapshotWriter) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	// True if we have elided writes since the last actual write.
+	hasElidedWrites := true
+
+	// Service each mutation request in turn.
+serviceLoop:
+	for {
+		select {
+		case request := <-mutationRequests:
+			var err error
+			if request.mutator() {
+				err = dsw.saveSnapshot()
+				hasElidedWrites = false
+			} else {
+				hasElidedWrites = true
+			}
+			request.result <- err
+		case <-dsw.cancel:
+			break serviceLoop
+		}
+	}
+
+	// If we still have elided writes once the channel has closed, flush the snapshot.
+	var err error
+	if hasElidedWrites {
+		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+		err = dsw.saveSnapshot()
+	}
+	done <- err
+}
+
+// unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
+// SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
+// cause a Snapshot to be serialized to the user's state backend.
+func (dsw *defaultSnapshotWriter) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	for {
+		select {
+		case request := <-mutationRequests:
+			request.mutator()
+			request.result <- nil
+		case <-dsw.cancel:
+			done <- dsw.saveSnapshot()
+			return
+		}
+	}
+}
+
+// SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
+// mutations on the global snapshot object serially. This implementation maintains two bits of state: the "base"
+// snapshot, which is completely immutable and represents the state of the world prior to the application
+// of the current plan, and a "new" list of resources, which consists of the resources that were operated upon
+// by the current plan.
+//
+// Important to note is that, although this SnapshotManager is designed to be easily convertible into a thread-safe
+// implementation, the code as it is today is *not thread safe*. In particular, it is not legal for there to be
+// more than one `SnapshotMutation` active at any point in time. This is because this SnapshotManager invalidates
+// the last persisted snapshot in `BeginSnapshot`. This is designed to match existing behavior and will not
+// be the state of things going forward.
+//
+// The resources stored in the `resources` slice are pointers to resource objects allocated by the engine.
+// This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
+// that it creates and expects those mutations to be persisted directly to the snapshot.
+type SnapshotManager struct {
+	writer     SnapshotWriter                // The writer responsible for invalidating and persisting the snapshot
+	resources  []*resource.State             // The list of resources operated upon by this plan
+	operations map[string]resource.Operation // The set of operations known to be outstanding in this plan
+	dones      mapset.Set[int]               // The set of resources that have been operated upon already by this plan
+
+	// The set of resources that have been deleted. These resources could also have been added to `resources`
+	// by other operations but need to be filtered out before writing the snapshot.
+	deletes mapset.Set[string]
+	// A mapping from state to uuid that's used in the deletes map.
+	resourceUUID map[*resource.State]string
+}
+
+var _ engine.SnapshotManager = (*SnapshotManager)(nil)
+
+func (sm *SnapshotManager) Close() error {
+	return sm.writer.Close()
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
@@ -599,191 +837,6 @@ func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
 	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
 }
 
-// snap produces a new Snapshot given the base snapshot and a list of resources that the current
-// plan has created.
-func (sm *SnapshotManager) snap() *deploy.Snapshot {
-	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
-	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
-	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
-	//
-	// - Begin with an empty merged DAG.
-	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG.
-	// - For each resource r in the base DAG:
-	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the
-	//       current DAG, which accurately captures its current dependencies.
-	//     - If r is not in the merged DAG, insert it and its outgoing edges into the merged DAG.
-	//
-	// Physically, however, each DAG is represented as list of resources without explicit dependency edges. In place of
-	// edges, it is assumed that the list represents a valid topological sort of its source DAG. Thus, any resource r at
-	// index i in a list L must be assumed to be dependent on all resources in L with index j s.t. j < i. Due to this
-	// representation, we implement the algorithm above as follows to produce a merged list that represents a valid
-	// topological sort of the merged DAG:
-	//
-	// - Begin with an empty merged list.
-	// - For each resource r in the current list, append r to the merged list. r must be in a correct location in the
-	//   merged list, as its position relative to its assumed dependencies has not changed.
-	// - For each resource r in the base list:
-	//     - If r is in the merged list, we are done by the logic given in the original algorithm.
-	//     - If r is not in the merged list, append r to the merged list. r must be in a correct location in the merged
-	//       list:
-	//         - If any of r's dependencies were in the current list, they must already be in the merged list and their
-	//           relative order w.r.t. r has not changed.
-	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
-	//           they would have been appended to the list before r.
-
-	// Start with a copy of the resources produced during the evaluation of the current plan.
-	resources := make([]*resource.State, 0, len(sm.resources))
-
-	// if any resources have been deleted we need to filter them out here
-	for _, res := range sm.resources {
-		if !sm.deletes[res] {
-			resources = append(resources, res)
-		}
-	}
-
-	// Append any resources from the base plan that were not produced by the current plan.
-	if base := sm.baseSnapshot; base != nil {
-		for _, res := range base.Resources {
-			if !sm.dones[res] {
-				resources = append(resources, res)
-			}
-		}
-	}
-
-	// Record any pending operations, if there are any outstanding that have not completed yet.
-	var operations []resource.Operation
-	for _, op := range sm.operations {
-		if !sm.completeOps[op.Resource] {
-			operations = append(operations, op)
-		}
-	}
-
-	// Track pending create operations from the base snapshot
-	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
-	// because these must require user intervention to be cleared or resolved.
-	if base := sm.baseSnapshot; base != nil {
-		for _, pendingOperation := range base.PendingOperations {
-			if pendingOperation.Type == resource.OperationTypeCreating {
-				operations = append(operations, pendingOperation)
-			}
-		}
-	}
-
-	manifest := deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
-	}
-
-	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
-	// to ensure that secrets are not re-encrypted on each update.
-	secretsManager := sm.secretsManager
-	if sm.baseSnapshot != nil && secrets.AreCompatible(secretsManager, sm.baseSnapshot.SecretsManager) {
-		secretsManager = sm.baseSnapshot.SecretsManager
-	}
-
-	var metadata deploy.SnapshotMetadata
-	if sm.baseSnapshot != nil {
-		metadata = sm.baseSnapshot.Metadata
-	}
-
-	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
-}
-
-// saveSnapshot persists the current snapshot. If integrity checking is enabled,
-// the snapshot's integrity is also verified. If the snapshot is invalid,
-// metadata about this write operation is added to the snapshot before it is
-// written, in order to aid debugging should future operations fail with an
-// error.
-func (sm *SnapshotManager) saveSnapshot() error {
-	snap, err := sm.snap().NormalizeURNReferences()
-	if err != nil {
-		return fmt.Errorf("failed to normalize URN references: %w", err)
-	}
-
-	// In order to persist metadata about snapshot integrity issues, we check the
-	// snapshot's validity *before* we write it. However, should an error occur,
-	// we will only raise this *after* the write has completed. In the event that
-	// integrity checking is disabled, we still actually perform the check (and
-	// write metadata appropriately), but we will not raise the error following a
-	// successful write.
-	//
-	// If the actual write fails for any reason, this error will supersede any
-	// integrity error. This matches behaviour prior to when integrity metadata
-	// writing was introduced.
-	//
-	// Metadata will be cleared out by a successful operation (even if integrity
-	// checking is being enforced).
-	integrityError := snap.VerifyIntegrity()
-	if integrityError == nil {
-		snap.Metadata.IntegrityErrorMetadata = nil
-	} else {
-		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: version.Version,
-			Command: strings.Join(os.Args, " "),
-			Error:   integrityError.Error(),
-		}
-	}
-
-	if err := sm.persister.Save(snap); err != nil {
-		return fmt.Errorf("failed to save snapshot: %w", err)
-	}
-	if !DisableIntegrityChecking && integrityError != nil {
-		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
-	}
-	return nil
-}
-
-// defaultServiceLoop saves a Snapshot whenever a mutation occurs
-func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
-	// True if we have elided writes since the last actual write.
-	hasElidedWrites := true
-
-	// Service each mutation request in turn.
-serviceLoop:
-	for {
-		select {
-		case request := <-mutationRequests:
-			var err error
-			if request.mutator() {
-				err = sm.saveSnapshot()
-				hasElidedWrites = false
-			} else {
-				hasElidedWrites = true
-			}
-			request.result <- err
-		case <-sm.cancel:
-			break serviceLoop
-		}
-	}
-
-	// If we still have elided writes once the channel has closed, flush the snapshot.
-	var err error
-	if hasElidedWrites {
-		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-		err = sm.saveSnapshot()
-	}
-	done <- err
-}
-
-// unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
-// SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
-// cause a Snapshot to be serialized to the user's state backend.
-func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
-	for {
-		select {
-		case request := <-mutationRequests:
-			request.mutator()
-			request.result <- nil
-		case <-sm.cancel:
-			done <- sm.saveSnapshot()
-			return
-		}
-	}
-}
-
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister, default secrets
 // manager and base snapshot.
 //
@@ -791,31 +844,11 @@ func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationReque
 // mutate this object and correctness of the SnapshotManager depends on being able to observe this mutation. (This is
 // not ideal...)
 func NewSnapshotManager(
-	persister SnapshotPersister,
-	secretsManager secrets.Manager,
-	baseSnap *deploy.Snapshot,
+	writer SnapshotWriter,
 ) *SnapshotManager {
-	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
-
 	manager := &SnapshotManager{
-		persister:        persister,
-		secretsManager:   secretsManager,
-		baseSnapshot:     baseSnap,
-		dones:            make(map[*resource.State]bool),
-		completeOps:      make(map[*resource.State]bool),
-		mutationRequests: mutationRequests,
-		cancel:           cancel,
-		done:             done,
-		deletes:          make(map[*resource.State]bool),
+		writer: writer,
 	}
-
-	serviceLoop := manager.defaultServiceLoop
-
-	if env.SkipCheckpoints.Value() {
-		serviceLoop = manager.unsafeServiceLoop
-	}
-
-	go serviceLoop(mutationRequests, done)
 
 	return manager
 }
