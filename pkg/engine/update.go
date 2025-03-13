@@ -118,7 +118,7 @@ func ConvertLocalPolicyPacksToPaths(localPolicyPack []LocalPolicyPack) []string 
 //
 //nolint:structcheck
 type UpdateOptions struct {
-	// true if the step generator should use parallel diff.
+	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 
 	// LocalPolicyPacks contains an optional set of policy packs to run as part of this deployment.
