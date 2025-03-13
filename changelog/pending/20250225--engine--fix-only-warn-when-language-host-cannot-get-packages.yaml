@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix only warn when language host cannot get packages

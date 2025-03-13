@@ -32,23 +32,34 @@ type LanguageRuntimeFactory func() plugin.LanguageRuntime
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
 
-func NewLanguageRuntimeF(program ProgramFunc, requiredPackages ...workspace.PackageDescriptor) LanguageRuntimeFactory {
+func NewLanguageRuntimeF(program ProgramFunc, options ...LanguageRuntimeOptions) LanguageRuntimeFactory {
 	return func() plugin.LanguageRuntime {
-		return NewLanguageRuntime(program, requiredPackages...)
+		var opts LanguageRuntimeOptions
+		if len(options) > 0 {
+			opts = options[0]
+		}
+		return NewLanguageRuntime(program, &opts)
 	}
 }
 
-func NewLanguageRuntime(program ProgramFunc, requiredPackages ...workspace.PackageDescriptor) plugin.LanguageRuntime {
+func NewLanguageRuntime(program ProgramFunc, options *LanguageRuntimeOptions) plugin.LanguageRuntime {
 	return &languageRuntime{
-		requiredPackages: requiredPackages,
-		program:          program,
+		requiredPackages:           options.RequiredPackages,
+		program:                    program,
+		getRequiredPackagesFailure: options.GetRequiredPackagesFailure,
 	}
 }
 
 type languageRuntime struct {
-	requiredPackages []workspace.PackageDescriptor
-	program          ProgramFunc
-	closed           bool
+	requiredPackages           []workspace.PackageDescriptor
+	program                    ProgramFunc
+	closed                     bool
+	getRequiredPackagesFailure bool
+}
+
+type LanguageRuntimeOptions struct {
+	RequiredPackages           []workspace.PackageDescriptor
+	GetRequiredPackagesFailure bool
 }
 
 func (p *languageRuntime) Close() error {
@@ -59,6 +70,9 @@ func (p *languageRuntime) Close() error {
 func (p *languageRuntime) GetRequiredPackages(info plugin.ProgramInfo) ([]workspace.PackageDescriptor, error) {
 	if p.closed {
 		return nil, ErrLanguageRuntimeIsClosed
+	}
+	if p.getRequiredPackagesFailure {
+		return nil, errors.New("failed to get required packages")
 	}
 	return p.requiredPackages, nil
 }

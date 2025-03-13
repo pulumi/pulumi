@@ -1485,9 +1485,12 @@ func TestPluginsAreDownloaded(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 		return nil
-	},
-		workspace.PackageDescriptor{PluginSpec: workspace.PluginSpec{Name: "pkgA"}},
-		workspace.PackageDescriptor{PluginSpec: workspace.PluginSpec{Name: "pkgB", Version: &semver10}})
+	}, deploytest.LanguageRuntimeOptions{
+		RequiredPackages: []workspace.PackageDescriptor{
+			{PluginSpec: workspace.PluginSpec{Name: "pkgA"}},
+			{PluginSpec: workspace.PluginSpec{Name: "pkgB", Version: &semver10}},
+		},
+	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{

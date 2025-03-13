@@ -109,7 +109,7 @@ func (ctx *testContext) Close() error {
 func makePluginHost(t testing.TB, program deploytest.ProgramFunc) plugin.Host {
 	sink := diagtest.LogSink(t)
 	statusSink := diagtest.LogSink(t)
-	lang := deploytest.NewLanguageRuntime(program)
+	lang := deploytest.NewLanguageRuntime(program, &deploytest.LanguageRuntimeOptions{})
 	return deploytest.NewPluginHost(sink, statusSink, lang)
 }
 

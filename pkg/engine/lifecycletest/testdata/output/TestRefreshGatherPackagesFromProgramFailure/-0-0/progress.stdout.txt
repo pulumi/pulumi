@@ -1,0 +1,18 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>failed to gather packages from program: failed to discover package requirements: failed to get required packages<{%reset%}>
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA resA <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 1 <{%fg 3%}>warning<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>failed to gather packages from program: failed to discover package requirements: failed to get required packages<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
