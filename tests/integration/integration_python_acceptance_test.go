@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,20 +54,23 @@ func TestEmptyPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPython(t *testing.T) {
-	var randomVal string
+	var fooRandomVal string
+	var barRandomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			randomVal = stack.Outputs["random_val"].(string)
+			fooRandomVal = stack.Outputs["foo_val"].(string)
+			barRandomVal = stack.Outputs["bar_val"].(string)
 		},
 		EditDirs: []integration.EditDir{{
 			Dir:      filepath.Join("dynamic", "python", "step1"),
 			Additive: true,
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+				assert.Equal(t, fooRandomVal, stack.Outputs["foo_val"].(string))
+				assert.Equal(t, barRandomVal, stack.Outputs["bar_val"].(string))
 
 				// Regression testing the workaround for https://github.com/pulumi/pulumi/issues/8265
 				// Ensure the __provider input and output was marked secret
@@ -80,9 +83,11 @@ func TestDynamicPython(t *testing.T) {
 					}
 				}
 
-				dynRes := stack.Deployment.Resources[2]
-				assertIsSecret(dynRes.Inputs["__provider"])
-				assertIsSecret(dynRes.Outputs["__provider"])
+				for i := 2; i <= 3; i++ {
+					dynRes := stack.Deployment.Resources[i]
+					assertIsSecret(dynRes.Inputs["__provider"])
+					assertIsSecret(dynRes.Outputs["__provider"])
+				}
 
 				// Ensure there are no diagnostic events other than debug.
 				for _, event := range stack.Events {
