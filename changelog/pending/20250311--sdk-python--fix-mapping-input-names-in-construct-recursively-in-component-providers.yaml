@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix mapping input names in Construct recursively in component providers
