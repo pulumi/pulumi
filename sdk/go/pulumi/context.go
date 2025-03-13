@@ -1255,8 +1255,8 @@ func (ctx *Context) readPackageResource(
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
 	protect := options.Protect
-	if parent != nil {
-		protect = protect || parent.getProtect()
+	if parent != nil && protect == nil {
+		protect = parent.getProtect()
 	}
 
 	// Create resolvers for the resource's outputs.
@@ -1456,8 +1456,8 @@ func (ctx *Context) registerResource(
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
 	protect := options.Protect
-	if parent != nil {
-		protect = protect || parent.getProtect()
+	if parent != nil && protect == nil {
+		protect = parent.getProtect()
 	}
 
 	// Create resolvers for the resource's outputs.
@@ -1526,6 +1526,11 @@ func (ctx *Context) registerResource(
 				logging.V(9).Infof("getResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
 			}
 		} else {
+			var protect bool
+			if inputs.protect != nil {
+				protect = *inputs.protect
+			}
+
 			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 			resp, err = ctx.state.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 				Type:                    t,
@@ -1533,7 +1538,7 @@ func (ctx *Context) registerResource(
 				Parent:                  inputs.parent,
 				Object:                  inputs.rpcProps,
 				Custom:                  custom,
-				Protect:                 inputs.protect,
+				Protect:                 protect,
 				Dependencies:            inputs.deps,
 				Provider:                inputs.provider,
 				Providers:               inputs.providers,
@@ -1651,7 +1656,7 @@ type resourceState struct {
 	outputs           map[string]Output
 	providers         map[string]ProviderResource
 	provider          ProviderResource
-	protect           bool
+	protect           *bool
 	version           string
 	pluginDownloadURL string
 	name              string
@@ -1799,7 +1804,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, protect bool, version, pluginDownloadURL string, aliases []URNOutput,
+	provider ProviderResource, protect *bool, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation,
 ) *resourceState {
 	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1997,7 +2002,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 type resourceInputs struct {
 	parent                  string
 	deps                    []string
-	protect                 bool
+	protect                 *bool
 	provider                string
 	providers               map[string]string
 	resolvedProps           resource.PropertyMap

@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.156.0 (2025-03-13)
+
+
+### Bug Fixes
+
+- [sdk/go] Fix overriding protect in child resources
+
+- [sdk/python] Fix mapping input names in Construct recursively in component providers
+  [#18864](https://github.com/pulumi/pulumi/pull/18864)
+
 ## 3.155.0 (2025-03-12)
 
 

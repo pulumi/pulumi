@@ -61,7 +61,7 @@ type ResourceState struct {
 	children          resourceSet
 	providers         map[string]ProviderResource
 	provider          ProviderResource
-	protect           bool
+	protect           *bool
 	version           string
 	pluginDownloadURL string
 	aliases           []URNOutput
@@ -122,7 +122,7 @@ func (s *ResourceState) getProvider() ProviderResource {
 	return s.provider
 }
 
-func (s *ResourceState) getProtect() bool {
+func (s *ResourceState) getProtect() *bool {
 	return s.protect
 }
 
@@ -236,7 +236,7 @@ type Resource interface {
 	getProvider() ProviderResource
 
 	// getProtect returns the protect flag for the resource.
-	getProtect() bool
+	getProtect() *bool
 
 	// getVersion returns the version for the resource.
 	getVersion() string
@@ -435,7 +435,7 @@ type resourceOptions struct {
 	IgnoreChanges           []string
 	Import                  IDInput
 	Parent                  Resource
-	Protect                 bool
+	Protect                 *bool
 	Provider                ProviderResource
 	Providers               map[string]ProviderResource
 	ReplaceOnChanges        []string
@@ -482,6 +482,11 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		})
 	}
 
+	var protect bool
+	if ro.Protect != nil {
+		protect = *ro.Protect
+	}
+
 	return &ResourceOptions{
 		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
 		Aliases:                 ro.Aliases,
@@ -492,7 +497,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		IgnoreChanges:           ro.IgnoreChanges,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
-		Protect:                 ro.Protect,
+		Protect:                 protect,
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
@@ -803,7 +808,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 // Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 func Protect(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.Protect = o
+		ro.Protect = &o
 	})
 }
 
