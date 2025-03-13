@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Return an error on malformed provider references rather than ignoring them
