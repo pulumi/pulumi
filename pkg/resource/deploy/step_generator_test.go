@@ -866,9 +866,10 @@ func TestStepGenerator(t *testing.T) {
 					olds: map[resource.URN]*resource.State{},
 				},
 			}
-			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(UrnTargets{
-				literals: []resource.URN{"a"},
-			})
+			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
+				UrnTargets{ literals: []resource.URN{"a"} },
+				UrnTargets {},
+			)
 			assert.NoError(t, err)
 			assert.Empty(t, targets)
 		})

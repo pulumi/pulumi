@@ -397,7 +397,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 }
 
 func (ex *deploymentExecutor) performDeletes(
-	ctx context.Context, targetsOpt UrnTargets,
+	ctx context.Context, targetsOpt UrnTargets, excludesOpt UrnTargets,
 ) error {
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
@@ -417,7 +417,7 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt)
+	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
 	// Regardless of if this error'd or not the step executor needs unlocking
 	ex.stepExec.Unlock()
 	if err != nil {

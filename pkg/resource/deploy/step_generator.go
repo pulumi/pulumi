@@ -1567,7 +1567,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	return nil, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
+func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, error) {
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
 	dels := slice.Prealloc[Step](len(sg.toDelete))
 	if prev := sg.deployment.prev; prev != nil {
@@ -1678,7 +1678,19 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
-	allowedResourcesToDelete, err := sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
+	var allowedResourcesToDelete map[resource.URN]bool
+	var forbiddenResourcesToDelete map[resource.URN]bool
+	var err error
+
+	if targetsOpt.IsConstrained() {
+		allowedResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
+	} else if excludesOpt.IsConstrained() {
+		forbiddenResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromExcludes(excludesOpt)
+	}
+
+	fmt.Printf("£ %+v\n", allowedResourcesToDelete)
+	fmt.Printf("$ %+v\n", forbiddenResourcesToDelete)
+
 	if err != nil {
 		return nil, err
 	}
@@ -1687,6 +1699,17 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 		filtered := []Step{}
 		for _, step := range dels {
 			if _, has := allowedResourcesToDelete[step.URN()]; has {
+				filtered = append(filtered, step)
+			}
+		}
+
+		dels = filtered
+	}
+
+	if forbiddenResourcesToDelete != nil {
+		filtered := []Step{}
+		for _, step := range dels {
+			if _, has := forbiddenResourcesToDelete[step.URN()]; !has {
 				filtered = append(filtered, step)
 			}
 		}
@@ -1761,6 +1784,39 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 	return targets
 }
 
+// // TODO
+// func (sg *stepGenerator) getTargetParents(targetsOpt UrnTargets) map[resource.URN]bool {
+// 	// Seed the list with the initial set of targets.
+// 	var frontier []*resource.State
+// 	for _, res := range sg.deployment.prev.Resources {
+// 		if targetsOpt.Contains(res.URN) {
+// 			frontier = append(frontier, res)
+// 		}
+// 	}
+// 
+// 	// Produce a dependency graph of resources.
+// 	dg := graph.NewDependencyGraph(sg.deployment.prev.Resources)
+// 
+// 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
+// 	targets := make(map[resource.URN]bool)
+// 	for len(frontier) > 0 {
+// 		// Pop the next to explore, mark it, and skip any we've already seen.
+// 		next := frontier[0]
+// 		frontier = frontier[1:]
+// 		if _, has := targets[next.URN]; has {
+// 			continue
+// 		}
+// 		targets[next.URN] = true
+// 
+// 		// Compute the set of resources depending on this one, either implicitly, explicitly,
+// 		// or because it is a child resource. Add them to the frontier to keep exploring.
+// 		deps := dg.DependingOn(next, targets, true)
+// 		frontier = append(frontier, deps...)
+// 	}
+// 
+// 	return targets
+// }
+
 // determineAllowedResourcesToDeleteFromTargets computes the full (transitive) closure of resources
 // that need to be deleted to permit the full list of targetsOpt resources to be deleted. This list
 // will include the targetsOpt resources, but may contain more than just that, if there are dependent
@@ -1776,7 +1832,11 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	// Produce a map of targets and their dependents, including explicit and implicit
 	// DAG dependencies, as well as children (transitively).
 	targets := sg.getTargetDependents(targetsOpt)
-	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
+
+	if !targetsOpt.IsConstrained() {
+		logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
+	}
+
 	resourcesToDelete := make(map[resource.URN]bool)
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
@@ -1816,6 +1876,54 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	}
 
 	return resourcesToDelete, nil
+}
+
+// determineAllowedResourcesToDeleteFromExcludes computes the full (transitive) closure of resources
+// that need to be kept to permit the full list of excludesOpt resources to be ignored. This list
+// will include the excludesOpt resources, but may contain more than just that, if there are dependent
+// or child resources that require the targets to exist (and so are implicated in the deletion).
+func (sg *stepGenerator) determineAllowedResourcesToDeleteFromExcludes(
+	excludesOpt UrnTargets,
+) (map[resource.URN]bool, error) {
+	if !excludesOpt.IsConstrained() {
+		// no specific targets, so we won't filter down anything
+		return nil, nil
+	}
+
+	// Produce a map of targets and their dependents, including explicit and implicit
+	// DAG dependencies, as well as children (transitively).
+	// targets := sg.getTargetDependents(excludesOpt)
+
+	if !excludesOpt.IsConstrained() {
+		logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
+	}
+
+	resourcesToKeep := make(map[resource.URN]bool)
+
+	// Now actually use all the requested targets to figure out the exact set to delete.
+	for _, target := range excludesOpt.literals {
+		current := sg.deployment.olds[target]
+		if current == nil {
+			// user specified a target that didn't exist.  they will have already gotten a warning
+			// about this when we called checkTargets.  explicitly ignore this target since it won't
+			// be something we could possibly be trying to delete, nor could have dependents we
+			// might need to replace either.
+			continue
+		}
+
+		resourcesToKeep[target] = true
+	}
+
+	if logging.V(7) {
+		keys := []resource.URN{}
+		for k := range resourcesToKeep {
+			keys = append(keys, k)
+		}
+
+		logging.V(7).Infof("Planner will ignore '%v'", keys)
+	}
+
+	return resourcesToKeep, nil
 }
 
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
