@@ -238,7 +238,7 @@ type SummaryEventPayload struct {
 type ResourceOperationFailedPayload struct {
 	Metadata StepEventMetadata
 	Status   resource.Status
-	Steps    int
+	Steps    int32
 }
 
 type ResourceOutputsEventPayload struct {
@@ -463,7 +463,7 @@ func (e *eventEmitter) sendEvent(event Event) {
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
-	step deploy.Step, status resource.Status, steps int, debug, showSecrets bool,
+	step deploy.Step, status resource.Status, steps int32, debug, showSecrets bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
