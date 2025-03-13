@@ -238,6 +238,49 @@ func TestExcludeChildren(t *testing.T) {
 	}
 }
 
+// If we're not deleting everything under a provider, we should implicitly
+// exclude the provider.
+func TestExcludeProviderImplicitly(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	var parent resource.URN = "urn:pulumi:test::test::pkgA:m:typA::resA"
+
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 4)
+
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { parent })
+
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
+
 // We should be able to create a simple `A > B > C` hierarchy, destroy `B`, and
 // exclude `C` as a dependent.
 func TestDestroyExcludeChildren(t *testing.T) {
@@ -285,6 +328,7 @@ func TestDestroyExcludeChildren(t *testing.T) {
 
 	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN { provider, parent })
 	opts.UpdateOptions.ExcludeDependents = true
+
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 
 	require.NoError(t, err)

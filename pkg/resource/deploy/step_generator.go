@@ -1688,8 +1688,9 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		forbiddenResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromExcludes(excludesOpt)
 	}
 
-	fmt.Printf("£ %+v\n", allowedResourcesToDelete)
-	fmt.Printf("$ %+v\n", forbiddenResourcesToDelete)
+	for _, k := range forbiddenResourcesToDelete {
+		fmt.Printf("* %+v\n", k)
+	}
 
 	if err != nil {
 		return nil, err
@@ -1706,9 +1707,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		dels = filtered
 	}
 
+	fmt.Printf("<> %+v\n", forbiddenResourcesToDelete)
 	if forbiddenResourcesToDelete != nil {
 		filtered := []Step{}
 		for _, step := range dels {
+			fmt.Printf("%+v? %+v\n", step.URN(), forbiddenResourcesToDelete[step.URN()])
 			if _, has := forbiddenResourcesToDelete[step.URN()]; !has {
 				filtered = append(filtered, step)
 			}
@@ -1717,9 +1720,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		dels = filtered
 	}
 
+
 	deletingUnspecifiedTarget := false
 	for _, step := range dels {
 		urn := step.URN()
+		fmt.Printf("$ %+v\n", urn)
 		if !targetsOpt.Contains(urn) && !sg.deployment.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
 
@@ -1890,28 +1895,31 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromExcludes(
 		return nil, nil
 	}
 
-	// Produce a map of targets and their dependents, including explicit and implicit
-	// DAG dependencies, as well as children (transitively).
-	// targets := sg.getTargetDependents(excludesOpt)
-
 	if !excludesOpt.IsConstrained() {
 		logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
 	}
 
 	resourcesToKeep := make(map[resource.URN]bool)
 
-	// Now actually use all the requested targets to figure out the exact set to delete.
 	for _, target := range excludesOpt.literals {
-		current := sg.deployment.olds[target]
-		if current == nil {
-			// user specified a target that didn't exist.  they will have already gotten a warning
-			// about this when we called checkTargets.  explicitly ignore this target since it won't
-			// be something we could possibly be trying to delete, nor could have dependents we
-			// might need to replace either.
-			continue
-		}
+		var previous resource.URN
+		next := target
 
-		resourcesToKeep[target] = true
+		for {
+			current := sg.deployment.olds[next]
+
+			if current == nil || current.URN == previous {
+				break
+			}
+
+			resourcesToKeep[next] = true
+
+			test, err := providers.ParseReference(current.Provider)
+			if err == nil { resourcesToKeep[test.URN()] = true }
+
+			previous = next
+			next     = current.URN
+		}
 	}
 
 	if logging.V(7) {
