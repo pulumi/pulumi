@@ -27,8 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
@@ -49,19 +47,6 @@ import (
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
-type diyQuery struct {
-	root string
-	proj *workspace.Project
-}
-
-func (q *diyQuery) GetRoot() string {
-	return q.root
-}
-
-func (q *diyQuery) GetProject() *workspace.Project {
-	return q.proj
-}
-
 // update is an implementation of engine.Update backed by diy state.
 type update struct {
 	root    string
@@ -80,13 +65,6 @@ func (u *update) GetProject() *workspace.Project {
 
 func (u *update) GetTarget() *deploy.Target {
 	return u.target
-}
-
-func (b *diyBackend) newQuery(
-	ctx context.Context,
-	op backend.QueryOperation,
-) (engine.QueryInfo, error) {
-	return &diyQuery{root: op.Root, proj: op.Proj}, nil
 }
 
 func (b *diyBackend) newUpdate(

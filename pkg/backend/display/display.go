@@ -131,9 +131,6 @@ func ShowEvents(
 		ShowDiffEvents(op, rawEvents, done, opts)
 	case DisplayProgress:
 		ShowProgressEvents(op, action, stack, proj, permalink, rawEvents, done, opts, isPreview)
-	case DisplayQuery:
-		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
-			"directly instead of through ShowEvents")
 	case DisplayWatch:
 		ShowWatchEvents(op, rawEvents, done, opts)
 	default:

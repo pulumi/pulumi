@@ -32,6 +32,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -44,6 +45,101 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
+
+//
+// Mock resource monitor.
+//
+
+type mockResmon struct {
+	AddressF func() string
+
+	CancelF func() error
+
+	InvokeF func(ctx context.Context,
+		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+
+	CallF func(ctx context.Context,
+		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
+
+	ReadResourceF func(ctx context.Context,
+		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
+
+	RegisterResourceF func(ctx context.Context,
+		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
+
+	RegisterResourceOutputsF func(ctx context.Context,
+		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
+
+	AbortChanF func() <-chan bool
+}
+
+var _ SourceResourceMonitor = (*mockResmon)(nil)
+
+func (rm *mockResmon) AbortChan() <-chan bool {
+	if rm.AbortChanF != nil {
+		return rm.AbortChanF()
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Address() string {
+	if rm.AddressF != nil {
+		return rm.AddressF()
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Cancel() error {
+	if rm.CancelF != nil {
+		return rm.CancelF()
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Invoke(ctx context.Context,
+	req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
+	if rm.InvokeF != nil {
+		return rm.InvokeF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Call(ctx context.Context,
+	req *pulumirpc.ResourceCallRequest,
+) (*pulumirpc.CallResponse, error) {
+	if rm.CallF != nil {
+		return rm.CallF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) ReadResource(ctx context.Context,
+	req *pulumirpc.ReadResourceRequest,
+) (*pulumirpc.ReadResourceResponse, error) {
+	if rm.ReadResourceF != nil {
+		return rm.ReadResourceF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) RegisterResource(ctx context.Context,
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	if rm.RegisterResourceF != nil {
+		return rm.RegisterResourceF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
+	req *pulumirpc.RegisterResourceOutputsRequest,
+) (*emptypb.Empty, error) {
+	if rm.RegisterResourceOutputsF != nil {
+		return rm.RegisterResourceOutputsF(ctx, req)
+	}
+	panic("not implemented")
+}
 
 type testRegEvent struct {
 	goal   *resource.Goal
@@ -1645,134 +1741,6 @@ func TestStreamInvoke(t *testing.T) {
 	})
 }
 
-func TestStreamInvokeQuery(t *testing.T) {
-	t.Parallel()
-	t.Run("check failure", func(t *testing.T) {
-		t.Parallel()
-
-		var called bool
-		loaders := []*deploytest.ProviderLoader{
-			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-				return &deploytest.Provider{
-					StreamInvokeF: func(
-						_ context.Context,
-						req plugin.StreamInvokeRequest,
-					) (plugin.StreamInvokeResponse, error) {
-						called = true
-						require.NoError(t, req.OnNext(resource.PropertyMap{}))
-						return plugin.StreamInvokeResponse{
-							Failures: []plugin.CheckFailure{
-								{
-									Property: resource.PropertyKey("fake-key"),
-									Reason:   "I said so",
-								},
-							},
-						}, nil
-					},
-				}, nil
-			}),
-		}
-
-		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			return nil
-		})
-
-		plugctx, err := plugin.NewContext(
-			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, programF, loaders...)(),
-			nil, "", nil, false, nil)
-		assert.NoError(t, err)
-
-		cancel := context.Background()
-
-		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, nil, plugctx.Diag)
-
-		reg := providers.NewRegistry(plugctx.Host, false, builtins)
-
-		providerRegErrChan := make(chan error)
-
-		mon, err := newQueryResourceMonitor(builtins, nil, nil, reg, plugctx,
-			providerRegErrChan, opentracing.SpanFromContext(cancel), &EvalRunInfo{
-				ProjectRoot: "/",
-				Pwd:         "/",
-				Program:     ".",
-				Proj:        &workspace.Project{Name: "test"},
-			})
-		require.NoError(t, err)
-
-		var failures []*pulumirpc.CheckFailure
-		err = mon.StreamInvoke(&pulumirpc.ResourceInvokeRequest{
-			Tok: "pkgA:index:func",
-		}, &streamInvokeMock{
-			SendF: func(res *pulumirpc.InvokeResponse) error {
-				failures = res.GetFailures()
-				return nil
-			},
-			RecvMsgF: func(m interface{}) error { return nil },
-		})
-		assert.NoError(t, err)
-		assert.Equal(t, []*pulumirpc.CheckFailure{
-			{
-				Property: "fake-key",
-				Reason:   "I said so",
-			},
-		}, failures)
-		assert.True(t, called)
-	})
-	t.Run("ok", func(t *testing.T) {
-		t.Parallel()
-		var called bool
-		loaders := []*deploytest.ProviderLoader{
-			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-				return &deploytest.Provider{
-					StreamInvokeF: func(
-						_ context.Context,
-						req plugin.StreamInvokeRequest,
-					) (plugin.StreamInvokeResponse, error) {
-						called = true
-						require.NoError(t, req.OnNext(resource.PropertyMap{}))
-						return plugin.StreamInvokeResponse{}, nil
-					},
-				}, nil
-			}),
-		}
-
-		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			return nil
-		})
-
-		plugctx, err := plugin.NewContext(
-			&deploytest.NoopSink{}, &deploytest.NoopSink{},
-			deploytest.NewPluginHostF(nil, nil, programF, loaders...)(),
-			nil, "", nil, false, nil)
-		assert.NoError(t, err)
-
-		cancel := context.Background()
-
-		builtins := newBuiltinProvider(&deploytest.BackendClient{}, nil, nil, plugctx.Diag)
-
-		reg := providers.NewRegistry(plugctx.Host, false, builtins)
-		providerRegErrChan := make(chan error)
-		mon, err := newQueryResourceMonitor(builtins, nil, nil, reg, plugctx,
-			providerRegErrChan, opentracing.SpanFromContext(cancel), &EvalRunInfo{
-				ProjectRoot: "/",
-				Pwd:         "/",
-				Program:     ".",
-				Proj:        &workspace.Project{Name: "test"},
-			})
-		require.NoError(t, err)
-
-		err = mon.StreamInvoke(&pulumirpc.ResourceInvokeRequest{
-			Tok: "pkgA:index:func",
-		}, &streamInvokeMock{
-			SendF:    func(res *pulumirpc.InvokeResponse) error { return nil },
-			RecvMsgF: func(m interface{}) error { return nil },
-		})
-		assert.NoError(t, err)
-		assert.True(t, called)
-	})
-}
-
 type decrypterMock struct {
 	DecryptValueF func(
 		ctx context.Context, ciphertext string) (string, error)
@@ -2275,34 +2243,6 @@ func TestDefaultProviders(t *testing.T) {
 			_, err := d.getDefaultProviderRef(providers.ProviderRequest{})
 			assert.ErrorIs(t, err, context.Canceled)
 		})
-	})
-}
-
-func TestGetProviderReference(t *testing.T) {
-	t.Parallel()
-	t.Run("bad-reference", func(t *testing.T) {
-		t.Parallel()
-		_, err := getProviderReference(nil, providers.ProviderRequest{}, "bad-reference")
-		assert.ErrorContains(t, err, "could not parse provider reference")
-	})
-
-	t.Run("provider-reference-error", func(t *testing.T) {
-		t.Parallel()
-		cancel := make(chan bool, 1)
-		cancel <- true
-		_, err := getProviderReference(&defaultProviders{
-			cancel: cancel,
-		}, providers.ProviderRequest{}, "")
-		assert.ErrorIs(t, err, context.Canceled)
-	})
-}
-
-func TestGetProviderFromSource(t *testing.T) {
-	t.Parallel()
-	t.Run("bad reference", func(t *testing.T) {
-		t.Parallel()
-		_, err := getProviderFromSource(nil, nil, providers.ProviderRequest{}, "bad-reference", "")
-		assert.ErrorContains(t, err, "getProviderFromSource")
 	})
 }
 
