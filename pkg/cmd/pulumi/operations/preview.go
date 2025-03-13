@@ -444,7 +444,7 @@ func NewPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					ParallelDiff:              !env.ParallelDiff.Value(),
+					ParallelDiff:              env.ParallelDiff.Value(),
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,
 					Debug:                     debug,
