@@ -14,6 +14,7 @@
     },
     "files": [
         "goodbye.ts",
+        "goodbyeComponent.ts",
         "index.ts",
         "provider.ts",
         "utilities.ts"

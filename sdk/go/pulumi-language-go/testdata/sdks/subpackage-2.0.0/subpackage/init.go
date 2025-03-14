@@ -23,6 +23,8 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 	switch typ {
 	case "subpackage:index:HelloWorld":
 		r = &HelloWorld{}
+	case "subpackage:index:HelloWorldComponent":
+		r = &HelloWorldComponent{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

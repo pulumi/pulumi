@@ -10,6 +10,11 @@ export type Goodbye = import("./goodbye").Goodbye;
 export const Goodbye: typeof import("./goodbye").Goodbye = null as any;
 utilities.lazyLoad(exports, ["Goodbye"], () => require("./goodbye"));
 
+export { GoodbyeComponentArgs } from "./goodbyeComponent";
+export type GoodbyeComponent = import("./goodbyeComponent").GoodbyeComponent;
+export const GoodbyeComponent: typeof import("./goodbyeComponent").GoodbyeComponent = null as any;
+utilities.lazyLoad(exports, ["GoodbyeComponent"], () => require("./goodbyeComponent"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -22,6 +27,8 @@ const _module = {
         switch (type) {
             case "goodbye:index:Goodbye":
                 return new Goodbye(name, <any>undefined, { urn })
+            case "goodbye:index:GoodbyeComponent":
+                return new GoodbyeComponent(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
