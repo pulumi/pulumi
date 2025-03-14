@@ -177,6 +177,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-try":             "pulumi#18506 Support try in Go program generation",
 	"l2-builtin-try-with-output": "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":             "pulumi#18570 Support can in Go program generation",
+	"l2-builtin-can-with-output": "pulumi#18570 Support can in Go program generation",
 
 	// pulumi/pulumi#18345
 	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll

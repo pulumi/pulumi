@@ -1,5 +1,10 @@
 str = "str"
 
+aList = ["a", "b", "c"]
+output "nonOutputCan" {
+  value = can(aList[0])
+}
+
 # A dynamically typed value, whose field accesses will not be type errors (since the type is not known to the type
 # checker), but may fail dynamically, and can thus be used as test inputs to can.
 config "object" {}
@@ -20,4 +25,10 @@ output "canFalseDoubleNested" {
 # This should return true, since anotherObject.nested is defined.
 output "canTrue" {
   value = can(anotherObject.nested)
+}
+
+# canOutput should also generate, secrets are l1 functions which return outputs.
+someSecret = secret({ a = "a" })
+output "canOutput" {
+  value = can(someSecret.a) ? "true" : "false"
 }
