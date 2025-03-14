@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -159,8 +160,15 @@ func NewLoginCmd() *cobra.Command {
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
-				if err := validateCloudBackendType(cloudURL); err != nil {
+				isHttp, err := validateCloudBackendType(cloudURL)
+				if err != nil {
 					return err
+				}
+				if isHttp {
+					cloudURL, err = checkHttpCloudBackenUrl(cloudURL)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -205,17 +213,37 @@ func NewLoginCmd() *cobra.Command {
 	return cmd
 }
 
-func validateCloudBackendType(typ string) error {
+func validateCloudBackendType(typ string) (bool, error) {
 	kind := strings.SplitN(typ, ":", 2)[0]
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
-			return nil
+			if strings.Contains(kind, "http") {
+				return true, nil
+			}
+			return true, nil
 		}
 	}
-	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
+	return false, fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind)
+}
+
+func replaceDomain(input string) string {
+	re := regexp.MustCompile(`(https?://)[^.]+(\.(pulumi\.)?[^.]+\.[^.]+)`)
+
+	// Replace the subdomain with "api"
+	return re.ReplaceAllString(input, "${1}api${2}")
+}
+
+func checkHttpCloudBackenUrl(url string) (string, error) {
+	if strings.HasSuffix(strings.TrimSuffix(url, "/"), "pulumi.com") {
+		return "https://api.pulumi.com", nil
+	}
+	if !strings.Contains(url, "//api.") {
+		return "", fmt.Errorf("did you mean %s ?", replaceDomain(url))
+	}
+	return url, nil
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.
