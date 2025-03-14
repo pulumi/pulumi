@@ -560,7 +560,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "try":
 		g.genTry(w, expr)
 	case "can":
-		g.genCan(w, expr.Args)
+		g.genCan(w, expr)
 	case "rootDirectory":
 		g.genRootDirectory(w)
 	default:
@@ -617,12 +617,19 @@ func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
 //	)
 //
 // which returns a bool indicating if the closure ran successfully.
-func (g *generator) genCan(w io.Writer, args []model.Expression) {
+func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
+	args := expr.Args
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+	_, shouldUseOutputCan := expr.Signature.ReturnType.(*model.OutputType)
+
+	functionName := "can_"
+	if shouldUseOutputCan {
+		functionName = "canOutput_"
+	}
 
 	arg := args[0]
 	g.Fprintf(w, "// @ts-ignore")
-	g.Fgenf(w, "\ncan_(() => %v)", g.lowerExpression(arg, arg.Type()))
+	g.Fgenf(w, "\n%s(() => %v)", functionName, g.lowerExpression(arg, arg.Type()))
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
