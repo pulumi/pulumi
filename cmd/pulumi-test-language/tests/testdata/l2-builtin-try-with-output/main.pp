@@ -3,6 +3,10 @@ resource "component1" "component:index:ComponentCustomRefOutput" {
 }
 
 # When accessing an output of a component inside a direct call to try we should have to use apply.
+#
+# TODO(pulumi/pulumi#18895) When value is directly a scope traversal inside the
+# output this fails to generate the "apply" call. eg if the output's internals
+# are `value = componentTried.value`
 componentTried = try(component1.ref, "fallback").value
 output "tryWithOutput" {
   value = componentTried

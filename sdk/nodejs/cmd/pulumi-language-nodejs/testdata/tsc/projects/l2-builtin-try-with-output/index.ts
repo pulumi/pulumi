@@ -40,6 +40,10 @@ function try_(
 
 const component1 = new component.ComponentCustomRefOutput("component1", {value: "foo-bar-baz"});
 // When accessing an output of a component inside a direct call to try we should have to use apply.
+//
+// TODO(pulumi/pulumi#18895) When value is directly a scope traversal inside the
+// output this fails to generate the "apply" call. eg if the output's internals
+// are `value = componentTried.value`
 const componentTried = tryOutput_(
     // @ts-ignore
     () => component1.ref,
