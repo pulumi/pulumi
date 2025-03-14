@@ -118,10 +118,6 @@ func (cmd *packagePublishCmd) Run(
 	packageSrc string,
 	packageParams []string,
 ) error {
-	if args.readmePath == "" {
-		return errors.New("no readme specified, please provide the path to the readme file")
-	}
-
 	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return fmt.Errorf("failed to determine current project: %w", err)
