@@ -136,6 +136,10 @@ func TestApplyRewriter(t *testing.T) {
 			input:  `getPromise(resource.id).property`,
 			output: `__apply(__apply(resource.id,eval(id, getPromise(id))), eval(getPromise, getPromise.property))`,
 		},
+		{
+			input:  `resource.is ? "yes" : "no"`,
+			output: `__apply(resource.is, eval(is, is ? "yes" : "no"))`,
+		},
 	}
 
 	resourceType := model.NewObjectType(map[string]model.Type{
@@ -144,6 +148,7 @@ func TestApplyRewriter(t *testing.T) {
 			"bar": model.StringType,
 		})),
 		"baz": model.NewOutputType(model.NewListType(model.StringType)),
+		"is":  model.NewOutputType(model.BoolType),
 	})
 
 	scope := model.NewRootScope(syntax.None)
