@@ -53,8 +53,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 		expectedErr         string
 		readmeContent       string
 		installContent      string
-		sourceDir      func(t *testing.T) string
-		pluginDir      func(t *testing.T) string
+		sourceDir           func(t *testing.T) string
+		pluginDir           func(t *testing.T) string
 	}{
 		{
 			name: "successful publish with publisher from schema",
