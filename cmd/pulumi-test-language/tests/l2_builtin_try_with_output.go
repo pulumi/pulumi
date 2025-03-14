@@ -47,16 +47,13 @@ func init() {
 
 					_ = RequireSingleNamedResource(l, snap.Resources, "component1")
 
-					assert.Len(l, outputs, 3, "expected 3 outputs")
+					assert.Len(l, outputs, 4, "expected 4 outputs")
 					AssertPropertyMapMember(
 						l,
 						outputs,
 						"tryWithOutput",
-						resource.NewPropertyValue(resource.NewPropertyMapFromMap(map[string]interface{}{
-							"id":    "id-foo-bar-baz",
-							"urn":   "urn:pulumi:test::l2-builtin-try-with-output::component:index:ComponentCustomRefOutput$component:index:Custom::component1-child",
-							"value": "foo-bar-baz",
-						})))
+						resource.NewPropertyValue(resource.NewStringProperty("foo-bar-baz")),
+					)
 					AssertPropertyMapMember(
 						l,
 						outputs,

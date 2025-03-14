@@ -116,18 +116,6 @@ func (r *applyRewriter) hasEventualElements(x model.Expression) bool {
 	return r.hasEventualTypes(t)
 }
 
-// isOutputProducingTry will traverse backward out of the scope of this
-// output-producing try call and return true of an attribute or index is
-// accessed on it's return value.
-func (r *applyRewriter) isOutputProducingTry(x *model.FunctionCallExpression) bool {
-	if x.Name != "try" {
-		return false
-	}
-
-	_, ok := x.Signature.ReturnType.(*model.OutputType)
-	return ok
-}
-
 func (r *applyRewriter) isPromptArg(paramType model.Type, arg model.Expression) bool {
 	if !r.hasEventualValues(arg) {
 		return true
@@ -217,9 +205,11 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 			return false
 		}
 
-		if r.isOutputProducingTry(x) {
-			return true
-		}
+		// TODO THIS and then probably fix the debt and make it so we have tests for NOT adding apply when unneeded.
+		// then fix it
+		// if x.Name == "try" {
+		// 	return false
+		// }
 
 		for i, arg := range x.Args {
 			if !r.isPromptArg(x.Signature.Parameters[i].Type, arg) {

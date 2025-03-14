@@ -39,18 +39,32 @@ function try_(
 
 
 const component1 = new component.ComponentCustomRefOutput("component1", {value: "foo-bar-baz"});
-export const tryWithOutput = component1.ref.apply(ref => try_(
+// When accessing an output of a component inside a direct call to try we should have to use apply.
+const componentTried = tryOutput_(
     // @ts-ignore
-    () => ref,
+    () => component1.ref,
     // @ts-ignore
-    () => "failure"
-));
-const resultContainingOutput = simple_invoke.myInvokeOutput({
-    value: "hello",
-}).apply(invoke => try_(
+    () => "fallback"
+).apply(_try => _try.value);
+export const tryWithOutput = componentTried;
+const componentTriedNested = tryOutput_(
     // @ts-ignore
-    () => invoke
-)).apply(_try => _try.result);
+    () => component1.ref.value,
+    // @ts-ignore
+    () => "fallback"
+);
+export const tryWithOutputNested = componentTriedNested;
+// Invokes produces outputs.  This output will have apply called on it and try
+// utilized within the apply.  The result of this apply is already an output
+// which has apply called on it again to pull out `result`
+const resultContainingOutput = tryOutput_(
+    // @ts-ignore
+    () => simple_invoke.myInvokeOutput({
+        value: "hello",
+    }),
+    // @ts-ignore
+    () => "fakefallback"
+).apply(_try => _try.result);
 export const hello = resultContainingOutput;
 const str = "str";
 export const tryScalar = try_(
