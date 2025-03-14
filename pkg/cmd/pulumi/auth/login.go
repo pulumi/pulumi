@@ -159,11 +159,11 @@ func NewLoginCmd() *cobra.Command {
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
-				isHttp, err := validateCloudBackendType(cloudURL)
+				isHTTP, err := validateCloudBackendType(cloudURL)
 				if err != nil {
 					return err
 				}
-				if isHttp {
+				if isHTTP {
 					cloudURL, err = checkHTTPCloudBackenUrl(cloudURL)
 					if err != nil {
 						return err
