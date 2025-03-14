@@ -279,6 +279,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				return callerCtx.Err() != nil, nil
 			}
 
+			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
+			// the top of the loop for more details.
 			if seenNil && ex.asyncCounter == 0 {
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
