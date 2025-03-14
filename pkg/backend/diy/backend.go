@@ -1457,3 +1457,7 @@ func (b *diyBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.M
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)
 }
+
+func (b *diyBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
+	return nil, errors.New("package registry is not supported by diy backends")
+}

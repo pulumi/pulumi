@@ -122,4 +122,8 @@ func init() {
 	// APIs for managing Search capabilities
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources", "getSearchResources")
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
+
+	// APIs for interacting with the Package Registry
+	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
+	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
 }

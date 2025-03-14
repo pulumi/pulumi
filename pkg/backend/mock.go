@@ -97,9 +97,10 @@ type MockBackend struct {
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	SupportsTemplatesF func() bool
-	ListTemplatesF     func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
-	DownloadTemplateF  func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	SupportsTemplatesF  func() bool
+	ListTemplatesF      func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF   func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	GetPackageRegistryF func() (PackageRegistry, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -476,6 +477,13 @@ func (be *MockBackend) DownloadTemplate(ctx context.Context, orgName, templateSo
 	panic("not implemented")
 }
 
+func (be *MockBackend) GetPackageRegistry() (PackageRegistry, error) {
+	if be.GetPackageRegistryF != nil {
+		return be.GetPackageRegistryF()
+	}
+	panic("not implemented")
+}
+
 var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 
 type MockEnvironmentsBackend struct {
@@ -845,4 +853,17 @@ func (m MockTarReader) Tar() *tar.Reader {
 
 	contract.AssertNoErrorf(w.Close(), "impossible")
 	return tar.NewReader(&b)
+}
+
+type MockPackageRegistry struct {
+	PublishF func(context.Context, PackagePublishOp) error
+}
+
+var _ PackageRegistry = (*MockPackageRegistry)(nil)
+
+func (mr *MockPackageRegistry) Publish(ctx context.Context, op PackagePublishOp) error {
+	if mr.PublishF != nil {
+		return mr.PublishF(ctx, op)
+	}
+	panic("not implemented")
 }
