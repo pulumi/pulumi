@@ -14,7 +14,7 @@ function try_(
             continue;
         }
     }
-    return undefined;
+    throw new Error("try: all parameters failed");
 }
 
 

@@ -175,6 +175,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
+var expectedFailures = map[string]string{
+	"l2-builtin-try-with-output": "pulumi#18860 Support try in Python program generation",
+}
+
 func TestLanguage(t *testing.T) {
 	t.Parallel()
 	engineAddress, engine := runTestingHost(t)
@@ -282,6 +286,10 @@ func TestLanguage(t *testing.T) {
 
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
+
+					if expected, ok := expectedFailures[tt]; ok {
+						t.Skipf("Skipping known failure: %s", expected)
+					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,
