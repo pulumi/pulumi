@@ -101,9 +101,7 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.readmePath, "readme", "",
 		"Path to the package readme/index markdown file")
-	if err := cmd.MarkFlagRequired("readme"); err != nil {
-		panic("failed to mark 'readme' as a required flag")
-	}
+	contract.AssertNoErrorf(cmd.MarkFlagRequired("readme"), "failed to mark 'readme' as a required flag")
 	cmd.Flags().StringVar(
 		&args.installDocsPath, "installation-configuration", "",
 		"Path to the installation configuration markdown file")
@@ -121,7 +119,12 @@ func (cmd *packagePublishCmd) Run(
 		return errors.New("no readme specified, please provide the path to the readme file")
 	}
 
-	b, err := login(ctx)
+	project, _, err := pkgWorkspace.Instance.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return fmt.Errorf("failed to determine current project: %w", err)
+	}
+
+	b, err := login(ctx, project)
 	if err != nil {
 		return err
 	}
@@ -149,11 +152,6 @@ func (cmd *packagePublishCmd) Run(
 	} else if pkg.Publisher != "" { // Otherwise, fall back to the publisher set in the package schema.
 		publisher = pkg.Publisher
 	} else { // As a last resort, try to determine the publisher from the default organization or fail if none is found.
-		ws := pkgWorkspace.Instance
-		project, _, err := ws.ReadProject()
-		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-			return fmt.Errorf("failed to determine default organization: %w", err)
-		}
 		publisher, err = cmd.defaultOrg(project)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
@@ -227,16 +225,9 @@ func (cmd *packagePublishCmd) Run(
 	return nil
 }
 
-func login(ctx context.Context) (backend.Backend, error) {
-	// Try to read the current project. If we can't find a project, we'll use the default cloud URL.
-	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return nil, err
-	}
-
+func login(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
 	b, err := cmdBackend.CurrentBackend(
-		ctx, ws, cmdBackend.DefaultLoginManager, project,
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project,
 		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return nil, err

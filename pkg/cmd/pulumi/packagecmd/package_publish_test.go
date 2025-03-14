@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -539,6 +540,46 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
+}
+
+type mockWorkspace struct {
+	readProjectErr error
+}
+
+var _ pkgWorkspace.Context = &mockWorkspace{}
+
+func (m *mockWorkspace) ReadProject() (*workspace.Project, string, error) {
+	return nil, "", m.readProjectErr
+}
+
+func (m *mockWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+	return workspace.Credentials{}, nil
+}
+
+//nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
+func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
+	cmd := packagePublishCmd{
+		defaultOrg: func(p *workspace.Project) (string, error) {
+			return "", nil
+		},
+		extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+			pkg := &schema.Package{
+				Name:    "test-package",
+				Version: &semver.Version{Major: 1, Minor: 0, Patch: 0},
+			}
+			return pkg, nil
+		},
+	}
+
+	customErr := errors.New("custom project read error")
+	originalWorkspace := pkgWorkspace.Instance
+	t.Cleanup(func() { pkgWorkspace.Instance = originalWorkspace })
+	pkgWorkspace.Instance = &mockWorkspace{readProjectErr: customErr}
+
+	err := cmd.Run(context.Background(), publishPackageArgs{readmePath: "README.md"}, "test-source", []string{})
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, customErr)
 }
 
 func unmarshalSchema(schemaBytes []byte) (*schema.PackageSpec, error) {
