@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -165,7 +164,7 @@ func NewLoginCmd() *cobra.Command {
 					return err
 				}
 				if isHttp {
-					cloudURL, err = checkHttpCloudBackenUrl(cloudURL)
+					cloudURL, err = checkHTTPCloudBackenUrl(cloudURL)
 					if err != nil {
 						return err
 					}
@@ -221,7 +220,7 @@ func validateCloudBackendType(typ string) (bool, error) {
 			if strings.Contains(kind, "http") {
 				return true, nil
 			}
-			return true, nil
+			return false, nil
 		}
 	}
 	return false, fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
@@ -229,19 +228,9 @@ func validateCloudBackendType(typ string) (bool, error) {
 		kind)
 }
 
-func replaceDomain(input string) string {
-	re := regexp.MustCompile(`(https?://)[^.]+(\.(pulumi\.)?[^.]+\.[^.]+)`)
-
-	// Replace the subdomain with "api"
-	return re.ReplaceAllString(input, "${1}api${2}")
-}
-
-func checkHttpCloudBackenUrl(url string) (string, error) {
+func checkHTTPCloudBackenUrl(url string) (string, error) {
 	if strings.HasSuffix(strings.TrimSuffix(url, "/"), "pulumi.com") {
 		return "https://api.pulumi.com", nil
-	}
-	if !strings.Contains(url, "//api.") {
-		return "", fmt.Errorf("did you mean %s ?", replaceDomain(url))
 	}
 	return url, nil
 }
