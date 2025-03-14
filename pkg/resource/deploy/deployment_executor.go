@@ -219,9 +219,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		}
 	}()
 
-	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are a three ways
+	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are three ways
 	// we can exit this loop:
-	//  1. The SourceIterator sends us a `nil` event and the step generator has completed all it's async work.
+	//  1. The SourceIterator sends us a `nil` event and the step generator has completed all its async work.
 	//     This means that we're done processing source events and we should begin processing deletes.
 	//  2. The SourceIterator sends us an error. This means some error occurred in the source program and we
 	//     should bail.
@@ -232,7 +232,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 		// We're ingesting events from two sources: the source iterator and the step generator. We need to make sure
 		// that both are done before we exit the loop. The source iterator is done when it sends us nil. The step
-		// generator is done when it's async counter is 0, i.e. for each async event it said it was going to do we've
+		// generator is done when its async counter is 0, i.e. for each async event it said it was going to do we've
 		// seen and posted that event back to it.
 		seenNil := false
 		for {
