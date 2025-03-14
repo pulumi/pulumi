@@ -4440,5 +4440,23 @@ func TestParallelDiff(t *testing.T) {
 	// Now run a preview, expect the diff to be done in parallel.
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil)
 	assert.NoError(t, err)
-	wg.Wait()
+
+	// waitTimeout waits for the waitgroup for the specified max timeout.
+	// Returns true if waiting timed out.
+	waitTimeout := func(wg *sync.WaitGroup, timeout time.Duration) bool {
+		c := make(chan struct{})
+		go func() {
+			defer close(c)
+			wg.Wait()
+		}()
+		select {
+		case <-c:
+			return false // completed normally
+		case <-time.After(timeout):
+			return true // timed out
+		}
+	}
+
+	// Wait for the diff to complete, but don't wait forever
+	assert.False(t, waitTimeout(&wg, 10*time.Second))
 }
