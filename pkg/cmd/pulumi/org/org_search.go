@@ -133,7 +133,6 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	displayOpts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: interactive,
-		Type:          display.DisplayQuery,
 	}
 	// Try to read the current project
 	ws := pkgWorkspace.Instance

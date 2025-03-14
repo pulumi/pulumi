@@ -1194,10 +1194,6 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) error {
-	return b.query(ctx, op, nil /*events*/)
-}
-
 func (b *cloudBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
@@ -1389,14 +1385,6 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 	}
 	return b.CloudConsoleURL(base, "previews", update.UpdateID)
-}
-
-// query executes a query program against the resource outputs of a stack hosted in the Pulumi
-// Cloud.
-func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event,
-) error {
-	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
 func (b *cloudBackend) runEngineAction(

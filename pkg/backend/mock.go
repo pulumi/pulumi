@@ -65,7 +65,6 @@ type MockBackend struct {
 		[]StackSummary, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
-	QueryF                                func(context.Context, QueryOperation) error
 	GetLatestConfigurationF               func(context.Context, Stack) (config.Map, error)
 	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
@@ -328,13 +327,6 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Query(ctx context.Context, op QueryOperation) error {
-	if be.QueryF != nil {
-		return be.QueryF(ctx, op)
-	}
-	panic("not implemented")
-}
-
 func (be *MockBackend) GetHistory(ctx context.Context,
 	stackRef StackReference,
 	pageSize int,
@@ -557,7 +549,6 @@ type MockStack struct {
 	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) error
-	QueryF   func(ctx context.Context, op UpdateOperation) error
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
 	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
 	GetLogsF func(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
@@ -654,13 +645,6 @@ func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDispla
 func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) error {
 	if ms.WatchF != nil {
 		return ms.WatchF(ctx, op, paths)
-	}
-	panic("not implemented")
-}
-
-func (ms *MockStack) Query(ctx context.Context, op UpdateOperation) error {
-	if ms.QueryF != nil {
-		return ms.QueryF(ctx, op)
 	}
 	panic("not implemented")
 }
