@@ -205,9 +205,6 @@ type Backend interface {
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
-	// Query against the resource outputs in a stack's state checkpoint.
-	Query(ctx context.Context, op QueryOperation) error
-
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
@@ -315,17 +312,6 @@ type UpdateOperation struct {
 	Scopes             CancellationScopeSource
 }
 
-// QueryOperation configures a query operation.
-type QueryOperation struct {
-	Proj               *workspace.Project
-	Root               string
-	Opts               UpdateOptions
-	SecretsManager     secrets.Manager
-	SecretsProvider    secrets.Provider
-	StackConfiguration StackConfiguration
-	Scopes             CancellationScopeSource
-}
-
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
 	// List of ESC environments imported by the stack being updated.
@@ -349,14 +335,6 @@ type UpdateOptions struct {
 	SkipPreview bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
 	PreviewOnly bool
-}
-
-// QueryOptions configures a query to operate against a backend and the engine.
-type QueryOptions struct {
-	// Engine contains all of the engine-specific options.
-	Engine engine.UpdateOptions
-	// Display contains all of the backend display options.
-	Display display.Options
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.
