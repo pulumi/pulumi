@@ -22,14 +22,24 @@ import (
 // ContinueResourceDiffEvent is a step that asks the engine to continue provisioning a resource after completing its
 // diff, it is always created from a base RegisterResourceEvent.
 type ContinueResourceDiffEvent interface {
+	// The base event that triggered this continue event.
 	Event() RegisterResourceEvent
+	// Any error that occurred calling provider.Diff.
 	Error() error
+	// The diff result from the provider.Diff call.
 	Diff() plugin.DiffResult
+
+	// The URN of the resource being continued.
 	URN() resource.URN
+	// The old state of the resource being continued.
 	Old() *resource.State
+	// The new state of the resource being continued.
 	New() *resource.State
+	// The provider that should be used to continue the resource.
 	Provider() plugin.Provider
+	// The autonaming options that should be used to continue the resource.
 	Autonaming() *plugin.AutonamingOptions
+	// The random seed that should be used to continue the resource.
 	RandomSeed() []byte
 }
 

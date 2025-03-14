@@ -277,7 +277,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 }
 
 // GenerateSteps produces one or more steps required to achieve the goal state specified by the
-// incoming RegisterResourceEvent.
+// incoming RegisterResourceEvent. It also returns if those steps are going to trigger an async
+// message back to the step generator that the deployment executor should wait for.
 //
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
@@ -296,6 +297,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, boo
 	return steps, async, err
 }
 
+// Called at the end of GenerateSteps and ContinueStepsFromDiff to validate the steps generated are valid.
+// That is they match any constraint plan or targets that are set.
 func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
