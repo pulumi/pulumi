@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -40,7 +41,16 @@ type testCase struct {
 	setupBlobStorage func() *httptest.Server
 	input            *PublishPackageInput
 	errorMessage     string
+	httpClient       *http.Client
 }
+
+type errorTransport struct{}
+
+func (t *errorTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("simulated network error")
+}
+
+var _ http.RoundTripper = &errorTransport{}
 
 func TestPublishPackage(t *testing.T) {
 	t.Parallel()
@@ -272,6 +282,38 @@ func TestPublishPackage(t *testing.T) {
 				InstallDocs: nil, // No install docs
 			},
 		},
+		{
+			name: "FailedPublish",
+			httpClient: &http.Client{
+				Transport: &errorTransport{},
+			},
+			errorMessage: "simulated network error",
+			setupBlobStorage: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}))
+			},
+			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					switch r.URL.Path {
+					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+						w.WriteHeader(http.StatusAccepted)
+						response := apitype.StartPackagePublishResponse{
+							OperationID: "test-operation-id",
+							UploadURLs: apitype.PackageUpload{
+								Schema:                    blobStorage.URL + "/upload/schema",
+								Index:                     blobStorage.URL + "/upload/index",
+								InstallationConfiguration: blobStorage.URL + "/upload/install",
+							},
+							RequiredHeaders: map[string]string{
+								"Content-Type": "application/octet-stream",
+							},
+						}
+						require.NoError(t, json.NewEncoder(w).Encode(response))
+					}
+				}))
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -282,11 +324,18 @@ func TestPublishPackage(t *testing.T) {
 			server := tt.setupServer(blobStorage)
 			defer server.Close()
 
+			var httpClient *http.Client
+			if tt.httpClient != nil {
+				httpClient = tt.httpClient
+			} else {
+				httpClient = http.DefaultClient
+			}
+
 			// Create client pointing to our test server
 			client := &Client{
 				apiURL:     server.URL,
 				apiToken:   "fake-token",
-				httpClient: http.DefaultClient,
+				httpClient: httpClient,
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: http.DefaultClient,
