@@ -198,7 +198,6 @@ func (cmd *packagePublishCmd) Run(
 
 	var installDocsBytes *bytes.Buffer
 	if args.installDocsPath != "" {
-		fmt.Printf("installDocsPath: %s\n", args.installDocsPath)
 		installDocs, err := os.Open(args.installDocsPath)
 		if err != nil {
 			return fmt.Errorf("failed to open install docs file: %w", err)

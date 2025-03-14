@@ -38,17 +38,18 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 
 	tests := []struct {
-		name           string
-		args           publishPackageArgs
-		packageSource  string
-		packageParams  []string
-		mockSchema     *schema.Package
-		mockOrg        string
-		mockOrgErr     error
-		publishErr     error
-		expectedErr    string
-		readmeContent  string
-		installContent string
+		name                string
+		args                publishPackageArgs
+		packageSource       string
+		packageParams       []string
+		mockSchema          *schema.Package
+		schemaExtractionErr error
+		mockOrg             string
+		mockOrgErr          error
+		publishErr          error
+		expectedErr         string
+		readmeContent       string
+		installContent      string
 	}{
 		{
 			name: "successful publish with publisher from schema",
@@ -213,7 +214,6 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageSource: "testpackage",
-			packageParams: []string{},
 			mockSchema: &schema.Package{
 				Name:     "testpkg",
 				Version:  &version,
@@ -223,6 +223,23 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			expectedErr:    "failed to publish package",
 			readmeContent:  "# Test README\nThis is a test readme.",
 			installContent: "# Installation\nHow to install this package.",
+		},
+		{
+			name: "error when schema extraction fails",
+			args: publishPackageArgs{
+				source:    "pulumi",
+				publisher: "publisher",
+			},
+			packageSource: "testpackage",
+			mockSchema: &schema.Package{
+				Name:     "testpkg",
+				Version:  &version,
+				Provider: &schema.Resource{},
+			},
+			schemaExtractionErr: errors.New("schema extraction failed"),
+			expectedErr:         "failed to get schema: schema extraction failed",
+			readmeContent:       "# Test README\nThis is a test readme.",
+			installContent:      "# Installation\nHow to install this package.",
 		},
 	}
 
@@ -310,10 +327,10 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			cmd := &packagePublishCmd{
 				defaultOrg: defaultOrg,
 				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
-					if tt.mockSchema == nil {
+					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, errors.New("mock schema extraction failed")
 					}
-					return tt.mockSchema, nil
+					return tt.mockSchema, tt.schemaExtractionErr
 				},
 			}
 
@@ -324,6 +341,202 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+//nolint:paralleltest // This test uses the global backendInstance variable
+func TestPackagePublishCmd_IOErrors(t *testing.T) {
+	t.Parallel()
+	version := semver.MustParse("1.0.0")
+	validSchema := &schema.Package{
+		Name:      "testpkg",
+		Publisher: "testpublisher",
+		Version:   &version,
+		Provider:  &schema.Resource{},
+	}
+
+	tests := []struct {
+		name           string
+		args           publishPackageArgs
+		mockSchema     *schema.Package
+		setupTest      func(*testing.T) (string, string)
+		expectedErrStr string
+	}{
+		{
+			name: "readme file not found",
+			args: publishPackageArgs{
+				source:     "pulumi",
+				publisher:  "publisher",
+				readmePath: "nonexistent-readme.md",
+			},
+			mockSchema:     validSchema,
+			expectedErrStr: "failed to open readme file",
+		},
+		{
+			name: "readme file cannot be read (permission denied)",
+			args: publishPackageArgs{
+				source:    "pulumi",
+				publisher: "publisher",
+			},
+			mockSchema: validSchema,
+			setupTest: func(t *testing.T) (string, string) {
+				tempDir := t.TempDir()
+				readmePath := path.Join(tempDir, "unreadable.md")
+
+				err := os.WriteFile(readmePath, []byte("# Test README"), 0o600)
+				require.NoError(t, err)
+
+				// Make it unreadable
+				err = os.Chmod(readmePath, 0o000)
+				require.NoError(t, err)
+
+				return readmePath, ""
+			},
+			expectedErrStr: "failed to open readme file",
+		},
+		{
+			name: "install docs file not found",
+			args: publishPackageArgs{
+				source:          "pulumi",
+				publisher:       "publisher",
+				installDocsPath: "nonexistent-install.md",
+			},
+			mockSchema: validSchema,
+			setupTest: func(t *testing.T) (string, string) {
+				tempDir := t.TempDir()
+				readmePath := path.Join(tempDir, "readme.md")
+
+				err := os.WriteFile(readmePath, []byte("# Test README"), 0o600)
+				require.NoError(t, err)
+
+				return readmePath, ""
+			},
+			expectedErrStr: "failed to open install docs file",
+		},
+		{
+			name: "install docs file cannot be read (permission denied)",
+			args: publishPackageArgs{
+				source:    "pulumi",
+				publisher: "publisher",
+			},
+			mockSchema: validSchema,
+			setupTest: func(t *testing.T) (string, string) {
+				tempDir := t.TempDir()
+				readmePath := path.Join(tempDir, "readme.md")
+				installPath := path.Join(tempDir, "unreadable-install.md")
+
+				err := os.WriteFile(readmePath, []byte("# Test README"), 0o600)
+				require.NoError(t, err)
+
+				err = os.WriteFile(installPath, []byte("# Installation"), 0o600)
+				require.NoError(t, err)
+
+				// Make install docs unreadable
+				err = os.Chmod(installPath, 0o000)
+				require.NoError(t, err)
+
+				return readmePath, installPath
+			},
+			expectedErrStr: "failed to open install docs file",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setupTest != nil {
+				readmePath, installPath := tt.setupTest(t)
+				if readmePath != "" {
+					tt.args.readmePath = readmePath
+				}
+				if installPath != "" {
+					tt.args.installDocsPath = installPath
+				}
+			}
+
+			// Mock the backend
+			mockBackendInstance(t, &backend.MockBackend{
+				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
+					return &backend.MockPackageRegistry{
+						PublishF: func(ctx context.Context, op backend.PackagePublishOp) error {
+							return nil
+						},
+					}, nil
+				},
+			})
+
+			cmd := &packagePublishCmd{
+				defaultOrg: func(project *workspace.Project) (string, error) {
+					return "default-org", nil
+				},
+				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+					return tt.mockSchema, nil
+				},
+			}
+
+			err := cmd.Run(context.Background(), tt.args, "testpackage", []string{})
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedErrStr)
+		})
+	}
+}
+
+//nolint:paralleltest // This test uses the global backendInstance variable
+func TestPackagePublishCmd_BackendErrors(t *testing.T) {
+	version := semver.MustParse("1.0.0")
+	validSchema := &schema.Package{
+		Name:      "testpkg",
+		Publisher: "testpublisher",
+		Version:   &version,
+		Provider:  &schema.Resource{},
+	}
+
+	tests := []struct {
+		name           string
+		setupBackend   func(t *testing.T)
+		expectedErrStr string
+	}{
+		{
+			name: "error getting package registry",
+			setupBackend: func(t *testing.T) {
+				mockBackendInstance(t, &backend.MockBackend{
+					GetPackageRegistryF: func() (backend.PackageRegistry, error) {
+						return nil, errors.New("failed to get package registry")
+					},
+				})
+			},
+			expectedErrStr: "failed to get package registry",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a temporary readme file
+			tmpDir := t.TempDir()
+			readmePath := path.Join(tmpDir, "readme.md")
+			err := os.WriteFile(readmePath, []byte("# Test README"), 0o600)
+			require.NoError(t, err)
+
+			// Setup the test backend
+			tt.setupBackend(t)
+
+			cmd := &packagePublishCmd{
+				defaultOrg: func(project *workspace.Project) (string, error) {
+					return "default-org", nil
+				},
+				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
+					return validSchema, nil
+				},
+			}
+
+			err = cmd.Run(context.Background(), publishPackageArgs{
+				source:     "pulumi",
+				publisher:  "publisher",
+				readmePath: readmePath,
+			}, "testpackage", []string{})
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
 }
