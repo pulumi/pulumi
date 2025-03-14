@@ -153,14 +153,17 @@ func NewLoginCmd() *cobra.Command {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
-				strings.HasPrefix(url, "pulumi.com") {
+				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
-				if err := validateCloudBackendType(cloudURL); err != nil {
+				isCloudBackend, err := validateCloudBackendType(cloudURL)
+				if err != nil {
 					return err
+				}
+				if isCloudBackend {
+					cloudURL = checkHTTPCloudBackendURL(cloudURL)
 				}
 			}
 
@@ -205,17 +208,27 @@ func NewLoginCmd() *cobra.Command {
 	return cmd
 }
 
-func validateCloudBackendType(typ string) error {
+func validateCloudBackendType(typ string) (bool, error) {
 	kind := strings.SplitN(typ, ":", 2)[0]
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
-			return nil
+			if strings.Contains(kind, "http") {
+				return true, nil
+			}
+			return false, nil
 		}
 	}
-	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
+	return false, fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind)
+}
+
+func checkHTTPCloudBackendURL(url string) string {
+	if strings.HasSuffix(strings.TrimSuffix(url, "/"), ".pulumi.com") {
+		return "https://api.pulumi.com"
+	}
+	return url
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.
