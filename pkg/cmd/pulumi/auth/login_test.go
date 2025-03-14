@@ -27,8 +27,7 @@ func TestCheckHTTPCloudBackendUrlWithAppPulumi(t *testing.T) {
 
 	cloudURL := "https://app.pulumi.com"
 	want := "https://api.pulumi.com"
-	url, err := checkHTTPCloudBackenUrl(cloudURL)
+	url := checkHTTPCloudBackendURL(cloudURL)
 
-	require.NoError(t, err)
 	require.Equal(t, want, url)
 }

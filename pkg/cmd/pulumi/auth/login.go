@@ -153,21 +153,17 @@ func NewLoginCmd() *cobra.Command {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
-				strings.HasPrefix(url, "pulumi.com") {
+				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
-				isHTTP, err := validateCloudBackendType(cloudURL)
+				isCloudBackend, err := validateCloudBackendType(cloudURL)
 				if err != nil {
 					return err
 				}
-				if isHTTP {
-					cloudURL, err = checkHTTPCloudBackenUrl(cloudURL)
-					if err != nil {
-						return err
-					}
+				if isCloudBackend {
+					cloudURL = checkHTTPCloudBackendURL(cloudURL)
 				}
 			}
 
@@ -228,11 +224,11 @@ func validateCloudBackendType(typ string) (bool, error) {
 		kind)
 }
 
-func checkHTTPCloudBackenUrl(url string) (string, error) {
-	if strings.HasSuffix(strings.TrimSuffix(url, "/"), "pulumi.com") {
-		return "https://api.pulumi.com", nil
+func checkHTTPCloudBackendURL(url string) string {
+	if strings.HasSuffix(strings.TrimSuffix(url, "/"), ".pulumi.com") {
+		return "https://api.pulumi.com"
 	}
-	return url, nil
+	return url
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.
