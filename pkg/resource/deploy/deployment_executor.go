@@ -43,7 +43,8 @@ type deploymentExecutor struct {
 
 	skipped mapset.Set[urn.URN] // The set of resources that have failed
 
-	// Counter for the step generator, this tells us we're expecting async work from the step generator still.
+	// The number of expected events remaining from step generaton, this tells us we're still expecting events
+	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
 }
 
