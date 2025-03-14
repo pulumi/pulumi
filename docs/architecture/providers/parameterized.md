@@ -46,9 +46,11 @@ For a provider to support parameterization it must implement the
 [](pulumirpc.ResourceProvider.Parameterize) call. The
 [](pulumirpc.ParameterizeRequest) will either contain the args passed via the
 CLI from `pulumi package add` or `pulumi package gen-sdk`; or will be passed the
-previous generated metadata binary blob. [](pulumirpc.ResourceProvider.Parameterize)
-will always be called before either [](pulumirpc.ResourceProvider.Configure)
-or [](pulumirpc.ResourceProvider.GetSchema) are called.
+previous generated metadata binary blob. For any fixed set of parameters, the
+"args" call will come first and only once; every subsequent call will be of the
+"blob" form. [](pulumirpc.ResourceProvider.Parameterize) will always be called
+before either [](pulumirpc.ResourceProvider.Configure) or
+[](pulumirpc.ResourceProvider.GetSchema) are called.
 [](pulumirpc.ParameterizeResponse) must return a response with the *parameterized
 package* name and version. The name of the parameterized package must be unique
 and will be used as the first part of all resource tokens and used to route
@@ -74,6 +76,31 @@ schemas as required.
 Once parameterized, the engine may then resume the usual provider lifecycle
 operations such as [](pulumirpc.ResourceProvider.Configure) and start interacting
 with resources.
+
+```mermaid
+:caption: The lifecycle of parameterization
+
+sequenceDiagram
+    participant User
+    participant Engine
+    participant Provider
+    User->>+Engine: pulumi package [add|gen-sdk] [provider] [args...]
+    Engine->>+Provider: Parameterize(args...)
+    Note right of Provider: Provider now parameterized
+    Provider-->>Engine: ParameterizeResponse(Name, Version)
+    Engine->>Provider: GetSchema(Name, Version)
+    Provider-->>-Engine: Schema with Parameter Value
+    Engine->>-User: SDK written to local directory
+    User->>+Engine: pulumi up
+    Engine->>+Provider: Parameterize(Name, Version, Value)
+    Note right of Provider: Provider now parameterized
+    Provider->>Engine: ParameterizeResponse(Name, Version)
+    loop Provider Operations
+        Engine->>Provider: Configure/Create/Update/Delete/etc
+        Provider-->>-Engine: Response
+    end
+    Engine-->>-User: exit
+```
 
 ## Example uses of parameterization
 
@@ -123,8 +150,10 @@ for example).
 ## Replacement and extension parameterization
 
 Currently, the only kind of parameterization is *replacement parameterization*.
-In this mode, once the provider has been parameterized, it will be used for that
-parameter only; and not without the parameter or with another parameter.
+In this mode, the parameterization of the provider *replaces* the schema and any
+additional data the provider uses. Once the provider has been parameterized, it
+will be used for those parameters only; and not without the parameters or with
+other parameters.
 
 Future enhancements may include the option for a parameterization to be an
 "extension" of the original schema. Details are yet to be worked out here, but we
