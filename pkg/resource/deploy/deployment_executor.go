@@ -238,7 +238,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		for {
 			select {
 			case event := <-stepGenEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event")
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
 
 				if err := ex.handleSingleEvent(event); err != nil {
 					if !result.IsBail(err) {
@@ -250,7 +250,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				}
 
 			case event := <-incomingEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil,
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
 					event.Error)
 
 				if event.Error != nil {
