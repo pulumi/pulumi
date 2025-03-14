@@ -1688,10 +1688,6 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		forbiddenResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromExcludes(excludesOpt)
 	}
 
-	for _, k := range forbiddenResourcesToDelete {
-		fmt.Printf("* %+v\n", k)
-	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -1707,11 +1703,9 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		dels = filtered
 	}
 
-	fmt.Printf("<> %+v\n", forbiddenResourcesToDelete)
 	if forbiddenResourcesToDelete != nil {
 		filtered := []Step{}
 		for _, step := range dels {
-			fmt.Printf("%+v? %+v\n", step.URN(), forbiddenResourcesToDelete[step.URN()])
 			if _, has := forbiddenResourcesToDelete[step.URN()]; !has {
 				filtered = append(filtered, step)
 			}
@@ -1724,7 +1718,6 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	deletingUnspecifiedTarget := false
 	for _, step := range dels {
 		urn := step.URN()
-		fmt.Printf("$ %+v\n", urn)
 		if !targetsOpt.Contains(urn) && !sg.deployment.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
 

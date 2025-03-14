@@ -592,13 +592,30 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		return err
 	}
 
+	// Do the same with excludes.
+	if err := ex.checkTargets(ex.deployment.opts.Excludes); err != nil {
+		return err
+	}
+
 	// If the user did not provide any --target's, create a refresh step for each resource in the
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
-		if ex.deployment.opts.Targets.Contains(res.URN) {
+		// We need to check excludes _before_ targets as targeting everything is
+		// the default.
+		if ex.deployment.opts.Excludes.IsConstrained() && !ex.deployment.opts.Excludes.Contains(res.URN) {
+			// For each resource we're going to refresh we need to ensure we have a provider for it
+			err := ex.deployment.EnsureProvider(res.Provider)
+			if err != nil {
+				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+			}
+
+			step := NewRefreshStep(ex.deployment, res)
+			steps = append(steps, step)
+			resourceToStep[res] = step
+		} else if ex.deployment.opts.Targets.Contains(res.URN) {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
 			if err != nil {

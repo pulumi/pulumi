@@ -429,8 +429,8 @@ func isDefaultProviderStep(step deploy.Step) bool {
 	return providers.IsDefaultProvider(step.URN())
 }
 
-func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
-	if !targetUrns.IsConstrained() {
+func checkTargets(targetUrns deploy.UrnTargets, excludeUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
+	if !targetUrns.IsConstrained() || !excludeUrns.IsConstrained() {
 		return nil
 	}
 	if snap == nil {
@@ -441,6 +441,11 @@ func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
 		urns[res.URN] = struct{}{}
 	}
 	for _, target := range targetUrns.Literals() {
+		if _, ok := urns[target]; !ok {
+			return fmt.Errorf("no resource named '%s' found", target)
+		}
+	}
+	for _, target := range excludeUrns.Literals() {
 		if _, ok := urns[target]; !ok {
 			return fmt.Errorf("no resource named '%s' found", target)
 		}

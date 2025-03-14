@@ -1,0 +1,9 @@
+<{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=a6642d7e-b29a-4c4c-a055-3c1ddbcfb484]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>  + count: <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
