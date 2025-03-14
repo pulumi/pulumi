@@ -571,7 +571,7 @@ export class Analyzer {
             );
         }
 
-        // Find its d.ts source file.
+        // Find its declaration source file.
         const sourceFile = declaration.getSourceFile();
         if (!sourceFile) {
             throw new Error(
@@ -579,25 +579,30 @@ export class Analyzer {
             );
         }
 
-        // Find the actual implementation file (transpiled to .js).
-        const jsPath = sourceFile.fileName.replace(/\.d\.ts$/, ".js");
-        if (!ts.sys.fileExists(jsPath)) {
+        // Find the actual implementation file - use the TypeScript file directly if it's not a .d.ts file
+        let implPath = sourceFile.fileName;
+        if (implPath.endsWith(".d.ts")) {
+            // For declaration files, look for the corresponding .js file
+            implPath = implPath.replace(/\.d\.ts$/, ".js");
+        }
+
+        if (!ts.sys.fileExists(implPath)) {
             throw new Error(
-                `Cannot determine resource type: implementation file not found for '${symbol.name}' for ${this.formatErrorContext(context)}`,
+                `Cannot determine resource type: source file not found at '${implPath}' for '${symbol.name}' for ${this.formatErrorContext(context)}`,
             );
         }
 
         // Load the module.
-        const module = require(jsPath);
+        const module = require(implPath);
         if (!module) {
-            throw new Error(`Failed to load module from '${jsPath}' for ${this.formatErrorContext(context)}`);
+            throw new Error(`Failed to load module from '${implPath}' for ${this.formatErrorContext(context)}`);
         }
 
         // Find the resource class.
         const resourceClass = module[symbol.name];
         if (!resourceClass) {
             throw new Error(
-                `Resource class '${symbol.name}' not found in module '${jsPath}' for ${this.formatErrorContext(context)}`,
+                `Resource class '${symbol.name}' not found in module '${implPath}' for ${this.formatErrorContext(context)}`,
             );
         }
 
@@ -605,7 +610,7 @@ export class Analyzer {
         const pulumiType = resourceClass.__pulumiType;
         if (!pulumiType) {
             throw new Error(
-                `Could not determine __pulumiType for resource class '${symbol.name}' in '${jsPath}' for ${this.formatErrorContext(context)}`,
+                `Could not determine __pulumiType for resource class '${symbol.name}' in '${implPath}' for ${this.formatErrorContext(context)}`,
             );
         }
 
@@ -613,7 +618,7 @@ export class Analyzer {
         const packageName = pulumiType.split(":")[0];
 
         // Extract package name from the path.
-        const packageMatch = jsPath.match(/node_modules\/((@[^/]+\/)?[^/]+)/);
+        const packageMatch = implPath.match(/node_modules\/((@[^/]+\/)?[^/]+)/);
         if (!packageMatch || packageMatch.length < 2) {
             throw new Error(
                 `Cannot determine resource type: package name not found for '${symbol.name}' for ${this.formatErrorContext(context)}`,
@@ -631,7 +636,7 @@ export class Analyzer {
 
         // Find package.json to get the version
         const packageJsonPath = path.resolve(
-            jsPath.substring(0, jsPath.indexOf(npmPackageName) + npmPackageName.length),
+            implPath.substring(0, implPath.indexOf(npmPackageName) + npmPackageName.length),
             "package.json",
         );
 
