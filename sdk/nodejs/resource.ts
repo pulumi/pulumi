@@ -390,6 +390,28 @@ export abstract class Resource {
     }
 
     /**
+     * The type assigned to the resource at construction.
+     */
+    public getResourceType(): string {
+        // This is a method and not a property to not collide with potential subclass property names.
+        return this.__pulumiType;
+    }
+
+    /**
+     * The name assigned to the resource at construction.
+     */
+    public getResourceName(): string {
+        // This is a method and not a property to not collide with potential subclass property names.
+        if (this.__name === undefined) {
+            throw new ResourceError(
+                "Resource name is not available, this resource instance must have been constructed by an old SDK",
+                this,
+            );
+        }
+        return this.__name;
+    }
+
+    /**
      * Creates and registers a new resource object. `t` is the fully qualified
      * type token and `name` is the "name" part to use in creating a stable and
      * globally unique URN for the object. `dependsOn` is an optional list of

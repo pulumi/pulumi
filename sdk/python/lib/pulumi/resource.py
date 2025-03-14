@@ -1040,6 +1040,20 @@ class Resource:
 
         return provider, providers
 
+    def get_resource_type(self) -> str:
+        """
+        The type assigned to the resource at construction.
+        """
+        # This is a method and not a property to not collide with potential subclass property names.
+        return self._type
+
+    def get_resource_name(self) -> str:
+        """
+        The name assigned to the resource at construction.
+        """
+        # This is a method and not a property to not collide with potential subclass property names.
+        return self._name
+
     @property
     def urn(self) -> "Output[str]":
         """
