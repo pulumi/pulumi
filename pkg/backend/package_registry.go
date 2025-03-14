@@ -22,12 +22,21 @@ import (
 )
 
 type PackagePublishOp struct {
-	Source      string
-	Publisher   string
-	Name        string
-	Version     semver.Version
-	Schema      io.Reader
-	Readme      io.Reader
+	// Source is the source of the package. Typically this is 'pulumi' for packages published to the Pulumi Registry.
+	// Packages loaded from other registries (e.g. 'opentofu') will point to the origin of the package.
+	Source string
+	// Publisher is the name of the publisher of the package. I.e. the organization name.
+	Publisher string
+	// Name is the URL-safe name of the package.
+	Name string
+	// Version is the semantic version of the package that should get published.
+	Version semver.Version
+	// Schema is a reader containing the JSON schema of the package.
+	Schema io.Reader
+	// Readme is a reader containing the markdown content of the package's README.
+	Readme io.Reader
+	// InstallDocs is a reader containing the markdown content of the package's installation documentation.
+	// This is optional, and if omitted, the package will not have installation documentation.
 	InstallDocs io.Reader
 }
 
