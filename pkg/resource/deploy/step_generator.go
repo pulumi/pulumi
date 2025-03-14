@@ -1247,58 +1247,62 @@ func (sg *stepGenerator) generateStepsFromDiff(
 		}, true, nil
 	}
 
-	updateSteps, err := sg.continueStepsFromDiff(
-		event, err, diff, urn, old, new, prov, autonaming, randomSeed)
+	updateSteps, err := sg.continueStepsFromDiff(&continueDiffResourceEvent{
+		evt:        event,
+		err:        err,
+		diff:       diff,
+		urn:        urn,
+		old:        old,
+		new:        new,
+		provider:   prov,
+		autonaming: autonaming,
+		randomSeed: randomSeed,
+	})
 	if err != nil {
 		return nil, false, err
-	}
-
-	if len(updateSteps) == 0 {
-		// Diff didn't produce any steps for this resource.  Fall through and indicate that it
-		// is same/unchanged.
-		logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
-
-		// No need to update anything, the properties didn't change.
-		sg.sames[urn] = true
-		updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
 	}
 
 	return updateSteps, false, nil
 }
 
+// This function is called by the deployment executor in response to a ContinueResourceDiffEvent. It simply
+// calls into continueStepsFromDiff and then validateSteps to continue the work that GenerateSteps would have
+// done with a synchronous diff.
 func (sg *stepGenerator) ContinueStepsFromDiff(event ContinueResourceDiffEvent) ([]Step, error) {
-	urn := event.URN()
-	new := event.New()
-	old := event.Old()
-
-	updateSteps, err := sg.continueStepsFromDiff(
-		event.Event(), event.Error(), event.Diff(), urn, old, new,
-		event.Provider(), event.Autonaming(), event.RandomSeed())
+	updateSteps, err := sg.continueStepsFromDiff(event)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(updateSteps) == 0 {
-		// Diff didn't produce any steps for this resource.  Fall through and indicate that it
-		// is same/unchanged.
-		logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
-
-		// No need to update anything, the properties didn't change.
-		sg.sames[urn] = true
-		updateSteps = []Step{NewSameStep(sg.deployment, event.Event(), old, new)}
 	}
 
 	updateSteps, err = sg.validateSteps(updateSteps)
 	return updateSteps, err
 }
 
-func (sg *stepGenerator) continueStepsFromDiff(
-	event RegisterResourceEvent,
-	err error, diff plugin.DiffResult, urn resource.URN, old, new *resource.State,
-	prov plugin.Provider, autonaming *plugin.AutonamingOptions,
-	randomSeed []byte,
-) ([]Step, error) {
+// continueStepsFromDiff continues the process of generating steps for a resource after the diff has been computed
+func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEvent) (updateSteps []Step, err error) {
+	err = diffEvent.Error()
+	urn := diffEvent.URN()
+	old := diffEvent.Old()
+	new := diffEvent.New()
+	diff := diffEvent.Diff()
+	prov := diffEvent.Provider()
+	randomSeed := diffEvent.RandomSeed()
+	autonaming := diffEvent.Autonaming()
+	event := diffEvent.Event()
 	goal := event.Goal()
+
+	// If we try to return zero steps change it to one same step
+	defer func() {
+		if len(updateSteps) == 0 {
+			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
+			// is same/unchanged.
+			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
+
+			// No need to update anything, the properties didn't change.
+			sg.sames[urn] = true
+			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
+		}
+	}()
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.opts.DryRun
