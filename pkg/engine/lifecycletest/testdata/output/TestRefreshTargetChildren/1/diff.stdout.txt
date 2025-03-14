@@ -1,9 +1,14 @@
 <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=523dbb85-12a7-4d4a-ab79-67949f2e8f34]
+<{%reset%}>    [id=9f81c66c-49f5-441a-8ed9-710656d9a63a]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>  + count: <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
+<{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>        [id=7b545ba8-1b0c-4151-91bd-930e98c1615f]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC]
+<{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
+<{%fg 2%}>      + count: <{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    1 unchanged
+    2 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

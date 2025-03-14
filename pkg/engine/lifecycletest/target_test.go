@@ -69,17 +69,17 @@ func TestRefreshTargetChildren(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
@@ -97,8 +97,8 @@ func TestRefreshTargetChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[3].URN, child)
 	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
 
-	opts = lt.TestUpdateOptions{ T: t, HostF: hostF }
-	opts.UpdateOptions.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN { middle })
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{middle})
 	opts.UpdateOptions.TargetDependents = true
 
 	snap, err = lt.TestOp(Refresh).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
