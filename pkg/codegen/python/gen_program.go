@@ -530,7 +530,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 					}
 				}
 				if packageName == "" {
-					packageName = pyPack(pkg.Namespace, pkg.Name)
+					packageName = PyPack(pkg.Namespace, pkg.Name)
 				}
 			} else {
 				packageName = "pulumi_" + makeValidIdentifier(pkg)

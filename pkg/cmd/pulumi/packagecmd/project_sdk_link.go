@@ -365,20 +365,22 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 
 	pyInfo, ok := pkg.Language["python"].(python.PackageInfo)
 	var importName string
+	var packageName string
 	if ok && pyInfo.PackageName != "" {
 		importName = pyInfo.PackageName
+		packageName = pyInfo.PackageName
 	} else {
 		importName = strings.ReplaceAll(pkg.Name, "-", "_")
 	}
 
-	namespace := "pulumi"
-	if pkg.Namespace != "" {
-		namespace = strings.ReplaceAll(pkg.Namespace, "-", "_")
+	if packageName == "" {
+		packageName = python.PyPack(pkg.Namespace, pkg.Name)
 	}
+
 	fmt.Println()
 	fmt.Println("You can then import the SDK in your Python code with:")
 	fmt.Println()
-	fmt.Printf("  import %s_%s as %s\n", namespace, importName, importName)
+	fmt.Printf("  import %s as %s\n", packageName, importName)
 	fmt.Println()
 	return nil
 }
