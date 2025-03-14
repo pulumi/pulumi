@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPackagePublishCmd() *cobra.Command {
+func newPackagePublishSdkCmd() *cobra.Command {
 	var path string
 	cmd := &cobra.Command{
 		Use:    "publish-sdk <language>",
