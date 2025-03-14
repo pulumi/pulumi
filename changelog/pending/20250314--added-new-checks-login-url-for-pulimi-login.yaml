@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Added checks to handle wrong login url for pulumi login
