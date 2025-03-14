@@ -37,7 +37,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStateUnprotectCommand())
 	cmd.AddCommand(newStateRenameCommand())
-	cmd.AddCommand(newStateUpgradeCommand())
+	cmd.AddCommand(newStateUpgradeCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStateMoveCommand())
 	cmd.AddCommand(newStateRepairCommand())
 	return cmd

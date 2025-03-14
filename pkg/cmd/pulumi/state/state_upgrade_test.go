@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,33 +28,17 @@ import (
 	"github.com/creack/pty"
 	"github.com/hinshun/vt10x"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestStateUpgradeCommand_parseArgs(t *testing.T) {
-	t.Parallel()
-
-	// Parsing flags with a cobra.Command without running the command
-	// is a bit verbose.
-	// You have to run ParseFlags to parse the flags,
-	// then extract non-flag arguments with cmd.Flags().Args(),
-	// then run ValidateArgs to validate the positional arguments.
-
-	cmd := newStateUpgradeCommand()
-	args := []string{} // no arguments
-
-	require.NoError(t, cmd.ParseFlags(args))
-	args = cmd.Flags().Args() // non flag args
-	require.NoError(t, cmd.ValidateArgs(args))
-}
 
 func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 	t.Parallel()
@@ -69,17 +53,11 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 			give:    []string{"--unknown"},
 			wantErr: "unknown flag: --unknown",
 		},
-		// Unfortunately,
-		// our cmdutil.NoArgs validator exits the program,
-		// causing the test to fail.
-		// Until we resolve this, we'll skip this test
-		// and rely on the positive test case
-		// to validate the arguments intead.
-		// {
-		// 	desc: "unexpected argument",
-		// 	give: []string{"arg"},
-		// 	wantErr: `unknown command "arg" for "upgrade"`,
-		// },
+		{
+			desc:    "unexpected argument",
+			give:    []string{"arg"},
+			wantErr: `unknown command "arg" for "upgrade"`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -87,19 +65,13 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := newStateUpgradeCommand()
-			args := tt.give
+			ws := &pkgWorkspace.MockContext{}
+			lm := &cmdBackend.MockLoginManager{}
 
-			// Errors can occur during flag parsing
-			// or argument validation.
-			// If there's no error on ParseFlags,
-			// expect one on ValidateArgs.
-			if err := cmd.ParseFlags(args); err != nil {
-				assert.ErrorContains(t, err, tt.wantErr)
-				return
-			}
-			args = cmd.Flags().Args() // non flag args
-			assert.ErrorContains(t, cmd.ValidateArgs(args), tt.wantErr)
+			cmd := newStateUpgradeCommand(ws, lm)
+			cmd.SetArgs(tt.give)
+			err := cmd.Execute()
+			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }
@@ -108,22 +80,27 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	t.Parallel()
 
 	var called bool
-	cmd := stateUpgradeCmd{
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-		) (backend.Backend, error) {
-			return &stubDIYBackend{
-				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
-					called = true
-					return nil
-				},
-			}, nil
+
+	ws := &pkgWorkspace.MockContext{}
+	be := &stubDIYBackend{
+		UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
+			called = true
+			return nil
 		},
-		Stdin:  strings.NewReader("yes\n"),
-		Stdout: io.Discard,
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
 	}
 
-	err := cmd.Run(context.Background())
+	cmd := newStateUpgradeCommand(ws, lm)
+	cmd.SetArgs([]string{})
+	cmd.SetIn(strings.NewReader("yes\n"))
+	cmd.SetOut(io.Discard)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	assert.True(t, called, "Upgrade was never called")
@@ -133,23 +110,27 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 	t.Parallel()
 
 	var called bool
-	cmd := stateUpgradeCmd{
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-		) (backend.Backend, error) {
-			return &stubDIYBackend{
-				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
-					called = true
-					return nil
-				},
-			}, nil
+
+	ws := &pkgWorkspace.MockContext{}
+	be := &stubDIYBackend{
+		UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
+			called = true
+			return nil
 		},
-		Stdin:  strings.NewReader(""),
-		Stdout: io.Discard,
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
 	}
 
-	cmd.yes = true
-	err := cmd.Run(context.Background())
+	cmd := newStateUpgradeCommand(ws, lm)
+	cmd.SetArgs([]string{"--yes"})
+	cmd.SetIn(strings.NewReader(""))
+	cmd.SetOut(io.Discard)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	assert.True(t, called, "Upgrade was never called")
@@ -158,22 +139,26 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	t.Parallel()
 
-	cmd := stateUpgradeCmd{
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-		) (backend.Backend, error) {
-			return &stubDIYBackend{
-				UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
-					t.Fatal("Upgrade should not be called")
-					return nil
-				},
-			}, nil
+	ws := &pkgWorkspace.MockContext{}
+	be := &stubDIYBackend{
+		UpgradeF: func(context.Context, *diy.UpgradeOptions) error {
+			t.Fatal("Upgrade should not be called")
+			return nil
 		},
-		Stdin:  strings.NewReader("no\n"),
-		Stdout: io.Discard,
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
 	}
 
-	err := cmd.Run(context.Background())
+	cmd := newStateUpgradeCommand(ws, lm)
+	cmd.SetArgs([]string{})
+	cmd.SetIn(strings.NewReader("no\n"))
+	cmd.SetOut(io.Discard)
+	err := cmd.Execute()
 	require.NoError(t, err)
 }
 
@@ -181,18 +166,24 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	t.Parallel()
 
 	var stdout bytes.Buffer
-	cmd := stateUpgradeCmd{
-		Stdout: &stdout,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
 		) (backend.Backend, error) {
-			return &backend.MockBackend{}, nil
+			return be, nil
 		},
 	}
 
 	// Non-diy backend is already up-to-date.
-	err := cmd.Run(context.Background())
+	cmd := newStateUpgradeCommand(ws, lm)
+	cmd.SetArgs([]string{})
+	cmd.SetOut(&stdout)
+	err := cmd.Execute()
 	require.NoError(t, err)
+
 	assert.Contains(t, stdout.String(), "Nothing to do")
 }
 
@@ -200,15 +191,19 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 	t.Parallel()
 
 	giveErr := errors.New("great sadness")
-	cmd := stateUpgradeCmd{
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+	ws := &pkgWorkspace.MockContext{}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return nil, giveErr
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	// Non-diy backend is already up-to-date.
+	cmd := newStateUpgradeCommand(ws, lm)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
 	assert.ErrorIs(t, err, giveErr)
 }
 

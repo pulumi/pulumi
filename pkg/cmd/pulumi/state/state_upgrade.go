@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +15,11 @@
 package state
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -31,13 +28,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
 )
 
-func newStateUpgradeCommand() *cobra.Command {
-	var sucmd stateUpgradeCmd
+func newStateUpgradeCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+	var yes bool
 	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Migrates the current backend to the latest supported version",
@@ -47,98 +43,64 @@ This only has an effect on DIY backends.
 `,
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := sucmd.Run(cmd.Context()); err != nil {
+			ctx := cmd.Context()
+			stdout := cmd.OutOrStdout()
+			stdin := cmd.InOrStdin()
+			stderr := cmd.ErrOrStderr()
+
+			dopts := display.Options{
+				Color:  cmdutil.GetGlobalColorization(),
+				Stdin:  stdin,
+				Stdout: stdout,
+			}
+
+			b, err := cmdBackend.CurrentBackend(
+				ctx,
+				ws,
+				lm,
+				nil,
+				dopts,
+			)
+			if err != nil {
 				return err
 			}
-			return nil
+
+			lb, ok := b.(diy.Backend)
+			if !ok {
+				// Only the diy backend supports upgrades,
+				// but we don't want to error out here.
+				// Report the no-op.
+				fmt.Fprintln(stdout, "Nothing to do")
+				return nil
+			}
+
+			prompt := "This will upgrade the current backend to the latest supported version.\n" +
+				"Older versions of Pulumi will not be able to read the new format.\n" +
+				"Are you sure you want to proceed?"
+			if !yes && !ui.ConfirmPrompt(prompt, "yes", dopts) {
+				fmt.Fprintln(stdout, "Upgrade cancelled")
+				return nil
+			}
+
+			var opts diy.UpgradeOptions
+			// If we're in interactive mode, prompt for the project name
+			// for each stack that doesn't have one.
+			if cmdutil.Interactive() {
+				opts.ProjectsForDetachedStacks = func(stacks []tokens.StackName) ([]tokens.Name, error) {
+					projects := make([]tokens.Name, len(stacks))
+					err := (&stateUpgradeProjectNameWidget{
+						Stdin:  stdin,
+						Stdout: stdout,
+						Stderr: stderr,
+					}).Prompt(stacks, projects)
+					return projects, err
+				}
+			}
+			return lb.Upgrade(ctx, &opts)
 		},
 	}
-	cmd.Flags().BoolVarP(&sucmd.yes, "yes", "y", false, "Automatically approve and perform the upgrade")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the upgrade")
 	return cmd
-}
-
-// stateUpgradeCmd implements the 'pulumi state upgrade' command.
-type stateUpgradeCmd struct {
-	Stdin  io.Reader // defaults to os.Stdin
-	Stdout io.Writer // defaults to os.Stdout
-	Stderr io.Writer // defaults to os.Stderr
-
-	yes bool
-
-	// Used to mock out the currentBackend function for testing.
-	// Defaults to currentBackend function.
-	currentBackend func(
-		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-	) (backend.Backend, error)
-}
-
-func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-	if cmd.Stdin == nil {
-		cmd.Stdin = os.Stdin
-	}
-	if cmd.Stderr == nil {
-		cmd.Stderr = os.Stderr
-	}
-
-	if cmd.currentBackend == nil {
-		cmd.currentBackend = cmdBackend.CurrentBackend
-	}
-	currentBackend := cmd.currentBackend // shadow top-level currentBackend
-
-	dopts := display.Options{
-		Color:  cmdutil.GetGlobalColorization(),
-		Stdin:  cmd.Stdin,
-		Stdout: cmd.Stdout,
-	}
-
-	b, err := currentBackend(
-		ctx,
-		pkgWorkspace.Instance,
-		cmdBackend.DefaultLoginManager,
-		nil,
-		dopts,
-	)
-	if err != nil {
-		return err
-	}
-
-	lb, ok := b.(diy.Backend)
-	if !ok {
-		// Only the diy backend supports upgrades,
-		// but we don't want to error out here.
-		// Report the no-op.
-		fmt.Fprintln(cmd.Stdout, "Nothing to do")
-		return nil
-	}
-
-	prompt := "This will upgrade the current backend to the latest supported version.\n" +
-		"Older versions of Pulumi will not be able to read the new format.\n" +
-		"Are you sure you want to proceed?"
-	if !cmd.yes && !ui.ConfirmPrompt(prompt, "yes", dopts) {
-		fmt.Fprintln(cmd.Stdout, "Upgrade cancelled")
-		return nil
-	}
-
-	var opts diy.UpgradeOptions
-	// If we're in interactive mode, prompt for the project name
-	// for each stack that doesn't have one.
-	if cmdutil.Interactive() {
-		opts.ProjectsForDetachedStacks = cmd.projectsForDetachedStacks
-	}
-	return lb.Upgrade(ctx, &opts)
-}
-
-func (cmd *stateUpgradeCmd) projectsForDetachedStacks(stacks []tokens.StackName) ([]tokens.Name, error) {
-	projects := make([]tokens.Name, len(stacks))
-	err := (&stateUpgradeProjectNameWidget{
-		Stdin:  cmd.Stdin,
-		Stdout: cmd.Stdout,
-		Stderr: cmd.Stderr,
-	}).Prompt(stacks, projects)
-	return projects, err
 }
 
 // stateUpgradeProjectNameWidget is a widget that prompts the user
