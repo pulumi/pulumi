@@ -605,16 +605,41 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	for _, res := range prev.Resources {
 		// We need to check excludes _before_ targets as targeting everything is
 		// the default.
-		if ex.deployment.opts.Excludes.IsConstrained() && !ex.deployment.opts.Excludes.Contains(res.URN) {
-			// For each resource we're going to refresh we need to ensure we have a provider for it
-			err := ex.deployment.EnsureProvider(res.Provider)
-			if err != nil {
-				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
-			}
+		if ex.deployment.opts.Excludes.IsConstrained() {
+			if !ex.deployment.opts.Excludes.Contains(res.URN) {
+				if ex.deployment.opts.ExcludeDependents {
+					// The provider reference is already ensured.
+					_, allDeps := res.GetAllDependencies()
 
-			step := NewRefreshStep(ex.deployment, res)
-			steps = append(steps, step)
-			resourceToStep[res] = step
+					// Because we always visit a target before its dependents, these
+					// dependents will all be caught by the check at the start of this
+					// loop.
+					found := false
+
+					for _, dep := range allDeps {
+						if ex.deployment.opts.Excludes.Contains(dep.URN) {
+							found = true
+							break
+						}
+					}
+
+					if found {
+						step := NewRefreshStep(ex.deployment, res)
+						steps = append(steps, step)
+						resourceToStep[res] = step
+					}
+				} else {
+					// For each resource we're going to refresh we need to ensure we have a provider for it
+					err := ex.deployment.EnsureProvider(res.Provider)
+					if err != nil {
+						return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+					}
+
+					step := NewRefreshStep(ex.deployment, res)
+					steps = append(steps, step)
+					resourceToStep[res] = step
+				}
+			}
 		} else if ex.deployment.opts.Targets.Contains(res.URN) {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
