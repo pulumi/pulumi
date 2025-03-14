@@ -72,7 +72,10 @@ func TestRefreshTargetChildren(t *testing.T) {
 		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
 		assert.NoError(t, err)
 
 		return nil
@@ -87,15 +90,14 @@ func TestRefreshTargetChildren(t *testing.T) {
 	var parent resource.URN = "urn:pulumi:test::test::pkgA:m:typA::resA"
 	var middle resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"
 	var child resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC"
+	var leaf resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resD"
 	null := resource.NewPropertyValue(nil)
 
-	require.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[1].URN, parent)
-	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[2].URN, middle)
-	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[3].URN, child)
-	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
+	assert.Equal(t, snap.Resources[4].URN, leaf)
 
 	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
 	opts.UpdateOptions.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{middle})
@@ -104,13 +106,15 @@ func TestRefreshTargetChildren(t *testing.T) {
 	snap, err = lt.TestOp(Refresh).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	require.Len(t, snap.Resources, 4)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[1].URN, parent)
 	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[2].URN, middle)
 	assert.Equal(t, snap.Resources[2].Outputs["count"], resource.NewPropertyValue(1.0))
 	assert.Equal(t, snap.Resources[3].URN, child)
 	assert.Equal(t, snap.Resources[3].Outputs["count"], resource.NewPropertyValue(2.0))
+	assert.Equal(t, snap.Resources[4].URN, leaf)
+	assert.Equal(t, snap.Resources[4].Outputs["count"], resource.NewPropertyValue(3.0))
 }
 
 func TestDestroyTarget(t *testing.T) {

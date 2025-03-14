@@ -1,14 +1,19 @@
 <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=9f81c66c-49f5-441a-8ed9-710656d9a63a]
+<{%reset%}>    [id=4d598027-c09d-4ef0-83e9-3bc1ee436c56]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>  + count: <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
 <{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>        [id=7b545ba8-1b0c-4151-91bd-930e98c1615f]
+<{%reset%}>        [id=b94373f8-42b5-4f61-afa1-c826ab88b11e]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC]
 <{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%fg 2%}>      + count: <{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 2%}>
+<{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>            [id=19c82c29-63fe-486f-a8a2-8fada890b867]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resD]
+<{%reset%}><{%reset%}>            --outputs:--<{%reset%}>
+<{%fg 2%}>          + count: <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    2 unchanged
+    3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

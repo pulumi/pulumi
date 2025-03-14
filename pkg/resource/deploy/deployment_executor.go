@@ -556,9 +556,10 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
+	targetsActual := ex.deployment.opts.Targets
 
 	for _, res := range prev.Resources {
-		if ex.deployment.opts.Targets.Contains(res.URN) {
+		if targetsActual.Contains(res.URN) {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
 			if err != nil {
@@ -576,11 +577,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 			// dependents will all be caught by the check at the start of this
 			// loop.
 			for _, dep := range allDeps {
-				if ex.deployment.opts.Targets.Contains(dep.URN) {
+				if targetsActual.Contains(dep.URN) {
 					step := NewRefreshStep(ex.deployment, res)
 					steps = append(steps, step)
 					resourceToStep[res] = step
 
+					targetsActual.addLiteral(res.URN)
 					break
 				}
 			}
