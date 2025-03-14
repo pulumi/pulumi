@@ -290,6 +290,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, boo
 		return nil, false, err
 	}
 	if async {
+		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
+		// DiffStep.
 		return steps, async, nil
 	}
 
