@@ -45,6 +45,7 @@ type stepGeneratorMode int
 const (
 	updateMode stepGeneratorMode = iota
 	destroyMode
+	refreshMode
 )
 
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
@@ -68,6 +69,8 @@ type stepGenerator struct {
 	updates  map[resource.URN]bool // set of URNs updated in this deployment
 	creates  map[resource.URN]bool // set of URNs created in this deployment
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+
+	refreshes map[resource.URN]Step // set of URNs that were refreshed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
@@ -608,6 +611,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 	}
 
+	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
+	// custom non-provider resources.
+	if sg.mode == refreshMode {
+		if goal.Custom && !providers.IsProviderType(goal.Type) {
+			// Custom resources that aren't in state just have to be skipped.
+			if !hasOld {
+				sg.sames[urn] = true
+				sg.skippedCreates[urn] = true
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+			}
+			// Else do a refresh step
+			step := NewRefreshStep(sg.deployment, event, old)
+			sg.refreshes[urn] = step
+			return []Step{step}, nil
+		}
+	}
 	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom
 	// non-provider resources. This is because we don't want to actually create any cloud resources as part of
 	// the destroy, but we do want to "create/update" providers, construct component resources and it's fine
@@ -2370,6 +2389,7 @@ func newStepGenerator(deployment *Deployment, mode stepGeneratorMode) *stepGener
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
+		refreshes:            make(map[resource.URN]Step),
 		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
