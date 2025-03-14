@@ -559,7 +559,7 @@ export class Analyzer {
         const symbol = type.getSymbol();
         if (!symbol) {
             throw new Error(
-                `Cannot determine resource type: symbol not found for type '${this.checker.typeToString(type)}' for ${this.formatErrorContext(context)}`,
+                `Cannot determine resource type: source (symbol) not found for type '${this.checker.typeToString(type)}' for ${this.formatErrorContext(context)}`,
             );
         }
 
@@ -567,7 +567,7 @@ export class Analyzer {
         const declaration = symbol.declarations?.[0];
         if (!declaration) {
             throw new Error(
-                `Cannot determine resource type: no declarations found for symbol '${symbol.name}' for ${this.formatErrorContext(context)}`,
+                `Cannot determine resource type: source (declaration) not found for symbol '${symbol.name}' for ${this.formatErrorContext(context)}`,
             );
         }
 
@@ -625,7 +625,7 @@ export class Analyzer {
         // of dependencies based on a package name.
         if (!npmPackageName.startsWith("@pulumi/")) {
             throw new Error(
-                `Cannot determine resource type: package name is not a @pulumi package for '${symbol.name}' for ${this.formatErrorContext(context)}`,
+                `Cannot determine resource type: only @pulumi packages are supported for resource references '${symbol.name}' for ${this.formatErrorContext(context)}. Found ${npmPackageName}`,
             );
         }
 

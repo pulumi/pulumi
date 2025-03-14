@@ -9,11 +9,13 @@ export interface MyComponentArgs {
      */
     inputResource: pulumi.Input<tls.PrivateKey>;
     inputPlainResource?: tls.PrivateKey;
+    inputResourceOrUndefined: pulumi.Input<tls.PrivateKey | undefined>;
 }
 
 export class MyComponent extends pulumi.ComponentResource {
     public readonly outputResource: pulumi.Output<tls.PrivateKey>;
     public readonly outputPlainResource: tls.PrivateKey;
+    public readonly outputResourceOrUndefined: pulumi.Output<tls.PrivateKey | undefined>;
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("provider:index:MyComponent", name, args, opts);
     }

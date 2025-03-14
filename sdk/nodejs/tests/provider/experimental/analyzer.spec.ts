@@ -317,12 +317,20 @@ describe("Analyzer", function () {
                         plain: true,
                         optional: true,
                     },
+                    inputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
                 },
                 outputs: {
                     outputResource: { $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey" },
                     outputPlainResource: {
                         $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
                         plain: true,
+                    },
+                    outputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
                     },
                 },
             },
