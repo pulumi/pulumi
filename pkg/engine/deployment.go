@@ -219,6 +219,7 @@ func newDeployment(
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
 	deplOpts := &deploy.Options{
+		ParallelDiff:              opts.ParallelDiff,
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		Refresh:                   opts.Refresh,

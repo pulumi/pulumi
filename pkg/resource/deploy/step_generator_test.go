@@ -495,7 +495,7 @@ func TestGenerateAliases(t *testing.T) {
 					Name: stack,
 				},
 				source: NewNullSource(project),
-			}, updateMode)
+			}, updateMode, nil)
 
 			if tt.parentAlias != nil {
 				sg.aliases = map[resource.URN]resource.URN{
@@ -840,7 +840,7 @@ func TestStepGenerator(t *testing.T) {
 					source: &nullSource{},
 				},
 			}
-			_, err := sg.generateSteps(&registerResourceEvent{
+			_, _, err := sg.generateSteps(&registerResourceEvent{
 				goal: &resource.Goal{
 					Parent: "does-not-exist",
 				},
