@@ -631,7 +631,8 @@ func (acts *updateActions) OnResourceStepPost(
 
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
+		steps := atomic.LoadInt32(&acts.Steps)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
