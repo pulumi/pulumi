@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/blang/semver"
@@ -190,14 +191,23 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to open readme file: %w", err)
 	}
 	defer contract.IgnoreClose(readme)
+	readmeBytes := bytes.NewBuffer(nil)
+	if _, err := io.Copy(readmeBytes, readme); err != nil {
+		return fmt.Errorf("failed to read readme file: %w", err)
+	}
 
-	var installDocs *os.File
+	var installDocsBytes *bytes.Buffer
 	if args.installDocsPath != "" {
-		installDocs, err = os.Open(args.installDocsPath)
+		fmt.Printf("installDocsPath: %s\n", args.installDocsPath)
+		installDocs, err := os.Open(args.installDocsPath)
 		if err != nil {
 			return fmt.Errorf("failed to open install docs file: %w", err)
 		}
 		defer contract.IgnoreClose(installDocs)
+		installDocsBytes = bytes.NewBuffer(nil)
+		if _, err := io.Copy(installDocsBytes, installDocs); err != nil {
+			return fmt.Errorf("failed to read install docs file: %w", err)
+		}
 	}
 
 	err = registry.Publish(ctx, backend.PackagePublishOp{
@@ -206,8 +216,8 @@ func (cmd *packagePublishCmd) Run(
 		Name:        name,
 		Version:     version,
 		Schema:      bytes.NewReader(json),
-		Readme:      readme,
-		InstallDocs: installDocs,
+		Readme:      readmeBytes,
+		InstallDocs: installDocsBytes,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to publish package: %w", err)

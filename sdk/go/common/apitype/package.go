@@ -26,7 +26,7 @@ type StartPackagePublishResponse struct {
 	OperationID string `json:"operationID"`
 
 	// UploadUrls is a collection of URLs for uploading package artifacts.
-	UploadUrls PackageUpload `json:"uploadUrls"`
+	UploadURLs PackageUpload `json:"uploadURLs"`
 
 	// RequiredHeaders represents headers that the CLI must set in order
 	// for the uploads to succeed.

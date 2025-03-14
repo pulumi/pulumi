@@ -1416,16 +1416,16 @@ func (pc *Client) PublishPackage(ctx context.Context, input PublishPackageInput)
 		return nil
 	}
 
-	err = uploadFile(resp.UploadUrls.Schema, input.Schema, "schema")
+	err = uploadFile(resp.UploadURLs.Schema, input.Schema, "schema")
 	if err != nil {
 		return err
 	}
-	err = uploadFile(resp.UploadUrls.Index, input.Readme, "index")
+	err = uploadFile(resp.UploadURLs.Index, input.Readme, "index")
 	if err != nil {
 		return err
 	}
 	if input.InstallDocs != nil {
-		err = uploadFile(resp.UploadUrls.InstallationConfiguration, input.InstallDocs, "installation configuration")
+		err = uploadFile(resp.UploadURLs.InstallationConfiguration, input.InstallDocs, "installation configuration")
 		if err != nil {
 			return err
 		}

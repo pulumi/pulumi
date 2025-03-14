@@ -60,7 +60,7 @@ func TestPublishPackage(t *testing.T) {
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
-							UploadUrls: apitype.PackageUpload{
+							UploadURLs: apitype.PackageUpload{
 								Schema:                    blobStorage.URL + "/upload/schema",
 								Index:                     blobStorage.URL + "/upload/index",
 								InstallationConfiguration: blobStorage.URL + "/upload/install",
@@ -113,7 +113,7 @@ func TestPublishPackage(t *testing.T) {
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
-							UploadUrls: apitype.PackageUpload{
+							UploadURLs: apitype.PackageUpload{
 								Schema:                    blobStorage.URL + "/upload/schema",
 								Index:                     blobStorage.URL + "/upload/index",
 								InstallationConfiguration: blobStorage.URL + "/upload/install",
@@ -146,7 +146,7 @@ func TestPublishPackage(t *testing.T) {
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
-							UploadUrls: apitype.PackageUpload{
+							UploadURLs: apitype.PackageUpload{
 								Schema:                    blobStorage.URL + "/upload/schema",
 								Index:                     blobStorage.URL + "/upload/index",
 								InstallationConfiguration: blobStorage.URL + "/upload/install",
@@ -179,7 +179,7 @@ func TestPublishPackage(t *testing.T) {
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
-							UploadUrls: apitype.PackageUpload{
+							UploadURLs: apitype.PackageUpload{
 								Schema:                    blobStorage.URL + "/upload/schema",
 								Index:                     blobStorage.URL + "/upload/index",
 								InstallationConfiguration: blobStorage.URL + "/upload/install",
@@ -208,7 +208,7 @@ func TestPublishPackage(t *testing.T) {
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
-							UploadUrls: apitype.PackageUpload{
+							UploadURLs: apitype.PackageUpload{
 								Schema:                    blobStorage.URL + "/upload/schema",
 								Index:                     blobStorage.URL + "/upload/index",
 								InstallationConfiguration: blobStorage.URL + "/upload/install",
@@ -246,7 +246,7 @@ func TestPublishPackage(t *testing.T) {
 						w.WriteHeader(http.StatusAccepted)
 						response := apitype.StartPackagePublishResponse{
 							OperationID: "test-operation-id",
-							UploadUrls: apitype.PackageUpload{
+							UploadURLs: apitype.PackageUpload{
 								Schema:                    blobStorage.URL + "/upload/schema",
 								Index:                     blobStorage.URL + "/upload/index",
 								InstallationConfiguration: blobStorage.URL + "/upload/install",
