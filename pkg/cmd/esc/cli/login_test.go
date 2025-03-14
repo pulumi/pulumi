@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -117,4 +118,47 @@ func TestFilestateBackend(t *testing.T) {
 	})}
 	err := esc.getCachedClient(context.Background())
 	assert.ErrorContains(t, err, "does not support Pulumi ESC")
+}
+
+func TestEnvVarOverridesAccounts(t *testing.T) {
+	creds := pulumi_workspace.Credentials{
+		Current: "https://api.pulumi.com",
+		Accounts: map[string]pulumi_workspace.Account{
+			"https://api.pulumi.com": {
+				Username:    "test-user",
+				AccessToken: "access-token",
+			},
+			"http://api.moolumi.com": {
+				Username:    "test-user",
+				AccessToken: "access-token",
+			},
+		},
+	}
+	esc := &escCommand{
+		command: "esc",
+		login:   &testLoginManager{creds: creds},
+		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			return client.New(userAgent, backendURL, accessToken, insecure)
+		},
+		workspace: workspace.New(testFS{}, &testPulumiWorkspace{}),
+	}
+
+	// Verify default
+	err := esc.getCachedClient(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, esc.client.URL(), "https://api.pulumi.com")
+
+	t.Setenv("PULUMI_BACKEND_URL", "http://api.moolumi.com")
+
+	// Verify custom backend is used, as env var dictates
+	err = esc.getCachedClient(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, esc.client.URL(), "http://api.moolumi.com")
+
+	t.Setenv("PULUMI_BACKEND_URL", "")
+
+	// Verify default returns once env var is unset
+	err = esc.getCachedClient(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, esc.client.URL(), "https://api.pulumi.com")
 }

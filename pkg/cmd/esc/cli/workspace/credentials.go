@@ -68,12 +68,13 @@ func (w *Workspace) GetAccount(backendURL string) (*Account, error) {
 }
 
 func (w *Workspace) GetCurrentCloudURL(account *Account) string {
-	if account != nil {
-		return account.BackendURL
-	}
-
+	// Always prefer environment variable over account backend URL
 	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
 		return backend
+	}
+
+	if account != nil {
+		return account.BackendURL
 	}
 
 	return "https://api.pulumi.com"
