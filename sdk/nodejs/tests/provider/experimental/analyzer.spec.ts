@@ -300,13 +300,44 @@ describe("Analyzer", function () {
         });
     });
 
-    it("errors nicely for resource references", async function () {
+    it("infers resource references", async function () {
         const dir = path.join(__dirname, "testdata", "resource-reference");
         const analyzer = new Analyzer(dir, "provider");
-        assert.throws(
-            () => analyzer.analyze(),
-            /Resource references are not supported yet: component 'MyComponent' property 'MyComponentArgs.aResource' has type 'MyResource'/,
-        );
+        const { components, packageReferences } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    inputResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        description: "A reference to a resource in the TLS package.",
+                    },
+                    inputPlainResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        plain: true,
+                        optional: true,
+                    },
+                    inputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
+                },
+                outputs: {
+                    outputResource: { $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey" },
+                    outputPlainResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        plain: true,
+                    },
+                    outputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(packageReferences, {
+            tls: "4.11.1",
+        });
     });
 
     it("errors nicely for invalid property types for top-level properties", async function () {

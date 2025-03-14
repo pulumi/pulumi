@@ -52,6 +52,7 @@ export type TypeDefinition = {
 export type AnalyzeResult = {
     components: Record<string, ComponentDefinition>;
     typeDefinitions: Record<string, TypeDefinition>;
+    packageReferences: Record<string, string>;
 };
 
 interface docNode {
@@ -70,6 +71,7 @@ export class Analyzer {
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
     private typeDefinitions: Record<string, TypeDefinition> = {};
+    private packageReferences: Record<string, string> = {};
     private docStrings: Record<string, string> = {};
 
     constructor(dir: string, providerName: string) {
@@ -96,6 +98,7 @@ export class Analyzer {
         return {
             components: this.components,
             typeDefinitions: this.typeDefinitions,
+            packageReferences: this.packageReferences,
         };
     }
 
@@ -349,9 +352,21 @@ export class Analyzer {
             }
             return prop;
         } else if (isResourceReference(type, this.checker)) {
-            throw new Error(
-                `Resource references are not supported yet: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
-            );
+            const { packageName, packageVersion, pulumiType } = this.getResourceType(context, type);
+            const $ref = `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`;
+            this.packageReferences[packageName] = packageVersion;
+
+            const prop: PropertyDefinition = { $ref };
+            if (optional) {
+                prop.optional = true;
+            }
+            if (context.inputOutput === InputOutput.Neither) {
+                prop.plain = true;
+            }
+            if (docString) {
+                prop.description = docString;
+            }
+            return prop;
         } else if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
@@ -521,6 +536,128 @@ export class Analyzer {
         }
 
         return parts.join(" ");
+    }
+
+    /**
+     * Gets the Pulumi resource type information for a resource reference.
+     * A strong assumption is that the referenced resource class is in a package installed to node_modules
+     * and contains a standard Pulumi-generated SDK compiled into JavaScript. To find the resource type token,
+     * the function will attempt to find the JavaScript module file that contains the resource class, and then
+     * extract the type from the __pulumiType property of the resource class. To find the package version,
+     * the function will attempt to read the package.json file in the root directory of the referenced package.
+     * @returns Object containing packageName, packageVersion, and pulumiType token
+     * @throws Error if the resource type cannot be determined with detailed context information
+     */
+    private getResourceType(
+        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        type: typescript.Type,
+    ): {
+        packageName: string;
+        packageVersion: string;
+        pulumiType: string;
+    } {
+        const symbol = type.getSymbol();
+        if (!symbol) {
+            throw new Error(
+                `Cannot determine resource type: source (symbol) not found for type '${this.checker.typeToString(type)}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Try to find the declaration of the class
+        const declaration = symbol.declarations?.[0];
+        if (!declaration) {
+            throw new Error(
+                `Cannot determine resource type: source (declaration) not found for symbol '${symbol.name}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Find its declaration source file.
+        const sourceFile = declaration.getSourceFile();
+        if (!sourceFile) {
+            throw new Error(
+                `Cannot determine resource type: source file not found for declaration of '${symbol.name}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Find the actual implementation file - use the TypeScript file directly if it's not a .d.ts file
+        let implPath = sourceFile.fileName;
+        if (implPath.endsWith(".d.ts")) {
+            // For declaration files, look for the corresponding .js file
+            implPath = implPath.replace(/\.d\.ts$/, ".js");
+        }
+
+        if (!ts.sys.fileExists(implPath)) {
+            throw new Error(
+                `Cannot determine resource type: source file not found at '${implPath}' for '${symbol.name}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Load the module.
+        const module = require(implPath);
+        if (!module) {
+            throw new Error(`Failed to load module from '${implPath}' for ${this.formatErrorContext(context)}`);
+        }
+
+        // Find the resource class.
+        const resourceClass = module[symbol.name];
+        if (!resourceClass) {
+            throw new Error(
+                `Resource class '${symbol.name}' not found in module '${implPath}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Find the __pulumiType property.
+        const pulumiType = resourceClass.__pulumiType;
+        if (!pulumiType) {
+            throw new Error(
+                `Could not determine __pulumiType for resource class '${symbol.name}' in '${implPath}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Extract the package name and pulumi type from the __pulumiType property.
+        const packageName = pulumiType.split(":")[0];
+
+        // Extract package name from the path.
+        const packageMatch = implPath.match(/node_modules\/((@[^/]+\/)?[^/]+)/);
+        if (!packageMatch || packageMatch.length < 2) {
+            throw new Error(
+                `Cannot determine resource type: package name not found for '${symbol.name}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        const npmPackageName = packageMatch[1];
+        // We only support @pulumi/foo packages for resource references for now, so that we know exactly how to build the list
+        // of dependencies based on a package name.
+        if (!npmPackageName.startsWith("@pulumi/")) {
+            throw new Error(
+                `Cannot determine resource type: only @pulumi packages are supported for resource references '${symbol.name}' for ${this.formatErrorContext(context)}. Found ${npmPackageName}`,
+            );
+        }
+
+        // Find package.json to get the version
+        const packageJsonPath = path.resolve(
+            implPath.substring(0, implPath.indexOf(npmPackageName) + npmPackageName.length),
+            "package.json",
+        );
+
+        if (!ts.sys.fileExists(packageJsonPath)) {
+            throw new Error(
+                `Cannot determine resource type: package.json not found for '${symbol.name}' for ${this.formatErrorContext(context)}`,
+            );
+        }
+
+        // Read the package version from the package.json file.
+        const packageJson = JSON.parse(ts.sys.readFile(packageJsonPath)!);
+        let packageVersion = packageJson.version;
+        if (packageVersion.startsWith("v")) {
+            packageVersion = packageVersion.slice(1);
+        }
+
+        return {
+            packageName,
+            pulumiType,
+            packageVersion,
+        };
     }
 }
 
