@@ -1932,7 +1932,8 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	return false, nil
 }
 
-// diff returns a DiffResult for the given resource.
+// diff returns a DiffResult for the given resource, or a promise completion source that should be resolved
+// with a DiffResult. If diff returns the completion source the step generator will yield a DiffStep.
 func (sg *stepGenerator) diff(
 	event RegisterResourceEvent,
 	goal *resource.Goal, autonaming *plugin.AutonamingOptions, randomSeed []byte,
@@ -1978,8 +1979,8 @@ func (sg *stepGenerator) diff(
 	// Else setup a promise for it so our caller will yield a DiffStep.
 	pcs := &promise.CompletionSource[plugin.DiffResult]{}
 	go func() {
-		// if promise had an "ContinueWith" we'd use it here, but a goroutine blocked on Result and then
-		// posting to a channel is very cheap.
+		// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
+		// but a goroutine blocked on Result and then posting to a channel is very cheap.
 		diff, err := pcs.Promise().Result(context.Background())
 		sg.events <- &continueDiffResourceEvent{
 			evt:        event,
