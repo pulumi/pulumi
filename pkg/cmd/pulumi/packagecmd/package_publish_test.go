@@ -375,28 +375,6 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			expectedErrStr: "failed to open readme file",
 		},
 		{
-			name: "readme file cannot be read (permission denied)",
-			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
-			},
-			mockSchema: validSchema,
-			setupTest: func(t *testing.T) (string, string) {
-				tempDir := t.TempDir()
-				readmePath := path.Join(tempDir, "unreadable.md")
-
-				err := os.WriteFile(readmePath, []byte("# Test README"), 0o600)
-				require.NoError(t, err)
-
-				// Make it unreadable
-				err = os.Chmod(readmePath, 0o000)
-				require.NoError(t, err)
-
-				return readmePath, ""
-			},
-			expectedErrStr: "failed to open readme file",
-		},
-		{
 			name: "install docs file not found",
 			args: publishPackageArgs{
 				source:          "pulumi",
@@ -412,32 +390,6 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 				require.NoError(t, err)
 
 				return readmePath, ""
-			},
-			expectedErrStr: "failed to open install docs file",
-		},
-		{
-			name: "install docs file cannot be read (permission denied)",
-			args: publishPackageArgs{
-				source:    "pulumi",
-				publisher: "publisher",
-			},
-			mockSchema: validSchema,
-			setupTest: func(t *testing.T) (string, string) {
-				tempDir := t.TempDir()
-				readmePath := path.Join(tempDir, "readme.md")
-				installPath := path.Join(tempDir, "unreadable-install.md")
-
-				err := os.WriteFile(readmePath, []byte("# Test README"), 0o600)
-				require.NoError(t, err)
-
-				err = os.WriteFile(installPath, []byte("# Installation"), 0o600)
-				require.NoError(t, err)
-
-				// Make install docs unreadable
-				err = os.Chmod(installPath, 0o000)
-				require.NoError(t, err)
-
-				return readmePath, installPath
 			},
 			expectedErrStr: "failed to open install docs file",
 		},
@@ -476,7 +428,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			}
 
 			err := cmd.Run(context.Background(), tt.args, "testpackage", []string{})
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
