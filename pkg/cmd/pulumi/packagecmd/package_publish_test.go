@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -148,8 +149,9 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				publisher: "publisher",
 			},
 			packageParams: []string{},
+			packageSource: "testpackage",
 			mockSchema: &schema.Package{
-				Name:     "testpkg",
+				Name:     "testpackage",
 				Version:  &version,
 				Provider: &schema.Resource{},
 			},
@@ -294,13 +296,28 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			readmeContent:       "# Test README\nThis is a test readme.",
 			installContent:      "# Installation\nHow to install this package.",
 		},
+		{
+			name: "error when readme extraction fails",
+			args: publishPackageArgs{
+				source:    "pulumi",
+				publisher: "publisher",
+			},
+			packageSource: "testpackage@not-a-valid-version",
+			packageParams: []string{},
+			mockSchema: &schema.Package{
+				Name:     "testpkg",
+				Version:  &version,
+				Provider: &schema.Resource{},
+			},
+			expectedErr: "failed to find readme: failed to create plugin spec: VERSION must be valid semver",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := t.TempDir()
 
-			packageSource := "testpackage"
+			packageSource := tt.packageSource
 			var readmePath string
 			var expectedReadmeContent string
 			if tt.readmeContent != "" {
@@ -623,4 +640,73 @@ func mockBackendInstance(t *testing.T, b backend.Backend) {
 		cmdBackend.BackendInstance = nil
 	})
 	cmdBackend.BackendInstance = b
+}
+
+func TestFindReadme(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+
+	cmd := packagePublishCmd{
+		pluginDir: tmpDir,
+	}
+
+	t.Run("NonExistentDirectory", func(t *testing.T) {
+		t.Parallel()
+		nonExistentDir := filepath.Join(tmpDir, "does-not-exist")
+		readme, err := cmd.findReadme(nonExistentDir)
+		assert.Empty(t, readme)
+		assert.NoError(t, err, "Should not return error for non-existent directory")
+	})
+
+	t.Run("FileInsteadOfDirectory", func(t *testing.T) {
+		t.Parallel()
+		filePath := filepath.Join(tmpDir, "file.txt")
+		err := os.WriteFile(filePath, []byte("not a readme"), 0o600)
+		require.NoError(t, err)
+
+		readme, err := cmd.findReadme(filePath)
+		assert.Empty(t, readme)
+		assert.NoError(t, err, "Should not return error when source is a file")
+	})
+
+	t.Run("DirectoryWithoutReadme", func(t *testing.T) {
+		t.Parallel()
+		dirPath := filepath.Join(tmpDir, "no-readme-dir")
+		require.NoError(t, os.Mkdir(dirPath, 0o755))
+
+		readme, err := cmd.findReadme(dirPath)
+		assert.Empty(t, readme)
+		assert.NoError(t, err, "Should not return error when directory has no readme")
+	})
+
+	t.Run("DirectoryWithReadme", func(t *testing.T) {
+		t.Parallel()
+		dirPath := filepath.Join(tmpDir, "with-readme-dir")
+		require.NoError(t, os.Mkdir(dirPath, 0o755))
+		readmePath := filepath.Join(dirPath, "README.md")
+		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
+
+		found, err := cmd.findReadme(dirPath)
+		assert.Equal(t, readmePath, found)
+		assert.NoError(t, err)
+	})
+
+	t.Run("InvalidPluginSpec", func(t *testing.T) {
+		t.Parallel()
+		// An invalid plugin spec string should return an error
+		invalidPlugin := "my-cool-plugin@not-a-valid-version"
+		readme, err := cmd.findReadme(invalidPlugin)
+		assert.Empty(t, readme)
+		assert.Error(t, err, "Should return error for invalid plugin spec")
+		assert.Contains(t, err.Error(), "failed to create plugin spec")
+	})
+
+	t.Run("NoReadmeFound", func(t *testing.T) {
+		t.Parallel()
+		// Use a valid-looking plugin name but with no readme
+		validPlugin := "my-cool-plugin"
+		readme, err := cmd.findReadme(validPlugin)
+		assert.Empty(t, readme)
+		assert.NoError(t, err, "Should not return error when no readme is found")
+	})
 }
