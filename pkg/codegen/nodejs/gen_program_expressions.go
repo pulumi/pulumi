@@ -586,8 +586,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 //	)
 func (g *generator) genTry(w io.Writer, args []model.Expression) {
 	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+	shouldUseOutputTry := pcl.TypeContainsOutput(pcl.TryReturnTypeFromArgs(args))
 
-	g.Fprintf(w, "try_(")
+	functionName := "try_"
+	if shouldUseOutputTry {
+		functionName = "tryOutput_"
+	}
+
+	g.Fprintf(w, "%s(", functionName)
 	for i, arg := range args {
 		g.Indented(func() {
 			g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
