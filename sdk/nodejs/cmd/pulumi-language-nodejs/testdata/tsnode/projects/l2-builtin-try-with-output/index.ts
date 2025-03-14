@@ -39,28 +39,19 @@ function try_(
 
 
 const component1 = new component.ComponentCustomRefOutput("component1", {value: "foo-bar-baz"});
-export const tryWithOutput = tryOutput_(
+export const tryWithOutput = component1.ref.apply(ref => try_(
     // @ts-ignore
-    () => component1.ref,
+    () => ref,
     // @ts-ignore
     () => "failure"
-);
-// This should result in a try who's result is an output. 
-// It seems to generate the correct function, likely due to checking independently when generating 
-// the call site, but when generating it is treated as a regular value, and not an output that would require .apply.
-// The generated code is marked with this comment.
-// Ideas? Debugging Tips?
-const resultContainingOutput = tryOutput_(
-    // @ts-ignore
-    () => simple_invoke.myInvokeOutput({
-        value: "hello",
-    })
-);
-export const hello = resultContainingOutput?.result;
-const resultContaingOutputWithoutTry = simple_invoke.myInvokeOutput({
+));
+const resultContainingOutput = simple_invoke.myInvokeOutput({
     value: "hello",
-});
-export const helloNoTry = resultContaingOutputWithoutTry.result;
+}).apply(invoke => try_(
+    // @ts-ignore
+    () => invoke
+)).apply(_try => _try.result);
+export const hello = resultContainingOutput;
 const str = "str";
 export const tryScalar = try_(
     // @ts-ignore

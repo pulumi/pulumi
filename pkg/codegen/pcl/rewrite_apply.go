@@ -116,6 +116,18 @@ func (r *applyRewriter) hasEventualElements(x model.Expression) bool {
 	return r.hasEventualTypes(t)
 }
 
+// isOutputProducingTry will traverse backward out of the scope of this
+// output-producing try call and return true of an attribute or index is
+// accessed on it's return value.
+func (r *applyRewriter) isOutputProducingTry(x *model.FunctionCallExpression) bool {
+	if x.Name != "try" {
+		return false
+	}
+
+	_, ok := x.Signature.ReturnType.(*model.OutputType)
+	return ok
+}
+
 func (r *applyRewriter) isPromptArg(paramType model.Type, arg model.Expression) bool {
 	if !r.hasEventualValues(arg) {
 		return true
@@ -203,6 +215,10 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 		// such that it doesn't have to rewrite its subexpressions to apply but can be used directly
 		if r.skipToJSON && x.Name == "toJSON" {
 			return false
+		}
+
+		if r.isOutputProducingTry(x) {
+			return true
 		}
 
 		for i, arg := range x.Args {

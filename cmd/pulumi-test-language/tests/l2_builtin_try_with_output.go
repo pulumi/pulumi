@@ -47,7 +47,7 @@ func init() {
 
 					_ = RequireSingleNamedResource(l, snap.Resources, "component1")
 
-					assert.Len(l, outputs, 2, "expected 2 outputs")
+					assert.Len(l, outputs, 3, "expected 3 outputs")
 					AssertPropertyMapMember(
 						l,
 						outputs,
