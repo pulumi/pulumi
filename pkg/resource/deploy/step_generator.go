@@ -39,78 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-// ContinueResourceDiffEvent is a step that asks the engine to continue provisioning a resource after completing its
-// diff, it is always created from a base RegisterResourceEvent.
-type ContinueResourceDiffEvent interface {
-	Event() RegisterResourceEvent
-	Error() error
-	Diff() plugin.DiffResult
-	URN() resource.URN
-	Old() *resource.State
-	New() *resource.State
-	Goal() *resource.Goal
-	Provider() plugin.Provider
-	Autonaming() *plugin.AutonamingOptions
-	RandomSeed() []byte
-}
-
-type continueDiffResourceEvent struct {
-	evt        RegisterResourceEvent
-	err        error
-	diff       plugin.DiffResult
-	urn        resource.URN
-	old        *resource.State
-	new        *resource.State
-	goal       *resource.Goal
-	provider   plugin.Provider
-	autonaming *plugin.AutonamingOptions
-	randomSeed []byte
-}
-
-var _ ContinueResourceDiffEvent = (*continueDiffResourceEvent)(nil)
-
-func (g *continueDiffResourceEvent) event() {}
-
-func (g *continueDiffResourceEvent) Event() RegisterResourceEvent {
-	return g.evt
-}
-
-func (g *continueDiffResourceEvent) URN() resource.URN {
-	return g.urn
-}
-
-func (g *continueDiffResourceEvent) Error() error {
-	return g.err
-}
-
-func (g *continueDiffResourceEvent) Diff() plugin.DiffResult {
-	return g.diff
-}
-
-func (g *continueDiffResourceEvent) Old() *resource.State {
-	return g.old
-}
-
-func (g *continueDiffResourceEvent) New() *resource.State {
-	return g.new
-}
-
-func (g *continueDiffResourceEvent) Goal() *resource.Goal {
-	return g.goal
-}
-
-func (g *continueDiffResourceEvent) Provider() plugin.Provider {
-	return g.provider
-}
-
-func (g *continueDiffResourceEvent) Autonaming() *plugin.AutonamingOptions {
-	return g.autonaming
-}
-
-func (g *continueDiffResourceEvent) RandomSeed() []byte {
-	return g.randomSeed
-}
-
 // The mode in which the step generator is running.
 // Either a normal update, or a destroy operation.
 type stepGeneratorMode int
@@ -1315,7 +1243,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	}
 
 	updateSteps, err := sg.continueStepsFromDiff(
-		event, err, diff, urn, old, new, goal, prov, autonaming, randomSeed)
+		event, err, diff, urn, old, new, prov, autonaming, randomSeed)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1339,7 +1267,7 @@ func (sg *stepGenerator) ContinueStepsFromDiff(event ContinueResourceDiffEvent) 
 	old := event.Old()
 
 	updateSteps, err := sg.continueStepsFromDiff(
-		event.Event(), event.Error(), event.Diff(), urn, old, new, event.Goal(),
+		event.Event(), event.Error(), event.Diff(), urn, old, new,
 		event.Provider(), event.Autonaming(), event.RandomSeed())
 	if err != nil {
 		return nil, err
@@ -1362,9 +1290,11 @@ func (sg *stepGenerator) ContinueStepsFromDiff(event ContinueResourceDiffEvent) 
 func (sg *stepGenerator) continueStepsFromDiff(
 	event RegisterResourceEvent,
 	err error, diff plugin.DiffResult, urn resource.URN, old, new *resource.State,
-	goal *resource.Goal, prov plugin.Provider, autonaming *plugin.AutonamingOptions,
+	prov plugin.Provider, autonaming *plugin.AutonamingOptions,
 	randomSeed []byte,
 ) ([]Step, error) {
+	goal := event.Goal()
+
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.opts.DryRun
 
@@ -2053,7 +1983,6 @@ func (sg *stepGenerator) diff(
 			urn:        urn,
 			old:        old,
 			new:        new,
-			goal:       goal,
 			provider:   prov,
 			autonaming: autonaming,
 			randomSeed: randomSeed,
