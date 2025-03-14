@@ -25,7 +25,7 @@ type PackagePublishOp struct {
 	// Source is the source of the package. Typically this is 'pulumi' for packages published to the Pulumi Registry.
 	// Packages loaded from other registries (e.g. 'opentofu') will point to the origin of the package.
 	Source string
-	// Publisher is the name of the publisher of the package. I.e. the organization name.
+	// Publisher is the organization that is publishing the package.
 	Publisher string
 	// Name is the URL-safe name of the package.
 	Name string
