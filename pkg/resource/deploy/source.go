@@ -93,6 +93,16 @@ type RegisterResourceEvent interface {
 	Done(result *RegisterResult)
 }
 
+// ContinueResourceEvent is a step that asks the engine to continue provisioning a resource, it is always created from a base RegisterResourceEvent.
+type ContinueResourceEvent interface {
+	RegisterResourceEvent
+
+	URN() resource.URN
+	Old() *resource.State
+	Aliases() []resource.URN
+	Invalid() bool
+}
+
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
 	State  *resource.State // the resource state.
