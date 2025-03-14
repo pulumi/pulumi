@@ -38,6 +38,81 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+func TestRefreshTargetChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			callCount := 0.0
+
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					callCount++
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Outputs: resource.PropertyMap{
+								"count": resource.NewNumberProperty(callCount),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	var parent resource.URN = "urn:pulumi:test::test::pkgA:m:typA::resA"
+	var middle resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"
+	var child resource.URN = "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC"
+	null := resource.NewPropertyValue(nil)
+
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[1].URN, parent)
+	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
+	assert.Equal(t, snap.Resources[2].URN, middle)
+	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
+	assert.Equal(t, snap.Resources[3].URN, child)
+	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
+
+	opts = lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts.UpdateOptions.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN { middle })
+	opts.UpdateOptions.TargetDependents = true
+
+	snap, err = lt.TestOp(Refresh).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[1].URN, parent)
+	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
+	assert.Equal(t, snap.Resources[2].URN, middle)
+	assert.Equal(t, snap.Resources[2].Outputs["count"], resource.NewPropertyValue(1.0))
+	assert.Equal(t, snap.Resources[3].URN, child)
+	assert.Equal(t, snap.Resources[3].Outputs["count"], resource.NewPropertyValue(2.0))
+}
+
 func TestDestroyTarget(t *testing.T) {
 	t.Parallel()
 
