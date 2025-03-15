@@ -86,6 +86,14 @@ func (p *builtinProvider) Parameterize(
 	return plugin.ParameterizeResponse{}, errors.New("the builtin provider has no parameters")
 }
 
+func (p *builtinProvider) Migrate(_ context.Context, req plugin.MigrateRequest) (plugin.MigrateResponse, error) {
+	return plugin.MigrateResponse{
+		NewID:      req.ID,
+		NewInputs:  req.OldInputs,
+		NewOutputs: req.OldOutputs,
+	}, nil
+}
+
 // GetSchema returns the JSON-serialized schema for the provider.
 func (p *builtinProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 	return plugin.GetSchemaResponse{Schema: []byte("{}")}, nil

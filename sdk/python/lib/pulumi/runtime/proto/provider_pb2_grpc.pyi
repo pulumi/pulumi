@@ -305,6 +305,15 @@ class ResourceProviderStub:
     If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
     a source provider name (that is, with the value `""`).
     """
+    Migrate: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.MigrateRequest,
+        pulumi.provider_pb2.MigrateResponse,
+    ]
+    """Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+    old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+    of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+    resources state into a shape understood in version 2.
+    """
 
 class ResourceProviderServicer(metaclass=abc.ABCMeta):
     """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
@@ -627,6 +636,17 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
 
         If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
         a source provider name (that is, with the value `""`).
+        """
+    
+    def Migrate(
+        self,
+        request: pulumi.provider_pb2.MigrateRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.MigrateResponse:
+        """Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+        old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+        of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+        resources state into a shape understood in version 2.
         """
 
 def add_ResourceProviderServicer_to_server(servicer: ResourceProviderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

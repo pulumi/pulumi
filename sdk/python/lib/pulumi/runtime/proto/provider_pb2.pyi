@@ -1920,3 +1920,81 @@ class GetMappingsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["providers", b"providers"]) -> None: ...
 
 global___GetMappingsResponse = GetMappingsResponse
+
+@typing_extensions.final
+class MigrateRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    OLD_TYPE_FIELD_NUMBER: builtins.int
+    OLD_VERSION_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the resource being migrated."""
+    urn: builtins.str
+    """The URN of the resource being migrated."""
+    name: builtins.str
+    """The name of the resource being migrated. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the resource being migrated. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    old_type: builtins.str
+    """The old type of the resource being migrated."""
+    old_version: builtins.str
+    """THe old version of the resource being migrated."""
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old output properties of the resource being migrated."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old input properties of the resource being migrated."""
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        old_type: builtins.str = ...,
+        old_version: builtins.str = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "old_type", b"old_type", "old_version", b"old_version", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___MigrateRequest = MigrateRequest
+
+@typing_extensions.final
+class MigrateResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NEW_ID_FIELD_NUMBER: builtins.int
+    NEW_OUTPUTS_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    new_id: builtins.str
+    """The new ID of the resource being migrated."""
+    @property
+    def new_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The new output properties of the resource being migrated."""
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The new input properties of the resource being migrated."""
+    def __init__(
+        self,
+        *,
+        new_id: builtins.str = ...,
+        new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["new_id", b"new_id", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs"]) -> None: ...
+
+global___MigrateResponse = MigrateResponse

@@ -1460,3 +1460,82 @@ export namespace GetMappingsResponse {
         providersList: Array<string>,
     }
 }
+
+export class MigrateRequest extends jspb.Message { 
+    getId(): string;
+    setId(value: string): MigrateRequest;
+    getUrn(): string;
+    setUrn(value: string): MigrateRequest;
+    getName(): string;
+    setName(value: string): MigrateRequest;
+    getType(): string;
+    setType(value: string): MigrateRequest;
+    getOldType(): string;
+    setOldType(value: string): MigrateRequest;
+    getOldVersion(): string;
+    setOldVersion(value: string): MigrateRequest;
+
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): MigrateRequest;
+
+    hasOldInputs(): boolean;
+    clearOldInputs(): void;
+    getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldInputs(value?: google_protobuf_struct_pb.Struct): MigrateRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): MigrateRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: MigrateRequest): MigrateRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: MigrateRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): MigrateRequest;
+    static deserializeBinaryFromReader(message: MigrateRequest, reader: jspb.BinaryReader): MigrateRequest;
+}
+
+export namespace MigrateRequest {
+    export type AsObject = {
+        id: string,
+        urn: string,
+        name: string,
+        type: string,
+        oldType: string,
+        oldVersion: string,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
+export class MigrateResponse extends jspb.Message { 
+    getNewId(): string;
+    setNewId(value: string): MigrateResponse;
+
+    hasNewOutputs(): boolean;
+    clearNewOutputs(): void;
+    getNewOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewOutputs(value?: google_protobuf_struct_pb.Struct): MigrateResponse;
+
+    hasNewInputs(): boolean;
+    clearNewInputs(): void;
+    getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewInputs(value?: google_protobuf_struct_pb.Struct): MigrateResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): MigrateResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: MigrateResponse): MigrateResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: MigrateResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): MigrateResponse;
+    static deserializeBinaryFromReader(message: MigrateResponse, reader: jspb.BinaryReader): MigrateResponse;
+}
+
+export namespace MigrateResponse {
+    export type AsObject = {
+        newId: string,
+        newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newInputs?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}

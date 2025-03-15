@@ -174,6 +174,7 @@ type MockProvider struct {
 	SignalCancellationF func(context.Context) error
 	GetMappingF         func(context.Context, GetMappingRequest) (GetMappingResponse, error)
 	GetMappingsF        func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
+	MigrateF            func(context.Context, MigrateRequest) (MigrateResponse, error)
 }
 
 var _ Provider = (*MockProvider)(nil)
@@ -332,4 +333,11 @@ func (m *MockProvider) GetMappings(ctx context.Context, req GetMappingsRequest) 
 		return m.GetMappingsF(ctx, req)
 	}
 	return GetMappingsResponse{}, errors.New("GetMappings not implemented")
+}
+
+func (m *MockProvider) Migrate(ctx context.Context, req MigrateRequest) (MigrateResponse, error) {
+	if m.GetMappingsF != nil {
+		return m.MigrateF(ctx, req)
+	}
+	return MigrateResponse{}, errors.New("Migrate not implemented")
 }

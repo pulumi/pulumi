@@ -215,6 +215,11 @@ type ResourceProviderClient interface {
 	// If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
 	// a source provider name (that is, with the value `""`).
 	GetMappings(ctx context.Context, in *GetMappingsRequest, opts ...grpc.CallOption) (*GetMappingsResponse, error)
+	// Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+	// old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+	// of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+	// resources state into a shape understood in version 2.
+	Migrate(ctx context.Context, in *MigrateRequest, opts ...grpc.CallOption) (*MigrateResponse, error)
 }
 
 type resourceProviderClient struct {
@@ -437,6 +442,15 @@ func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMapping
 	return out, nil
 }
 
+func (c *resourceProviderClient) Migrate(ctx context.Context, in *MigrateRequest, opts ...grpc.CallOption) (*MigrateResponse, error) {
+	out := new(MigrateResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Migrate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceProviderServer is the server API for ResourceProvider service.
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
@@ -633,6 +647,11 @@ type ResourceProviderServer interface {
 	// If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
 	// a source provider name (that is, with the value `""`).
 	GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error)
+	// Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+	// old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+	// of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+	// resources state into a shape understood in version 2.
+	Migrate(context.Context, *MigrateRequest) (*MigrateResponse, error)
 	mustEmbedUnimplementedResourceProviderServer()
 }
 
@@ -702,6 +721,9 @@ func (UnimplementedResourceProviderServer) GetMapping(context.Context, *GetMappi
 }
 func (UnimplementedResourceProviderServer) GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMappings not implemented")
+}
+func (UnimplementedResourceProviderServer) Migrate(context.Context, *MigrateRequest) (*MigrateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Migrate not implemented")
 }
 func (UnimplementedResourceProviderServer) mustEmbedUnimplementedResourceProviderServer() {}
 
@@ -1097,6 +1119,24 @@ func _ResourceProvider_GetMappings_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_Migrate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MigrateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).Migrate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/Migrate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).Migrate(ctx, req.(*MigrateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceProvider_ServiceDesc is the grpc.ServiceDesc for ResourceProvider service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1183,6 +1223,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMappings",
 			Handler:    _ResourceProvider_GetMappings_Handler,
+		},
+		{
+			MethodName: "Migrate",
+			Handler:    _ResourceProvider_Migrate_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

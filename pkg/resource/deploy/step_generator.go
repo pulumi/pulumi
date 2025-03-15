@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -551,6 +552,37 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	return result
 }
 
+// getProviderVersion looks up the old and new version of the provider associated with the given old resource and new provider reference.
+func (sg *stepGenerator) getProviderVersions(old *resource.State, urn resource.URN, provider string) (*semver.Version, *semver.Version, error) {
+	oldProviderRef, err := providers.ParseReference(old.Provider)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse provider reference %s for %s: %w", old.Provider, old.URN, err)
+	}
+	providerState, has := sg.deployment.olds[oldProviderRef.URN()]
+	if !has {
+		return nil, nil, fmt.Errorf("could not find provider %s for %s", oldProviderRef.URN(), old.URN)
+	}
+	oldVersion, err := providers.GetProviderVersion(providerState.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get provider version for %s: %w", oldProviderRef.URN(), err)
+	}
+
+	newProviderRef, err := providers.ParseReference(provider)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse provider reference %s for %s: %w", provider, urn, err)
+	}
+	providerState, has = sg.deployment.news.Load(newProviderRef.URN())
+	if !has {
+		return nil, nil, fmt.Errorf("could not find provider %s for %s", newProviderRef.URN(), urn)
+	}
+	newVersion, err := providers.GetProviderVersion(providerState.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get provider version for %s: %w", newProviderRef.URN(), err)
+	}
+
+	return oldVersion, newVersion, nil
+}
+
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
@@ -627,6 +659,47 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
+	// Fetch the provider for this resource.
+	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// If we have an old state we might need to do a migration for custom non-provider resources.
+	if hasOld && goal.Custom && !providers.IsProviderType(goal.Type) {
+		// We need the "version" of the old resource, but version isn't a field on resources, it's a field on providers. So
+		// lookup the old state of this resources provider and grab the version field from that.
+		oldVersion, newVersion, err := sg.getProviderVersions(old, urn, goal.Provider)
+		if err != nil {
+			return nil, false, err
+		}
+
+		versionsEqual := (oldVersion == nil && newVersion == nil) || (oldVersion != nil && newVersion != nil && oldVersion.Equals(*newVersion))
+
+		// If it's type or version has changed then run migrate on it
+		if old.Type != goal.Type || !versionsEqual {
+			migrated, err := prov.Migrate(sg.deployment.ctx.Request(), plugin.MigrateRequest{
+				URN:  urn,
+				Type: urn.Type(),
+				Name: urn.Name(),
+
+				OldType:    old.Type,
+				OldVersion: oldVersion,
+
+				ID:         old.ID,
+				OldInputs:  oldInputs,
+				OldOutputs: oldOutputs,
+			})
+			if err != nil {
+				return nil, false, err
+			}
+
+			old.ID = migrated.NewID
+			old.Inputs = migrated.NewInputs
+			old.Outputs = migrated.NewOutputs
+		}
+	}
+
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
 	if hasOld {
@@ -699,7 +772,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				sg.skippedCreates[urn] = true
 				if hasOld {
 					// If this has an old state maintain the old outputs to return to the program
-					new.Outputs = old.Outputs
+					new.Outputs = oldOutputs
 				}
 				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 			}
@@ -723,12 +796,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
 		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
-	}
-
-	// Fetch the provider for this resource.
-	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
-	if err != nil {
-		return nil, false, err
 	}
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
@@ -1243,7 +1310,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 
 		return sg.generateStepsFromDiff(
-			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed, autonaming)
+			event, urn, old, new, inputs, prov, goal, randomSeed, autonaming)
 	}
 
 	// Case 4: Not Case 1, 2, or 3
@@ -1283,13 +1350,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
-	oldInputs, oldOutputs, inputs resource.PropertyMap,
+	inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
 	diff, pcs, err := sg.diff(
 		event, goal, autonaming, randomSeed,
-		urn, old, new, oldInputs, inputs, prov)
+		urn, old, new, old.Inputs, inputs, prov)
 	if pcs != nil {
 		return []Step{
 			NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
@@ -1626,6 +1693,54 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				if !res.PendingReplacement {
+					// If we get to here we might need to do a migration step. The type couldn't have changed but the
+					// provider version could have.
+					if res.Custom {
+						// Ensure the provider
+						err := sg.deployment.EnsureProvider(res.Provider)
+						if err != nil {
+							return nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+						}
+
+						// We need the "version" of the old resource, but version isn't a field on resources, it's a field on providers. So
+						// lookup the old state of this resources provider and grab the version field from that.
+						oldVersion, newVersion, err := sg.getProviderVersions(res, res.URN, res.Provider)
+						if err != nil {
+							return nil, err
+						}
+
+						versionsEqual := (oldVersion == nil && newVersion == nil) || (oldVersion != nil && newVersion != nil && oldVersion.Equals(*newVersion))
+
+						// If it's version has changed then run migrate on it
+						if !versionsEqual {
+							// If the versions changed we _must_ have the provider loaded.
+							prov, err := sg.loadResourceProvider(res.URN, true, res.Provider, res.Type)
+							if err != nil {
+								return nil, err
+							}
+
+							migrated, err := prov.Migrate(sg.deployment.ctx.Request(), plugin.MigrateRequest{
+								URN:  res.URN,
+								Type: res.URN.Type(),
+								Name: res.URN.Name(),
+
+								OldType:    res.Type,
+								OldVersion: oldVersion,
+
+								ID:         res.ID,
+								OldInputs:  res.Inputs,
+								OldOutputs: res.Outputs,
+							})
+							if err != nil {
+								return nil, err
+							}
+
+							res.ID = migrated.NewID
+							res.Inputs = migrated.NewInputs
+							res.Outputs = migrated.NewOutputs
+						}
+					}
+
 					dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
 				} else {
 					dels = append(dels, NewRemovePendingReplaceStep(sg.deployment, res))
