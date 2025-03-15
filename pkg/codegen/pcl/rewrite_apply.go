@@ -155,6 +155,9 @@ func (r *applyRewriter) inspectsEventualValues(x model.Expression) bool {
 	case *model.ForExpression:
 		return r.hasEventualElements(x.Collection)
 	case *model.FunctionCallExpression:
+		// TODO(pulumi/pulumi#18896) instead of a special case we should correctly
+		// handle binding functions which can take in output expressions.
+		//
 		// special case toJSON function because we map it to pulumi.jsonStringify which accepts anything
 		// such that it doesn't have to rewrite its subexpressions to apply but can be used directly
 		if r.skipToJSON && x.Name == "toJSON" {
@@ -199,6 +202,9 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 		_, collectionIsEventual := r.isEventualType(x.Collection.Type())
 		return collectionIsEventual
 	case *model.FunctionCallExpression:
+		// TODO(pulumi/pulumi#18896) instead of a special case we should correctly
+		// handle binding functions which can take in output expressions.
+		//
 		// special case toJSON function because we map it to pulumi.jsonStringify which accepts anything
 		// such that it doesn't have to rewrite its subexpressions to apply but can be used directly
 		if r.skipToJSON && x.Name == "toJSON" {
