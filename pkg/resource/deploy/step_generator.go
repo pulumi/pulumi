@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -72,6 +73,8 @@ type stepGenerator struct {
 	updates  map[resource.URN]bool // set of URNs updated in this deployment
 	creates  map[resource.URN]bool // set of URNs created in this deployment
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+
+	migrated map[resource.URN]bool // set of URNs that were migrated in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
@@ -551,6 +554,98 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	return result
 }
 
+// getProviderVersion looks up the old and new version of the provider associated with the given old resource and new
+// provider reference.
+func (sg *stepGenerator) getProviderVersions(
+	old *resource.State, urn resource.URN, provider string,
+) (*semver.Version, *semver.Version, error) {
+	oldProviderRef, err := providers.ParseReference(old.Provider)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse provider reference %s for %s: %w", old.Provider, old.URN, err)
+	}
+	providerState, has := sg.deployment.olds[oldProviderRef.URN()]
+	if !has {
+		return nil, nil, fmt.Errorf("could not find provider %s for %s", oldProviderRef.URN(), old.URN)
+	}
+	oldVersion, err := providers.GetProviderVersion(providerState.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get provider version for %s: %w", oldProviderRef.URN(), err)
+	}
+
+	newProviderRef, err := providers.ParseReference(provider)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse provider reference %s for %s: %w", provider, urn, err)
+	}
+	providerState, has = sg.deployment.news.Load(newProviderRef.URN())
+	if !has {
+		// If we can't find the provider in the new state we must be processing deletes. In which case the provider will just
+		// be the same as the old provider, and we can early return the old version twice.
+		return oldVersion, oldVersion, nil
+	}
+	newVersion, err := providers.GetProviderVersion(providerState.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get provider version for %s: %w", newProviderRef.URN(), err)
+	}
+
+	return oldVersion, newVersion, nil
+}
+
+func (sg *stepGenerator) migrate(
+	old *resource.State,
+	urn resource.URN, typ tokens.Type, provider string,
+) (bool, error) {
+	if sg.migrated[urn] {
+		return false, nil
+	}
+
+	// We need the "version" of the old resource, but version isn't a field on resources, it's a field on
+	// providers. So lookup the old state of this resources provider and grab the version field from that.
+	var newVersion *semver.Version
+	oldVersion, newVersion, err := sg.getProviderVersions(old, urn, provider)
+	if err != nil {
+		return false, err
+	}
+
+	versionsEqual := (oldVersion == nil && newVersion == nil) ||
+		(oldVersion != nil && newVersion != nil && oldVersion.Equals(*newVersion))
+
+	// If it's type or version has changed then run migrate on it
+	if old.Type != typ || !versionsEqual {
+		// We must have the provider loaded by this point
+		prov, err := sg.loadResourceProvider(urn, true, provider, typ)
+		if err != nil {
+			return false, err
+		}
+
+		migrated, err := prov.Migrate(sg.deployment.ctx.Request(), plugin.MigrateRequest{
+			URN:  urn,
+			Type: urn.Type(),
+			Name: urn.Name(),
+
+			OldType:    old.Type,
+			OldVersion: oldVersion,
+
+			ID:                      old.ID,
+			OldInputs:               old.Inputs,
+			OldOutputs:              old.Outputs,
+			OldPropertyDependencies: old.PropertyDependencies,
+		})
+		if err != nil {
+			return false, err
+		}
+		sg.migrated[urn] = true
+
+		old.ID = migrated.NewID
+		old.Inputs = migrated.NewInputs
+		old.Outputs = migrated.NewOutputs
+		old.PropertyDependencies = migrated.NewPropertyDependencies
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
@@ -627,6 +722,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
+	// If we have an old state we might need to do a migration for custom non-provider resources.
+	// Note that we _may_ have already done this migration as part of a DBR check, so check the replaces map.
+	if hasOld && old.Custom && goal.Custom && !providers.IsProviderType(goal.Type) {
+		_, err = sg.migrate(old, urn, goal.Type, goal.Provider)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
 	if hasOld {
@@ -699,7 +803,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				sg.skippedCreates[urn] = true
 				if hasOld {
 					// If this has an old state maintain the old outputs to return to the program
-					new.Outputs = old.Outputs
+					new.Outputs = oldOutputs
 				}
 				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 			}
@@ -723,12 +827,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
 		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
-	}
-
-	// Fetch the provider for this resource.
-	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
-	if err != nil {
-		return nil, false, err
 	}
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
@@ -819,6 +917,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		isTargeted = sg.isTargetedForUpdate(new)
 	} else if !isImplicitlyTargetedResource && sg.deployment.opts.Excludes.IsConstrained() {
 		isTargeted = !sg.isExcludedFromUpdate(new)
+	}
+
+	// Fetch the provider for this resource.
+	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
+	if err != nil {
+		return nil, false, err
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -1243,7 +1347,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 
 		return sg.generateStepsFromDiff(
-			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed, autonaming)
+			event, urn, old, new, inputs, prov, goal, randomSeed, autonaming)
 	}
 
 	// Case 4: Not Case 1, 2, or 3
@@ -1283,13 +1387,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
-	oldInputs, oldOutputs, inputs resource.PropertyMap,
+	inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
 	diff, pcs, err := sg.diff(
 		event, goal, autonaming, randomSeed,
-		urn, old, new, oldInputs, inputs, prov)
+		urn, old, new, old.Inputs, inputs, prov)
 	if pcs != nil {
 		return []Step{
 			NewDiffStep(sg.deployment, pcs, old, new, goal.IgnoreChanges),
@@ -1632,11 +1736,18 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				}
 			}
 
-			// We just added a Delete step, so we need to ensure the provider for this resource is available.
-			if sg.deletes[res.URN] {
+			// We just added a Delete step, so we need to ensure the provider for this resource is available and
+			// possibly migrate it. The type couldn't have changed but the provider version could have.
+			if sg.deletes[res.URN] && res.Custom && !providers.IsProviderType(res.Type) {
+				// Ensure the provider
 				err := sg.deployment.EnsureProvider(res.Provider)
 				if err != nil {
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+
+				_, err = sg.migrate(res, res.URN, res.Type, res.Provider)
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
@@ -2456,6 +2567,27 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		}
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
+		// Before we call diff here we potentially need to migrate the state
+		if !providers.IsProviderType(r.Type) {
+			migrated, err := sg.migrate(r, r.URN, r.Type, r.Provider)
+			if err != nil {
+				return false, nil, err
+			}
+
+			// If we migrated we we need to rebuild the inputsForDiff map to use the new inputs names
+			if migrated {
+				inputsForDiff = resource.PropertyMap{}
+				for pk, pv := range r.Inputs {
+					for _, propertyDep := range r.PropertyDependencies[pk] {
+						if replaceSet[propertyDep] {
+							pv = resource.MakeComputed(resource.NewStringProperty("<unknown>"))
+						}
+					}
+					inputsForDiff[pk] = pv
+				}
+			}
+		}
+
 		// Call the provider's `Diff` method and return.
 		diff, err := prov.Diff(context.TODO(), plugin.DiffRequest{
 			URN:           r.URN,
@@ -2591,6 +2723,7 @@ func newStepGenerator(deployment *Deployment, mode stepGeneratorMode, events cha
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
 		skippedCreates:       make(map[resource.URN]bool),
+		migrated:             make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),

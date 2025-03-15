@@ -59,6 +59,7 @@ type Provider struct {
 	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
 	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
 	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
+	MigrateF      func(context.Context, plugin.MigrateRequest) (plugin.MigrateResponse, error)
 }
 
 func (prov *Provider) Handshake(
@@ -265,4 +266,19 @@ func (prov *Provider) GetMappings(
 		return plugin.GetMappingsResponse{}, nil
 	}
 	return prov.GetMappingsF(ctx, req)
+}
+
+func (prov *Provider) Migrate(
+	ctx context.Context,
+	req plugin.MigrateRequest,
+) (plugin.MigrateResponse, error) {
+	if prov.MigrateF == nil {
+		return plugin.MigrateResponse{
+			NewID:                   req.ID,
+			NewInputs:               req.OldInputs,
+			NewOutputs:              req.OldOutputs,
+			NewPropertyDependencies: req.OldPropertyDependencies,
+		}, nil
+	}
+	return prov.MigrateF(ctx, req)
 }

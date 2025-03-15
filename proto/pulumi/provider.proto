@@ -241,6 +241,12 @@ service ResourceProvider {
     // If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
     // a source provider name (that is, with the value `""`).
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
+
+    // Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+    // old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+    // of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+    // resources state into a shape understood in version 2.
+    rpc Migrate(MigrateRequest) returns (MigrateResponse) {}
 }
 
 // `ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -1113,4 +1119,55 @@ message GetMappingsResponse {
     // The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
     // `terraform-template` would return `["template"]` for this.
     repeated string providers = 1;
+}
+
+// Dependencies describes a list of dependencies.
+message Dependencies {
+    // A list of URNs that are the dependencies.
+    repeated string urns = 1; 
+}
+
+message MigrateRequest {
+    // The ID of the resource being migrated.
+    string id = 1;
+
+    // The URN of the resource being migrated.
+    string urn = 2;
+
+    // The name of the resource being migrated. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 3;
+
+    // The type of the resource being migrated. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 4;
+
+    // The old type of the resource being migrated.
+    string old_type = 5;
+
+    // THe old version of the resource being migrated.
+    string old_version = 6;
+
+    // The old output properties of the resource being migrated.
+    google.protobuf.Struct old_outputs = 7;
+
+    // The old input properties of the resource being migrated.
+    google.protobuf.Struct old_inputs = 8;
+
+    // a map from property keys to the dependencies of the property.
+     map<string, Dependencies> old_property_dependencies = 9; 
+}
+
+message MigrateResponse {
+    // The new ID of the resource being migrated.
+    string new_id = 1;
+
+    // The new output properties of the resource being migrated.
+    google.protobuf.Struct new_outputs = 2;
+
+    // The new input properties of the resource being migrated.
+    google.protobuf.Struct new_inputs = 3;
+
+    // The new map from property keys to the dependencies of the property.
+    map<string, Dependencies> new_property_dependencies = 4; 
 }

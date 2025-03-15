@@ -2343,3 +2343,116 @@ func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (Get
 	}
 	return GetMappingsResponse{resp.Providers}, nil
 }
+
+func (p *provider) Migrate(ctx context.Context, req MigrateRequest) (MigrateResponse, error) {
+	label := fmt.Sprintf("%s.Migrate(%s)", p.label(), req.URN)
+	logging.V(7).Infof("%s executing (#inputs=%d,#outputs=%d)", label, len(req.OldInputs), len(req.OldOutputs))
+
+	// Ensure that the plugin is configured.
+	protocol, _, err := p.getPluginConfig(context.Background())
+	if err != nil {
+		return MigrateResponse{}, err
+	}
+
+	mInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
+		Label:              label + ".oldInputs",
+		ElideAssetContents: true,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
+	})
+	if err != nil {
+		return MigrateResponse{}, err
+	}
+
+	mOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
+		Label:              label + ".oldOutputs",
+		ElideAssetContents: true,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
+	})
+	if err != nil {
+		return MigrateResponse{}, err
+	}
+
+	var version string
+	if req.OldVersion != nil {
+		version = req.OldVersion.String()
+	}
+
+	oldPropertyDependencies := make(map[string]*pulumirpc.Dependencies)
+	for name, deps := range req.OldPropertyDependencies {
+		urns := make([]string, len(deps))
+		for i, dep := range deps {
+			urns[i] = string(dep)
+		}
+		oldPropertyDependencies[string(name)] = &pulumirpc.Dependencies{
+			Urns: urns,
+		}
+	}
+
+	resp, err := p.clientRaw.Migrate(p.requestContext(), &pulumirpc.MigrateRequest{
+		Id:                      string(req.ID),
+		Urn:                     string(req.URN),
+		Type:                    string(req.Type),
+		Name:                    req.Name,
+		OldType:                 string(req.OldType),
+		OldVersion:              version,
+		OldInputs:               mInputs,
+		OldOutputs:              mOutputs,
+		OldPropertyDependencies: oldPropertyDependencies,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented {
+			// For backwards compatibility just return the ID, inputs and outputs unchanged.
+			logging.V(7).Infof("%s unimplemented", label)
+			return MigrateResponse{
+				NewID:      req.ID,
+				NewInputs:  req.OldInputs,
+				NewOutputs: req.OldOutputs,
+			}, nil
+		}
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		return MigrateResponse{}, err
+	}
+
+	ins, err := UnmarshalProperties(resp.NewInputs, MarshalOptions{
+		Label:          label + ".outputs",
+		RejectUnknowns: true,
+		KeepUnknowns:   false,
+		KeepSecrets:    true,
+		KeepResources:  true,
+	})
+	if err != nil {
+		return MigrateResponse{}, err
+	}
+
+	outs, err := UnmarshalProperties(resp.NewOutputs, MarshalOptions{
+		Label:          label + ".outputs",
+		RejectUnknowns: true,
+		KeepUnknowns:   false,
+		KeepSecrets:    true,
+		KeepResources:  true,
+	})
+	if err != nil {
+		return MigrateResponse{}, err
+	}
+
+	newPropertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	for name, deps := range resp.NewPropertyDependencies {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, dep := range deps.Urns {
+			urns[i] = resource.URN(dep)
+		}
+		newPropertyDependencies[resource.PropertyKey(name)] = urns
+	}
+
+	logging.V(7).Infof("%s success:  (#inputs=%d,#outputs=%d)", label, len(ins), len(outs))
+	return MigrateResponse{
+		NewID:                   resource.ID(resp.NewId),
+		NewInputs:               ins,
+		NewOutputs:              outs,
+		NewPropertyDependencies: newPropertyDependencies,
+	}, nil
+}

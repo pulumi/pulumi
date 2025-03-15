@@ -984,3 +984,89 @@ func (p *providerServer) GetMappings(ctx context.Context,
 	}
 	return &pulumirpc.GetMappingsResponse{Providers: providers.Keys}, nil
 }
+
+func (p *providerServer) Migrate(ctx context.Context,
+	req *pulumirpc.MigrateRequest,
+) (*pulumirpc.MigrateResponse, error) {
+	urn, id := resource.URN(req.Urn), resource.ID(req.Id)
+
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	inputs, err := UnmarshalProperties(req.OldInputs, p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	outputs, err := UnmarshalProperties(req.OldOutputs, p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	var version *semver.Version
+	if req.OldVersion != "" {
+		v, err := semver.Parse(req.OldVersion)
+		if err != nil {
+			return nil, err
+		}
+		version = &v
+	}
+
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
+	for name, deps := range req.OldPropertyDependencies {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, dep := range deps.Urns {
+			urns[i] = resource.URN(dep)
+		}
+		propertyDependencies[resource.PropertyKey(name)] = urns
+	}
+	resp, err := p.provider.Migrate(ctx, MigrateRequest{
+		ID: id,
+
+		URN:  urn,
+		Name: req.Name,
+		Type: tokens.Type(req.Type),
+
+		OldType:    tokens.Type(req.OldType),
+		OldVersion: version,
+
+		OldInputs:               inputs,
+		OldOutputs:              outputs,
+		OldPropertyDependencies: propertyDependencies,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	newInputs, err := MarshalProperties(resp.NewInputs, p.marshalOptions("newInputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	newOutputs, err := MarshalProperties(resp.NewOutputs, p.marshalOptions("newOutputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	newPropertyDependencies := make(map[string]*pulumirpc.Dependencies)
+	for name, deps := range resp.NewPropertyDependencies {
+		urns := make([]string, len(deps))
+		for i, dep := range deps {
+			urns[i] = string(dep)
+		}
+		newPropertyDependencies[string(name)] = &pulumirpc.Dependencies{
+			Urns: urns,
+		}
+	}
+
+	return &pulumirpc.MigrateResponse{
+		NewId:                   string(resp.NewID),
+		NewInputs:               newInputs,
+		NewOutputs:              newOutputs,
+		NewPropertyDependencies: newPropertyDependencies,
+	}, nil
+}

@@ -264,6 +264,28 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_MigrateRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.MigrateRequest)) {
+    throw new Error('Expected argument of type pulumirpc.MigrateRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_MigrateRequest(buffer_arg) {
+  return pulumi_provider_pb.MigrateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_MigrateResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.MigrateResponse)) {
+    throw new Error('Expected argument of type pulumirpc.MigrateResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_MigrateResponse(buffer_arg) {
+  return pulumi_provider_pb.MigrateResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ParameterizeRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.ParameterizeRequest)) {
     throw new Error('Expected argument of type pulumirpc.ParameterizeRequest');
@@ -784,6 +806,21 @@ getMappings: {
     requestDeserialize: deserialize_pulumirpc_GetMappingsRequest,
     responseSerialize: serialize_pulumirpc_GetMappingsResponse,
     responseDeserialize: deserialize_pulumirpc_GetMappingsResponse,
+  },
+  // Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+// old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+// of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+// resources state into a shape understood in version 2.
+migrate: {
+    path: '/pulumirpc.ResourceProvider/Migrate',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.MigrateRequest,
+    responseType: pulumi_provider_pb.MigrateResponse,
+    requestSerialize: serialize_pulumirpc_MigrateRequest,
+    requestDeserialize: deserialize_pulumirpc_MigrateRequest,
+    responseSerialize: serialize_pulumirpc_MigrateResponse,
+    responseDeserialize: deserialize_pulumirpc_MigrateResponse,
   },
 };
 
