@@ -15,9 +15,11 @@
 package backend
 
 import (
+	"archive/tar"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -203,9 +205,6 @@ type Backend interface {
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
-	// Query against the resource outputs in a stack's state checkpoint.
-	Query(ctx context.Context, op QueryOperation) error
-
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
@@ -252,6 +251,16 @@ type Backend interface {
 	// When a stack has been instantiated, you should favor using the Stack.DefaultSecretManager method to get a default
 	// secrets manager for that stack.
 	DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error)
+
+	// SupportsTemplates checks if the backend supports listing and downloading templates.
+	SupportsTemplates() bool
+	// ListTemplates returns the list of templates associated with an organization.
+	ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	// DownloadTemplate downloads a template.
+	//
+	// Templates are valid to download if and only if they would be returned by a call
+	// to ListTemplates.
+	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.
@@ -303,17 +312,6 @@ type UpdateOperation struct {
 	Scopes             CancellationScopeSource
 }
 
-// QueryOperation configures a query operation.
-type QueryOperation struct {
-	Proj               *workspace.Project
-	Root               string
-	Opts               UpdateOptions
-	SecretsManager     secrets.Manager
-	SecretsProvider    secrets.Provider
-	StackConfiguration StackConfiguration
-	Scopes             CancellationScopeSource
-}
-
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
 type StackConfiguration struct {
 	// List of ESC environments imported by the stack being updated.
@@ -337,14 +335,6 @@ type UpdateOptions struct {
 	SkipPreview bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
 	PreviewOnly bool
-}
-
-// QueryOptions configures a query to operate against a backend and the engine.
-type QueryOptions struct {
-	// Engine contains all of the engine-specific options.
-	Engine engine.UpdateOptions
-	// Display contains all of the backend display options.
-	Display display.Options
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.
@@ -446,4 +436,13 @@ type CreateStackOptions struct {
 	// The backend may return ErrTeamsNotSupported
 	// if Teams is specified but not supported.
 	Teams []string
+}
+
+// TarReaderCloser is a [tar.Reader] that owns it's backing memory.
+//
+// Calling close invalidates the [tar.Reader] returned by Tar.
+type TarReaderCloser interface {
+	io.Closer
+	// Tar will always return a non-nil [tar.Reader].
+	Tar() *tar.Reader
 }

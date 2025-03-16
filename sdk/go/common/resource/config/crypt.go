@@ -32,6 +32,11 @@ import (
 // Encrypter encrypts plaintext into its encrypted ciphertext.
 type Encrypter interface {
 	EncryptValue(ctx context.Context, plaintext string) (string, error)
+
+	// BatchEncrypt supports encryption of multiple secrets in a single batch request, if supported by the implementation.
+	// Returns a list of encrypted values in the same order as the input secrets.
+	// Each secret is encrypted individually and duplicate secret values will result in different ciphertexts.
+	BatchEncrypt(ctx context.Context, secrets []string) ([]string, error)
 }
 
 // Decrypter decrypts encrypted ciphertext to its plaintext representation.
@@ -69,6 +74,10 @@ func (nopCrypter) EncryptValue(ctx context.Context, plaintext string) (string, e
 	return plaintext, nil
 }
 
+func (nopCrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return DefaultBatchEncrypt(ctx, NopEncrypter, secrets)
+}
+
 // BlindingCrypter returns a Crypter that instead of decrypting or encrypting data, just returns "[secret]", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted or encrypted.
@@ -89,6 +98,10 @@ func (b blindingCrypter) EncryptValue(ctx context.Context, plaintext string) (st
 	return "[secret]", nil
 }
 
+func (b blindingCrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return DefaultBatchEncrypt(ctx, b, secrets)
+}
+
 func (b blindingCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBatchDecrypt(ctx, b, ciphertexts)
 }
@@ -104,12 +117,40 @@ func (p panicCrypter) EncryptValue(ctx context.Context, _ string) (string, error
 	panic("attempt to encrypt value")
 }
 
+func (p panicCrypter) BatchEncrypt(ctx context.Context, _ []string) ([]string, error) {
+	panic("attempt to batch encrypt values")
+}
+
 func (p panicCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
 	panic("attempt to decrypt value")
 }
 
 func (p panicCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
-	panic("attempt to bulk decrypt values")
+	panic("attempt to batch decrypt values")
+}
+
+type errorCrypter struct {
+	err string
+}
+
+func NewErrorCrypter(err string) Crypter {
+	return &errorCrypter{err}
+}
+
+func (e errorCrypter) EncryptValue(ctx context.Context, _ string) (string, error) {
+	return "", fmt.Errorf("failed to encrypt: %s", e.err)
+}
+
+func (e errorCrypter) BatchEncrypt(ctx context.Context, _ []string) ([]string, error) {
+	return nil, fmt.Errorf("failed to batch encrypt: %s", e.err)
+}
+
+func (e errorCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
+	return "", fmt.Errorf("failed to decrypt: %s", e.err)
+}
+
+func (e errorCrypter) BatchDecrypt(ctx context.Context, _ []string) ([]string, error) {
+	return nil, fmt.Errorf("failed to batch decrypt: %s", e.err)
 }
 
 // NewSymmetricCrypter creates a crypter that encrypts and decrypts values using AES-256-GCM.  The nonce is stored with
@@ -138,6 +179,10 @@ func (s symmetricCrypter) EncryptValue(ctx context.Context, value string) (strin
 	secret, nonce := encryptAES256GCGM(value, s.key)
 	return fmt.Sprintf("v1:%s:%s",
 		base64.StdEncoding.EncodeToString(nonce), base64.StdEncoding.EncodeToString(secret)), nil
+}
+
+func (s symmetricCrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return DefaultBatchEncrypt(ctx, s, secrets)
 }
 
 func (s symmetricCrypter) DecryptValue(ctx context.Context, value string) (string, error) {
@@ -220,8 +265,31 @@ func (c prefixCrypter) EncryptValue(ctx context.Context, plaintext string) (stri
 	return c.prefix + plaintext, nil
 }
 
+func (c prefixCrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return DefaultBatchEncrypt(ctx, c, secrets)
+}
+
 func (c prefixCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	return DefaultBatchDecrypt(ctx, c, ciphertexts)
+}
+
+// DefaultBatchEncrypt encrypts a list of plaintexts. Each plaintext is encrypted sequentially. The returned
+// list of ciphertexts is in the same order as the input list. This should only be used by implementers of Encrypter
+// to implement their BatchEncrypt method in cases where they can't do more efficient than just individual operations.
+func DefaultBatchEncrypt(ctx context.Context, encrypter Encrypter, plaintexts []string) ([]string, error) {
+	if len(plaintexts) == 0 {
+		return nil, nil
+	}
+
+	encrypted := make([]string, len(plaintexts))
+	for i, secret := range plaintexts {
+		enc, err := encrypter.EncryptValue(ctx, secret)
+		if err != nil {
+			return nil, err
+		}
+		encrypted[i] = enc
+	}
+	return encrypted, nil
 }
 
 // DefaultBatchDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted individually. The returned
@@ -252,6 +320,10 @@ var Base64Crypter Crypter = &base64Crypter{}
 
 func (c *base64Crypter) EncryptValue(ctx context.Context, s string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(s)), nil
+}
+
+func (c *base64Crypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	return nil, errors.New("BatchEncrypt not supported for base64Crypter")
 }
 
 func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, error) {

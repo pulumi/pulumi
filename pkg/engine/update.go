@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
@@ -565,7 +566,7 @@ func abbreviateFilePath(path string) string {
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context *Context
-	Steps   int
+	Steps   int32
 	Ops     map[display.StepOp]int
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
@@ -630,7 +631,8 @@ func (acts *updateActions) OnResourceStepPost(
 
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
+		steps := atomic.LoadInt32(&acts.Steps)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
@@ -645,7 +647,7 @@ func (acts *updateActions) OnResourceStepPost(
 		if record && !isInternalStep {
 			// Increment the counters.
 			acts.MapLock.Lock()
-			acts.Steps++
+			atomic.AddInt32(&acts.Steps, 1)
 			acts.Ops[op]++
 			acts.MapLock.Unlock()
 		}

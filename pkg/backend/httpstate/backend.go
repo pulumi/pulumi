@@ -684,6 +684,20 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
+func (b *cloudBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+	return b.client.ListOrgTemplates(ctx, orgName)
+}
+
+func (b *cloudBackend) DownloadTemplate(
+	ctx context.Context, orgName, sourceURL string,
+) (backend.TarReaderCloser, error) {
+	t, err := b.client.DownloadOrgTemplate(ctx, orgName, sourceURL)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (b *cloudBackend) SupportsTags() bool {
 	return true
 }
@@ -697,6 +711,10 @@ func (b *cloudBackend) SupportsProgress() bool {
 }
 
 func (b *cloudBackend) SupportsDeployments() bool {
+	return true
+}
+
+func (b *cloudBackend) SupportsTemplates() bool {
 	return true
 }
 
@@ -1176,10 +1194,6 @@ func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) error {
-	return b.query(ctx, op, nil /*events*/)
-}
-
 func (b *cloudBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
@@ -1371,14 +1385,6 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 	}
 	return b.CloudConsoleURL(base, "previews", update.UpdateID)
-}
-
-// query executes a query program against the resource outputs of a stack hosted in the Pulumi
-// Cloud.
-func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event,
-) error {
-	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
 func (b *cloudBackend) runEngineAction(

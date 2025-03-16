@@ -1,5 +1,44 @@
 # Changelog
 
+## 3.156.0 (2025-03-13)
+
+
+### Bug Fixes
+
+- [sdk/go] Fix overriding protect in child resources
+
+- [sdk/python] Fix mapping input names in Construct recursively in component providers
+  [#18864](https://github.com/pulumi/pulumi/pull/18864)
+
+## 3.155.0 (2025-03-12)
+
+
+### Features
+
+- [engine] Add batch encryption for snapshot serialization to increase performance working with many secrets
+  [#18743](https://github.com/pulumi/pulumi/pull/18743)
+
+- [sdk/dotnet] Upgrade pulumi dotnet to 3.76.1
+  [#18853](https://github.com/pulumi/pulumi/pull/18853)
+
+
+### Bug Fixes
+
+- [cli/display] Fix a timestamp inconsistency between the JSON display and the engine event log
+  [#18838](https://github.com/pulumi/pulumi/pull/18838)
+
+- [engine] Engine will respect cgroup limits for --parallel
+  [#18815](https://github.com/pulumi/pulumi/pull/18815)
+
+- [engine] Return an error on malformed provider references rather than ignoring them
+  [#18854](https://github.com/pulumi/pulumi/pull/18854)
+
+
+### Miscellaneous
+
+- [ci] Run CI with Go 1.23 and 1.24
+  [#18841](https://github.com/pulumi/pulumi/pull/18841)
+
 ## 3.154.0 (2025-03-07)
 
 

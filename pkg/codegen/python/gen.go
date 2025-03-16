@@ -254,7 +254,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 				name = name + "Dict"
 			}
 		}
-		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.PackageReference.Name()), modName, prefix, name)
+		return fmt.Sprintf("'%s.%s%s%s'", PyPack(t.PackageReference.Namespace(), t.PackageReference.Name()), modName, prefix, name)
 	}
 
 	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input)
@@ -292,7 +292,7 @@ func (mod *modContext) enumType(enum *schema.EnumType) string {
 	// Add package name if needed.
 	if pkgName != mod.pkg.Name() {
 		// Foreign reference. Add package import alias.
-		parts = append(parts, pyPack(pkgName))
+		parts = append(parts, PyPack(mod.pkg.Namespace(), pkgName))
 	}
 
 	// Add module name if needed.
@@ -322,7 +322,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 
 	pkg := r.Resource.PackageReference
 	modName, name := mod.modNameAndName(pkg, r, false)
-	return fmt.Sprintf("%s.%s%s", pyPack(pkg.Name()), modName, name)
+	return fmt.Sprintf("%s.%s%s", PyPack(pkg.Namespace(), pkg.Name()), modName, name)
 }
 
 func (mod *modContext) tokenToResource(tok string) string {
@@ -777,7 +777,7 @@ func (mod *modContext) fullyQualifiedImportName() string {
 		return mod.pyPkgName
 	}
 	if mod.parent == nil {
-		return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name()), name)
+		return fmt.Sprintf("%s.%s", PyPack(mod.pkg.Namespace(), mod.pkg.Name()), name)
 	}
 	return fmt.Sprintf("%s.%s", mod.parent.fullyQualifiedImportName(), name)
 }
@@ -891,7 +891,7 @@ func (mod *modContext) genUtilitiesImport() string {
 
 func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string {
 	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
-		return "import " + pyPack(t.PackageReference.Name())
+		return "import " + PyPack(t.PackageReference.Namespace(), t.PackageReference.Name())
 	}
 
 	tok := t.Token
@@ -922,7 +922,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 
 func (mod *modContext) importEnumType(e *schema.EnumType) string {
 	if !codegen.PkgEquals(e.PackageReference, mod.pkg) {
-		return "import " + pyPack(e.PackageReference.Name())
+		return "import " + PyPack(e.PackageReference.Namespace(), e.PackageReference.Name())
 	}
 
 	modName := mod.tokenToModule(e.Token)
@@ -942,7 +942,7 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 
 func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	if r.Resource != nil && !codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
-		return "import " + pyPack(r.Resource.PackageReference.Name())
+		return "import " + PyPack(r.Resource.PackageReference.Namespace(), r.Resource.PackageReference.Name())
 	}
 
 	tok := r.Token
@@ -2677,9 +2677,14 @@ func isStringType(t schema.Type) bool {
 	return t == schema.StringType
 }
 
-// pyPack returns the suggested package name for the given string.
-func pyPack(s string) string {
-	return "pulumi_" + strings.ReplaceAll(s, "-", "_")
+// PyPack returns the suggested package name for the given string.
+func PyPack(namespace, name string) string {
+	if namespace == "" {
+		namespace = "pulumi"
+	} else {
+		namespace = strings.ReplaceAll(namespace, "-", "_")
+	}
+	return namespace + "_" + strings.ReplaceAll(name, "-", "_")
 }
 
 // pyClassName turns a raw name into one that is suitable as a Python class name.
@@ -2981,7 +2986,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// determine whether to use the default Python package name
 	pyPkgName := info.PackageName
 	if pyPkgName == "" {
-		pyPkgName = "pulumi_" + strings.ReplaceAll(pkg.Name, "-", "_")
+		pyPkgName = PyPack(pkg.Namespace, pkg.Name)
 	}
 
 	// group resources, types, and functions into modules
@@ -3225,7 +3230,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	pkgName := info.PackageName
 	if pkgName == "" {
-		pkgName = pyPack(pkg.Name)
+		pkgName = PyPack(pkg.Namespace, pkg.Name)
 	}
 
 	files := codegen.Fs{}
