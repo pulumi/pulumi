@@ -242,6 +242,28 @@ function deserialize_pulumirpc_GetSchemaResponse(buffer_arg) {
   return pulumi_provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ImportRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ImportRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ImportRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ImportRequest(buffer_arg) {
+  return pulumi_provider_pb.ImportRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ImportResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ImportResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ImportResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ImportResponse(buffer_arg) {
+  return pulumi_provider_pb.ImportResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
@@ -784,6 +806,21 @@ getMappings: {
     requestDeserialize: deserialize_pulumirpc_GetMappingsRequest,
     responseSerialize: serialize_pulumirpc_GetMappingsResponse,
     responseDeserialize: deserialize_pulumirpc_GetMappingsResponse,
+  },
+  // `Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+// given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+// but may also include other properties. If providers don't implement this the engine will fall back to using
+// `Read` for imports.
+import: {
+    path: '/pulumirpc.ResourceProvider/Import',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.ImportRequest,
+    responseType: pulumi_provider_pb.ImportResponse,
+    requestSerialize: serialize_pulumirpc_ImportRequest,
+    requestDeserialize: deserialize_pulumirpc_ImportRequest,
+    responseSerialize: serialize_pulumirpc_ImportResponse,
+    responseDeserialize: deserialize_pulumirpc_ImportResponse,
   },
 };
 

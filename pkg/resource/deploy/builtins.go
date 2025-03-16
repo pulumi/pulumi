@@ -21,6 +21,8 @@ import (
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -97,6 +99,10 @@ func (p *builtinProvider) GetMapping(context.Context, plugin.GetMappingRequest) 
 
 func (p *builtinProvider) GetMappings(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error) {
 	return plugin.GetMappingsResponse{}, nil
+}
+
+func (p *builtinProvider) Import(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+	return plugin.ImportResponse{}, status.Error(codes.Unimplemented, "Import is not implemented")
 }
 
 // CheckConfig validates the configuration for this resource provider.

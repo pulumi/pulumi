@@ -479,6 +479,12 @@ func (r *Registry) GetMappings(context.Context, plugin.GetMappingsRequest) (plug
 	return plugin.GetMappingsResponse{}, errors.New("the provider registry has no mappings")
 }
 
+func (r *Registry) Import(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+	contract.Failf("Import must not be called on the provider registry")
+
+	return plugin.ImportResponse{}, errors.New("provider resources may not be read")
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (r *Registry) CheckConfig(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 	contract.Failf("CheckConfig must not be called on the provider registry")

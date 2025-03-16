@@ -436,6 +436,12 @@ type Provider interface {
 	// If a provider implements this method GetMapping will be called using the results from this method.
 	GetMappings(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
 
+	// `Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+	// given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+	// but may also include other properties. If providers don't implement this the engine will fall back to using
+	// `Read` for imports.
+	Import(context.Context, ImportRequest) (ImportResponse, error)
+
 	// mustEmbed *requires* that implementers make an explicit choice about forward compatibility.
 	//
 	// If [UnimplementedProvider] is embedded, then the struct will be forward compatible.
@@ -824,4 +830,39 @@ type CallResult struct {
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
 	Failures []CheckFailure
+}
+
+// `ImportRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.ImportRequest) call.
+type ImportRequest struct {
+	// The import ID of the resource to import.
+	ImportID string
+
+	// The URN of the resource being imported.
+	URN resource.URN
+
+	// The name of the resource being imported. This must match the name specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the name of the resource.
+	Name string
+
+	// The type of the resource being imported. This must match the type specified by the `urn` field, and is passed so
+	// that providers do not have to implement URN parsing in order to extract the type of the resource.
+	Type tokens.Type
+
+	// Any input properties for the resource being import. These will not always be populated.
+	Inputs resource.PropertyMap
+}
+
+// `ImportResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.ImportResponse) call. An
+// `ImportResponse` contains the ID of the resource being imported, as well as any state that was successfully imported
+// from the live environment.
+type ImportResponse struct {
+	// The ID of the imported resource.
+	ID resource.ID
+
+	// Output-derived input properties for the resource. These are returned as they would be returned from a
+	// [](pulumirpc.ResourceProvider.Check) call with the same values.
+	Inputs resource.PropertyMap
+
+	// The output properties of the resource imported from the live environment.
+	Outputs resource.PropertyMap
 }

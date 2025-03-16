@@ -226,6 +226,22 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
         fields = {"id": result.id, "properties": outs_proto}
         return proto.ReadResponse(**fields)
+    
+    def Import(self, request, context):
+        id_ = request.import_id
+        props = rpc.deserialize_properties(request.inputs)
+        provider = get_provider(props, self._config)
+        # This just re-uses read rather than adding a new import method to dynamic providers.
+        result = provider.read(id_, {})
+        outs = result.outs
+        outs[PROVIDER_KEY] = props[PROVIDER_KEY]
+
+        loop = asyncio.new_event_loop()
+        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        loop.close()
+
+        fields = {"id": result.id, "outputs": outs_proto, "inputs": request.inputs}
+        return proto.ImportResponse(**fields)
 
     def __init__(self):
         pass

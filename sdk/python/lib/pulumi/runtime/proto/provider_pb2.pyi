@@ -1914,3 +1914,77 @@ class GetMappingsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["providers", b"providers"]) -> None: ...
 
 global___GetMappingsResponse = GetMappingsResponse
+
+@typing_extensions.final
+class ImportRequest(google.protobuf.message.Message):
+    """`ImportRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.ImportRequest) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    IMPORT_ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    import_id: builtins.str
+    """The import ID of the resource to import."""
+    urn: builtins.str
+    """The URN of the resource being imported."""
+    name: builtins.str
+    """The name of the resource being imported. This must match the name specified by the `urn` field, and is passed so that
+    providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the resource being imported. This must match the type specified by the `urn` field, and is passed so that
+    providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """Any input properties for the resource being import. These will not always be populated."""
+    def __init__(
+        self,
+        *,
+        import_id: builtins.str = ...,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["import_id", b"import_id", "inputs", b"inputs", "name", b"name", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___ImportRequest = ImportRequest
+
+@typing_extensions.final
+class ImportResponse(google.protobuf.message.Message):
+    """`ImportResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.ImportResponse) call. An
+    `ImportResponse` contains the ID of the resource being imported, as well as any state that was successfully imported
+    from the live environment.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the imported resource."""
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The output properties of the resource imported from the live environment."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """Output-derived input properties for the resource. These are returned as they would be returned from a
+        [](pulumirpc.ResourceProvider.Check) call with the same values.
+        """
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "outputs", b"outputs"]) -> None: ...
+
+global___ImportResponse = ImportResponse

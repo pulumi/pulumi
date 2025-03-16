@@ -305,6 +305,15 @@ class ResourceProviderStub:
     If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
     a source provider name (that is, with the value `""`).
     """
+    Import: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ImportRequest,
+        pulumi.provider_pb2.ImportResponse,
+    ]
+    """`Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+    given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+    but may also include other properties. If providers don't implement this the engine will fall back to using
+    `Read` for imports.
+    """
 
 class ResourceProviderServicer(metaclass=abc.ABCMeta):
     """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
@@ -627,6 +636,17 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
 
         If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
         a source provider name (that is, with the value `""`).
+        """
+    
+    def Import(
+        self,
+        request: pulumi.provider_pb2.ImportRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.ImportResponse:
+        """`Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+        given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+        but may also include other properties. If providers don't implement this the engine will fall back to using
+        `Read` for imports.
         """
 
 def add_ResourceProviderServicer_to_server(servicer: ResourceProviderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

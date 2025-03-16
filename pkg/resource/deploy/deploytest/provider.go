@@ -59,6 +59,7 @@ type Provider struct {
 	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
 	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
 	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
+	ImportF       func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error)
 }
 
 func (prov *Provider) Handshake(
@@ -265,4 +266,14 @@ func (prov *Provider) GetMappings(
 		return plugin.GetMappingsResponse{}, nil
 	}
 	return prov.GetMappingsF(ctx, req)
+}
+
+func (prov *Provider) Import(
+	ctx context.Context,
+	req plugin.ImportRequest,
+) (plugin.ImportResponse, error) {
+	if prov.ImportF == nil {
+		return plugin.ImportResponse{}, errors.New("Import unimplemented")
+	}
+	return prov.ImportF(ctx, req)
 }

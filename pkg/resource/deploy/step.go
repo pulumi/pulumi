@@ -1287,13 +1287,13 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
-		read, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:  s.new.URN,
-			Name: s.new.URN.Name(),
-			Type: s.new.URN.Type(),
-			ID:   s.new.ID,
+		read, err := prov.Import(context.TODO(), plugin.ImportRequest{
+			URN:      s.new.URN,
+			Name:     s.new.URN.Name(),
+			Type:     s.new.URN.Type(),
+			ImportID: string(s.new.ImportID),
+			Inputs:   s.new.Inputs,
 		})
-		rst = read.Status
 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()

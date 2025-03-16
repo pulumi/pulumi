@@ -176,6 +176,7 @@ type MockProvider struct {
 	SignalCancellationF func(context.Context) error
 	GetMappingF         func(context.Context, GetMappingRequest) (GetMappingResponse, error)
 	GetMappingsF        func(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
+	ImportF             func(context.Context, ImportRequest) (ImportResponse, error)
 }
 
 var _ Provider = (*MockProvider)(nil)
@@ -334,4 +335,11 @@ func (m *MockProvider) GetMappings(ctx context.Context, req GetMappingsRequest) 
 		return m.GetMappingsF(ctx, req)
 	}
 	return GetMappingsResponse{}, errors.New("GetMappings not implemented")
+}
+
+func (m *MockProvider) Import(ctx context.Context, req ImportRequest) (ImportResponse, error) {
+	if m.ImportF != nil {
+		return m.ImportF(ctx, req)
+	}
+	return ImportResponse{}, errors.New("Import not implemented")
 }

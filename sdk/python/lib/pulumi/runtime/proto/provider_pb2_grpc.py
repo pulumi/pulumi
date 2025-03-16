@@ -125,6 +125,11 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.GetMappingsRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.GetMappingsResponse.FromString,
                 )
+        self.Import = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Import',
+                request_serializer=pulumi_dot_provider__pb2.ImportRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ImportResponse.FromString,
+                )
 
 
 class ResourceProviderServicer(object):
@@ -434,6 +439,16 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Import(self, request, context):
+        """`Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+        given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+        but may also include other properties. If providers don't implement this the engine will fall back to using
+        `Read` for imports.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -541,6 +556,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.GetMappings,
                     request_deserializer=pulumi_dot_provider__pb2.GetMappingsRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.GetMappingsResponse.SerializeToString,
+            ),
+            'Import': grpc.unary_unary_rpc_method_handler(
+                    servicer.Import,
+                    request_deserializer=pulumi_dot_provider__pb2.ImportRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ImportResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -910,5 +930,22 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetMappings',
             pulumi_dot_provider__pb2.GetMappingsRequest.SerializeToString,
             pulumi_dot_provider__pb2.GetMappingsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Import(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Import',
+            pulumi_dot_provider__pb2.ImportRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ImportResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

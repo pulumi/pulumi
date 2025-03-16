@@ -215,6 +215,11 @@ type ResourceProviderClient interface {
 	// If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
 	// a source provider name (that is, with the value `""`).
 	GetMappings(ctx context.Context, in *GetMappingsRequest, opts ...grpc.CallOption) (*GetMappingsResponse, error)
+	// `Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+	// given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+	// but may also include other properties. If providers don't implement this the engine will fall back to using
+	// `Read` for imports.
+	Import(ctx context.Context, in *ImportRequest, opts ...grpc.CallOption) (*ImportResponse, error)
 }
 
 type resourceProviderClient struct {
@@ -437,6 +442,15 @@ func (c *resourceProviderClient) GetMappings(ctx context.Context, in *GetMapping
 	return out, nil
 }
 
+func (c *resourceProviderClient) Import(ctx context.Context, in *ImportRequest, opts ...grpc.CallOption) (*ImportResponse, error) {
+	out := new(ImportResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Import", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceProviderServer is the server API for ResourceProvider service.
 // All implementations must embed UnimplementedResourceProviderServer
 // for forward compatibility
@@ -633,6 +647,11 @@ type ResourceProviderServer interface {
 	// If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
 	// a source provider name (that is, with the value `""`).
 	GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error)
+	// `Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+	// given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+	// but may also include other properties. If providers don't implement this the engine will fall back to using
+	// `Read` for imports.
+	Import(context.Context, *ImportRequest) (*ImportResponse, error)
 	mustEmbedUnimplementedResourceProviderServer()
 }
 
@@ -702,6 +721,9 @@ func (UnimplementedResourceProviderServer) GetMapping(context.Context, *GetMappi
 }
 func (UnimplementedResourceProviderServer) GetMappings(context.Context, *GetMappingsRequest) (*GetMappingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMappings not implemented")
+}
+func (UnimplementedResourceProviderServer) Import(context.Context, *ImportRequest) (*ImportResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Import not implemented")
 }
 func (UnimplementedResourceProviderServer) mustEmbedUnimplementedResourceProviderServer() {}
 
@@ -1097,6 +1119,24 @@ func _ResourceProvider_GetMappings_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_Import_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).Import(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/Import",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).Import(ctx, req.(*ImportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceProvider_ServiceDesc is the grpc.ServiceDesc for ResourceProvider service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1183,6 +1223,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMappings",
 			Handler:    _ResourceProvider_GetMappings_Handler,
+		},
+		{
+			MethodName: "Import",
+			Handler:    _ResourceProvider_Import_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

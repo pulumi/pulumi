@@ -2311,3 +2311,120 @@ func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (Get
 	}
 	return GetMappingsResponse{resp.Providers}, nil
 }
+
+func (p *provider) Import(ctx context.Context, req ImportRequest) (ImportResponse, error) {
+	// We either leave Name&Type must match the URN.
+	contract.Assertf(req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
+	contract.Assertf(req.URN != "", "Import URN was empty")
+	contract.Assertf(req.ImportID != "", "Import ID was empty")
+
+	label := fmt.Sprintf("%s.Import(%s,%s)", p.label(), req.ImportID, req.URN)
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(req.Inputs))
+
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
+	if err != nil {
+		return ImportResponse{}, err
+	}
+
+	// If the provider is not fully configured, return an default result.
+	if !pcfg.known {
+		return ImportResponse{
+			ID:      resource.ID(req.ImportID),
+			Inputs:  req.Inputs,
+			Outputs: resource.PropertyMap{},
+		}, nil
+	}
+
+	// Marshal the resource inputs and state so we can perform the RPC.
+	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        protocol.acceptSecrets,
+		KeepResources:      protocol.acceptResources,
+	})
+	if err != nil {
+		return ImportResponse{}, err
+	}
+
+	// Now issue the read request over RPC, blocking until it finished.
+	resp, err := client.Import(p.requestContext(), &pulumirpc.ImportRequest{
+		ImportId: req.ImportID,
+		Urn:      string(req.URN),
+		Name:     req.URN.Name(),
+		Type:     req.URN.Type().String(),
+		Inputs:   minputs,
+	})
+	if err != nil {
+		status, ok := status.FromError(err)
+		if ok && status.Code() == codes.Unimplemented {
+			// If the provider doesn't implement import we'll fall back to Read.
+			logging.V(7).Infof("%s unimplemented rpc: falling back to Read", label)
+			readResp, err := p.Read(ctx, ReadRequest{
+				URN:  req.URN,
+				Name: req.Name,
+				Type: req.Type,
+				ID:   resource.ID(req.ImportID),
+				// We never used to pass Inputs to Read for import uses, so we continue to not do so.
+			})
+			if err != nil {
+				return ImportResponse{}, err
+			}
+
+			return ImportResponse{
+				ID:      readResp.ID,
+				Inputs:  readResp.Inputs,
+				Outputs: readResp.Outputs,
+			}, nil
+		}
+	}
+
+	if resp.Id == "" {
+		return ImportResponse{}, errors.New("missing ID in import response")
+	}
+
+	// Finally, unmarshal the resulting state properties and return them.
+	newInputs, err := UnmarshalProperties(resp.Inputs, MarshalOptions{
+		Label:          label + ".inputs",
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+	})
+	if err != nil {
+		return ImportResponse{}, err
+	}
+
+	newOutputs, err := UnmarshalProperties(resp.Outputs, MarshalOptions{
+		Label:          label + ".outputs",
+		RejectUnknowns: true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+	})
+	if err != nil {
+		return ImportResponse{}, err
+	}
+
+	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+	// natively.
+	if !protocol.acceptSecrets {
+		annotateSecrets(newInputs, req.Inputs)
+		annotateSecrets(newOutputs, req.Inputs)
+	}
+
+	// make sure any echoed properties restore their original asset contents if they have not changed
+	restoreElidedAssetContents(req.Inputs, newInputs)
+	restoreElidedAssetContents(req.Inputs, newOutputs)
+
+	logging.V(7).Infof("%s success; #inputs=%d, #outputs=%d", label, len(newInputs), len(newOutputs))
+	return ImportResponse{
+		ID:      resource.ID(resp.Id),
+		Inputs:  newInputs,
+		Outputs: newOutputs,
+	}, nil
+}

@@ -241,6 +241,12 @@ service ResourceProvider {
     // If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
     // a source provider name (that is, with the value `""`).
     rpc GetMappings(GetMappingsRequest) returns (GetMappingsResponse) {}
+
+    // `Import` reads the current live state associated with a resource identified by the supplied ID and inputs. The
+    // given ID and inputs must be sufficient to uniquely identify the resource. This is typically just the resource ID,
+    // but may also include other properties. If providers don't implement this the engine will fall back to using
+    // `Read` for imports.
+    rpc Import(ImportRequest) returns (ImportResponse) {}
 }
 
 // `ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -1113,4 +1119,40 @@ message GetMappingsResponse {
     // The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
     // `terraform-template` would return `["template"]` for this.
     repeated string providers = 1;
+}
+
+
+// `ImportRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.ImportRequest) call.
+message ImportRequest {
+    // The import ID of the resource to import.
+    string import_id = 1;
+
+    // The URN of the resource being imported.
+    string urn = 2;
+
+    // The name of the resource being imported. This must match the name specified by the `urn` field, and is passed so that
+    // providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 3;
+
+    // The type of the resource being imported. This must match the type specified by the `urn` field, and is passed so that
+    // providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 4;
+
+    // Any input properties for the resource being import. These will not always be populated.
+    google.protobuf.Struct inputs = 5;
+}
+
+// `ImportResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.ImportResponse) call. An
+// `ImportResponse` contains the ID of the resource being imported, as well as any state that was successfully imported
+// from the live environment.
+message ImportResponse {
+    // The ID of the imported resource. 
+    string id = 1;
+
+    // The output properties of the resource imported from the live environment.
+    google.protobuf.Struct outputs = 2;
+
+    // Output-derived input properties for the resource. These are returned as they would be returned from a
+    // [](pulumirpc.ResourceProvider.Check) call with the same values.
+    google.protobuf.Struct inputs = 3;
 }

@@ -32,6 +32,7 @@ interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedSe
     attach: IResourceProviderService_IAttach;
     getMapping: IResourceProviderService_IGetMapping;
     getMappings: IResourceProviderService_IGetMappings;
+    import: IResourceProviderService_IImport;
 }
 
 interface IResourceProviderService_IHandshake extends grpc.MethodDefinition<pulumi_provider_pb.ProviderHandshakeRequest, pulumi_provider_pb.ProviderHandshakeResponse> {
@@ -223,6 +224,15 @@ interface IResourceProviderService_IGetMappings extends grpc.MethodDefinition<pu
     responseSerialize: grpc.serialize<pulumi_provider_pb.GetMappingsResponse>;
     responseDeserialize: grpc.deserialize<pulumi_provider_pb.GetMappingsResponse>;
 }
+interface IResourceProviderService_IImport extends grpc.MethodDefinition<pulumi_provider_pb.ImportRequest, pulumi_provider_pb.ImportResponse> {
+    path: "/pulumirpc.ResourceProvider/Import";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_provider_pb.ImportRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_provider_pb.ImportRequest>;
+    responseSerialize: grpc.serialize<pulumi_provider_pb.ImportResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_provider_pb.ImportResponse>;
+}
 
 export const ResourceProviderService: IResourceProviderService;
 
@@ -248,6 +258,7 @@ export interface IResourceProviderServer extends grpc.UntypedServiceImplementati
     attach: grpc.handleUnaryCall<pulumi_plugin_pb.PluginAttach, google_protobuf_empty_pb.Empty>;
     getMapping: grpc.handleUnaryCall<pulumi_provider_pb.GetMappingRequest, pulumi_provider_pb.GetMappingResponse>;
     getMappings: grpc.handleUnaryCall<pulumi_provider_pb.GetMappingsRequest, pulumi_provider_pb.GetMappingsResponse>;
+    import: grpc.handleUnaryCall<pulumi_provider_pb.ImportRequest, pulumi_provider_pb.ImportResponse>;
 }
 
 export interface IResourceProviderClient {
@@ -313,6 +324,9 @@ export interface IResourceProviderClient {
     getMappings(request: pulumi_provider_pb.GetMappingsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetMappingsResponse) => void): grpc.ClientUnaryCall;
     getMappings(request: pulumi_provider_pb.GetMappingsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetMappingsResponse) => void): grpc.ClientUnaryCall;
     getMappings(request: pulumi_provider_pb.GetMappingsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetMappingsResponse) => void): grpc.ClientUnaryCall;
+    import(request: pulumi_provider_pb.ImportRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ImportResponse) => void): grpc.ClientUnaryCall;
+    import(request: pulumi_provider_pb.ImportRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ImportResponse) => void): grpc.ClientUnaryCall;
+    import(request: pulumi_provider_pb.ImportRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ImportResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class ResourceProviderClient extends grpc.Client implements IResourceProviderClient {
@@ -379,4 +393,7 @@ export class ResourceProviderClient extends grpc.Client implements IResourceProv
     public getMappings(request: pulumi_provider_pb.GetMappingsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetMappingsResponse) => void): grpc.ClientUnaryCall;
     public getMappings(request: pulumi_provider_pb.GetMappingsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetMappingsResponse) => void): grpc.ClientUnaryCall;
     public getMappings(request: pulumi_provider_pb.GetMappingsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.GetMappingsResponse) => void): grpc.ClientUnaryCall;
+    public import(request: pulumi_provider_pb.ImportRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ImportResponse) => void): grpc.ClientUnaryCall;
+    public import(request: pulumi_provider_pb.ImportRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ImportResponse) => void): grpc.ClientUnaryCall;
+    public import(request: pulumi_provider_pb.ImportRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ImportResponse) => void): grpc.ClientUnaryCall;
 }

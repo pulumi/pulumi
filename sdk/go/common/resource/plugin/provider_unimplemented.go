@@ -126,6 +126,10 @@ func (p *UnimplementedProvider) GetMappings(context.Context, GetMappingsRequest)
 	return GetMappingsResponse{}, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
 }
 
+func (p *UnimplementedProvider) Import(context.Context, ImportRequest) (ImportResponse, error) {
+	return ImportResponse{}, status.Error(codes.Unimplemented, "Import is not yet implemented")
+}
+
 func (p NotForwardCompatibleProvider) mustEmbedAForwardCompatibilityOption(
 	UnimplementedProvider, NotForwardCompatibleProvider) {
 }

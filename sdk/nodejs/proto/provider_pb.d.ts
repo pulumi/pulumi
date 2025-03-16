@@ -1451,3 +1451,70 @@ export namespace GetMappingsResponse {
         providersList: Array<string>,
     }
 }
+
+export class ImportRequest extends jspb.Message { 
+    getImportId(): string;
+    setImportId(value: string): ImportRequest;
+    getUrn(): string;
+    setUrn(value: string): ImportRequest;
+    getName(): string;
+    setName(value: string): ImportRequest;
+    getType(): string;
+    setType(value: string): ImportRequest;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ImportRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ImportRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ImportRequest): ImportRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ImportRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ImportRequest;
+    static deserializeBinaryFromReader(message: ImportRequest, reader: jspb.BinaryReader): ImportRequest;
+}
+
+export namespace ImportRequest {
+    export type AsObject = {
+        importId: string,
+        urn: string,
+        name: string,
+        type: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
+export class ImportResponse extends jspb.Message { 
+    getId(): string;
+    setId(value: string): ImportResponse;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): ImportResponse;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ImportResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ImportResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ImportResponse): ImportResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ImportResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ImportResponse;
+    static deserializeBinaryFromReader(message: ImportResponse, reader: jspb.BinaryReader): ImportResponse;
+}
+
+export namespace ImportResponse {
+    export type AsObject = {
+        id: string,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}

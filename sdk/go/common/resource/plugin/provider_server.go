@@ -984,3 +984,39 @@ func (p *providerServer) GetMappings(ctx context.Context,
 	}
 	return &pulumirpc.GetMappingsResponse{Providers: providers.Keys}, nil
 }
+
+func (p *providerServer) Import(ctx context.Context, req *pulumirpc.ImportRequest) (*pulumirpc.ImportResponse, error) {
+	urn := resource.URN(req.Urn)
+
+	inputs, err := UnmarshalProperties(req.Inputs, p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Import(ctx, ImportRequest{
+		URN:      urn,
+		Name:     req.Name,
+		Type:     tokens.Type(req.Type),
+		ImportID: req.ImportId,
+		Inputs:   inputs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	rpcInputs, err := MarshalProperties(resp.Inputs, p.marshalOptions("inputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	rpcOutputs, err := MarshalProperties(resp.Outputs, p.marshalOptions("outputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.ImportResponse{
+		Id:      string(resp.ID),
+		Inputs:  rpcInputs,
+		Outputs: rpcOutputs,
+	}, nil
+}
