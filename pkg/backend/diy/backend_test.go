@@ -1493,7 +1493,7 @@ func TestCreateStack_gzip(t *testing.T) {
 	ctx := context.Background()
 
 	s := make(env.MapStore)
-	s[env.Parallel.Var().Name()] = "5" // Set parallel to 5
+	s[env.DIYBackendGzip.Var().Name()] = "true"
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1521,7 +1521,7 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	ctx := context.Background()
 
 	s := make(env.MapStore)
-	s[env.Parallel.Var().Name()] = "5" // Set parallel to 5
+	s[env.DIYBackendRetainCheckpoints.Var().Name()] = "true"
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1719,9 +1719,9 @@ func TestParallelStackFetch(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 
-	// Create a custom environment with Parallel set
+	// Create a custom environment with DIYBackendParallel set
 	s := make(env.MapStore)
-	s[env.Parallel.Var().Name()] = "5" // Set parallel to 5
+	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1771,16 +1771,16 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 
-	// Create a backend without setting Parallel
+	// Create a backend without setting DIYBackendParallel
 	b, err := newDIYBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
 		&workspace.Project{Name: "testproj"},
-		nil, // Use default options
+		&diyBackendOptions{Env: env.NewEnv(make(env.MapStore))},
 	)
 	assert.NoError(t, err)
 
-	// Create multiple stacks to test parallel fetching
+	// Create multiple stacks to test parallel fetching with default value
 	numStacks := 5
 	stackRefs := make([]backend.StackReference, numStacks)
 	for i := 0; i < numStacks; i++ {

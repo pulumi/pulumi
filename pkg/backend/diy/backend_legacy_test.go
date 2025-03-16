@@ -395,9 +395,9 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := context.Background()
 
-	// Create a custom environment with DIYBackendMaxParallel set
+	// Create a custom environment with DIYBackendParallel set
 	s := make(env.MapStore)
-	s[env.DIYBackendMaxParallel.Var().Name()] = "5" // Set max parallel to 5
+	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,

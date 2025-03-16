@@ -144,6 +144,9 @@ var (
 	DIYBackendDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
 		"If set checkpoint backups will not be written the to the backup folder.",
 		env.Alternative("DISABLE_CHECKPOINT_BACKUPS"))
+
+	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
+		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
 )
 
 // Environment variables which affect Pulumi AI integrations

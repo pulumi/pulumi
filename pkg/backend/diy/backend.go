@@ -371,17 +371,21 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 		return olds[i].Name().String() < olds[j].Name().String()
 	})
 
-	// There's no limit to the number of stacks we need to upgrade.
+	// Get the parallel value from environment variable or use a default value
+	parallel := b.Env.GetInt(env.DIYBackendParallel)
+	if parallel <= 0 {
+		parallel = 10 // Default to 10 parallel operations if not specified
+	}
+
 	// We don't want to overload the system with too many concurrent upgrades.
-	// We'll run a fixed pool of goroutines to upgrade stacks.
-	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
+	pool := newWorkerPool(parallel, len(olds))
 	defer pool.Close()
 
 	// Projects for each stack in `olds` in the same order.
 	// projects[i] is the project name for olds[i].
 	projects := make([]tokens.Name, len(olds))
 	for idx, old := range olds {
-		idx, old := idx, old
+		idx, old := idx, old // Need to capture since we're iterating through a range
 		pool.Enqueue(func() error {
 			project, err := b.guessProject(ctx, old)
 			if err != nil {
@@ -796,7 +800,7 @@ func (b *diyBackend) ListStacks(
 	}
 
 	// Get the max parallel value from environment variable or use a default value
-	maxParallel := b.Env.GetInt(env.Parallel)
+	maxParallel := b.Env.GetInt(env.DIYBackendParallel)
 	if maxParallel <= 0 {
 		maxParallel = 10 // Default to 10 parallel operations if not specified
 	}
@@ -830,8 +834,7 @@ func (b *diyBackend) ListStacks(
 		pool.Enqueue(func() error {
 			chk, err := b.getCheckpoint(ctx, stackRef)
 			if err != nil {
-				// If the error is that the checkpoint doesn't exist, 
-				// just skip this stack as it may have been deleted
+				// If checkpoint not found, stack doesn't exist anymore, don't report an error
 				if errors.Is(err, errCheckpointNotFound) {
 					return nil
 				}
