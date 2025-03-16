@@ -1493,7 +1493,7 @@ func TestCreateStack_gzip(t *testing.T) {
 	ctx := context.Background()
 
 	s := make(env.MapStore)
-	s[env.DIYBackendGzip.Var().Name()] = "true"
+	s[env.Parallel.Var().Name()] = "5" // Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1521,7 +1521,7 @@ func TestCreateStack_retainCheckpoints(t *testing.T) {
 	ctx := context.Background()
 
 	s := make(env.MapStore)
-	s[env.DIYBackendRetainCheckpoints.Var().Name()] = "true"
+	s[env.Parallel.Var().Name()] = "5" // Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1719,9 +1719,9 @@ func TestParallelStackFetch(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 
-	// Create a custom environment with DIYBackendMaxParallel set
+	// Create a custom environment with Parallel set
 	s := make(env.MapStore)
-	s[env.DIYBackendMaxParallel.Var().Name()] = "5" // Set max parallel to 5
+	s[env.Parallel.Var().Name()] = "5" // Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
@@ -1771,7 +1771,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := context.Background()
 
-	// Create a backend without setting DIYBackendMaxParallel
+	// Create a backend without setting Parallel
 	b, err := newDIYBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),

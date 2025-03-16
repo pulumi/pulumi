@@ -796,7 +796,7 @@ func (b *diyBackend) ListStacks(
 	}
 
 	// Get the max parallel value from environment variable or use a default value
-	maxParallel := b.Env.GetInt(env.DIYBackendMaxParallel)
+	maxParallel := b.Env.GetInt(env.Parallel)
 	if maxParallel <= 0 {
 		maxParallel = 10 // Default to 10 parallel operations if not specified
 	}
@@ -826,19 +826,18 @@ func (b *diyBackend) ListStacks(
 
 	// Enqueue work for each stack
 	for i, stackRef := range filteredStacks {
-		i, ref := i, stackRef // Capture loop variables
+		// No need to capture loop variables in Go 1.22+
 		pool.Enqueue(func() error {
-			chk, err := b.getCheckpoint(ctx, ref)
+			chk, err := b.getCheckpoint(ctx, stackRef)
 			if err != nil {
-				// There is a race between listing stacks and getting their checkpoints.
-				// If there's an error getting the checkpoint, check if the stack still exists
-				if _, existsErr := b.stackExists(ctx, ref); existsErr == errCheckpointNotFound {
-					// Stack doesn't exist anymore, don't report an error
+				// If the error is that the checkpoint doesn't exist, 
+				// just skip this stack as it may have been deleted
+				if errors.Is(err, errCheckpointNotFound) {
 					return nil
 				}
 				return err
 			}
-			results[i] = checkpointResult{ref: ref, chk: chk}
+			results[i] = checkpointResult{ref: stackRef, chk: chk}
 			return nil
 		})
 	}
