@@ -795,29 +795,86 @@ func (b *diyBackend) ListStacks(
 		return nil, nil, err
 	}
 
+	// Get the max parallel value from environment variable or use a default value
+	maxParallel := b.Env.GetInt(env.DIYBackendMaxParallel)
+	if maxParallel <= 0 {
+		maxParallel = 10 // Default to 10 parallel operations if not specified
+	}
+
 	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
 	// aren't persisted in the diy backend.
-	results := slice.Prealloc[backend.StackSummary](len(stacks))
+	var filteredStacks []*diyBackendReference
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
 		stackProject, hasProject := stackRef.Project()
 		if filter.Project != nil && hasProject && string(stackProject) != *filter.Project {
 			continue
 		}
-
-		chk, err := b.getCheckpoint(ctx, stackRef)
-		if err != nil {
-			// There is a race between listing stacks and getting their checkpoints.  If there's an error getting
-			// the checkpoint, check if the stack still exists before returning an error.
-			if _, existsErr := b.stackExists(ctx, stackRef); existsErr == errCheckpointNotFound {
-				continue
-			}
-			return nil, nil, err
-		}
-		results = append(results, newDIYStackSummary(stackRef, chk))
+		filteredStacks = append(filteredStacks, stackRef)
 	}
 
-	return results, nil, nil
+	// Create a channel to receive results and a wait group to wait for all goroutines
+	type checkpointResult struct {
+		ref *diyBackendReference
+		chk *apitype.CheckpointV3
+		err error
+	}
+	results := make(chan checkpointResult, len(filteredStacks))
+	
+	// Use a semaphore to limit the number of concurrent operations
+	sem := make(chan struct{}, maxParallel)
+	var wg sync.WaitGroup
+
+	// Start a goroutine for each stack to fetch its checkpoint
+	for _, stackRef := range filteredStacks {
+		wg.Add(1)
+		go func(ref *diyBackendReference) {
+			defer wg.Done()
+			
+			// Acquire a semaphore slot
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			
+			chk, err := b.getCheckpoint(ctx, ref)
+			if err != nil {
+				// There is a race between listing stacks and getting their checkpoints.
+				// If there's an error getting the checkpoint, check if the stack still exists
+				if _, existsErr := b.stackExists(ctx, ref); existsErr == errCheckpointNotFound {
+					// Stack doesn't exist anymore, don't report an error
+					return
+				}
+				results <- checkpointResult{ref: ref, err: err}
+				return
+			}
+			results <- checkpointResult{ref: ref, chk: chk}
+		}(stackRef)
+	}
+
+	// Close the results channel when all goroutines are done
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results
+	summaries := []backend.StackSummary{}
+	var resultErr error
+	for result := range results {
+		if result.err != nil {
+			// Store the first error we encounter
+			if resultErr == nil {
+				resultErr = result.err
+			}
+			continue
+		}
+		summaries = append(summaries, newDIYStackSummary(result.ref, result.chk))
+	}
+
+	if resultErr != nil {
+		return nil, nil, resultErr
+	}
+
+	return summaries, nil, nil
 }
 
 func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
