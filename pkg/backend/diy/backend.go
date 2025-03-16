@@ -813,65 +813,47 @@ func (b *diyBackend) ListStacks(
 		filteredStacks = append(filteredStacks, stackRef)
 	}
 
-	// Create a channel to receive results and a wait group to wait for all goroutines
+	// Create a worker pool to process stacks in parallel
+	pool := newWorkerPool(maxParallel, len(filteredStacks))
+	defer pool.Close()
+	
+	// Create a slice to store results in the same order as filteredStacks
 	type checkpointResult struct {
 		ref *diyBackendReference
 		chk *apitype.CheckpointV3
-		err error
 	}
-	results := make(chan checkpointResult, len(filteredStacks))
-	
-	// Use a semaphore to limit the number of concurrent operations
-	sem := make(chan struct{}, maxParallel)
-	var wg sync.WaitGroup
+	results := make([]checkpointResult, len(filteredStacks))
 
-	// Start a goroutine for each stack to fetch its checkpoint
-	for _, stackRef := range filteredStacks {
-		wg.Add(1)
-		go func(ref *diyBackendReference) {
-			defer wg.Done()
-			
-			// Acquire a semaphore slot
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			
+	// Enqueue work for each stack
+	for i, stackRef := range filteredStacks {
+		i, ref := i, stackRef // Capture loop variables
+		pool.Enqueue(func() error {
 			chk, err := b.getCheckpoint(ctx, ref)
 			if err != nil {
 				// There is a race between listing stacks and getting their checkpoints.
 				// If there's an error getting the checkpoint, check if the stack still exists
 				if _, existsErr := b.stackExists(ctx, ref); existsErr == errCheckpointNotFound {
 					// Stack doesn't exist anymore, don't report an error
-					return
+					return nil
 				}
-				results <- checkpointResult{ref: ref, err: err}
-				return
+				return err
 			}
-			results <- checkpointResult{ref: ref, chk: chk}
-		}(stackRef)
+			results[i] = checkpointResult{ref: ref, chk: chk}
+			return nil
+		})
 	}
 
-	// Close the results channel when all goroutines are done
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	// Wait for all work to complete
+	if err := pool.Wait(); err != nil {
+		return nil, nil, err
+	}
 
-	// Collect results
+	// Collect valid results
 	summaries := []backend.StackSummary{}
-	var resultErr error
-	for result := range results {
-		if result.err != nil {
-			// Store the first error we encounter
-			if resultErr == nil {
-				resultErr = result.err
-			}
-			continue
+	for _, result := range results {
+		if result.ref != nil { // Skip entries where processing failed or stack disappeared
+			summaries = append(summaries, newDIYStackSummary(result.ref, result.chk))
 		}
-		summaries = append(summaries, newDIYStackSummary(result.ref, result.chk))
-	}
-
-	if resultErr != nil {
-		return nil, nil, resultErr
 	}
 
 	return summaries, nil, nil
