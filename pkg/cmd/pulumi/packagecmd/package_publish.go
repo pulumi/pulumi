@@ -194,28 +194,29 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to read readme file: %w", err)
 	}
 
-	var installDocsBytes *bytes.Buffer
+	publishInput := backend.PackagePublishOp{
+		Source:    args.source,
+		Publisher: publisher,
+		Name:      name,
+		Version:   version,
+		Schema:    bytes.NewReader(json),
+		Readme:    readmeBytes,
+	}
+
 	if args.installDocsPath != "" {
 		installDocs, err := os.Open(args.installDocsPath)
 		if err != nil {
 			return fmt.Errorf("failed to open install docs file: %w", err)
 		}
 		defer contract.IgnoreClose(installDocs)
-		installDocsBytes = bytes.NewBuffer(nil)
+		installDocsBytes := bytes.NewBuffer(nil)
 		if _, err := io.Copy(installDocsBytes, installDocs); err != nil {
 			return fmt.Errorf("failed to read install docs file: %w", err)
 		}
+		publishInput.InstallDocs = installDocsBytes
 	}
 
-	err = registry.Publish(ctx, backend.PackagePublishOp{
-		Source:      args.source,
-		Publisher:   publisher,
-		Name:        name,
-		Version:     version,
-		Schema:      bytes.NewReader(json),
-		Readme:      readmeBytes,
-		InstallDocs: installDocsBytes,
-	})
+	err = registry.Publish(ctx, publishInput)
 	if err != nil {
 		return fmt.Errorf("failed to publish package: %w", err)
 	}
