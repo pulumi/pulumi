@@ -548,6 +548,11 @@ func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	for t := range spec.Types {
 		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "types", t))
 	}
+
+	// When validating function type tokens, we'll add `pulumi` to the list of allowed package names in order to support
+	// defining methods *on provider resources themselves*. In these cases, we'll see tokens of the form
+	// `pulumi:providers:<package>/<method>`, which we want to treat as valid.
+	allowedPackageNames["pulumi"] = true
 	for t := range spec.Functions {
 		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "functions", t))
 	}

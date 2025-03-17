@@ -1,0 +1,6 @@
+name: l2-provider-call-explicit
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv
