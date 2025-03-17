@@ -5,12 +5,12 @@
         "build": "tsc"
     },
     "dependencies": {
-        "@pulumi/aws": "^3.7.0",
+        "@pulumi/aws": "^4.6.0",
         "@pulumi/pulumi": "^3.12"
     },
     "devDependencies": {
         "@types/node": "^18",
-        "typescript": "^3.7.0"
+        "typescript": "^4.6.0"
     },
     "pulumi": {
         "resource": true,

@@ -140,7 +140,7 @@
         "@pulumi/pulumi": "^3.12"
       },
       "devDependencies": {
-        "typescript": "^3.7.0"
+        "typescript": "^4.6.0"
       }
     },
     "python": {}
