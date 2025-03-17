@@ -418,7 +418,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 						importSet.Add(importPackage)
 					}
 				}
-				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, call.Args, g.Indent); ok {
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}

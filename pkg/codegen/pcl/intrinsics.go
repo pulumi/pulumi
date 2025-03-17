@@ -26,7 +26,7 @@ const (
 	IntrinsicConvert = "__convert"
 )
 
-func TypeContainsOutput(t model.Type) bool {
+func isOutput(t model.Type) bool {
 	switch t := t.(type) {
 	case *model.OutputType:
 		return true
@@ -50,7 +50,7 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 	exprs := make([]model.Expression, len(args)+1)
 	for i, a := range args {
 		exprs[i] = a
-		if isOutput := TypeContainsOutput(a.Type()); isOutput {
+		if isOutput := isOutput(a.Type()); isOutput {
 			returnsOutput = true
 		}
 		signature.Parameters[i] = model.Parameter{

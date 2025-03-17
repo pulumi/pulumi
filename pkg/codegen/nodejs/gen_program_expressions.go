@@ -587,7 +587,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
 	args := expr.Args
 	contract.Assertf(len(args) > 0, "expected at least one argument to try")
-	shouldUseOutputTry := pcl.TypeContainsOutput(expr.Signature.ReturnType)
+	_, shouldUseOutputTry := expr.Signature.ReturnType.(*model.OutputType)
 
 	functionName := "try_"
 	if shouldUseOutputTry {

@@ -42,7 +42,8 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 4, "expected 4 outputs")
+					assert.Len(l, outputs, 5, "expected 5 outputs")
+					AssertPropertyMapMember(l, outputs, "nonOutputTry", resource.NewStringProperty("a"))
 					AssertPropertyMapMember(l, outputs, "trySucceed", resource.NewStringProperty("str"))
 					AssertPropertyMapMember(l, outputs, "tryFallback1", resource.NewStringProperty("fallback"))
 					AssertPropertyMapMember(l, outputs, "tryFallback2", resource.NewStringProperty("fallback"))

@@ -1,5 +1,12 @@
 str = "str"
 
+aList = ["a", "b", "c"]
+
+# This should use the try function, not tryOutput.
+output "nonOutputTry" {
+  value = try(aList[0], "fallback")
+}
+
 # A dynamically typed value, whose field accesses will not be type errors (since the type is not known to the type
 # checker), but may fail dynamically, and can thus be used as test inputs to try.
 config "object" {}

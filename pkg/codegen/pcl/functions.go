@@ -437,12 +437,10 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				}
 
 				// Return a type that is a union of all argument types.
-				returnType := TryReturnTypeFromArgs(args)
+				returnType := returnTypeFromArgs(args)
 				// If this results in a union of a dynamic type and another type, we should just return output dynamic.
-				if TypeContainsDynamic(returnType) {
+				if typeContainsDynamic(returnType) {
 					returnType = model.NewOutputType(model.DynamicType)
-				} else if TypeContainsOutput(returnType) {
-					returnType = model.NewOutputType(returnType)
 				}
 
 				parameters := make([]model.Parameter, len(args))
@@ -483,7 +481,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				// but otherwise we can return a plain bool
 				var returnType model.Type
 				returnType = model.BoolType
-				if TypeContainsOutput(argType) || argType == model.DynamicType {
+				if isOutput(argType) || argType == model.DynamicType {
 					returnType = model.NewOutputType(returnType)
 				}
 
@@ -506,7 +504,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 	}
 }
 
-func TryReturnTypeFromArgs(args []model.Expression) model.Type {
+func returnTypeFromArgs(args []model.Expression) model.Type {
 	argTypes := make([]model.Type, len(args))
 	for i, arg := range args {
 		argTypes[i] = arg.Type()
@@ -515,14 +513,14 @@ func TryReturnTypeFromArgs(args []model.Expression) model.Type {
 	return returnType
 }
 
-func TypeContainsDynamic(t model.Type) bool {
+func typeContainsDynamic(t model.Type) bool {
 	if u, ok := t.(*model.UnionType); ok {
-		if slices.ContainsFunc(u.ElementTypes, TypeContainsDynamic) {
+		if slices.ContainsFunc(u.ElementTypes, typeContainsDynamic) {
 			return true
 		}
 	}
 	if o, ok := t.(*model.OutputType); ok {
-		return TypeContainsDynamic(o.ElementType)
+		return typeContainsDynamic(o.ElementType)
 	}
 	return t == model.DynamicType
 }

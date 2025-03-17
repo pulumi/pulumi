@@ -1,5 +1,29 @@
 import * as pulumi from "@pulumi/pulumi";
 
+function tryOutput_(
+    ...fns: Array<() => pulumi.Input<unknown>>
+): pulumi.Output<any> {
+    if (fns.length === 0) {
+	       throw new Error("try: all parameters failed");
+    }
+
+    const [fn, ...rest] = fns;
+    let resultOutput: pulumi.Output<any> | undefined;
+    try {
+        const result = fn();
+        if (result === undefined) {
+            return tryOutput_(...rest);
+        }
+        resultOutput = pulumi.output(result);
+    } catch {
+	       return tryOutput_(...rest);
+    }
+
+    // @ts-ignore
+	   return resultOutput;
+}
+
+
 function try_(
     ...fns: Array<() => unknown>
 ): any {
@@ -19,9 +43,20 @@ function try_(
 
 
 const str = "str";
+const aList = [
+    "a",
+    "b",
+    "c",
+];
+export const nonOutputTry = try_(
+    // @ts-ignore
+    () => aList[0],
+    // @ts-ignore
+    () => "fallback"
+);
 const config = new pulumi.Config();
 const object = config.requireObject("object");
-export const trySucceed = try_(
+export const trySucceed = tryOutput_(
     // @ts-ignore
     () => str,
     // @ts-ignore
@@ -29,13 +64,13 @@ export const trySucceed = try_(
     // @ts-ignore
     () => "fallback"
 );
-export const tryFallback1 = try_(
+export const tryFallback1 = tryOutput_(
     // @ts-ignore
     () => object.a,
     // @ts-ignore
     () => "fallback"
 );
-export const tryFallback2 = try_(
+export const tryFallback2 = tryOutput_(
     // @ts-ignore
     () => object.a,
     // @ts-ignore
@@ -43,7 +78,7 @@ export const tryFallback2 = try_(
     // @ts-ignore
     () => "fallback"
 );
-export const tryMultipleTypes = try_(
+export const tryMultipleTypes = tryOutput_(
     // @ts-ignore
     () => object.a,
     // @ts-ignore
