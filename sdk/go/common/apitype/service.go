@@ -33,6 +33,11 @@ const (
 
 	// Indicates that the service backend supports batch encryption.
 	BatchEncrypt APICapability = "batch-encrypt"
+
+	// Indicates whether the service supports a notion of providing an opinion on a
+	// default organization among the user's org memberships, if a default org has
+	// not been explicitly defined.
+	DefaultOrganization APICapability = "default-org"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -63,6 +68,11 @@ type Capabilities struct {
 
 	// Indicates whether the service supports batch encryption.
 	BatchEncryption bool
+
+	// Indicates whether the service supports a notion of providing an opinion on a
+	// default organization among the user's org memberships, if a default org has
+	// not been explicitly defined.
+	DefaultOrgs bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -86,6 +96,8 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 			}
 		case BatchEncrypt:
 			parsed.BatchEncryption = true
+		case DefaultOrganization:
+			parsed.DefaultOrgs = true
 		default:
 			continue
 		}
