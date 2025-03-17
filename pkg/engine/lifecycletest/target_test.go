@@ -133,7 +133,7 @@ func TestExcludeTarget(t *testing.T) {
 }
 
 // We should be able to create a simple `A > B > C > D` hierarchy and exclude
-// `B` with `TargetDependents`. This should exclude `C` and `D` as well.
+// `B` with `ExcludeDependents`. This should exclude `C` and `D` as well.
 func TestExcludeChildren(t *testing.T) {
 	t.Parallel()
 
