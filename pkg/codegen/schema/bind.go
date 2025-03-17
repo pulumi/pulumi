@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -512,8 +512,13 @@ const (
 	providerRef  = "provider"
 )
 
-// Validate an individual name token.
-func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
+// validateTypeToken validates an individual type token. It accepts a map which relates permitted package names to the
+// set of permitted module names within those packages. If a package name maps to nil, any module name is permitted.
+func (spec *PackageSpec) validateTypeToken(
+	allowedNameSpecs map[string][]string,
+	section string,
+	token string,
+) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 
 	path := memberPath(section, token)
@@ -524,12 +529,18 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 		// Early return because the other two error checks panic if len(parts) < 3
 		return diags
 	}
-	if !allowedPackageNames[parts[0]] {
+
+	modules, ok := allowedNameSpecs[parts[0]]
+	if !ok {
 		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
 		diags = diags.Append(err)
 	}
 	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
 		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
+		diags = diags.Append(err)
+	}
+	if modules != nil && !slices.Contains(modules, parts[1]) {
+		err := errorf(path, "invalid token '%s' (must have a module name in [%s])", token, strings.Join(modules, ", "))
 		diags = diags.Append(err)
 	}
 	return diags
@@ -538,18 +549,40 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	allowedPackageNames := map[string]bool{spec.Name: true}
+	allowedNameSpecs := map[string][]string{spec.Name: nil}
 	for _, prefix := range spec.AllowedPackageNames {
-		allowedPackageNames[prefix] = true
+		allowedNameSpecs[prefix] = nil
 	}
 	for t := range spec.Resources {
-		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "resources", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "resources", t))
 	}
 	for t := range spec.Types {
-		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "types", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "types", t))
 	}
+
+	// When validating function type tokens, we'll add `pulumi` to the list of allowed package names in order to support
+	// defining methods *on provider resources themselves*. In these cases, we'll see tokens of the form
+	// `pulumi:providers:<package>/<method>`, which we want to treat as valid. We need to be careful to ensure that if
+	// `pulumi` is already in the list of allowed packages that we do not break anything. Specifically:
+	//
+	// * If there is a mapping `pulumi`: nil (accept all module names), we'll leave it be, since this will already accept
+	//   the names we want to allow.
+	//
+	// * If there is a mapping `pulumi`: [module1, module2, ...], we'll add `providers` to the list of module names if
+	//   it's not in there already.
+	//
+	// * If there is no mapping for `pulumi`, we'll add one that only has `providers` in its list of module names.
+	pulumiMods, hasPulumi := allowedNameSpecs["pulumi"]
+	if hasPulumi {
+		if pulumiMods != nil && !slices.Contains(pulumiMods, "providers") {
+			allowedNameSpecs["pulumi"] = append(pulumiMods, "providers")
+		}
+	} else {
+		allowedNameSpecs["pulumi"] = []string{"providers"}
+	}
+
 	for t := range spec.Functions {
-		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "functions", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedNameSpecs, "functions", t))
 	}
 	return diags
 }

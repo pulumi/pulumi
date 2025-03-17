@@ -1081,13 +1081,61 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(
-		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+
+	// In order to allow method calls on *provider resources themselves*, we'll check if the token references a provider
+	// type (e.g. pulumi:providers:<package>/<method>). If it does, we need to use that provider resource *both* as the
+	// receiver of the method *and* the provider instance that handles the `Call` implementation itself. That is, we
+	// *don't* want to e.g. boot up a default provider instance and then call `Call` on it with a `__self__` referencing
+	// some explicit provider -- `__self__` and the handling instance must be the same. To this end, if we see a provider
+	// token type, we'll build a provider request and reference from the token and `__self__` arguments. If it doesn't,
+	// we'll proceed as normal, using the request's provider information to boot an instance.
+	var providerReq providers.ProviderRequest
+	var rawProviderRef string
+	var err error
+	if providers.IsProviderType(tokens.Type(tok)) {
+		parts := strings.Split(tok.Name().String(), "/")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid provider method token %v", tok)
+		}
+
+		packageName := tokens.Package(parts[0])
+		providerReq, err = parseProviderRequest(
+			packageName, req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+
+		self, ok := req.GetArgs().Fields["__self__"]
+		if !ok {
+			return nil, errors.New("missing __self__ argument for provider method call")
+		}
+
+		selfFields := self.GetStructValue().Fields
+		if selfFields == nil {
+			return nil, errors.New("missing __self__ argument properties for provider method call")
+		}
+
+		provURN, hasProvURN := self.GetStructValue().Fields["urn"]
+		if !hasProvURN {
+			return nil, errors.New("missing __self__.urn for provider method call")
+		}
+
+		provID, hasProvID := self.GetStructValue().Fields["id"]
+		if !hasProvID {
+			return nil, errors.New("missing __self__.id for provider method call")
+		}
+
+		rawProviderRef = fmt.Sprintf("%s::%s", provURN.GetStringValue(), provID.GetStringValue())
+	} else {
+		providerReq, err = parseProviderRequest(
+			tok.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+
+		rawProviderRef = req.GetProvider()
+	}
 	if err != nil {
 		return nil, err
 	}
 
+	// If we've got a package reference, this takes precedence over any provider request we'd compute.
 	packageRef := req.GetPackageRef()
 	if packageRef != "" {
 		var has bool
@@ -1097,7 +1145,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		}
 	}
 
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, rawProviderRef, tok)
 	if err != nil {
 		return nil, err
 	}
