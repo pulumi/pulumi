@@ -8,6 +8,11 @@ jobs:
     name: Lint NodeJS SDK
     runs-on: ubuntu-22.04
     steps:
+      - run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+
       - name: Check out the repository
         uses: actions/checkout@v4
 
