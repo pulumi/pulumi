@@ -2489,7 +2489,7 @@ func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
 		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
 
 	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "example-mypkg", "index.ts"))
+	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
 	require.NoError(t, err)
 }
 
