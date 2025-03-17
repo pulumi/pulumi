@@ -107,10 +107,10 @@ func TestExcludeTarget(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
 		return nil
@@ -118,8 +118,8 @@ func TestExcludeTarget(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC",
 	})
 
@@ -150,13 +150,13 @@ func TestExcludeChildren(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions { Parent: resC.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
 		assert.NoError(t, err)
 
 		return nil
@@ -164,9 +164,9 @@ func TestExcludeChildren(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 	opts.UpdateOptions.ExcludeDependents = true
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
 
@@ -198,17 +198,17 @@ func TestDestroyExcludeTarget(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestDestroyExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
@@ -231,7 +231,7 @@ func TestDestroyExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
 	})
 
@@ -261,20 +261,20 @@ func TestDestroyExcludeChildren(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions { Parent: resC.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
 		assert.NoError(t, err)
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
@@ -287,7 +287,7 @@ func TestDestroyExcludeChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
 	opts.UpdateOptions.ExcludeDependents = true
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 	})
 
@@ -317,14 +317,14 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
@@ -334,7 +334,7 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 	})
 
@@ -379,20 +379,20 @@ func TestRefreshExcludeTarget(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions { Parent: resC.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
 		assert.NoError(t, err)
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
@@ -406,8 +406,8 @@ func TestRefreshExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
-	opts = lt.TestUpdateOptions{ T: t, HostF: hostF }
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
 
@@ -416,7 +416,7 @@ func TestRefreshExcludeTarget(t *testing.T) {
 
 	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
-	
+
 	// Order isn't guaranteed because of parallelism, so we can't check that
 	// these are 1 + 2 + 3
 	assert.NotEqual(t, snap.Resources[1].Outputs["count"], null)
@@ -458,20 +458,20 @@ func TestRefreshExcludeChildren(t *testing.T) {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 
-		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions { Parent: resA.URN })
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions { Parent: resB.URN })
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions { Parent: resC.URN })
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
 		assert.NoError(t, err)
 
 		return nil
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
-	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
@@ -485,9 +485,9 @@ func TestRefreshExcludeChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
-	opts = lt.TestUpdateOptions{ T: t, HostF: hostF }
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
 	opts.UpdateOptions.ExcludeDependents = true
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN {
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
 

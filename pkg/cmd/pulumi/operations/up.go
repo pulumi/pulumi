@@ -211,7 +211,7 @@ func NewUpCmd() *cobra.Command {
 			DisableOutputValues:       env.DisableOutputValues.Value(),
 			ShowSecrets:               showSecrets,
 			Targets:                   deploy.NewUrnTargets(targetURNs),
-			Excludes:    							 deploy.NewUrnTargets(excludeURNs),
+			Excludes:                  deploy.NewUrnTargets(excludeURNs),
 			TargetDependents:          targetDependents,
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the

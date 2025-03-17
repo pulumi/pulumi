@@ -867,8 +867,7 @@ func TestStepGenerator(t *testing.T) {
 				},
 			}
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
-				UrnTargets{ literals: []resource.URN{"a"} },
-				UrnTargets {},
+				UrnTargets{literals: []resource.URN{"a"}},
 			)
 			assert.NoError(t, err)
 			assert.Empty(t, targets)

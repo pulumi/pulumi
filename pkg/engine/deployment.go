@@ -228,7 +228,7 @@ func newDeployment(
 		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
-		Excludes: 								 opts.Excludes,
+		Excludes:                  opts.Excludes,
 		TargetDependents:          opts.TargetDependents,
 		ExcludeDependents:         opts.ExcludeDependents,
 		UseLegacyDiff:             opts.UseLegacyDiff,

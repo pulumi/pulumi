@@ -292,7 +292,7 @@ func NewDestroyCmd() *cobra.Command {
 				Debug:                     debug,
 				Refresh:                   refreshOption,
 				Targets:                   deploy.NewUrnTargets(targetUrns),
-				Excludes: 								 deploy.NewUrnTargets(excludeUrns),
+				Excludes:                  deploy.NewUrnTargets(excludeUrns),
 				TargetDependents:          targetDependents,
 				ExcludeDependents:         excludeDependents,
 				UseLegacyDiff:             env.EnableLegacyDiff.Value(),

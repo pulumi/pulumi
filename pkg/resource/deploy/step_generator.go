@@ -109,7 +109,7 @@ type stepGenerator struct {
 // Check whether `res` is explicitly (via `targets`) or implicitly (via
 // `--target-dependents`) targeted for update.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
-  if sg.deployment.opts.Targets.Contains(res.URN) {
+	if sg.deployment.opts.Targets.Contains(res.URN) {
 		return true
 	} else if !sg.deployment.opts.TargetDependents {
 		return false
@@ -137,7 +137,7 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 // Check whether `res` is explicitly (via `excludes`) or implicitly (via
 // `--exclude-dependents`) excluded from the update.
 func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
-  if sg.deployment.opts.Excludes.Contains(res.URN) {
+	if sg.deployment.opts.Excludes.Contains(res.URN) {
 		return true
 	} else if !sg.deployment.opts.ExcludeDependents {
 		return false
@@ -1716,7 +1716,6 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		dels = filtered
 	}
 
-
 	deletingUnspecifiedTarget := false
 	for _, step := range dels {
 		urn := step.URN()
@@ -1877,7 +1876,9 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 			// We also want to mark the provider of every parent as forbidden from
 			// deletion, as the parents will now also be maintained.
 			provider, err := providers.ParseReference(current.Provider)
-			if err == nil { resourcesToKeep[provider.URN()] = true }
+			if err == nil {
+				resourcesToKeep[provider.URN()] = true
+			}
 
 			resourcesToKeep[next] = true
 			next = current.Parent
@@ -2593,7 +2594,7 @@ func newStepGenerator(deployment *Deployment, mode stepGeneratorMode, events cha
 		// We clone the targets passed as options because we will modify these sets as
 		// we compute the full sets (e.g. by expanding globs, or traversing
 		// dependents).
-		targetsActual: deployment.opts.Targets.Clone(),
+		targetsActual:  deployment.opts.Targets.Clone(),
 		excludesActual: deployment.opts.Excludes.Clone(),
 
 		events: events,
