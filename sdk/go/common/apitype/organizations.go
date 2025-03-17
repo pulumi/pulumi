@@ -17,10 +17,14 @@ package apitype
 // GetDefaultOrganizationResponse returns the backend's opinion of which organization
 // to default to for a given user, if a default organization has not been configured.
 type GetDefaultOrganizationResponse struct {
-	// Returns the Organization.GitHubLogin of the organization.
+	// Returns the organization name.
 	// Can be an empty string, if the user is a member of no organizations
-	OrganizationName string
+	GitHubLogin string
 
-	// Messages is a list of messages that should be displayed to the user.
+	// Messages is a list of messages that should be displayed to the user that contextualize
+	// the default org; for example: warning new users if their default org as returned by the
+	// service is on an expiring trial and not free tier, with possible recommendations
+	// on how to configure their default org locally.
+	// Can be possibly empty.
 	Messages []Message
 }
