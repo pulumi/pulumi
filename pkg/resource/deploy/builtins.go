@@ -355,8 +355,9 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	defer state.Lock.Unlock()
 
 	return resource.PropertyMap{
-		"urn":   urnInput,
-		"id":    resource.NewStringProperty(string(state.ID)),
-		"state": resource.NewObjectProperty(state.Outputs),
+		"urn":      urnInput,
+		"id":       resource.NewStringProperty(string(state.ID)),
+		"provider": resource.NewStringProperty(state.Provider),
+		"state":    resource.NewObjectProperty(state.Outputs),
 	}, nil
 }

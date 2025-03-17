@@ -342,7 +342,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			panic(err)
 		}
 
-		validMethod := makeValidIdentifier(method)
+		validMethod := PyName(method)
 		g.Fgenf(w, "%v.%s(", self, validMethod)
 
 		var args *model.ObjectConsExpression
