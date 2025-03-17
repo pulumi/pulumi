@@ -124,8 +124,8 @@ func init() {
 					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
 
 					remoteassValue, err := resource.NewURIAsset(
-						"https://raw.githubusercontent.com/pulumi/pulumi/master" +
-							"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
+						"https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c" +
+							"/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/test.txt",
 					)
 					require.NoError(l, err)
 
@@ -138,7 +138,7 @@ func init() {
 					bs, err := remoteassValue.Bytes()
 					require.NoError(l, err)
 					assert.Equal(l, "text", string(bs))
-					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", remoteassValue.Hash)
+					assert.Equal(l, "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed", remoteassValue.Hash)
 				},
 			},
 		},
