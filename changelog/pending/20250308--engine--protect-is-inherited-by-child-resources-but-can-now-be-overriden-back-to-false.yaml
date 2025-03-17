@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: engine
-  description: Protect is inherited by child resources, but can now be overriden back to false
+  description: Allow protect to be overridden back to false by child resources that inherit it
