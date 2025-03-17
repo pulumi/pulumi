@@ -38,6 +38,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+// We should be able to create a `A > B > C > D` hierarchy and target `B` with
+// `--target-dependents`. When we do, C should be targeted as a dependent, and
+// D should also be targeted as a transitive dependent.
 func TestRefreshTargetChildren(t *testing.T) {
 	t.Parallel()
 
