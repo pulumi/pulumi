@@ -497,13 +497,18 @@ func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
 		return fmt.Errorf("dotnet error: %w", err)
 	}
 
+	namespace := "Pulumi"
+	if pkg.Namespace != "" {
+		namespace = pkg.Namespace
+	}
+
 	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
 	fmt.Println()
 	fmt.Println("  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>")
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your .NET code with:")
 	fmt.Println()
-	fmt.Printf("  using Pulumi.%s;\n", csharpPackageName(pkg.Name))
+	fmt.Printf("  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(pkg.Name))
 	fmt.Println()
 	return nil
 }
