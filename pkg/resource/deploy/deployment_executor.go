@@ -592,7 +592,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		return err
 	}
 
-	// Do the same with excludes.
+	// Make sure all specified excludes refer to existing resources.
 	if err := ex.checkTargets(ex.deployment.opts.Excludes); err != nil {
 		return err
 	}
@@ -605,17 +605,37 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 
 	// We also keep track of dependents as we find them in order to exclude
 	// transitive dependents as well.
-	excludesActual := ex.deployment.opts.Excludes
+	if ex.deployment.opts.Excludes.IsConstrained() {
+		excludesActual := ex.deployment.opts.Excludes
 
-	for _, res := range prev.Resources {
-		// We need to check excludes _before_ targets as targeting everything is
-		// the default.
-		if ex.deployment.opts.Excludes.IsConstrained() {
+		for _, res := range prev.Resources {
+			// If the resource is known to be excluded, we can skip this step
+			// entirely at this point.
 			if excludesActual.Contains(res.URN) {
 				continue
 			}
 
-			if !ex.deployment.opts.ExcludeDependents {
+			knownToBeExcluded := false
+
+			// In the case of `--exclude-dependents`, we need to check through all
+			// the dependencies to see if they have already been marked as excluded.
+			// If so, this dependent is also to be excluded, and we add it to the
+			// list of known excludes to catch transitive excludes as well.
+			if ex.deployment.opts.ExcludeDependents {
+				_, allDeps := res.GetAllDependencies()
+
+				for _, dep := range allDeps {
+					if excludesActual.Contains(dep.URN) {
+						excludesActual.addLiteral(res.URN)
+
+						knownToBeExcluded = true
+						break
+					}
+				}
+			}
+
+			if !knownToBeExcluded {
+				// For each resource we're going to refresh we need to ensure we have a provider for it
 				err := ex.deployment.EnsureProvider(res.Provider)
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
@@ -624,32 +644,10 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				step := NewRefreshStep(ex.deployment, res)
 				steps = append(steps, step)
 				resourceToStep[res] = step
-			} else {
-				_, allDeps := res.GetAllDependencies()
-				found := false
-
-				for _, dep := range allDeps {
-					if excludesActual.Contains(dep.URN) {
-						excludesActual.addLiteral(res.URN)
-
-						found = true
-						break
-					}
-				}
-
-				if !found {
-					// For each resource we're going to refresh we need to ensure we have a provider for it
-					err := ex.deployment.EnsureProvider(res.Provider)
-					if err != nil {
-						return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
-					}
-
-					step := NewRefreshStep(ex.deployment, res)
-					steps = append(steps, step)
-					resourceToStep[res] = step
-				}
 			}
-		} else if ex.deployment.opts.Targets.Contains(res.URN) {
+		}
+	} else {
+		for _, res := range prev.Resources {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
 			if err != nil {

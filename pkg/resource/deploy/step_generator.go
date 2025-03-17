@@ -1040,12 +1040,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}, false, nil
 	}
 
-	// TODO
+	// Assuming we have some targets/excludes, we also need to consider
+	// dependents. To do this, we add dependents to `targetsActual` or
+	// `excludesActual`. Because we go through our resources in topological
+	// order, this means that, if a parent `P` of a dependency `D` is targeted or
+	// excluded, `P` will be added to the relevant list before we consider `D`.
 	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(new) {
 		sg.excludesActual.addLiteral(urn)
 	} else if isTargeted && sg.isTargetedForUpdate(new) {
-		// Transitive dependencies are not initially targeted, ensure that they are in the Targets so that the
-		// step_generator identifies that the URN is targeted if applicable
 		sg.targetsActual.addLiteral(urn)
 	}
 
@@ -1685,7 +1687,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	if targetsOpt.IsConstrained() {
 		allowedResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
 	} else if excludesOpt.IsConstrained() {
-		forbiddenResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromExcludes(excludesOpt)
+		forbiddenResourcesToDelete, err = sg.determineForbiddenResourcesToDeleteFromExcludes(excludesOpt)
 	}
 
 	if err != nil {
@@ -1782,39 +1784,6 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 	return targets
 }
 
-// // TODO
-// func (sg *stepGenerator) getTargetParents(targetsOpt UrnTargets) map[resource.URN]bool {
-// 	// Seed the list with the initial set of targets.
-// 	var frontier []*resource.State
-// 	for _, res := range sg.deployment.prev.Resources {
-// 		if targetsOpt.Contains(res.URN) {
-// 			frontier = append(frontier, res)
-// 		}
-// 	}
-// 
-// 	// Produce a dependency graph of resources.
-// 	dg := graph.NewDependencyGraph(sg.deployment.prev.Resources)
-// 
-// 	// Now accumulate a list of targets that are implicated because they depend upon the targets.
-// 	targets := make(map[resource.URN]bool)
-// 	for len(frontier) > 0 {
-// 		// Pop the next to explore, mark it, and skip any we've already seen.
-// 		next := frontier[0]
-// 		frontier = frontier[1:]
-// 		if _, has := targets[next.URN]; has {
-// 			continue
-// 		}
-// 		targets[next.URN] = true
-// 
-// 		// Compute the set of resources depending on this one, either implicitly, explicitly,
-// 		// or because it is a child resource. Add them to the frontier to keep exploring.
-// 		deps := dg.DependingOn(next, targets, true)
-// 		frontier = append(frontier, deps...)
-// 	}
-// 
-// 	return targets
-// }
-
 // determineAllowedResourcesToDeleteFromTargets computes the full (transitive) closure of resources
 // that need to be deleted to permit the full list of targetsOpt resources to be deleted. This list
 // will include the targetsOpt resources, but may contain more than just that, if there are dependent
@@ -1876,15 +1845,13 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	return resourcesToDelete, nil
 }
 
-// determineAllowedResourcesToDeleteFromExcludes computes the full (transitive) closure of resources
-// that need to be kept to permit the full list of excludesOpt resources to be ignored. This list
-// will include the excludesOpt resources, but may contain more than just that, if there are dependent
-// or child resources that require the targets to exist (and so are implicated in the deletion).
-func (sg *stepGenerator) determineAllowedResourcesToDeleteFromExcludes(
+// determineForbiddenResourcesToDeleteFromExcludes calculates the set of
+// resources that must _not_ be deleted in order to satisfy the `--excludes`
+// list.
+func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	excludesOpt UrnTargets,
 ) (map[resource.URN]bool, error) {
 	if !excludesOpt.IsConstrained() {
-		// no specific targets, so we won't filter down anything
 		return nil, nil
 	}
 
@@ -1895,23 +1862,25 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromExcludes(
 	resourcesToKeep := make(map[resource.URN]bool)
 
 	for _, target := range excludesOpt.literals {
-		var previous resource.URN
 		next := target
 
+		// We need to calculate the path from this target up to the root and mark
+		// everything en route as being "forbidden". To do this, we iteratively
+		// select the `.Parent` until we find a `nil`.
 		for {
 			current := sg.deployment.olds[next]
 
-			if current == nil || current.URN == previous {
+			if current == nil {
 				break
 			}
 
+			// We also want to mark the provider of every parent as forbidden from
+			// deletion, as the parents will now also be maintained.
+			provider, err := providers.ParseReference(current.Provider)
+			if err == nil { resourcesToKeep[provider.URN()] = true }
+
 			resourcesToKeep[next] = true
-
-			test, err := providers.ParseReference(current.Provider)
-			if err == nil { resourcesToKeep[test.URN()] = true }
-
-			previous = next
-			next     = current.URN
+			next = current.Parent
 		}
 	}
 
