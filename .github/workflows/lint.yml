@@ -8,6 +8,14 @@ jobs:
     name: Lint NodeJS SDK
     runs-on: ubuntu-22.04
     steps:
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - './github/workflows/lint.yml'
+              - './sdk/nodejs/**.ts'
+
       - run: |
           curl https://mise.run | sh
           echo "$HOME/.local/share/mise/bin"   >> $GITHUB_PATH
