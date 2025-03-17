@@ -2,5 +2,7 @@
     "name": "nodejs-component-provider",
     "description": "Node.js Sample Components",
     "version": "1.2.3",
-    "dependencies": {}
+    "dependencies": {
+        "@pulumi/random": "^4.18.0"
+    }
 }
