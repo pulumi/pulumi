@@ -14,7 +14,7 @@
 
 # Infrastructure as Code in any Programming Language
 
-<a href="https://www.pulumi.com/docs/iac/get-started/>
+<a href="https://www.pulumi.com/docs/iac/get-started/">
     <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
 </a>
 
