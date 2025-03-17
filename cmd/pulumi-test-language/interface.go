@@ -338,7 +338,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	})
 
 	// Start up a plugin context
-	pctx, err := plugin.NewContextWithContext(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil)
+	pctx, err := plugin.NewContextWithContext(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -480,7 +480,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithContext(
-		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil)
+		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
