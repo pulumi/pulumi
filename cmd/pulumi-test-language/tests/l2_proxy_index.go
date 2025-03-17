@@ -35,11 +35,10 @@ func init() {
 				) {
 					RequireStackResource(l, err, changes)
 
-					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+					assert.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 
-					outputs := stack.Outputs
+					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 
 					assert.Len(l, outputs, 4, "expected 4 outputs")
 					AssertPropertyMapMember(l, outputs, "bool", resource.NewBoolProperty(true))

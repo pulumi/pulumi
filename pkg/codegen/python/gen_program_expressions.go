@@ -231,6 +231,7 @@ var functionImports = map[string][]string{
 	"organization":     {"pulumi"},
 	"cwd":              {"os"},
 	"mimeType":         {"mimetypes"},
+	"try":              {"typing", "pulumi"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -509,9 +510,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "getOutput":
 		g.Fgenf(w, "%v.get_output(%v)", expr.Args[0], expr.Args[1])
 	case "try":
-		g.genTry(w, expr.Args)
+		g.genTry(w, expr)
 	case "can":
-		g.genCan(w, expr.Args)
+		g.genCan(w, expr)
 	case "rootDirectory":
 		g.genRootDirectory(w)
 	case "pulumiResourceName":
@@ -535,15 +536,37 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 //	    lambda: <arg2>,
 //	    ...
 //	)
-func (g *generator) genTry(w io.Writer, args []model.Expression) {
+func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
+	args := expr.Args
 	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+	_, shouldUseOutputTry := expr.Signature.ReturnType.(*model.OutputType)
 
-	g.Fprintf(w, "try_(")
-	for i, arg := range args {
-		g.Indented(func() {
-			g.Fgenf(w, "\n%slambda: %v", g.Indent, arg)
+	functionName := "try_"
+	if shouldUseOutputTry {
+		functionName = "tryOutput_"
+	}
+
+	// Lower all expressions first
+	lambdas := make([]string, 0, len(args))
+	for _, arg := range args {
+		x, temps := g.lowerExpression(arg, arg.Type())
+		g.genTemps(w, temps)
+
+		lambda := &strings.Builder{}
+		g.GenAnonymousFunctionExpression(lambda, &model.AnonymousFunctionExpression{
+			Signature:  model.StaticFunctionSignature{},
+			Parameters: []*model.Variable{},
+			Body:       x,
 		})
-		if i < len(args)-1 {
+		lambdas = append(lambdas, lambda.String())
+	}
+
+	g.Fprintf(w, "%s(", functionName)
+	for i, lambda := range lambdas {
+		g.Indented(func() {
+			g.Fgenf(w, "\n%s%s", g.Indent, lambda)
+		})
+		if i < len(lambdas)-1 {
 			g.Fgen(w, ",")
 		} else {
 			g.Fgen(w, "\n")
@@ -556,9 +579,21 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 // (which may fail) from happening until the `can_` utility function chooses. This results in an expression of the form:
 //
 //	can_(lambda: <arg>)
-func (g *generator) genCan(w io.Writer, args []model.Expression) {
+func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
+	args := expr.Args
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
-	g.Fgenf(w, "can_(lambda: %v)", args[0])
+	_, shouldUseOutputCan := expr.Signature.ReturnType.(*model.OutputType)
+
+	functionName := "can_"
+	if shouldUseOutputCan {
+		functionName = "canOutput_"
+	}
+
+	arg := args[0]
+	lambda, temps := g.lowerExpression(arg, arg.Type())
+	g.genTemps(w, temps)
+
+	g.Fgenf(w, "%s(lambda: %v)", functionName, lambda)
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
