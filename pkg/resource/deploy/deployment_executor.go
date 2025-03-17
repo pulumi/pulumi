@@ -602,6 +602,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
+
+	// We also keep track of dependents as we find them in order to exclude
+	// transitive dependents as well.
 	excludesActual := ex.deployment.opts.Excludes
 
 	for _, res := range prev.Resources {
@@ -613,7 +616,6 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 			}
 
 			if !ex.deployment.opts.ExcludeDependents {
-				// For each resource we're going to refresh we need to ensure we have a provider for it
 				err := ex.deployment.EnsureProvider(res.Provider)
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)

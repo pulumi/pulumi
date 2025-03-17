@@ -326,7 +326,7 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 	opts := lt.TestUpdateOptions{ T: t, HostF: hostF }
 
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 3)
@@ -338,7 +338,7 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 	})
 
-	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "0")
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 2)
