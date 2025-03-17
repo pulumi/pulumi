@@ -372,10 +372,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	})
 
 	// Get the parallel value from environment variable or use a default value
-	parallel := b.Env.GetInt(env.DIYBackendParallel)
-	if parallel <= 0 {
-		parallel = 10 // Default to 10 parallel operations if not specified
-	}
+	parallel := b.getParallel()
 
 	// We don't want to overload the system with too many concurrent upgrades.
 	pool := newWorkerPool(parallel, len(olds))
@@ -799,11 +796,8 @@ func (b *diyBackend) ListStacks(
 		return nil, nil, err
 	}
 
-	// Get the max parallel value from environment variable or use a default value
-	maxParallel := b.Env.GetInt(env.DIYBackendParallel)
-	if maxParallel <= 0 {
-		maxParallel = 10 // Default to 10 parallel operations if not specified
-	}
+	// Get the parallel value from environment variable or use a default value
+	parallel := b.getParallel()
 
 	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
 	// aren't persisted in the diy backend.
@@ -818,7 +812,7 @@ func (b *diyBackend) ListStacks(
 	}
 
 	// Create a worker pool to process stacks in parallel
-	pool := newWorkerPool(maxParallel, len(filteredStacks))
+	pool := newWorkerPool(parallel, len(filteredStacks))
 	defer pool.Close()
 	
 	// Create a slice to store results in the same order as filteredStacks
@@ -830,14 +824,24 @@ func (b *diyBackend) ListStacks(
 
 	// Enqueue work for each stack
 	for i, stackRef := range filteredStacks {
-		// No need to capture loop variables in Go 1.22+
+		i, stackRef := i, stackRef // https://golang.org/doc/faq#closures_and_goroutines
 		pool.Enqueue(func() error {
-			chk, err := b.getCheckpoint(ctx, stackRef)
+			// First check if the checkpoint exists
+			_, err := b.stackExists(ctx, stackRef)
 			if err != nil {
 				// If checkpoint not found, stack doesn't exist anymore, don't report an error
 				if errors.Is(err, errCheckpointNotFound) {
 					return nil
 				}
+				return err
+			}
+			
+			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
+			// instead of having to call stackExists separately.
+			
+			// Now get the checkpoint
+			chk, err := b.getCheckpoint(ctx, stackRef)
+			if err != nil {
 				return err
 			}
 			results[i] = checkpointResult{ref: stackRef, chk: chk}
@@ -1486,4 +1490,16 @@ func (b *diyBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.M
 	// The default secrets manager for stacks against a DIY backend is a
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)
+}
+
+// getParallel returns the number of parallel operations to use from the environment
+// or a default value if not specified.
+func (b *diyBackend) getParallel() int {
+	parallel := b.Env.GetInt(env.DIYBackendParallel)
+	if parallel <= 0 {
+		// Default to 10 parallel operations if not specified.
+		// This is just a sensible guess and hasn't been tuned for optimal performance.
+		parallel = 10
+	}
+	return parallel
 }
