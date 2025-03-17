@@ -1,0 +1,6 @@
+name: l2-provider-call
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv
