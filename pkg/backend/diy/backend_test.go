@@ -1757,7 +1757,7 @@ func TestParallelStackFetch(t *testing.T) {
 	for _, stack := range stacks {
 		stackNames[stack.Name().String()] = true
 	}
-	
+
 	for i := 0; i < numStacks; i++ {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
@@ -1806,7 +1806,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	for _, stack := range stacks {
 		stackNames[stack.Name().String()] = true
 	}
-	
+
 	for i := 0; i < numStacks; i++ {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)

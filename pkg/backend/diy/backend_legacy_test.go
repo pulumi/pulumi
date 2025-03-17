@@ -32,9 +32,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
 // This file contains copies of old backend tests
@@ -396,14 +397,14 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a custom environment with DIYBackendParallel set
-	s := make(env.MapStore)
+	s := make(declared.MapStore)
 	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
 
 	b, err := newDIYBackend(
 		ctx,
 		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
 		nil, // No project for legacy backend
-		&diyBackendOptions{Env: env.NewEnv(s)},
+		&diyBackendOptions{Env: declared.NewEnv(s)},
 	)
 	assert.NoError(t, err)
 
@@ -433,7 +434,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	for _, stack := range stacks {
 		stackNames[stack.Name().String()] = true
 	}
-	
+
 	for i := 0; i < numStacks; i++ {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
