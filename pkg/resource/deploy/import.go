@@ -406,24 +406,6 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 		}
 
-		// If the resource already exists and the ID matches the ID to import, then Same this resource. If the ID does
-		// not match, the step itself will issue an error.
-		if old, ok := i.deployment.olds[urn]; ok {
-			oldID := old.ID
-			if old.ImportID != "" {
-				oldID = old.ImportID
-			}
-			if oldID == imp.ID {
-				// Clear the ID because Same asserts that the new state has no ID.
-				new := old.Copy()
-				new.ID = ""
-				// Set a dummy goal so the resource is tracked as managed.
-				i.deployment.goals.Store(old.URN, &resource.Goal{})
-				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, new))
-				continue
-			}
-		}
-
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
 			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
