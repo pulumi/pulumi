@@ -67,7 +67,7 @@ func init() {
 							return true
 						}
 
-						return assert.Equal(l, want, got, "expected property %q to be %v", key, want)
+						return assert.Equal(l, want, got, "expected property %q to be %v, but was %v", key, want, got)
 					}
 
 					AssertPropertyMapMember(l, outputs, "outputCanSuccess",
