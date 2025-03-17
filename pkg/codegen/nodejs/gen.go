@@ -49,7 +49,7 @@ const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion   string = "^3.142.0"
 	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^14"
+	MinimumNodeTypesVersion  string = "^18"
 )
 
 type typeDetails struct {

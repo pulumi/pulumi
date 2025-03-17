@@ -212,11 +212,11 @@ func GenerateProject(
 	fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"devDependencies": {
-		"@types/node": "^14"
+		"@types/node": "%s"
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",
-		`, project.Name.String())
+		`, project.Name.String(), MinimumNodeTypesVersion)
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
 	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
