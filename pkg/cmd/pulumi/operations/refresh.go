@@ -71,6 +71,9 @@ func NewRefreshCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var targets *[]string
+	var targetDependents bool
+	var excludes *[]string
+	var excludeDependents bool
 
 	// Flags for handling pending creates
 	var skipPendingCreates bool
@@ -280,6 +283,9 @@ func NewRefreshCmd() *cobra.Command {
 			targetUrns := []string{}
 			targetUrns = append(targetUrns, *targets...)
 
+			excludeUrns := []string{}
+			excludeUrns = append(excludeUrns, *excludes...)
+
 			opts.Engine = engine.UpdateOptions{
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
@@ -290,6 +296,9 @@ func NewRefreshCmd() *cobra.Command {
 				DisableResourceReferences: env.DisableResourceReferences.Value(),
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Targets:                   deploy.NewUrnTargets(targetUrns),
+				Excludes:                  deploy.NewUrnTargets(excludeUrns),
+				TargetDependents:          targetDependents,
+				ExcludeDependents:         excludeDependents,
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
 			}
@@ -338,6 +347,11 @@ func NewRefreshCmd() *cobra.Command {
 	targets = cmd.PersistentFlags().StringArrayP(
 		"target", "t", []string{},
 		"Specify a single resource URN to refresh. Multiple resource can be specified using: --target urn1 --target urn2")
+	excludes = cmd.PersistentFlags().StringArrayP(
+		"exclude", "x", []string{},
+		"Specify a resource URN to ignore. These resources will not be refreshed."+
+			" Multiple resources can be specified using --exclude urn1 --exclude urn2."+
+			" Wildcards (*, **) are also supported")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
@@ -374,6 +388,12 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
+	cmd.PersistentFlags().BoolVar(
+		&targetDependents, "target-dependents", false,
+		"Allows updating of dependent targets discovered but not specified in --target list")
+	cmd.PersistentFlags().BoolVar(
+		&excludeDependents, "exclude-dependents", false,
+		"Allows ignoring of dependent targets discovered but not specified in --exclude list")
 
 	// Flags for pending creates
 	cmd.PersistentFlags().BoolVar(
