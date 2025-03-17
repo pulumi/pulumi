@@ -1,0 +1,20 @@
+name: Lint
+
+on:
+  pull_request:
+
+jobs:
+  node:
+    name: Lint NodeJS SDK
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: mise run install
+        working-directory: "./sdk/nodejs"
+
+      - name: Run Biome
+        run: mise run lint
+        working-directory: "./sdk/nodejs"

@@ -1,4 +1,4 @@
-name: Lint
+name: CI Lint
 
 permissions:
   contents: read
@@ -127,12 +127,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -152,9 +146,6 @@ jobs:
       - name: Ensure
         run: |
           make ensure
-      - name: Lint Node
-        run: |
-          cd sdk/nodejs && make lint
       - name: Lint Python
         run: |
           cd sdk/python && make lint

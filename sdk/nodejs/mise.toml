@@ -1,0 +1,17 @@
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
+
+[tools]
+"node" = "20"
+"npm:eslint" = "latest"
+"npm:pnpm" = "latest"
+"npm:typescript" = "latest"
+"npm:yarn" = "latest"
+
+[tasks.install]
+description = "Install dependencies"
+run = "yarn"
+
+[tasks.lint]
+description = "Formatting and linting"
+run = "biome ci"
