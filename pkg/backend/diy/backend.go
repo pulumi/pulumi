@@ -57,7 +57,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -375,6 +374,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	parallel := b.getParallel()
 
 	// We don't want to overload the system with too many concurrent upgrades.
+	// // We'll run a fixed pool of goroutines to upgrade stacks.
 	pool := newWorkerPool(parallel, len(olds))
 	defer pool.Close()
 
@@ -382,7 +382,6 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	// projects[i] is the project name for olds[i].
 	projects := make([]tokens.Name, len(olds))
 	for idx, old := range olds {
-		idx, old := idx, old // Need to capture since we're iterating through a range
 		pool.Enqueue(func() error {
 			project, err := b.guessProject(ctx, old)
 			if err != nil {
@@ -814,7 +813,7 @@ func (b *diyBackend) ListStacks(
 	// Create a worker pool to process stacks in parallel
 	pool := newWorkerPool(parallel, len(filteredStacks))
 	defer pool.Close()
-	
+
 	// Create a slice to store results in the same order as filteredStacks
 	type checkpointResult struct {
 		ref *diyBackendReference
@@ -826,22 +825,18 @@ func (b *diyBackend) ListStacks(
 	for i, stackRef := range filteredStacks {
 		i, stackRef := i, stackRef // https://golang.org/doc/faq#closures_and_goroutines
 		pool.Enqueue(func() error {
-			// First check if the checkpoint exists
-			_, err := b.stackExists(ctx, stackRef)
-			if err != nil {
-				// If checkpoint not found, stack doesn't exist anymore, don't report an error
-				if errors.Is(err, errCheckpointNotFound) {
-					return nil
-				}
-				return err
-			}
-			
 			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
 			// instead of having to call stackExists separately.
-			
-			// Now get the checkpoint
 			chk, err := b.getCheckpoint(ctx, stackRef)
 			if err != nil {
+				// First check if the checkpoint exists
+				_, existsErr := b.stackExists(ctx, stackRef)
+				if existsErr != nil {
+					// If checkpoint not found, stack doesn't exist anymore, don't report an error
+					if errors.Is(existsErr, errCheckpointNotFound) {
+						return nil
+					}
+				}
 				return err
 			}
 			results[i] = checkpointResult{ref: stackRef, chk: chk}
