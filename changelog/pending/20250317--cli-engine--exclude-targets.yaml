@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/engine
+  description: Targets can now be excluded with the `--exclude` flag. `--exclude-dependents` can also be used to exclude all children of an excluded target as well.
