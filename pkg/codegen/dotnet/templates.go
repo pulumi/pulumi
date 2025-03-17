@@ -163,7 +163,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     {{- end }}
 
     {{/* TargetFramework should be kept as low as possible, it does not need updating when we change LTS support */ -}}
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
