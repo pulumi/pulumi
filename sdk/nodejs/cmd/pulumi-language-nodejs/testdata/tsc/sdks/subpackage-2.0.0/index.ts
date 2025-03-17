@@ -10,6 +10,11 @@ export type HelloWorld = import("./helloWorld").HelloWorld;
 export const HelloWorld: typeof import("./helloWorld").HelloWorld = null as any;
 utilities.lazyLoad(exports, ["HelloWorld"], () => require("./helloWorld"));
 
+export { HelloWorldComponentArgs } from "./helloWorldComponent";
+export type HelloWorldComponent = import("./helloWorldComponent").HelloWorldComponent;
+export const HelloWorldComponent: typeof import("./helloWorldComponent").HelloWorldComponent = null as any;
+utilities.lazyLoad(exports, ["HelloWorldComponent"], () => require("./helloWorldComponent"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -22,6 +27,8 @@ const _module = {
         switch (type) {
             case "subpackage:index:HelloWorld":
                 return new HelloWorld(name, <any>undefined, { urn })
+            case "subpackage:index:HelloWorldComponent":
+                return new HelloWorldComponent(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
