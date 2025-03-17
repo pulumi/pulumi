@@ -1,8 +1,8 @@
 <{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=10ebef2e-d173-42f4-84e4-3c87492f7a8d]
+<{%fg 1%}>    [id=99c8680f-5614-4d45-a953-b8ddc11de060]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}><{%fg 1%}>- pkgA:m:typA: (delete)
-<{%fg 1%}>    [id=c2548a62-2d18-466e-b566-7a4f5d266d70]
+<{%fg 1%}>    [id=447c45f3-70a7-4de5-9bd7-77d6b2c31077]
 <{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 2 deleted<{%reset%}>
