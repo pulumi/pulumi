@@ -186,6 +186,7 @@ var expectedFailures = map[string]string{
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
 	"l2-provider-call":                    "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
+	"l2-provider-call-explicit":           "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
