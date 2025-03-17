@@ -5,9 +5,9 @@
 <{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_2_3]
 <{%reset%}><{%fg 2%}>    version   : <{%reset%}><{%fg 2%}>"1.2.3"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
-<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_2_3::c0b86813-8419-4621-b2bc-abda30898ad7]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
+<{%reset%}><{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_2_3::9418d5c0-6c6d-409b-a24c-7235a1015e08]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
     1 unchanged

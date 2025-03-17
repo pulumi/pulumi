@@ -1,13 +1,11 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pkgA:m:typA resC <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resB <{%fg 1%}>deleted<{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 1%}>- 2 deleted<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

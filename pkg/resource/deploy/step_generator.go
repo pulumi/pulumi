@@ -1040,10 +1040,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}, false, nil
 	}
 
-	// This looks odd that we have to recheck isTargetedForUpdate but it's to cover implicitly targeted
-	// resources like providers (where isTargeted is always true), but which might have been _explicitly_
-	// targeted due to being in the --targets list or being explicitly pulled in by --target-dependents.
-	if isTargeted && sg.isTargetedForUpdate(new) {
+	// TODO
+	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(new) {
+		sg.excludesActual.addLiteral(urn)
+	} else if isTargeted && sg.isTargetedForUpdate(new) {
 		// Transitive dependencies are not initially targeted, ensure that they are in the Targets so that the
 		// step_generator identifies that the URN is targeted if applicable
 		sg.targetsActual.addLiteral(urn)

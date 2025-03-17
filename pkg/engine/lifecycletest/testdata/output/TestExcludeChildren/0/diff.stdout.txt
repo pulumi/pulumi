@@ -6,8 +6,10 @@
 <{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC]
+<{%reset%}><{%reset%}>            <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>                [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resD]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
-    2 unchanged
+    3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
