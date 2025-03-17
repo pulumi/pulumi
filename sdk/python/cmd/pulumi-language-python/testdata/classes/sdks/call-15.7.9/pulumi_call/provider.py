@@ -92,3 +92,45 @@ class Provider(pulumi.ProviderResource):
     def value(self) -> pulumi.Output[builtins.str]:
         return pulumi.get(self, "value")
 
+    @pulumi.output_type
+    class IdentityResult:
+        def __init__(__self__, result=None):
+            if result and not isinstance(result, str):
+                raise TypeError("Expected argument 'result' to be a str")
+            pulumi.set(__self__, "result", result)
+
+        @property
+        @pulumi.getter
+        def result(self) -> builtins.str:
+            return pulumi.get(self, "result")
+
+    def identity(__self__) -> pulumi.Output['Provider.IdentityResult']:
+        """
+        The `identity` method of the `call` package's provider. Returns the provider's `value` configuration unaltered.
+        """
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        return pulumi.runtime.call('pulumi:providers:call/identity', __args__, res=__self__, typ=Provider.IdentityResult)
+
+    @pulumi.output_type
+    class PrefixedResult:
+        def __init__(__self__, result=None):
+            if result and not isinstance(result, str):
+                raise TypeError("Expected argument 'result' to be a str")
+            pulumi.set(__self__, "result", result)
+
+        @property
+        @pulumi.getter
+        def result(self) -> builtins.str:
+            return pulumi.get(self, "result")
+
+    def prefixed(__self__, *,
+                 prefix: pulumi.Input[builtins.str]) -> pulumi.Output['Provider.PrefixedResult']:
+        """
+        The `prefixed` method of the `call` package's provider. Accepts a string and returns the provider's `value` configuration prefixed with that string.
+        """
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        __args__['prefix'] = prefix
+        return pulumi.runtime.call('pulumi:providers:call/prefixed', __args__, res=__self__, typ=Provider.PrefixedResult)
+
