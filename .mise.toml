@@ -20,6 +20,5 @@ node = "20"
 "npm:yarn" = "latest"
 python = '3.11'
 uv = "latest"
-"go:github.com/mitranim/gow" = "latest"
 
 [plugins]
