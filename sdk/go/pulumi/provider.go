@@ -117,7 +117,8 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		if len(dependencies) > 0 {
 			ro.DependsOn = append(ro.DependsOn, resourceDependencySet(dependencies))
 		}
-		ro.Protect = req.GetProtect()
+		protect := req.GetProtect()
+		ro.Protect = &protect
 		ro.Providers = providers
 		ro.Parent = parent
 

@@ -20,7 +20,7 @@ require (
 	github.com/djherbis/times v1.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gofrs/uuid v4.2.0+incompatible
-	github.com/golang/glog v1.2.2
+	github.com/golang/glog v1.2.4
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-querystring v1.1.0
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317
@@ -38,7 +38,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.154.0
+	github.com/pulumi/pulumi/sdk/v3 v3.156.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/spf13/cobra v1.8.0
@@ -48,10 +48,10 @@ require (
 	github.com/zclconf/go-cty v1.13.2
 	gocloud.dev v0.37.0
 	gocloud.dev/secrets/hashivault v0.37.0
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/net v0.33.0
+	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/net v0.35.0
 	golang.org/x/oauth2 v0.22.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	google.golang.org/api v0.169.0
 	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7
 	google.golang.org/grpc v1.67.1
@@ -106,9 +106,9 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/mod v0.19.0
-	golang.org/x/sys v0.28.0
-	golang.org/x/term v0.27.0
-	golang.org/x/text v0.21.0
+	golang.org/x/sys v0.30.0
+	golang.org/x/term v0.29.0
+	golang.org/x/text v0.22.0
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/yaml.v2 v2.4.0
 	lukechampine.com/frand v1.4.2
@@ -171,7 +171,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.1 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect

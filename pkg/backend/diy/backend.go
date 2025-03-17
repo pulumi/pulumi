@@ -643,6 +643,10 @@ func (b *diyBackend) SupportsTags() bool {
 	return false
 }
 
+func (b *diyBackend) SupportsTemplates() bool {
+	return false
+}
+
 func (b *diyBackend) SupportsOrganizations() bool {
 	return false
 }
@@ -1044,10 +1048,6 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *diyBackend) Query(ctx context.Context, op backend.QueryOperation) error {
-	return b.query(ctx, op, nil /*events*/)
-}
-
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
 ) error {
@@ -1246,13 +1246,6 @@ func (b *diyBackend) apply(
 	return plan, changes, nil
 }
 
-// query executes a query program against the resource outputs of a diy hosted stack.
-func (b *diyBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event,
-) error {
-	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
-}
-
 func (b *diyBackend) GetHistory(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -1409,6 +1402,14 @@ func (b *diyBackend) GetStackDeploymentSettings(ctx context.Context,
 ) (*apitype.DeploymentSettings, error) {
 	// The local backend does not support managing deployments.
 	return nil, errors.New("stack deployments not supported with diy backends")
+}
+
+func (b *diyBackend) ListTemplates(context.Context, string) (apitype.ListOrgTemplatesResponse, error) {
+	return apitype.ListOrgTemplatesResponse{}, errors.New("list templates not supported with diy backends")
+}
+
+func (b *diyBackend) DownloadTemplate(context.Context, string, string) (backend.TarReaderCloser, error) {
+	return nil, errors.New("download template not supported with diy backends")
 }
 
 func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

@@ -1,6 +1,7 @@
 // Copyright 2025-2025, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
 
 export interface Nested {
     aNumber: number;
@@ -23,6 +24,7 @@ export class MyComponent extends pulumi.ComponentResource {
     anOptionalStringOutput?: pulumi.Output<string>;
     aBooleanOutput: pulumi.Output<boolean>;
     aComplexTypeOutput: pulumi.Output<Complex>;
+    aResourceOutput: pulumi.Output<random.RandomPet>;
 
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("nodejs-component-provider:index:MyComponent", name, args, opts);
@@ -33,11 +35,13 @@ export class MyComponent extends pulumi.ComponentResource {
             aNumber: ct.aNumber * 2,
             nestedComplexType: { aNumber: ct.nestedComplexType.aNumber * 2 }
         }));
+        this.aResourceOutput = pulumi.output(new random.RandomPet(name + "-pet"));
         this.registerOutputs({
             aNumberOutput: this.aNumberOutput,
             anOptionalStringOutput: this.anOptionalStringOutput,
             aBooleanOutput: this.aBooleanOutput,
             aComplexTypeOutput: this.aComplexTypeOutput,
+            aResourceOutput: this.aResourceOutput,
         });
     }
 }

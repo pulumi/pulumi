@@ -108,12 +108,12 @@ type Log3rdPartyDecryptionEvent struct {
 	CommandName string `json:"commandName,omitempty"`
 }
 
-// BatchDecryptRequest defines the request body for bulk decrypting secret values.
+// BatchDecryptRequest defines the request body for batch decrypting secret values.
 type BatchDecryptRequest struct {
 	Ciphertexts [][]byte `json:"ciphertexts"`
 }
 
-// BatchDecryptResponse defines the response body for bulk decrypted secret values. The key in
+// BatchDecryptResponse defines the response body for batch decrypted secret values. The key in
 // the map is the base64 encoding of the ciphertext.
 type BatchDecryptResponse struct {
 	Plaintexts map[string][]byte `json:"plaintexts"`
