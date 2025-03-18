@@ -42,3 +42,42 @@ jobs:
       - name: Run Biome
         run: mise run lint
         working-directory: "./sdk/nodejs"
+
+  node:
+    name: Lint Python SDK
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - './github/workflows/lint.yml'
+              - './sdk/python/**.py'
+
+      - run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin"   >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "MISE_CACHE=$(mise cache)"      >> $GITHUB_ENV
+          mise settings experimental=true
+
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Mise cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          key: sdk-python-cache-${{ runner.os }}
+          path: |
+            ~/.local/share/mise
+            ./sdk/python/.venv
+
+      - name: Install dependencies
+        run: mise run install
+        working-directory: "./sdk/python"
+
+      - name: Run Python linters
+        run: mise run lint
+        working-directory: "./sdk/python"

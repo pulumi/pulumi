@@ -118,18 +118,6 @@ jobs:
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: sdk/python/uv.lock
-      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ fromJson(inputs.version-set).python }}
-      - name: Install Python deps
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -146,9 +134,6 @@ jobs:
       - name: Ensure
         run: |
           make ensure
-      - name: Lint Python
-        run: |
-          cd sdk/python && make lint
 
   actionlint:
     name: Lint GHA

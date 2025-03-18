@@ -6,5 +6,5 @@ description = "Install dependencies"
 run = "yarn"
 
 [tasks.lint]
-description = "Formatting and linting"
+description = "Lint with Biome"
 run = "biome ci --formatter-enabled=false --linter-enabled=true"
