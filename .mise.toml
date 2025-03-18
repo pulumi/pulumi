@@ -21,5 +21,6 @@ node = "20"
 python = '3.11'
 uv = "latest"
 ruff = "latest"
+"pipx:mypy" = "latest"
 
 [plugins]
