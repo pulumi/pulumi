@@ -59,10 +59,15 @@ type Options struct {
 	ShowLinkToCopilot      bool                // true to display a 'explainFailure' link to Copilot.
 	ShowCopilotSummary     bool                // true to display a Copilot summary.
 	ShowSecrets            bool                // true to display secrets in the output.
+	Hooks                  []DisplayHook       // hooks to be called during display.
 	// Low level options
 	term                terminal.Terminal
 	DeterministicOutput bool // true to disable timing-based rendering
 	RenderOnDirty       bool // true to always render frames when marked dirty
+}
+
+type DisplayHook struct {
+	OnDiagnosticsDisplayed func(display *ProgressDisplay)
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {

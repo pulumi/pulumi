@@ -723,21 +723,26 @@ func (display *ProgressDisplay) printDiagnostics() {
 
 	// Print a link to Copilot to explain the failure.
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
-		if display.failed && !display.isPreview {
-			startTime := time.Now()
-			summary := display.GetDiagnosticsSummary(display.proj)
-			// TODO: clear accumulated lines
-			elapsedMs := time.Since(startTime).Milliseconds()
-			display.println("    " + colors.SpecCreateReplacement +
-				"--------------------------------------------------------------------------------")
-			summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
-			display.println("    " + colors.SpecCreateReplacement + summaryHeader)
-			display.println("")
-			// Summary itself provider the prefix for each line
-			display.println(colors.SpecCreateReplacement + summary)
-			display.println("")
-		}
+	// if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
+	// 	if display.failed && !display.isPreview {
+	// 		startTime := time.Now()
+	// 		summary := display.GetDiagnosticsSummary(display.proj)
+	// 		// TODO: clear accumulated lines
+	// 		elapsedMs := time.Since(startTime).Milliseconds()
+	// 		display.println("    " + colors.SpecCreateReplacement +
+	// 			"--------------------------------------------------------------------------------")
+	// 		summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
+	// 		display.println("    " + colors.SpecCreateReplacement + summaryHeader)
+	// 		display.println("")
+	// 		// Summary itself provider the prefix for each line
+	// 		display.println(colors.SpecCreateReplacement + summary)
+	// 		display.println("")
+	// 	}
+	// }
+
+	// call any "hooks" on the display process
+	for _, hook := range display.opts.Hooks {
+		hook.OnDiagnosticsDisplayed(display)
 	}
 
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
@@ -774,21 +779,21 @@ func extractOrgFromPermalink(permalink string) string {
 	return segments[0]
 }
 
-func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName) string {
-	// Guard against nil or empty accumulated lines
-	if len(display.accumulatedLines) == 0 {
-		return ""
-	}
+// func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName) string {
+// 	// Guard against nil or empty accumulated lines
+// 	if len(display.accumulatedLines) == 0 {
+// 		return ""
+// 	}
 
-	// Extract org from permalink for now as a hack
-	orgID := extractOrgFromPermalink(display.permalink)
-	if orgID == "" {
-		fmt.Fprintf(os.Stderr, "No org ID found in permalink: %s\n", display.permalink)
-		return ""
-	}
+// 	// Extract org from permalink for now as a hack
+// 	orgID := extractOrgFromPermalink(display.permalink)
+// 	if orgID == "" {
+// 		fmt.Fprintf(os.Stderr, "No org ID found in permalink: %s\n", display.permalink)
+// 		return ""
+// 	}
 
-	return summarize(orgID, display.accumulatedLines, "    ")
-}
+// 	return summarize(orgID, display.accumulatedLines, "    ")
+// }
 
 type policyPackSummary struct {
 	HasCloudPack      bool
