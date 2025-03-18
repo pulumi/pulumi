@@ -279,12 +279,18 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					valueType = args[0].Type()
 				}
 
+				returnType := valueType
+				// If the input type is not already an output then lift it to an output
+				if _, isOutput := valueType.(*model.OutputType); !isOutput {
+					returnType = model.NewOutputType(valueType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
 						Type: valueType,
 					}},
-					ReturnType: model.NewOutputType(valueType),
+					ReturnType: returnType,
 				}, nil
 			})),
 		"unsecret": model.NewFunction(model.GenericFunctionSignature(
