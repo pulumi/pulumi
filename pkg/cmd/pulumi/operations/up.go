@@ -121,6 +121,9 @@ func NewUpCmd() *cobra.Command {
 	var planFilePath string
 	var attachDebugger bool
 
+	// Flags for Copilot.
+	var suppressCopilotSummary bool
+
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
 		ctx context.Context,
@@ -599,9 +602,18 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
-			// Copilot summary will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
-			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_SUMMARY=%v", env.SuppressCopilotSummary.Value())
-			opts.Display.ShowCopilotSummary = !env.SuppressCopilotSummary.Value()
+			// Handle suppressCopilotSummary flag and environment variable
+			// If flag is explicitly set (via command line), use that value
+			// Otherwise fall back to environment variable, then default to false
+			suppressSummary := false
+			if cmd.Flags().Changed("suppress-copilot-summary") {
+				suppressSummary = suppressCopilotSummary
+			} else {
+				suppressSummary = env.SuppressCopilotSummary.Value()
+			}
+			logging.V(7).Infof("suppress-copilot-summary flag=%v, PULUMI_SUPPRESS_COPILOT_SUMMARY=%v, using value=%v",
+				suppressCopilotSummary, env.SuppressCopilotSummary.Value(), suppressSummary)
+			opts.Display.ShowCopilotSummary = !suppressSummary
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -751,6 +763,12 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
+
+	// Flags for Copilot.
+	cmd.PersistentFlags().BoolVar(
+		&suppressCopilotSummary, "suppress-copilot-summary", false,
+		"Suppress display of the Copilot summary in diagnostics "+
+			"(can also be set with PULUMI_SUPPRESS_COPILOT_SUMMARY environment variable)")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",

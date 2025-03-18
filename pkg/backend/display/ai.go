@@ -30,15 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var atlasBaseURLs = map[string]string{
-	"https://api.pulumi.com":          "https://app.pulumi.com",
-	"https://api.simon.pulumi-dev.io": "https://api.simon.pulumi-dev.io",
-
-	// FIXME(dev): Remove before merging
-	// Local instance logged into using `pulumi login https://api.simon-local.pulumi.local`
-	"https://api.simon-local.pulumi.local": "https://app.simon-local.pulumi.local",
-}
-
 const (
 	atlasAPIPath = "/api/ai/chat/preview"
 
@@ -99,7 +90,7 @@ func createAtlasRequest(content string, orgID string) apitype.AtlasUpdateSummary
 
 // getAtlasEndpoint returns the configured Atlas endpoint, allowing override via environment variable
 func getAtlasEndpoint(cloudURL string) string {
-	base := atlasBaseURLs[cloudURL]
+	base := cloudURL
 	if debugBase := os.Getenv(debugAtlasBaseVar); debugBase != "" {
 		base = debugBase
 	}
@@ -133,7 +124,7 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
 
-	req.Header.Set("X-Pulumi-Origin", "app.pulumi.com")
+	req.Header.Set("X-Pulumi-Origin", "api.pulumi.com")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "token "+token)
 
@@ -190,7 +181,7 @@ func addPrefixToLines(text, prefix string) string {
 }
 
 // summarize generates a summary of the update output
-func summarize(orgID string, lines []string, outputPrefix string) string {
+func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string) string {
 	if len(lines) == 0 {
 		return ""
 	}
