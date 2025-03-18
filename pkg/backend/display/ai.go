@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -29,7 +30,8 @@ import (
 )
 
 var atlasBaseURLs = map[string]string{
-	"https://api.pulumi.com": "https://app.pulumi.com",
+	"https://api.pulumi.com":          "https://app.pulumi.com",
+	"https://api.simon.pulumi-dev.io": "https://api.simon.pulumi-dev.io",
 
 	// FIXME(dev): Remove before merging
 	// Local instance logged into using `pulumi login https://api.simon-local.pulumi.local`
@@ -37,7 +39,7 @@ var atlasBaseURLs = map[string]string{
 }
 
 const (
-	atlasAPIPath = "/pulumi-ai/atlas/api/ai/chat/preview"
+	atlasAPIPath = "/api/ai/chat/preview"
 
 	// Environment variable to override the Atlas base URL for local development
 	debugAtlasBaseVar = "DEBUG_PULUMI_ATLAS_BASE"
@@ -186,9 +188,16 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	// Read the body first so we can use it for error reporting if needed
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response body: %w", err)
+	}
+	resp.Body.Close()
+
 	var atlasResp AtlasUpdateSummaryResponse
-	if err := json.NewDecoder(resp.Body).Decode(&atlasResp); err != nil {
-		return "", fmt.Errorf("parsing response: %w", err)
+	if err := json.Unmarshal(body, &atlasResp); err != nil {
+		return "", fmt.Errorf("got non-JSON response from Atlas: %s", body)
 	}
 
 	if atlasResp.Error != "" {
