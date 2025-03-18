@@ -15,9 +15,14 @@
 package codegen
 
 import (
+	"net/url"
+	"regexp"
+	"strings"
+
 	"github.com/pgavlin/goldmark/ast"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
@@ -99,4 +104,138 @@ func FilterExamples(description string, lang string) string {
 	parsed := schema.ParseDocs(source)
 	filterExamples(source, parsed, lang)
 	return schema.RenderDocsToString(source, parsed)
+}
+
+// Matches the format: <pulumi ref="..."/>, allowing for additional whitespace.
+var matchPulumiRef = regexp.MustCompile(`<pulumi\s+ref="([^"]*)"\s*\/>`)
+
+func InterpretPulumiRefs(description string, resolveRefToName func(ref DocRef) (string, bool)) string {
+	if description == "" {
+		return ""
+	}
+	return matchPulumiRef.ReplaceAllStringFunc(description, func(match string) string {
+		submatches := matchPulumiRef.FindStringSubmatch(match)
+		if len(submatches) > 1 {
+			ref := submatches[1]
+			docRef := parseDocRef(ref)
+			if name, ok := resolveRefToName(docRef); ok {
+				return name
+			}
+			// Fallback to a default of the property name or token display name
+			if docRef.Property != "" {
+				return docRef.Property
+			}
+			if docRef.Token != "" {
+				return docRef.Token.DisplayName()
+			}
+			return ref
+		}
+		return match
+	})
+}
+
+type DocRefType string
+
+const (
+	DocRefTypeUnknown                DocRefType = ""
+	DocRefTypeResource               DocRefType = "resource"
+	DocRefTypeFunction               DocRefType = "function"
+	DocRefTypeType                   DocRefType = "type"
+	DocRefTypeResourceProperty       DocRefType = "resourceProperty"
+	DocRefTypeResourceInputProperty  DocRefType = "resourceInputProperty"
+	DocRefTypeFunctionInputProperty  DocRefType = "functionInputProperty"
+	DocRefTypeFunctionOutputProperty DocRefType = "functionOutputProperty"
+	DocRefTypeTypeProperty           DocRefType = "typeProperty"
+)
+
+type DocRef struct {
+	// Original parsed ref
+	Ref string
+	// The type of the parsed ref
+	Type DocRefType
+	// The token of the resource, function, or type, or empty if not applicable.
+	Token tokens.Type
+	// The referenced property name, or empty if not applicable.
+	Property string
+}
+
+// Parses a doc reference string into a DocRef struct.
+// The supported formats of the ref is:
+//
+//	#/resources/{token}
+//	#/functions/{token}
+//	#/types/{token}
+//	#/resources/{token}/properties/{property}
+//	#/resources/{token}/inputProperties/{property}
+//	#/functions/{token}/inputProperties/{property}
+//	#/functions/{token}/outputProperties/{property}
+//	#/types/{token}/properties/{property}
+//
+// Note: Tokens containing a slash ("/") must be encoded as "%2F".
+func parseDocRef(ref string) DocRef {
+	docRefUnknown := DocRef{Ref: ref, Type: DocRefTypeUnknown}
+	parts := strings.Split(ref, "/")
+	if len(parts) < 3 || parts[0] != "#" {
+		return docRefUnknown
+	}
+	// Extract which top-level type the ref is referring to.
+	var topLevelType string
+	switch parts[1] {
+	case "resources", "functions", "types":
+		// Strip "s" from the end of the type.
+		topLevelType = parts[1][:len(parts[1])-1]
+	default:
+		return docRefUnknown
+	}
+	tokenString, err := url.PathUnescape(parts[2])
+	if err != nil || tokenString == "" {
+		return docRefUnknown
+	}
+	token, err := tokens.ParseTypeToken(tokenString)
+	if err != nil {
+		return docRefUnknown
+	}
+
+	if len(parts) == 3 {
+		return DocRef{Ref: ref, Type: DocRefType(topLevelType), Token: token}
+	}
+
+	if len(parts) != 5 {
+		return docRefUnknown
+	}
+
+	property, err := url.PathUnescape(parts[4])
+	if err != nil || property == "" {
+		return docRefUnknown
+	}
+
+	// Extract the property kind and name.
+	switch parts[3] {
+	case "properties":
+		switch topLevelType {
+		case "resource", "type":
+			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "Property"), Token: token, Property: property}
+		default:
+			// Properties isn't a valid ref
+			return docRefUnknown
+		}
+	case "inputProperties":
+		switch topLevelType {
+		case "resource", "function":
+			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "InputProperty"), Token: token, Property: property}
+		default:
+			// Properties isn't a valid ref
+			return docRefUnknown
+		}
+	case "outputProperties":
+		switch topLevelType {
+		case "function":
+			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "OutputProperty"), Token: token, Property: property}
+		default:
+			// Properties isn't a valid ref
+			return docRefUnknown
+		}
+	default:
+		return docRefUnknown
+	}
 }
