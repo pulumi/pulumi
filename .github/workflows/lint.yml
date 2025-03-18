@@ -75,7 +75,7 @@ jobs:
             ./sdk/python/.venv
 
       - name: Install dependencies
-        run: "uv pip -vvv install ."
+        run: mise run install
         working-directory: "./sdk/python"
 
       - name: Run Python linters
