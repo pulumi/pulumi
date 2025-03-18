@@ -37,7 +37,7 @@ const (
 	// Indicates whether the service supports a notion of providing an opinion on a
 	// default organization among the user's org memberships, if a default org has
 	// not been explicitly defined.
-	DefaultOrganization APICapability = "default-org"
+	DefaultOrg APICapability = "default-org"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -72,7 +72,7 @@ type Capabilities struct {
 	// Indicates whether the service supports a notion of providing an opinion on a
 	// default organization among the user's org memberships, if a default org has
 	// not been explicitly defined.
-	DefaultOrgs bool
+	DefaultOrg bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -96,8 +96,8 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 			}
 		case BatchEncrypt:
 			parsed.BatchEncryption = true
-		case DefaultOrganization:
-			parsed.DefaultOrgs = true
+		case DefaultOrg:
+			parsed.DefaultOrg = true
 		default:
 			continue
 		}
