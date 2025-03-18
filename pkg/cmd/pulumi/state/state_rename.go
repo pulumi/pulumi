@@ -27,7 +27,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -149,12 +148,10 @@ func stateReurnOperation(
 
 // stateRenameOperation renames a resource (or provider) and mutates/rewrites references to it in the snapshot.
 func stateRenameOperation(
-	urn resource.URN, newResourceName tokens.QName, opts display.Options, snap *deploy.Snapshot,
+	urn resource.URN, newResourceName string, opts display.Options, snap *deploy.Snapshot,
 ) error {
-	contract.Assertf(tokens.IsQName(string(newResourceName)),
-		"QName must be valid")
 	// update the URN with only the name part changed
-	newUrn := urn.Rename(string(newResourceName))
+	newUrn := urn.Rename(newResourceName)
 	return stateReurnOperation(urn, newUrn, opts, snap)
 }
 
@@ -187,7 +184,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			}
 
 			var urn resource.URN
-			var newResourceName tokens.QName
+			var newResourceName string
 			switch len(args) {
 			case 0: // We got neither the URN nor the name.
 				var snap *deploy.Snapshot
@@ -222,12 +219,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				if !urn.IsValid() {
 					return errors.New("The provided input URN is not valid")
 				}
-				rName := args[1]
-				if !tokens.IsQName(rName) {
-					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
-					return fmt.Errorf("invalid name %q: %s", rName, reason)
-				}
-				newResourceName = tokens.QName(rName)
+				newResourceName = args[1]
 			}
 
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.

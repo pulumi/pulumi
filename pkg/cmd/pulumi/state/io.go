@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -250,23 +249,15 @@ func getURNFromState(
 }
 
 // Ask the user for a resource name.
-func getNewResourceName() (tokens.QName, error) {
+func getNewResourceName() (string, error) {
 	var resourceName string
 	err := survey.AskOne(&survey.Input{
 		Message: "Choose a new resource name:",
-	}, &resourceName, ui.SurveyIcons(cmdutil.GetGlobalColorization()),
-		survey.WithValidator(func(ans interface{}) error {
-			if tokens.IsQName(ans.(string)) {
-				return nil
-			}
-			return errors.New("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
-		}))
+	}, &resourceName, ui.SurveyIcons(cmdutil.GetGlobalColorization()))
 	if err != nil {
 		return "", err
 	}
-	contract.Assertf(tokens.IsQName(resourceName),
-		"Survey validated that resourceName %q is a QName", resourceName)
-	return tokens.QName(resourceName), nil
+	return resourceName, nil
 }
 
 // Format a non-nil error that indicates some arguments are missing for a
