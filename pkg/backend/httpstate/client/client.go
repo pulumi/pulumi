@@ -144,10 +144,6 @@ func getStackPath(stack StackIdentifier, components ...string) string {
 	return path.Join(append([]string{prefix}, components...)...)
 }
 
-func getChatCompletionPath() string {
-	return "/api/ai/chat/preview"
-}
-
 // listPolicyGroupsPath returns the path for an API call to the Pulumi service to list the Policy Groups
 // in a Pulumi organization.
 func listPolicyGroupsPath(orgName string) string {
@@ -736,74 +732,6 @@ func (pc *Client) CreateUpdate(
 			RequiredPolicies:            updateResponse.RequiredPolicies,
 			IsCopilotIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
 		}, nil
-}
-
-func (pc *Client) ChatCompletion(ctx context.Context, orgID string, content string) (*apitype.AtlasUpdateSummaryResponse, error) {
-	// Create the request using the helper function
-	requestData := createAtlasRequest(content, orgID)
-	requestBody, err := json.Marshal(requestData)
-	if err != nil {
-		return nil, fmt.Errorf("preparing request: %w", err)
-	}
-
-	url, err := url.Parse(pc.apiURL + getChatCompletionPath())
-	if err != nil {
-		return nil, err
-	}
-	marshalledBody, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url.String(), bytes.NewReader(marshalledBody))
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
-	request.Header.Set("X-Pulumi-Origin", "app.pulumi.com")
-	request.Header.Set("Content-Type", "application/json")
-
-	res, err := pc.do(ctx, request)
-	if err != nil {
-		return nil, fmt.Errorf("making request: %w", err)
-	}
-
-	// Read the body first so we can use it for error reporting if needed
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response body: %w", err)
-	}
-	res.Body.Close()
-
-	var atlasResp apitype.AtlasUpdateSummaryResponse
-	if err := json.Unmarshal(body, &atlasResp); err != nil {
-		return nil, fmt.Errorf("got non-JSON response from Atlas: %s", body)
-	}
-
-	if atlasResp.Error != "" {
-		return nil, fmt.Errorf("atlas API error: %s\n%s", atlasResp.Error, atlasResp.Details)
-	}
-
-	return &atlasResp, nil
-}
-
-func createAtlasRequest(content string, orgID string) apitype.AtlasUpdateSummaryRequest {
-	return apitype.AtlasUpdateSummaryRequest{
-		Query: "FIXME in atlas, this is ignored, but still required by zod",
-		State: apitype.State{
-			Client: apitype.ClientState{
-				CloudContext: apitype.CloudContext{
-					OrgID: orgID,
-					URL:   "https://app.pulumi.com",
-				},
-			},
-		},
-		DirectSkillCall: apitype.DirectSkillCall{
-			Skill: "summarizeUpdate",
-			Params: apitype.SkillParams{
-				PulumiUpdateOutput: content,
-			},
-		},
-	}
 }
 
 // RenameStack renames the provided stack to have the new identifier.
