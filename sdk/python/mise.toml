@@ -1,3 +1,6 @@
+[env]
+_.python.venv = { path = ".venv" }
+
 [tasks.install]
 description = "Install dependencies"
 run = "pip -v install ."
