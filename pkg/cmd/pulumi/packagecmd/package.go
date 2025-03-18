@@ -32,8 +32,8 @@ Install and configure Pulumi packages and their plugins and SDKs.`,
 		newExtractSchemaCommand(),
 		newExtractMappingCommand(),
 		newGenSdkCommand(),
-		newPackagePublishCmd(),
-		newPackagePackCmd(),
+		newPackagePublishSdkCmd(),
+		newPackagePackSdkCmd(),
 		newPackageAddCmd(),
 	)
 	return cmd
