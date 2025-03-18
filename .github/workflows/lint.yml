@@ -43,7 +43,7 @@ jobs:
         run: mise run lint
         working-directory: "./sdk/nodejs"
 
-  node:
+  python:
     name: Lint Python SDK
     runs-on: ubuntu-22.04
     steps:
