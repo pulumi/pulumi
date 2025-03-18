@@ -83,3 +83,44 @@ jobs:
 
       - run: make lint
         working-directory: "./sdk/python"
+
+  go:
+    name: Lint Go SDK
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - './github/workflows/lint.yml'
+              - './sdk/go/**.go'
+              - './sdk/go/**/go.mod'
+
+      - run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin"   >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "MISE_CACHE=$(mise cache)"      >> $GITHUB_ENV
+          mise settings experimental=true
+
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Mise cache
+        uses: actions/cache@v4
+        with:
+          key: mise-cache-${{ runner.os }}
+          path: ~/.local/share/mise
+
+      - name: Go cache
+        uses: actions/cache@v4
+        with:
+          key: sdk-go-cache-${{ runner.os }}
+          path: ~/go/pkg/mod
+
+      - run: make ensure
+        working-directory: "./sdk/go"
+
+      - run: make lint
+        working-directory: "./sdk/go"
