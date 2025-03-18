@@ -1830,3 +1830,160 @@ config:
 	assert.Equal(t, 1, len(stack.Config), "Stack config now has three values")
 	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
 }
+
+func TestPackageValueSerialization(t *testing.T) {
+	t.Parallel()
+
+	t.Run("JSON", func(t *testing.T) {
+		t.Parallel()
+
+		// Test both simple string and complex object packages in the same Project
+		proj := &Project{
+			Name:    "test-project",
+			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Packages: map[string]packageValue{
+				"simple": {value: "github.com/example/simple-package"},
+				"complex": {value: PackageSpec{
+					Source:     "github.com/example/complex-package",
+					Version:    "1.0.0",
+					Parameters: []string{"arg1", "arg2"},
+				}},
+			},
+		}
+
+		// Serialize to JSON
+		bytes, err := json.Marshal(proj)
+		assert.NoError(t, err)
+
+		// Verify JSON contains the expected package formats
+		jsonStr := string(bytes)
+		assert.Contains(t, jsonStr, `"packages":`)
+		assert.Contains(t, jsonStr, `"simple":"github.com/example/simple-package"`)
+		assert.Contains(t, jsonStr,
+			`"complex":{"source":"github.com/example/complex-package","version":"1.0.0","parameters":["arg1","arg2"]}`)
+
+		// Deserialize back
+		var newProj Project
+		err = json.Unmarshal(bytes, &newProj)
+		assert.NoError(t, err)
+
+		// Verify packages were correctly deserialized
+		specs := newProj.GetPackageSpecs()
+		assert.Equal(t, 2, len(specs))
+
+		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
+		assert.Empty(t, specs["simple"].Version)
+		assert.Empty(t, specs["simple"].Parameters)
+
+		assert.Equal(t, "github.com/example/complex-package", specs["complex"].Source)
+		assert.Equal(t, "1.0.0", specs["complex"].Version)
+		assert.Equal(t, []string{"arg1", "arg2"}, specs["complex"].Parameters)
+	})
+
+	t.Run("YAML", func(t *testing.T) {
+		t.Parallel()
+
+		// Test both simple string and complex object packages in the same Project
+		proj := &Project{
+			Name:    "test-project",
+			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Packages: map[string]packageValue{
+				"simple": {value: "github.com/example/simple-package"},
+				"complex": {value: PackageSpec{
+					Source:     "github.com/example/complex-package",
+					Version:    "1.0.0",
+					Parameters: []string{"arg1", "arg2"},
+				}},
+			},
+		}
+
+		// Serialize to YAML
+		bytes, err := yaml.Marshal(proj)
+		assert.NoError(t, err)
+
+		// Verify YAML contains the expected package formats
+		yamlStr := string(bytes)
+		assert.Contains(t, yamlStr, "packages:")
+		assert.Contains(t, yamlStr, "simple: github.com/example/simple-package")
+		assert.Contains(t, yamlStr, "complex:")
+		assert.Contains(t, yamlStr, "source: github.com/example/complex-package")
+		assert.Contains(t, yamlStr, "version: 1.0.0")
+		assert.Contains(t, yamlStr, "parameters:")
+		assert.Contains(t, yamlStr, "- arg1")
+		assert.Contains(t, yamlStr, "- arg2")
+
+		// Deserialize back
+		var newProj Project
+		err = yaml.Unmarshal(bytes, &newProj)
+		assert.NoError(t, err)
+
+		// Verify packages were correctly deserialized
+		specs := newProj.GetPackageSpecs()
+		assert.Equal(t, 2, len(specs))
+
+		assert.Equal(t, "github.com/example/simple-package", specs["simple"].Source)
+		assert.Empty(t, specs["simple"].Version)
+		assert.Empty(t, specs["simple"].Parameters)
+
+		assert.Equal(t, "github.com/example/complex-package", specs["complex"].Source)
+		assert.Equal(t, "1.0.0", specs["complex"].Version)
+		assert.Equal(t, []string{"arg1", "arg2"}, specs["complex"].Parameters)
+	})
+
+	t.Run("Deserialization Edge Cases", func(t *testing.T) {
+		t.Parallel()
+
+		// Test invalid package value (should fail)
+		jsonData := `{"name":"test-project","runtime":"nodejs","packages":{"invalid":123}}`
+		var proj Project
+		err := json.Unmarshal([]byte(jsonData), &proj)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "package must be either a string or a package specification object")
+	})
+}
+
+func TestGetPackageSpecs(t *testing.T) {
+	t.Parallel()
+
+	// Test with nil packages
+	proj := &Project{
+		Name:     "test-project",
+		Runtime:  NewProjectRuntimeInfo("nodejs", nil),
+		Packages: nil,
+	}
+	specs := proj.GetPackageSpecs()
+	assert.Nil(t, specs)
+
+	// Test with empty packages
+	proj = &Project{
+		Name:     "test-project",
+		Runtime:  NewProjectRuntimeInfo("nodejs", nil),
+		Packages: map[string]packageValue{},
+	}
+	specs = proj.GetPackageSpecs()
+	assert.Empty(t, specs)
+
+	// Test with mixed packages
+	proj = &Project{
+		Name:    "test-project",
+		Runtime: NewProjectRuntimeInfo("nodejs", nil),
+		Packages: map[string]packageValue{
+			"str": {value: "github.com/example/string-package@0.1.2"},
+			"obj": {value: PackageSpec{
+				Source:     "github.com/example/object-package",
+				Version:    "1.2.3",
+				Parameters: []string{"--arg1", "--arg2"},
+			}},
+		},
+	}
+	specs = proj.GetPackageSpecs()
+	assert.Equal(t, 2, len(specs))
+
+	assert.Equal(t, "github.com/example/string-package", specs["str"].Source)
+	assert.Equal(t, "0.1.2", specs["str"].Version)
+	assert.Empty(t, specs["str"].Parameters)
+
+	assert.Equal(t, "github.com/example/object-package", specs["obj"].Source)
+	assert.Equal(t, "1.2.3", specs["obj"].Version)
+	assert.Equal(t, []string{"--arg1", "--arg2"}, specs["obj"].Parameters)
+}

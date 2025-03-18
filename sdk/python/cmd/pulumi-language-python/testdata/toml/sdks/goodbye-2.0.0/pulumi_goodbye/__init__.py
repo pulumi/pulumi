@@ -6,6 +6,7 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from .goodbye import *
+from .goodbye_component import *
 from .provider import *
 _utilities.register(
     resource_modules="""
@@ -15,7 +16,8 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_goodbye",
   "classes": {
-   "goodbye:index:Goodbye": "Goodbye"
+   "goodbye:index:Goodbye": "Goodbye",
+   "goodbye:index:GoodbyeComponent": "GoodbyeComponent"
   }
  }
 ]

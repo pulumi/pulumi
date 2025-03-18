@@ -864,7 +864,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	}
 
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
-	// remediatoins, and *then* we do analysis, since we want analyzers to run on the final resource states.
+	// remediations, and *then* we do analysis, since we want analyzers to run on the final resource states.
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
 	for _, remediate := range []bool{true, false} {
 		for _, analyzer := range analyzers {
@@ -880,6 +880,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 					AdditionalSecretOutputs: new.AdditionalSecretOutputs,
 					Aliases:                 new.GetAliases(),
 					CustomTimeouts:          new.CustomTimeouts,
+					Parent:                  new.Parent,
 				},
 			}
 			providerResource := sg.getProviderResource(new.URN, new.Provider)
@@ -2392,6 +2393,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
 					Aliases:                 v.GetAliases(),
 					CustomTimeouts:          v.CustomTimeouts,
+					Parent:                  v.Parent,
 				},
 			},
 			Parent:               v.Parent,

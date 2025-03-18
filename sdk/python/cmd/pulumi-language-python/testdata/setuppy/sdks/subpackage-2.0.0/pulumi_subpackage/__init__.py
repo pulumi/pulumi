@@ -6,6 +6,7 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from .hello_world import *
+from .hello_world_component import *
 from .provider import *
 _utilities.register(
     resource_modules="""
@@ -15,7 +16,8 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_subpackage",
   "classes": {
-   "subpackage:index:HelloWorld": "HelloWorld"
+   "subpackage:index:HelloWorld": "HelloWorld",
+   "subpackage:index:HelloWorldComponent": "HelloWorldComponent"
   }
  }
 ]

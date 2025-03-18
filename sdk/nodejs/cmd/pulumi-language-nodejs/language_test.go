@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -256,8 +257,8 @@ func TestLanguage(t *testing.T) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					t.Logf("stdout: %s", result.Stdout)
-					t.Logf("stderr: %s", result.Stderr)
+					ptesting.LogTruncated(t, "stdout: %s", result.Stdout)
+					ptesting.LogTruncated(t, "stderr: %s", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}
