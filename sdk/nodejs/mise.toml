@@ -4,7 +4,3 @@ _.path = ["{{config_root}}/node_modules/.bin"]
 [tasks.install]
 description = "Install dependencies"
 run = "yarn"
-
-[tasks.lint]
-description = "Lint with biome"
-run = "biome ci --formatter-enabled=false --linter-enabled=true"
