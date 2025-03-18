@@ -80,6 +80,9 @@ jobs:
           key: sdk-python-cache-${{ runner.os }}
           path: ./sdk/python/.venv
 
+      - name: Run `mise doctor` to make mise happy?
+        run: mise doctor
+
       - name: Install dependencies
         run: mise run install
         working-directory: "./sdk/python"
