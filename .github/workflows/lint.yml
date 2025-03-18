@@ -27,14 +27,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Mise cache
-        id: cache
         uses: actions/cache@v4
         with:
           key: mise-cache-${{ runner.os }}
           path: ~/.local/share/mise
 
       - name: Node cache
-        id: cache
         uses: actions/cache@v4
         with:
           key: sdk-nodejs-cache-${{ runner.os }}
@@ -44,7 +42,7 @@ jobs:
         run: mise run install
         working-directory: "./sdk/nodejs"
 
-      - name: Run Biome
+      - name: Run linters
         run: mise run lint
         working-directory: "./sdk/nodejs"
 
@@ -71,14 +69,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Mise cache
-        id: cache
         uses: actions/cache@v4
         with:
           key: mise-cache-${{ runner.os }}
           path: ~/.local/share/mise
 
       - name: UV cache
-        id: cache
         uses: actions/cache@v4
         with:
           key: sdk-python-cache-${{ runner.os }}
@@ -88,6 +84,6 @@ jobs:
         run: mise run install
         working-directory: "./sdk/python"
 
-      - name: Run Python linters
+      - name: Run linters
         run: mise run lint
         working-directory: "./sdk/python"
