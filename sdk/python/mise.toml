@@ -3,7 +3,7 @@ _.python.venv = { path = ".venv", create = true }
 
 [tasks.install]
 description = "Install dependencies"
-run = "uv pip -vvv install ."
+run = "pip -vvv install ."
 
 [tasks.lint]
 description = "Lint with ruff and mypy"
