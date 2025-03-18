@@ -1,0 +1,4 @@
+changes:
+- type: feature
+  scope: cli
+  description: Add `--exclude-target` and `--exclude-target-dependents` flags to the destroy command, allowing specific resources to be excluded from destruction. 
