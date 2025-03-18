@@ -1,6 +1,3 @@
-[env]
-_.python.venv = { path = ".venv", create = true }
-
 [tasks.install]
 description = "Install dependencies"
 run = "pip -vvv install ."
