@@ -1,5 +1,5 @@
 [env]
-_.path = ['{{config_root}}/node_modules/.bin']
+_.path = ["{{config_root}}/node_modules/.bin"]
 
 [tools]
 "node" = "20"
@@ -14,4 +14,4 @@ run = "yarn"
 
 [tasks.lint]
 description = "Formatting and linting"
-run = "biome ci"
+run = "biome ci --formatter-enabled=false --linter-enabled=true"

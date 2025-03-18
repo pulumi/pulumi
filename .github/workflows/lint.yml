@@ -30,9 +30,9 @@ jobs:
         id: cache
         uses: actions/cache@v4
         with:
-          key: nodejs-${{ runner.os }}
+          key: sdk-nodejs-cache-${{ runner.os }}
           path: |
-            ${{ env.MISE_CACHE }}
+            ~/.local/share/mise
             ./sdk/nodejs/node_modules
 
       - name: Install dependencies
