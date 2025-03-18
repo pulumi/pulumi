@@ -787,7 +787,7 @@ func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName) s
 		return ""
 	}
 
-	return summarize(orgID, display.accumulatedLines, "    ")
+	return summarizeErrorWithCopilot(orgID, display.accumulatedLines, "    ")
 }
 
 type policyPackSummary struct {
