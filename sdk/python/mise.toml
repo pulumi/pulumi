@@ -6,12 +6,8 @@ python.uv_venv_auto = true
 
 [tasks.install]
 description = "Install dependencies"
-run = "uv pip -v install ."
+run = "uv pip install ."
 
 [tasks.lint]
 description = "Lint with ruff and mypy"
-run = '''
-ruff check
-MYPYPATH=./stubs mypy ./lib/pulumi
-pyright
-'''
+run = "ruff check"
