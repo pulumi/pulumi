@@ -1,9 +1,12 @@
 [env]
-_.python.venv = { path = ".venv" }
+_.python.venv = { path = ".venv", create = true }
+
+[settings]
+python.uv_venv_auto = true
 
 [tasks.install]
 description = "Install dependencies"
-run = "pip -v install ."
+run = "uv pip -v install ."
 
 [tasks.lint]
 description = "Lint with ruff and mypy"
