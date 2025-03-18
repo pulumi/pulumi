@@ -29,8 +29,8 @@
                 "@pulumi/google-native": "^0.20.0"
             },
             "devDependencies": {
-                "typescript": "^3.7.0",
-                "@types/node": "ts3.7"
+                "typescript": "^4.6.0",
+                "@types/node": "^18"
             }
         },
         "go": {

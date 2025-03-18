@@ -149,6 +149,6 @@ language:
   nodejs:
     {
       "dependencies": { "@pulumi/pulumi": "^3.12" },
-      "devDependencies": { "typescript": "^3.7.0" },
+      "devDependencies": { "typescript": "^4.6.0" },
     }
   python: {}

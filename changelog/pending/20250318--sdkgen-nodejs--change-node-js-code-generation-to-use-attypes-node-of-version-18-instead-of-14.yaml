@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/nodejs
+  description: Change Node.js code generation to use @types/node of version 18 instead of 14
