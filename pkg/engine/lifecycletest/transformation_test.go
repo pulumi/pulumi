@@ -475,11 +475,12 @@ func TestRemoteTransformsOptions(t *testing.T) {
 				assert.Equal(t, []string{string(respA.URN)}, opts.DependsOn)
 				assert.Equal(t, []string{"foo"}, opts.IgnoreChanges)
 				assert.Equal(t, "http://server", opts.PluginDownloadUrl)
-				assert.Equal(t, false, opts.Protect)
+				assert.Nil(t, opts.Protect)
 				assert.Equal(t, []string{"foo"}, opts.ReplaceOnChanges)
 				assert.Equal(t, "2.0.0", opts.Version)
 
 				// Modify all the options
+				protect := true
 				opts = &pulumirpc.TransformResourceOptions{
 					AdditionalSecretOutputs: []string{"bar"},
 					Aliases: []*pulumirpc.Alias{
@@ -495,7 +496,7 @@ func TestRemoteTransformsOptions(t *testing.T) {
 					DependsOn:           []string{string(respC.URN)},
 					IgnoreChanges:       []string{"bar"},
 					PluginDownloadUrl:   "",
-					Protect:             true,
+					Protect:             &protect,
 					ReplaceOnChanges:    []string{"bar"},
 					Version:             "1.0.0",
 				}

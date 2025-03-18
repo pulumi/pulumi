@@ -485,6 +485,9 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			v.Set(reflect.Zero(v.Type()))
 		}
 	}
+	ptr := func(v bool) *bool {
+		return &v
+	}
 
 	tests := []struct {
 		desc   string
@@ -529,10 +532,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "protect",
 			give: ConstructOptions{
-				Protect: true,
+				Protect: ptr(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				Protect: true,
+				Protect: ptr(true),
 			},
 		},
 		{

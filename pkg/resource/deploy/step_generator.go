@@ -641,7 +641,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
-	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
+	var protectState bool
+	if goal.Protect != nil {
+		protectState = *goal.Protect
+	}
+	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)

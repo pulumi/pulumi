@@ -442,7 +442,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.DefaultName(), true, inputs, "", false, nil, "", nil, nil, nil,
+			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
 			nil, nil, nil, "", nil, nil, false, "", ""),
 		done: done,
 	}
@@ -1576,11 +1576,14 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith from parent.
+// Currently only inherits DeletedWith and Protect from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
 		goal.DeletedWith = parent.DeletedWith
+	}
+	if goal.Protect == nil {
+		goal.Protect = parent.Protect
 	}
 	return &goal
 }
@@ -1897,7 +1900,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	opts := &pulumirpc.TransformResourceOptions{
 		DependsOn:               req.GetDependencies(),
-		Protect:                 req.GetProtect(),
+		Protect:                 req.Protect,
 		IgnoreChanges:           req.GetIgnoreChanges(),
 		ReplaceOnChanges:        req.GetReplaceOnChanges(),
 		Version:                 req.GetVersion(),

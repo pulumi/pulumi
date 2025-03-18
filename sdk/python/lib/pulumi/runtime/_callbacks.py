@@ -300,7 +300,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if opts.plugin_download_url:
             ropts.plugin_download_url = opts.plugin_download_url
 
-        if opts.protect:
+        if opts.HasField("protect"):
             ropts.protect = opts.protect
 
         if opts.provider:
@@ -400,7 +400,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             result.deleted_with = cast(str, await opts.deleted_with.urn.future())
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
-        if opts.protect:
+        if opts.protect is not None:
             result.protect = opts.protect
         if opts.retain_on_delete:
             result.retain_on_delete = opts.retain_on_delete

@@ -231,7 +231,7 @@ export abstract class Resource {
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    private readonly __protect: boolean;
+    private readonly __protect?: boolean;
 
     /**
      * A collection of transformations to apply as part of resource
@@ -424,7 +424,6 @@ export abstract class Resource {
         this.__pulumiType = t;
 
         if (dependency) {
-            this.__protect = false;
             this.__providers = {};
             return;
         }
@@ -521,7 +520,7 @@ export abstract class Resource {
             }
         }
 
-        this.__protect = !!opts.protect;
+        this.__protect = opts.protect;
         this.__version = opts.version;
         this.__pluginDownloadURL = opts.pluginDownloadURL;
 
