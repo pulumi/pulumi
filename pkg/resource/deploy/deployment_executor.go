@@ -184,7 +184,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		mode = destroyMode
 	}
 	// As well as generating steps from events produced by the source, the step generator can also generate
-	// events in order to support concurrency during step generator (e.g. for parallel diffing). We thus pass
+	// events in order to support concurrency during step generation (e.g. for parallel diffing). We thus pass
 	// a channel that the step generator can write to in order to yield/resume at these points. We then pump
 	// these events back to the step gen in the main loop with program events.
 	stepGenEvents := make(chan SourceEvent)

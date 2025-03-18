@@ -1735,7 +1735,7 @@ func (s *DiffStep) Logical() bool           { return true }
 
 func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// DiffStep is a special step in that we're just using it as a way to get access to the parallel step
-	// workers. We don't actually want it to particapte in the rest of what normally happens for step
+	// workers. We don't actually want it to participate in the rest of what normally happens for step
 	// execution. As such we never actually return an error here, we just reject the completion source in an
 	// error case instead. The step generator will pick that error up and turn it into a stepgen error.
 

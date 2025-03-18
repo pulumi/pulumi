@@ -4435,11 +4435,11 @@ func TestParallelDiff(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Now run a preview, expect the diff to be done in parallel.
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// waitTimeout waits for the waitgroup for the specified max timeout.
 	// Returns true if waiting timed out.
@@ -4458,5 +4458,5 @@ func TestParallelDiff(t *testing.T) {
 	}
 
 	// Wait for the diff to complete, but don't wait forever
-	assert.False(t, waitTimeout(&wg, 10*time.Second))
+	assert.False(t, waitTimeout(&wg, 10*time.Second), "waiting for diff to complete timed out")
 }
