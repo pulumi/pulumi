@@ -117,6 +117,8 @@ func NewUpCmd() *cobra.Command {
 	var targetDependents bool
 	var planFilePath string
 	var attachDebugger bool
+	var excludeTargets []string
+	var excludeTargetDependents bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -209,6 +211,8 @@ func NewUpCmd() *cobra.Command {
 			ShowSecrets:               showSecrets,
 			Targets:                   deploy.NewUrnTargets(targetURNs),
 			TargetDependents:          targetDependents,
+			ExcludeTargets:            deploy.NewUrnTargets(excludeTargets),
+			ExcludeTargetDependents:   excludeTargetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
 			GeneratePlan:    true,
@@ -656,6 +660,15 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows updating of dependent targets discovered but not specified in --target list")
+
+	cmd.PersistentFlags().StringArrayVar(
+		&excludeTargets, "exclude-target", []string{},
+		"Specify a resource URN to exclude from update. Other resources will be updated."+
+			" Multiple resources can be specified using --exclude-target urn1 --exclude-target urn2."+
+			" Wildcards (*, **) are also supported")
+	cmd.PersistentFlags().BoolVar(
+		&excludeTargetDependents, "exclude-target-dependents", false,
+		"Prevents updating of dependent targets of resources specified in --exclude-target list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(

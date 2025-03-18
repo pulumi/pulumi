@@ -280,6 +280,8 @@ func NewPreviewCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var attachDebugger bool
+	var excludeTargets []string
+	var excludeTargetDependents bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -458,6 +460,8 @@ func NewPreviewCmd() *cobra.Command {
 					DisableOutputValues:       env.DisableOutputValues.Value(),
 					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
+					ExcludeTargets:            deploy.NewUrnTargets(excludeTargets),
+					ExcludeTargetDependents:   excludeTargetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
 					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
@@ -594,6 +598,13 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows updating of dependent targets discovered but not specified in --target list")
+	cmd.PersistentFlags().StringArrayVar(
+		&excludeTargets, "exclude-target", []string{},
+		"Specify a resource URN to exclude from update. Other resources will be updated."+
+			" Multiple resources can be specified using --exclude-target urn1 --exclude-target urn2")
+	cmd.PersistentFlags().BoolVar(
+		&excludeTargetDependents, "exclude-target-dependents", false,
+		"Prevents updating of dependent targets of resources specified in --exclude-target list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(

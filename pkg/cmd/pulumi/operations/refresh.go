@@ -77,6 +77,9 @@ func NewRefreshCmd() *cobra.Command {
 	var clearPendingCreates bool
 	var importPendingCreates *[]string
 
+	var excludeTargets []string
+	var excludeTargetDependents bool
+
 	use, cmdArgs := "refresh", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
 		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
@@ -281,6 +284,8 @@ func NewRefreshCmd() *cobra.Command {
 				DisableResourceReferences: env.DisableResourceReferences.Value(),
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Targets:                   deploy.NewUrnTargets(targetUrns),
+				ExcludeTargets:            deploy.NewUrnTargets(excludeTargets),
+				ExcludeTargetDependents:   excludeTargetDependents,
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
 			}
@@ -329,6 +334,14 @@ func NewRefreshCmd() *cobra.Command {
 	targets = cmd.PersistentFlags().StringArrayP(
 		"target", "t", []string{},
 		"Specify a single resource URN to refresh. Multiple resource can be specified using: --target urn1 --target urn2")
+
+	cmd.PersistentFlags().StringArrayVar(
+		&excludeTargets, "exclude-target", []string{},
+		"Specify a resource URN to exclude from refresh. Other resources will be refreshed."+
+			" Multiple resources can be specified using --exclude-target urn1 --exclude-target urn2")
+	cmd.PersistentFlags().BoolVar(
+		&excludeTargetDependents, "exclude-target-dependents", false,
+		"Prevents refreshing of dependent targets of resources specified in --exclude-target list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(

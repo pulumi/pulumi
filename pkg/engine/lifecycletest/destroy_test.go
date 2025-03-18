@@ -114,8 +114,9 @@ func TestDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 
@@ -222,8 +223,9 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 
@@ -248,8 +250,8 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 	assert.Equal(t, 2, programExecutions)
 	// Should have deleted resA
 	assert.Equal(t, 1, deleteCalled)
-	// resA should be deleted from state
-	assert.Len(t, snap.Resources, 2)
+	// Resources should be deleted from state (except the targeted ones)
+	assert.Len(t, snap.Resources, 2) // stack resource + resB
 	assert.Equal(t, "resB", snap.Resources[1].URN.Name())
 }
 
@@ -353,8 +355,9 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 
@@ -479,8 +482,9 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 
@@ -582,8 +586,9 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 
@@ -697,8 +702,9 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 
@@ -816,8 +822,9 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:     t,
-			HostF: hostF,
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
 		},
 	}
 

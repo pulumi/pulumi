@@ -77,6 +77,8 @@ func NewDestroyCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeProtected bool
 	var continueOnError bool
+	var excludeTargets []string
+	var excludeTargetDependents bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -281,6 +283,8 @@ func NewDestroyCmd() *cobra.Command {
 				Refresh:                   refreshOption,
 				Targets:                   deploy.NewUrnTargets(targetUrns),
 				TargetDependents:          targetDependents,
+				ExcludeTargets:            deploy.NewUrnTargets(excludeTargets),
+				ExcludeTargetDependents:   excludeTargetDependents,
 				UseLegacyDiff:             env.EnableLegacyDiff.Value(),
 				UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
 				DisableProviderPreview:    env.DisableProviderPreview.Value(),
@@ -357,6 +361,15 @@ func NewDestroyCmd() *cobra.Command {
 		"Allows destroying of dependent targets discovered but not specified in --target list")
 	cmd.PersistentFlags().BoolVar(&excludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
 		" Destroy all other resources.")
+
+	cmd.PersistentFlags().StringArrayVar(
+		&excludeTargets, "exclude-target", []string{},
+		"Specify a resource URN to exclude from destroy. Other resources will be destroyed."+
+			" Multiple resources can be specified using --exclude-target urn1 --exclude-target urn2."+
+			" Wildcards (*, **) are also supported")
+	cmd.PersistentFlags().BoolVar(
+		&excludeTargetDependents, "exclude-target-dependents", false,
+		"Prevents destroying of dependent targets of resources specified in --exclude-target list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(

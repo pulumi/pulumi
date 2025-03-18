@@ -149,6 +149,12 @@ type UpdateOptions struct {
 	// XXXTargets lists.
 	TargetDependents bool
 
+	// Specific resources to exclude during an update.
+	ExcludeTargets deploy.UrnTargets
+
+	// true if we're excluding dependent targets, even if not specified in the ExcludeTargets list.
+	ExcludeTargetDependents bool
+
 	// true if the engine should use legacy diffing behavior during an update.
 	UseLegacyDiff bool
 

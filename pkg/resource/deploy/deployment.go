@@ -74,6 +74,10 @@ type Options struct {
 	ReplaceTargets UrnTargets
 	// true if target dependents should be computed automatically.
 	TargetDependents bool
+	// if specified, exclude the specified resources from operations.
+	ExcludeTargets UrnTargets
+	// true if exclude target dependents should be computed automatically.
+	ExcludeTargetDependents bool
 	// whether or not to use legacy diffing behavior.
 	UseLegacyDiff bool
 	// true if the deployment should use legacy refresh diffing behavior and

@@ -101,31 +101,61 @@ type stepGenerator struct {
 }
 
 // isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
-// `--target-dependents`.
+// `--target-dependents` and `--exclude-target` with `--exclude-target-dependents`.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
-	if sg.deployment.opts.Targets.Contains(res.URN) {
-		return true
-	} else if !sg.deployment.opts.TargetDependents {
+	// First check if the resource is explicitly excluded
+	if sg.deployment.opts.ExcludeTargets.IsConstrained() && sg.deployment.opts.ExcludeTargets.Contains(res.URN) {
 		return false
 	}
 
-	ref, allDeps := res.GetAllDependencies()
-	if ref != "" {
-		proivderRef, err := providers.ParseReference(ref)
-		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		providerURN := proivderRef.URN()
-		if sg.targetsActual.Contains(providerURN) {
-			return true
+	// If we're using exclude-target-dependents, check if it's a dependent of an excluded resource
+	if sg.deployment.opts.ExcludeTargetDependents {
+		ref, allDeps := res.GetAllDependencies()
+		if ref != "" {
+			proivderRef, err := providers.ParseReference(ref)
+			contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
+			providerURN := proivderRef.URN()
+			if sg.deployment.opts.ExcludeTargets.Contains(providerURN) {
+				return false
+			}
+		}
+
+		for _, dep := range allDeps {
+			if sg.deployment.opts.ExcludeTargets.Contains(dep.URN) {
+				return false
+			}
 		}
 	}
 
-	for _, dep := range allDeps {
-		if sg.targetsActual.Contains(dep.URN) {
+	// If we have specific targets, the resource must be included in those targets
+	if sg.deployment.opts.Targets.IsConstrained() {
+		if sg.deployment.opts.Targets.Contains(res.URN) {
 			return true
+		} else if !sg.deployment.opts.TargetDependents {
+			return false
 		}
+
+		ref, allDeps := res.GetAllDependencies()
+		if ref != "" {
+			proivderRef, err := providers.ParseReference(ref)
+			contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
+			providerURN := proivderRef.URN()
+			if sg.targetsActual.Contains(providerURN) {
+				return true
+			}
+		}
+
+		for _, dep := range allDeps {
+			if sg.targetsActual.Contains(dep.URN) {
+				return true
+			}
+		}
+
+		return false
 	}
 
-	return false
+	// If there are no constraints from targets or excludes, include the resource
+	return true
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
