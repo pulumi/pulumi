@@ -318,9 +318,6 @@ func NewRefreshCmd() *cobra.Command {
 		},
 	}
 
-	// Currently, we can't mix `--target` and `--exclude`.
-	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
-
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
@@ -399,6 +396,9 @@ func NewRefreshCmd() *cobra.Command {
 	importPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

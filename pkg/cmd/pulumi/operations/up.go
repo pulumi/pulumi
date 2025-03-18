@@ -614,9 +614,6 @@ func NewUpCmd() *cobra.Command {
 		},
 	}
 
-	// Currently, we can't mix `--target` and `--exclude`.
-	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
-
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
@@ -672,6 +669,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&excludeDependents, "exclude-dependents", false,
 		"Allows ignoring of dependent targets discovered but not specified in --exclude list")
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(

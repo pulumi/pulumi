@@ -336,9 +336,6 @@ func NewDestroyCmd() *cobra.Command {
 		},
 	}
 
-	// Currently, we can't mix `--target` and `--exclude`.
-	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
-
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
@@ -360,11 +357,19 @@ func NewDestroyCmd() *cobra.Command {
 		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
 			" Multiple resources can be specified using: --target urn1 --target urn2."+
 			" Wildcards (*, **) are also supported")
+	excludes = cmd.PersistentFlags().StringArrayP(
+		"exclude", "x", []string{},
+		"Specify a resource URN to ignore. These resources will not be updated."+
+			" Multiple resources can be specified using --exclude urn1 --exclude urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")
 	cmd.PersistentFlags().BoolVar(&excludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
 		" Destroy all other resources.")
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
