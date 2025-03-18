@@ -155,7 +155,7 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 		namespace = "@" + pkg.Namespace
 	}
 	if modName == "" {
-		displayName += namespace + "/" + pkg.Name
+		displayName = fmt.Sprintf("%s/%s", namespace, pkg.Name)
 	} else {
 		displayName = fmt.Sprintf("%s/%s/%s", namespace, pkg.Name, strings.ToLower(modName))
 	}
