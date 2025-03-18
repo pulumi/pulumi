@@ -289,7 +289,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
-				err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
+				err := ex.performDeletes(ctx, ex.deployment.opts.Targets, ex.deployment.opts.Excludes)
 				if err != nil {
 					if !result.IsBail(err) {
 						logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
