@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add an envvar PULUMI_PARALLEL_DIFF to run diff calculations in parallel
