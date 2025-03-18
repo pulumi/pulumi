@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -44,51 +45,6 @@ const (
 	// Environment variable to override the Atlas base URL for local development
 	debugAtlasBaseVar = "DEBUG_PULUMI_ATLAS_BASE"
 )
-
-// Matching the TypeScript interface structure
-type SummarizeUpdate struct {
-	Summary string `json:"summary"`
-}
-
-type Message struct {
-	Role    string          `json:"role"`
-	Kind    string          `json:"kind"`
-	Content json.RawMessage `json:"content"`
-}
-
-type AtlasUpdateSummaryResponse struct {
-	Messages []Message `json:"messages"`
-	Error    string    `json:"error"`
-	Details  any       `json:"details"`
-}
-
-type CloudContext struct {
-	OrgID string `json:"orgId"`
-	URL   string `json:"url"`
-}
-
-type ClientState struct {
-	CloudContext CloudContext `json:"cloudContext"`
-}
-
-type State struct {
-	Client ClientState `json:"client"`
-}
-
-type SkillParams struct {
-	PulumiUpdateOutput string `json:"pulumiUpdateOutput"`
-}
-
-type DirectSkillCall struct {
-	Skill  string      `json:"skill"`
-	Params SkillParams `json:"params"`
-}
-
-type AtlasUpdateSummaryRequest struct {
-	Query           string          `json:"query"`
-	State           State           `json:"state"`
-	DirectSkillCall DirectSkillCall `json:"directSkillCall"`
-}
 
 func getCurrentCloudURL() (string, error) {
 	ws := pkgWorkspace.Instance
@@ -121,20 +77,20 @@ func getSummaryToken(cloudURL string) (string, error) {
 }
 
 // createAtlasRequest creates a new AtlasUpdateSummaryRequest with the given content and org ID
-func createAtlasRequest(content string, orgID string) AtlasUpdateSummaryRequest {
-	return AtlasUpdateSummaryRequest{
+func createAtlasRequest(content string, orgID string) apitype.AtlasUpdateSummaryRequest {
+	return apitype.AtlasUpdateSummaryRequest{
 		Query: "FIXME in atlas, this is ignored, but still required by zod",
-		State: State{
-			Client: ClientState{
-				CloudContext: CloudContext{
+		State: apitype.State{
+			Client: apitype.ClientState{
+				CloudContext: apitype.CloudContext{
 					OrgID: orgID,
 					URL:   "https://app.pulumi.com",
 				},
 			},
 		},
-		DirectSkillCall: DirectSkillCall{
+		DirectSkillCall: apitype.DirectSkillCall{
 			Skill: "summarizeUpdate",
-			Params: SkillParams{
+			Params: apitype.SkillParams{
 				PulumiUpdateOutput: content,
 			},
 		},
@@ -195,7 +151,7 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 	}
 	resp.Body.Close()
 
-	var atlasResp AtlasUpdateSummaryResponse
+	var atlasResp apitype.AtlasUpdateSummaryResponse
 	if err := json.Unmarshal(body, &atlasResp); err != nil {
 		return "", fmt.Errorf("got non-JSON response from Atlas: %s", body)
 	}
@@ -205,9 +161,9 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 	}
 
 	// Look for the first summarizeUpdate message
-	for _, msg := range atlasResp.Messages {
+	for _, msg := range atlasResp.ThreadMessages {
 		if msg.Kind == "summarizeUpdate" {
-			var content SummarizeUpdate
+			var content apitype.SummarizeUpdate
 			if err := json.Unmarshal(msg.Content, &content); err != nil {
 				return "", fmt.Errorf("parsing summary content: %w", err)
 			}
