@@ -35,6 +35,9 @@ const (
 
 	// Environment variable to override the Atlas base URL for local development
 	debugAtlasBaseVar = "DEBUG_PULUMI_ATLAS_BASE"
+
+	// Maximum number of characters to send to Atlas
+	maxAtlasContentLength = 4000
 )
 
 func getCurrentCloudURL() (string, error) {
@@ -98,7 +101,7 @@ func getAtlasEndpoint(cloudURL string) string {
 }
 
 // summarizeInternal handles the actual summarization logic and returns proper errors
-func summarizeInternal(lines []string, orgID string) (string, error) {
+func summarizeInternal(content string, orgID string) (string, error) {
 	cloudURL, err := getCurrentCloudURL()
 	if err != nil {
 		return "", fmt.Errorf("getting cloud URL: %w", err)
@@ -108,8 +111,6 @@ func summarizeInternal(lines []string, orgID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting authentication token: %w", err)
 	}
-
-	content := strings.Join(lines, "\n")
 
 	// Create the request using the helper function
 	request := createAtlasRequest(content, orgID)
@@ -186,7 +187,12 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 		return ""
 	}
 
-	summary, err := summarizeInternal(lines, orgID)
+	// Convert lines to a single string
+	linesStr := strings.Join(lines, "\n")
+
+	linesStr = TruncateWithMiddleOut(linesStr, maxAtlasContentLength)
+
+	summary, err := summarizeInternal(linesStr, orgID)
 	if err != nil {
 		// TODO: Use proper logging once we have it
 		fmt.Fprintf(os.Stderr, "Error generating summary: %v\n", err)
@@ -194,4 +200,27 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 	}
 
 	return addPrefixToLines(summary, outputPrefix)
+}
+
+const truncationNotice = "... (truncated) ..."
+
+// TruncateWithMiddleOut takes a string and a maximum character count,
+// and returns a new string with content truncated from the middle if the total
+// character count exceeds maxChars. This preserves both the beginning and end
+// of the content while removing content from the middle.
+func TruncateWithMiddleOut(content string, maxChars int) string {
+	// If content is shorter than max or max is too small, return as is
+	if len(content) <= maxChars || maxChars <= len(truncationNotice) {
+		return content
+	}
+
+	// Calculate how much text we can keep from start and end
+	// Subtract truncation notice length and divide remaining space for start/end
+	remaining := maxChars - len(truncationNotice)
+
+	startLen := (remaining + 1) / 2
+	endLen := remaining / 2
+
+	// Build truncated string with notice in middle
+	return content[:startLen] + truncationNotice + content[len(content)-endLen:]
 }
