@@ -246,7 +246,11 @@ func GenerateProject(
 			return err
 		}
 
-		packageName := "@pulumi/" + p.Name
+		namespace := "@pulumi"
+		if p.Namespace != "" {
+			namespace = "@" + p.Namespace
+		}
+		packageName := namespace + "/" + p.Name
 		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
 		if err != nil {
 			return err
@@ -383,7 +387,11 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			if pkg == PulumiToken {
 				continue
 			}
-			pkgName := "@pulumi/" + pkg
+			namespace := "@pulumi"
+			if n.Schema != nil && n.Schema.PackageReference != nil && n.Schema.PackageReference.Namespace() != "" {
+				namespace = "@" + n.Schema.PackageReference.Namespace()
+			}
+			pkgName := namespace + "/" + pkg
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				def, err := n.Schema.PackageReference.Definition()
 				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", n.Schema.Token)

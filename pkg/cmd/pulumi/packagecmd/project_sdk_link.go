@@ -201,6 +201,9 @@ func getNodeJSPkgName(pkg *schema.Package) string {
 		return info.PackageName
 	}
 
+	if pkg.Namespace != "" {
+		return "@" + pkg.Namespace + "/" + pkg.Name
+	}
 	return "@pulumi/" + pkg.Name
 }
 

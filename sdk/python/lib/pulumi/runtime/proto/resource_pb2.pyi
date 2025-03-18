@@ -439,7 +439,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         parent: builtins.str = ...,
         custom: builtins.bool = ...,
         object: google.protobuf.struct_pb2.Struct | None = ...,
-        protect: builtins.bool = ...,
+        protect: builtins.bool | None = ...,
         dependencies: collections.abc.Iterable[builtins.str] | None = ...,
         provider: builtins.str = ...,
         propertyDependencies: collections.abc.Mapping[builtins.str, global___RegisterResourceRequest.PropertyDependencies] | None = ...,
@@ -468,8 +468,9 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         supportsResultReporting: builtins.bool = ...,
         packageRef: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "customTimeouts", b"customTimeouts", "object", b"object", "protect", b"protect", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -832,7 +833,7 @@ class TransformResourceOptions(google.protobuf.message.Message):
         self,
         *,
         depends_on: collections.abc.Iterable[builtins.str] | None = ...,
-        protect: builtins.bool = ...,
+        protect: builtins.bool | None = ...,
         ignore_changes: collections.abc.Iterable[builtins.str] | None = ...,
         replace_on_changes: collections.abc.Iterable[builtins.str] | None = ...,
         version: builtins.str = ...,
@@ -847,9 +848,12 @@ class TransformResourceOptions(google.protobuf.message.Message):
         providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "protect", b"protect"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace"]) -> typing_extensions.Literal["delete_before_replace"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
 
 global___TransformResourceOptions = TransformResourceOptions
 
