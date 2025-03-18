@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Allow protect to be overridden back to false by child resources that inherit it
