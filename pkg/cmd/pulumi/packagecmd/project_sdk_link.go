@@ -196,6 +196,14 @@ func LinkPackage(
 	return nil
 }
 
+func getNodeJSPkgName(pkg *schema.Package) string {
+	if info, ok := pkg.Language["nodejs"].(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+		return info.PackageName
+	}
+
+	return "@pulumi/" + pkg.Name
+}
+
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
@@ -207,7 +215,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	if err != nil {
 		return err
 	}
-	packageSpecifier := fmt.Sprintf("@pulumi/%s@file:%s", pkg.Name, relOut)
+	packageSpecifier := fmt.Sprintf("%s@file:%s", getNodeJSPkgName(pkg), relOut)
 	var addCmd *exec.Cmd
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
@@ -242,12 +250,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 
 // printNodeJsImportInstructions prints instructions for importing the NodeJS SDK to the specified writer.
 func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map[string]interface{}) error {
-	var importName string
-	if info, ok := pkg.Language["nodejs"].(nodejs.NodePackageInfo); ok && info.PackageName != "" {
-		importName = info.PackageName
-	} else {
-		importName = cgstrings.Camel(pkg.Name)
-	}
+	importName := cgstrings.Camel(pkg.Name)
 
 	useTypescript := true
 	if typescript, ok := options["typescript"]; ok {
@@ -258,11 +261,11 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 	if useTypescript {
 		fmt.Fprintln(w, "You can then import the SDK in your TypeScript code with:")
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  import * as %s from \"@pulumi/%s\";\n", importName, pkg.Name)
+		fmt.Fprintf(w, "  import * as %s from \"%s\";\n", importName, getNodeJSPkgName(pkg))
 	} else {
 		fmt.Fprintln(w, "You can then import the SDK in your Javascript code with:")
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  const %s = require(\"@pulumi/%s\");\n", importName, pkg.Name)
+		fmt.Fprintf(w, "  const %s = require(\"%s\");\n", importName, getNodeJSPkgName(pkg))
 	}
 	fmt.Fprintln(w)
 	return nil
