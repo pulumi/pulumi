@@ -174,9 +174,13 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 			if err != nil {
 				return err
 			}
+			var protect bool
+			if g.Protect != nil {
+				protect = *g.Protect
+			}
 			s.Done(&RegisterResult{
 				State: resource.NewState(g.Type, resp.URN, g.Custom, false, resp.ID, g.Properties, resp.Outputs, g.Parent,
-					g.Protect, false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
+					protect, false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
 					"", false, "", nil, nil, "", nil),
 			})
 		}
@@ -290,16 +294,16 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgA", "providerA", nil, ""),
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
+			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", nil,
 				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		// Register a couple resources using provider A.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:index:typA", "res1", true, resource.PropertyMap{}, componentURN, false, nil,
+			goal: resource.NewGoal("pkgA:index:typA", "res1", true, resource.PropertyMap{}, componentURN, nil, nil,
 				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:index:typA", "res2", true, resource.PropertyMap{}, componentURN, false, nil,
+			goal: resource.NewGoal("pkgA:index:typA", "res2", true, resource.PropertyMap{}, componentURN, nil, nil,
 				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		// Register two more providers.
@@ -307,11 +311,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgC", "providerC", nil, componentURN),
 		// Register a few resources that use the new providers.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:index:typB", "res3", true, resource.PropertyMap{}, "", false, nil,
+			goal: resource.NewGoal("pkgB:index:typB", "res3", true, resource.PropertyMap{}, "", nil, nil,
 				providerBRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:index:typC", "res4", true, resource.PropertyMap{}, "", false, nil,
+			goal: resource.NewGoal("pkgB:index:typC", "res4", true, resource.PropertyMap{}, "", nil, nil,
 				providerCRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 	}
@@ -343,9 +347,13 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		if goal.Custom {
 			id = "id"
 		}
+		var protect bool
+		if goal.Protect != nil {
+			protect = *goal.Protect
+		}
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+				goal.Parent, protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
 				false, nil, nil, nil, "", false, "", nil, nil, "", nil),
 		})
 
@@ -379,25 +387,25 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
+			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", nil,
 				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res1", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+				componentURN, nil, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res2", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+				componentURN, nil, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", false,
+			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", nil,
 				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", false,
+			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", nil,
 				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
 		},
 	}
@@ -440,9 +448,13 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			assert.True(t, ok)
 		}
 
+		var protect bool
+		if goal.Protect != nil {
+			protect = *goal.Protect
+		}
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+				goal.Parent, protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
 				false, nil, nil, nil, "", false, "", nil, nil, "", nil),
 		})
 
@@ -625,9 +637,14 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			assert.False(t, ok)
 			providerSource.registerProvider(ref, noopProvider)
 
+			var protect bool
+			if goal.Protect != nil {
+				protect = *goal.Protect
+			}
+
 			e.Done(&RegisterResult{
 				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+					goal.Parent, protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
 					false, nil, nil, nil, "", false, "", nil, nil, "", nil),
 			})
 			registers++
@@ -939,10 +956,10 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 		{
 			desc: "Protect",
 			give: deploytest.ResourceOptions{
-				Protect: true,
+				Protect: &trueValue,
 			},
 			want: plugin.ConstructOptions{
-				Protect: true,
+				Protect: &trueValue,
 			},
 		},
 		{

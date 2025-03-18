@@ -1009,7 +1009,7 @@ def register_resource(
                 parent=resolver.parent_urn or "",
                 custom=custom,
                 object=resolver.serialized_props,
-                protect=opts.protect or False,
+                protect=opts.protect,
                 provider=resolver.provider_ref or "",
                 providers=resolver.provider_refs,
                 dependencies=resolver.dependencies,

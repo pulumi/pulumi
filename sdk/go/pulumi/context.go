@@ -388,7 +388,15 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
-			opts.Protect = rpcReq.Options.Protect
+
+			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
+			// optionality that the wire protocol can
+			var protect bool
+			if rpcReq.Options.Protect != nil {
+				protect = *rpcReq.Options.Protect
+			}
+			opts.Protect = protect
+
 			if rpcReq.Options.Provider != "" {
 				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
 			}
@@ -490,7 +498,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
-			rpcRes.Options.Protect = opts.Protect
+			rpcRes.Options.Protect = &opts.Protect
 
 			if opts.Provider != nil {
 				rpcRes.Options.Provider, err = ctx.resolveProviderReference(opts.Provider)
@@ -1526,11 +1534,6 @@ func (ctx *Context) registerResource(
 				logging.V(9).Infof("getResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
 			}
 		} else {
-			var protect bool
-			if inputs.protect != nil {
-				protect = *inputs.protect
-			}
-
 			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
 			resp, err = ctx.state.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 				Type:                    t,
@@ -1538,7 +1541,7 @@ func (ctx *Context) registerResource(
 				Parent:                  inputs.parent,
 				Object:                  inputs.rpcProps,
 				Custom:                  custom,
-				Protect:                 protect,
+				Protect:                 inputs.protect,
 				Dependencies:            inputs.deps,
 				Provider:                inputs.provider,
 				Providers:               inputs.providers,
