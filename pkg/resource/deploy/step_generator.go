@@ -1799,10 +1799,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	// DAG dependencies, as well as children (transitively).
 	targets := sg.getTargetDependents(targetsOpt)
 
-	if !targetsOpt.IsConstrained() {
-		logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
-	}
-
+	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
 	resourcesToDelete := make(map[resource.URN]bool)
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
@@ -1854,11 +1851,12 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 		return nil, nil
 	}
 
-	if !excludesOpt.IsConstrained() {
-		logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
-	}
-
+	logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
 	resourcesToKeep := make(map[resource.URN]bool)
+
+	if sg.deployment.opts.ExcludeDependents {
+		resourcesToKeep = sg.getTargetDependents(excludesOpt)
+	}
 
 	for _, target := range excludesOpt.literals {
 		next := target

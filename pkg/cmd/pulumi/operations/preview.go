@@ -605,10 +605,10 @@ func NewPreviewCmd() *cobra.Command {
 			" Shorthand for --target urn --replace urn.")
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
-		"Allows updating of dependent targets discovered but not specified in --target list")
+		"Allow updating of dependent targets discovered but not specified in --target list")
 	cmd.PersistentFlags().BoolVar(
 		&excludeDependents, "exclude-dependents", false,
-		"Allows ignoring of dependent targets discovered but not specified in --exclude list")
+		"Allow ignoring of dependent targets discovered but not specified in --exclude list")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(

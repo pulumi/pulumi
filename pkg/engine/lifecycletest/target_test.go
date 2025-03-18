@@ -217,6 +217,7 @@ func TestDestroyExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 
 	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
@@ -242,8 +243,8 @@ func TestDestroyExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
 }
 
-// We should be able to create a simple `A > B > C > D` hierarchy, destroy `B`,
-// and exclude both `C` as a dependent and `D` as a transitive dependent.
+// We should be able to create a simple `A > B > C > D` hierarchy, exclude `A`,
+// and with `--exclude-dependents` also exclude B, C, and D.
 func TestDestroyExcludeChildren(t *testing.T) {
 	t.Parallel()
 
@@ -264,10 +265,7 @@ func TestDestroyExcludeChildren(t *testing.T) {
 		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
 		assert.NoError(t, err)
 
-		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
-		assert.NoError(t, err)
-
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
 		assert.NoError(t, err)
 
 		return nil
@@ -279,12 +277,11 @@ func TestDestroyExcludeChildren(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	require.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
-	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
 	opts.UpdateOptions.ExcludeDependents = true
 	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
@@ -292,11 +289,13 @@ func TestDestroyExcludeChildren(t *testing.T) {
 	})
 
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
-
 	require.NoError(t, err)
-	require.Len(t, snap.Resources, 2)
+
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 }
 
 // If we're not deleting everything under a provider, we should implicitly
