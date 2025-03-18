@@ -605,7 +605,7 @@ func NewUpCmd() *cobra.Command {
 			// Handle suppressCopilotSummary flag and environment variable
 			// If flag is explicitly set (via command line), use that value
 			// Otherwise fall back to environment variable, then default to false
-			suppressSummary := false
+			var suppressSummary bool
 			if cmd.Flags().Changed("suppress-copilot-summary") {
 				suppressSummary = suppressCopilotSummary
 			} else {
