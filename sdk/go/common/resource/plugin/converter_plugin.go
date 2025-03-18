@@ -45,7 +45,8 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 	prefix := fmt.Sprintf("%v (converter)", name)
 
 	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(ctx.Diag, apitype.ConverterPlugin, name, version, ctx.Host.GetProjectPlugins())
+	path, err := workspace.GetPluginPath(
+		ctx.Diag, workspace.NewConverterPlugin(name, version), ctx.Host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}

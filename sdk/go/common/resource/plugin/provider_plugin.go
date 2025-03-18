@@ -159,20 +159,15 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
-	projectName tokens.PackageName,
-) (Provider, error) {
-	return NewProviderFromSubdir(host, ctx, pkg, "", version, options, disableProviderPreview, jsonConfig, projectName)
-}
-
-func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir string, version *semver.Version,
+func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
 	projectName tokens.PackageName,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
 	var handshakeRes *ProviderHandshakeResponse
+
+	pkg := tokens.Package(spec.Name)
 
 	attachPort, err := GetProviderAttachPort(pkg)
 	if err != nil {
@@ -212,9 +207,7 @@ func NewProviderFromSubdir(host Host, ctx *Context, pkg tokens.Package, subdir s
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPathWithSubdir(ctx.Diag,
-			apitype.ResourcePlugin, strings.ReplaceAll(string(pkg), tokens.QNameDelimiter, "_"), subdir,
-			version, host.GetProjectPlugins())
+		path, err := workspace.GetPluginPath(ctx.Diag, spec, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
 		}

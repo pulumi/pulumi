@@ -102,7 +102,7 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
 	for _, plugin := range plugins {
-		info, err := workspace.GetPluginInfo(d, plugin.Kind, plugin.Name, plugin.Version, ctx.Host.GetProjectPlugins())
+		info, err := workspace.GetPluginInfo(d, plugin, ctx.Host.GetProjectPlugins())
 		if err != nil {
 			contract.IgnoreError(err)
 		}

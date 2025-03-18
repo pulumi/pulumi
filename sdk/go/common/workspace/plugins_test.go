@@ -1413,10 +1413,11 @@ func TestMissingErrorText(t *testing.T) {
 
 	v1 := semver.MustParse("0.1.0")
 	tests := []struct {
-		Name           string
-		Plugin         PluginInfo
-		IncludeAmbient bool
-		ExpectedError  string
+		Name              string
+		Plugin            PluginInfo
+		IncludeAmbient    bool
+		PluginDownloadURL string
+		ExpectedError     string
 	}{
 		{
 			Name: "ResourceWithVersion",
@@ -1469,13 +1470,26 @@ func TestMissingErrorText(t *testing.T) {
 			IncludeAmbient: true,
 			ExpectedError:  "no language plugin 'pulumi-language-dotnet' found in the workspace or on your $PATH",
 		},
+		{
+			Name: "ResourceWithVersionAndDownloadURL",
+			Plugin: PluginInfo{
+				Name:    "myplugin",
+				Kind:    apitype.ResourcePlugin,
+				Version: &v1,
+			},
+			PluginDownloadURL: "https://example.com/myplugin",
+			IncludeAmbient:    true,
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v0.1.0 " +
+				"or on your $PATH from https://example.com/myplugin",
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
-			err := NewMissingError(tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.IncludeAmbient)
+			err := NewMissingError(
+				tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.PluginDownloadURL, tt.IncludeAmbient)
 			assert.EqualError(t, err, tt.ExpectedError)
 		})
 	}
@@ -1508,13 +1522,13 @@ func TestBundledPluginSearch(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
 	// Lookup the plugin with ambient search turned off
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-	path, err = GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err = GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 }
@@ -1537,7 +1551,7 @@ func TestAmbientPluginsWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.ResourcePlugin, "mock", nil, nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "mock", Kind: apitype.ResourcePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1577,7 +1591,7 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1614,7 +1628,7 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 
@@ -1655,7 +1669,7 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
 	require.NoError(t, err)
 	// We expect the ambient path to be returned, but not to warn because it resolves to the same file as the
 	// bundled path.
@@ -1688,7 +1702,7 @@ func TestPluginInfoShimless(t *testing.T) {
 		diag.FormatOptions{Color: "never"},
 	)
 
-	info, err := GetPluginInfo(d, apitype.ResourcePlugin, "mock", nil, []ProjectPlugin{
+	info, err := GetPluginInfo(d, PluginSpec{Kind: apitype.ResourcePlugin, Name: "mock"}, []ProjectPlugin{
 		{
 			Name: "mock",
 			Kind: apitype.ResourcePlugin,
@@ -1712,7 +1726,7 @@ func TestProjectPluginsWithUncleanPath(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
+	path, err := GetPluginPath(diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"}, []ProjectPlugin{
 		{
 			Name: "aws",
 			Kind: apitype.ResourcePlugin,
@@ -1735,7 +1749,7 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
+	path, err := GetPluginPath(diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"}, []ProjectPlugin{
 		{
 			Name: "aws",
 			Kind: apitype.ResourcePlugin,

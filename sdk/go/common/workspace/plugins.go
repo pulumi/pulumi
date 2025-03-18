@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -162,17 +163,22 @@ type MissingError struct {
 	name string
 	// Optional version of the plugin that couldn't be found.
 	version *semver.Version
+	// Optional plugin download url of the plugin that couldn't be found
+	pluginDownloadURL string
 	// includeAmbient is true if we search $PATH for this plugin
 	includeAmbient bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(kind apitype.PluginKind, name string, version *semver.Version, includeAmbient bool) error {
+func NewMissingError(
+	kind apitype.PluginKind, name string, version *semver.Version, pluginDownloadURL string, includeAmbient bool,
+) error {
 	return &MissingError{
-		kind:           kind,
-		name:           name,
-		version:        version,
-		includeAmbient: includeAmbient,
+		kind:              kind,
+		name:              name,
+		version:           version,
+		includeAmbient:    includeAmbient,
+		pluginDownloadURL: pluginDownloadURL,
 	}
 }
 
@@ -182,13 +188,18 @@ func (err *MissingError) Error() string {
 		includePath = " or on your $PATH"
 	}
 
-	if err.version != nil {
-		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s",
-			err.kind, err.name, err.version, includePath)
+	pluginDownloadURL := ""
+	if err.pluginDownloadURL != "" {
+		pluginDownloadURL = " from " + err.pluginDownloadURL
 	}
 
-	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s",
-		err.kind, err.name, includePath)
+	if err.version != nil {
+		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s%[5]s",
+			err.kind, err.name, err.version, includePath, pluginDownloadURL)
+	}
+
+	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s%[4]s",
+		err.kind, err.name, includePath, pluginDownloadURL)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -993,6 +1004,30 @@ type PluginSpec struct {
 
 	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
 	Checksums map[string][]byte
+}
+
+func NewAnalyzerPlugin(name tokens.QName, version *semver.Version) PluginSpec {
+	return PluginSpec{
+		Name:    strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
+		Kind:    apitype.AnalyzerPlugin,
+		Version: version,
+	}
+}
+
+func NewConverterPlugin(name string, version *semver.Version) PluginSpec {
+	return PluginSpec{
+		Name:    name,
+		Kind:    apitype.ConverterPlugin,
+		Version: version,
+	}
+}
+
+func NewLanguagePlugin(name string, version *semver.Version) PluginSpec {
+	return PluginSpec{
+		Name:    strings.ReplaceAll(name, tokens.QNameDelimiter, "_"),
+		Kind:    apitype.LanguagePlugin,
+		Version: version,
+	}
 }
 
 func NewPluginSpec(
@@ -2088,17 +2123,9 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
-	projectPlugins []ProjectPlugin,
+func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	return GetPluginPathWithSubdir(d, kind, name, "", version, projectPlugins)
-}
-
-func GetPluginPathWithSubdir(
-	d diag.Sink, kind apitype.PluginKind, name, subdir string, version *semver.Version,
-	projectPlugins []ProjectPlugin,
-) (string, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, subdir, version, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(d, spec, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2108,10 +2135,9 @@ func GetPluginPathWithSubdir(
 	return path, err
 }
 
-func GetPluginInfo(d diag.Sink, kind apitype.PluginKind, name string, version *semver.Version,
-	projectPlugins []ProjectPlugin,
+func GetPluginInfo(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(d, kind, name, "", version, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(d, spec, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -2144,10 +2170,10 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	d diag.Sink,
-	kind apitype.PluginKind, name, subdir string, version *semver.Version, skipMetadata bool,
+	spec PluginSpec, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
-	filename := (&PluginSpec{Kind: kind, Name: name}).File()
+	filename := spec.File()
 
 	for i, p1 := range projectPlugins {
 		for j, p2 := range projectPlugins {
@@ -2164,29 +2190,29 @@ func getPluginInfoAndPath(
 	}
 
 	for _, plugin := range projectPlugins {
-		if plugin.Kind != kind {
+		if plugin.Kind != spec.Kind {
 			continue
 		}
-		if plugin.Name != name {
+		if plugin.Name != spec.Name {
 			continue
 		}
-		if plugin.Version != nil && version != nil {
-			if !plugin.Version.Equals(*version) {
+		if plugin.Version != nil && spec.Version != nil {
+			if !plugin.Version.Equals(*spec.Version) {
 				logging.Warningf(
 					"Project plugin %s with version %s is incompatible with requested version %s.\n",
-					name, plugin.Version, version)
+					spec.Name, plugin.Version, spec.Version)
 				continue
 			}
 		}
 
-		spec, err := plugin.Spec()
+		localSpec, err := plugin.Spec()
 		if err != nil {
 			return nil, "", err
 		}
 		info := &PluginInfo{
-			Name:    spec.Name,
-			Kind:    spec.Kind,
-			Version: spec.Version,
+			Name:    localSpec.Name,
+			Kind:    localSpec.Kind,
+			Version: localSpec.Version,
 			Path:    filepath.Clean(plugin.Path),
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
@@ -2206,7 +2232,8 @@ func getPluginInfoAndPath(
 	if includeAmbient {
 		if path, err := exec.LookPath(filename); err == nil {
 			ambientPath = path
-			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
+			logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found on $PATH %s",
+				spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, path)
 		}
 	}
 
@@ -2218,7 +2245,7 @@ func getPluginInfoAndPath(
 	// plugins are not, or has simply set IGNORE_AMBIENT_PLUGINS. So, if possible, look next to the instance
 	// of `pulumi` that is running to find this bundled plugin.
 	var bundledPath string
-	if IsPluginBundled(kind, name) {
+	if IsPluginBundled(spec.Kind, spec.Name) {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
 			fullPath, fullErr := filepath.EvalSymlinks(exePath)
@@ -2229,8 +2256,8 @@ func getPluginInfoAndPath(
 					// on windows we just trust the fact that the .exe can actually be launched.
 					if stat, err := os.Stat(candidate); err == nil &&
 						(stat.Mode()&0o100 != 0 || runtime.GOOS == windowsGOOS) {
-						logging.V(6).Infof("GetPluginPath(%s, %s, %v): found next to current executable %s",
-							kind, name, version, candidate)
+						logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found next to current executable %s",
+							spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, candidate)
 						bundledPath = candidate
 						break
 					}
@@ -2264,8 +2291,8 @@ func getPluginInfoAndPath(
 	}
 	if pluginPath != "" {
 		info := &PluginInfo{
-			Kind: kind,
-			Name: name,
+			Kind: spec.Kind,
+			Name: spec.Name,
 			Path: filepath.Dir(pluginPath),
 		}
 		// computing plugin sizes can be very expensive (nested node_modules)
@@ -2291,19 +2318,23 @@ func getPluginInfoAndPath(
 
 	var match *PluginInfo
 	if !enableLegacyPluginBehavior &&
-		version != nil &&
-		isPreReleaseVersion(*version) {
+		spec.Version != nil &&
+		isPreReleaseVersion(*spec.Version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
-		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling prerelease plugin behaviour", kind, name, version)
-		match = SelectPrereleasePlugin(plugins, kind, name, subdir, version)
-	} else if !enableLegacyPluginBehavior && version != nil {
-		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
-		match = SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
+		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling prerelease plugin behaviour",
+			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+		match = SelectPrereleasePlugin(plugins, spec)
+	} else if !enableLegacyPluginBehavior && spec.Version != nil {
+		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling new plugin behavior",
+			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+		match = SelectCompatiblePlugin(plugins, spec.Kind, spec.Name, semver.MustParseRange(spec.Version.String()))
 	} else {
-		logging.V(6).Infof("GetPluginPath(%s, %s, %s): using legacy plugin behavior", kind, name, version)
-		match = LegacySelectCompatiblePlugin(plugins, kind, name, version)
+		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): using legacy plugin behavior",
+			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+		match = LegacySelectCompatiblePlugin(plugins, spec.Kind, spec.Name, spec.Version)
 	}
 
+	_, subdir := spec.LocalName()
 	// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
 	if subdir != "" && match != nil {
 		match.Path = filepath.Join(match.Path, subdir)
@@ -2311,11 +2342,12 @@ func getPluginInfoAndPath(
 
 	if match != nil {
 		matchPath := getPluginPath(match)
-		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
+		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
+			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
 		return match, matchPath, nil
 	}
 
-	return nil, "", NewMissingError(kind, name, version, includeAmbient)
+	return nil, "", NewMissingError(spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
@@ -2343,10 +2375,11 @@ func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // SelectPrereleasePlugin selects a plugin from the list of plugins, which matches the exact version we
 // are looking for, based on the commit hash.
 func SelectPrereleasePlugin(
-	plugins []PluginInfo, kind apitype.PluginKind, name, subdir string, version *semver.Version,
+	plugins []PluginInfo, spec PluginSpec,
 ) *PluginInfo {
+	name, _ := spec.LocalName()
 	for _, cur := range plugins {
-		if cur.Kind == kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*version) {
+		if cur.Kind == spec.Kind && cur.Name == name && cur.Version != nil && cur.Version.EQ(*spec.Version) {
 			return &cur
 		}
 	}

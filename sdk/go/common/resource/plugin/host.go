@@ -78,8 +78,8 @@ type Host interface {
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
 
-	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
-	ResolvePlugin(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+	// ResolvePlugin resolves a pluginspec to a candidate plugin to load.
+	ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
 
 	GetProjectPlugins() []workspace.ProjectPlugin
 
@@ -434,7 +434,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 
 func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
-		pkg, path := descriptor.LocalName()
+		pkg := descriptor.Name
 		version := descriptor.Version
 
 		// Try to load and bind to a plugin.
@@ -451,8 +451,8 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
 
-		plug, err := NewProviderFromSubdir(
-			host, host.ctx, tokens.Package(pkg), path, version,
+		plug, err := NewProvider(
+			host, host.ctx, descriptor.PluginSpec,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
@@ -578,10 +578,8 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	return result
 }
 
-func (host *defaultHost) ResolvePlugin(
-	kind apitype.PluginKind, name string, version *semver.Version,
-) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(host.ctx.Diag, kind, name, version, host.GetProjectPlugins())
+func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+	return workspace.GetPluginInfo(host.ctx.Diag, spec, host.GetProjectPlugins())
 }
 
 func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {

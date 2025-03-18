@@ -17,9 +17,7 @@ package plugin
 import (
 	"context"
 
-	"github.com/blang/semver"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,7 +35,7 @@ type MockHost struct {
 	CloseProviderF      func(provider Provider) error
 	LanguageRuntimeF    func(runtime string, info ProgramInfo) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginSpec, kinds Flags) error
-	ResolvePluginF      func(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+	ResolvePluginF      func(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
 	SignalCancellationF func() error
 	CloseF              func() error
@@ -115,10 +113,10 @@ func (m *MockHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) er
 }
 
 func (m *MockHost) ResolvePlugin(
-	kind apitype.PluginKind, name string, version *semver.Version,
+	spec workspace.PluginSpec,
 ) (*workspace.PluginInfo, error) {
 	if m.ResolvePluginF != nil {
-		return m.ResolvePluginF(kind, name, version)
+		return m.ResolvePluginF(spec)
 	}
 	return nil, errors.New("ResolvePlugin not implemented")
 }
