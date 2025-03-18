@@ -17,6 +17,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -159,7 +160,10 @@ func NewLoginCmd() *cobra.Command {
 					return err
 				}
 				if isCloudBackend {
-					cloudURL = checkHTTPCloudBackendURL(cloudURL)
+					cloudURL, err = checkHTTPCloudBackendURL(cloudURL)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
@@ -204,8 +208,18 @@ func NewLoginCmd() *cobra.Command {
 	return cmd
 }
 
+// validateCloudBackendType validates the cloud backend type.
+// It returns true if the cloud backend type is http or https.
+// It returns false if the cloud backend type is azblob, gs, s3, or file.
+// It returns an error if the cloud backend type is not supported.
 func validateCloudBackendType(typ string) (bool, error) {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	parseURL, err := url.Parse(typ)
+	if err != nil {
+		return false, fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
+			"azblob://, gs://, s3://, file://, https:// and http://)",
+			typ)
+	}
+	kind := parseURL.Scheme
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
@@ -220,11 +234,25 @@ func validateCloudBackendType(typ string) (bool, error) {
 		kind)
 }
 
-func checkHTTPCloudBackendURL(url string) string {
-	if strings.HasSuffix(strings.TrimSuffix(url, "/"), "app.pulumi.com") {
-		return "https://api.pulumi.com"
+// checkHTTPCloudBackendURL checks if the cloud backend URL is a valid HTTP cloud backend URL.
+// It returns the parsed URL if it is a valid HTTP cloud backend URL.
+// It returns an error if the cloud backend URL is not a valid HTTP cloud backend URL.
+func checkHTTPCloudBackendURL(backendURL string) (string, error) {
+	parsedBackendURL, err := url.Parse(backendURL)
+	if err != nil {
+		return "", fmt.Errorf("not a valid login url, please check the provided url %s", backendURL)
 	}
-	return url
+	parsedHost := parsedBackendURL.Host
+	if strings.HasPrefix(parsedHost, "pulumi.com") {
+		return "", fmt.Errorf("%s is not a valid self-hosted backend, "+
+			"use `pulumi login` without arguments to log into the Pulumi Cloud backend", backendURL)
+	}
+
+	if parsedHost == "app.pulumi.com" {
+		return "https://api.pulumi.com", nil
+	}
+
+	return backendURL, nil
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.

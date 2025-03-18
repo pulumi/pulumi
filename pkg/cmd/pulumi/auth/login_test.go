@@ -15,6 +15,7 @@
 package auth
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -26,8 +27,8 @@ func TestCheckHTTPCloudBackendUrlWithAppPulumi(t *testing.T) {
 	t.Parallel()
 
 	cloudURL := "https://app.pulumi.com"
-	want := "https://api.pulumi.com"
-	url := checkHTTPCloudBackendURL(cloudURL)
+	_, err := checkHTTPCloudBackendURL(cloudURL)
 
-	require.Equal(t, want, url)
+	require.Error(t, fmt.Errorf("%s is not a valid self-hosted backend, "+
+		"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL), err)
 }
