@@ -17,6 +17,7 @@ package diy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -31,8 +32,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
 // This file contains copies of old backend tests
@@ -384,4 +387,56 @@ func markLegacyStore(t *testing.T, dir string) string {
 	require.NoError(t, os.MkdirAll(filepath.Dir(metaPath), 0o755))
 	require.NoError(t, os.WriteFile(metaPath, []byte(`version: 0`), 0o600))
 	return dir
+}
+
+func TestParallelStackFetch_legacy(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir diy backend with legacy format
+	tmpDir := markLegacyStore(t, t.TempDir())
+	ctx := context.Background()
+
+	// Create a custom environment with DIYBackendParallel set
+	s := make(declared.MapStore)
+	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
+
+	b, err := newDIYBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
+		nil, // No project for legacy backend
+		&diyBackendOptions{Env: declared.NewEnv(s)},
+	)
+	assert.NoError(t, err)
+
+	// Create multiple stacks to test parallel fetching
+	numStacks := 10
+	stackRefs := make([]backend.StackReference, numStacks)
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		stackRef, err := b.ParseStackReference(stackName)
+		assert.NoError(t, err)
+		stackRefs[i] = stackRef
+
+		// Create the stack
+		_, err = b.CreateStack(ctx, stackRef, "", nil, nil)
+		assert.NoError(t, err)
+	}
+
+	// List stacks to trigger parallel fetching
+	filter := backend.ListStacksFilter{} // No filter
+	stacks, token, err := b.ListStacks(ctx, filter, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stacks, numStacks)
+
+	// Verify all stacks were fetched
+	stackNames := make(map[string]bool)
+	for _, stack := range stacks {
+		stackNames[stack.Name().String()] = true
+	}
+
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
+	}
 }

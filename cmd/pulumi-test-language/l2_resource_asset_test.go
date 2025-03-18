@@ -311,9 +311,8 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 	}
 
 	remoteass, err := resource.NewURIAsset(
-		"https://raw.githubusercontent.com/pulumi/pulumi/master" +
-			"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
-	)
+		"https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c" +
+			"/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/test.txt")
 	if err != nil {
 		return nil, fmt.Errorf("could not create remote asset: %w", err)
 	}

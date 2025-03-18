@@ -196,6 +196,14 @@ func LinkPackage(
 	return nil
 }
 
+func getNodeJSPkgName(pkg *schema.Package) string {
+	if info, ok := pkg.Language["nodejs"].(nodejs.NodePackageInfo); ok && info.PackageName != "" {
+		return info.PackageName
+	}
+
+	return "@pulumi/" + pkg.Name
+}
+
 // linkNodeJsPackage links a locally generated SDK to an existing Node.js project.
 func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package, out string) error {
 	fmt.Printf("Successfully generated a Nodejs SDK for the %s package at %s\n", pkg.Name, out)
@@ -207,7 +215,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 	if err != nil {
 		return err
 	}
-	packageSpecifier := fmt.Sprintf("@pulumi/%s@file:%s", pkg.Name, relOut)
+	packageSpecifier := fmt.Sprintf("%s@file:%s", getNodeJSPkgName(pkg), relOut)
 	var addCmd *exec.Cmd
 	options := proj.Runtime.Options()
 	if packagemanager, ok := options["packagemanager"]; ok {
@@ -242,12 +250,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 
 // printNodeJsImportInstructions prints instructions for importing the NodeJS SDK to the specified writer.
 func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map[string]interface{}) error {
-	var importName string
-	if info, ok := pkg.Language["nodejs"].(nodejs.NodePackageInfo); ok && info.PackageName != "" {
-		importName = info.PackageName
-	} else {
-		importName = cgstrings.Camel(pkg.Name)
-	}
+	importName := cgstrings.Camel(pkg.Name)
 
 	useTypescript := true
 	if typescript, ok := options["typescript"]; ok {
@@ -258,11 +261,11 @@ func printNodeJsImportInstructions(w io.Writer, pkg *schema.Package, options map
 	if useTypescript {
 		fmt.Fprintln(w, "You can then import the SDK in your TypeScript code with:")
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  import * as %s from \"@pulumi/%s\";\n", importName, pkg.Name)
+		fmt.Fprintf(w, "  import * as %s from \"%s\";\n", importName, getNodeJSPkgName(pkg))
 	} else {
 		fmt.Fprintln(w, "You can then import the SDK in your Javascript code with:")
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "  const %s = require(\"@pulumi/%s\");\n", importName, pkg.Name)
+		fmt.Fprintf(w, "  const %s = require(\"%s\");\n", importName, getNodeJSPkgName(pkg))
 	}
 	fmt.Fprintln(w)
 	return nil
@@ -497,13 +500,18 @@ func linkDotnetPackage(root string, pkg *schema.Package, out string) error {
 		return fmt.Errorf("dotnet error: %w", err)
 	}
 
+	namespace := "Pulumi"
+	if pkg.Namespace != "" {
+		namespace = pkg.Namespace
+	}
+
 	fmt.Printf("You also need to add the following to your .csproj file of the program:\n")
 	fmt.Println()
 	fmt.Println("  <DefaultItemExcludes>$(DefaultItemExcludes);sdks/**/*.cs</DefaultItemExcludes>")
 	fmt.Println()
 	fmt.Println("You can then use the SDK in your .NET code with:")
 	fmt.Println()
-	fmt.Printf("  using Pulumi.%s;\n", csharpPackageName(pkg.Name))
+	fmt.Printf("  using %s.%s;\n", csharpPackageName(namespace), csharpPackageName(pkg.Name))
 	fmt.Println()
 	return nil
 }
@@ -776,18 +784,13 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		return info.Mode()&0o111 != 0 && !info.IsDir()
 	}
 
-	// We check based on the name and pluginDownload URL whether we should try to load
-	// the plugin from the provider host, or whether we should try to get a local plugin.
-	// If the plugin matches the plugin regexp, we try to load it from the provider host,
-	// and similarly if we have a pluginDownloadURL that starts with 'git://', as we know
-	// that's going to be a downloadable plugin.
+	// For all plugins except for file paths, we try to load it from the provider host.
 	//
 	// Note that if a local folder has a name that could match an downloadable plugin, we
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
-	if strings.HasPrefix(descriptor.PluginDownloadURL, "git://") ||
-		workspace.PluginNameRegexp.MatchString(descriptor.Name) {
-		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, "")
+	if !plugin.IsLocalPluginPath(packageSource) {
+		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, nil, "")
 		if err != nil {
 			return nil, err
 		}

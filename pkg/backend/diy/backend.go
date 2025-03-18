@@ -371,17 +371,18 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 		return olds[i].Name().String() < olds[j].Name().String()
 	})
 
-	// There's no limit to the number of stacks we need to upgrade.
+	// Get the parallel value from environment variable or use a default value
+	parallel := b.getParallel()
+
 	// We don't want to overload the system with too many concurrent upgrades.
-	// We'll run a fixed pool of goroutines to upgrade stacks.
-	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
+	// // We'll run a fixed pool of goroutines to upgrade stacks.
+	pool := newWorkerPool(parallel, len(olds))
 	defer pool.Close()
 
 	// Projects for each stack in `olds` in the same order.
 	// projects[i] is the project name for olds[i].
 	projects := make([]tokens.Name, len(olds))
 	for idx, old := range olds {
-		idx, old := idx, old
 		pool.Enqueue(func() error {
 			project, err := b.guessProject(ctx, old)
 			if err != nil {
@@ -795,29 +796,69 @@ func (b *diyBackend) ListStacks(
 		return nil, nil, err
 	}
 
+	// Get the parallel value from environment variable or use a default value
+	parallel := b.getParallel()
+
 	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
 	// aren't persisted in the diy backend.
-	results := slice.Prealloc[backend.StackSummary](len(stacks))
+	filteredStacks := slice.Prealloc[*diyBackendReference](len(stacks))
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
 		stackProject, hasProject := stackRef.Project()
 		if filter.Project != nil && hasProject && string(stackProject) != *filter.Project {
 			continue
 		}
-
-		chk, err := b.getCheckpoint(ctx, stackRef)
-		if err != nil {
-			// There is a race between listing stacks and getting their checkpoints.  If there's an error getting
-			// the checkpoint, check if the stack still exists before returning an error.
-			if _, existsErr := b.stackExists(ctx, stackRef); existsErr == errCheckpointNotFound {
-				continue
-			}
-			return nil, nil, err
-		}
-		results = append(results, newDIYStackSummary(stackRef, chk))
+		filteredStacks = append(filteredStacks, stackRef)
 	}
 
-	return results, nil, nil
+	// Create a worker pool to process stacks in parallel
+	pool := newWorkerPool(parallel, len(filteredStacks))
+	defer pool.Close()
+
+	// Create a slice to store results in the same order as filteredStacks
+	type checkpointResult struct {
+		ref *diyBackendReference
+		chk *apitype.CheckpointV3
+	}
+	results := make([]checkpointResult, len(filteredStacks))
+
+	// Enqueue work for each stack
+	for i, stackRef := range filteredStacks {
+		i, stackRef := i, stackRef // https://golang.org/doc/faq#closures_and_goroutines
+		pool.Enqueue(func() error {
+			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
+			// instead of having to call stackExists separately.
+			chk, err := b.getCheckpoint(ctx, stackRef)
+			if err != nil {
+				// First check if the checkpoint exists
+				_, existsErr := b.stackExists(ctx, stackRef)
+				if existsErr != nil {
+					// If checkpoint not found, stack doesn't exist anymore, don't report an error
+					if errors.Is(existsErr, errCheckpointNotFound) {
+						return nil
+					}
+				}
+				return err
+			}
+			results[i] = checkpointResult{ref: stackRef, chk: chk}
+			return nil
+		})
+	}
+
+	// Wait for all work to complete
+	if err := pool.Wait(); err != nil {
+		return nil, nil, err
+	}
+
+	// Collect valid results
+	summaries := []backend.StackSummary{}
+	for _, result := range results {
+		if result.ref != nil { // Skip entries where processing failed or stack disappeared
+			summaries = append(summaries, newDIYStackSummary(result.ref, result.chk))
+		}
+	}
+
+	return summaries, nil, nil
 }
 
 func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
@@ -1445,4 +1486,16 @@ func (b *diyBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.M
 	// The default secrets manager for stacks against a DIY backend is a
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)
+}
+
+// getParallel returns the number of parallel operations to use from the environment
+// or a default value if not specified.
+func (b *diyBackend) getParallel() int {
+	parallel := b.Env.GetInt(env.DIYBackendParallel)
+	if parallel <= 0 {
+		// Default to 10 parallel operations if not specified.
+		// This is just a sensible guess and hasn't been tuned for optimal performance.
+		parallel = 10
+	}
+	return parallel
 }

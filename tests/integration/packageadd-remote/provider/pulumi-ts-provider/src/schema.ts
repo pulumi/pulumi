@@ -91,7 +91,7 @@ export function generateSchema(pack: any, path: string): schema.PulumiPackage {
             nodejs: {
                 dependencies: {},
                 devDependencies: {
-                    "typescript": "^3.7.0",
+                    "typescript": "^4.6.0",
                 },
                 respectSchemaVersion: true,
             },

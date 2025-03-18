@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: yaml
+  description: Introduce the packages section in Pulumi.yaml

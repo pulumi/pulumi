@@ -38,12 +38,12 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 				Name: "aws-native",
 				Language: map[string]interface{}{
 					"nodejs": nodejs.NodePackageInfo{
-						PackageName: "awsnative",
+						PackageName: "@pulumi/aws-native-renamed",
 					},
 				},
 			},
 			options:        map[string]interface{}{},
-			wantImportLine: "import * as awsnative from \"@pulumi/aws-native\";\n",
+			wantImportLine: "import * as awsNative from \"@pulumi/aws-native-renamed\";\n",
 		},
 		{
 			name: "falls back to camelCase when no package info",
