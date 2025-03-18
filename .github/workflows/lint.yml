@@ -30,10 +30,15 @@ jobs:
         id: cache
         uses: actions/cache@v4
         with:
+          key: mise-cache-${{ runner.os }}
+          path: ~/.local/share/mise
+
+      - name: Node cache
+        id: cache
+        uses: actions/cache@v4
+        with:
           key: sdk-nodejs-cache-${{ runner.os }}
-          path: |
-            ~/.local/share/mise
-            ./sdk/nodejs/node_modules
+          path: ./sdk/nodejs/node_modules
 
       - name: Install dependencies
         run: mise run install
@@ -69,12 +74,15 @@ jobs:
         id: cache
         uses: actions/cache@v4
         with:
-          key: sdk-python-cache-${{ runner.os }}
-          path: |
-            ~/.local/share/mise
-            ./sdk/python/.venv
+          key: mise-cache-${{ runner.os }}
+          path: ~/.local/share/mise
 
-      - run: mise doctor
+      - name: UV cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          key: sdk-python-cache-${{ runner.os }}
+          path: ./sdk/python/.venv
 
       - name: Install dependencies
         run: mise run install
