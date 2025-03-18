@@ -74,6 +74,8 @@ jobs:
             ~/.local/share/mise
             ./sdk/python/.venv
 
+      - run: mise doctor
+
       - name: Install dependencies
         run: mise run install
         working-directory: "./sdk/python"
