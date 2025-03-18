@@ -17,6 +17,8 @@ package plugin
 import (
 	"context"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -184,6 +186,140 @@ func TestHealthCheck(t *testing.T) {
 
 			p.Conn.Close()
 			server.Stop()
+		})
+	}
+}
+
+func TestInferRuntime(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		files         []string
+		expectedName  string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "nodejs only",
+			files: []string{
+				"index.ts",
+				"package.json",
+				"package-lock.json",
+				"tsconfig.json",
+			},
+			expectedName: "nodejs",
+		},
+		{
+			name: "python only",
+			files: []string{
+				"__init__.py",
+				"__main__.py",
+				"requirements.txt",
+			},
+			expectedName: "python",
+		},
+		{
+			name: "dotnet csproj",
+			files: []string{
+				"Main.cs",
+				"myproject.csproj",
+				"myproject.sln",
+			},
+			expectedName: "dotnet",
+		},
+		{
+			name: "dotnet fsproj",
+			files: []string{
+				"mail.fs",
+				"myproject.fsproj",
+			},
+			expectedName: "dotnet",
+		},
+		{
+			name: "go only",
+			files: []string{
+				"go.mod",
+				"go.sum",
+				"main.go",
+				"main_test.go",
+			},
+			expectedName: "go",
+		},
+		{
+			name: "java with pom",
+			files: []string{
+				"pom.xml",
+				"src/main/java/com/example/MyResource.java",
+			},
+			expectedName: "java",
+		},
+		{
+			name: "java with gradle",
+			files: []string{
+				"build.gradle",
+			},
+			expectedName: "java",
+		},
+		{
+			name: "multiple runtimes",
+			files: []string{
+				"package.json",
+				"requirements.txt",
+			},
+			expectError:   true,
+			errorContains: "could not infer Plugin runtime",
+		},
+		{
+			name:          "no runtime",
+			files:         []string{},
+			expectError:   true,
+			errorContains: "could not infer Plugin runtime",
+		},
+		{
+			name: "multiple files same runtime",
+			files: []string{
+				"pom.xml",
+				"build.gradle",
+			},
+			expectedName: "java",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a temporary directory for the test
+			dir := t.TempDir()
+
+			// Create the test files
+			for _, filename := range tt.files {
+				path := filepath.Join(dir, filename)
+
+				// Ensure the directory exists
+				err := os.MkdirAll(filepath.Dir(path), 0o755)
+				require.NoError(t, err)
+
+				// Create the file
+				err = os.WriteFile(path, []byte(""), 0o600)
+				require.NoError(t, err)
+			}
+
+			// Run the inference
+			runtime, err := inferRuntime(dir)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedName, runtime.Name())
 		})
 	}
 }

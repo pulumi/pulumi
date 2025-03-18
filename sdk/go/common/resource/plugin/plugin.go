@@ -428,9 +428,18 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
-				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
+				if os.IsNotExist(err) {
+					// Apply heuristics to infer the runtime if the PulumiPlugin.yaml file is not found
+					runtimeInfo, err = inferRuntime(pluginDir)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
+				}
+			} else {
+				runtimeInfo = proj.Runtime
 			}
-			runtimeInfo = proj.Runtime
 		} else if kind == apitype.AnalyzerPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
@@ -528,6 +537,46 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Stdout: out,
 		Stderr: err,
 	}, nil
+}
+
+func inferRuntime(pluginDir string) (workspace.ProjectRuntimeInfo, error) {
+	// Define the file-to-runtime mapping
+	runtimeFiles := map[string]string{
+		"package.json":     "nodejs",
+		"requirements.txt": "python",
+		"*.csproj":         "dotnet",
+		"*.fsproj":         "dotnet",
+		"go.mod":           "go",
+		"pom.xml":          "java",
+		"build.gradle":     "java",
+	}
+
+	// Use a map to track unique runtimes
+	detectedRuntimes := make(map[string]bool)
+
+	// Check for the presence of each file
+	for file, runtime := range runtimeFiles {
+		matches, err := filepath.Glob(filepath.Join(pluginDir, file))
+		if err != nil {
+			return workspace.ProjectRuntimeInfo{}, fmt.Errorf("inferring runtime: checking for %s: %w", file, err)
+		}
+		if len(matches) > 0 {
+			detectedRuntimes[runtime] = true
+		}
+	}
+
+	if len(detectedRuntimes) != 1 {
+		return workspace.ProjectRuntimeInfo{}, errors.New("could not infer Plugin runtime")
+	}
+
+	// Get the single runtime (there's exactly one key in the map)
+	var runtime string
+	for r := range detectedRuntimes {
+		runtime = r
+		break
+	}
+
+	return workspace.NewProjectRuntimeInfo(runtime, nil), nil
 }
 
 type pluginArgumentOptions struct {

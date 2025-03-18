@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Make PulumiPlugin.yaml optional for source-based plugins, try inferring the runtime if it's missing
