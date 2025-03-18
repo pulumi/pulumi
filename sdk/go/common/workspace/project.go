@@ -101,6 +101,89 @@ type PluginOptions struct {
 	Path    string `json:"path" yaml:"path"`
 }
 
+// PackageSpec defines the structured format for a package dependency
+type PackageSpec struct {
+	Source     string   `json:"source" yaml:"source"`
+	Version    string   `json:"version,omitempty" yaml:"version,omitempty"`
+	Parameters []string `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+}
+
+// packageValue can be either a string or a PackageSpec
+// This is a private implementation type that handles the dual-format parsing
+type packageValue struct {
+	// The underlying value, either a string or a PackageSpec
+	value interface{}
+}
+
+// Spec returns the package as a PackageSpec if it's a PackageSpec,
+// or creates a simple PackageSpec from its string representation.
+func (pv *packageValue) Spec() PackageSpec {
+	switch v := pv.value.(type) {
+	case PackageSpec:
+		return v
+	case string:
+		// Check if the string contains a version specifier in the format "source@version"
+		parts := strings.Split(v, "@")
+		if len(parts) == 2 {
+			return PackageSpec{
+				Source:  parts[0],
+				Version: parts[1],
+			}
+		}
+		return PackageSpec{Source: v}
+	default:
+		panic("unexpected type in PackageValue")
+	}
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface
+func (pv *packageValue) UnmarshalJSON(data []byte) error {
+	// First try to unmarshal as a string
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		pv.value = s
+		return nil
+	}
+
+	// If that fails, try to unmarshal as a PackageSpec
+	var spec PackageSpec
+	if err := json.Unmarshal(data, &spec); err == nil {
+		pv.value = spec
+		return nil
+	}
+
+	return errors.New("package must be either a string or a package specification object")
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (pv packageValue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(pv.value)
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface
+func (pv *packageValue) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First try to unmarshal as a string
+	var s string
+	if err := unmarshal(&s); err == nil {
+		pv.value = s
+		return nil
+	}
+
+	// If that fails, try to unmarshal as a PackageSpec
+	var spec PackageSpec
+	if err := unmarshal(&spec); err == nil {
+		pv.value = spec
+		return nil
+	}
+
+	return errors.New("package must be either a string or a package specification object")
+}
+
+// MarshalYAML implements the yaml.Marshaler interface
+func (pv packageValue) MarshalYAML() (interface{}, error) {
+	return pv.value, nil
+}
+
 type Plugins struct {
 	Providers []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
 	Languages []PluginOptions `json:"languages,omitempty" yaml:"languages,omitempty"`
@@ -176,6 +259,9 @@ type Project struct {
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
+	// Packages is a map of package dependencies that can be either strings or PackageSpecs
+	Packages map[string]packageValue `json:"packages,omitempty" yaml:"packages,omitempty"`
+
 	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
@@ -187,6 +273,19 @@ type Project struct {
 
 func (proj Project) RawValue() []byte {
 	return proj.raw
+}
+
+// GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
+func (proj *Project) GetPackageSpecs() map[string]PackageSpec {
+	if proj.Packages == nil {
+		return nil
+	}
+
+	result := make(map[string]PackageSpec)
+	for name, packageValue := range proj.Packages {
+		result[name] = packageValue.Spec()
+	}
+	return result
 }
 
 func isPrimitiveValue(value interface{}) bool {
