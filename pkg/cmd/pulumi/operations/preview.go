@@ -545,6 +545,9 @@ func NewPreviewCmd() *cobra.Command {
 		},
 	}
 
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
+
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")

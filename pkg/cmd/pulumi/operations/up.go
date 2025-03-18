@@ -520,15 +520,6 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			usesTargets := opts.Engine.Targets.IsConstrained() || opts.Engine.TargetDependents
-			usesExcludes := opts.Engine.Excludes.IsConstrained() || opts.Engine.ExcludeDependents
-
-			if usesTargets && usesExcludes {
-				return errors.New(
-					"--target and --target-dependents can't be used with --exclude or --exclude-dependents",
-				)
-			}
-
 			if err = validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
 			}
@@ -622,6 +613,9 @@ func NewUpCmd() *cobra.Command {
 			)
 		},
 	}
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
@@ -754,6 +748,9 @@ func NewUpCmd() *cobra.Command {
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

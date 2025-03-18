@@ -120,15 +120,6 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			usesTargets := opts.Engine.Targets.IsConstrained() || opts.Engine.TargetDependents
-			usesExcludes := opts.Engine.Excludes.IsConstrained() || opts.Engine.ExcludeDependents
-
-			if usesTargets && usesExcludes {
-				return errors.New(
-					"--target and --target-dependents can't be used with --exclude or --exclude-dependents",
-				)
-			}
-
 			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -326,6 +317,9 @@ func NewRefreshCmd() *cobra.Command {
 			}
 		},
 	}
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
