@@ -22,5 +22,6 @@ python = '3.11'
 uv = "latest"
 ruff = "latest"
 "pipx:mypy" = "latest"
+"pipx:pyright" = "latest"
 
 [plugins]

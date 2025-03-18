@@ -1,6 +1,6 @@
 [tasks.install]
 description = "Install dependencies"
-run = "pip -vvv install ."
+run = "pip -v install ."
 
 [tasks.lint]
 description = "Lint with ruff and mypy"
