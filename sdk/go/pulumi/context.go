@@ -389,7 +389,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
 
-			// TODO: The Go public API can't express the optionality that the wire protocol can
+			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the optionality that the wire protocol can
 			var protect bool
 			if rpcReq.Options.Protect != nil {
 				protect = *rpcReq.Options.Protect
