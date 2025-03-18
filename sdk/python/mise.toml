@@ -1,9 +1,6 @@
 [env]
 _.python.venv = { path = ".venv", create = true }
 
-[settings]
-python.uv_venv_auto = true
-
 [tasks.install]
 description = "Install dependencies"
 run = "uv pip -vvv install ."
