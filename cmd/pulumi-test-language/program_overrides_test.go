@@ -138,7 +138,7 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	// Arrange.
 	tempDir := t.TempDir()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	engine := &languageTestServer{}
 
 	runtime := &ProgramOverridesLanguageHost{
@@ -219,7 +219,7 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 	// Arrange.
 	tempDir := t.TempDir()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	engine := &languageTestServer{}
 
 	runtime := &ProgramOverridesLanguageHost{
@@ -395,7 +395,7 @@ func TestProgramOverrides_MustMatchRuns(t *testing.T) {
 	// Arrange.
 	tempDir := t.TempDir()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	engine := &languageTestServer{}
 
 	runtime := &ProgramOverridesLanguageHost{tempDir: tempDir}

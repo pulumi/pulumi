@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -196,7 +195,7 @@ in-project = true
 		} else if toolchainName == "pip" {
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
-			cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", req)
+			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", req)
 			require.NoError(t, err)
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
@@ -236,7 +235,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			// available Pulumi virtual environments.
 			createVenv(t, cwd, toolchainName, opts, pipDependency)
 
-			packages, err := determinePulumiPackages(context.Background(), opts)
+			packages, err := determinePulumiPackages(t.Context(), opts)
 
 			require.NoError(t, err)
 			require.Empty(t, packages)
@@ -249,7 +248,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			createVenv(t, cwd, toolchainName, opts, pulumiWheel(t), "pulumi-random", "pip-install-test")
 
-			packages, err := determinePulumiPackages(context.Background(), opts)
+			packages, err := determinePulumiPackages(t.Context(), opts)
 
 			require.NoError(t, err)
 			require.NotEmpty(t, packages)
@@ -269,7 +268,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			require.NoError(t, err)
 			// Find sitePackages folder in Python that contains pip_install_test subfolder.
 			var sitePackages string
-			cmd, err := tc.Command(context.Background(), "-c",
+			cmd, err := tc.Command(t.Context(), "-c",
 				"import site; import json; print(json.dumps(site.getsitepackages()))")
 			require.NoError(t, err)
 			possibleSitePackages, err := cmd.Output()
@@ -295,7 +294,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			require.NoError(t, err)
 			t.Logf("Wrote pulumi-plugin.json file: %s", path)
 
-			packages, err := determinePulumiPackages(context.Background(), opts)
+			packages, err := determinePulumiPackages(t.Context(), opts)
 
 			require.NoError(t, err)
 			assert.Equal(t, 1, len(packages))
@@ -324,12 +323,12 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			assert.NoError(t, err)
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
-			cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", fooSdkDir)
+			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", fooSdkDir)
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run())
 
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
-			packages, err := determinePulumiPackages(context.Background(), opts)
+			packages, err := determinePulumiPackages(t.Context(), opts)
 			require.NoError(t, err)
 			assert.Equal(t, 1, len(packages))
 			assert.Equal(t, "pulumi_foo", packages[0].Name)
@@ -353,12 +352,12 @@ func TestDeterminePulumiPackages(t *testing.T) {
 			assert.NoError(t, err)
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
-			cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", oldSdkDir)
+			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", oldSdkDir)
 			require.NoError(t, err)
 			require.NoError(t, cmd.Run())
 
 			// The package should be considered a Pulumi package since its name is prefixed with "pulumi_".
-			packages, err := determinePulumiPackages(context.Background(), opts)
+			packages, err := determinePulumiPackages(t.Context(), opts)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, packages)
 			assert.Equal(t, 1, len(packages))
@@ -376,7 +375,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 
 			// The package should not be considered a Pulumi package since it is hardcoded not to be,
 			// since it does not have an associated plugin.
-			packages, err := determinePulumiPackages(context.Background(), opts)
+			packages, err := determinePulumiPackages(t.Context(), opts)
 			assert.NoError(t, err)
 			assert.Empty(t, packages)
 		})
