@@ -6,7 +6,12 @@ python.uv_venv_auto = true
 
 [tasks.install]
 description = "Install dependencies"
-run = "pip -vvv install ."
+run = '''
+echo "Pip?"
+which pip
+echo "Pip!"
+pip -vvv install .
+'''
 
 [tasks.lint]
 description = "Lint with ruff and mypy"
