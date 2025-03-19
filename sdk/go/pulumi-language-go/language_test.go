@@ -202,7 +202,7 @@ func TestLanguage(t *testing.T) {
 
 	engineAddress, engine := runTestingHost(t)
 
-	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
+	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	cancel := make(chan bool)
@@ -224,7 +224,7 @@ func TestLanguage(t *testing.T) {
 	snapshotDir := "./testdata/"
 
 	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "go",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   rootDir,
@@ -251,7 +251,7 @@ func TestLanguage(t *testing.T) {
 				t.Skipf("Skipping known failure: %s", expected)
 			}
 
-			result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 				Token: prepare.Token,
 				Test:  tt,
 			})

@@ -179,7 +179,7 @@ func TestLanguage(t *testing.T) {
 	t.Parallel()
 	engineAddress, engine := runTestingHost(t)
 
-	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
+	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also want to
@@ -254,7 +254,7 @@ func TestLanguage(t *testing.T) {
 			}
 
 			// Prepare to run the tests
-			prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 				LanguagePluginName:   "python",
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
@@ -283,7 +283,7 @@ func TestLanguage(t *testing.T) {
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
-					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,
 						Test:  tt,
 					})

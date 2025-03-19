@@ -265,7 +265,7 @@ func (h *L2ResourceSimpleLanguageHost) Run(
 func TestL2ResourceSimple(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
@@ -303,7 +303,7 @@ func TestL2ResourceSimple(t *testing.T) {
 func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
@@ -343,7 +343,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 func TestL2SimpleResource_MissingResource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{
@@ -386,7 +386,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{
@@ -429,7 +429,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 func TestL2ResourceSnapshotEdit(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
@@ -473,7 +473,7 @@ func TestL2ResourceSnapshotEdit(t *testing.T) {
 func TestL2ResourceLanguageInfo(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{
