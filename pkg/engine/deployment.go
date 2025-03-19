@@ -430,7 +430,7 @@ func isDefaultProviderStep(step deploy.Step) bool {
 }
 
 func checkTargets(targetUrns deploy.UrnTargets, excludeUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
-	if !targetUrns.IsConstrained() || !excludeUrns.IsConstrained() {
+	if !targetUrns.IsConstrained() && !excludeUrns.IsConstrained() {
 		return nil
 	}
 	if snap == nil {
