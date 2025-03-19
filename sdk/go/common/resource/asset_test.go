@@ -123,7 +123,7 @@ func TestAssetSerialize(t *testing.T) {
 	t.Run("path asset", func(t *testing.T) {
 		t.Parallel()
 
-		f, err := os.CreateTemp("", "")
+		f, err := os.CreateTemp(t.TempDir(), "")
 		assert.NoError(t, err)
 		file := f.Name()
 		asset, err := rasset.FromPath(file)
@@ -567,7 +567,7 @@ func TestNestedArchive(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Write a ZIP of the AssetArchive to disk.
-	tmpFile, err := os.CreateTemp("", "")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "")
 	fileName := tmpFile.Name()
 	assert.NoError(t, err)
 	err = arch.Archive(rarchive.ZIPArchive, tmpFile)
@@ -607,7 +607,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Write a ZIP of the AssetArchive to disk.
-	tmpFile, err := os.CreateTemp("", "")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "")
 	fileName := tmpFile.Name()
 	assert.NoError(t, err)
 	err = arch.Archive(rarchive.ZIPArchive, tmpFile)
@@ -640,7 +640,7 @@ func TestInvalidPathArchive(t *testing.T) {
 	t.Parallel()
 
 	// Create a temp file that is not an asset.
-	tmpFile, err := os.CreateTemp("", "")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "")
 	fileName := tmpFile.Name()
 	assert.NoError(t, err)
 	fmt.Fprintf(tmpFile, "foo\n")

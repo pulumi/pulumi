@@ -140,13 +140,11 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
-	tempDir, err := os.MkdirTemp("", "pulumi-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Create a subdirectory to use as a local plugin path
 	localPluginDir := filepath.Join(tempDir, "local-plugin")
-	err = os.Mkdir(localPluginDir, 0o755)
+	err := os.Mkdir(localPluginDir, 0o755)
 	require.NoError(t, err)
 
 	// Create another subdirectory to use as a relative plugin path
@@ -205,13 +203,11 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
-	tempDir, err := os.MkdirTemp("", "pulumi-test-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Create a subdirectory to use as a local plugin path
 	localPluginDir := filepath.Join(tempDir, "local-plugin")
-	err = os.Mkdir(localPluginDir, 0o755)
+	err := os.Mkdir(localPluginDir, 0o755)
 	require.NoError(t, err)
 
 	awsProviderDir := filepath.Join(tempDir, "aws-provider")
