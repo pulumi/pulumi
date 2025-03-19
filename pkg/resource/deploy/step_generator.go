@@ -98,10 +98,16 @@ type stepGenerator struct {
 	// true. This does _not_ include resources that have been implicitly targeted,
 	// like providers.
 	targetsActual UrnTargets
+
+	// excludesActual is the set of targets explicitly ignored by the engine. This
+	// can be different from deployment.opts.excludes if --excludes-dependents is
+	// true. This does _not_ exclude resources that have been implicitly targeted,
+	// like providers.
+	excludesActual UrnTargets
 }
 
-// isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
-// `--target-dependents`.
+// Check whether `res` is explicitly (via `targets`) or implicitly (via
+// `--target-dependents`) targeted for update.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 	if sg.deployment.opts.Targets.Contains(res.URN) {
 		return true
@@ -111,9 +117,9 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 
 	ref, allDeps := res.GetAllDependencies()
 	if ref != "" {
-		proivderRef, err := providers.ParseReference(ref)
+		providerRef, err := providers.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		providerURN := proivderRef.URN()
+		providerURN := providerRef.URN()
 		if sg.targetsActual.Contains(providerURN) {
 			return true
 		}
@@ -121,6 +127,34 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 
 	for _, dep := range allDeps {
 		if sg.targetsActual.Contains(dep.URN) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Check whether `res` is explicitly (via `excludes`) or implicitly (via
+// `--exclude-dependents`) excluded from the update.
+func (sg *stepGenerator) isExcludedFromUpdate(res *resource.State) bool {
+	if sg.deployment.opts.Excludes.Contains(res.URN) {
+		return true
+	} else if !sg.deployment.opts.ExcludeDependents {
+		return false
+	}
+
+	ref, allDeps := res.GetAllDependencies()
+	if ref != "" {
+		providerRef, err := providers.ParseReference(ref)
+		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
+		providerURN := providerRef.URN()
+		if sg.excludesActual.Contains(providerURN) {
+			return true
+		}
+	}
+
+	for _, dep := range allDeps {
+		if sg.excludesActual.Contains(dep.URN) {
 			return true
 		}
 	}
@@ -772,11 +806,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// the user, we also implicitly target providers (both default and explicit, see
 	// https://github.com/pulumi/pulumi/issues/13557 and https://github.com/pulumi/pulumi/issues/13591 for
 	// context on why).
-
-	// Resources are targeted by default
 	isTargeted := true
-	if sg.deployment.opts.Targets.IsConstrained() && !isImplicitlyTargetedResource {
+
+	// If targets are constrained, we need to make sure the targets include the
+	// current object. If the _excludes_ are constrained, we need to make sure
+	// the excludes _don't_ include the current object.
+	if !isImplicitlyTargetedResource && sg.deployment.opts.Targets.IsConstrained() {
 		isTargeted = sg.isTargetedForUpdate(new)
+	} else if !isImplicitlyTargetedResource && sg.deployment.opts.Excludes.IsConstrained() {
+		isTargeted = !sg.isExcludedFromUpdate(new)
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -1006,12 +1044,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}, false, nil
 	}
 
-	// This looks odd that we have to recheck isTargetedForUpdate but it's to cover implicitly targeted
-	// resources like providers (where isTargeted is always true), but which might have been _explicitly_
-	// targeted due to being in the --targets list or being explicitly pulled in by --target-dependents.
-	if isTargeted && sg.isTargetedForUpdate(new) {
-		// Transitive dependencies are not initially targeted, ensure that they are in the Targets so that the
-		// step_generator identifies that the URN is targeted if applicable
+	// Assuming we have some targets/excludes, we also need to consider
+	// dependents. To do this, we add dependents to `targetsActual` or
+	// `excludesActual`. Because we go through our resources in topological
+	// order, this means that, if a parent `P` of a dependency `D` is targeted or
+	// excluded, `P` will be added to the relevant list before we consider `D`.
+	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(new) {
+		sg.excludesActual.addLiteral(urn)
+	} else if isTargeted && sg.isTargetedForUpdate(new) {
 		sg.targetsActual.addLiteral(urn)
 	}
 
@@ -1533,7 +1573,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	return nil, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) {
+func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, error) {
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
 	dels := slice.Prealloc[Step](len(sg.toDelete))
 	if prev := sg.deployment.prev; prev != nil {
@@ -1644,7 +1684,16 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
-	allowedResourcesToDelete, err := sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
+	var allowedResourcesToDelete map[resource.URN]bool
+	var forbiddenResourcesToDelete map[resource.URN]bool
+	var err error
+
+	if targetsOpt.IsConstrained() {
+		allowedResourcesToDelete, err = sg.determineAllowedResourcesToDeleteFromTargets(targetsOpt)
+	} else if excludesOpt.IsConstrained() {
+		forbiddenResourcesToDelete, err = sg.determineForbiddenResourcesToDeleteFromExcludes(excludesOpt)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -1653,6 +1702,17 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, error) 
 		filtered := []Step{}
 		for _, step := range dels {
 			if _, has := allowedResourcesToDelete[step.URN()]; has {
+				filtered = append(filtered, step)
+			}
+		}
+
+		dels = filtered
+	}
+
+	if forbiddenResourcesToDelete != nil {
+		filtered := []Step{}
+		for _, step := range dels {
+			if _, has := forbiddenResourcesToDelete[step.URN()]; !has {
 				filtered = append(filtered, step)
 			}
 		}
@@ -1742,6 +1802,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	// Produce a map of targets and their dependents, including explicit and implicit
 	// DAG dependencies, as well as children (transitively).
 	targets := sg.getTargetDependents(targetsOpt)
+
 	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
 	resourcesToDelete := make(map[resource.URN]bool)
 
@@ -1782,6 +1843,60 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	}
 
 	return resourcesToDelete, nil
+}
+
+// determineForbiddenResourcesToDeleteFromExcludes calculates the set of
+// resources that must _not_ be deleted in order to satisfy the `--excludes`
+// list.
+func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
+	excludesOpt UrnTargets,
+) (map[resource.URN]bool, error) {
+	if !excludesOpt.IsConstrained() {
+		return nil, nil
+	}
+
+	logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
+	resourcesToKeep := make(map[resource.URN]bool)
+
+	if sg.deployment.opts.ExcludeDependents {
+		resourcesToKeep = sg.getTargetDependents(excludesOpt)
+	}
+
+	for _, target := range excludesOpt.literals {
+		next := target
+
+		// We need to calculate the path from this target up to the root and mark
+		// everything en route as being "forbidden". To do this, we iteratively
+		// select the `.Parent` until we find a `nil`.
+		for {
+			current := sg.deployment.olds[next]
+
+			if current == nil {
+				break
+			}
+
+			// We also want to mark the provider of every parent as forbidden from
+			// deletion, as the parents will now also be maintained.
+			provider, err := providers.ParseReference(current.Provider)
+			if err == nil {
+				resourcesToKeep[provider.URN()] = true
+			}
+
+			resourcesToKeep[next] = true
+			next = current.Parent
+		}
+	}
+
+	if logging.V(7) {
+		keys := []resource.URN{}
+		for k := range resourcesToKeep {
+			keys = append(keys, k)
+		}
+
+		logging.V(7).Infof("Planner will ignore '%v'", keys)
+	}
+
+	return resourcesToKeep, nil
 }
 
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
@@ -2478,10 +2593,11 @@ func newStepGenerator(deployment *Deployment, mode stepGeneratorMode, events cha
 		aliased:              make(map[resource.URN]resource.URN),
 		aliases:              make(map[resource.URN]resource.URN),
 
-		// We clone the targets passed as options because we will modify this set as
-		// we compute the full set (e.g. by expanding globs, or traversing
+		// We clone the targets passed as options because we will modify these sets as
+		// we compute the full sets (e.g. by expanding globs, or traversing
 		// dependents).
-		targetsActual: deployment.opts.Targets.Clone(),
+		targetsActual:  deployment.opts.Targets.Clone(),
+		excludesActual: deployment.opts.Excludes.Clone(),
 
 		events: events,
 	}

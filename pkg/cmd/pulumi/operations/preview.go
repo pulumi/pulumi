@@ -276,9 +276,11 @@ func NewPreviewCmd() *cobra.Command {
 	var suppressProgress bool
 	var suppressPermalink string
 	var targets []string
+	var excludes []string
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var excludeDependents bool
 	var attachDebugger bool
 
 	use, cmdArgs := "preview", cmdutil.NoArgs
@@ -340,7 +342,7 @@ func NewPreviewCmd() *cobra.Command {
 			if remoteArgs.Remote {
 				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
-					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, replaces,
+					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, nil, replaces,
 					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile)
 				if err != nil {
 					return err
@@ -424,6 +426,9 @@ func NewPreviewCmd() *cobra.Command {
 			targetURNs := []string{}
 			targetURNs = append(targetURNs, targets...)
 
+			excludeURNs := []string{}
+			excludeURNs = append(excludeURNs, excludes...)
+
 			replaceURNs := []string{}
 			replaceURNs = append(replaceURNs, replaces...)
 
@@ -458,6 +463,8 @@ func NewPreviewCmd() *cobra.Command {
 					DisableOutputValues:       env.DisableOutputValues.Value(),
 					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
+					Excludes:                  deploy.NewUrnTargets(excludeURNs),
+					ExcludeDependents:         excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
 					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
@@ -584,6 +591,11 @@ func NewPreviewCmd() *cobra.Command {
 		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
 			" Multiple resources can be specified using --target urn1 --target urn2")
+	cmd.PersistentFlags().StringArrayVarP(
+		&excludes, "exclude", "x", []string{},
+		"Specify a resource URN to ignore. These resources will not be updated."+
+			" Multiple resources can be specified using --exclude urn1 --exclude urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
 		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2")
@@ -593,7 +605,13 @@ func NewPreviewCmd() *cobra.Command {
 			" Shorthand for --target urn --replace urn.")
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
-		"Allows updating of dependent targets discovered but not specified in --target list")
+		"Allow updating of dependent targets discovered but not specified in --target list")
+	cmd.PersistentFlags().BoolVar(
+		&excludeDependents, "exclude-dependents", false,
+		"Allow ignoring of dependent targets discovered but not specified in --exclude list")
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
