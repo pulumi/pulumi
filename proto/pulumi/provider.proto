@@ -1007,7 +1007,7 @@ message ConstructRequest {
 
     // True if and only if the resource (and by extension, its nested resources) should be marked as protected.
     // Protected resources cannot be deleted without first being unprotected.
-    bool protect = 12;
+    optional bool protect = 12;
 
     // A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
     // used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
