@@ -139,7 +139,7 @@ type ResourceOptions struct {
 	Aliases                 []*pulumirpc.Alias
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
-	RetainOnDelete          bool
+	RetainOnDelete          *bool
 	DeletedWith             resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool

@@ -132,10 +132,10 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		if urn := req.DeletedWith; urn != "" {
 			ro.DeletedWith = pulumiCtx.newDependencyResource(URN(urn))
 		}
-		ro.DeleteBeforeReplace = req.GetDeleteBeforeReplace()
+		ro.DeleteBeforeReplace = req.DeleteBeforeReplace
 		ro.IgnoreChanges = append(ro.IgnoreChanges, req.GetIgnoreChanges()...)
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, req.GetReplaceOnChanges()...)
-		ro.RetainOnDelete = req.GetRetainOnDelete()
+		ro.RetainOnDelete = req.RetainOnDelete
 	})
 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)

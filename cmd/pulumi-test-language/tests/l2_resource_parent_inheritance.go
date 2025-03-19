@@ -45,10 +45,10 @@ func init() {
 					// 4. A child of the parent using the explicit provider.
 					// 5. An orphan without a parent or explicit provider.
 					//
-					// 6. A parent with its protect flag set.
-					// 7. A child of the parent with its protect flag set.
-					// 8. A child of the parent explicitly setting its protect bit to false.
-					// 9. An orphan without a parent or protect flag set.
+					// 6. A parent with its protect and retainOnDelete flags set.
+					// 7. A child of the parent with its flags set.
+					// 8. A child of the parent explicitly setting its flags to false.
+					// 9. An orphan without a parent or flags set.
 					require.Len(l, snap.Resources, 10, "expected 10 resources in snapshot")
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
@@ -91,6 +91,15 @@ func init() {
 					require.True(l, protectChild2.Protect, "expected child to inherit protect flag")
 					require.False(l, protectChild3.Protect, "expected child be able to override inherited protect flag")
 					require.False(l, protectOrphan.Protect, "expected orphan to not be protected")
+
+					require.True(l, protectParent.RetainOnDelete,
+						"expected parent to be retain on delete")
+					require.True(l, protectChild2.RetainOnDelete,
+						"expected child to inherit retain on delete flag")
+					require.False(l, protectChild3.RetainOnDelete,
+						"expected child be able to override inherited retain on delete flag")
+					require.False(l, protectOrphan.RetainOnDelete,
+						"expected orphan to not be retain on delete")
 				},
 			},
 		},

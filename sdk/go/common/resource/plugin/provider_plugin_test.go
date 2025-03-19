@@ -606,10 +606,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "delete before replace",
 			give: ConstructOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 		},
 		{
@@ -633,10 +633,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "retain on delete",
 			give: ConstructOptions{
-				RetainOnDelete: true,
+				RetainOnDelete: ptr(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				RetainOnDelete: true,
+				RetainOnDelete: ptr(true),
 			},
 		},
 	}

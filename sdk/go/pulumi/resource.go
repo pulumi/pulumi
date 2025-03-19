@@ -430,7 +430,7 @@ type resourceOptions struct {
 	AdditionalSecretOutputs []string
 	Aliases                 []Alias
 	CustomTimeouts          *CustomTimeouts
-	DeleteBeforeReplace     bool
+	DeleteBeforeReplace     *bool
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
 	Import                  IDInput
@@ -444,7 +444,7 @@ type resourceOptions struct {
 	URN                     string
 	Version                 string
 	PluginDownloadURL       string
-	RetainOnDelete          bool
+	RetainOnDelete          *bool
 	DeletedWith             Resource
 	Parameterization        []byte
 }
@@ -482,22 +482,24 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		})
 	}
 
-	var protect bool
-	if ro.Protect != nil {
-		protect = *ro.Protect
+	flatten := func(s *bool) bool {
+		if s == nil {
+			return false
+		}
+		return *s
 	}
 
 	return &ResourceOptions{
 		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
 		Aliases:                 ro.Aliases,
 		CustomTimeouts:          ro.CustomTimeouts,
-		DeleteBeforeReplace:     ro.DeleteBeforeReplace,
+		DeleteBeforeReplace:     flatten(ro.DeleteBeforeReplace),
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
-		Protect:                 protect,
+		Protect:                 flatten(ro.Protect),
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
@@ -506,7 +508,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
-		RetainOnDelete:          ro.RetainOnDelete,
+		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
 	}
 }
@@ -668,7 +670,7 @@ func Aliases(o []Alias) ResourceOption {
 // DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 func DeleteBeforeReplace(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DeleteBeforeReplace = o
+		ro.DeleteBeforeReplace = &o
 	})
 }
 
@@ -965,7 +967,7 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 // If set to True, the providers Delete method will not be called for this resource.
 func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.RetainOnDelete = b
+		ro.RetainOnDelete = &b
 	})
 }
 
