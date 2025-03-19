@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
 
-go 1.24
+go 1.24.1
 
 replace (
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
