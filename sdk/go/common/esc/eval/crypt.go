@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"strings"
 
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/esc/syntax/encoding"
@@ -147,6 +148,12 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 	return rewriteYAML(ctx, filename, source, func(n syntax.Node) (syntax.Node, syntax.Diagnostics, error) {
 		obj, _, ciphertextNode, ok := parseSecret(n)
 		if !ok || ciphertextNode == nil {
+			return n, nil, nil
+		}
+
+		// Don't attempt to decrypt secrets outside of "values"
+		path := n.Syntax().Path()
+		if !strings.HasPrefix(path, "values.") {
 			return n, nil, nil
 		}
 

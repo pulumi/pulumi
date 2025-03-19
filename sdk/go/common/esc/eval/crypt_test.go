@@ -159,6 +159,17 @@ func TestDecryptMalformedSecret(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDecryptInvalidTopLevelKey(t *testing.T) {
+	const doc = `invalid-top-level-key:
+  password:
+    fn::secret:
+      ciphertext: "invalid-ciphertext"
+`
+
+	_, err := DecryptSecrets(context.Background(), "doc", []byte(doc), broken{})
+	require.NoError(t, err)
+}
+
 func TestInvalidEnvelope(t *testing.T) {
 	encodeBin := func(magic string, version uint32, ciphertext []byte) []byte {
 		var b bytes.Buffer
