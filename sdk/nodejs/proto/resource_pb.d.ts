@@ -166,7 +166,10 @@ export class RegisterResourceRequest extends jspb.Message {
     clearObject(): void;
     getObject(): google_protobuf_struct_pb.Struct | undefined;
     setObject(value?: google_protobuf_struct_pb.Struct): RegisterResourceRequest;
-    getProtect(): boolean;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
     setProtect(value: boolean): RegisterResourceRequest;
     clearDependenciesList(): void;
     getDependenciesList(): Array<string>;
@@ -263,7 +266,7 @@ export namespace RegisterResourceRequest {
         parent: string,
         custom: boolean,
         object?: google_protobuf_struct_pb.Struct.AsObject,
-        protect: boolean,
+        protect?: boolean,
         dependenciesList: Array<string>,
         provider: string,
 
@@ -577,7 +580,10 @@ export class TransformResourceOptions extends jspb.Message {
     getDependsOnList(): Array<string>;
     setDependsOnList(value: Array<string>): TransformResourceOptions;
     addDependsOn(value: string, index?: number): string;
-    getProtect(): boolean;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
     setProtect(value: boolean): TransformResourceOptions;
     clearIgnoreChangesList(): void;
     getIgnoreChangesList(): Array<string>;
@@ -635,7 +641,7 @@ export class TransformResourceOptions extends jspb.Message {
 export namespace TransformResourceOptions {
     export type AsObject = {
         dependsOnList: Array<string>,
-        protect: boolean,
+        protect?: boolean,
         ignoreChangesList: Array<string>,
         replaceOnChangesList: Array<string>,
         version: string,

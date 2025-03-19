@@ -112,7 +112,7 @@ message RegisterResourceRequest {
     string parent = 3;                                          // an optional parent URN that this child resource belongs to.
     bool custom = 4;                                            // true if the resource is a custom, managed by a plugin's CRUD operations.
     google.protobuf.Struct object = 5;                          // an object produced by the interpreter/source.
-    bool protect = 6;                                           // true if the resource should be marked protected.
+    optional bool protect = 6;                                  // true if the resource should be marked protected.
     repeated string dependencies = 7;                           // a list of URNs that this resource depends on, as observed by the language host.
     string provider = 8;                                        // an optional reference to the provider to manage this resource's CRUD operations.
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
@@ -223,7 +223,7 @@ message ResourceCallRequest {
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.
 message TransformResourceOptions {
     repeated string depends_on = 1;
-    bool protect = 2;
+    optional bool protect = 2;
     repeated string ignore_changes = 3;
     repeated string replace_on_changes = 4;
     string version = 5;

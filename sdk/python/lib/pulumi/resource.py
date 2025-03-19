@@ -779,7 +779,7 @@ class Resource:
     The specified provider version or None.
     """
 
-    _protect: bool
+    _protect: Optional[bool]
     """
     When set to true, protect ensures this resource cannot be deleted.
     """
@@ -841,7 +841,6 @@ class Resource:
         """
 
         if dependency:
-            self._protect = False
             self._providers = {}
             return
 
@@ -934,7 +933,7 @@ class Resource:
         pkg = _pkg_from_type(t)
         opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
-        self._protect = bool(opts.protect)
+        self._protect = opts.protect
         self._provider = opts.provider if (custom or remote) else None
         if self._provider and self._provider.package != pkg:
             action = (
