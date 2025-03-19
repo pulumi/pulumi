@@ -22,8 +22,10 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
 
@@ -31,7 +33,6 @@ import (
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewInstallCmd() *cobra.Command {
@@ -45,7 +46,9 @@ func NewInstallCmd() *cobra.Command {
 		Short: "Install packages and plugins for the current program or policy pack.",
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
-			"This command is used to manually install packages and plugins required by your program or policy pack.",
+			"This command is used to manually install packages and plugins required by your program or policy pack.\n" +
+			"If your Pulumi.yaml file contains a 'packages' section, this command will automatically install\n" +
+			"SDKs for all packages declared in that section.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -93,6 +96,12 @@ func NewInstallCmd() *cobra.Command {
 			}
 
 			defer pctx.Close()
+
+			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
+			// so that the SDKs folder is present and references to it from package.json etc are valid.
+			if err := installPackagesFromProject(pctx, proj, root); err != nil {
+				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
+			}
 
 			// First make sure the language plugin is present.  We need this to load the required resource plugins.
 			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
@@ -145,6 +154,36 @@ func NewInstallCmd() *cobra.Command {
 		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
 
 	return cmd
+}
+
+// installPackagesFromProject processes packages specified in the Pulumi.yaml file
+// and installs them using similar logic to the 'pulumi package add' command
+func installPackagesFromProject(pctx *plugin.Context, proj *workspace.Project, root string) error {
+	packages := proj.GetPackageSpecs()
+	if len(packages) == 0 {
+		return nil
+	}
+
+	fmt.Println("Installing packages defined in Pulumi.yaml...")
+
+	for name, packageSpec := range packages {
+		fmt.Printf("Installing package '%s'...\n", name)
+
+		installSource := packageSpec.Source
+		if packageSpec.Version != "" {
+			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
+		}
+
+		err := packagecmd.InstallPackage(
+			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, packageSpec.Parameters)
+		if err != nil {
+			return fmt.Errorf("failed to install package '%s': %w", name, err)
+		}
+
+		fmt.Printf("Package '%s' installed successfully\n", name)
+	}
+
+	return nil
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {
