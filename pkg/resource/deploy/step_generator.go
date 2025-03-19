@@ -93,17 +93,17 @@ type stepGenerator struct {
 	// a map from current URN of the resource to the old URN that it was aliased from.
 	aliases map[resource.URN]resource.URN
 
-	// excludesActual is the set of targets explicitly ignored by the engine. This
-	// can be different from deployment.opts.excludes if --excludes-dependents is
-	// true. This does _not_ exclude resources that have been implicitly targeted,
-	// like providers.
-	excludesActual UrnTargets
-
 	// targetsActual is the set of targets explicitly targeted by the engine. This
 	// can be different from deployment.opts.targets if --target-dependents is
 	// true. This does _not_ include resources that have been implicitly targeted,
 	// like providers.
 	targetsActual UrnTargets
+
+	// excludesActual is the set of targets explicitly ignored by the engine. This
+	// can be different from deployment.opts.excludes if --excludes-dependents is
+	// true. This does _not_ exclude resources that have been implicitly targeted,
+	// like providers.
+	excludesActual UrnTargets
 }
 
 // Check whether `res` is explicitly (via `targets`) or implicitly (via

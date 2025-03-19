@@ -1,28 +1,19 @@
 <{%reset%}>  pkgA:m:typA: (same)
-<<<<<<< HEAD
-<{%reset%}>    [id=a6642d7e-b29a-4c4c-a055-3c1ddbcfb484]
+<{%reset%}>    [id=099b2cbb-fad6-4e44-9097-d38eb688330e]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>  + count: <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    1 unchanged
-=======
-<{%reset%}>    [id=4d598027-c09d-4ef0-83e9-3bc1ee436c56]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB]
-<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
-<{%fg 2%}>  + count: <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
-<{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>        [id=b94373f8-42b5-4f61-afa1-c826ab88b11e]
-<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC]
-<{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
-<{%fg 2%}>      + count: <{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 2%}>
 <{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>            [id=19c82c29-63fe-486f-a8a2-8fada890b867]
+<{%reset%}>            [id=772980b0-0dd5-43fa-af4e-67d4d591870e]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resD]
 <{%reset%}><{%reset%}>            --outputs:--<{%reset%}>
-<{%fg 2%}>          + count: <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 2%}>
+<{%fg 2%}>          + count: <{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 2%}>
+<{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>        [id=e55d8757-c1f4-4f3c-aacb-f10549a627ba]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC]
+<{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
+<{%fg 2%}>      + count: <{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     3 unchanged
->>>>>>> origin/master
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

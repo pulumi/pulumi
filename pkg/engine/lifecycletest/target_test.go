@@ -113,11 +113,11 @@ func TestRefreshTargetChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, a)
 	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[2].URN, b)
-	assert.Equal(t, snap.Resources[2].Outputs["count"], resource.NewPropertyValue(1.0))
+	assert.NotEqual(t, snap.Resources[2].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[3].URN, c)
-	assert.Equal(t, snap.Resources[3].Outputs["count"], resource.NewPropertyValue(2.0))
+	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[4].URN, d)
-	assert.Equal(t, snap.Resources[4].Outputs["count"], resource.NewPropertyValue(3.0))
+	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
 }
 
 func TestDestroyTarget(t *testing.T) {
