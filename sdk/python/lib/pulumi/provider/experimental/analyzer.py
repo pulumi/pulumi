@@ -482,7 +482,7 @@ class Analyzer:
                 description=self.get_docstring(typ.__name__, name),
             )
         else:
-            raise ValueError(f"unsupported type {arg}")
+            raise ValueError(f"Unsupported type '{arg}' for '{typ.__name__}.{name}'")
 
     def find_docstrings(self, path: Path) -> dict[str, dict[str, str]]:
         """

@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newPackagePackCmd() *cobra.Command {
+func newPackagePackSdkCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "pack-sdk <language> <path>",
 		Args:   cobra.ExactArgs(2),

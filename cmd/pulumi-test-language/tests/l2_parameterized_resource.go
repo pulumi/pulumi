@@ -39,6 +39,10 @@ func init() {
 						resource.NewStringProperty("HelloWorld"),
 						stack.Outputs["parameterValue"],
 						"parameter value should be correct")
+					require.Equal(l,
+						resource.NewStringProperty("HelloWorldComponent"),
+						stack.Outputs["parameterValueFromComponent"],
+						"parameter value from component should be correct")
 				},
 			},
 		},

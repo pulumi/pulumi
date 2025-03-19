@@ -351,7 +351,12 @@ func GenerateProject(
 			continue
 		}
 
-		packageName := "Pulumi." + namespaceName(map[string]string{}, p.Name)
+		rootNamespace := "Pulumi"
+		if p.Namespace != "" {
+			rootNamespace = namespaceName(nil, p.Namespace)
+		}
+
+		packageName := rootNamespace + "." + namespaceName(map[string]string{}, p.Name)
 		if langInfo, found := p.Language["csharp"]; found {
 			csharpInfo, ok := langInfo.(CSharpPackageInfo)
 			if ok {
@@ -464,6 +469,9 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 					contract.AssertNoErrorf(err, "error loading definition for package %q", r.Schema.PackageReference.Name())
 					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 						info = csharpinfo
+					}
+					if info.RootNamespace == "" && r.Schema.PackageReference.Namespace() != "" {
+						info.RootNamespace = namespaceName(nil, r.Schema.PackageReference.Namespace())
 					}
 				}
 				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))

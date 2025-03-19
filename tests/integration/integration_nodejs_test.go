@@ -2476,6 +2476,23 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packageadd-namespace")
+	e.CWD = filepath.Join(e.RootPath, "nodejs")
+	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+	require.Contains(t, stdout,
+		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
+
+	// Make sure the SDK was generated in the expected directory
+	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
+	require.NoError(t, err)
+}
+
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.
 func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	t.Parallel()
@@ -2485,6 +2502,9 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
+
+	// Install the random plugin so we can use it in the component provider.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "v4.18.0")
 
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
@@ -2530,9 +2550,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aComplexTypeOutput": {
 				"$ref": "#/types/nodejs-component-provider:index:Complex"
+			},
+			"aResourceOutput": {
+				"$ref": "/random/v4.18.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
 			}
 		},
-		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput"]
+		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -2574,9 +2597,9 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host
+//
+//nolint:paralleltest // Sets env vars
 func TestNodejsComponentProviderRun(t *testing.T) {
-	t.Parallel()
-
 	testData, err := filepath.Abs(filepath.Join("component_provider", "nodejs", "component-provider-host"))
 	require.NoError(t, err)
 	providerDir := filepath.Join(testData, "provider")
@@ -2585,7 +2608,11 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, runtime := range []string{"yaml", "python"} {
 		t.Run(runtime, func(t *testing.T) {
+			// This uses the random plugin so needs to be able to download it
+			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				NoParallel: true,
 				PrepareProject: func(info *engine.Projinfo) error {
 					if runtime != "yaml" {
 						cmd := exec.Command("pulumi", "package", "add", providerDir)
@@ -2606,6 +2633,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
 					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
 					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]interface{})
+					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.

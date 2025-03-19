@@ -45,7 +45,7 @@
         "@pulumi/azure-native": "^1.28.0"
       },
       "devDependencies": {
-        "typescript": "^3.7.0"
+        "typescript": "^4.6.0"
       }
     },
     "python": {

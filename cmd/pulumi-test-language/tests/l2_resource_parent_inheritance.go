@@ -47,8 +47,9 @@ func init() {
 					//
 					// 6. A parent with its protect flag set.
 					// 7. A child of the parent with its protect flag set.
-					// 8. An orphan without a parent or protect flag set.
-					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
+					// 8. A child of the parent explicitly setting its protect bit to false.
+					// 9. An orphan without a parent or protect flag set.
+					require.Len(l, snap.Resources, 10, "expected 10 resources in snapshot")
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_2_0_0")
 					require.Equal(l, "pulumi:providers:simple", defaultProvider.Type.String(), "expected default simple provider")
@@ -82,11 +83,13 @@ func init() {
 
 					// Children should inherit protect flags.
 					protectParent := RequireSingleNamedResource(l, snap.Resources, "parent2")
-					protectChild := RequireSingleNamedResource(l, snap.Resources, "child2")
+					protectChild2 := RequireSingleNamedResource(l, snap.Resources, "child2")
+					protectChild3 := RequireSingleNamedResource(l, snap.Resources, "child3")
 					protectOrphan := RequireSingleNamedResource(l, snap.Resources, "orphan2")
 
 					require.True(l, protectParent.Protect, "expected parent to be protected")
-					require.True(l, protectChild.Protect, "expected child to inherit protect flag")
+					require.True(l, protectChild2.Protect, "expected child to inherit protect flag")
+					require.False(l, protectChild3.Protect, "expected child be able to override inherited protect flag")
 					require.False(l, protectOrphan.Protect, "expected orphan to not be protected")
 				},
 			},

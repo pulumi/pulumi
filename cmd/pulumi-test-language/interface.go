@@ -338,7 +338,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	})
 
 	// Start up a plugin context
-	pctx, err := plugin.NewContextWithContext(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil)
+	pctx, err := plugin.NewContextWithContext(ctx, snk, snk, nil, "", "", nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -480,7 +480,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithContext(
-		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil)
+		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -842,28 +842,28 @@ func (eng *languageTestServer) RunLanguageTest(
 			if err != nil {
 				return nil, fmt.Errorf("copy testdata: %w", err)
 			}
-		}
 
-		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-		if len(test.Runs) > 1 {
-			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
-		}
-		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
-		if err != nil {
-			return nil, fmt.Errorf("program snapshot creation: %w", err)
-		}
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
-		if err != nil {
-			return nil, fmt.Errorf("program snapshot validation: %w", err)
-		}
-		if len(validations) > 0 {
-			return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-		}
-		// If we made a snapshot edit we can clean it up now
-		if projectDirSnapshot != projectDir {
-			err = os.RemoveAll(projectDirSnapshot)
+			snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+			if len(test.Runs) > 1 {
+				snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+			}
+			projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
 			if err != nil {
-				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				return nil, fmt.Errorf("program snapshot creation: %w", err)
+			}
+			validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("program snapshot validation: %w", err)
+			}
+			if len(validations) > 0 {
+				return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
+			}
+			// If we made a snapshot edit we can clean it up now
+			if projectDirSnapshot != projectDir {
+				err = os.RemoveAll(projectDirSnapshot)
+				if err != nil {
+					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				}
 			}
 		}
 

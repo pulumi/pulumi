@@ -53,10 +53,10 @@
     "nodejs": {
       "dependencies": {
         "@pulumi/pulumi": "^3.12",
-        "@pulumi/aws": "^3.7.0"
+        "@pulumi/aws": "^4.6.0"
       },
       "devDependencies": {
-        "typescript": "^3.7.0"
+        "typescript": "^4.6.0"
       }
     },
     "python": {

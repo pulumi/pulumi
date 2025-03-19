@@ -1,7 +1,7 @@
 {
 	"name": "l2-resource-option-protect",
 	"devDependencies": {
-		"@types/node": "^14"
+		"@types/node": "^18"
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",

@@ -192,7 +192,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		apiEvent.ResOpFailedEvent = &apitype.ResOpFailedEvent{
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Status:   int(p.Status),
-			Steps:    p.Steps,
+			Steps:    int(p.Steps),
 		}
 
 	case engine.PolicyLoadEvent:
@@ -416,7 +416,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		event = engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
-			Steps:    p.Steps,
+			Steps:    int32(p.Steps), //nolint:gosec // We only ever write int32 sized values to the API.
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:

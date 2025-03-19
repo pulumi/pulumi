@@ -532,6 +532,7 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 			Update: opts.CustomTimeouts.Update,
 			Delete: opts.CustomTimeouts.Delete,
 		},
+		Parent: string(opts.Parent),
 	}
 	return result
 }

@@ -29,8 +29,6 @@ const (
 	DisplayProgress Type = iota
 	// DisplayDiff displays a rich diff.
 	DisplayDiff
-	// DisplayQuery displays query output.
-	DisplayQuery
 	// DisplayWatch displays watch output.
 	DisplayWatch
 )

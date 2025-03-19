@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -182,7 +181,7 @@ func TestGetRequiredPackages(t *testing.T) {
 	}
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
+	resp, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -239,7 +238,7 @@ func TestGetRequiredPackagesSymlinkCycles(t *testing.T) {
 	require.NoError(t, err)
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
+	resp, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -298,7 +297,7 @@ func TestGetRequiredPackagesSymlinkCycles2(t *testing.T) {
 	require.NoError(t, err)
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
+	resp, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -353,7 +352,7 @@ func TestGetRequiredPackagesNestedPolicyPack(t *testing.T) {
 	}
 
 	host := &nodeLanguageHost{}
-	resp, err := host.GetRequiredPackages(context.Background(), &pulumirpc.GetRequiredPackagesRequest{
+	resp, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
 		Info: &pulumirpc.ProgramInfo{
 			RootDirectory:    dir,
 			ProgramDirectory: dir,
@@ -406,7 +405,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		host := &nodeLanguageHost{}
-		_, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		_, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
@@ -431,7 +430,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		host := &nodeLanguageHost{}
-		_, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		_, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
@@ -467,7 +466,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		host := &nodeLanguageHost{}
-		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
@@ -507,7 +506,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
-		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: subdir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    subdir,
@@ -546,7 +545,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		host := &nodeLanguageHost{}
-		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
@@ -601,7 +600,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		host := &nodeLanguageHost{}
-		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: testDir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
@@ -658,7 +657,7 @@ func TestGetProgramDependencies(t *testing.T) {
 
 		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
-		resp, err := host.GetProgramDependencies(context.Background(), &pulumirpc.GetProgramDependenciesRequest{
+		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
 			Program: subdir,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    subdir,

@@ -214,6 +214,7 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     ALIASES_FIELD_NUMBER: builtins.int
     CUSTOMTIMEOUTS_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
     protect: builtins.bool
     """true if the resource should be marked protected."""
     @property
@@ -232,6 +233,8 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
     @property
     def customTimeouts(self) -> global___AnalyzerResourceOptions.CustomTimeouts:
         """a config block that will be used to configure timeouts for CRUD operations."""
+    parent: builtins.str
+    """an optional parent URN that this child resource belongs to."""
     def __init__(
         self,
         *,
@@ -242,9 +245,10 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         aliases: collections.abc.Iterable[builtins.str] | None = ...,
         customTimeouts: global___AnalyzerResourceOptions.CustomTimeouts | None = ...,
+        parent: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "ignoreChanges", b"ignoreChanges", "protect", b"protect"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "ignoreChanges", b"ignoreChanges", "parent", b"parent", "protect", b"protect"]) -> None: ...
 
 global___AnalyzerResourceOptions = AnalyzerResourceOptions
 

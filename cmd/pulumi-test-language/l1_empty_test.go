@@ -177,7 +177,7 @@ func (h *L1EmptyLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 func TestL1Empty(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
@@ -215,7 +215,7 @@ func TestL1Empty(t *testing.T) {
 func TestL1Empty_FailPrepare(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{
@@ -301,7 +301,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 func TestL1Empty_BadSnapshot(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{DisableSnapshotWriting: true}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
@@ -341,7 +341,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 func TestL1Empty_MissingStack(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{
@@ -384,7 +384,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 func TestL1Empty_NoCoreSDK(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{

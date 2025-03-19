@@ -1,5 +1,84 @@
 # Changelog
 
+## 3.157.0 (2025-03-18)
+
+
+### Features
+
+- [engine] Allow protect to be overridden back to false by child resources that inherit it
+
+- [engine] Add an envvar PULUMI_PARALLEL_DIFF to run diff calculations in parallel
+  [#18872](https://github.com/pulumi/pulumi/pull/18872)
+
+- [yaml] Introduce the packages section in Pulumi.yaml
+  [#18917](https://github.com/pulumi/pulumi/pull/18917)
+
+- [sdk/go] Add a Parent option to AnalyzerResourceOptions
+  [#18927](https://github.com/pulumi/pulumi/pull/18927)
+
+- [sdk/nodejs] Add support for resource referenced in component provider
+  [#18885](https://github.com/pulumi/pulumi/pull/18885)
+
+- [sdkgen/nodejs] Change Node.js code generation to use @types/node of version 18 instead of 14
+  [#18922](https://github.com/pulumi/pulumi/pull/18922)
+
+- [cli/package] Disambiguate packages with a different namespace than "pulumi"
+  [#18418](https://github.com/pulumi/pulumi/pull/18418)
+
+
+### Bug Fixes
+
+- [cli/package] Fix explicitly named package names in NodeJS
+  [#18933](https://github.com/pulumi/pulumi/pull/18933)
+
+- [sdkgen/dotnet] Support parameterization in generated remote component resources for .NET
+  [#18699](https://github.com/pulumi/pulumi/pull/18699)
+
+
+### Miscellaneous
+
+- [cli] Remove `query` command
+  [#18891](https://github.com/pulumi/pulumi/pull/18891)
+
+## 3.156.0 (2025-03-13)
+
+
+### Bug Fixes
+
+- [sdk/go] Fix overriding protect in child resources
+
+- [sdk/python] Fix mapping input names in Construct recursively in component providers
+  [#18864](https://github.com/pulumi/pulumi/pull/18864)
+
+## 3.155.0 (2025-03-12)
+
+
+### Features
+
+- [engine] Add batch encryption for snapshot serialization to increase performance working with many secrets
+  [#18743](https://github.com/pulumi/pulumi/pull/18743)
+
+- [sdk/dotnet] Upgrade pulumi dotnet to 3.76.1
+  [#18853](https://github.com/pulumi/pulumi/pull/18853)
+
+
+### Bug Fixes
+
+- [cli/display] Fix a timestamp inconsistency between the JSON display and the engine event log
+  [#18838](https://github.com/pulumi/pulumi/pull/18838)
+
+- [engine] Engine will respect cgroup limits for --parallel
+  [#18815](https://github.com/pulumi/pulumi/pull/18815)
+
+- [engine] Return an error on malformed provider references rather than ignoring them
+  [#18854](https://github.com/pulumi/pulumi/pull/18854)
+
+
+### Miscellaneous
+
+- [ci] Run CI with Go 1.23 and 1.24
+  [#18841](https://github.com/pulumi/pulumi/pull/18841)
+
 ## 3.154.0 (2025-03-07)
 
 

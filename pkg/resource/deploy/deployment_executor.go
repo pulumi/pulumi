@@ -38,13 +38,14 @@ import (
 type deploymentExecutor struct {
 	deployment *Deployment // The deployment that we are executing
 
-	// Counter for the step generator, this tells us we're expecting async refresh steps still.
-	asyncCounter int32
-
 	stepGen  *stepGenerator // step generator owned by this deployment
 	stepExec *stepExecutor  // step executor owned by this deployment
 
 	skipped mapset.Set[urn.URN] // The set of resources that have failed
+
+	// The number of expected events remaining from step generaton, this tells us we're still expecting events
+	// to be posted back to us from async work such as DiffSteps.
+	asyncEventsExpected int32
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -178,6 +179,31 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		return nil, err
 	}
 
+	// Set up a step generator for this deployment.
+	mode := updateMode
+	if ex.deployment.opts.DestroyProgram {
+		mode = destroyMode
+	}
+	// If were doing a program based refresh we'll get down to here and we need to put the step generator into
+	// refresh mode.
+	refresh := ex.deployment.opts.RefreshProgram && ex.deployment.opts.Refresh
+	if ex.deployment.opts.RefreshOnly {
+		mode = refreshMode
+	}
+	// As well as generating steps from events produced by the source, the step generator can also generate
+	// events in order to support concurrency during step generation (e.g. for parallel diffing). We thus pass
+	// a channel that the step generator can write to in order to yield/resume at these points. We then pump
+	// these events back to the step gen in the main loop with program events.
+	stepGenEvents := make(chan SourceEvent)
+	ex.stepGen = newStepGenerator(ex.deployment, refresh, mode, stepGenEvents)
+
+	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
+	// deployment's execution fails.
+	ctx, cancel := context.WithCancel(callerCtx)
+
+	// Set up a step generator and executor for this deployment.
+	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
+
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
@@ -201,42 +227,26 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		}
 	}()
 
-	// Set up a step generator for this deployment.
-	mode := updateMode
-	if ex.deployment.opts.DestroyProgram {
-		mode = destroyMode
-	}
-	// If were doing a program based refresh we'll get down to here and we need to put the step generator into
-	// refresh mode.
-	refresh := ex.deployment.opts.RefreshProgram && ex.deployment.opts.Refresh
-	if ex.deployment.opts.RefreshOnly {
-		mode = refreshMode
-	}
-	stepGenEvents := make(chan SourceEvent)
-	ex.stepGen = newStepGenerator(ex.deployment, mode, refresh, stepGenEvents)
-
-	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
-	// deployment's execution fails.
-	ctx, cancel := context.WithCancel(callerCtx)
-
-	// Set up a step generator and executor for this deployment.
-	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
-
-	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are
-	// a three ways we can exit this loop:
-	//  1. The SourceIterator sends us a `nil` event. This means that we're done processing source events and
-	//     we should begin processing deletes.
+	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are three ways
+	// we can exit this loop:
+	//  1. The SourceIterator sends us a `nil` event and the step generator has completed all its async work.
+	//     This means that we're done processing source events and we should begin processing deletes.
 	//  2. The SourceIterator sends us an error. This means some error occurred in the source program and we
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+
+		// We're ingesting events from two sources: the source iterator and the step generator. We need to make sure
+		// that both are done before we exit the loop. The source iterator is done when it sends us nil. The step
+		// generator is done when its async counter is 0, i.e. for each async event it said it was going to do we've
+		// seen and posted that event back to it.
 		seenNil := false
 		for {
 			select {
 			case event := <-stepGenEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event")
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
 
 				if err := ex.handleSingleEvent(event); err != nil {
 					if !result.IsBail(err) {
@@ -248,7 +258,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				}
 
 			case event := <-incomingEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil,
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
 					event.Error)
 
 				if event.Error != nil {
@@ -273,7 +283,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 						return false, result.BailError(err)
 					}
 				}
-
 			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
@@ -282,7 +291,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				return callerCtx.Err() != nil, nil
 			}
 
-			if seenNil && ex.asyncCounter == 0 {
+			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
+			// the top of the loop for more details.
+			if seenNil && ex.asyncEventsExpected == 0 {
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
@@ -489,16 +500,24 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	var steps []Step
 	var err error
 	switch e := event.(type) {
-	case ContinueResourceEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received continue resource outputs")
-		ex.asyncCounter--
-		steps, err = ex.stepGen.ContinueSteps(e)
+	case ContinueResourceRefreshEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
+		ex.asyncEventsExpected--
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
+	case ContinueResourceDiffEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
+		ex.asyncEventsExpected--
+		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		var async bool
 		steps, async, err = ex.stepGen.GenerateSteps(e)
 		if async {
-			ex.asyncCounter++
+			ex.asyncEventsExpected++
 		}
 	case ReadResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ReadResourceEvent")
@@ -592,8 +611,10 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
+	targetsActual := ex.deployment.opts.Targets
+
 	for _, res := range prev.Resources {
-		if ex.deployment.opts.Targets.Contains(res.URN) {
+		if targetsActual.Contains(res.URN) {
 			// For each resource we're going to refresh we need to ensure we have a provider for it
 			err := ex.deployment.EnsureProvider(res.Provider)
 			if err != nil {
@@ -603,6 +624,23 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 			step := NewRefreshStep(ex.deployment, nil, res)
 			steps = append(steps, step)
 			resourceToStep[res] = step
+		} else if ex.deployment.opts.TargetDependents {
+			// The provider reference is already ensured.
+			_, allDeps := res.GetAllDependencies()
+
+			// Because we always visit a target before its dependents, these
+			// dependents will all be caught by the check at the start of this
+			// loop.
+			for _, dep := range allDeps {
+				if targetsActual.Contains(dep.URN) {
+					step := NewRefreshStep(ex.deployment, nil, res)
+					steps = append(steps, step)
+					resourceToStep[res] = step
+
+					targetsActual.addLiteral(res.URN)
+					break
+				}
+			}
 		}
 	}
 

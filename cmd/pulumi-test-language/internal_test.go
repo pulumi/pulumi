@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -31,7 +30,7 @@ import (
 func TestInvalidSchema(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	// We can just reuse the L1Empty host for this, it's not actually going to be used apart from prepare.

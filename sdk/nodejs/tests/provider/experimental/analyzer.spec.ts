@@ -16,6 +16,7 @@ import * as assert from "node:assert";
 import * as path from "node:path";
 import * as execa from "execa";
 import { Analyzer } from "../../../provider/experimental/analyzer";
+import { InputOutput } from "../../../provider/experimental/analyzer";
 
 describe("Analyzer", function () {
     before(() => {
@@ -299,10 +300,66 @@ describe("Analyzer", function () {
         });
     });
 
-    it("errors nicely for resource references", async function () {
+    it("infers resource references", async function () {
         const dir = path.join(__dirname, "testdata", "resource-reference");
         const analyzer = new Analyzer(dir, "provider");
-        assert.throws(() => analyzer.analyze(), /Resource references are not supported yet: found type 'MyResource'/);
+        const { components, packageReferences } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    inputResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        description: "A reference to a resource in the TLS package.",
+                    },
+                    inputPlainResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        plain: true,
+                        optional: true,
+                    },
+                    inputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
+                },
+                outputs: {
+                    outputResource: { $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey" },
+                    outputPlainResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        plain: true,
+                    },
+                    outputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(packageReferences, {
+            tls: "4.11.1",
+        });
+    });
+
+    it("errors nicely for invalid property types for top-level properties", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type", "top-level");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) =>
+                err.message ===
+                "Union types are not supported for component 'MyComponent' input 'MyComponentArgs.invalidProp': type 'string | boolean'",
+        );
+    });
+
+    it("errors nicely for invalid property types for sub-type properties", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type", "sub-type");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) =>
+                err.message ===
+                "Unsupported type for component 'MyComponent' input 'MyOtherArgs.invalidProp values': type '\"fixed value\"'",
+        );
     });
 
     it("infers component description", async function () {
@@ -370,5 +427,56 @@ describe("Analyzer", function () {
                 description: "myClassType comment",
             },
         });
+    });
+});
+
+describe("formatErrorContext", () => {
+    // We need to create an analyzer instance to test the private method
+    const analyzer = new Analyzer(__dirname, "provider");
+    // Use any to access private method
+    const formatErrorContext = (analyzer as any).formatErrorContext.bind(analyzer);
+
+    it("formats basic component context", () => {
+        assert.strictEqual(formatErrorContext({ component: "MyComponent" }), "component 'MyComponent'");
+    });
+
+    it("formats property context", () => {
+        assert.strictEqual(
+            formatErrorContext({ component: "MyComponent", property: "myProp" }),
+            "component 'MyComponent' property 'myProp'",
+        );
+    });
+
+    it("formats input property context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                property: "myProp",
+                inputOutput: InputOutput.Input,
+            }),
+            "component 'MyComponent' input 'myProp'",
+        );
+    });
+
+    it("formats output property context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                property: "myProp",
+                inputOutput: InputOutput.Output,
+            }),
+            "component 'MyComponent' output 'myProp'",
+        );
+    });
+
+    it("formats type context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                typeName: "MyType",
+                property: "myProp",
+            }),
+            "component 'MyComponent' property 'MyType.myProp'",
+        );
     });
 });

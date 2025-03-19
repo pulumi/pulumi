@@ -656,11 +656,12 @@ func TestDBRProtect(t *testing.T) {
 		assert.NoError(t, err)
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
+		protect := true
 		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs:       inputsB,
 			Dependencies: []resource.URN{respA.URN},
 			PropertyDeps: inputDepsB,
-			Protect:      true,
+			Protect:      &protect,
 		})
 		assert.NoError(t, err)
 

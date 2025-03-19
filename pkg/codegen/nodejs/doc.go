@@ -150,10 +150,14 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
 	var displayName string
 	var link string
+	namespace := "@pulumi"
+	if pkg.Namespace != "" {
+		namespace = "@" + pkg.Namespace
+	}
 	if modName == "" {
-		displayName = "@pulumi/" + pkg.Name
+		displayName = fmt.Sprintf("%s/%s", namespace, pkg.Name)
 	} else {
-		displayName = fmt.Sprintf("@pulumi/%s/%s", pkg.Name, strings.ToLower(modName))
+		displayName = fmt.Sprintf("%s/%s/%s", namespace, pkg.Name, strings.ToLower(modName))
 	}
 	link = d.GetDocLinkForResourceType(pkg, modName, "")
 	return displayName, link

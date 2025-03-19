@@ -15,6 +15,7 @@
 package client
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -344,6 +345,40 @@ func (pc *Client) ListStacks(
 	}
 
 	return resp.Stacks, resp.ContinuationToken, nil
+}
+
+// ListOrgTemplates lists the project templates associated with an org.
+func (pc *Client) ListOrgTemplates(ctx context.Context, org string) (apitype.ListOrgTemplatesResponse, error) {
+	var resp apitype.ListOrgTemplatesResponse
+	if err := pc.restCall(ctx, "GET", "/api/orgs/"+url.PathEscape(org)+"/templates", nil, nil, &resp); err != nil {
+		return apitype.ListOrgTemplatesResponse{}, err
+	}
+
+	return resp, nil
+}
+
+// A [tar.Reader] that owns it's underlying data, and is thus responsible for closing it.
+type TarReaderCloser struct {
+	data io.ReadCloser
+}
+
+func (trc *TarReaderCloser) Tar() *tar.Reader { return tar.NewReader(trc.data) }
+
+func (trc *TarReaderCloser) Close() error { return trc.data.Close() }
+
+func (pc *Client) DownloadOrgTemplate(ctx context.Context, org, sourceURL string) (*TarReaderCloser, error) {
+	path := "/api/orgs/" + url.PathEscape(org) + "/template/download?url=" + url.PathEscape(sourceURL)
+
+	header := make(http.Header, 1)
+	header.Add("Accept", "application/x-tar")
+
+	var resp io.ReadCloser
+	if err := pc.restCallWithOptions(ctx, "GET", path, nil, nil, &resp, httpCallOptions{
+		Header: header,
+	}); err != nil {
+		return nil, err
+	}
+	return &TarReaderCloser{data: resp}, nil
 }
 
 // ErrNoPreviousDeployment is returned when there isn't a previous deployment.

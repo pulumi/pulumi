@@ -1802,8 +1802,9 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 	t.Run("Protect", func(t *testing.T) {
 		t.Parallel()
 
+		protect := true
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
-			Protect: true,
+			Protect: &protect,
 		})
 		assert.True(t, snap.Protect, "protect was not set")
 	})

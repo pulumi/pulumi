@@ -121,7 +121,11 @@ extension, Pulumi package schema is read from it directly:
 				return fmt.Errorf("failed to create directory for SDK: %w", err)
 			}
 
-			out = filepath.Join(out, pkg.Name)
+			outName := pkg.Name
+			if pkg.Namespace != "" {
+				outName = pkg.Namespace + "-" + outName
+			}
+			out = filepath.Join(out, outName)
 			err = CopyAll(out, filepath.Join(tempOut, language))
 			if err != nil {
 				return fmt.Errorf("failed to move SDK to project: %w", err)

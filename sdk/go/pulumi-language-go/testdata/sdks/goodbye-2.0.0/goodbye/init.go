@@ -23,6 +23,8 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 	switch typ {
 	case "goodbye:index:Goodbye":
 		r = &Goodbye{}
+	case "goodbye:index:GoodbyeComponent":
+		r = &GoodbyeComponent{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

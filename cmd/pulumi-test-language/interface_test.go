@@ -63,7 +63,7 @@ func TestL1NoProviders(t *testing.T) {
 func TestNoInternalTests(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	engine := &languageTestServer{}
 
 	response, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
@@ -136,7 +136,7 @@ func TestProviderVersions(t *testing.T) {
 			version, err := getProviderVersion(provider)
 			require.NoError(t, err)
 
-			schema, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+			schema, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var schemaJSON struct {
@@ -169,7 +169,7 @@ func TestProviderSchemas(t *testing.T) {
 				continue
 			}
 
-			resp, err := provider.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+			resp, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 			require.NoError(t, err)
 
 			var pkg schema.PackageSpec

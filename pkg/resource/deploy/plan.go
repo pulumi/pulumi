@@ -187,6 +187,11 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 
 	diff := NewPlanDiff(inputDiff)
 
+	var protect bool
+	if goal.Protect != nil {
+		protect = *goal.Protect
+	}
+
 	return &GoalPlan{
 		Type:                    goal.Type,
 		Name:                    goal.Name,
@@ -194,7 +199,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		InputDiff:               diff,
 		OutputDiff:              PlanDiff{},
 		Parent:                  goal.Parent,
-		Protect:                 goal.Protect,
+		Protect:                 protect,
 		Dependencies:            goal.Dependencies,
 		Provider:                goal.Provider,
 		PropertyDependencies:    goal.PropertyDependencies,
@@ -574,7 +579,11 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the protect bit is identical.
-	if programGoal.Protect != rp.Goal.Protect {
+	var protect bool
+	if programGoal.Protect != nil {
+		protect = *programGoal.Protect
+	}
+	if protect != rp.Goal.Protect {
 		return fmt.Errorf("protect changed (expected %v)", rp.Goal.Protect)
 	}
 

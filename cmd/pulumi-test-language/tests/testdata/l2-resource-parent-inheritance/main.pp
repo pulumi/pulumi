@@ -32,6 +32,14 @@ resource "child2" "simple:index:Resource" {
     }
 }
 
+resource "child3" "simple:index:Resource" {
+    value = true
+    options {
+        parent = parent2
+        protect = false
+    }
+}
+
 resource "orphan2" "simple:index:Resource" {
     value = true
 }

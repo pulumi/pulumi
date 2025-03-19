@@ -1273,7 +1273,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
 	var stderr bytes.Buffer
 	sink := diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never})
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
-	require.NoError(t, err, "initialize backend")
+	require.NoError(t, err)
 
 	// For the first two stacks, we'll return project names to upgrade them.
 	// For the third stack, we will not set a project name, and it should be skipped.
@@ -1710,4 +1710,105 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
+}
+
+func TestParallelStackFetch(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir diy backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+
+	// Create a custom environment with DIYBackendParallel set
+	s := make(env.MapStore)
+	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
+
+	b, err := newDIYBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
+		&workspace.Project{Name: "testproj"},
+		&diyBackendOptions{Env: env.NewEnv(s)},
+	)
+	assert.NoError(t, err)
+
+	// Create multiple stacks to test parallel fetching
+	numStacks := 10
+	stackRefs := make([]backend.StackReference, numStacks)
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		stackRef, err := b.ParseStackReference(stackName)
+		assert.NoError(t, err)
+		stackRefs[i] = stackRef
+
+		// Create the stack
+		_, err = b.CreateStack(ctx, stackRef, "", nil, nil)
+		assert.NoError(t, err)
+	}
+
+	// List stacks to trigger parallel fetching
+	filter := backend.ListStacksFilter{} // No filter
+	stacks, token, err := b.ListStacks(ctx, filter, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stacks, numStacks)
+
+	// Verify all stacks were fetched
+	stackNames := make(map[string]bool)
+	for _, stack := range stacks {
+		stackNames[stack.Name().String()] = true
+	}
+
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
+	}
+}
+
+func TestParallelStackFetchDefaultValue(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir diy backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+
+	// Create a backend without setting DIYBackendParallel
+	b, err := newDIYBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
+		&workspace.Project{Name: "testproj"},
+		&diyBackendOptions{Env: env.NewEnv(make(env.MapStore))},
+	)
+	assert.NoError(t, err)
+
+	// Create multiple stacks to test parallel fetching with default value
+	numStacks := 5
+	stackRefs := make([]backend.StackReference, numStacks)
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		stackRef, err := b.ParseStackReference(stackName)
+		assert.NoError(t, err)
+		stackRefs[i] = stackRef
+
+		// Create the stack
+		_, err = b.CreateStack(ctx, stackRef, "", nil, nil)
+		assert.NoError(t, err)
+	}
+
+	// List stacks to trigger parallel fetching with default value
+	filter := backend.ListStacksFilter{} // No filter
+	stacks, token, err := b.ListStacks(ctx, filter, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stacks, numStacks)
+
+	// Verify all stacks were fetched
+	stackNames := make(map[string]bool)
+	for _, stack := range stacks {
+		stackNames[stack.Name().String()] = true
+	}
+
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
+	}
 }

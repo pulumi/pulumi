@@ -93,7 +93,8 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 
 		for _, r := range ps.ResourceRegistrations {
 			opts := deploytest.ResourceOptions{
-				Protect:        r.Protect,
+				// TODO(https://github.com/pulumi/pulumi/issues/18934): We should sometimes leave this null
+				Protect:        &r.Protect,
 				RetainOnDelete: r.RetainOnDelete,
 				Parent:         rewriteURN(r.Parent),
 				Provider:       rewriteProviderRef(r.Provider),

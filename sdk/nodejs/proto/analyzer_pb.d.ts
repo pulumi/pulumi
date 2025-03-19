@@ -134,6 +134,8 @@ export class AnalyzerResourceOptions extends jspb.Message {
     clearCustomtimeouts(): void;
     getCustomtimeouts(): AnalyzerResourceOptions.CustomTimeouts | undefined;
     setCustomtimeouts(value?: AnalyzerResourceOptions.CustomTimeouts): AnalyzerResourceOptions;
+    getParent(): string;
+    setParent(value: string): AnalyzerResourceOptions;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerResourceOptions.AsObject;
@@ -154,6 +156,7 @@ export namespace AnalyzerResourceOptions {
         additionalsecretoutputsList: Array<string>,
         aliasesList: Array<string>,
         customtimeouts?: AnalyzerResourceOptions.CustomTimeouts.AsObject,
+        parent: string,
     }
 
 

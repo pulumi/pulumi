@@ -162,7 +162,9 @@ method (as defined in `pkg/secrets/provider.go`). This is almost always the
 first deserialize the stack state, then the returned secrets manager is included
 within the `deploy.Snapshot` object. Both implementations of the
 `secrets.Provider` type wrap the underlying secrets manager implementation in a
-`CachingSecretsManager`.
+`BatchingSecretsManager`. The `batchingCachingSecretsManager` implementation
+also maintains a cache of encrypted secrets to prevent work duplication across
+a single operation.
 
 [^sie-p1]:
     Snapshot integrity issues are generally "P1" issues, meaning that they are

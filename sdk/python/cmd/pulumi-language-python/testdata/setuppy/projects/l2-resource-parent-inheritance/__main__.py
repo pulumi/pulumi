@@ -11,4 +11,7 @@ parent2 = simple.Resource("parent2", value=True,
 opts = pulumi.ResourceOptions(protect=True))
 child2 = simple.Resource("child2", value=True,
 opts = pulumi.ResourceOptions(parent=parent2))
+child3 = simple.Resource("child3", value=True,
+opts = pulumi.ResourceOptions(parent=parent2,
+    protect=False))
 orphan2 = simple.Resource("orphan2", value=True)

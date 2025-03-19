@@ -99,7 +99,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}, actual)
 	})
-	t.Run("parse bulk encrypt", func(t *testing.T) {
+	t.Run("parse batch encrypt", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{

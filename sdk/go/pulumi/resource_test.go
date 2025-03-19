@@ -238,7 +238,8 @@ func TestResourceOptionMergingProtect(t *testing.T) {
 
 	// last value wins
 	opts := merge(Protect(true), Protect(false))
-	assert.Equal(t, false, opts.Protect)
+	expected := false
+	assert.Equal(t, &expected, opts.Protect)
 }
 
 func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
@@ -251,6 +252,10 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 
 func TestResourceOptionComposite(t *testing.T) {
 	t.Parallel()
+
+	ptr := func(b bool) *bool {
+		return &b
+	}
 
 	tests := []struct {
 		name  string
@@ -300,7 +305,7 @@ func TestResourceOptionComposite(t *testing.T) {
 			},
 			want: &resourceOptions{
 				DeleteBeforeReplace: true,
-				Protect:             true,
+				Protect:             ptr(true),
 			},
 		},
 	}

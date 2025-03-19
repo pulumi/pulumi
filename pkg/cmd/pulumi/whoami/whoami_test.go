@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,21 +32,24 @@ import (
 func TestWhoAmICmd_default(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
-	cmd := whoAmICmd{
-		Stdout: &buff,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user1", []string{"org1", "org2"}, nil, nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
 		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-					return "user1", []string{"org1", "org2"}, nil, nil
-				},
-			}, nil
+			return be, nil
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	assert.Equal(t, "user1\n", buff.String())
@@ -54,25 +58,28 @@ func TestWhoAmICmd_default(t *testing.T) {
 func TestWhoAmICmd_verbose(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
-	cmd := whoAmICmd{
-		verbose: true,
-		Stdout:  &buff,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user2", []string{"org1", "org2"}, nil, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
 		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-					return "user2", []string{"org1", "org2"}, nil, nil
-				},
-				URLF: func() string {
-					return "https://pulumi.example.com"
-				},
-			}, nil
+			return be, nil
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--verbose"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	stdout := buff.String()
@@ -85,25 +92,28 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 func TestWhoAmICmd_json(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
-	cmd := whoAmICmd{
-		jsonOut: true,
-		Stdout:  &buff,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user3", []string{"org1", "org2"}, nil, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
 		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-					return "user3", []string{"org1", "org2"}, nil, nil
-				},
-				URLF: func() string {
-					return "https://pulumi.example.com"
-				},
-			}, nil
+			return be, nil
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--json"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -116,28 +126,31 @@ func TestWhoAmICmd_json(t *testing.T) {
 func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
-	cmd := whoAmICmd{
-		verbose: true,
-		Stdout:  &buff,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-					return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
-						Name: "team-token",
-						Team: "myTeam",
-					}, nil
-				},
-				URLF: func() string {
-					return "https://pulumi.example.com"
-				},
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
+				Name: "team-token",
+				Team: "myTeam",
 			}, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--verbose"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	stdout := buff.String()
@@ -151,28 +164,31 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
-	cmd := whoAmICmd{
-		jsonOut: true,
-		Stdout:  &buff,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-					return "user3", []string{"org1", "org2"}, &workspace.TokenInformation{
-						Name: "team-token",
-						Team: "myTeam",
-					}, nil
-				},
-				URLF: func() string {
-					return "https://pulumi.example.com"
-				},
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user3", []string{"org1", "org2"}, &workspace.TokenInformation{
+				Name: "team-token",
+				Team: "myTeam",
 			}, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--json"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -186,27 +202,30 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	t.Parallel()
 
-	var buff bytes.Buffer
-	cmd := whoAmICmd{
-		verbose: true,
-		Stdout:  &buff,
-		currentBackend: func(
-			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
-					return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
-						Name: "bad-token",
-					}, nil
-				},
-				URLF: func() string {
-					return "https://pulumi.example.com"
-				},
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "user2", []string{"org1", "org2"}, &workspace.TokenInformation{
+				Name: "bad-token",
 			}, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
 		},
 	}
 
-	err := cmd.Run(context.Background())
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--verbose"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
 	require.NoError(t, err)
 
 	stdout := buff.String()

@@ -11,6 +11,12 @@ package "subpackage" {
 // The resource name is based on the parameter value
 resource example "subpackage:index:HelloWorld" { }
 
+resource exampleComponent "subpackage:index:HelloWorldComponent" { }
+
 output "parameterValue" {
     value = example.parameterValue
+}
+
+output "parameterValueFromComponent" {
+    value = exampleComponent.parameterValue
 }

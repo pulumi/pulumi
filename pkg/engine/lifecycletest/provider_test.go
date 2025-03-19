@@ -2018,3 +2018,44 @@ func TestProviderSameStep(t *testing.T) {
 	assert.Equal(t, "200", prov.Inputs["value"].StringValue())
 	assert.Equal(t, "100", prov.Outputs["value"].StringValue())
 }
+
+// TestMalformedProvider tests that if a malformed provider reference is sent we return an error.
+// See https://github.com/pulumi/pulumi/pull/18854
+func TestMalformedProvider(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: string(resp.URN), // Just an URN is not valid
+		})
+		assert.ErrorContains(t, err,
+			"could not parse provider reference: urn:pulumi:test::test::pulumi:providers:pkgA is not a valid URN")
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: "hello world", // Not a valid URN
+		})
+		assert.ErrorContains(t, err,
+			"could not parse provider reference: expected '::' in provider reference 'hello world'")
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+}

@@ -388,7 +388,15 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
-			opts.Protect = rpcReq.Options.Protect
+
+			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
+			// optionality that the wire protocol can
+			var protect bool
+			if rpcReq.Options.Protect != nil {
+				protect = *rpcReq.Options.Protect
+			}
+			opts.Protect = protect
+
 			if rpcReq.Options.Provider != "" {
 				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
 			}
@@ -490,7 +498,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
-			rpcRes.Options.Protect = opts.Protect
+			rpcRes.Options.Protect = &opts.Protect
 
 			if opts.Provider != nil {
 				rpcRes.Options.Provider, err = ctx.resolveProviderReference(opts.Provider)
@@ -1255,8 +1263,8 @@ func (ctx *Context) readPackageResource(
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
 	protect := options.Protect
-	if parent != nil {
-		protect = protect || parent.getProtect()
+	if parent != nil && protect == nil {
+		protect = parent.getProtect()
 	}
 
 	// Create resolvers for the resource's outputs.
@@ -1456,8 +1464,8 @@ func (ctx *Context) registerResource(
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
 	protect := options.Protect
-	if parent != nil {
-		protect = protect || parent.getProtect()
+	if parent != nil && protect == nil {
+		protect = parent.getProtect()
 	}
 
 	// Create resolvers for the resource's outputs.
@@ -1651,7 +1659,7 @@ type resourceState struct {
 	outputs           map[string]Output
 	providers         map[string]ProviderResource
 	provider          ProviderResource
-	protect           bool
+	protect           *bool
 	version           string
 	pluginDownloadURL string
 	name              string
@@ -1799,7 +1807,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, protect bool, version, pluginDownloadURL string, aliases []URNOutput,
+	provider ProviderResource, protect *bool, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation,
 ) *resourceState {
 	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1997,7 +2005,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 type resourceInputs struct {
 	parent                  string
 	deps                    []string
-	protect                 bool
+	protect                 *bool
 	provider                string
 	providers               map[string]string
 	resolvedProps           resource.PropertyMap

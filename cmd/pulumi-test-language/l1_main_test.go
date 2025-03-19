@@ -191,7 +191,7 @@ func (h *L1MainLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest)
 func TestL1Main(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L1MainLanguageHost{tempDir: tempDir}

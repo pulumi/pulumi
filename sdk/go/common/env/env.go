@@ -108,6 +108,12 @@ var Parallel = env.Int("PARALLEL",
 var AccessToken = env.String("ACCESS_TOKEN",
 	"The access token used to authenticate with the Pulumi Service.")
 
+var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
+	"Disable caching encryption operations for unchanged stack secrets.")
+
+var ParallelDiff = env.Bool("PARALLEL_DIFF",
+	"Enable running diff calculations in parallel.")
+
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
 //
@@ -141,6 +147,9 @@ var (
 	DIYBackendDisableCheckpointBackups = env.Bool("DIY_BACKEND_DISABLE_CHECKPOINT_BACKUPS",
 		"If set checkpoint backups will not be written the to the backup folder.",
 		env.Alternative("DISABLE_CHECKPOINT_BACKUPS"))
+
+	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
+		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
 )
 
 // Environment variables which affect Pulumi AI integrations

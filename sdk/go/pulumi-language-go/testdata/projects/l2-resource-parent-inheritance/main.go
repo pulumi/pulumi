@@ -41,6 +41,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = simple.NewResource(ctx, "child3", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		}, pulumi.Parent(parent2), pulumi.Protect(false))
+		if err != nil {
+			return err
+		}
 		_, err = simple.NewResource(ctx, "orphan2", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})

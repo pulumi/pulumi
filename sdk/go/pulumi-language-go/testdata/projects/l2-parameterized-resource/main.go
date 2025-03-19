@@ -12,7 +12,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		exampleComponent, err := subpackage.NewHelloWorldComponent(ctx, "exampleComponent", nil)
+		if err != nil {
+			return err
+		}
 		ctx.Export("parameterValue", example.ParameterValue)
+		ctx.Export("parameterValueFromComponent", exampleComponent.ParameterValue)
 		return nil
 	})
 }

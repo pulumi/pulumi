@@ -33,6 +33,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -178,7 +179,7 @@ func TestLanguage(t *testing.T) {
 	t.Parallel()
 	engineAddress, engine := runTestingHost(t)
 
-	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
+	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	// We need to run the python tests multiple times. Once with TOML projects and once with setup.py. We also want to
@@ -253,7 +254,7 @@ func TestLanguage(t *testing.T) {
 			}
 
 			// Prepare to run the tests
-			prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 				LanguagePluginName:   "python",
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
@@ -282,7 +283,7 @@ func TestLanguage(t *testing.T) {
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
-					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,
 						Test:  tt,
 					})
@@ -291,8 +292,8 @@ func TestLanguage(t *testing.T) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					t.Logf("stdout: %s", result.Stdout)
-					t.Logf("stderr: %s", result.Stderr)
+					ptesting.LogTruncated(t, "stdout: %s", result.Stdout)
+					ptesting.LogTruncated(t, "stderr: %s", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

@@ -40,19 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type cloudQuery struct {
-	root string
-	proj *workspace.Project
-}
-
-func (q *cloudQuery) GetRoot() string {
-	return q.root
-}
-
-func (q *cloudQuery) GetProject() *workspace.Project {
-	return q.proj
-}
-
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
 	context context.Context
@@ -151,12 +138,6 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 
 	// Note that we don't return immediately, the defer'd function will block until
 	// the display and persistence go-routines are finished processing events.
-}
-
-func (b *cloudBackend) newQuery(ctx context.Context,
-	op backend.QueryOperation,
-) (engine.QueryInfo, error) {
-	return &cloudQuery{root: op.Root, proj: op.Proj}, nil
 }
 
 func RenewLeaseFunc(

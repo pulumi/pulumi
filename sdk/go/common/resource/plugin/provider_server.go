@@ -782,7 +782,7 @@ func (p *providerServer) Construct(ctx context.Context,
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
-		Protect:              req.GetProtect(),
+		Protect:              req.Protect,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
 	}

@@ -455,26 +455,38 @@ func renderDiffResourceOutputsEvent(
 			return out.String()
 		}
 
+		// If we don't want to display a diff, then we'll display at most a summary and resource outputs. The rules are as
+		// follows:
+		//
+		// * If we are doing a `--refresh` as part of another operation (that is, e.g. `pulumi up --refresh`), and *not* a
+		//   standalone refresh (e.g. `pulumi refresh`), then we will only display summaries and outputs for resources that
+		//   the refresh changed. We identify these cases by checking if the metadata operation is a refresh and if there
+		//   is output information. This will not affect standalone (`pulumi refresh`) operations, since their operation
+		//   types will be rewritten from refreshes to sames, updates, deletes, and so on (see RefreshStep.ResultOp for
+		//   more).
+		//
+		// * As with other `--show-sames`-related checks, we always display the root stack.
+		// * If we have been asked to suppress outputs (e.g., because they contain sensitive information), then we will not
+		//   display them.
 		indent := getIndent(payload.Metadata, seen)
 
-		if refresh {
+		text := getResourceOutputsPropertiesString(
+			payload.Metadata, indent+1, payload.Planning,
+			payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
+
+		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
 			// We would not have rendered the summary yet in this case, so do it now.
 			summary := getResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
-		if !opts.SuppressOutputs {
+		if !opts.SuppressOutputs && text != "" {
 			// We want to hide same outputs if we're doing a read and the user didn't ask to see
 			// things that are the same.
-			text := getResourceOutputsPropertiesString(
-				payload.Metadata, indent+1, payload.Planning,
-				payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
-			if text != "" {
-				header := fmt.Sprintf("%v%v--outputs:--%v\n",
-					deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
-				fprintIgnoreError(out, opts.Color.Colorize(header))
-				fprintIgnoreError(out, opts.Color.Colorize(text))
-			}
+			header := fmt.Sprintf("%v%v--outputs:--%v\n",
+				deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
+			fprintIgnoreError(out, opts.Color.Colorize(header))
+			fprintIgnoreError(out, opts.Color.Colorize(text))
 		}
 	}
 	return out.String()

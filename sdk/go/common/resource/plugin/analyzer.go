@@ -74,6 +74,7 @@ type AnalyzerResourceOptions struct {
 	AliasURNs               []resource.URN          // additional URNs that should be aliased to this resource.
 	Aliases                 []resource.Alias        // additional URNs that should be aliased to this resource.
 	CustomTimeouts          resource.CustomTimeouts // an optional config object for resource options
+	Parent                  resource.URN            // an optional parent URN for this resource.
 }
 
 // AnalyzerProviderResource mirrors a resource's provider sent to the analyzer.

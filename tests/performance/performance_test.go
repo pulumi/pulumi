@@ -91,3 +91,23 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		},
 	})
 }
+
+//nolint:paralleltest // Do not run in parallel to avoid resource contention
+func TestPerfSecretsBatchUpdate(t *testing.T) {
+	benchmarkEnforcer := &integration.AssertPerfBenchmark{
+		T:                  t,
+		MaxPreviewDuration: 5 * time.Second,
+		MaxUpdateDuration:  5 * time.Second,
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		NoParallel: true,
+		Dir:        filepath.Join("python", "secrets"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick:          false,
+		RequireService: true,
+		ReportStats:    benchmarkEnforcer,
+	})
+}
