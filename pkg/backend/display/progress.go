@@ -189,7 +189,7 @@ func newOpStopwatch() opStopwatch {
 // policyPayloads is a collection of policy violation events for a single resource.
 var policyPayloads []engine.PolicyViolationEventPayload
 
-// getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
+// getEventUrnAndMetadata returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
@@ -592,7 +592,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 }
 
-// printResourceChanges prints a "Changes:" section with all of the resource diffs grouped by
+// printResourceDiffs prints a "Changes:" section with all of the resource diffs grouped by
 // resource.printResourceChanges
 func (display *ProgressDisplay) printResourceDiffs() {
 	if !display.opts.ShowResourceChanges {
