@@ -270,8 +270,10 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	//nolint:usetesting // Need to use a specific location for the tmp dir
 	tempDir1, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
+	//nolint:usetesting // Need to use a specific location for the tmp dir
 	tempDir2, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
+	//nolint:usetesting // Need to use a specific location for the tmp dir
 	tempDir3, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
 
