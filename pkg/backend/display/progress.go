@@ -416,6 +416,36 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 	for _, row := range eventRows {
 		display.getOrCreateTreeNode(&result, row.Step().URN, row, urnToTreeNode)
+
+		if row.Step().URN != "" {
+			for _, view := range row.Step().Views {
+				metaURN := view.URN
+				metaState := &engine.StepEventStateMetadata{
+					URN: metaURN,
+					Type: row.Step().Type,
+
+					Custom: true,
+					Parent: row.Step().URN,
+				}
+
+				metaRow := &resourceRowData{
+					display: display,
+					tick: display.currentTick,
+					diagInfo: &DiagInfo{},
+
+					step: engine.StepEventMetadata{
+						Op: row.Step().Op,
+						URN: metaURN,
+						Type: row.Step().Type,
+						Old: metaState,
+						New: metaState,
+						Res: metaState,
+					},
+				}
+
+				display.getOrCreateTreeNode(&result, metaURN, metaRow, urnToTreeNode)
+			}
+		}
 	}
 
 	return result

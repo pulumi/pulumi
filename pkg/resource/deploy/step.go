@@ -330,6 +330,14 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
+	s.new.Views = []resource.View{
+		{
+			URN: resource.URN(fmt.Sprintf("%s$$foo", s.new.URN)),
+		},
+		{
+			URN: resource.URN(fmt.Sprintf("%s$$bar", s.new.URN)),
+		},
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()

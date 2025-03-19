@@ -25,3 +25,20 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 
 	test.GenerateDotnetProgramTest(t, GenerateProgram, GenerateProject)
 }
+
+func TestWill(t *testing.T) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "dotnet",
+			Extension:  "cs",
+			OutputFile: "Program.cs",
+			GenProgram: GenerateProgram,
+			TestCases: []test.ProgramTest{
+				{
+					Directory:   "azure-native",
+					Description: "Azure Native",
+				},
+			},
+		},
+	)
+}

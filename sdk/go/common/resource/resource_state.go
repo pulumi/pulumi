@@ -58,6 +58,11 @@ type State struct {
 	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 	SourcePosition          string                // If set, the source location of the resource registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
+	Views []View
+}
+
+type View struct {
+	URN URN
 }
 
 // Copy creates a deep copy of the resource state, except without copying the lock.
