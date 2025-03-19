@@ -1590,7 +1590,7 @@ func convertResourceChanges(changes map[apitype.OpType]int) sdkDisplay.ResourceC
 	return b
 }
 
-// convertResourceChanges converts the apitype version of config.Map into the internal version.
+// convertConfig converts the apitype version of config.Map into the internal version.
 func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error) {
 	c := make(config.Map)
 	for rawK, rawV := range apiConfig {
