@@ -72,6 +72,14 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		outName = pkg.Namespace + "-" + outName
 	}
 	out = filepath.Join(out, outName)
+
+	// If directory already exists, remove it completely before copying new files
+	if _, err := os.Stat(out); err == nil {
+		if err := os.RemoveAll(out); err != nil {
+			return fmt.Errorf("failed to clean existing SDK directory: %w", err)
+		}
+	}
+
 	err = CopyAll(out, filepath.Join(tempOut, language))
 	if err != nil {
 		return fmt.Errorf("failed to move SDK to project: %w", err)

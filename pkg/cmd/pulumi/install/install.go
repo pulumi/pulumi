@@ -48,7 +48,7 @@ func NewInstallCmd() *cobra.Command {
 			"\n" +
 			"This command is used to manually install packages and plugins required by your program or policy pack.\n" +
 			"If your Pulumi.yaml file contains a 'packages' section, this command will automatically install\n" +
-			"SDKs for all packages declared in that section.",
+			"SDKs for all packages declared in that section, similar to the 'pulumi package add' command.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
