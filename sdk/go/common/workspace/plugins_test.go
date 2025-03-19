@@ -1489,7 +1489,13 @@ func TestMissingErrorText(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(
-				tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.PluginDownloadURL, tt.IncludeAmbient)
+				PluginSpec{
+					Kind:              tt.Plugin.Kind,
+					Name:              tt.Plugin.Name,
+					Version:           tt.Plugin.Version,
+					PluginDownloadURL: tt.PluginDownloadURL,
+				},
+				tt.IncludeAmbient)
 			assert.EqualError(t, err, tt.ExpectedError)
 		})
 	}
@@ -1522,13 +1528,13 @@ func TestBundledPluginSearch(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
 	// Lookup the plugin with ambient search turned off
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-	path, err = GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
+	path, err = GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 }
@@ -1591,7 +1597,7 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1628,7 +1634,7 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 
@@ -1669,7 +1675,7 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, NewLanguagePlugin("nodejs", nil), nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	// We expect the ambient path to be returned, but not to warn because it resolves to the same file as the
 	// bundled path.

@@ -812,7 +812,11 @@ func TestLoadProvider_missingError(t *testing.T) {
 	loader := newLoader(t, "myplugin", "1.2.3",
 		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
 			return nil, workspace.NewMissingError(
-				apitype.ResourcePlugin, "myplugin", &version, "", false /* ambient */)
+				workspace.PluginSpec{
+					Kind:    apitype.ResourcePlugin,
+					Name:    "myplugin",
+					Version: &version,
+				}, false /* ambient */)
 		})
 	host := newPluginHost(t, []*providerLoader{loader})
 

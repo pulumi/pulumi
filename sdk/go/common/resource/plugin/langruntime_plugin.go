@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -106,7 +107,10 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	} else {
 		path, err := workspace.GetPluginPath(
 			ctx.Diag,
-			workspace.NewLanguagePlugin(runtime, nil),
+			workspace.PluginSpec{
+				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
+				Kind: apitype.LanguagePlugin,
+			},
 			host.GetProjectPlugins(),
 		)
 		if err != nil {

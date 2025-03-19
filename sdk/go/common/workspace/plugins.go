@@ -48,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -157,28 +156,19 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 
 // MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
 type MissingError struct {
-	// Kind of the plugin that couldn't be found.
-	kind apitype.PluginKind
-	// Name of the plugin that couldn't be found.
-	name string
-	// Optional version of the plugin that couldn't be found.
-	version *semver.Version
-	// Optional plugin download url of the plugin that couldn't be found
-	pluginDownloadURL string
+	// PluginSpec of the plugin that couldn't be found.
+	spec PluginSpec
 	// includeAmbient is true if we search $PATH for this plugin
 	includeAmbient bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
 func NewMissingError(
-	kind apitype.PluginKind, name string, version *semver.Version, pluginDownloadURL string, includeAmbient bool,
+	spec PluginSpec, includeAmbient bool,
 ) error {
 	return &MissingError{
-		kind:              kind,
-		name:              name,
-		version:           version,
-		includeAmbient:    includeAmbient,
-		pluginDownloadURL: pluginDownloadURL,
+		spec:           spec,
+		includeAmbient: includeAmbient,
 	}
 }
 
@@ -189,17 +179,17 @@ func (err *MissingError) Error() string {
 	}
 
 	pluginDownloadURL := ""
-	if err.pluginDownloadURL != "" {
-		pluginDownloadURL = " from " + err.pluginDownloadURL
+	if err.spec.PluginDownloadURL != "" {
+		pluginDownloadURL = " from " + err.spec.PluginDownloadURL
 	}
 
-	if err.version != nil {
+	if err.spec.Version != nil {
 		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s%[5]s",
-			err.kind, err.name, err.version, includePath, pluginDownloadURL)
+			err.spec.Kind, err.spec.Name, err.spec.Version, includePath, pluginDownloadURL)
 	}
 
 	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s%[4]s",
-		err.kind, err.name, includePath, pluginDownloadURL)
+		err.spec.Kind, err.spec.Name, includePath, pluginDownloadURL)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -1006,30 +996,6 @@ type PluginSpec struct {
 	Checksums map[string][]byte
 }
 
-func NewAnalyzerPlugin(name tokens.QName, version *semver.Version) PluginSpec {
-	return PluginSpec{
-		Name:    strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
-		Kind:    apitype.AnalyzerPlugin,
-		Version: version,
-	}
-}
-
-func NewConverterPlugin(name string, version *semver.Version) PluginSpec {
-	return PluginSpec{
-		Name:    name,
-		Kind:    apitype.ConverterPlugin,
-		Version: version,
-	}
-}
-
-func NewLanguagePlugin(name string, version *semver.Version) PluginSpec {
-	return PluginSpec{
-		Name:    strings.ReplaceAll(name, tokens.QNameDelimiter, "_"),
-		Kind:    apitype.LanguagePlugin,
-		Version: version,
-	}
-}
-
 func NewPluginSpec(
 	source string,
 	kind apitype.PluginKind,
@@ -1134,7 +1100,8 @@ func (spec PluginSpec) LocalName() (string, string) {
 
 // Dir gets the expected plugin directory for this plugin.
 func (spec PluginSpec) Dir() string {
-	dir := fmt.Sprintf("%s-%s", spec.Kind, spec.Name)
+	localName, _ := spec.LocalName()
+	dir := fmt.Sprintf("%s-%s", spec.Kind, localName)
 	if spec.Version != nil {
 		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
@@ -2347,7 +2314,7 @@ func getPluginInfoAndPath(
 		return match, matchPath, nil
 	}
 
-	return nil, "", NewMissingError(spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, includeAmbient)
+	return nil, "", NewMissingError(spec, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
