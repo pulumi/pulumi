@@ -16,46 +16,49 @@ package apitype
 
 import "encoding/json"
 
-type SummarizeUpdate struct {
-	Summary string `json:"summary"`
+// Requests
+type CopilotSummarizeUpdateRequest struct {
+	Query           string                 `json:"query"`
+	State           CopilotState           `json:"state"`
+	DirectSkillCall CopilotDirectSkillCall `json:"directSkillCall"`
 }
 
-type ThreadMessage struct {
+type CopilotState struct {
+	Client CopilotClientState `json:"client"`
+}
+
+type CopilotClientState struct {
+	CloudContext CopilotCloudContext `json:"cloudContext"`
+}
+
+type CopilotCloudContext struct {
+	OrgID string `json:"orgId"`
+	URL   string `json:"url"`
+}
+
+type CopilotDirectSkillCall struct {
+	Skill  string             `json:"skill"`
+	Params CopilotSkillParams `json:"params"`
+}
+
+type CopilotSkillParams struct {
+	PulumiUpdateOutput string `json:"pulumiUpdateOutput"`
+}
+
+// Responses
+
+type CopilotSummarizeUpdateResponse struct {
+	ThreadMessages []CopilotThreadMessage `json:"messages"`
+	Error          string                 `json:"error"`
+	Details        any                    `json:"details"`
+}
+
+type CopilotThreadMessage struct {
 	Role    string          `json:"role"`
 	Kind    string          `json:"kind"`
 	Content json.RawMessage `json:"content"`
 }
 
-type AtlasUpdateSummaryResponse struct {
-	ThreadMessages []ThreadMessage `json:"messages"`
-	Error          string          `json:"error"`
-	Details        any             `json:"details"`
-}
-
-type CloudContext struct {
-	OrgID string `json:"orgId"`
-	URL   string `json:"url"`
-}
-
-type ClientState struct {
-	CloudContext CloudContext `json:"cloudContext"`
-}
-
-type State struct {
-	Client ClientState `json:"client"`
-}
-
-type SkillParams struct {
-	PulumiUpdateOutput string `json:"pulumiUpdateOutput"`
-}
-
-type DirectSkillCall struct {
-	Skill  string      `json:"skill"`
-	Params SkillParams `json:"params"`
-}
-
-type AtlasUpdateSummaryRequest struct {
-	Query           string          `json:"query"`
-	State           State           `json:"state"`
-	DirectSkillCall DirectSkillCall `json:"directSkillCall"`
+type CopilotSummarizeUpdateMessage struct {
+	Summary string `json:"summary"`
 }
