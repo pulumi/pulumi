@@ -64,10 +64,10 @@ At this point, we can run the provider, but it does not yet do anything useful. 
  import pulumi
 
 +class MyComponentArgs(TypedDict):
-+    who: Optional[pulumi.Output[str]]
++    who: Optional[pulumi.Input[str]]
 +    """Who to greet"""
 +
- class MyComponent(pulumi.ComponentResourc0e):
+ class MyComponent(pulumi.ComponentResource):
      """A component that greets someone"""
 -    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
 +    def __init__(self, name: str, args: MyComponentArgs, opts: Optional[pulumi.ResourceOptions] = None):
