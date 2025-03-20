@@ -112,7 +112,6 @@ func TestRefreshTargetChildren(t *testing.T) {
 	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[1].URN, a)
 	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
-
 	assert.Equal(t, snap.Resources[2].URN, b)
 	assert.NotEqual(t, snap.Resources[2].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[3].URN, c)
