@@ -1,2 +1,2 @@
 [hooks]
-enter = "mise exec uv sync --dev"
+enter = "mise exec -- uv sync --dev"
