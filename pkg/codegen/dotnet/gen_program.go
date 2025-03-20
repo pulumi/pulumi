@@ -471,7 +471,7 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 						info = csharpinfo
 					}
 					if info.RootNamespace == "" && r.Schema.PackageReference.Namespace() != "" {
-						info.RootNamespace = r.Schema.PackageReference.Namespace()
+						info.RootNamespace = namespaceName(nil, r.Schema.PackageReference.Namespace())
 					}
 				}
 				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))

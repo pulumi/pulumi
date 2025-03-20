@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet
-  description: Support parameterization in generated remote component resources for .NET

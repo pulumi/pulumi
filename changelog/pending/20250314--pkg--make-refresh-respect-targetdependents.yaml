@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: The `refresh` command now respects `TargetDependents`

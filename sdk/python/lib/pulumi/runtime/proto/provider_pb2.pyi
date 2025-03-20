@@ -1702,7 +1702,7 @@ class ConstructRequest(google.protobuf.message.Message):
         dependencies: collections.abc.Iterable[builtins.str] | None = ...,
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
-        protect: builtins.bool = ...,
+        protect: builtins.bool | None = ...,
         aliases: collections.abc.Iterable[builtins.str] | None = ...,
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         customTimeouts: global___ConstructRequest.CustomTimeouts | None = ...,
@@ -1713,8 +1713,9 @@ class ConstructRequest(google.protobuf.message.Message):
         retainOnDelete: builtins.bool = ...,
         accepts_output_values: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "customTimeouts", b"customTimeouts", "inputs", b"inputs", "protect", b"protect"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "accepts_output_values", b"accepts_output_values", "additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
 
 global___ConstructRequest = ConstructRequest
 
