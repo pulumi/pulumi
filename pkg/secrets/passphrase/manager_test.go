@@ -125,7 +125,7 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	clearCachedSecretsManagers()
 
-	tmpFile, err := os.CreateTemp("", "pulumi-secret-test")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "pulumi-secret-test")
 	assert.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.WriteString("password")

@@ -162,7 +162,7 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 }
 
 func writeAndLoad(t *testing.T, str string) (*Project, error) {
-	tmp, err := os.CreateTemp("", "*.json")
+	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
 	assert.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(str), 0o600)
@@ -407,7 +407,7 @@ func deleteFile(t *testing.T, file *os.File) {
 }
 
 func loadProjectFromText(t *testing.T, content string) (*Project, error) {
-	tmp, err := os.CreateTemp("", "*.yaml")
+	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
@@ -417,7 +417,7 @@ func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 }
 
 func loadProjectStackFromText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
-	tmp, err := os.CreateTemp("", "*.yaml")
+	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
@@ -427,7 +427,7 @@ func loadProjectStackFromText(t *testing.T, project *Project, content string) (*
 }
 
 func loadProjectStackFromJSONText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
-	tmp, err := os.CreateTemp("", "*.json")
+	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
 	assert.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
@@ -1322,7 +1322,7 @@ func TestProjectSaveLoadRoundtrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tmp, err := os.CreateTemp("", "*.yaml")
+			tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
 			require.NoError(t, err)
 			defer deleteFile(t, tmp)
 
@@ -1376,7 +1376,7 @@ func TestProjectEditRoundtrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tmp, err := os.CreateTemp("", "*.yaml")
+			tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
 			require.NoError(t, err)
 			defer deleteFile(t, tmp)
 

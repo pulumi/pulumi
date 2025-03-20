@@ -211,7 +211,7 @@ func (h *RuntimeOptionsLanguageHost) Run(
 func TestRuntimeOptions(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &RuntimeOptionsLanguageHost{tempDir: tempDir}
