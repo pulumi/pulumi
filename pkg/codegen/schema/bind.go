@@ -1526,7 +1526,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 
 	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
 	for _, a := range spec.Aliases {
-		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
+		aliases = append(aliases, &Alias{compatibility: a.compatibility, Type: a.Type})
 	}
 
 	language := make(map[string]interface{})

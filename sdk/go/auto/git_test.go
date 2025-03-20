@@ -122,6 +122,7 @@ func TestGitClone(t *testing.T) {
 				CommitHash: tc.commitHash,
 			}
 
+			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			assert.NoError(t, err)
 
@@ -177,6 +178,7 @@ func TestGitClone(t *testing.T) {
 				CommitHash: tc.commitHash,
 			}
 
+			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			assert.NoError(t, err)
 

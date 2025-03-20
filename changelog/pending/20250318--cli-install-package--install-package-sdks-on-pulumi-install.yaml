@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/install,package
+  description: Install package SDKs on `pulumi install`

@@ -1,0 +1,8 @@
+name: package-install-test
+description: A TypeScript program that declares a dependency on a remote package
+packages:
+  tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355
+runtime:
+  name: nodejs
+  options:
+    packagemanager: yarn

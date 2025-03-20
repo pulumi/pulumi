@@ -1079,9 +1079,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "                {\n")
 		for _, alias := range r.Aliases {
 			fmt.Fprintf(w, "                    ")
-			if alias.Type != nil {
-				fmt.Fprintf(w, "new global::Pulumi.Alias { Type = \"%v\" },\n", *alias.Type)
-			}
+			fmt.Fprintf(w, "new global::Pulumi.Alias { Type = \"%v\" },\n", alias.Type)
 		}
 		fmt.Fprintf(w, "                },\n")
 	}

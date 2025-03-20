@@ -330,8 +330,6 @@ func TestStackCommands(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
-		t.Parallel()
-
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
 
@@ -340,10 +338,7 @@ func TestStackBackups(t *testing.T) {
 
 		// We're testing that backups are created so ensure backups aren't disabled.
 		disableCheckpointBackups := env.DIYBackendDisableCheckpointBackups.Var().Name()
-		if env := os.Getenv(disableCheckpointBackups); env != "" {
-			os.Unsetenv(disableCheckpointBackups)
-			defer os.Setenv(disableCheckpointBackups, env)
-		}
+		t.Setenv(disableCheckpointBackups, "")
 
 		const stackName = "imulup"
 

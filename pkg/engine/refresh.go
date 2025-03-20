@@ -57,7 +57,7 @@ func Refresh(
 	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
 		return nil, nil, err
 	}
 

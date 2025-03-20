@@ -37,7 +37,7 @@ func TestShowEvents(t *testing.T) {
 	stack, err := tokens.ParseStackName("stack")
 	assert.NoError(t, err)
 
-	eventLog, err := os.CreateTemp("", "event-log-")
+	eventLog, err := os.CreateTemp(t.TempDir(), "event-log-")
 	assert.NoError(t, err)
 
 	go func() {

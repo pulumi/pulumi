@@ -110,7 +110,7 @@ func TestUpdatePlans(t *testing.T) {
 	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi preview --
-	tempFile, err := os.CreateTemp("", "update_plan.json")
+	tempFile, err := os.CreateTemp(t.TempDir(), "update_plan.json")
 	defer os.Remove(tempFile.Name())
 
 	_, err = s.Preview(ctx, optpreview.Plan(tempFile.Name()))

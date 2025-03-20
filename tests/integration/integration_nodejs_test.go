@@ -2442,6 +2442,29 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestPackagesInstall(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packages-install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/packages-install", "--create")
+
+	// This command should install the referenced package from the remote source.
+	e.RunCommand("pulumi", "install")
+
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
+	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
+	// above is used.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)

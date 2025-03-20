@@ -538,16 +538,8 @@
                     "type": "array",
                     "items": {
                         "title": "Alias Definition",
-                        "type": "object",
+                        "type": ["object", "string"],
                         "properties": {
-                            "name": {
-                                "description": "The name portion of the alias, if any",
-                                "type": "string"
-                            },
-                            "project": {
-                                "description": "The project portion of the alias, if any",
-                                "type": "string"
-                            },
                             "type": {
                                 "description": "The type portion of the alias, if any",
                                 "type": "string"

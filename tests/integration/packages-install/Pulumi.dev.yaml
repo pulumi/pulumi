@@ -1,0 +1,4 @@
+config:
+  forceDelete: true
+  lifecyclePolicy:
+    skip: true

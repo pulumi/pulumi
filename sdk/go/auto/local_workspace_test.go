@@ -942,7 +942,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	// -- pulumi refresh --preview-only --
 
 	pref, err := s.PreviewRefresh(ctx, optrefresh.UserAgent(agent))
-	assert.NoError(t, err, "preview-only refresh failed")
+	assert.NoError(t, err)
 	assert.Equal(t, 1, pref.ChangeSummary[apitype.OpSame])
 
 	// -- pulumi refresh --

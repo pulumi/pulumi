@@ -373,12 +373,11 @@ func (p *Property) IsRequired() bool {
 
 // Alias describes an alias for a Pulumi resource.
 type Alias struct {
-	// Name is the "name" portion of the alias, if any.
-	Name *string
-	// Project is the "project" portion of the alias, if any.
-	Project *string
-	// Type is the "type" portion of the alias, if any.
-	Type *string
+	// This is true if the alias is an old style object alias, and should be written back out as such.
+	compatibility bool
+
+	// The type alias.
+	Type string
 }
 
 // Resource describes a Pulumi resource.
@@ -1163,9 +1162,8 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 	aliases := slice.Prealloc[AliasSpec](len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
-			Name:    a.Name,
-			Project: a.Project,
-			Type:    a.Type,
+			compatibility: a.compatibility,
+			Type:          a.Type,
 		})
 	}
 
@@ -1615,12 +1613,75 @@ type EnumValueSpec struct {
 
 // AliasSpec is the serializable form of an alias description.
 type AliasSpec struct {
-	// Name is the name portion of the alias, if any.
-	Name *string `json:"name,omitempty" yaml:"name,omitempty"`
-	// Project is the project portion of the alias, if any.
-	Project *string `json:"project,omitempty" yaml:"project,omitempty"`
 	// Type is the type portion of the alias, if any.
-	Type *string `json:"type,omitempty" yaml:"type,omitempty"`
+	Type string `json:"type,omitempty" yaml:"type,omitempty"`
+
+	// This is set by the marshaller to indicate that the alias is a string, and to write it back as one.
+	compatibility bool
+}
+
+// AliasSpec can marshal from just a string
+func (a *AliasSpec) UnmarshalJSON(data []byte) error {
+	var s string
+	err := json.Unmarshal(data, &s)
+	if err == nil {
+		a.Type = s
+		a.compatibility = true
+		return nil
+	}
+	var o struct {
+		Type string `json:"type"`
+	}
+	err = json.Unmarshal(data, &o)
+	if err == nil {
+		a.Type = o.Type
+		return nil
+	}
+	return err
+}
+
+// AliasSpec can marshal to just a string
+func (a AliasSpec) MarshalJSON() ([]byte, error) {
+	if a.compatibility {
+		return json.Marshal(a.Type)
+	}
+	var o struct {
+		Type string `json:"type"`
+	}
+	o.Type = a.Type
+	return json.Marshal(&o)
+}
+
+// AliasSpec can unmarshal from just a string
+func (a *AliasSpec) UnmarshalYAML(node *yaml.Node) error {
+	var s string
+	err := node.Decode(&s)
+	if err == nil {
+		a.Type = s
+		a.compatibility = true
+		return nil
+	}
+	var o struct {
+		Type string `yaml:"type"`
+	}
+	err = node.Decode(&o)
+	if err == nil {
+		a.Type = o.Type
+		return nil
+	}
+	return err
+}
+
+// AliasSpec can marshal to just a string
+func (a AliasSpec) MarshalYAML() (interface{}, error) {
+	if a.compatibility {
+		return a.Type, nil
+	}
+	var o struct {
+		Type string `yaml:"type"`
+	}
+	o.Type = a.Type
+	return o, nil
 }
 
 // ResourceSpec is the serializable form of a resource description.
@@ -1637,7 +1698,8 @@ type ResourceSpec struct {
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that may be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
 	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty" yaml:"stateInputs,omitempty"`
-	// Aliases is the list of aliases for the resource.
+	// Aliases is the list of aliases for the resource. This can either be a list of strings or a list of objects with
+	// type fields.
 	Aliases []AliasSpec `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 	// DeprecationMessage indicates whether or not the resource is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
