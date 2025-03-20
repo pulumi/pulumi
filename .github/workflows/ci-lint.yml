@@ -42,6 +42,12 @@ jobs:
           path: ~/.local/share/mise
           key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
 
+      - name: Go cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-sdk-${{ runner.os }}-${{ hashfiles('**/go.mod') }}
+
       - name: Run golangci-lint
         # Print GitHub Actions-friendly output so that errors get marked
         # in the pull request.
