@@ -31,8 +31,8 @@ jobs:
       - name: Install Mise
         run: |
           curl https://mise.run | sh
-          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
           mise settings experimental=true
           mise install
 
@@ -58,8 +58,8 @@ jobs:
       - name: Install Mise
         run: |
           curl https://mise.run | sh
-          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
           mise settings experimental=true
           mise install
 
@@ -89,8 +89,8 @@ jobs:
       - name: Install Mise
         run: |
           curl https://mise.run | sh
-          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
           mise settings experimental=true
           mise install
 
@@ -131,8 +131,8 @@ jobs:
       - name: Install Mise
         run: |
           curl https://mise.run | sh
-          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
           mise settings experimental=true
           mise install
       - name: Mise cache
@@ -162,8 +162,8 @@ jobs:
       - name: Install Mise
         run: |
           curl https://mise.run | sh
-          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
           mise settings experimental=true
           mise install
       - name: Mise cache
