@@ -36,8 +36,10 @@ const (
 	// Environment variable to override the Atlas base URL for local development
 	debugAtlasBaseVar = "DEBUG_PULUMI_ATLAS_BASE"
 
-	// Maximum number of characters to send to Atlas
-	maxAtlasContentLength = 4000
+	// Maximum number of characters to send to Copilot.
+	// We do this to avoid including a proper token counting library for now.
+	// Tokens are 3-4 characters as a rough estimate. So this is 1000 tokens.
+	maxCopilotContentLength = 4000
 )
 
 func getCurrentCloudURL() (string, error) {
@@ -56,8 +58,8 @@ func getCurrentCloudURL() (string, error) {
 	return url, nil
 }
 
-// getSummaryToken retrieves the authentication token for the Atlas API
-func getSummaryToken(cloudURL string) (string, error) {
+// getAccessToken retrieves the authentication token for the Atlas API
+func getAccessToken(cloudURL string) (string, error) {
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
 		return "", fmt.Errorf("getting account: %w", err)
@@ -70,21 +72,21 @@ func getSummaryToken(cloudURL string) (string, error) {
 	return account.AccessToken, nil
 }
 
-// createAtlasRequest creates a new AtlasUpdateSummaryRequest with the given content and org ID
-func createAtlasRequest(content string, orgID string) apitype.AtlasUpdateSummaryRequest {
-	return apitype.AtlasUpdateSummaryRequest{
+// createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
+func createSummarizeUpdateRequest(content string, orgID string) apitype.CopilotSummarizeUpdateRequest {
+	return apitype.CopilotSummarizeUpdateRequest{
 		Query: "FIXME in atlas, this is ignored, but still required by zod",
-		State: apitype.State{
-			Client: apitype.ClientState{
-				CloudContext: apitype.CloudContext{
+		State: apitype.CopilotState{
+			Client: apitype.CopilotClientState{
+				CloudContext: apitype.CopilotCloudContext{
 					OrgID: orgID,
 					URL:   "https://app.pulumi.com",
 				},
 			},
 		},
-		DirectSkillCall: apitype.DirectSkillCall{
+		DirectSkillCall: apitype.CopilotDirectSkillCall{
 			Skill: "summarizeUpdate",
-			Params: apitype.SkillParams{
+			Params: apitype.CopilotSkillParams{
 				PulumiUpdateOutput: content,
 			},
 		},
@@ -107,13 +109,13 @@ func summarizeInternal(content string, orgID string) (string, error) {
 		return "", fmt.Errorf("getting cloud URL: %w", err)
 	}
 
-	token, err := getSummaryToken(cloudURL)
+	token, err := getAccessToken(cloudURL)
 	if err != nil {
 		return "", fmt.Errorf("getting authentication token: %w", err)
 	}
 
 	// Create the request using the helper function
-	request := createAtlasRequest(content, orgID)
+	request := createSummarizeUpdateRequest(content, orgID)
 
 	jsonData, err := json.Marshal(request)
 	if err != nil {
@@ -143,7 +145,7 @@ func summarizeInternal(content string, orgID string) (string, error) {
 	}
 	resp.Body.Close()
 
-	var atlasResp apitype.AtlasUpdateSummaryResponse
+	var atlasResp apitype.CopilotSummarizeUpdateResponse
 	if err := json.Unmarshal(body, &atlasResp); err != nil {
 		return "", fmt.Errorf("got non-JSON response from Atlas: %s", body)
 	}
@@ -155,7 +157,7 @@ func summarizeInternal(content string, orgID string) (string, error) {
 	// Look for the first summarizeUpdate message
 	for _, msg := range atlasResp.ThreadMessages {
 		if msg.Kind == "summarizeUpdate" {
-			var content apitype.SummarizeUpdate
+			var content apitype.CopilotSummarizeUpdateMessage
 			if err := json.Unmarshal(msg.Content, &content); err != nil {
 				return "", fmt.Errorf("parsing summary content: %w", err)
 			}
@@ -190,7 +192,7 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 	// Convert lines to a single string
 	linesStr := strings.Join(lines, "\n")
 
-	linesStr = TruncateWithMiddleOut(linesStr, maxAtlasContentLength)
+	linesStr = TruncateWithMiddleOut(linesStr, maxCopilotContentLength)
 
 	summary, err := summarizeInternal(linesStr, orgID)
 	if err != nil {
