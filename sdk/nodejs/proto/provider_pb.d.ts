@@ -1165,7 +1165,10 @@ export class ConstructRequest extends jspb.Message {
     setCustomtimeouts(value?: ConstructRequest.CustomTimeouts): ConstructRequest;
     getDeletedwith(): string;
     setDeletedwith(value: string): ConstructRequest;
-    getDeletebeforereplace(): boolean;
+
+    hasDeletebeforereplace(): boolean;
+    clearDeletebeforereplace(): void;
+    getDeletebeforereplace(): boolean | undefined;
     setDeletebeforereplace(value: boolean): ConstructRequest;
     clearIgnorechangesList(): void;
     getIgnorechangesList(): Array<string>;
@@ -1175,7 +1178,10 @@ export class ConstructRequest extends jspb.Message {
     getReplaceonchangesList(): Array<string>;
     setReplaceonchangesList(value: Array<string>): ConstructRequest;
     addReplaceonchanges(value: string, index?: number): string;
-    getRetainondelete(): boolean;
+
+    hasRetainondelete(): boolean;
+    clearRetainondelete(): void;
+    getRetainondelete(): boolean | undefined;
     setRetainondelete(value: boolean): ConstructRequest;
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): ConstructRequest;
@@ -1215,10 +1221,10 @@ export namespace ConstructRequest {
         additionalsecretoutputsList: Array<string>,
         customtimeouts?: ConstructRequest.CustomTimeouts.AsObject,
         deletedwith: string,
-        deletebeforereplace: boolean,
+        deletebeforereplace?: boolean,
         ignorechangesList: Array<string>,
         replaceonchangesList: Array<string>,
-        retainondelete: boolean,
+        retainondelete?: boolean,
         acceptsOutputValues: boolean,
     }
 

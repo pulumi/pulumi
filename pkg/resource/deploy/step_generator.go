@@ -649,9 +649,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if goal.Protect != nil {
 		protectState = *goal.Protect
 	}
+	var retainOnDelete bool
+	if goal.RetainOnDelete != nil {
+		retainOnDelete = *goal.RetainOnDelete
+	}
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith,
+		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as

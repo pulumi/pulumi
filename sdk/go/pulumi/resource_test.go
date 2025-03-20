@@ -247,7 +247,8 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 
 	// last value wins
 	opts := merge(DeleteBeforeReplace(true), DeleteBeforeReplace(false))
-	assert.Equal(t, false, opts.DeleteBeforeReplace)
+	expected := false
+	assert.Equal(t, &expected, opts.DeleteBeforeReplace)
 }
 
 func TestResourceOptionComposite(t *testing.T) {
@@ -273,7 +274,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 		},
 		{
@@ -283,7 +284,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(false),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: false,
+				DeleteBeforeReplace: ptr(false),
 			},
 		},
 		{
@@ -294,7 +295,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 		},
 		{
@@ -304,7 +305,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				Protect(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 				Protect:             ptr(true),
 			},
 		},
