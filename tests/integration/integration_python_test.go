@@ -1519,6 +1519,19 @@ func TestPackageAddPython(t *testing.T) {
 				b, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
 				assert.NoError(t, err)
 				assert.Contains(t, string(b), "sdks/random")
+
+				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
+				_, _ = e.RunCommand("pulumi", "package", "add", "random")
+				b, err = os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
+				assert.NoError(t, err)
+				lines := strings.Split(string(b), "\n")
+				var sdksRandomCount int
+				for _, line := range lines {
+					if strings.Contains(line, "sdks/random") {
+						sdksRandomCount++
+					}
+				}
+				assert.Equal(t, 1, sdksRandomCount, "sdks/random should only appear once in requirements.txt")
 			}
 		})
 	}

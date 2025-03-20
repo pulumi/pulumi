@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
@@ -294,10 +295,13 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 			return fmt.Errorf("error opening requirments.txt: %w", err)
 		}
 
-		fBytes = []byte(packageSpecifier + "\n" + string(fBytes))
-		err = os.WriteFile(fPath, fBytes, 0o600)
-		if err != nil {
-			return fmt.Errorf("could not write requirments: %w", err)
+		lines := strings.Split(string(fBytes), "\n")
+		if !slices.Contains(lines, packageSpecifier) {
+			fBytes = []byte(packageSpecifier + "\n" + string(fBytes))
+			err = os.WriteFile(fPath, fBytes, 0o600)
+			if err != nil {
+				return fmt.Errorf("could not write requirements.txt: %w", err)
+			}
 		}
 
 		tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
