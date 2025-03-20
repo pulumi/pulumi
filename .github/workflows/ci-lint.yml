@@ -27,24 +27,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-          # golangci-lint-action handles all the caching for Go.
-          cache: false
 
-      # We leverage the golangci-lint action to install
-      # and maintain the cache,
-      # but we want to run the command ourselves.
-      # The action doesn't have an install-only mode,
-      # so we'll ask it to print its help output instead.
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
+      - name: Install Mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+
+      - name: Mise cache
+        uses: actions/cache@v4
         with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --help
+          path: ~/.local/share/mise
+          key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
 
       - name: Run golangci-lint
         # Print GitHub Actions-friendly output so that errors get marked
@@ -58,11 +52,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
+
+      - name: Install Mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+
+      - name: Mise cache
+        uses: actions/cache@v4
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          path: ~/.local/share/mise
+          key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
+
       - name: Run go mod tidy
         run: make tidy
       - name: Fail if go mod not tidy
@@ -80,11 +82,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Install Mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+
+      - name: Mise cache
+        uses: actions/cache@v4
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          path: ~/.local/share/mise
+          key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
+
       - name: Run make gen
         run: cd sdk/go && make gen
       - name: Fail if there are changes
@@ -113,26 +122,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Install Mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+      - name: Mise cache
+        uses: actions/cache@v4
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: sdk/python/uv.lock
-      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ fromJson(inputs.version-set).python }}
-      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          path: ~/.local/share/mise
+          key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -166,10 +165,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Install Mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+      - name: Mise cache
+        uses: actions/cache@v4
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          path: ~/.local/share/mise
+          key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
       - run: |
           make lint_actions
