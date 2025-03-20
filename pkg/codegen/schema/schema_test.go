@@ -1931,3 +1931,47 @@ func TestProviderVersionIsAnError(t *testing.T) {
 	assert.False(t, diags.HasErrors())
 	assert.NotNil(t, pkg)
 }
+
+func TestRoundtripAliasesJSON(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("aliases-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	jsonData, err := json.Marshal(&newSpec)
+	require.NoError(t, err)
+
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.json"))
+	require.NoError(t, err)
+
+	assert.JSONEq(t, string(schemaBytes), string(jsonData))
+}
+
+func TestRoundtripAliasesYAML(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	yamlData, err := yaml.Marshal(&newSpec)
+	require.NoError(t, err)
+
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.yaml"))
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
+}

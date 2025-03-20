@@ -1519,11 +1519,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, `        alias_opts = pulumi.ResourceOptions(aliases=[`)
 
 		for i, alias := range res.Aliases {
-			if alias.Type != nil {
-				fmt.Fprintf(w, "pulumi.Alias(type_=\"%v\")", *alias.Type)
-				if i != len(res.Aliases)-1 {
-					fmt.Fprintf(w, ", ")
-				}
+			fmt.Fprintf(w, "pulumi.Alias(type_=\"%v\")", alias.Type)
+			if i != len(res.Aliases)-1 {
+				fmt.Fprintf(w, ", ")
 			}
 		}
 
