@@ -1463,7 +1463,7 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
 
 	e.RunCommand("pulumi", "package", "add",
-		"github.com/pulumi/component-test-providers/test-provider")
+		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
 
 	// Remove the plugin from the local cache and try to install it using `pulumi install`
 	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
