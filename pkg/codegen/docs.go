@@ -15,14 +15,20 @@
 package codegen
 
 import (
+	"bytes"
+	"fmt"
 	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/pgavlin/goldmark/ast"
+	"github.com/pgavlin/goldmark/renderer"
+	"github.com/pgavlin/goldmark/renderer/markdown"
+	"github.com/pgavlin/goldmark/util"
+	"golang.org/x/net/html"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
@@ -106,32 +112,92 @@ func FilterExamples(description string, lang string) string {
 	return schema.RenderDocsToString(source, parsed)
 }
 
-// Matches the format: <pulumi ref="..."/>, allowing for additional whitespace.
-var matchPulumiRef = regexp.MustCompile(`<pulumi\s+ref="([^"]*)"\s*\/>`)
+type PulumiRefResolver func(ref DocRef) (string, bool)
 
-func InterpretPulumiRefs(description string, resolveRefToName func(ref DocRef) (string, bool)) string {
+func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver) string {
 	if description == "" {
 		return ""
 	}
-	return matchPulumiRef.ReplaceAllStringFunc(description, func(match string) string {
-		submatches := matchPulumiRef.FindStringSubmatch(match)
-		if len(submatches) > 1 {
-			ref := submatches[1]
-			docRef := parseDocRef(ref)
-			if name, ok := resolveRefToName(docRef); ok {
-				return name
+
+	source := []byte(description)
+	parsed := schema.ParseDocs(source)
+
+	md := &markdown.Renderer{}
+
+	r := renderer.NewRenderer(renderer.WithNodeRenderers(
+		util.Prioritized(&pulumiRefNodeRenderer{resolveRefToName}, 100),
+		util.Prioritized(md, 200),
+	))
+	var buf bytes.Buffer
+	err := r.Render(&buf, source, parsed)
+	contract.AssertNoErrorf(err, "error rendering docs")
+	return buf.String()
+}
+
+type pulumiRefNodeRenderer struct {
+	resolveRefToName PulumiRefResolver
+}
+
+func (r *pulumiRefNodeRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindRawHTML,
+		func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+			if !entering {
+				return ast.WalkContinue, nil
 			}
-			// Fallback to a default of the property name or token display name
-			if docRef.Property != "" {
-				return docRef.Property
+
+			raw := n.(*ast.RawHTML)
+			var htmlSource bytes.Buffer
+			for i := range raw.Segments.Len() {
+				segment := raw.Segments.At(i)
+				htmlSource.Write(segment.Value(source))
 			}
-			if docRef.Token != "" {
-				return docRef.Token.DisplayName()
+
+			ref, ok := parsePulumiRef(htmlSource.String())
+			var err error
+			if !ok {
+				_, err = writer.Write(htmlSource.Bytes())
+			} else {
+				name, ok := r.resolveRefToName(ref)
+				if !ok {
+					name = defaultRefRender(ref)
+				}
+				_, err = writer.Write([]byte(name))
 			}
-			return ref
+			if err != nil {
+				return ast.WalkStop, fmt.Errorf("error writing pulumi ref: %w", err)
+			}
+
+			return ast.WalkSkipChildren, nil
+		},
+	)
+}
+
+func defaultRefRender(docRef DocRef) string {
+	if docRef.Property != "" {
+		return docRef.Property
+	}
+	if docRef.Token != "" {
+		return docRef.Token.DisplayName()
+	}
+	return docRef.Ref
+}
+
+func parsePulumiRef(htmlFragment string) (DocRef, bool) {
+	nodes, err := html.ParseFragment(strings.NewReader(htmlFragment), &html.Node{Type: html.ElementNode})
+	if err != nil || len(nodes) != 1 {
+		return DocRef{}, false
+	}
+	node := nodes[0]
+	if node.Type != html.ElementNode || node.Data != "pulumi" {
+		return DocRef{}, false
+	}
+
+	for _, attr := range node.Attr {
+		if attr.Key == "ref" {
+			return parseDocRef(attr.Val), true
 		}
-		return match
-	})
+	}
+	return DocRef{}, false
 }
 
 type DocRefType string
