@@ -170,7 +170,7 @@ func NewLoginCmd() *cobra.Command {
 			be, err := backend.DefaultLoginManager.Login(
 				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, displayOptions.Color)
 			if err != nil {
-				return fmt.Errorf("problem logging in: %w", err)
+				return fmt.Errorf("please provide the api url and not the ui url. error occured while logging in: %w", err)
 			}
 
 			if diy.IsDIYBackendURL(cloudURL) {
@@ -215,9 +215,7 @@ func NewLoginCmd() *cobra.Command {
 func validateCloudBackendType(typ string) (bool, error) {
 	parseURL, err := url.Parse(typ)
 	if err != nil {
-		return false, fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
-			"azblob://, gs://, s3://, file://, https:// and http://)",
-			typ)
+		return false, fmt.Errorf("provided invalid url %s. error occured: %q", typ, err)
 	}
 	kind := parseURL.Scheme
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
@@ -243,10 +241,6 @@ func checkHTTPCloudBackendURL(backendURL string) (string, error) {
 		return "", fmt.Errorf("not a valid login url, please check the provided url %s", backendURL)
 	}
 	parsedHost := parsedBackendURL.Host
-	if strings.HasPrefix(parsedHost, "pulumi.com") {
-		return "", fmt.Errorf("%s is not a valid self-hosted backend, "+
-			"use `pulumi login` without arguments to log into the Pulumi Cloud backend", backendURL)
-	}
 
 	if parsedHost == "app.pulumi.com" {
 		return "https://api.pulumi.com", nil
