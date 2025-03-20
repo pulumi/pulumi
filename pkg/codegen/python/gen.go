@@ -2440,7 +2440,23 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	if res.Comment != "" {
-		fmt.Fprintln(b, codegen.FilterExamples(res.Comment, "python"))
+		filteredExamples := codegen.FilterExamples(res.Comment, "python")
+		interpretedRefs := codegen.InterpretPulumiRefs(filteredExamples, func(ref codegen.DocRef) (string, bool) {
+			if ref.Token == "" {
+				return "", false
+			}
+			pyType := strings.ToLower(string(ref.Token.Module())) + "." + string(ref.Token.Name())
+			if ref.Property == "" {
+				return pyType, true
+			}
+			if ref.Token.String() == res.Token {
+				// Property within same type
+				return PyName(ref.Property), true
+			}
+			// Property within another type
+			return strings.ToLower(string(ref.Token.Module())) + "." + string(ref.Token.Name()) + "." + PyName(ref.Property), true
+		})
+		fmt.Fprintln(b, interpretedRefs)
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
