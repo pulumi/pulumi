@@ -1040,7 +1040,7 @@ func NewPluginSpec(
 			// a consistent experience once the plugin is installed, and won't have any problems when the repo
 			// is updated.  The version will then be added to the plugins SDK, and will be reused when the NewPluginSpec
 			// is used, so the user gets a consistent experience.
-			if versionStr == "" && version == nil {
+			if versionStr == "" {
 				var err error
 				version, err = gitutil.GetLatestTagOrHash(context.Background(), url)
 				if err != nil {
