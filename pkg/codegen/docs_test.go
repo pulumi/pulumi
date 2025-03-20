@@ -321,7 +321,7 @@ func TestParseDocRef(t *testing.T) {
 
 	t.Run("FunctionInputPropertyRef", func(t *testing.T) {
 		t.Parallel()
-		ref := "#/functions/aws:ec2:getInstance/inputProperties/instanceId"
+		ref := "#/functions/aws:ec2:getInstance/inputs/properties/instanceId"
 		expected := DocRef{
 			Ref:      ref,
 			Type:     DocRefTypeFunctionInputProperty,
@@ -334,7 +334,7 @@ func TestParseDocRef(t *testing.T) {
 
 	t.Run("FunctionOutputPropertyRef", func(t *testing.T) {
 		t.Parallel()
-		ref := "#/functions/aws:ec2:getInstance/outputProperties/publicIp"
+		ref := "#/functions/aws:ec2:getInstance/outputs/properties/publicIp"
 		expected := DocRef{
 			Ref:      ref,
 			Type:     DocRefTypeFunctionOutputProperty,
@@ -405,14 +405,14 @@ func TestParseDocRef(t *testing.T) {
 	t.Run("NewFunctionInputProperty", func(t *testing.T) {
 		t.Parallel()
 		docRef := NewDocRef(DocRefTypeFunctionInputProperty, "aws:ec2:getInstance", "instanceId")
-		assert.Equal(t, "#/functions/aws:ec2:getInstance/inputProperties/instanceId", docRef.Ref)
+		assert.Equal(t, "#/functions/aws:ec2:getInstance/inputs/properties/instanceId", docRef.Ref)
 		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
 	})
 
 	t.Run("NewFunctionOutputProperty", func(t *testing.T) {
 		t.Parallel()
 		docRef := NewDocRef(DocRefTypeFunctionOutputProperty, "aws:ec2:getInstance", "publicIp")
-		assert.Equal(t, "#/functions/aws:ec2:getInstance/outputProperties/publicIp", docRef.Ref)
+		assert.Equal(t, "#/functions/aws:ec2:getInstance/outputs/properties/publicIp", docRef.Ref)
 		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
 	})
 

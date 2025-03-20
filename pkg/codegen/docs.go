@@ -282,11 +282,11 @@ func NewDocRef(docRefType DocRefType, token string, property string) DocRef {
 	case DocRefTypeFunctionInputProperty:
 		contract.Assertf(token != "", "function token must be provided")
 		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/functions/%s/inputProperties/%s", url.PathEscape(token), url.PathEscape(property))
+		ref = fmt.Sprintf("#/functions/%s/inputs/properties/%s", url.PathEscape(token), url.PathEscape(property))
 	case DocRefTypeFunctionOutputProperty:
 		contract.Assertf(token != "", "function token must be provided")
 		contract.Assertf(property != "", "property name must be provided")
-		ref = fmt.Sprintf("#/functions/%s/outputProperties/%s", url.PathEscape(token), url.PathEscape(property))
+		ref = fmt.Sprintf("#/functions/%s/outputs/properties/%s", url.PathEscape(token), url.PathEscape(property))
 	case DocRefTypeTypeProperty:
 		contract.Assertf(token != "", "type token must be provided")
 		contract.Assertf(property != "", "property name must be provided")
@@ -345,7 +345,7 @@ func parseDocRef(ref string) DocRef {
 		return DocRef{Ref: ref, Type: DocRefType(topLevelType), Token: token}
 	}
 
-	if len(parts) != 5 {
+	if len(parts) < 5 {
 		return docRefUnknown
 	}
 
@@ -359,25 +359,44 @@ func parseDocRef(ref string) DocRef {
 	case "properties":
 		switch topLevelType {
 		case "resource", "type":
-			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "Property"), Token: token, Property: property}
+			if len(parts) == 5 {
+				return DocRef{Ref: ref, Type: DocRefType(topLevelType + "Property"), Token: token, Property: property}
+			}
+			return docRefUnknown
 		default:
 			// Properties isn't a valid ref
 			return docRefUnknown
 		}
 	case "inputProperties":
-		switch topLevelType {
-		case "resource", "function":
+		switch {
+		case topLevelType == "resource" && len(parts) == 5:
 			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "InputProperty"), Token: token, Property: property}
 		default:
 			// Properties isn't a valid ref
 			return docRefUnknown
 		}
-	case "outputProperties":
-		switch topLevelType {
-		case "function":
-			return DocRef{Ref: ref, Type: DocRefType(topLevelType + "OutputProperty"), Token: token, Property: property}
+	case "inputs":
+		switch {
+		case topLevelType == "function" && parts[4] == "properties" && len(parts) == 6:
+			property, err := url.PathUnescape(parts[5])
+			if err != nil || property == "" {
+				return docRefUnknown
+			}
+			return DocRef{Ref: ref, Type: DocRefTypeFunctionInputProperty, Token: token, Property: property}
 		default:
-			// Properties isn't a valid ref
+			// Inputs isn't a valid ref
+			return docRefUnknown
+		}
+	case "outputs":
+		switch {
+		case topLevelType == "function" && parts[4] == "properties" && len(parts) == 6:
+			property, err := url.PathUnescape(parts[5])
+			if err != nil || property == "" {
+				return docRefUnknown
+			}
+			return DocRef{Ref: ref, Type: DocRefTypeFunctionOutputProperty, Token: token, Property: property}
+		default:
+			// Outputs isn't a valid ref
 			return docRefUnknown
 		}
 	default:
