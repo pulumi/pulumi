@@ -133,31 +133,17 @@ jobs:
         with:
           path: ~/.local/share/mise
           key: mise-${{ runner.os }}-${{ hashfiles('**/.mise.toml') }}
-      - name: Install Python deps
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet
-      - name: Setup git
-        run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
-      - name: Update path
-        run: |
-          echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
       - name: Ensure
-        run: |
-          make ensure
+        run: make ensure
       - name: Lint Node
-        run: |
-          cd sdk/nodejs && make lint
+        run: make lint
+        working-directory: sdk/nodejs
       - name: Lint Python
-        run: |
-          cd sdk/python && make lint
+        run: make lint
+        working-directory: sdk/python
 
   actionlint:
     name: Lint GHA
