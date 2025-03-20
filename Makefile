@@ -106,7 +106,7 @@ developer_docs::
 
 install_all:: install
 
-dist:: build
+dist::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: brew
