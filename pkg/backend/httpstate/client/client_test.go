@@ -82,7 +82,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -94,7 +94,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -106,7 +106,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background())
+		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -122,12 +122,37 @@ func TestAPIVersionResponses(t *testing.T) {
 	defer versionServer.Close()
 
 	versionClient := newMockClient(versionServer)
-	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(context.Background())
+	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(
+		context.Background(), nil,
+	)
 
 	assert.NoError(t, err)
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
+}
+
+func TestAPIVersionMetadataHeaders(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "foo", req.Header.Get("X-Pulumi-First"))
+		assert.Equal(t, "bar", req.Header.Get("X-Pulumi-Second"))
+		assert.Empty(t, req.Header.Get("X-Pulumi-Third"))
+		return "{}"
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	// Act.
+	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+		"First":  "foo",
+		"Second": "bar",
+	})
+
+	// Assert.
+	assert.NoError(t, err)
 }
 
 func TestGzip(t *testing.T) {
