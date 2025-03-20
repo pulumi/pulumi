@@ -127,6 +127,7 @@ jobs:
           curl https://mise.run | sh
           echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
           echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          mise settings experimental=true
       - name: Mise cache
         uses: actions/cache@v4
         with:
