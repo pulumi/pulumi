@@ -74,6 +74,11 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		httpClient = http.DefaultClient
 	}
 
+	httpClient.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		Proxy:           http.ProxyFromEnvironment,
+	}
+
 	return &Client{
 		apiURL:     apiURL,
 		apiToken:   apiAccessToken(apiToken),
@@ -278,8 +283,16 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
 // oldest version before the CLI should warn about an upgrade, and the current dev version).
-func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
+func (pc *Client) GetCLIVersionInfo(
+	ctx context.Context,
+	metadata map[string]string,
+) (semver.Version, semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
+
+	headers := map[string][]string{}
+	for k, v := range metadata {
+		headers["X-Pulumi-"+k] = []string{v}
+	}
 
 	err := pc.restCallWithOptions(
 		ctx,
@@ -290,6 +303,7 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 		&versionInfo, // response
 		httpCallOptions{
 			RetryPolicy: retryNone,
+			Header:      http.Header(headers),
 		},
 	)
 	if err != nil {
