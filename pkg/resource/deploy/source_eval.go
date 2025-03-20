@@ -443,7 +443,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, "", ""),
+			nil, nil, nil, "", nil, nil, nil, "", ""),
 		done: done,
 	}
 	return event, done, nil
@@ -1576,7 +1576,7 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith and Protect from parent.
+// Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
@@ -1584,6 +1584,9 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	}
 	if goal.Protect == nil {
 		goal.Protect = parent.Protect
+	}
+	if goal.RetainOnDelete == nil {
+		goal.RetainOnDelete = parent.RetainOnDelete
 	}
 	return &goal
 }
@@ -1909,7 +1912,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Providers:               req.GetProviders(),
 		CustomTimeouts:          req.GetCustomTimeouts(),
 		PluginDownloadUrl:       req.GetPluginDownloadURL(),
-		RetainOnDelete:          req.GetRetainOnDelete(),
+		RetainOnDelete:          req.RetainOnDelete,
 		DeletedWith:             req.GetDeletedWith(),
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
@@ -2241,9 +2244,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Delete: customTimeouts.Delete,
 			}
 		}
-		if opts.DeleteBeforeReplace != nil {
-			options.DeleteBeforeReplace = *opts.DeleteBeforeReplace
-		}
+		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
 		constructResult, err := provider.Construct(ctx, plugin.ConstructRequest{
 			Info:    rm.constructInfo,
@@ -2438,7 +2439,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return len(replaceOnChanges) > 0
 		})
 		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
-			return retainOnDelete
+			return retainOnDelete != nil
 		})
 		rm.checkComponentOption(result.State.URN, "deletedWith", func() bool {
 			return deletedWith != ""

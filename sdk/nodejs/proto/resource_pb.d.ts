@@ -225,7 +225,10 @@ export class RegisterResourceRequest extends jspb.Message {
 
     getPluginchecksumsMap(): jspb.Map<string, Uint8Array | string>;
     clearPluginchecksumsMap(): void;
-    getRetainondelete(): boolean;
+
+    hasRetainondelete(): boolean;
+    clearRetainondelete(): void;
+    getRetainondelete(): boolean | undefined;
     setRetainondelete(value: boolean): RegisterResourceRequest;
     clearAliasesList(): void;
     getAliasesList(): Array<pulumi_alias_pb.Alias>;
@@ -289,7 +292,7 @@ export namespace RegisterResourceRequest {
         plugindownloadurl: string,
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
-        retainondelete: boolean,
+        retainondelete?: boolean,
         aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
         deletedwith: string,
         aliasspecs: boolean,
@@ -608,7 +611,10 @@ export class TransformResourceOptions extends jspb.Message {
     setCustomTimeouts(value?: RegisterResourceRequest.CustomTimeouts): TransformResourceOptions;
     getPluginDownloadUrl(): string;
     setPluginDownloadUrl(value: string): TransformResourceOptions;
-    getRetainOnDelete(): boolean;
+
+    hasRetainOnDelete(): boolean;
+    clearRetainOnDelete(): void;
+    getRetainOnDelete(): boolean | undefined;
     setRetainOnDelete(value: boolean): TransformResourceOptions;
     getDeletedWith(): string;
     setDeletedWith(value: string): TransformResourceOptions;
@@ -649,7 +655,7 @@ export namespace TransformResourceOptions {
         provider: string,
         customTimeouts?: RegisterResourceRequest.CustomTimeouts.AsObject,
         pluginDownloadUrl: string,
-        retainOnDelete: boolean,
+        retainOnDelete?: boolean,
         deletedWith: string,
         deleteBeforeReplace?: boolean,
         additionalSecretOutputsList: Array<string>,

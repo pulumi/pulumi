@@ -39,7 +39,7 @@ type Goal struct {
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
 	// if set to True, the providers Delete method will not be called for this resource.
-	RetainOnDelete bool
+	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
@@ -51,7 +51,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 	parent URN, protect *bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete bool, deletedWith URN, sourcePosition string,
+	replaceOnChanges []string, retainOnDelete *bool, deletedWith URN, sourcePosition string,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,

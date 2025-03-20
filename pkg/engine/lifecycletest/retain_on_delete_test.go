@@ -72,9 +72,10 @@ func TestRetainOnDelete(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
+			retainOnDelete := true
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:         ins,
-				RetainOnDelete: true,
+				RetainOnDelete: &retainOnDelete,
 			})
 			assert.NoError(t, err)
 		}

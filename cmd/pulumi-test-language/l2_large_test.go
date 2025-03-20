@@ -239,7 +239,7 @@ func (h *L2LargeLanguageHost) Run(
 //
 //nolint:paralleltest // These aren't yet safe to run in parallel
 func TestL2LargeString(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2LargeLanguageHost{tempDir: tempDir}

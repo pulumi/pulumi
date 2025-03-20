@@ -289,7 +289,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
-				err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
+				err := ex.performDeletes(ctx, ex.deployment.opts.Targets, ex.deployment.opts.Excludes)
 				if err != nil {
 					if !result.IsBail(err) {
 						logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
@@ -397,7 +397,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 }
 
 func (ex *deploymentExecutor) performDeletes(
-	ctx context.Context, targetsOpt UrnTargets,
+	ctx context.Context, targetsOpt UrnTargets, excludesOpt UrnTargets,
 ) error {
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
@@ -417,7 +417,7 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt)
+	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
 	// Regardless of if this error'd or not the step executor needs unlocking
 	ex.stepExec.Unlock()
 	if err != nil {
@@ -592,39 +592,90 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		return err
 	}
 
+	// Make sure all specified excludes refer to existing resources.
+	if err := ex.checkTargets(ex.deployment.opts.Excludes); err != nil {
+		return err
+	}
+
 	// If the user did not provide any --target's, create a refresh step for each resource in the
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
-	targetsActual := ex.deployment.opts.Targets
 
-	for _, res := range prev.Resources {
-		if targetsActual.Contains(res.URN) {
-			// For each resource we're going to refresh we need to ensure we have a provider for it
-			err := ex.deployment.EnsureProvider(res.Provider)
-			if err != nil {
-				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+	// We also keep track of dependents as we find them in order to exclude
+	// transitive dependents as well.
+	if ex.deployment.opts.Excludes.IsConstrained() {
+		excludesActual := ex.deployment.opts.Excludes
+
+		for _, res := range prev.Resources {
+			// If the resource is known to be excluded, we can skip this step
+			// entirely at this point.
+			if excludesActual.Contains(res.URN) {
+				continue
 			}
 
-			step := NewRefreshStep(ex.deployment, res)
-			steps = append(steps, step)
-			resourceToStep[res] = step
-		} else if ex.deployment.opts.TargetDependents {
-			// The provider reference is already ensured.
-			_, allDeps := res.GetAllDependencies()
+			knownToBeExcluded := false
 
-			// Because we always visit a target before its dependents, these
-			// dependents will all be caught by the check at the start of this
-			// loop.
-			for _, dep := range allDeps {
-				if targetsActual.Contains(dep.URN) {
-					step := NewRefreshStep(ex.deployment, res)
-					steps = append(steps, step)
-					resourceToStep[res] = step
+			// In the case of `--exclude-dependents`, we need to check through all
+			// the dependencies to see if they have already been marked as excluded.
+			// If so, this dependent is also to be excluded, and we add it to the
+			// list of known excludes to catch transitive excludes as well.
+			if ex.deployment.opts.ExcludeDependents {
+				_, allDeps := res.GetAllDependencies()
 
-					targetsActual.addLiteral(res.URN)
-					break
+				for _, dep := range allDeps {
+					if excludesActual.Contains(dep.URN) {
+						excludesActual.addLiteral(res.URN)
+
+						knownToBeExcluded = true
+						break
+					}
+				}
+			}
+
+			if !knownToBeExcluded {
+				// For each resource we're going to refresh we need to ensure we have a provider for it
+				err := ex.deployment.EnsureProvider(res.Provider)
+				if err != nil {
+					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+
+				step := NewRefreshStep(ex.deployment, res)
+				steps = append(steps, step)
+				resourceToStep[res] = step
+			}
+		}
+	} else {
+		targetsActual := ex.deployment.opts.Targets
+
+		for _, res := range prev.Resources {
+			if targetsActual.Contains(res.URN) {
+				// For each resource we're going to refresh we need to ensure we have a provider for it
+				err := ex.deployment.EnsureProvider(res.Provider)
+				if err != nil {
+					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+
+				step := NewRefreshStep(ex.deployment, res)
+				steps = append(steps, step)
+				resourceToStep[res] = step
+			} else if ex.deployment.opts.TargetDependents {
+				// The provider reference is already ensured.
+				_, allDeps := res.GetAllDependencies()
+
+				// Because we always visit a target before its dependents, these
+				// dependents will all be caught by the check at the start of this
+				// loop.
+				for _, dep := range allDeps {
+					if targetsActual.Contains(dep.URN) {
+						step := NewRefreshStep(ex.deployment, res)
+						steps = append(steps, step)
+						resourceToStep[res] = step
+
+						targetsActual.addLiteral(res.URN)
+						break
+					}
 				}
 			}
 		}

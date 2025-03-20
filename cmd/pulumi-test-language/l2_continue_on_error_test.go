@@ -270,7 +270,7 @@ func (h *L2ContinueOnErrorHost) Run(
 func TestL2ContinueOnError(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ContinueOnErrorHost{tempDir: tempDir}

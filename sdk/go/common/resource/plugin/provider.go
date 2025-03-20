@@ -767,7 +767,7 @@ type ConstructOptions struct {
 
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.
-	DeleteBeforeReplace bool
+	DeleteBeforeReplace *bool
 
 	// IgnoreChanges lists properties that should be ignored
 	// when determining whether the resource should has changed.
@@ -779,7 +779,7 @@ type ConstructOptions struct {
 
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
-	RetainOnDelete bool
+	RetainOnDelete *bool
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.

@@ -46,11 +46,10 @@ func TestRefreshTargetChildren(t *testing.T) {
 
 	p := &lt.TestPlan{}
 	project := p.GetProject()
+	callCount := 0.0
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			callCount := 0.0
-
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					callCount++
@@ -113,11 +112,13 @@ func TestRefreshTargetChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, a)
 	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[2].URN, b)
-	assert.Equal(t, snap.Resources[2].Outputs["count"], resource.NewPropertyValue(1.0))
+	assert.NotEqual(t, snap.Resources[2].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[3].URN, c)
-	assert.Equal(t, snap.Resources[3].Outputs["count"], resource.NewPropertyValue(2.0))
+	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[4].URN, d)
-	assert.Equal(t, snap.Resources[4].Outputs["count"], resource.NewPropertyValue(3.0))
+	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+
+	assert.Equal(t, callCount, 3.0)
 }
 
 func TestDestroyTarget(t *testing.T) {
@@ -169,6 +170,417 @@ func TestDestroyTarget(t *testing.T) {
 	destroySpecificTargets(
 		t, []string{"A"}, false, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {})
+}
+
+// We should be able to create a simple `A > B > C` hierarchy and exclude the
+// `C` descendant.
+func TestExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC",
+	})
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+}
+
+// We should be able to create a simple `A > B > C > D` hierarchy and exclude
+// `B` with `ExcludeDependents`. This should exclude `C` and `D` as well.
+func TestExcludeChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.ExcludeDependents = true
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
+	})
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+}
+
+// We should be able to create a simple `A > B > C` hierarchy and destroy
+// `C` and by excluding `A` and `B`. We should then be able to exclude the
+// provider and destroy everything under it.
+func TestDestroyExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	// Operation 1: deploy the three-item hierarchy
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA::resA",
+		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
+	})
+
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
+	})
+
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "2")
+
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 1)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+}
+
+// We should be able to create a simple `A > B > C > D` hierarchy, exclude `A`,
+// and with `--exclude-dependents` also exclude B, C, and D.
+func TestDestroyExcludeChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	// Operation 1: deploy the three-item hierarchy
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+
+	opts.UpdateOptions.ExcludeDependents = true
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA::resA",
+	})
+
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+}
+
+// If we're not deleting everything under a provider, we should implicitly
+// exclude the provider.
+func TestExcludeProviderImplicitly(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA::resA",
+	})
+
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+}
+
+// We should be able to build an `A > B > C > D` and refresh everything other
+// than the `B` target.
+func TestRefreshExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			callCount := 0.0
+
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					callCount++
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Outputs: resource.PropertyMap{
+								"count": resource.NewNumberProperty(callCount),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	null := resource.NewPropertyValue(nil)
+
+	require.Len(t, snap.Resources, 5)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
+
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
+	})
+
+	snap, err = lt.TestOp(Refresh).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 5)
+	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
+
+	// Order isn't guaranteed because of parallelism, so we can't check that
+	// these are 1 + 2 + 3
+	assert.NotEqual(t, snap.Resources[1].Outputs["count"], null)
+	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
+	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+}
+
+// We should be able to build an `A > B > C > D` and refresh the `A` target by
+// excluding the `B` target and excluding dependents. `C` should be excluded as
+// a dependent, and `D` should be excluded as a transitive dependent.
+func TestRefreshExcludeChildren(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			callCount := 0.0
+
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					callCount++
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Outputs: resource.PropertyMap{
+								"count": resource.NewNumberProperty(callCount),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		resB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{Parent: resA.URN})
+		assert.NoError(t, err)
+
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{Parent: resB.URN})
+		assert.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{Parent: resC.URN})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	null := resource.NewPropertyValue(nil)
+
+	require.Len(t, snap.Resources, 5)
+	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
+	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
+	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
+	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
+
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.UpdateOptions.ExcludeDependents = true
+	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
+	})
+
+	snap, err = lt.TestOp(Refresh).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 5)
+	assert.Equal(t, snap.Resources[1].Outputs["count"], resource.NewNumberProperty(1.0))
+	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
+	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
+	assert.Equal(t, snap.Resources[4].Outputs["count"], null)
 }
 
 func destroySpecificTargets(

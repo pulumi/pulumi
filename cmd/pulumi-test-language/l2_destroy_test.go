@@ -250,7 +250,7 @@ func (h *L2DestroyLanguageHost) Run(
 func TestL2Destroy(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2DestroyLanguageHost{tempDir: tempDir}

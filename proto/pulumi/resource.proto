@@ -132,7 +132,7 @@ message RegisterResourceRequest {
     repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
     string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
     map<string, bytes> pluginChecksums = 30;                    // a map of checksums expected for the provider plugin.
-    bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
+    optional bool retainOnDelete = 25;                          // if true the engine will not call the resource providers delete method for this resource.
     repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
     string deletedWith = 27;                                    // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
 
@@ -231,7 +231,7 @@ message TransformResourceOptions {
     string provider = 7;
     RegisterResourceRequest.CustomTimeouts custom_timeouts = 8;
     string plugin_download_url = 9;
-    bool retain_on_delete = 10;
+    optional bool retain_on_delete = 10;
     string deleted_with = 11;
     optional bool delete_before_replace = 12;
     repeated string additional_secret_outputs = 13;

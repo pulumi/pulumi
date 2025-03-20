@@ -343,7 +343,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 func TestL2ResourceAssetArchive(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
 	runtime := &L2ResourceAssetArchiveLanguageHost{tempDir: tempDir}

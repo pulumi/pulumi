@@ -125,5 +125,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"plain-properties", "1.0.0"},
 		SchemaProvider{"recursive", "1.0.0"},
 		SchemaProvider{"aws-static-website", "0.4.0"},
+
+		SchemaProvider{"aliases", "1.0.0"},
 	)
 }

@@ -899,9 +899,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	if opts.PulumiHomeDir != "" {
 		home = opts.PulumiHomeDir
 	} else {
-		var err error
-		home, err = os.MkdirTemp("", "test-env-home")
-		assert.NoError(t, err, "creating temp PULUMI_HOME directory")
+		home = t.TempDir()
 	}
 	return &ProgramTester{
 		t:              t,

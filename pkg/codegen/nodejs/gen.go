@@ -882,11 +882,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
 		for i, alias := range r.Aliases {
-			if alias.Type != nil {
-				fmt.Fprintf(w, "{ type: \"%v\" }", *alias.Type)
-				if i != len(r.Aliases)-1 {
-					fmt.Fprintf(w, ", ")
-				}
+			fmt.Fprintf(w, "{ type: \"%v\" }", alias.Type)
+			if i != len(r.Aliases)-1 {
+				fmt.Fprintf(w, ", ")
 			}
 		}
 		fmt.Fprintf(w, "] };\n")
