@@ -1,5 +1,5 @@
 [env]
-PULUMI_ROOT = "{{env.PWD}}/.root"
+PULUMI_ROOT = "{{config_root}}/.root"
 
 _.path = [
   "{{env.PULUMI_ROOT}}/bin",
