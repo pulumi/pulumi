@@ -46,10 +46,10 @@ func TestRefreshTargetChildren(t *testing.T) {
 
 	p := &lt.TestPlan{}
 	project := p.GetProject()
+	callCount := 0.0
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			callCount := 0.0
 
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -119,6 +119,8 @@ func TestRefreshTargetChildren(t *testing.T) {
 	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
 	assert.Equal(t, snap.Resources[4].URN, d)
 	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+
+	assert.Equal(t, callCount, 3.0)
 }
 
 func TestDestroyTarget(t *testing.T) {
