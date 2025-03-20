@@ -2537,7 +2537,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
-	require.Equal(t, "1.2.3", schema["version"].(string))
+	require.Nil(t, schema["version"])
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
 	// Check the component schema
