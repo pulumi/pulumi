@@ -1524,7 +1524,7 @@ func TestPackageAddPython(t *testing.T) {
 				_, _ = e.RunCommand("pulumi", "package", "add", "random")
 				b2, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
 				assert.NoError(t, err)
-				lines := strings.Split(string(b2), "\n")
+				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
 				var sdksRandomCount int
 				for _, line := range lines {
 					if strings.Contains(line, "sdks/random") {

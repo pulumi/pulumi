@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -295,9 +296,13 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 			return fmt.Errorf("error opening requirments.txt: %w", err)
 		}
 
-		lines := strings.Split(string(fBytes), "\n")
+		lines := regexp.MustCompile("\r?\n").Split(string(fBytes), -1)
 		if !slices.Contains(lines, packageSpecifier) {
-			fBytes = []byte(packageSpecifier + "\n" + string(fBytes))
+			if runtime.GOOS == "windows" {
+				fBytes = []byte(packageSpecifier + "\r\n" + string(fBytes))
+			} else {
+				fBytes = []byte(packageSpecifier + "\n" + string(fBytes))
+			}
 			err = os.WriteFile(fPath, fBytes, 0o600)
 			if err != nil {
 				return fmt.Errorf("could not write requirements.txt: %w", err)
