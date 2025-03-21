@@ -2043,8 +2043,8 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f && f.getLength() > 0) {
     f.serializeBinary(30, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
-  f = message.getRetainondelete();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 25));
+  if (f != null) {
     writer.writeBool(
       25,
       f
@@ -3078,7 +3078,25 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getRetainondelete = function()
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setRetainondelete = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 25, value);
+  return jspb.Message.setField(this, 25, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearRetainondelete = function() {
+  return jspb.Message.setField(this, 25, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasRetainondelete = function() {
+  return jspb.Message.getField(this, 25) != null;
 };
 
 
@@ -5204,8 +5222,8 @@ proto.pulumirpc.TransformResourceOptions.serializeBinaryToWriter = function(mess
       f
     );
   }
-  f = message.getRetainOnDelete();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 10));
+  if (f != null) {
     writer.writeBool(
       10,
       f
@@ -5533,7 +5551,25 @@ proto.pulumirpc.TransformResourceOptions.prototype.getRetainOnDelete = function(
  * @return {!proto.pulumirpc.TransformResourceOptions} returns this
  */
 proto.pulumirpc.TransformResourceOptions.prototype.setRetainOnDelete = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 10, value);
+  return jspb.Message.setField(this, 10, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.TransformResourceOptions} returns this
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.clearRetainOnDelete = function() {
+  return jspb.Message.setField(this, 10, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.TransformResourceOptions.prototype.hasRetainOnDelete = function() {
+  return jspb.Message.getField(this, 10) != null;
 };
 
 

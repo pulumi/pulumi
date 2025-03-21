@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.75.2" />
+    <PackageReference Include="Pulumi" Version="3.76.1" />
     <PackageReference Include="Pulumi.Aws" Version="4.26.0" />
   </ItemGroup>
 

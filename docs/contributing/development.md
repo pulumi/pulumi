@@ -37,8 +37,13 @@ which you can do as follows:
 4. `cd` into the root of this repository. Run `mise trust` to allow the
    repository to specify the required tools, all of which are listed in the
    top-level `.mise.toml` file. After this, you should find that the tools you
-   need are now available in your `PATH`.
+   need are now available in your `$PATH`.
 5. Run `mise install` to ensure all tools are up to date. You may need to re-run
    this if the tool list changes.
+
+When using Mise `$PULUMI_ROOT` is set to `$REPO/.root`. This is convenient for
+working with multiple Git worktrees, since each worktree will have its binaries
+installed in `$PULUMI_ROOT/bin`. To use these binaries, add `$REPO/.root/bin` to
+your `$PATH`.
 
 Use of Mise is currently experimental and optional.

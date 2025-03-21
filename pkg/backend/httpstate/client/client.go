@@ -207,6 +207,14 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 	return getStackPath(update.StackIdentifier, components...)
 }
 
+func publishPackagePath(source, publisher, name string) string {
+	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions", source, publisher, name)
+}
+
+func completePackagePublishPath(source, publisher, name, version string) string {
+	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+}
+
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
 type serviceUserInfo struct {
 	Name        string `json:"name"`
@@ -1360,4 +1368,65 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
 	res, err := pc.do(ctx, request)
 	return res, err
+}
+
+func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {
+	req := apitype.StartPackagePublishRequest{
+		Version: input.Version.String(),
+	}
+	var resp apitype.StartPackagePublishResponse
+	err := pc.restCall(ctx, "POST", publishPackagePath(input.Source, input.Publisher, input.Name), nil, req, &resp)
+	if err != nil {
+		return fmt.Errorf("publish package failed: %w", err)
+	}
+
+	uploadFile := func(url string, reader io.Reader, fileType string) error {
+		putReq, err := http.NewRequest(http.MethodPut, url, reader)
+		if err != nil {
+			return fmt.Errorf("failed to upload %s: %w", fileType, err)
+		}
+		for k, v := range resp.RequiredHeaders {
+			putReq.Header.Add(k, v)
+		}
+
+		uploadResp, err := pc.do(ctx, putReq)
+		if err != nil {
+			return fmt.Errorf("failed to upload %s: %w", fileType, err)
+		} else if uploadResp.StatusCode >= 400 {
+			body, bodyErr := readBody(uploadResp)
+			if bodyErr != nil {
+				return fmt.Errorf("failed to upload %s: %s", fileType, uploadResp.Status)
+			}
+			return fmt.Errorf("failed to upload %s: %s - %s", fileType, uploadResp.Status, string(body))
+		}
+
+		return nil
+	}
+
+	err = uploadFile(resp.UploadURLs.Schema, input.Schema, "schema")
+	if err != nil {
+		return err
+	}
+	err = uploadFile(resp.UploadURLs.Index, input.Readme, "index")
+	if err != nil {
+		return err
+	}
+	if input.InstallDocs != nil {
+		err = uploadFile(resp.UploadURLs.InstallationConfiguration, input.InstallDocs, "installation configuration")
+		if err != nil {
+			return err
+		}
+	}
+
+	completeReq := apitype.CompletePackagePublishRequest{
+		OperationID: resp.OperationID,
+	}
+
+	requestPath := completePackagePublishPath(input.Source, input.Publisher, input.Name, input.Version.String())
+	err = pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
+	if err != nil {
+		return fmt.Errorf("failed to complete package publishing operation %q: %w", resp.OperationID, err)
+	}
+
+	return nil
 }

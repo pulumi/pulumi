@@ -1029,7 +1029,7 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes or [],
-                retainOnDelete=opts.retain_on_delete or False,
+                retainOnDelete=opts.retain_on_delete,
                 deletedWith=resolver.deleted_with_urn or "",
                 sourcePosition=source_position,
                 transforms=callbacks,

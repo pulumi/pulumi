@@ -66,6 +66,7 @@ type ResourceState struct {
 	pluginDownloadURL string
 	aliases           []URNOutput
 	name              string
+	typ               string
 	transformations   []ResourceTransformation
 
 	keepDep bool
@@ -75,6 +76,16 @@ var _ Resource = (*ResourceState)(nil)
 
 func (s *ResourceState) URN() URNOutput {
 	return s.urn
+}
+
+// The name assigned to the resource at construction.
+func (s *ResourceState) PulumiResourceName() string {
+	return s.name
+}
+
+// The type assigned to the resource at construction.
+func (s *ResourceState) PulumiResourceType() string {
+	return s.typ
 }
 
 func (s *ResourceState) GetProvider(token string) ProviderResource {
@@ -136,10 +147,6 @@ func (s *ResourceState) getPluginDownloadURL() string {
 
 func (s *ResourceState) getAliases() []URNOutput {
 	return s.aliases
-}
-
-func (s *ResourceState) getName() string {
-	return s.name
 }
 
 func (s *ResourceState) getTransformations() []ResourceTransformation {
@@ -223,6 +230,12 @@ type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
 	URN() URNOutput
 
+	// PulumiResourceName returns the name of the resource.
+	PulumiResourceName() string
+
+	// PulumiResourceType returns the type token of the resource.
+	PulumiResourceType() string
+
 	// getChildren returns the resource's children.
 	getChildren() []Resource
 
@@ -246,9 +259,6 @@ type Resource interface {
 
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
-
-	// getName returns the name of the resource
-	getName() string
 
 	// getTransformations returns the transformations for the resource.
 	getTransformations() []ResourceTransformation
@@ -430,7 +440,7 @@ type resourceOptions struct {
 	AdditionalSecretOutputs []string
 	Aliases                 []Alias
 	CustomTimeouts          *CustomTimeouts
-	DeleteBeforeReplace     bool
+	DeleteBeforeReplace     *bool
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
 	Import                  IDInput
@@ -444,7 +454,7 @@ type resourceOptions struct {
 	URN                     string
 	Version                 string
 	PluginDownloadURL       string
-	RetainOnDelete          bool
+	RetainOnDelete          *bool
 	DeletedWith             Resource
 	Parameterization        []byte
 }
@@ -468,7 +478,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 	}
 
 	sort.Slice(dependsOn, func(i, j int) bool {
-		return dependsOn[i].getName() < dependsOn[j].getName()
+		return dependsOn[i].PulumiResourceName() < dependsOn[j].PulumiResourceName()
 	})
 
 	var providers []ProviderResource
@@ -482,22 +492,24 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		})
 	}
 
-	var protect bool
-	if ro.Protect != nil {
-		protect = *ro.Protect
+	flatten := func(s *bool) bool {
+		if s == nil {
+			return false
+		}
+		return *s
 	}
 
 	return &ResourceOptions{
 		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
 		Aliases:                 ro.Aliases,
 		CustomTimeouts:          ro.CustomTimeouts,
-		DeleteBeforeReplace:     ro.DeleteBeforeReplace,
+		DeleteBeforeReplace:     flatten(ro.DeleteBeforeReplace),
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
-		Protect:                 protect,
+		Protect:                 flatten(ro.Protect),
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
@@ -506,7 +518,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
-		RetainOnDelete:          ro.RetainOnDelete,
+		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
 	}
 }
@@ -580,7 +592,7 @@ func invokeOptionsSnapshot(io *invokeOptions) *InvokeOptions {
 	}
 
 	sort.Slice(dependsOn, func(i, j int) bool {
-		return dependsOn[i].getName() < dependsOn[j].getName()
+		return dependsOn[i].PulumiResourceName() < dependsOn[j].PulumiResourceName()
 	})
 
 	return &InvokeOptions{
@@ -668,7 +680,7 @@ func Aliases(o []Alias) ResourceOption {
 // DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 func DeleteBeforeReplace(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DeleteBeforeReplace = o
+		ro.DeleteBeforeReplace = &o
 	})
 }
 
@@ -965,7 +977,7 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 // If set to True, the providers Delete method will not be called for this resource.
 func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.RetainOnDelete = b
+		ro.RetainOnDelete = &b
 	})
 }
 

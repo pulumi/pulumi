@@ -501,7 +501,55 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
+		// pulumiResourceType/Name takes a single argument, the resource, and returns a string. There isn't a good way
+		// to do this with a StaticFunctionSignature so we use a GenericFunctionSignature with a similar check for
+		// "resource type" as we do for `call` expressions.
+		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
+		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
 	}
+}
+
+func newResourceFunction(functionName string) *model.Function {
+	return model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			if len(args) != 1 {
+				var r hcl.Range
+				if len(args) > 0 {
+					r = args[0].SyntaxNode().Range()
+				} else {
+					r = hcl.Range{}
+				}
+
+				return model.StaticFunctionSignature{}, hcl.Diagnostics{
+					errorf(r, functionName+" expects exactly one argument"),
+				}
+			}
+
+			arg := args[0]
+			var res *Resource
+			if objectType, ok := arg.Type().(*model.ObjectType); ok {
+				if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
+					res = annotation.Node
+				}
+			}
+
+			if res == nil {
+				return model.StaticFunctionSignature{}, hcl.Diagnostics{
+					errorf(args[0].SyntaxNode().Range(), functionName+" argument must be a single resource"),
+				}
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{
+					{
+						Name: "resource",
+						Type: arg.Type(),
+					},
+				},
+				ReturnType: model.StringType,
+			}, nil
+		},
+	))
 }
 
 func returnTypeFromArgs(args []model.Expression) model.Type {

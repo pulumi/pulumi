@@ -55,7 +55,7 @@ export const outputTryFailure = tryOutput_(
     () => aSecretMap.b,
     () => "fallback"
 );
-const anObject = config.requireObject("anObject");
+const anObject = config.requireObject<any>("anObject");
 export const dynamicTrySuccess = tryOutput_(
     () => anObject.a,
     () => "fallback"
@@ -66,10 +66,10 @@ export const dynamicTryFailure = tryOutput_(
 );
 const aSecretObject = pulumi.secret(anObject);
 export const outputDynamicTrySuccess = tryOutput_(
-    () => aSecretObject?.a,
+    () => aSecretObject.apply(aSecretObject => aSecretObject.a),
     () => "fallback"
 );
 export const outputDynamicTryFailure = tryOutput_(
-    () => aSecretObject?.b,
+    () => aSecretObject.apply(aSecretObject => aSecretObject.b),
     () => "fallback"
 );

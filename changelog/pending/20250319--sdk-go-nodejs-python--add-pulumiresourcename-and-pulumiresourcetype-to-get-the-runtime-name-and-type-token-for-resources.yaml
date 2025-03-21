@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go,python
+  description: Add pulumiResourceName and pulumiResourceType to get the runtime name and type token for resources

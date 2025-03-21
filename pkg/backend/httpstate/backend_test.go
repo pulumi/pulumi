@@ -17,14 +17,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -312,4 +316,20 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	snap, err = s.Snapshot(ctx, b64.Base64SecretsProvider)
 	require.NoError(t, err)
 	assert.NotNil(t, snap)
+}
+
+func TestCloudBackend_GetPackageRegistry(t *testing.T) {
+	t.Parallel()
+	mockClient := &client.Client{}
+	b := &cloudBackend{
+		client: mockClient,
+		d:      diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	}
+
+	registry, err := b.GetPackageRegistry()
+	assert.NoError(t, err)
+	assert.NotNil(t, registry)
+
+	_, ok := registry.(*cloudPackageRegistry)
+	assert.True(t, ok, "expected registry to be a cloudPackageRegistry")
 }

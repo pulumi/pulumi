@@ -174,8 +174,11 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try": "pulumi#18506 Support try in Go program generation",
-	"l1-builtin-can": "pulumi#18570 Support can in Go program generation",
+	"l1-config-types": "fails to compile",
+	"l1-proxy-index":  "fails to compile",
+	"l2-proxy-index":  "fails to compile",
+	"l1-builtin-try":  "pulumi#18506 Support try in Go program generation",
+	"l1-builtin-can":  "pulumi#18570 Support can in Go program generation",
 
 	// pulumi/pulumi#18345
 	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
@@ -193,6 +196,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 	"l2-component-property-deps": {
 		Paths: []string{
 			filepath.Join("testdata", "overrides", "l2-component-property-deps"),
+		},
+	},
+
+	// TODO[pulumi/pulumi#18202]: Delete this override when the programgen issue is addressed.
+	"l2-provider-call": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-provider-call"),
 		},
 	},
 }

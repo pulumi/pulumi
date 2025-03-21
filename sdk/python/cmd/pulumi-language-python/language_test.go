@@ -175,6 +175,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
+// Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l1-builtin-try": "Temporarily disabled until pr #18915 is submitted",
 }

@@ -43,6 +43,7 @@ type MockHTTPBackend struct {
 		deploymentInitiator string,
 		suppressStreamLogs bool,
 	) error
+	FGetPackageRegistry func() (backend.PackageRegistry, error)
 }
 
 func (b *MockHTTPBackend) Client() *client.Client {
@@ -88,6 +89,10 @@ func (b *MockHTTPBackend) Search(
 
 func (b *MockHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
 	return apitype.Capabilities{}
+}
+
+func (b *MockHTTPBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
+	return b.FGetPackageRegistry()
 }
 
 var _ Backend = (*MockHTTPBackend)(nil)

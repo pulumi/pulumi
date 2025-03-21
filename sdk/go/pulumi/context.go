@@ -391,12 +391,14 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 
 			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
 			// optionality that the wire protocol can
-			var protect bool
-			if rpcReq.Options.Protect != nil {
-				protect = *rpcReq.Options.Protect
+			flatten := func(s *bool) bool {
+				if s == nil {
+					return false
+				}
+				return *s
 			}
-			opts.Protect = protect
 
+			opts.Protect = flatten(rpcReq.Options.Protect)
 			if rpcReq.Options.Provider != "" {
 				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
 			}
@@ -407,7 +409,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 			}
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
-			opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
+			opts.RetainOnDelete = flatten(rpcReq.Options.RetainOnDelete)
 			opts.Version = rpcReq.Options.Version
 		}
 
@@ -519,7 +521,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 			}
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
-			rpcRes.Options.RetainOnDelete = opts.RetainOnDelete
+			rpcRes.Options.RetainOnDelete = &opts.RetainOnDelete
 			rpcRes.Options.Version = opts.Version
 		}
 
@@ -1535,36 +1537,43 @@ func (ctx *Context) registerResource(
 			}
 		} else {
 			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+
+			var deleteBeforeReplace bool
+			if options.DeleteBeforeReplace != nil {
+				deleteBeforeReplace = *options.DeleteBeforeReplace
+			}
+
 			resp, err = ctx.state.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
-				Type:                    t,
-				Name:                    name,
-				Parent:                  inputs.parent,
-				Object:                  inputs.rpcProps,
-				Custom:                  custom,
-				Protect:                 inputs.protect,
-				Dependencies:            inputs.deps,
-				Provider:                inputs.provider,
-				Providers:               inputs.providers,
-				PropertyDependencies:    inputs.rpcPropertyDeps,
-				DeleteBeforeReplace:     inputs.deleteBeforeReplace,
-				ImportId:                inputs.importID,
-				CustomTimeouts:          inputs.customTimeouts,
-				IgnoreChanges:           inputs.ignoreChanges,
-				AliasURNs:               aliasURNs,
-				Aliases:                 aliases,
-				AcceptSecrets:           true,
-				AcceptResources:         !disableResourceReferences,
-				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
-				Version:                 inputs.version,
-				PluginDownloadURL:       inputs.pluginDownloadURL,
-				Remote:                  remote,
-				ReplaceOnChanges:        inputs.replaceOnChanges,
-				RetainOnDelete:          inputs.retainOnDelete,
-				DeletedWith:             inputs.deletedWith,
-				SourcePosition:          sourcePosition,
-				Transforms:              transforms,
-				SupportsResultReporting: true,
-				PackageRef:              packageRef,
+				Type:                       t,
+				Name:                       name,
+				Parent:                     inputs.parent,
+				Object:                     inputs.rpcProps,
+				Custom:                     custom,
+				Protect:                    inputs.protect,
+				Dependencies:               inputs.deps,
+				Provider:                   inputs.provider,
+				Providers:                  inputs.providers,
+				PropertyDependencies:       inputs.rpcPropertyDeps,
+				DeleteBeforeReplace:        deleteBeforeReplace,
+				DeleteBeforeReplaceDefined: inputs.deleteBeforeReplace != nil,
+				ImportId:                   inputs.importID,
+				CustomTimeouts:             inputs.customTimeouts,
+				IgnoreChanges:              inputs.ignoreChanges,
+				AliasURNs:                  aliasURNs,
+				Aliases:                    aliases,
+				AcceptSecrets:              true,
+				AcceptResources:            !disableResourceReferences,
+				AdditionalSecretOutputs:    inputs.additionalSecretOutputs,
+				Version:                    inputs.version,
+				PluginDownloadURL:          inputs.pluginDownloadURL,
+				Remote:                     remote,
+				ReplaceOnChanges:           inputs.replaceOnChanges,
+				RetainOnDelete:             inputs.retainOnDelete,
+				DeletedWith:                inputs.deletedWith,
+				SourcePosition:             sourcePosition,
+				Transforms:                 transforms,
+				SupportsResultReporting:    true,
+				PackageRef:                 packageRef,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1779,7 +1788,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 		parentAliases := parent.getAliases()
 		for i := range parentAliases {
 			parentAlias := parentAliases[i]
-			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, parentAlias)
+			urn := inheritedChildAlias(name, parent.PulumiResourceName(), t, project, stack, parentAlias)
 			aliasURNs = append(aliasURNs, urn)
 			for j := range aliases {
 				childAlias := aliases[j]
@@ -1790,7 +1799,8 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
 					aliasedChildName := resource.URN(urn).Name()
 					aliasedChildType := string(resource.URN(urn).Type())
-					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
+					return inheritedChildAlias(
+						aliasedChildName, parent.PulumiResourceName(), aliasedChildType, project, stack, parentAlias)
 				}).ApplyT(func(urn interface{}) URN {
 					return urn.(URN)
 				}).(URNOutput)
@@ -1910,6 +1920,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
+		rs.typ = t
 		rs.aliases = aliases
 		state.transformations = transformations
 		rs.transformations = transformations
@@ -2011,7 +2022,7 @@ type resourceInputs struct {
 	resolvedProps           resource.PropertyMap
 	rpcProps                *structpb.Struct
 	rpcPropertyDeps         map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
-	deleteBeforeReplace     bool
+	deleteBeforeReplace     *bool
 	importID                string
 	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	ignoreChanges           []string
@@ -2020,7 +2031,7 @@ type resourceInputs struct {
 	version                 string
 	pluginDownloadURL       string
 	replaceOnChanges        []string
-	retainOnDelete          bool
+	retainOnDelete          *bool
 	deletedWith             string
 }
 
@@ -2314,7 +2325,7 @@ type resourceOpts struct {
 	depURNs                 []URN
 	providerRef             string
 	providerRefs            map[string]string
-	deleteBeforeReplace     bool
+	deleteBeforeReplace     *bool
 	importID                ID
 	ignoreChanges           []string
 	additionalSecretOutputs []string

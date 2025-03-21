@@ -20,7 +20,6 @@ describe("Schema", function () {
     it("should generate schema with correct language dependencies", function () {
         const packageJSON = {
             name: "test-provider",
-            version: "1.0.0",
             description: "Test provider for Pulumi",
         };
 

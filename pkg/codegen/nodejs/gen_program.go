@@ -1283,10 +1283,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if getType == "Object" {
 		// compute the type parameter T for the call to config.getObject<T>(...)
 		computedTypeParam := computeConfigTypeParam(v.Type())
-		if computedTypeParam != "any" {
-			// any is redundant
-			typeParam = fmt.Sprintf("<%s>", computedTypeParam)
-		}
+		typeParam = fmt.Sprintf("<%s>", computedTypeParam)
 	}
 
 	getOrRequire := "get"

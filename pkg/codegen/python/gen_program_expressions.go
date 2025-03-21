@@ -342,7 +342,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			panic(err)
 		}
 
-		validMethod := makeValidIdentifier(method)
+		validMethod := PyName(method)
 		g.Fgenf(w, "%v.%s(", self, validMethod)
 
 		var args *model.ObjectConsExpression
@@ -514,6 +514,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genCan(w, expr.Args)
 	case "rootDirectory":
 		g.genRootDirectory(w)
+	case "pulumiResourceName":
+		g.Fgenf(w, "%v.pulumi_resource_name", expr.Args[0])
+	case "pulumiResourceType":
+		g.Fgenf(w, "%v.pulumi_resource_type", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

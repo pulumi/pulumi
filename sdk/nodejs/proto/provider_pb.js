@@ -9352,8 +9352,8 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
       f
     );
   }
-  f = message.getDeletebeforereplace();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 21));
+  if (f != null) {
     writer.writeBool(
       21,
       f
@@ -9373,8 +9373,8 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
       f
     );
   }
-  f = message.getRetainondelete();
-  if (f) {
+  f = /** @type {boolean} */ (jspb.Message.getField(message, 24));
+  if (f != null) {
     writer.writeBool(
       24,
       f
@@ -10254,7 +10254,25 @@ proto.pulumirpc.ConstructRequest.prototype.getDeletebeforereplace = function() {
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
 proto.pulumirpc.ConstructRequest.prototype.setDeletebeforereplace = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 21, value);
+  return jspb.Message.setField(this, 21, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.clearDeletebeforereplace = function() {
+  return jspb.Message.setField(this, 21, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.hasDeletebeforereplace = function() {
+  return jspb.Message.getField(this, 21) != null;
 };
 
 
@@ -10346,7 +10364,25 @@ proto.pulumirpc.ConstructRequest.prototype.getRetainondelete = function() {
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
 proto.pulumirpc.ConstructRequest.prototype.setRetainondelete = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 24, value);
+  return jspb.Message.setField(this, 24, value);
+};
+
+
+/**
+ * Clears the field making it undefined.
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.clearRetainondelete = function() {
+  return jspb.Message.setField(this, 24, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConstructRequest.prototype.hasRetainondelete = function() {
+  return jspb.Message.getField(this, 24) != null;
 };
 
 
