@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -88,9 +89,7 @@ func (s *Source) addErrorOnEmpty(err error) {
 
 func (s *Source) lockOpen(action string) {
 	s.m.Lock()
-	if s.closed {
-		panic("Attempted to act on closed source: " + action)
-	}
+	contract.Assertf(!s.closed, "Attempted to act on closed source: "+action)
 }
 
 // Close cleans up the [Source] and any associated templates.
@@ -127,12 +126,11 @@ func (t Template) ProjectDescription() string { return t.projectDescription }
 func (t Template) Error() error               { return t.error }
 
 func (t Template) Download(ctx context.Context) (workspace.Template, error) {
-	if t.source == nil {
-		panic("Cannot download a template without a host")
-	}
-	if t.source.closed {
-		panic("Cannot download a template from an already closed host")
-	}
+	// This package should never emit a Template with a nil t.source.
+	contract.Assertf(t.source != nil, "Cannot download a template without a host")
+
+	// This represents a logic bug in either this package or the consuming package.
+	contract.Assertf(!t.source.closed, "Cannot download a template from an already closed host")
 
 	return t.download(ctx)
 }
