@@ -56,9 +56,11 @@ func (s *Source) getOrgTemplates(
 		if !errors.Is(err, backend.MissingEnvVarForNonInteractiveError{}) {
 			s.addError(err)
 		}
+		logging.Infof("could not get a backend for org templates")
 		return
 	}
 	if !b.SupportsTemplates() {
+		logging.Infof("%s does not support Org Templates", b.Name())
 		return
 	}
 
