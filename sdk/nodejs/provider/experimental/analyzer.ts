@@ -64,6 +64,43 @@ export enum InputOutput {
     Output = 2,
 }
 
+// Check if any of module exports is a Pulumi Component class.
+export function hasPulumiComponents(moduleExports: any): boolean {
+    if (!moduleExports) {
+        return false;
+    }
+
+    for (const key in moduleExports) {
+        // Filter unwanted properties from the prototype
+        if (!Object.prototype.hasOwnProperty.call(moduleExports, key)) {
+            continue;
+        }
+
+        const exportedItem = moduleExports[key];
+
+        // Only check function/class items
+        if (typeof exportedItem !== "function" || !exportedItem.prototype) {
+            continue;
+        }
+
+        // Navigate through the prototype chain to find if any of the prototypes are a Pulumi component.
+        let proto = exportedItem.prototype;
+        while (proto?.__proto__) {
+            proto = proto.__proto__;
+
+            // Check if the constructor of this prototype is ComponentResource
+            if (
+                proto.constructor &&
+                (proto.constructor.name === "ComponentResource" || proto.constructor.__pulumiComponentResource === true)
+            ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 export class Analyzer {
     private dir: string;
     private packageJSON: Record<string, any>;

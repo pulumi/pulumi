@@ -22,7 +22,8 @@ import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
-import * as stack from "../../runtime/stack";
+import { componentProviderHost } from "../../provider/experimental/provider";
+import { hasPulumiComponents } from "../../provider/experimental/analyzer";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -281,6 +282,9 @@ ${errMsg}`,
             // back.  That way, if it is async and throws an exception, we properly capture it here
             // and handle it.
             const reqResult = require(program);
+            if (hasPulumiComponents(reqResult)) {
+                return await componentProviderHost({ dirname: program, components: reqResult });
+            }
             const invokeResult = reqResult instanceof Function ? reqResult() : reqResult;
 
             return await invokeResult;
