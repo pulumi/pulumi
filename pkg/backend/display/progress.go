@@ -726,7 +726,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
 		if display.failed && !display.isPreview {
 			startTime := time.Now()
-			summary := display.GetDiagnosticsSummary(display.proj)
+			summary := display.GetDiagnosticsSummary(display.proj, display.opts.CopilotSummaryModel, display.opts.CopilotSummaryMaxLen)
 			// TODO: clear accumulated lines
 			elapsedMs := time.Since(startTime).Milliseconds()
 			display.println("    " + colors.SpecCreateReplacement +
@@ -774,7 +774,7 @@ func extractOrgFromPermalink(permalink string) string {
 	return segments[0]
 }
 
-func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName) string {
+func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName, model string, maxSummaryLen int) string {
 	// Guard against nil or empty accumulated lines
 	if len(display.accumulatedLines) == 0 {
 		return ""
@@ -787,7 +787,7 @@ func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName) s
 		return ""
 	}
 
-	return summarizeErrorWithCopilot(orgID, display.accumulatedLines, "    ")
+	return summarizeErrorWithCopilot(orgID, display.accumulatedLines, "    ", model, maxSummaryLen)
 }
 
 type policyPackSummary struct {
