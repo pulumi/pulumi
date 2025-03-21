@@ -1,38 +1,36 @@
 import * as pulumi from "@pulumi/pulumi";
 
 function tryOutput_(
-    ...fns: Array<() => pulumi.Input<any>>
+	...fns: Array<() => pulumi.Input<any>>
 ): pulumi.Output<any> {
-    for (const fn of fns) {
-        try {
-            const result = fn();
-            if (result === undefined) {
-                continue;
-            }
-            return pulumi.output(result);
-        } catch (e) {
-            continue;
-        }
-    }
-    throw new Error("try: all parameters failed");
+	if (fns.length === 0) {
+		throw new Error("try: all parameters failed");
+	}
+	const [fn, ...rest] = fns;
+	try {
+		return pulumi.output(fn()).apply(result => result !== undefined ? result : tryOutput_(...rest));
+	} catch {
+		return tryOutput_(...rest);
+	}
+	throw new Error("try: all parameters failed");
 }
 
 
 function try_(
-    ...fns: Array<() => any>
+	...fns: Array<() => any>
 ): any {
-    for (const fn of fns) {
-        try {
-            const result = fn();
-            if (result === undefined) {
-                continue;
-            }
-            return result;
-        } catch (e) {
-            continue;
-        }
-    }
-    throw new Error("try: all parameters failed");
+	for (const fn of fns) {
+		try {
+			const result = fn();
+			if (result === undefined) {
+				continue;
+			}
+			return result;
+		} catch (e) {
+			continue;
+		}
+	}
+	throw new Error("try: all parameters failed");
 }
 
 
