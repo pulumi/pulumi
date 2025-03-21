@@ -1,5 +1,0 @@
-name: l2-builtin-try-with-output
-runtime:
-  name: nodejs
-  options:
-    typescript: false

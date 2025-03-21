@@ -176,8 +176,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 }
 
 var expectedFailures = map[string]string{
-	"l2-builtin-try-with-output": "pulumi#18860 Support try in Python program generation",
-	"l1-builtin-try":             "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-try": "Temporarily disabled until pr #18915 is submitted",
 }
 
 func TestLanguage(t *testing.T) {
