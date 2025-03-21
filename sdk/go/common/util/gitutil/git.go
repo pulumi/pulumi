@@ -327,20 +327,39 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 
 	// For non-SSH URLs, see if there is basic auth info. Strip it from the
 	// endpoint as we go in order to remove it from the string output.
-	var auth *http.BasicAuth
 	if u, p := endpoint.User, endpoint.Password; u != "" || p != "" {
-		auth = &http.BasicAuth{Username: u, Password: p}
+		auth := &http.BasicAuth{Username: u, Password: p}
 		endpoint.User, endpoint.Password = "", ""
+		return endpoint.String(), auth, nil
 	}
-	return endpoint.String(), auth, nil
+	return endpoint.String(), nil, nil
 }
 
-// parseAuthURL extracts HTTP basic auth parameters if provided in the URL.
+// getAuthForURL extracts HTTP basic auth parameters if provided in the URL.
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
-func parseAuthURL(url string) (string, transport.AuthMethod, error) {
-	return defaultURLAuthParser.Parse(url)
+func getAuthForURL(url string) (string, transport.AuthMethod, error) {
+	endpoint, auth, err := defaultURLAuthParser.Parse(url)
+	if err != nil {
+		return "", nil, err
+	}
+	// If we have no auth, try to get it from the environment.
+	if auth == nil {
+		if strings.Contains(endpoint, GitHubHostName) && os.Getenv("GITHUB_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("GITHUB_TOKEN"),
+			}
+		} else if strings.Contains(endpoint, GitLabHostName) && os.Getenv("GITLAB_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "oauth2",
+				Password: os.Getenv("GITLAB_TOKEN"),
+			}
+		}
+	}
+
+	return endpoint, auth, nil
 }
 
 // sshUserSettings allows us to ingect mock SSH config.
@@ -434,7 +453,7 @@ func expandHomeDir(path string) (string, error) {
 func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.Hash, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
 
-	u, auth, err := parseAuthURL(url)
+	u, auth, err := getAuthForURL(url)
 	if err != nil {
 		return err
 	}
@@ -461,7 +480,7 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumbing.Revision, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, revision, path)
 
-	u, auth, err := parseAuthURL(url)
+	u, auth, err := getAuthForURL(url)
 	if err != nil {
 		return err
 	}
@@ -516,7 +535,7 @@ func gitCloneOrPull(
 		depth = 1
 	}
 
-	u, auth, err := parseAuthURL(url)
+	u, auth, err := getAuthForURL(url)
 	if err != nil {
 		return err
 	}
@@ -863,7 +882,7 @@ func gitListRefs(ctx context.Context, url string) ([]*plumbing.Reference, error)
 		return nil, err
 	}
 
-	_, auth, err := parseAuthURL(url)
+	_, auth, err := getAuthForURL(url)
 	if err != nil {
 		return nil, err
 	}
