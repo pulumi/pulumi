@@ -28,7 +28,8 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-try", "object"): config.NewObjectValue("{}"),
+					config.MustMakeKey("l1-builtin-try", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
+					config.MustMakeKey("l1-builtin-try", "anObject"): config.NewObjectValue("{\"a\": \"OOK\"}"),
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
@@ -42,12 +43,15 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 5, "expected 5 outputs")
-					AssertPropertyMapMember(l, outputs, "nonOutputTry", resource.NewStringProperty("a"))
-					AssertPropertyMapMember(l, outputs, "trySucceed", resource.NewStringProperty("str"))
-					AssertPropertyMapMember(l, outputs, "tryFallback1", resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "tryFallback2", resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "tryMultipleTypes", resource.NewNumberProperty(42))
+					assert.Len(l, outputs, 8, "expected 8 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewStringProperty("MOK"))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "outputTrySuccess", resource.MakeSecret(resource.NewStringProperty("MOK")))
+					AssertPropertyMapMember(l, outputs, "outputTryFailure", resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess", resource.NewStringProperty("OOK"))
+					AssertPropertyMapMember(l, outputs, "dynamicTryFailure", resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess", resource.MakeSecret(resource.NewStringProperty("OOK")))
+					AssertPropertyMapMember(l, outputs, "outputDynamicTryFailure", resource.NewStringProperty("fallback"))
 				},
 			},
 		},

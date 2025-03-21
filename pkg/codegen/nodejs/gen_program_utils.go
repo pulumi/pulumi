@@ -88,7 +88,7 @@ func generateTryFunction(outputTry bool, indent string) string {
 	}
 
 	return fmt.Sprintf(`%[1]sfunction try_(
-%[1]s    ...fns: Array<() => unknown>
+%[1]s    ...fns: Array<() => any>
 %[1]s): any {
 %[1]s    for (const fn of fns) {
 %[1]s        try {
@@ -109,26 +109,20 @@ func generateTryFunction(outputTry bool, indent string) string {
 
 func generateOutputtyTryFunction(indent string) string {
 	return fmt.Sprintf(`%[1]sfunction tryOutput_(
-%[1]s    ...fns: Array<() => pulumi.Input<unknown>>
+%[1]s    ...fns: Array<() => pulumi.Input<any>>
 %[1]s): pulumi.Output<any> {
-%[1]s    if (fns.length === 0) {
-%[1]s	       throw new Error("try: all parameters failed");
-%[1]s    }
-%[1]s
-%[1]s    const [fn, ...rest] = fns;
-%[1]s    let resultOutput: pulumi.Output<any> | undefined;
-%[1]s    try {
-%[1]s        const result = fn();
-%[1]s        if (result === undefined) {
-%[1]s            return tryOutput_(...rest);
+%[1]s    for (const fn of fns) {
+%[1]s        try {
+%[1]s            const result = fn();
+%[1]s            if (result === undefined) {
+%[1]s                continue;
+%[1]s            }
+%[1]s            return pulumi.output(result);
+%[1]s        } catch (e) {
+%[1]s            continue;
 %[1]s        }
-%[1]s        resultOutput = pulumi.output(result);
-%[1]s    } catch {
-%[1]s	       return tryOutput_(...rest);
 %[1]s    }
-%[1]s
-%[1]s    // @ts-ignore
-%[1]s	   return resultOutput;
+%[1]s    throw new Error("try: all parameters failed");
 %[1]s}
 `, indent)
 }

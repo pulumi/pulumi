@@ -1,32 +1,41 @@
-str = "str"
+config "aMap" "map(string)" {}
 
-aList = ["a", "b", "c"]
+output "plainTrySuccess" {
+  value = try(aMap["a"], "fallback")
+}
 
-# This should use the try function, not tryOutput.
-output "nonOutputTry" {
-  value = try(aList[0], "fallback")
+output "plainTryFailure" {
+  value = try(aMap["b"], "fallback")
+}
+
+aSecretMap = secret(aMap)
+
+output "outputTrySuccess" {
+  value = try(aSecretMap["a"], "fallback")
+}
+
+output "outputTryFailure" {
+  value = try(aSecretMap["b"], "fallback")
 }
 
 # A dynamically typed value, whose field accesses will not be type errors (since the type is not known to the type
 # checker), but may fail dynamically, and can thus be used as test inputs to try.
-config "object" {}
+config "anObject" {}
 
-# This should return "str".
-output "trySucceed" {
-  value = try(str, object.a, "fallback")
+output "dynamicTrySuccess" {
+  value = try(anObject.a, "fallback")
 }
 
-# This should return "fallback", since object.a is undefined.
-output "tryFallback1" {
-  value = try(object.a, "fallback")
+output "dynamicTryFailure" {
+  value = try(anObject.b, "fallback")
 }
 
-# This should return "fallback", since neither object.a nor object.b are defined.
-output "tryFallback2" {
-  value = try(object.a, object.b, "fallback")
+aSecretObject = secret(anObject)
+
+output "outputDynamicTrySuccess" {
+  value = try(aSecretObject.a, "fallback")
 }
 
-# This should return 42, since object.a and object.b are undefined.
-output "tryMultipleTypes" {
-  value = try(object.a, object.b, 42, "fallback")
+output "outputDynamicTryFailure" {
+  value = try(aSecretObject.b, "fallback")
 }

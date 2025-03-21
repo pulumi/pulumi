@@ -1,31 +1,25 @@
 import * as pulumi from "@pulumi/pulumi";
 
 function tryOutput_(
-    ...fns: Array<() => pulumi.Input<unknown>>
+    ...fns: Array<() => pulumi.Input<any>>
 ): pulumi.Output<any> {
-    if (fns.length === 0) {
-	       throw new Error("try: all parameters failed");
-    }
-
-    const [fn, ...rest] = fns;
-    let resultOutput: pulumi.Output<any> | undefined;
-    try {
-        const result = fn();
-        if (result === undefined) {
-            return tryOutput_(...rest);
+    for (const fn of fns) {
+        try {
+            const result = fn();
+            if (result === undefined) {
+                continue;
+            }
+            return pulumi.output(result);
+        } catch (e) {
+            continue;
         }
-        resultOutput = pulumi.output(result);
-    } catch {
-	       return tryOutput_(...rest);
     }
-
-    // @ts-ignore
-	   return resultOutput;
+    throw new Error("try: all parameters failed");
 }
 
 
 function try_(
-    ...fns: Array<() => unknown>
+    ...fns: Array<() => any>
 ): any {
     for (const fn of fns) {
         try {
@@ -42,49 +36,40 @@ function try_(
 }
 
 
-const str = "str";
-const aList = [
-    "a",
-    "b",
-    "c",
-];
-export const nonOutputTry = try_(
-    // @ts-ignore
-    () => aList[0],
-    // @ts-ignore
-    () => "fallback"
-);
 const config = new pulumi.Config();
-const object = config.requireObject("object");
-export const trySucceed = tryOutput_(
-    // @ts-ignore
-    () => str,
-    // @ts-ignore
-    () => object.a,
-    // @ts-ignore
+const aMap = config.requireObject<Record<string, string>>("aMap");
+export const plainTrySuccess = try_(
+    () => aMap.a,
     () => "fallback"
 );
-export const tryFallback1 = tryOutput_(
-    // @ts-ignore
-    () => object.a,
-    // @ts-ignore
+export const plainTryFailure = try_(
+    () => aMap.b,
     () => "fallback"
 );
-export const tryFallback2 = tryOutput_(
-    // @ts-ignore
-    () => object.a,
-    // @ts-ignore
-    () => object.b,
-    // @ts-ignore
+const aSecretMap = pulumi.secret(aMap);
+export const outputTrySuccess = tryOutput_(
+    () => aSecretMap.a,
     () => "fallback"
 );
-export const tryMultipleTypes = tryOutput_(
-    // @ts-ignore
-    () => object.a,
-    // @ts-ignore
-    () => object.b,
-    // @ts-ignore
-    () => 42,
-    // @ts-ignore
+export const outputTryFailure = tryOutput_(
+    () => aSecretMap.b,
+    () => "fallback"
+);
+const anObject = config.requireObject("anObject");
+export const dynamicTrySuccess = tryOutput_(
+    () => anObject.a,
+    () => "fallback"
+);
+export const dynamicTryFailure = tryOutput_(
+    () => anObject.b,
+    () => "fallback"
+);
+const aSecretObject = pulumi.secret(anObject);
+export const outputDynamicTrySuccess = tryOutput_(
+    () => aSecretObject?.a,
+    () => "fallback"
+);
+export const outputDynamicTryFailure = tryOutput_(
+    () => aSecretObject?.b,
     () => "fallback"
 );

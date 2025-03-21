@@ -578,9 +578,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 // expression of the form:
 //
 //	try_(
-//	    // @ts-ignore
 //	    () => <arg1>,
-//	    // @ts-ignore
 //	    () => <arg2>,
 //	    ...
 //	)
@@ -597,7 +595,6 @@ func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
 	g.Fprintf(w, "%s(", functionName)
 	for i, arg := range args {
 		g.Indented(func() {
-			g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
 			g.Fgenf(w, "\n%s() => %v", g.Indent, g.lowerExpression(arg, arg.Type()))
 		})
 		if i < len(args)-1 {
