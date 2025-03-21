@@ -17,7 +17,7 @@ function can_(
 
 const str = "str";
 const config = new pulumi.Config();
-const object = config.requireObject("object");
+const object = config.requireObject<any>("object");
 const anotherObject = {
     nested: "nestedValue",
 };

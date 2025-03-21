@@ -20,7 +20,7 @@ function try_(
 
 const str = "str";
 const config = new pulumi.Config();
-const object = config.requireObject("object");
+const object = config.requireObject<any>("object");
 export const trySucceed = try_(
     // @ts-ignore
     () => str,
