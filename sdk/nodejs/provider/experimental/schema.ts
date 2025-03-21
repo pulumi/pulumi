@@ -79,7 +79,6 @@ export function generateSchema(
     const providerName = packageJSON.name;
     const result: PackageSpec = {
         name: providerName,
-        version: packageJSON.version,
         description: packageJSON.description,
         resources: {},
         types: {},

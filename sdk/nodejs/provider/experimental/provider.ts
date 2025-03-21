@@ -40,8 +40,6 @@ export class ComponentProvider implements Provider {
     private path: string;
     private analyzer: Analyzer;
 
-    version: string;
-
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
         if (parts.length !== 3) {
@@ -65,7 +63,6 @@ export class ComponentProvider implements Provider {
         const absDir = path.resolve(dir);
         const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
         this.packageJSON = JSON.parse(packStr);
-        this.version = this.packageJSON.version;
         this.path = absDir;
         this.analyzer = new Analyzer(this.path, this.packageJSON.name);
     }
