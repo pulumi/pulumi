@@ -109,12 +109,16 @@ export function getPulumiComponents(moduleExports: any): ComponentResourceConstr
 export interface ComponentProviderOptions {
     components: ComponentResourceConstructor[];
     dirname?: string;
+    name: string;
+    namespace?: string;
 }
 
 export class ComponentProvider implements Provider {
     private packageJSON: Record<string, any>;
     private path: string;
     private componentConstructors: Record<string, ComponentResourceConstructor>;
+    private name: string;
+    private namespace?: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
@@ -144,6 +148,8 @@ export class ComponentProvider implements Provider {
         const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
         this.packageJSON = JSON.parse(packStr);
         this.path = absDir;
+        this.name = options.name;
+        this.namespace = options.namespace;
         this.componentConstructors = options.components.reduce(
             (acc, component) => {
                 acc[component.name] = component;
@@ -156,7 +162,14 @@ export class ComponentProvider implements Provider {
     async getSchema(): Promise<string> {
         const analyzer = new Analyzer(this.path, this.packageJSON, new Set(Object.keys(this.componentConstructors)));
         const { components, typeDefinitions, packageReferences } = analyzer.analyze();
-        const schema = generateSchema(this.packageJSON, components, typeDefinitions, packageReferences);
+        const schema = generateSchema(
+            this.name,
+            this.packageJSON.description,
+            components,
+            typeDefinitions,
+            packageReferences,
+            this.namespace,
+        );
         return JSON.stringify(schema);
     }
 

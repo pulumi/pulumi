@@ -65,21 +65,24 @@ export interface PackageSpec {
     name: string;
     version?: string;
     description?: string;
+    namespace?: string;
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
 }
 
 export function generateSchema(
-    packageJSON: Record<string, any>,
+    providerName: string,
+    description: string,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
     packageReferences: Record<string, string>,
+    namespace?: string,
 ): PackageSpec {
-    const providerName = packageJSON.name;
     const result: PackageSpec = {
         name: providerName,
-        description: packageJSON.description,
+        description: description,
+        namespace: namespace,
         resources: {},
         types: {},
         language: {

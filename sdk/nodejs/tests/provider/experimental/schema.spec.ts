@@ -18,11 +18,6 @@ import { ComponentDefinition, TypeDefinition } from "../../../provider/experimen
 
 describe("Schema", function () {
     it("should generate schema with correct language dependencies", function () {
-        const packageJSON = {
-            name: "test-provider",
-            description: "Test provider for Pulumi",
-        };
-
         const components: Record<string, ComponentDefinition> = {};
         const typeDefinitions: Record<string, TypeDefinition> = {};
 
@@ -34,7 +29,13 @@ describe("Schema", function () {
         };
 
         // Generate schema
-        const schema = generateSchema(packageJSON, components, typeDefinitions, packageReferences);
+        const schema = generateSchema(
+            "test-provider",
+            "Test provider for Pulumi",
+            components,
+            typeDefinitions,
+            packageReferences,
+        );
 
         // Verify NodeJS dependencies
         assert.deepStrictEqual(schema.language?.nodejs.dependencies, {
@@ -63,5 +64,24 @@ describe("Schema", function () {
             "com.pulumi:azure-native": "4.0.0",
             "com.pulumi:kubernetes": "3.0.0",
         });
+
+        assert.strictEqual(schema.description, "Test provider for Pulumi");
+    });
+
+    it("should use the namespace if there is one", function () {
+        const components: Record<string, ComponentDefinition> = {};
+        const typeDefinitions: Record<string, TypeDefinition> = {};
+
+        const schema = generateSchema(
+            "test-provider",
+            "my-description",
+            components,
+            typeDefinitions,
+            {},
+            "my-namespace",
+        );
+
+        assert.strictEqual(schema.namespace, "my-namespace");
+        assert.strictEqual(schema.name, "test-provider");
     });
 });

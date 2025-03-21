@@ -51,6 +51,7 @@ describe("getSchema", function () {
         const provider = new ComponentProvider({
             components: [MyComponent],
             dirname: testDir,
+            name: "provider-component",
         });
 
         // Call getSchema to generate the schema for this component
@@ -95,6 +96,7 @@ describe("construct", function () {
         const provider = new ComponentProvider({
             components: [TestComponent],
             dirname: testDir,
+            name: "provider-component",
         });
 
         // Call construct to create the component
@@ -124,6 +126,7 @@ describe("construct", function () {
         const provider = new ComponentProvider({
             components: [],
             dirname: testDir,
+            name: "provider-component",
         });
 
         // Should throw for missing component class
