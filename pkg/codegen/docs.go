@@ -126,6 +126,7 @@ func InterpretPulumiRefs(description string, resolveRefToName PulumiRefResolver)
 
 	r := renderer.NewRenderer(renderer.WithNodeRenderers(
 		util.Prioritized(&pulumiRefNodeRenderer{resolveRefToName}, 100),
+		util.Prioritized(schema.NewRenderer(), 150),
 		util.Prioritized(md, 200),
 	))
 	var buf bytes.Buffer
