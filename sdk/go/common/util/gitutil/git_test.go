@@ -428,7 +428,9 @@ func TestParseAuthURL(t *testing.T) {
 	}
 
 	t.Run("with no auth", func(t *testing.T) {
-		t.Parallel()
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Nil(t, auth)
@@ -473,6 +475,14 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Nil(t, auth)
+	})
+
+	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
+		t.Setenv("GIT_USERNAME", "user")
+		t.Setenv("GIT_PASSWORD", "password")
+		_, auth, err := getAuthForURL("http://example.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
 	})
 
 	//nolint:paralleltest // global environment variables
