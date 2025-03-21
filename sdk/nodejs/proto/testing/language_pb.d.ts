@@ -68,6 +68,9 @@ export class PrepareLanguageTestsRequest extends jspb.Message {
     getProgramOverridesMap(): jspb.Map<string, PrepareLanguageTestsRequest.ProgramOverride>;
     clearProgramOverridesMap(): void;
 
+    getProviderOverridesMap(): jspb.Map<string, PrepareLanguageTestsRequest.ProviderOverride>;
+    clearProviderOverridesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PrepareLanguageTestsRequest.AsObject;
     static toObject(includeInstance: boolean, msg: PrepareLanguageTestsRequest): PrepareLanguageTestsRequest.AsObject;
@@ -90,6 +93,8 @@ export namespace PrepareLanguageTestsRequest {
         languageInfo: string,
 
         programOverridesMap: Array<[string, PrepareLanguageTestsRequest.ProgramOverride.AsObject]>,
+
+        providerOverridesMap: Array<[string, PrepareLanguageTestsRequest.ProviderOverride.AsObject]>,
     }
 
 
@@ -138,6 +143,32 @@ export namespace PrepareLanguageTestsRequest {
     export namespace ProgramOverride {
         export type AsObject = {
             pathsList: Array<string>,
+        }
+    }
+
+    export class ProviderOverride extends jspb.Message { 
+        getRootDirectory(): string;
+        setRootDirectory(value: string): ProviderOverride;
+        getProgramDirectory(): string;
+        setProgramDirectory(value: string): ProviderOverride;
+        getEntryPoint(): string;
+        setEntryPoint(value: string): ProviderOverride;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ProviderOverride.AsObject;
+        static toObject(includeInstance: boolean, msg: ProviderOverride): ProviderOverride.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ProviderOverride, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ProviderOverride;
+        static deserializeBinaryFromReader(message: ProviderOverride, reader: jspb.BinaryReader): ProviderOverride;
+    }
+
+    export namespace ProviderOverride {
+        export type AsObject = {
+            rootDirectory: string,
+            programDirectory: string,
+            entryPoint: string,
         }
     }
 

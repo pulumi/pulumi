@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -39,11 +40,12 @@ import (
 )
 
 type testHost struct {
-	stderr      *bytes.Buffer
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]plugin.Provider
+	stderr            *bytes.Buffer
+	host              plugin.Host
+	runtime           plugin.LanguageRuntime
+	runtimeName       string
+	providers         map[string]plugin.Provider
+	providerOverrides map[string]providerOverride
 
 	connections map[plugin.Provider]io.Closer
 }
@@ -87,6 +89,88 @@ func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Prov
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
 	var key string
 	var provider plugin.Provider
+
+	if override, ok := h.providerOverrides[descriptor.Name]; ok {
+		info := plugin.NewProgramInfo(
+			// Root directory (where PulumiPlugin.yaml is)
+			override.RootDirectory,
+			// Program directory (where index.ts, __main__.py, the binary, etc. is)
+			override.ProgramDirectory,
+			// Entry point
+			override.EntryPoint,
+			// Options
+			nil,
+		)
+
+		_, _, _, err := h.runtime.InstallDependencies(plugin.InstallDependenciesRequest{
+			Info: info,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		stdout, _, kill, err := h.runtime.RunPlugin(plugin.RunPluginInfo{
+			Info:             info,
+			WorkingDirectory: ".",
+			Args:             []string{},
+			Env:              nil,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load overridden provider %s: %w", descriptor.Name, err)
+		}
+
+		var portString string
+		b := make([]byte, 1)
+		for {
+			n, readerr := stdout.Read(b)
+			if readerr != nil {
+				// Fall back to a generic, opaque error.
+				if portString == "" {
+					return nil, fmt.Errorf(
+						"could not read plugin stdout for overridden provide %s: %w",
+						descriptor.Name, readerr,
+					)
+				}
+				return nil, fmt.Errorf(
+					"failure reading plugin stdout for overridden provider %s (read '%v'): %w",
+					descriptor.Name, portString, readerr,
+				)
+			}
+			if n > 0 && b[0] == '\n' {
+				break
+			}
+			portString += string(b[:n])
+		}
+
+		var port int
+		if port, err = parsePort(portString); err != nil {
+			kill()
+			return nil, fmt.Errorf("could not parse port: %w", err)
+		}
+
+		conn, err := grpc.NewClient(
+			fmt.Sprintf("127.0.0.1:%v", port),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+			grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
+			rpcutil.GrpcChannelOptions(),
+		)
+		if err != nil {
+			kill()
+			return nil, fmt.Errorf("could not connect to resource provider service: %w", err)
+		}
+
+		provider = plugin.NewProviderWithClient(
+			nil,
+			tokens.Package(descriptor.Name),
+			pulumirpc.NewResourceProviderClient(conn),
+			false,
+		)
+
+		h.connections[provider] = &cancelCloser{cancel: kill}
+		return provider, nil
+	}
+
 	if descriptor.Version == nil {
 		key = descriptor.Name
 
@@ -216,6 +300,15 @@ func (h *testHost) Close() error {
 
 func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
 	panic("not implemented")
+}
+
+type cancelCloser struct {
+	cancel context.CancelFunc
+}
+
+func (c *cancelCloser) Close() error {
+	c.cancel()
+	return nil
 }
 
 type grpcWrapper struct {

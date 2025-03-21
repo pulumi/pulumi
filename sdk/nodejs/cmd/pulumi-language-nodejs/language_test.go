@@ -216,6 +216,9 @@ func TestLanguage(t *testing.T) {
 				snapshotDir += "tsnode"
 			}
 
+			providerDir, err := filepath.Abs(filepath.Join("testdata", "providers"))
+			require.NoError(t, err)
+
 			// Prepare to run the tests
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 				LanguagePluginName:   "nodejs",
@@ -234,6 +237,13 @@ func TestLanguage(t *testing.T) {
 						Path:        "package\\.json",
 						Pattern:     rootDir + "/artifacts",
 						Replacement: "ROOT/artifacts",
+					},
+				},
+				ProviderOverrides: map[string]*testingrpc.PrepareLanguageTestsRequest_ProviderOverride{
+					"simple": {
+						RootDirectory:    filepath.Join(providerDir, "simple"),
+						ProgramDirectory: filepath.Join(providerDir, "simple"),
+						EntryPoint:       "index.js",
 					},
 				},
 			})

@@ -286,6 +286,12 @@ type programOverride struct {
 	Paths []string
 }
 
+type providerOverride struct {
+	RootDirectory    string
+	ProgramDirectory string
+	EntryPoint       string
+}
+
 type testToken struct {
 	LanguagePluginName   string
 	LanguagePluginTarget string
@@ -296,6 +302,7 @@ type testToken struct {
 	SnapshotEdits        []replacement
 	LanguageInfo         string
 	ProgramOverrides     map[string]programOverride
+	ProviderOverrides    map[string]providerOverride
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -399,6 +406,15 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		}
 	}
 
+	providerOverrides := map[string]providerOverride{}
+	for name, override := range req.ProviderOverrides {
+		providerOverrides[name] = providerOverride{
+			RootDirectory:    override.RootDirectory,
+			ProgramDirectory: override.ProgramDirectory,
+			EntryPoint:       override.EntryPoint,
+		}
+	}
+
 	tokenBytes, err := json.Marshal(&testToken{
 		LanguagePluginName:   req.LanguagePluginName,
 		LanguagePluginTarget: req.LanguagePluginTarget,
@@ -409,6 +425,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		SnapshotEdits:        edits,
 		LanguageInfo:         req.LanguageInfo,
 		ProgramOverrides:     programOverrides,
+		ProviderOverrides:    providerOverrides,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -508,12 +525,13 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	host := &testHost{
-		stderr:      stderr,
-		host:        pctx.Host,
-		runtime:     languageClient,
-		runtimeName: token.LanguagePluginName,
-		providers:   providers,
-		connections: make(map[plugin.Provider]io.Closer),
+		stderr:            stderr,
+		host:              pctx.Host,
+		runtime:           languageClient,
+		runtimeName:       token.LanguagePluginName,
+		providers:         providers,
+		providerOverrides: token.ProviderOverrides,
+		connections:       make(map[plugin.Provider]io.Closer),
 	}
 
 	pctx.Host = host
@@ -1239,4 +1257,30 @@ func (eng *languageTestServer) RunLanguageTest(
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 	}, nil
+}
+
+func parsePort(portString string) (int, error) {
+	// Workaround for https://github.com/dotnet/sdk/issues/44610
+	// In .NET 9.0 `dotnet run` will print progress indicators to the terminal,
+	// even though it should not do this when the output is redirected.
+	// We strip the control characters here to ensure that the port number is parsed correctly.
+	//nolint:lll
+	// https://github.com/dotnet/sdk/pull/42240/files#diff-6860155f1838e13335d417fc2fed7b13ac5ddf3b95d3548c6646618bc59e89e7R11
+	portString = strings.ReplaceAll(portString, "\x1b]9;4;3;\x1b\\", "")
+	portString = strings.ReplaceAll(portString, "\x1b]9;4;0;\x1b\\", "")
+
+	// Trim any whitespace from the first line (this is to handle things like windows that will write
+	// "1234\r\n", or slightly odd providers that might add whitespace like "1234 ")
+	portString = strings.TrimSpace(portString)
+
+	// Parse the output line to ensure it's a numeric port.
+	port, err := strconv.Atoi(portString)
+	if err != nil {
+		// strconv.Atoi already includes the string we tried to parse
+		return 0, fmt.Errorf("could not parse port: %w", err)
+	}
+	if port <= 0 || port > 65535 {
+		return 0, fmt.Errorf("invalid port number: %v", port)
+	}
+	return port, nil
 }

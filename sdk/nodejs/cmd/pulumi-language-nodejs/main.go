@@ -1425,7 +1425,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
-	ctx := context.Background()
+	ctx := server.Context()
 
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
 	if err != nil {
@@ -1484,6 +1484,12 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	go func() {
+		<-ctx.Done()
+		contract.IgnoreError(cmd.Process.Kill())
+	}()
+
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program ran, but exited with a non-zero error code.  This will happen often, since user

@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "outDir": ".",
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "resolveJsonModule": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "pretty": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "forceConsistentCasingInFileNames": true,
+        "esModuleInterop": true,
+        "typeRoots": ["node_modules/@types", "types/"]
+    },
+    "files": [
+        "index.ts"
+    ]
+}

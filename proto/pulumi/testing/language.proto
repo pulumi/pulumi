@@ -58,6 +58,12 @@ message PrepareLanguageTestsRequest {
         repeated string paths = 1;
     }
 
+    message ProviderOverride {
+        string root_directory = 1;
+        string program_directory = 2;
+        string entry_point = 3;
+    }
+
     string language_plugin_name = 1;
     string language_plugin_target = 2;
     string snapshot_directory = 3;
@@ -77,6 +83,8 @@ message PrepareLanguageTestsRequest {
     // desirable to test that feature set) but where program code generation is not yet complete enough to support
     // generating programs which exercise that functionality.
     map<string, ProgramOverride> program_overrides = 9;
+
+    map<string, ProviderOverride> provider_overrides = 10;
 }
 
 message PrepareLanguageTestsResponse {
