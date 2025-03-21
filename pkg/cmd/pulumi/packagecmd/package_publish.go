@@ -60,7 +60,7 @@ func newPackagePublishCmd() *cobra.Command {
 	var pkgPublishCmd packagePublishCmd
 
 	cmd := &cobra.Command{
-		Use:   "publish <provider|schema> --readme <path> [provider-parameter...]",
+		Use:   "publish <provider|schema> --readme <path> [--] [provider-parameter...]",
 		Args:  cmdutil.MinimumNArgs(1),
 		Short: "Publish a package to the Pulumi Registry",
 		Long: "Publish a package to the Pulumi Registry.\n\n" +
