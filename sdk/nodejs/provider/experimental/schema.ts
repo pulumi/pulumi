@@ -65,6 +65,7 @@ export interface PackageSpec {
     name: string;
     version?: string;
     description?: string;
+    namespace?: string;
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
@@ -72,14 +73,28 @@ export interface PackageSpec {
 
 export function generateSchema(
     packageJSON: Record<string, any>,
+    pulumiYAML: Record<string, any>,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
     packageReferences: Record<string, string>,
 ): PackageSpec {
-    const providerName = packageJSON.name;
+    const matches = packageJSON.name.match(/(@.*?\/)?(.+)/)
+    let providerName = matches[2];
+    let namespace = undefined;
+    if (matches[1]) {
+        namespace = matches[1].substring(1, matches[1].length - 1);
+    }
+    // Setting the namespace or name in PulumiPlugin.yaml overrides the ones from package.json
+    if (pulumiYAML["namespace"]) {
+        namespace = pulumiYAML["namespace"];
+    }
+    if (pulumiYAML["name"]) {
+        providerName = pulumiYAML["name"];
+    }
     const result: PackageSpec = {
         name: providerName,
         description: packageJSON.description,
+        namespace: namespace,
         resources: {},
         types: {},
         language: {
