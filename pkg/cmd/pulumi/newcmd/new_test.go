@@ -255,6 +255,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 			return name == projectName, nil
 		},
 		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	args := newArgs{
@@ -280,6 +281,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 			return true, nil
 		},
 		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -312,6 +314,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 			return true, nil
 		},
 		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -409,6 +412,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 			return true, nil
 		},
 		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -939,6 +943,7 @@ Available Templates:
 func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 	mockBackendInstance(t, &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	newCmd := NewNewCmd()
