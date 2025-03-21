@@ -159,8 +159,13 @@ func (s *Source) getOrgTemplates(
 	}
 }
 
-func writeTar(_ context.Context, reader *tar.Reader, dst string) error {
+func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 	for {
+		// If the context has been canceled or has timed out, return.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {
 			return nil
