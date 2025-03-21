@@ -356,6 +356,11 @@ func getAuthForURL(url string) (string, transport.AuthMethod, error) {
 				Username: "oauth2",
 				Password: os.Getenv("GITLAB_TOKEN"),
 			}
+		} else if os.Getenv("GIT_USERNAME") != "" || os.Getenv("GIT_PASSWORD") != "" {
+			auth = &http.BasicAuth{
+				Username: os.Getenv("GIT_USERNAME"),
+				Password: os.Getenv("GIT_PASSWORD"),
+			}
 		}
 	}
 

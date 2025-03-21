@@ -475,6 +475,14 @@ func TestParseAuthURL(t *testing.T) {
 		assert.Nil(t, auth)
 	})
 
+	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
+		t.Setenv("GIT_USERNAME", "user")
+		t.Setenv("GIT_PASSWORD", "password")
+		_, auth, err := getAuthForURL("http://example.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
+	})
+
 	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and environment variable", func(t *testing.T) {
 		passphrase := "foobar"
