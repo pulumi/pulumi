@@ -196,6 +196,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 			filepath.Join("testdata", "overrides", "l2-component-property-deps"),
 		},
 	},
+
+	// TODO[pulumi/pulumi#18202]: Delete this override when the programgen issue is addressed.
+	"l2-provider-call": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-provider-call"),
+		},
+	},
 }
 
 func TestLanguage(t *testing.T) {

@@ -1,0 +1,11 @@
+{
+	"name": "l2-provider-call",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/call": "ROOT/artifacts/pulumi-call-15.7.9.tgz"
+	}
+}
