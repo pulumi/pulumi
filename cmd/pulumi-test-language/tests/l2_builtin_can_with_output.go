@@ -15,20 +15,23 @@
 package tests
 
 import (
+	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
-	LanguageTests["l1-builtin-can"] = LanguageTest{
+	LanguageTests["l2-builtin-can-with-output"] = LanguageTest{
+		Providers: []plugin.Provider{&providers.ComponentProvider{}, &providers.SimpleInvokeProvider{}},
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-can", "object"): config.NewObjectValue("{}"),
+					config.MustMakeKey("l2-builtin-can-with-output", "object"): config.NewObjectValue("{}"),
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
@@ -42,17 +45,34 @@ func init() {
 
 					outputs := stack.Outputs
 
+					_ = RequireSingleNamedResource(l, snap.Resources, "component1")
+
 					assert.Len(l, outputs, 5, "expected 5 outputs")
-					AssertPropertyMapMember(l, outputs, "nonOutputCan", resource.NewBoolProperty(true))
-					AssertPropertyMapMember(l, outputs, "canFalse", resource.NewBoolProperty(false))
-					AssertPropertyMapMember(l, outputs, "canFalseDoubleNested", resource.NewBoolProperty(false))
-					AssertPropertyMapMember(l, outputs, "canTrue", resource.NewBoolProperty(true))
 					AssertPropertyMapMember(
 						l,
 						outputs,
-						"canOutput",
-						resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("true")}),
-					)
+						"componentCan",
+						resource.NewBoolProperty(true))
+					AssertPropertyMapMember(
+						l,
+						outputs,
+						"invokeCan",
+						resource.NewBoolProperty(true))
+					AssertPropertyMapMember(
+						l,
+						outputs,
+						"scalarCan",
+						resource.NewBoolProperty(true))
+					AssertPropertyMapMember(
+						l,
+						outputs,
+						"ternaryCan",
+						resource.NewStringProperty("option_one"))
+					AssertPropertyMapMember(
+						l,
+						outputs,
+						"ternaryCanOutput",
+						resource.NewStringProperty("option_one"))
 				},
 			},
 		},
