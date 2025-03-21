@@ -892,6 +892,23 @@ def test_analyze_duplicate_components():
         )
 
 
+def test_analyze_no_components():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(
+            Path(
+                Path(__file__).parent,
+                "testdata",
+                "analyzer-errors",
+                "no-components",
+            )
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        assert str(e) == "No components found"
+
+
 def test_analyze_component_self_recursive_complex_type():
     class RecursiveType(TypedDict):
         rec: Optional[pulumi.Input["RecursiveType"]]
