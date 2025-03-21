@@ -12,7 +12,11 @@ function tryOutput_(
     const [fn, ...rest] = fns;
     let resultOutput: pulumi.Output<any> | undefined;
     try {
-        resultOutput = pulumi.output(fn());
+        const result = fn();
+        if (result === undefined) {
+            return tryOutput_(...rest);
+        }
+        resultOutput = pulumi.output(result);
     } catch {
 	       return tryOutput_(...rest);
     }
