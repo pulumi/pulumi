@@ -1,0 +1,6 @@
+name: l1-proxy-index
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv
