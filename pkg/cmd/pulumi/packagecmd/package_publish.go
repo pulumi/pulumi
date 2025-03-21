@@ -183,6 +183,16 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to get package registry: %w", err)
 	}
 
+	// We need to set the content-size header for S3 puts. For byte buffers (or deterministic readers)
+	// the stdlib http client does that automatically. For os.File it cannot do that because the size
+	// returned by Stat() is not reliable:
+	// - Another process might modify the file by appending to it or truncating it
+	// - If the file is a special file like a device file, pipe, or socket, its size may change dynamically
+	// - On network filesystems, there could be caching or synchronization issues
+	//
+	// By reading it into a buffer we circumvent these problems. This should not have a meaningful impact
+	// on performance, as these files are typically small (likely less than one MB).
+
 	// In the future we could slurp up the readme from the package source and add the necessary markdown headers.
 	readme, err := os.Open(args.readmePath)
 	if err != nil {
