@@ -104,24 +104,21 @@ sequenceDiagram
 
 ## Example uses of parameterization
 
-* Dynamically bridging Terraform providers. The
-  [`pulumi-terraform-bridge`](https://github.com/pulumi/pulumi-terraform-bridge)
-  can be used to build a Pulumi provider that wraps a Terraform provider. This
-  is an "offline" or "static" process -- provider authors write a Go program
-  that imports the bridge library and uses it to wrap a specific Terraform
-  provider. The resulting provider can then be published as a Pulumi plugin and
-  its [](pulumirpc.ResourceProvider.GetSchema) method used to generate
-  language-specific SDKs which are also published. Generally, the Go program
-  that authors write is the same (at least in structure) for many if not all
-  providers.
-  [`pulumi-terraform-provider`](https://github.com/pulumi/pulumi-terraform-provider)
-  is a parameterized provider that exploits this to implement a provider that
-  can bridge an arbitrary Terraform provider *at runtime*.
-  `pulumi-terraform-provider` accepts the name of the Terraform provider to
-  bridge and uses the existing `pulumi-terraform-bridge` machinery to perform
-  the bridging and schema loading *in response to the `Parameterize` call*.
-  Subsequent calls to `GetSchema` and other lifecycle methods will then behave
-  as if the provider had been statically bridged.
+* Dynamically bridging Terraform providers. The [`pulumi-terraform-bridge`](https://github.com/pulumi/pulumi-terraform-bridge)
+  library can be used to create a Pulumi provider that wraps an existing
+  Terraform provider. This is a "static" or "offline" process -- provider
+  authors write a Go program that incorporates the bridge library and the
+  Terraform provider's codebase to wrap that specific Terraform provider. The
+  resulting provider can then be published as a Pulumi plugin, and its [](pulumirpc.ResourceProvider.GetSchema)
+  method is used to generate language-specific SDKs, which are also published.
+  [`pulumi-terraform-provider`](https://github.com/pulumi/pulumi-terraform-provider) is a parameterized provider that translates
+  Pulumi's gRPC to Terraform's gRPC *at runtime*, allowing it to integrate with
+  any Terraform provider regardless of its
+  implementation. `pulumi-terraform-provider` takes the name of the Terraform
+  provider to bridge and employs the existing `pulumi-terraform-bridge`
+  mechanisms to manage bridging and schema loading *in response to the
+  `Parameterize` call*. Subsequent calls to [](pulumirpc.ResourceProvider.GetSchema) and other lifecycle methods
+  will then operate as if the provider had been statically bridged.
 
 * Managing Kubernetes clusters with [custom resource definitions
   (CRDs)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
