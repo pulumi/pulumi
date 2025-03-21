@@ -160,8 +160,6 @@ func New(
 	ctx, cancel := context.WithCancel(ctx)
 	source.closers = append(source.closers, func() error { cancel(); return nil })
 
-	queryKind := getTemplateQuery(templateNamePathOrURL)
-
 	if scope == ScopeAll || scope == ScopeLocal {
 		source.wg.Add(1)
 		go func() {
@@ -170,7 +168,7 @@ func New(
 		}()
 	}
 
-	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && queryKind == queryName {
+	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
 		source.wg.Add(1)
 		go func() {
 			source.getOrgTemplates(ctx, templateNamePathOrURL, interactive, &source.wg)
@@ -181,22 +179,9 @@ func New(
 	return &source
 }
 
-type queryKind string
-
-const (
-	queryName queryKind = "query-name"
-	queryURL  queryKind = "query-url"
-	queryPath queryKind = "query-path"
-)
-
-func getTemplateQuery(query string) queryKind {
-	if workspace.IsTemplateURL(query) {
-		return queryURL
-	}
-	if isTemplatePath(query) {
-		return queryPath
-	}
-	return queryName
+func isTemplateName(templateNamePathOrURL string) bool {
+	return !workspace.IsTemplateURL(templateNamePathOrURL) &&
+		!isTemplatePath(templateNamePathOrURL)
 }
 
 func isTemplatePath(query string) bool {
