@@ -1,0 +1,6 @@
+name: l2-rtti
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv

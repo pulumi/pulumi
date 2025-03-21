@@ -15,6 +15,7 @@
 package pcl_test
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -282,4 +283,64 @@ func TestRootDirectoryFailsWithArguments(t *testing.T) {
 	// Assert.
 	assert.Nil(t, program, "The program doesn't bind")
 	assert.ErrorContains(t, err, "too many arguments to call")
+}
+
+func TestBindingPulumiResourceTypeName(t *testing.T) {
+	t.Parallel()
+	source := `resource "res" "range:index:Root" { }
+type = pulumiResourceType(res)
+name = pulumiResourceName(res)`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, program, "The program doesn't bind")
+	assert.Len(t, diags, 0, "There are no diagnostics")
+	assert.Nil(t, err, "There is no bind error")
+	assert.Equal(t, len(program.Nodes), 3, "there are two nodes")
+	localVariable, ok := program.Nodes[1].(*pcl.LocalVariable)
+	assert.True(t, ok, "second node is a local variable variable")
+	assert.Equal(t, localVariable.Name(), "type")
+	assert.Equal(t, model.StringType, localVariable.Type())
+
+	localVariable, ok = program.Nodes[2].(*pcl.LocalVariable)
+	assert.True(t, ok, "second node is a local variable variable")
+	assert.Equal(t, localVariable.Name(), "name")
+	assert.Equal(t, model.StringType, localVariable.Type())
+}
+
+func TestInvalidBindingPulumiResourceTypeName(t *testing.T) {
+	t.Parallel()
+
+	for _, function := range []string{"pulumiResourceType", "pulumiResourceName"} {
+		cases := []struct {
+			name     string
+			source   string
+			expected string
+		}{
+			{
+				name:     "no arguments",
+				source:   fmt.Sprintf("type = %s()", function),
+				expected: function + " expects exactly one argument",
+			},
+			{
+				name:     "too many arguments",
+				source:   fmt.Sprintf("type = %s(1, 2)", function),
+				expected: function + " expects exactly one argument",
+			},
+			{
+				name: "wrong argument",
+				source: fmt.Sprintf(`res = { id = "foo", urn = "bar" }			
+				type = %s(res)`, function),
+				expected: function + " argument must be a single resource",
+			},
+		}
+
+		for _, c := range cases {
+			t.Run(function+"/"+c.name, func(t *testing.T) {
+				t.Parallel()
+				program, diags, err := ParseAndBindProgram(t, c.source, "program.pp")
+				assert.Nil(t, program)
+				assert.Equal(t, diags, err)
+				assert.ErrorContains(t, err, c.expected)
+			})
+		}
+	}
 }

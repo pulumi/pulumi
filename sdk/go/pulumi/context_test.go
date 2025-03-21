@@ -374,7 +374,7 @@ func TestMergeProviders(t *testing.T) {
 				result := slice.Prealloc[string](len(provMap))
 				for k, p := range provMap {
 					assert.Equal(t, k, p.getPackage(), "pkg should match map key")
-					result = append(result, strings.TrimPrefix(p.getName(), "pulumi:providers:"))
+					result = append(result, strings.TrimPrefix(p.PulumiResourceName(), "pulumi:providers:"))
 				}
 
 				assert.ElementsMatch(t, tt.expected, result)
