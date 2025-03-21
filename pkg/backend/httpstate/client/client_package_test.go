@@ -39,7 +39,7 @@ type testCase struct {
 	name             string
 	setupServer      func(blobStorage *httptest.Server) *httptest.Server
 	setupBlobStorage func() *httptest.Server
-	input            *PublishPackageInput
+	input            *apitype.PackagePublishOp
 	errorMessage     string
 	httpClient       *http.Client
 }
@@ -274,7 +274,7 @@ func TestPublishPackage(t *testing.T) {
 					}
 				}))
 			},
-			input: &PublishPackageInput{
+			input: &apitype.PackagePublishOp{
 				Source:      "pulumi",
 				Publisher:   "test-publisher",
 				Name:        "test-package",
@@ -390,11 +390,11 @@ func TestPublishPackage(t *testing.T) {
 				},
 			}
 
-			var input PublishPackageInput
+			var input apitype.PackagePublishOp
 			if tt.input != nil {
 				input = *tt.input
 			} else {
-				input = PublishPackageInput{
+				input = apitype.PackagePublishOp{
 					Source:      "pulumi",
 					Publisher:   "test-publisher",
 					Name:        "test-package",

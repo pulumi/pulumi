@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 type cloudPackageRegistry struct {
@@ -33,14 +34,6 @@ func newCloudPackageRegistry(cl *client.Client) *cloudPackageRegistry {
 
 var _ backend.PackageRegistry = (*cloudPackageRegistry)(nil)
 
-func (r *cloudPackageRegistry) Publish(ctx ctx.Context, op backend.PackagePublishOp) error {
-	return r.cl.PublishPackage(ctx, client.PublishPackageInput{
-		Source:      op.Source,
-		Publisher:   op.Publisher,
-		Name:        op.Name,
-		Version:     op.Version,
-		Schema:      op.Schema,
-		Readme:      op.Readme,
-		InstallDocs: op.InstallDocs,
-	})
+func (r *cloudPackageRegistry) Publish(ctx ctx.Context, op apitype.PackagePublishOp) error {
+	return r.cl.PublishPackage(ctx, op)
 }

@@ -28,6 +28,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -271,7 +272,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			}
 
 			mockPackageRegistry := &backend.MockPackageRegistry{
-				PublishF: func(ctx context.Context, op backend.PackagePublishOp) error {
+				PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
 					schemaBytes, err := io.ReadAll(op.Schema)
 					require.NoError(t, err)
 					packageSpec, err := unmarshalSchema(schemaBytes)
@@ -411,7 +412,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			mockBackendInstance(t, &backend.MockBackend{
 				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
 					return &backend.MockPackageRegistry{
-						PublishF: func(ctx context.Context, op backend.PackagePublishOp) error {
+						PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
 							return nil
 						},
 					}, nil

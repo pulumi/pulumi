@@ -16,31 +16,11 @@ package backend
 
 import (
 	ctx "context"
-	"io"
 
-	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
-
-type PackagePublishOp struct {
-	// Source is the source of the package. Typically this is 'pulumi' for packages published to the Pulumi Registry.
-	// Packages loaded from other registries (e.g. 'opentofu') will point to the origin of the package.
-	Source string
-	// Publisher is the organization that is publishing the package.
-	Publisher string
-	// Name is the URL-safe name of the package.
-	Name string
-	// Version is the semantic version of the package that should get published.
-	Version semver.Version
-	// Schema is a reader containing the JSON schema of the package.
-	Schema io.Reader
-	// Readme is a reader containing the markdown content of the package's README.
-	Readme io.Reader
-	// InstallDocs is a reader containing the markdown content of the package's installation documentation.
-	// This is optional, and if omitted, the package will not have installation documentation.
-	InstallDocs io.Reader
-}
 
 type PackageRegistry interface {
 	// Publish publishes a package to the package registry.
-	Publish(ctx ctx.Context, op PackagePublishOp) error
+	Publish(ctx ctx.Context, op apitype.PackagePublishOp) error
 }

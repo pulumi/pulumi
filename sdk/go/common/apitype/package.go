@@ -14,6 +14,12 @@
 
 package apitype
 
+import (
+	"io"
+
+	"github.com/blang/semver"
+)
+
 type StartPackagePublishRequest struct {
 	// Version is the semver-compliant version of the package to publish.
 	Version string `json:"version"`
@@ -47,4 +53,24 @@ type PackageUpload struct {
 type CompletePackagePublishRequest struct {
 	// OperationID is the ID uniquely identifying the publishing operation.
 	OperationID string `json:"operationID"`
+}
+
+// PackagePublishOp contains the information needed to publish a package to the registry.
+type PackagePublishOp struct {
+	// Source is the source of the package. Typically this is 'pulumi' for packages published to the Pulumi Registry.
+	// Packages loaded from other registries (e.g. 'opentofu') will point to the origin of the package.
+	Source string
+	// Publisher is the organization that is publishing the package.
+	Publisher string
+	// Name is the URL-safe name of the package.
+	Name string
+	// Version is the semantic version of the package that should get published.
+	Version semver.Version
+	// Schema is a reader containing the JSON schema of the package.
+	Schema io.Reader
+	// Readme is a reader containing the markdown content of the package's README.
+	Readme io.Reader
+	// InstallDocs is a reader containing the markdown content of the package's installation documentation.
+	// This is optional, and if omitted, the package will not have installation documentation.
+	InstallDocs io.Reader
 }

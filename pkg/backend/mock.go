@@ -840,12 +840,12 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockPackageRegistry struct {
-	PublishF func(context.Context, PackagePublishOp) error
+	PublishF func(context.Context, apitype.PackagePublishOp) error
 }
 
 var _ PackageRegistry = (*MockPackageRegistry)(nil)
 
-func (mr *MockPackageRegistry) Publish(ctx context.Context, op PackagePublishOp) error {
+func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePublishOp) error {
 	if mr.PublishF != nil {
 		return mr.PublishF(ctx, op)
 	}
