@@ -88,10 +88,13 @@ func (s *Source) getOrgTemplates(
 			logging.Warningf("Failed to get templates from %q: %s", org, err.Error())
 			return
 		} else if orgTemplates.HasAccessError {
-			logging.Warningf("Failed to get templates from %q: Access Denied", org)
+			logging.Warningf("Failed to get templates from %q: Access Denied\n"+
+				"Please check that %s can access all template sources", org, b.Name())
 			return
 		} else if orgTemplates.HasUpstreamError {
-			logging.Warningf("Failed to get templates from %q: Upstream Error", org)
+			// This is a catch-all error indicating only that *something* went
+			// wrong with fetching templates for an org.
+			logging.Warningf("Failed to get templates from %q: %s could not download the template", org, b.Name())
 			return
 		}
 
