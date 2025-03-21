@@ -435,7 +435,9 @@ func TestParseAuthURL(t *testing.T) {
 	})
 
 	t.Run("with basic auth user", func(t *testing.T) {
-		t.Parallel()
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+
 		url, auth, err := getAuthForURL("http://user@github.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "user"}, auth)
@@ -463,6 +465,7 @@ func TestParseAuthURL(t *testing.T) {
 
 	t.Run("with GITLAB_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
 		_, auth, err := getAuthForURL("http://gitlab.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
