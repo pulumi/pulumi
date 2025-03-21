@@ -1412,7 +1412,11 @@ func (pc *Client) PublishPackage(ctx context.Context, input PublishPackageInput)
 		if err != nil {
 			return fmt.Errorf("failed to upload %s: %w", fileType, err)
 		} else if uploadResp.StatusCode >= 400 {
-			return fmt.Errorf("failed to upload %s: %s", fileType, uploadResp.Status)
+			body, bodyErr := readBody(uploadResp)
+			if bodyErr != nil {
+				return fmt.Errorf("failed to upload %s: %s", fileType, uploadResp.Status)
+			}
+			return fmt.Errorf("failed to upload %s: %s - %s", fileType, uploadResp.Status, string(body))
 		}
 
 		return nil

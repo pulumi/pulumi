@@ -44,10 +44,12 @@ type testCase struct {
 	httpClient       *http.Client
 }
 
-type errorTransport struct{}
+type errorTransport struct {
+	roundTripFunc func(*http.Request) (*http.Response, error)
+}
 
-func (t *errorTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, errors.New("simulated network error")
+func (t *errorTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t.roundTripFunc(req)
 }
 
 var _ http.RoundTripper = &errorTransport{}
@@ -285,9 +287,54 @@ func TestPublishPackage(t *testing.T) {
 		{
 			name: "FailedPublish",
 			httpClient: &http.Client{
-				Transport: &errorTransport{},
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						return nil, errors.New("simulated network error")
+					},
+				},
 			},
 			errorMessage: "simulated network error",
+			setupBlobStorage: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}))
+			},
+			setupServer: func(blobStorage *httptest.Server) *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					switch r.URL.Path {
+					case "/api/preview/registry/packages/pulumi/test-publisher/test-package/versions":
+						w.WriteHeader(http.StatusAccepted)
+						response := apitype.StartPackagePublishResponse{
+							OperationID: "test-operation-id",
+							UploadURLs: apitype.PackageUpload{
+								Schema:                    blobStorage.URL + "/upload/schema",
+								Index:                     blobStorage.URL + "/upload/index",
+								InstallationConfiguration: blobStorage.URL + "/upload/install",
+							},
+							RequiredHeaders: map[string]string{
+								"Content-Type": "application/octet-stream",
+							},
+						}
+						require.NoError(t, json.NewEncoder(w).Encode(response))
+					}
+				}))
+			},
+		},
+		{
+			name: "FailedBodyRead",
+			httpClient: &http.Client{
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						// Return a response with a failing body reader
+						return &http.Response{
+							StatusCode: 400,
+							Status:     "400 Bad Request",
+							Body:       failingReadCloser{},
+						}, nil
+					},
+				},
+			},
+			errorMessage: "failed to upload schema: 400 Bad Request",
 			setupBlobStorage: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -370,4 +417,15 @@ func TestPublishPackage(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A ReadCloser that always fails to read
+type failingReadCloser struct{}
+
+func (f failingReadCloser) Read(p []byte) (n int, err error) {
+	return 0, errors.New("forced read error")
+}
+
+func (f failingReadCloser) Close() error {
+	return nil
 }
