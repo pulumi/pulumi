@@ -371,6 +371,19 @@ describe("Analyzer", function () {
         );
     });
 
+    it("errors nicely syntax errors", async function () {
+        const dir = path.join(__dirname, "testdata", "syntax-error");
+        const analyzer = new Analyzer(dir, "provider");
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) =>
+                err.message.startsWith(
+                    "TypeScript errors detected:\n" +
+                        "bin/tests/provider/experimental/testdata/syntax-error/index.ts(15,1): Cannot find name 'syntax'.",
+                ),
+        );
+    });
+
     it("infers component description", async function () {
         const dir = path.join(__dirname, "testdata", "component-description");
         const analyzer = new Analyzer(dir, "provider");
