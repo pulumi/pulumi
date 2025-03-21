@@ -198,6 +198,9 @@ class Analyzer:
             type_def.properties_mapping = properties_mapping
             del self.unresolved_forward_refs[name]
 
+        if len(components) == 0:
+            raise Exception("No components found")
+
         return (components, self.type_definitions)
 
     def iter(self, path: Path):
