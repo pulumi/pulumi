@@ -366,4 +366,67 @@ func TestParseDocRef(t *testing.T) {
 		result := parseDocRef(ref)
 		assert.Equal(t, expected, result)
 	})
+
+	t.Run("NewResource", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeResource, "aws:s3:bucket", "")
+		assert.Equal(t, "#/resources/aws:s3:bucket", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewFunction", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeFunction, "aws:ec2:getInstance", "")
+		assert.Equal(t, "#/functions/aws:ec2:getInstance", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewType", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeType, "aws:s3:BucketPolicy", "")
+		assert.Equal(t, "#/types/aws:s3:BucketPolicy", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewResourceProperty", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeResourceProperty, "aws:s3:bucket", "acl")
+		assert.Equal(t, "#/resources/aws:s3:bucket/properties/acl", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewResourceInputProperty", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeResourceInputProperty, "aws:s3:bucket", "acl")
+		assert.Equal(t, "#/resources/aws:s3:bucket/inputProperties/acl", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewFunctionInputProperty", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeFunctionInputProperty, "aws:ec2:getInstance", "instanceId")
+		assert.Equal(t, "#/functions/aws:ec2:getInstance/inputProperties/instanceId", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewFunctionOutputProperty", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeFunctionOutputProperty, "aws:ec2:getInstance", "publicIp")
+		assert.Equal(t, "#/functions/aws:ec2:getInstance/outputProperties/publicIp", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewTypeProperty", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeTypeProperty, "aws:s3:BucketPolicy", "policy")
+		assert.Equal(t, "#/types/aws:s3:BucketPolicy/properties/policy", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
+
+	t.Run("NewResourceWithSlashInToken", func(t *testing.T) {
+		t.Parallel()
+		docRef := NewDocRef(DocRefTypeResource, "aws:s3/bucket:Bucket", "")
+		assert.Equal(t, "#/resources/aws:s3%2Fbucket:Bucket", docRef.Ref)
+		assert.Equal(t, parseDocRef(docRef.Ref), docRef)
+	})
 }

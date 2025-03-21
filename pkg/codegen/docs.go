@@ -226,6 +226,70 @@ type DocRef struct {
 	Property string
 }
 
+// Returns true is the current reference is a property within the other reference.
+func (r DocRef) IsWithin(other DocRef) bool {
+	switch r.Type {
+	case DocRefTypeResourceProperty, DocRefTypeResourceInputProperty:
+		return other.Type == DocRefTypeResource && r.Token == other.Token
+	case DocRefTypeFunctionInputProperty, DocRefTypeFunctionOutputProperty:
+		return other.Type == DocRefTypeFunction && r.Token == other.Token
+	case DocRefTypeTypeProperty:
+		return other.Type == DocRefTypeType && r.Token == other.Token
+	}
+	return false
+}
+
+// NewDocRef constructs a validated DocRef from the given type, token, and property.
+// `token` is required for all types except `DocRefTypeUnknown`.
+// `property` is required for property types.
+func NewDocRef(docRefType DocRefType, token string, property string) DocRef {
+	var ref string
+	switch docRefType {
+	case DocRefTypeResource:
+		contract.Assertf(token != "", "resource token must be provided")
+		contract.Assertf(property == "", "property name must not be set for resource")
+		ref = fmt.Sprintf("#/resources/%s", url.PathEscape(token))
+	case DocRefTypeFunction:
+		contract.Assertf(token != "", "function token must be provided")
+		contract.Assertf(property == "", "property name must not be set for function")
+		ref = fmt.Sprintf("#/functions/%s", url.PathEscape(token))
+	case DocRefTypeType:
+		contract.Assertf(token != "", "type token must be provided")
+		contract.Assertf(property == "", "property name must not be set for type")
+		ref = fmt.Sprintf("#/types/%s", url.PathEscape(token))
+	case DocRefTypeResourceProperty:
+		contract.Assertf(token != "", "resource token must be provided")
+		contract.Assertf(property != "", "property name must be provided")
+		ref = fmt.Sprintf("#/resources/%s/properties/%s", url.PathEscape(token), url.PathEscape(property))
+	case DocRefTypeResourceInputProperty:
+		contract.Assertf(token != "", "resource token must be provided")
+		contract.Assertf(property != "", "property name must be provided")
+		ref = fmt.Sprintf("#/resources/%s/inputProperties/%s", url.PathEscape(token), url.PathEscape(property))
+	case DocRefTypeFunctionInputProperty:
+		contract.Assertf(token != "", "function token must be provided")
+		contract.Assertf(property != "", "property name must be provided")
+		ref = fmt.Sprintf("#/functions/%s/inputProperties/%s", url.PathEscape(token), url.PathEscape(property))
+	case DocRefTypeFunctionOutputProperty:
+		contract.Assertf(token != "", "function token must be provided")
+		contract.Assertf(property != "", "property name must be provided")
+		ref = fmt.Sprintf("#/functions/%s/outputProperties/%s", url.PathEscape(token), url.PathEscape(property))
+	case DocRefTypeTypeProperty:
+		contract.Assertf(token != "", "type token must be provided")
+		contract.Assertf(property != "", "property name must be provided")
+		ref = fmt.Sprintf("#/types/%s/properties/%s", url.PathEscape(token), url.PathEscape(property))
+	case DocRefTypeUnknown:
+		return DocRef{Type: DocRefTypeUnknown}
+	default:
+		contract.Failf("unsupported doc ref type %s", docRefType)
+	}
+	return DocRef{
+		Ref:      ref,
+		Type:     docRefType,
+		Token:    tokens.Type(token),
+		Property: property,
+	}
+}
+
 // Parses a doc reference string into a DocRef struct.
 // The supported formats of the ref is:
 //
