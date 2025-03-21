@@ -1,0 +1,2 @@
+pulumi>=3.150.0,<3.158.0
+pulumi_random>=4.0

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Allow overriding name and namespace of plugins in PulumiPlugin.yaml
