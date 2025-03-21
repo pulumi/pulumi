@@ -1452,3 +1452,25 @@ func TestPulumiNewLocalTemplatePath(t *testing.T) {
 	require.Empty(t, stderr)
 	require.Contains(t, stdout, "Your new project is ready to go")
 }
+
+func TestOverrideComponentNameAndNamespace(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	e.ImportDirectory("component_test")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.CWD = filepath.Join(e.RootPath, "python-component")
+	e.RunCommand("python", "-m", "venv", "venv")
+	e.RunCommand(filepath.Join("venv", "bin", "pip"), "install", "-r", "requirements.txt")
+	e.RunCommand(filepath.Join("venv", "bin", "pip"), "install", "-e", filepath.Join(cwd, "..", "..", "sdk", "python"))
+
+	e.CWD = filepath.Join(e.RootPath, "ts-consumer")
+
+	stdout, _ := e.RunCommand("pulumi", "package", "add", "../python-component")
+	require.Contains(t, stdout, "import * as myComponent from \"@overridden-namespace/my-component\"")
+}
