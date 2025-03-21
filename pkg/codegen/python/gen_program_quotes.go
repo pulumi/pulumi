@@ -118,6 +118,20 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		g.diagnostics = g.diagnostics.Extend(typecheckDiags)
 	}
 
+	if currentExpression == nil {
+		currentExpression = &model.ScopeTraversalExpression{
+			RootName:  rootName,
+			Traversal: currentTraversal,
+			Parts:     currentParts,
+		}
+	} else if len(currentTraversal) > 0 {
+		currentExpression = &model.RelativeTraversalExpression{
+			Source:    currentExpression,
+			Traversal: currentTraversal,
+			Parts:     currentParts,
+		}
+	}
+
 	if currentExpression == source {
 		return nil
 	}
