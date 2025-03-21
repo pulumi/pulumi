@@ -349,6 +349,15 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
+func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginSpec {
+	return workspace.PluginSpec{
+		Name:              descriptor.Name,
+		Version:           descriptor.Version,
+		PluginDownloadURL: descriptor.DownloadURL,
+		Kind:              apitype.ResourcePlugin,
+	}
+}
+
 // loadSchemaBytes loads the byte representation of the schema for the given package descriptor. Additionally, when
 // successful, it returns the version of the underlying *plugin* that provided that schema (not to be confused with the
 // version of the package included in the schema itself).
@@ -359,7 +368,6 @@ func (l *pluginLoader) loadSchemaBytes(
 	if err != nil {
 		return nil, nil, err
 	}
-	pluginVersion := descriptor.Version
 
 	// If PULUMI_DEBUG_PROVIDERS requested an attach port, skip caching and workspace
 	// interaction and load the schema directly from the given port.
@@ -369,6 +377,7 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 		}
 
+		pluginVersion := descriptor.Version
 		if pluginVersion == nil {
 			info, err := provider.GetPluginInfo(ctx)
 			contract.IgnoreError(err) // nonfatal error
@@ -377,7 +386,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		return schemaBytes, pluginVersion, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, pluginVersion)
+	pluginInfo, err := l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
 		var missingError *workspace.MissingError
@@ -388,7 +397,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		spec := workspace.PluginSpec{
 			Kind:              apitype.ResourcePlugin,
 			Name:              descriptor.Name,
-			Version:           pluginVersion,
+			Version:           descriptor.Version,
 			PluginDownloadURL: descriptor.DownloadURL,
 		}
 
@@ -401,13 +410,14 @@ func (l *pluginLoader) loadSchemaBytes(
 			return nil, nil, err
 		}
 
-		pluginInfo, err = l.host.ResolvePlugin(apitype.ResourcePlugin, descriptor.Name, pluginVersion)
+		pluginInfo, err = l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
 		if err != nil {
-			return nil, pluginVersion, err
+			return nil, descriptor.Version, err
 		}
 	}
 	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", descriptor.Name)
 
+	pluginVersion := descriptor.Version
 	if pluginVersion == nil {
 		pluginVersion = pluginInfo.Version
 	}
@@ -449,6 +459,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 			Name:              descriptor.Name,
 			Version:           descriptor.Version,
 			PluginDownloadURL: descriptor.DownloadURL,
+			Kind:              apitype.ResourcePlugin,
 		},
 	}
 	if descriptor.Parameterization != nil {

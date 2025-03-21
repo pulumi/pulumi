@@ -19,10 +19,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 
-	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -53,42 +51,30 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			kind := apitype.PluginKind(kind)
 
-			// Parse the name and version from the second argument in the form of "NAME[@VERSION]".
-			name := args[0]
-			var version *semver.Version
-			if namePart, versionPart, ok := strings.Cut(name, "@"); ok {
-				v, err := semver.ParseTolerant(versionPart)
-				if err != nil {
-					return fmt.Errorf("invalid plugin version %q: %w", versionPart, err)
-				}
-				name = namePart
-				version = &v
+			// TODO: Add support for --server and --checksums.
+			pluginSpec, err := workspace.NewPluginSpec(args[0], kind, nil, "", nil)
+			if err != nil {
+				return err
 			}
 
-			if !tokens.IsName(name) {
-				return fmt.Errorf("invalid plugin name %q", name)
+			if !tokens.IsName(pluginSpec.Name) {
+				return fmt.Errorf("invalid plugin name %q", pluginSpec.Name)
 			}
 
-			pluginDesc := fmt.Sprintf("%s %s", kind, name)
-			if version != nil {
-				pluginDesc = fmt.Sprintf("%s@%s", pluginDesc, version)
+			pluginDesc := fmt.Sprintf("%s %s", pluginSpec.Kind, pluginSpec.Name)
+			if pluginSpec.Version != nil {
+				pluginDesc = fmt.Sprintf("%s@%s", pluginDesc, pluginSpec.Version)
 			}
 
 			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
-			path, err := workspace.GetPluginPath(d, kind, name, version, nil)
+			path, err := workspace.GetPluginPath(d, pluginSpec, nil)
 			if err != nil {
 				// Try to install the plugin, unless auto plugin installs are turned off.
 				var me *workspace.MissingError
 				if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
 					// Not a MissingError, return the original error.
 					return fmt.Errorf("could not get plugin path: %w", err)
-				}
-
-				// TODO: Add support for --server and --checksums.
-				pluginSpec, err := workspace.NewPluginSpec(args[0], kind, nil, "", nil)
-				if err != nil {
-					return err
 				}
 
 				log := func(sev diag.Severity, msg string) {
@@ -100,7 +86,7 @@ func newPluginRunCmd() *cobra.Command {
 					return err
 				}
 
-				path, err = workspace.GetPluginPath(d, kind, name, version, nil)
+				path, err = workspace.GetPluginPath(d, pluginSpec, nil)
 				if err != nil {
 					return fmt.Errorf("could not get plugin path: %w", err)
 				}

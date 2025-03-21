@@ -1452,3 +1452,28 @@ func TestPulumiNewLocalTemplatePath(t *testing.T) {
 	require.Empty(t, stderr)
 	require.Contains(t, stdout, "Your new project is ready to go")
 }
+
+func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packageadd-remote")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
+
+	e.RunCommand("pulumi", "package", "add",
+		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+
+	// Remove the plugin from the local cache and try to install it using `pulumi install`
+	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.NotContains(t, stdout, "github.com_pulumi_component-test-providers")
+
+	e.RunCommand("pulumi", "install")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}

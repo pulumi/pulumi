@@ -173,30 +173,30 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Fl
 }
 
 func (h *testHost) ResolvePlugin(
-	kind apitype.PluginKind, name string, version *semver.Version,
+	spec workspace.PluginSpec,
 ) (*workspace.PluginInfo, error) {
-	if kind == apitype.ResourcePlugin {
+	if spec.Kind == apitype.ResourcePlugin {
 		for _, provider := range h.providers {
 			pkg := provider.Pkg()
 			providerVersion, err := getProviderVersion(provider)
 			if err != nil {
 				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
 			}
-			if name == string(pkg) && version == nil || version.EQ(providerVersion) {
+			if spec.Name == string(pkg) && spec.Version == nil || spec.Version.EQ(providerVersion) {
 				return &workspace.PluginInfo{
-					Name:    name,
-					Kind:    kind,
-					Version: version,
+					Name:    spec.Name,
+					Kind:    spec.Kind,
+					Version: spec.Version,
 				}, nil
 			}
 		}
-		return nil, fmt.Errorf("unknown provider %s@%s", name, version)
+		return nil, fmt.Errorf("unknown provider %s@%s", spec.Name, spec.Version)
 	}
 
 	return &workspace.PluginInfo{
-		Name:    name,
-		Kind:    kind,
-		Version: version,
+		Name:    spec.Name,
+		Kind:    spec.Kind,
+		Version: spec.Version,
 	}, nil
 }
 
