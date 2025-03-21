@@ -1019,7 +1019,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		dblIndent := strings.Repeat(indent, 2)
 
 		selfRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-		printComment(w, renderComment(p.Comment, selfRef, false /*filterExamples*/), dblIndent)
+		printComment(w, mod.genComment(p.Comment, selfRef, false /*filterExamples*/), dblIndent)
 		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
 		fmt.Fprintf(w, "\n")
 	}
@@ -1086,7 +1086,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
 		selfRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-		printComment(w, renderComment(p.Comment, selfRef, false /*filterExamples*/), "")
+		printComment(w, mod.genComment(p.Comment, selfRef, false /*filterExamples*/), "")
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1208,7 +1208,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
 	selfRef := codegen.NewDocRef(codegen.DocRefTypeFunction, obj.Token, "")
-	printComment(w, renderComment(obj.Comment, selfRef, false /*filterExamples*/), "    ")
+	printComment(w, mod.genComment(obj.Comment, selfRef, false /*filterExamples*/), "    ")
 
 	// Now generate an initializer with properties for all inputs.
 	fmt.Fprintf(w, "    def __init__(__self__")
@@ -1650,7 +1650,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
 		if prop.Comment != "" {
 			selfRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-			printComment(w, renderComment(prop.Comment, selfRef, false /* allowExample */), indent+"        ")
+			printComment(w, mod.genComment(prop.Comment, selfRef, false /* allowExample */), indent+"        ")
 		}
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 
@@ -1682,7 +1682,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 	if obj := returnTypeObject(method.Function); obj != nil {
 		properties = obj.Properties
 		docRef := codegen.NewDocRef(codegen.DocRefTypeFunction, method.Function.Token, "")
-		comment = renderComment(obj.Comment, docRef, false /*filterExamples*/)
+		comment = mod.genComment(obj.Comment, docRef, false /*filterExamples*/)
 	} else if method.Function.ReturnTypePlain {
 		comment = ""
 		properties = []*schema.Property{
@@ -1808,7 +1808,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		docs := &bytes.Buffer{}
 		if fun.Comment != "" {
 			docRef := codegen.NewDocRef(codegen.DocRefTypeFunction, fun.Token, "")
-			fmt.Fprintln(docs, renderComment(fun.Comment, docRef, true /*filterExamples*/))
+			fmt.Fprintln(docs, mod.genComment(fun.Comment, docRef, true /*filterExamples*/))
 		}
 		if len(args) > 0 {
 			fmt.Fprintln(docs, "")
@@ -2054,7 +2054,7 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 	docs := &bytes.Buffer{}
 	if fun.Comment != "" {
 		docRef := codegen.NewDocRef(codegen.DocRefTypeFunction, fun.Token, "")
-		fmt.Fprintln(docs, renderComment(fun.Comment, docRef, true /*filterExamples*/))
+		fmt.Fprintln(docs, mod.genComment(fun.Comment, docRef, true /*filterExamples*/))
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
@@ -2450,7 +2450,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	if res.Comment != "" {
 		docRef := codegen.NewDocRef(codegen.DocRefTypeResource, res.Token, "")
-		fmt.Fprintln(b, renderComment(res.Comment, docRef, true /*filterExamples*/))
+		fmt.Fprintln(b, mod.genComment(res.Comment, docRef, true /*filterExamples*/))
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
@@ -2473,7 +2473,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	printComment(w, b.String(), "        ")
 }
 
-func renderComment(comment string, selfRef codegen.DocRef, filterExamples bool) string {
+func (mod *modContext) genComment(comment string, selfRef codegen.DocRef, filterExamples bool) string {
 	if comment == "" {
 		return ""
 	}
@@ -2484,14 +2484,15 @@ func renderComment(comment string, selfRef codegen.DocRef, filterExamples bool) 
 		if ref.Token == "" {
 			return "", false
 		}
-		pyType := strings.ToLower(string(ref.Token.Module())) + "." + string(ref.Token.Name())
+		pythonResource := mod.tokenToResource(ref.Token.String())
 		if ref.Property == "" {
-			return pyType, true
+			return pythonResource, true
 		}
+		pythonPropName := PyName(ref.Property)
 		if ref.IsWithin(selfRef) {
-			return PyName(ref.Property), true
+			return pythonPropName, true
 		}
-		return strings.ToLower(string(ref.Token.Module())) + "." + string(ref.Token.Name()) + "." + PyName(ref.Property), true
+		return pythonResource + "." + pythonPropName, true
 	})
 }
 
@@ -2541,7 +2542,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, docRef codegen
 	}
 
 	ty := mod.typeString(codegen.RequiredType(prop), true, acceptMapping, false /*forDict*/)
-	comment := renderComment(prop.Comment, docRef, false /*filterExamples*/)
+	comment := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
@@ -2779,7 +2780,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
 	if !input && comment != "" {
 		docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-		printComment(w, renderComment(comment, docRef, false /*filterExamples*/), "    ")
+		printComment(w, mod.genComment(comment, docRef, false /*filterExamples*/), "    ")
 	}
 
 	// To help users migrate to using the properly snake_cased property getters, emit warnings when camelCase keys are
@@ -2936,7 +2937,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
 		if prop.Comment != "" {
 			docRef := codegen.NewDocRef(codegen.DocRefTypeUnknown, "", "")
-			printComment(w, renderComment(comment, docRef, false /*filterExamples*/), indent)
+			printComment(w, mod.genComment(comment, docRef, false /*filterExamples*/), indent)
 		}
 	}
 
