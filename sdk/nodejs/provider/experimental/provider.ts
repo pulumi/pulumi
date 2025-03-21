@@ -73,7 +73,13 @@ export class ComponentProvider implements Provider {
 
     async getSchema(): Promise<string> {
         const { components, typeDefinitions, packageReferences } = this.analyzer.analyze();
-        const schema = generateSchema(this.packageJSON, this.pluginYAML, components, typeDefinitions, packageReferences);
+        const schema = generateSchema(
+            this.packageJSON,
+            this.pluginYAML,
+            components,
+            typeDefinitions,
+            packageReferences,
+        );
         return JSON.stringify(schema);
     }
 

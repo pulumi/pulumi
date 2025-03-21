@@ -78,7 +78,7 @@ export function generateSchema(
     typeDefinitions: Record<string, TypeDefinition>,
     packageReferences: Record<string, string>,
 ): PackageSpec {
-    const matches = packageJSON.name.match(/(@.*?\/)?(.+)/)
+    const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
     let providerName = matches[2];
     let namespace = undefined;
     if (matches[1]) {
