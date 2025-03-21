@@ -31,6 +31,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 			return name == projectName, nil
 		},
 		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	testNewArgs := newArgs{
