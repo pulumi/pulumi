@@ -137,33 +137,28 @@ func (t Template) Download(ctx context.Context) (workspace.Template, error) {
 	return t.download(ctx)
 }
 
-type Scope struct{ kind string }
+// SearchScope dictates where [New] will search for templates.
+type SearchScope struct{ kind string }
 
 var (
-	ScopeDefault     = Scope{}
-	scopeDefault     = ScopeAll
-	ScopeTraditional = Scope{"traditional"}
-	ScopeLocal       = Scope{"none"}
-	ScopeAll         = Scope{"all"}
+	// ScopeAll searches for templates in all available locations.
+	ScopeAll = SearchScope{}
+	// ScopeLocal searches for templates only locally (on disk).
+	ScopeLocal = SearchScope{"local"}
 )
 
-// Create a new [Template] [Source] associated with a given [Scope].
+// Create a new [Template] [Source] associated with a given [SearchScope].
 func New(
-	ctx context.Context, templateNamePathOrURL string, scope Scope,
+	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
 	templateKind workspace.TemplateKind, interactive bool,
 ) *Source {
-	// apply the default scope, if necessary
-	if scope == ScopeDefault {
-		scope = scopeDefault
-	}
-
 	var source Source
 	ctx, cancel := context.WithCancel(ctx)
 	source.closers = append(source.closers, func() error { cancel(); return nil })
 
 	queryKind := getTemplateQuery(templateNamePathOrURL)
 
-	if scope == ScopeAll || scope == ScopeTraditional || scope == ScopeLocal {
+	if scope == ScopeAll || scope == ScopeLocal {
 		source.wg.Add(1)
 		go func() {
 			source.getWorkspaceTemplates(ctx, templateNamePathOrURL, scope, templateKind, &source.wg)

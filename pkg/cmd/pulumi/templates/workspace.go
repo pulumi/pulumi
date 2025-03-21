@@ -26,7 +26,7 @@ import (
 )
 
 func (s *Source) getWorkspaceTemplates(
-	ctx context.Context, templateNamePathOrURL string, scope Scope, templateKind workspace.TemplateKind,
+	ctx context.Context, templateNamePathOrURL string, scope SearchScope, templateKind workspace.TemplateKind,
 	_ *sync.WaitGroup,
 ) {
 	repo, err := workspace.RetrieveTemplates(ctx, templateNamePathOrURL, scope == ScopeLocal, templateKind)
