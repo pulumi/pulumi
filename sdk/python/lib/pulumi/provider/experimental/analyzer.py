@@ -14,6 +14,7 @@
 
 import ast
 import collections
+from enum import Enum
 import importlib.util
 import inspect
 import re
@@ -450,6 +451,14 @@ class Analyzer:
             raise Exception(
                 f"Resource references are not supported yet: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
             )
+        elif is_union(arg):
+            raise Exception(
+                f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
+            )
+        elif is_enum(arg):
+            raise Exception(
+                f"Enum types are not supported: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
+            )
         elif not is_builtin(arg):
             # We have a custom type, analyze it recursively. Immediately add the
             # type definition to the list of type definitions, before calling
@@ -499,8 +508,12 @@ class Analyzer:
                 continue
             with open(file_path) as f:
                 src = f.read()
-                t = ast.parse(src)
-                docs.update(self.find_docstrings_in_module(t))
+                try:
+                    t = ast.parse(src)
+                    docs.update(self.find_docstrings_in_module(t))
+                except SyntaxError as e:
+                    rel_path = file_path.relative_to(path)
+                    raise Exception(f"Failed to parse {rel_path}: {e}") from e
         return docs
 
     def find_docstrings_in_module(self, mod: ast.Module) -> dict[str, dict[str, str]]:
@@ -567,6 +580,14 @@ def py_type_to_property_type(typ: type) -> PropertyType:
     return PropertyType.OBJECT
 
 
+def is_union(typ: type):
+    return get_origin(typ) == Union
+
+
+def is_enum(typ: type):
+    return issubclass(typ, Enum)
+
+
 def is_plain(typ: type) -> bool:
     return typ in (str, int, float, bool)
 
@@ -575,7 +596,7 @@ def is_optional(typ: type) -> bool:
     """
     A type is optional if it is a union that includes NoneType.
     """
-    if get_origin(typ) == Union:
+    if is_union(typ):
         return _NoneType in get_args(typ)
     return False
 
@@ -613,8 +634,7 @@ def is_input(typ: type) -> bool:
     """
     An input type is a Union that includes Awaitable, Output and a plain type.
     """
-    origin = get_origin(typ)
-    if origin is not Union:
+    if not is_union(typ):
         return False
 
     has_awaitable = False

@@ -793,7 +793,9 @@ def test_analyze_bad_type():
     analyzer = Analyzer(metadata)
 
     try:
-        analyzer.analyze(Path(Path(__file__).parent, "testdata", "bad-type"))
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "analyzer-errors", "bad-type")
+        )
         assert False, "expected an exception"
     except TypeNotFoundError as e:
         assert (
@@ -802,11 +804,62 @@ def test_analyze_bad_type():
         )
 
 
+def test_analyze_union_type():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "analyzer-errors", "union-type")
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        assert (
+            str(e)
+            == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
+        )
+
+
+def test_analyze_enum_type():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "analyzer-errors", "enum-type")
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        assert (
+            str(e) == "Enum types are not supported: found type 'MyEnum' for 'Args.enu'"
+        )
+
+
+def test_analyze_syntax_error():
+    analyzer = Analyzer(metadata)
+
+    try:
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "analyzer-errors", "syntax-error")
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        print(e)
+        import traceback
+
+        stack = traceback.extract_tb(e.__traceback__)[:]
+        print(stack)
+        assert (
+            str(e)
+            == "Failed to parse component.py: invalid syntax (<unknown>, line 13)"
+        )
+
+
 def test_analyze_duplicate_type():
     analyzer = Analyzer(metadata)
 
     try:
-        analyzer.analyze(Path(Path(__file__).parent, "testdata", "duplicate-type"))
+        analyzer.analyze(
+            Path(Path(__file__).parent, "testdata", "analyzer-errors", "duplicate-type")
+        )
         assert False, "expected an exception"
     except DuplicateTypeError as e:
         assert (
@@ -822,7 +875,12 @@ def test_analyze_duplicate_components():
 
     try:
         analyzer.analyze(
-            Path(Path(__file__).parent, "testdata", "duplicate-components")
+            Path(
+                Path(__file__).parent,
+                "testdata",
+                "analyzer-errors",
+                "duplicate-components",
+            )
         )
         assert False, "expected an exception"
     except DuplicateTypeError as e:
