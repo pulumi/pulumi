@@ -276,17 +276,21 @@ ${errMsg}`,
         // loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            // Execute the module and capture any module outputs it exported. If the exported value
-            // was itself a Function, then just execute it.  This allows for exported top level
-            // async functions that pulumi programs can live in.  Finally, await the value we get
-            // back.  That way, if it is async and throws an exception, we properly capture it here
-            // and handle it.
+            // Execute the module and capture any module outputs it exported.
             const reqResult = require(program);
+
+            // If the module exports at least one Pulumi Component, then we boot up a component
+            // provider host to host the component(s).
             if (hasPulumiComponents(reqResult)) {
                 return await componentProviderHost({ dirname: program, components: reqResult });
             }
+
+            // If the exported value was itself a Function, then just execute it. This allows for
+            // exported top level async functions that pulumi programs can live in.
             const invokeResult = reqResult instanceof Function ? reqResult() : reqResult;
 
+            // Finally, await the value we get back. That way, if it is async and throws an exception,
+            // we properly capture it here and handle it.
             return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely

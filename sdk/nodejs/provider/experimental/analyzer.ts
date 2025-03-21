@@ -64,7 +64,11 @@ export enum InputOutput {
     Output = 2,
 }
 
-// Check if any of module exports is a Pulumi Component class.
+/**
+ * Check if any of module exports is a Pulumi Component class.
+ * @param moduleExports The exports object of the module to check.
+ * @returns True if the module exports a Pulumi Component class, false otherwise.
+ */
 export function hasPulumiComponents(moduleExports: any): boolean {
     if (!moduleExports) {
         return false;
