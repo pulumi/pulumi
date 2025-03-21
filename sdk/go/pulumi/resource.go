@@ -343,7 +343,7 @@ type ResourceOptions struct {
 	// should be deleted before creating the replacement
 	// instead of Pulumi's default behavior of creating the replacement
 	// before performing deletion.
-	DeleteBeforeReplace bool
+	DeleteBeforeReplace *bool
 
 	// DependsOn lists additional explicit dependencies for the resource
 	// in addition to those tracked automatically by Pulumi.
@@ -365,7 +365,7 @@ type ResourceOptions struct {
 	Parent Resource
 
 	// Protect prevents this resource from being deleted.
-	Protect bool
+	Protect *bool
 
 	// Provider is the provider resource to use for this resource's CRUD operations.
 	// It's nil if the default provider should be used.
@@ -406,7 +406,7 @@ type ResourceOptions struct {
 
 	// RetainOnDelete specifies that the resource should not be deleted
 	// in the cloud provider, even if it's deleted from Pulumi.
-	RetainOnDelete bool
+	RetainOnDelete *bool
 
 	// DeletedWith holds a container resource that, if deleted,
 	// also deletes this resource.
@@ -482,24 +482,17 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		})
 	}
 
-	flatten := func(s *bool) bool {
-		if s == nil {
-			return false
-		}
-		return *s
-	}
-
 	return &ResourceOptions{
 		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
 		Aliases:                 ro.Aliases,
 		CustomTimeouts:          ro.CustomTimeouts,
-		DeleteBeforeReplace:     flatten(ro.DeleteBeforeReplace),
+		DeleteBeforeReplace:     ro.DeleteBeforeReplace,
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
-		Protect:                 flatten(ro.Protect),
+		Protect:                 ro.Protect,
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
@@ -508,7 +501,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
-		RetainOnDelete:          flatten(ro.RetainOnDelete),
+		RetainOnDelete:          ro.RetainOnDelete,
 		DeletedWith:             ro.DeletedWith,
 	}
 }

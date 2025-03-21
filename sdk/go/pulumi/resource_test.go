@@ -953,6 +953,10 @@ func TestNewResourceOptions(t *testing.T) {
 	// referential equality.
 	sampleResourceInput := NewResourceInput(&testRes{foo: "foo"})
 
+	ptr := func(b bool) *bool {
+		return &b
+	}
+
 	tests := []struct {
 		desc string
 		give ResourceOption
@@ -992,7 +996,7 @@ func TestNewResourceOptions(t *testing.T) {
 		{
 			desc: "DeleteBeforeReplace",
 			give: DeleteBeforeReplace(true),
-			want: ResourceOptions{DeleteBeforeReplace: true},
+			want: ResourceOptions{DeleteBeforeReplace: ptr(true)},
 		},
 		{
 			desc: "DependsOn",
@@ -1040,7 +1044,7 @@ func TestNewResourceOptions(t *testing.T) {
 		{
 			desc: "Protect",
 			give: Protect(true),
-			want: ResourceOptions{Protect: true},
+			want: ResourceOptions{Protect: ptr(true)},
 		},
 		{
 			desc: "Provider",
@@ -1134,7 +1138,7 @@ func TestNewResourceOptions(t *testing.T) {
 		{
 			desc: "RetainOnDelete",
 			give: RetainOnDelete(true),
-			want: ResourceOptions{RetainOnDelete: true},
+			want: ResourceOptions{RetainOnDelete: ptr(true)},
 		},
 		{
 			desc: "DeletedWith",
