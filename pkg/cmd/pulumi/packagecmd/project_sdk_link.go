@@ -648,8 +648,6 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
 	var spec schema.PackageSpec
-	var overrideNamespace string
-	var overrideName string
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
 		pkg, diags, err := schema.BindSpec(spec, nil)
 		if err != nil {
@@ -687,20 +685,23 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 			return nil, err
 		}
 		return bind(spec)
-	} else {
-		f, err := os.ReadFile(filepath.Join(packageSource, "PulumiPlugin.yaml"))
-		if err == nil {
-			var plugin workspace.PluginProject
-			err = yaml.Unmarshal(f, &plugin)
-			if err != nil {
-				return nil, err
-			}
-			if plugin.Name != "" {
-				overrideName = plugin.Name
-			}
-			if plugin.Namespace != "" {
-				overrideNamespace = plugin.Namespace
-			}
+	}
+
+	var overrideNamespace string
+	var overrideName string
+
+	f, err := os.ReadFile(filepath.Join(packageSource, "PulumiPlugin.yaml"))
+	if err == nil {
+		var plugin workspace.PluginProject
+		err = yaml.Unmarshal(f, &plugin)
+		if err != nil {
+			return nil, err
+		}
+		if plugin.Name != "" {
+			overrideName = plugin.Name
+		}
+		if plugin.Namespace != "" {
+			overrideNamespace = plugin.Namespace
 		}
 	}
 
