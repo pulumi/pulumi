@@ -210,15 +210,15 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return err
 			}
 
-			// Write the tar file into f
-			if _, err := io.Copy(f, reader); err != nil {
-				return errors.Join(err, f.Close())
-			}
-
-			// Close f. We don't use defer because we want to close each file
-			// after we open it, not leave it all until the download function
-			// exits.
-			if err := f.Close(); err != nil {
+			if err := func() (err error) {
+				// We wrap this defer in an immediately invoked function
+				// so that the file is closed within this loop iteration,
+				// not at the end of writeTar.
+				defer func() { err = errors.Join(err, f.Close()) }()
+				// Write the tar file into f
+				_, err = io.Copy(f, reader)
+				return err
+			}(); err != nil {
 				return err
 			}
 		}
