@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/python
+  description: Add tryOutput generation to python
