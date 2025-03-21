@@ -60,11 +60,6 @@ func (s *Source) getWorkspaceTemplates(
 }
 
 // Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
-//
-// workspace.GetAccount ensures the user has a valid session with the Pulumi Cloud backend.
-//   - If the user is not logged in, the login flow will be initiated.
-//   - If the user is not logged in and pulumi does not recognize the backend as a known workspace then
-//     the user will see an authentication error.
 func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateRepository, error) {
 	u, err := url.Parse(templateURL)
 	if err != nil {
