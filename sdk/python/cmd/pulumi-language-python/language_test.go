@@ -175,10 +175,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	return engineAddress, client
 }
 
-var expectedFailures = map[string]string{
-	"l2-builtin-can-with-output": "pulumi#18860 Support try in Python program generation",
-	"l1-builtin-can":             "Temporarily disabled until pr #18916 is submitted",
-}
+var expectedFailures = map[string]string{}
 
 func TestLanguage(t *testing.T) {
 	t.Parallel()

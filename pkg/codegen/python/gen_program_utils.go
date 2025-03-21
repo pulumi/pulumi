@@ -47,15 +47,8 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 		_, outputTry := function.Signature.ReturnType.(*model.OutputType)
 		return generateTryFunction(outputTry, indent), true
 	case "can":
-		return fmt.Sprintf(`%[1]sdef can_(fn):
-%[1]s    try:
-%[1]s        _result = fn()
-%[1]s        return True
-%[1]s    except:
-%[1]s        return False
-`,
-			indent,
-		), true
+		_, outputCan := function.Signature.ReturnType.(*model.OutputType)
+		return generateCanFunction(outputCan, indent), true
 	default:
 		return "", false
 	}
@@ -91,5 +84,29 @@ func generateOutputtyTry(indent string) string {
 %[1]s		return tryOutput_(*rest)
 %[1]s
 %[1]s	return result_output
+%[1]s`, indent)
+}
+
+func generateCanFunction(outputCan bool, indent string) string {
+	if outputCan {
+		return generateOutputtyCan(indent)
+	}
+
+	return fmt.Sprintf(`%[1]sdef can_(fn) -> bool:
+	%[1]s	try:
+	%[1]s		result = fn()
+	%[1]s		return True
+	%[1]s	except:
+	%[1]s		return False
+	`, indent)
+}
+
+func generateOutputtyCan(indent string) string {
+	return fmt.Sprintf(`%[1]sdef canOutput_(fn) -> pulumi.Output[bool]:
+%[1]s	try:
+%[1]s		result = pulumi.Output.from_input(fn())
+%[1]s		return result.apply(lambda x: x != None)
+%[1]s	except:
+%[1]s		return pulumi.Output.from_input(False)
 %[1]s`, indent)
 }
