@@ -21,7 +21,6 @@ from .component import (
     PropertyType,
     TypeDefinition,
 )
-from .metadata import Metadata
 
 
 @dataclass
@@ -163,7 +162,7 @@ class PackageSpec:
 
     name: str
     displayName: str
-    version: Optional[str]
+    namespace: str
     resources: dict[str, Resource]
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
@@ -173,7 +172,7 @@ class PackageSpec:
             {
                 "name": self.name,
                 "displayName": self.displayName,
-                "version": self.version,
+                "namespace": self.namespace,
                 "resources": {k: v.to_json() for k, v in self.resources.items()},
                 "types": {k: v.to_json() for k, v in self.types.items()},
                 "language": self.language,
@@ -182,14 +181,17 @@ class PackageSpec:
 
 
 def generate_schema(
-    metadata: Metadata,
+    plugin_yaml: dict[str, Any],
     components: dict[str, ComponentDefinition],
     type_definitions: dict[str, TypeDefinition],
 ) -> PackageSpec:
+    if "name" not in plugin_yaml:
+        raise ValueError("Missing required field 'name' in PulumiPlugin.yaml")
+    name = plugin_yaml["name"]
     pkg = PackageSpec(
-        name=metadata.name,
-        version=metadata.version,
-        displayName=metadata.display_name or metadata.name,
+        name=name,
+        namespace=plugin_yaml["namespace"] if "namespace" in plugin_yaml else None,
+        displayName=name,
         resources={},
         types={},
         language={
@@ -211,13 +213,11 @@ def generate_schema(
         },
     )
     for component_name, component in components.items():
-        name = f"{metadata.name}:index:{component_name}"
+        name = f"{name}:index:{component_name}"
         pkg.resources[name] = Resource.from_definition(component)
 
     for type_name, type in type_definitions.items():
-        pkg.types[f"{metadata.name}:index:{type_name}"] = ComplexType.from_definition(
-            type
-        )
+        pkg.types[f"{name}:index:{type_name}"] = ComplexType.from_definition(type)
 
     return pkg
 

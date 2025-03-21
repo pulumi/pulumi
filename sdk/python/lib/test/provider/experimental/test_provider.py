@@ -14,7 +14,6 @@
 
 from pathlib import Path
 from pulumi.errors import InputPropertyError
-from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.provider import ComponentProvider
 
 
@@ -34,7 +33,6 @@ def test_validate_resource_type_valid():
 
 def test_map_inputs():
     provider = ComponentProvider(
-        Metadata("test-provider", "0.0.1"),
         Path(Path(__file__).parent, "testdata", "missing-input"),
     )
     component_def = provider._component_defs["MyComponent"]  # type: ignore
@@ -60,7 +58,6 @@ def test_map_inputs():
 
 def test_map_complex_inputs():
     provider = ComponentProvider(
-        Metadata("test-provider", "0.0.1"),
         Path(Path(__file__).parent, "testdata", "complex-args"),
     )
     component_def = provider._component_defs["MyComponent"]  # type: ignore

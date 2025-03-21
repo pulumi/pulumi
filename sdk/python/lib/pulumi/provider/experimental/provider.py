@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import yaml
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -24,7 +25,6 @@ from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
 from .analyzer import Analyzer
 from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
-from .metadata import Metadata
 from .schema import generate_schema
 
 
@@ -36,25 +36,27 @@ class ComponentProvider(Provider):
 
     path: Path
     """The path to the Python source code."""
-    metadata: Metadata
-    """The metadata for the provider, such as the name and version."""
 
     _type_defs: dict[str, TypeDefinition]
     _component_defs: dict[str, ComponentDefinition]
+    _plugin_yaml: dict[str, Any]
 
-    def __init__(self, metadata: Metadata, path: Path) -> None:
+    def __init__(self, path: Path) -> None:
+        file = open(path / "PulumiPlugin.yaml")
+        self._plugin_yaml = yaml.safe_load(file.read())
+        if "name" not in self._plugin_yaml:
+            raise ValueError("Missing required field 'name' in PulumiPlugin.yaml")
         self.path = path
-        self.metadata = metadata
-        self.analyzer = Analyzer(self.metadata)
+        self.analyzer = Analyzer(self._plugin_yaml["name"])
         (components, type_definitions) = self.analyzer.analyze(self.path)
         self._component_defs = components
         self._type_defs = type_definitions
         schema = generate_schema(
-            metadata,
+            self._plugin_yaml,
             self._component_defs,
             self._type_defs,
         )
-        super().__init__(metadata.version, json.dumps(schema.to_json()))
+        super().__init__("", json.dumps(schema.to_json()))
 
     def construct(
         self,
@@ -63,7 +65,7 @@ class ComponentProvider(Provider):
         inputs: Inputs,
         options: Optional[ResourceOptions] = None,
     ) -> ConstructResult:
-        self.validate_resource_type(self.metadata.name, resource_type)
+        self.validate_resource_type(self._plugin_yaml["name"], resource_type)
         component_name = resource_type.split(":")[-1]
         comp = self.analyzer.find_type(self.path, component_name)
         component_def = self._component_defs[component_name]
