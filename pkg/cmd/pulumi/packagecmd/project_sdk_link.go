@@ -298,11 +298,13 @@ func linkPythonPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 
 		lines := regexp.MustCompile("\r?\n").Split(string(fBytes), -1)
 		if !slices.Contains(lines, packageSpecifier) {
-			if runtime.GOOS == "windows" {
-				fBytes = []byte(packageSpecifier + "\r\n" + string(fBytes))
-			} else {
-				fBytes = []byte(packageSpecifier + "\n" + string(fBytes))
+			// Match the file's line endings when adding the package specifier.
+			usesCRLF := strings.Contains(string(fBytes), "\r\n")
+			lineEnding := "\n"
+			if usesCRLF {
+				lineEnding = "\r\n"
 			}
+			fBytes = []byte(packageSpecifier + lineEnding + string(fBytes))
 			err = os.WriteFile(fPath, fBytes, 0o600)
 			if err != nil {
 				return fmt.Errorf("could not write requirements.txt: %w", err)
