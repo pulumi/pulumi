@@ -77,6 +77,9 @@ test_auto:: $(TEST_ALL_DEPS)
 	yarn run nyc --no-clean -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
+	echo "PATH: $${PATH}"
+    echo "Node.js version: $$(node --version)"
+    echo "Yarn version: $$(yarn --version)"
 	node 'bin/tests/runtime/closure-integration-tests.js'
 	node 'bin/tests/runtime/install-package-tests.js'
 
