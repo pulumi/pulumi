@@ -43,6 +43,8 @@ type CopilotDirectSkillCall struct {
 
 type CopilotSkillParams struct {
 	PulumiUpdateOutput string `json:"pulumiUpdateOutput"`
+	Model string `json:"model"`
+	MaxLen int `json:"maxLen"`
 }
 
 // Responses

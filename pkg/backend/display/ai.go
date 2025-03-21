@@ -73,9 +73,8 @@ func getAccessToken(cloudURL string) (string, error) {
 }
 
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
-func createSummarizeUpdateRequest(content string, orgID string) apitype.CopilotSummarizeUpdateRequest {
+func createSummarizeUpdateRequest(content string, orgID string, model string, maxSummaryLen int) apitype.CopilotSummarizeUpdateRequest {
 	return apitype.CopilotSummarizeUpdateRequest{
-		Query: "FIXME in atlas, this is ignored, but still required by zod",
 		State: apitype.CopilotState{
 			Client: apitype.CopilotClientState{
 				CloudContext: apitype.CopilotCloudContext{
@@ -88,6 +87,8 @@ func createSummarizeUpdateRequest(content string, orgID string) apitype.CopilotS
 			Skill: "summarizeUpdate",
 			Params: apitype.CopilotSkillParams{
 				PulumiUpdateOutput: content,
+				Model: 			model,
+				MaxLen: 		maxSummaryLen,
 			},
 		},
 	}
@@ -103,7 +104,7 @@ func getAtlasEndpoint(cloudURL string) string {
 }
 
 // summarizeInternal handles the actual summarization logic and returns proper errors
-func summarizeInternal(content string, orgID string) (string, error) {
+func summarizeInternal(content string, orgID string, model string, maxSummaryLen int) (string, error) {
 	cloudURL, err := getCurrentCloudURL()
 	if err != nil {
 		return "", fmt.Errorf("getting cloud URL: %w", err)
@@ -115,7 +116,7 @@ func summarizeInternal(content string, orgID string) (string, error) {
 	}
 
 	// Create the request using the helper function
-	request := createSummarizeUpdateRequest(content, orgID)
+	request := createSummarizeUpdateRequest(content, orgID, model, maxSummaryLen)
 
 	jsonData, err := json.Marshal(request)
 	if err != nil {
@@ -154,21 +155,35 @@ func summarizeInternal(content string, orgID string) (string, error) {
 		return "", fmt.Errorf("atlas API error: %s\n%s", atlasResp.Error, atlasResp.Details)
 	}
 
-	// Look for the first summarizeUpdate message
+	// Look for the first message from the assistant
 	for _, msg := range atlasResp.ThreadMessages {
-		if msg.Kind == "summarizeUpdate" {
-			var content apitype.CopilotSummarizeUpdateMessage
-			if err := json.Unmarshal(msg.Content, &content); err != nil {
-				return "", fmt.Errorf("parsing summary content: %w", err)
+		if msg.Role == "assistant" {
+			// Handle the new format where content is a string directly
+			if msg.Kind == "response" {
+				// Unmarshal the RawMessage into a string
+				var contentStr string
+				if err := json.Unmarshal(msg.Content, &contentStr); err != nil {
+					// If it's not a simple string, it might be a raw JSON object
+					// Return it as a string representation
+					return string(msg.Content), nil
+				}
+				return contentStr, nil
 			}
-			if content.Summary == "" {
-				return "", errors.New("no summary generated")
+			
+			// Handle the old format for backward compatibility
+			if msg.Kind == "summarizeUpdate" {
+				var content apitype.CopilotSummarizeUpdateMessage
+				if err := json.Unmarshal(msg.Content, &content); err != nil {
+					return "", fmt.Errorf("parsing summary content: %w", err)
+				}
+				if content.Summary == "" {
+					return "", errors.New("no summary generated")
+				}
+				return content.Summary, nil
 			}
-			return content.Summary, nil
 		}
 	}
-
-	return "", errors.New("no summarizeUpdate message found in response")
+	return "", errors.New("no assistant message found in response")
 }
 
 // addPrefixToLines adds the given prefix to each line of the input text
@@ -184,7 +199,7 @@ func addPrefixToLines(text, prefix string) string {
 }
 
 // summarize generates a summary of the update output
-func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string) string {
+func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string, model string, maxSummaryLen int) string {
 	if len(lines) == 0 {
 		return ""
 	}
@@ -194,7 +209,7 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 
 	linesStr = TruncateWithMiddleOut(linesStr, maxCopilotContentLength)
 
-	summary, err := summarizeInternal(linesStr, orgID)
+	summary, err := summarizeInternal(linesStr, orgID, model, maxSummaryLen)
 	if err != nil {
 		// TODO: Use proper logging once we have it
 		fmt.Fprintf(os.Stderr, "Error generating summary: %v\n", err)

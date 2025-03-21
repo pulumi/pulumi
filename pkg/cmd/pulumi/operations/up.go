@@ -123,6 +123,8 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for Copilot.
 	var suppressCopilotSummary bool
+	var copilotSummaryModel string
+	var copilotSummaryMaxLen int
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -615,6 +617,9 @@ func NewUpCmd() *cobra.Command {
 				suppressCopilotSummary, env.SuppressCopilotSummary.Value(), suppressSummary)
 			opts.Display.ShowCopilotSummary = !suppressSummary
 
+			opts.Display.CopilotSummaryModel = copilotSummaryModel
+			opts.Display.CopilotSummaryMaxLen = copilotSummaryMaxLen
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
 					ctx,
@@ -769,6 +774,14 @@ func NewUpCmd() *cobra.Command {
 		&suppressCopilotSummary, "suppress-copilot-summary", false,
 		"Suppress display of the Copilot summary in diagnostics "+
 			"(can also be set with PULUMI_SUPPRESS_COPILOT_SUMMARY environment variable)")
+
+	cmd.PersistentFlags().StringVar(
+		&copilotSummaryModel, "copilot-summary-model", "gpt-4o-mini",
+		"The LLM model to use for the Copilot summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.")
+
+	cmd.PersistentFlags().IntVar(
+		&copilotSummaryMaxLen, "copilot-summary-maxlen", 80,
+		"Max allowed length of Copilot summary in diagnostics. Allowed values are from 20 to 1920.")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
