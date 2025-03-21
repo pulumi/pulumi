@@ -44,7 +44,7 @@ func (s *Source) getOrgTemplates(
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		s.addError(err)
+		s.addError(fmt.Errorf("could not read the current project: %w", err))
 		return
 	}
 
@@ -54,7 +54,7 @@ func (s *Source) getOrgTemplates(
 	})
 	if err != nil {
 		if !errors.Is(err, backend.MissingEnvVarForNonInteractiveError{}) {
-			s.addError(err)
+			s.addError(fmt.Errorf("could not get the current backend: %w", err))
 		}
 		logging.Infof("could not get a backend for org templates")
 		return
@@ -67,7 +67,7 @@ func (s *Source) getOrgTemplates(
 	logging.Infof("Listing Org Templates from the cloud")
 	user, orgs, _, err := b.CurrentUser()
 	if err != nil {
-		s.addError(err)
+		s.addError(fmt.Errorf("could not get the current user: %w", err))
 		return
 	} else if user == "" {
 		return // No current user - so don't proceed.
@@ -86,7 +86,7 @@ func (s *Source) getOrgTemplates(
 				return
 			}
 		} else if err != nil {
-			s.addError(err)
+			s.addError(fmt.Errorf("list templates: %w", err))
 			logging.Warningf("Failed to get templates from %q: %s", org, err.Error())
 			return
 		} else if orgTemplates.HasAccessError {
@@ -126,33 +126,11 @@ func (s *Source) getOrgTemplates(
 				}
 
 				logging.V(10).Infof("adding template %q", template.Name)
-				s.addTemplate(Template{
-					name:               template.Name,
-					description:        "", // No description present.
-					projectDescription: template.Description,
-					source:             s,
-					download: func(ctx context.Context) (workspace.Template, error) {
-						templateDir, err := os.MkdirTemp("", "pulumi-template-")
-						if err != nil {
-							return workspace.Template{}, err
-						}
-						// Having created a template directory, we now add it to the list of directories to close.
-						s.addCloser(func() error { return os.RemoveAll(templateDir) })
-
-						tarReader, err := b.DownloadTemplate(ctx, org, template.TemplateURL)
-						if err != nil {
-							return workspace.Template{}, err
-						}
-						if err := errors.Join(
-							writeTar(ctx, tarReader.Tar(), templateDir),
-							tarReader.Close(),
-						); err != nil {
-							return workspace.Template{}, err
-						}
-						logging.Infof("downloaded %q into %q", template.Name, templateDir)
-
-						return workspace.LoadTemplate(templateDir)
-					},
+				s.addTemplate(orgTemplate{
+					t:       template,
+					org:     org,
+					source:  s,
+					backend: b,
 				})
 			}
 		}
@@ -162,6 +140,40 @@ func (s *Source) getOrgTemplates(
 		wg.Add(1)
 		go handleOrg(org)
 	}
+}
+
+type orgTemplate struct {
+	t       *apitype.PulumiTemplateRemote
+	org     string
+	source  *Source
+	backend backend.Backend
+}
+
+func (t orgTemplate) Name() string               { return t.t.Name }
+func (t orgTemplate) Description() string        { return "" }
+func (t orgTemplate) ProjectDescription() string { return t.t.ProjectTemplate.Description }
+func (t orgTemplate) Error() error               { return nil }
+func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
+	templateDir, err := os.MkdirTemp("", "pulumi-template-")
+	if err != nil {
+		return workspace.Template{}, err
+	}
+	// Having created a template directory, we now add it to the list of directories to close.
+	t.source.addCloser(func() error { return os.RemoveAll(templateDir) })
+
+	tarReader, err := t.backend.DownloadTemplate(ctx, t.org, t.t.TemplateURL)
+	if err != nil {
+		return workspace.Template{}, err
+	}
+	if err := errors.Join(
+		writeTar(ctx, tarReader.Tar(), templateDir),
+		tarReader.Close(),
+	); err != nil {
+		return workspace.Template{}, err
+	}
+	logging.Infof("downloaded %q into %q", t.t.Name, templateDir)
+
+	return workspace.LoadTemplate(templateDir)
 }
 
 func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {

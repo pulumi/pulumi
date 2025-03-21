@@ -757,7 +757,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 						return template, nil
 					}
 				}
-				return cmdTemplates.Template{}, errors.New("template not found")
+				return nil, errors.New("template not found")
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,

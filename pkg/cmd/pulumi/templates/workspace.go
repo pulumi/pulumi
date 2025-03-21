@@ -25,13 +25,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type getWorkspaceTemplateFunc = func(ctx context.Context, templateNamePathOrURL string, offline bool,
+	templateKind workspace.TemplateKind,
+) (workspace.TemplateRepository, error)
+
 func (s *Source) getWorkspaceTemplates(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope, templateKind workspace.TemplateKind,
 	_ *sync.WaitGroup,
+	get getWorkspaceTemplateFunc,
 ) {
-	repo, err := workspace.RetrieveTemplates(ctx, templateNamePathOrURL, scope == ScopeLocal, templateKind)
+	repo, err := get(ctx, templateNamePathOrURL, scope == ScopeLocal, templateKind)
 	if err != nil {
-		if notFound := new(workspace.TemplateNotFoundError); errors.As(err, notFound) {
+		if notFound := (workspace.TemplateNotFoundError{}); errors.As(err, &notFound) {
 			s.addErrorOnEmpty(notFound)
 			return
 		}
@@ -52,7 +57,7 @@ func (s *Source) getWorkspaceTemplates(
 	s.addCloser(repo.Delete)
 	workspaceTemplates, err := repo.Templates()
 	if err != nil {
-		s.addError(err)
+		s.addError(fmt.Errorf("could not get template from workspace: %w", err))
 		return
 	}
 
@@ -99,15 +104,18 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 
 func (s *Source) addDownloadedTemplates(src []workspace.Template) {
 	for _, t := range src {
-		s.addTemplate(Template{
-			name:               t.Name,
-			description:        t.Description,
-			projectDescription: t.ProjectDescription,
-			source:             s,
-			error:              t.Error,
-			download: func(context.Context) (workspace.Template, error) {
-				return t, nil
-			},
-		})
+		s.addTemplate(workspaceTemplate{t})
 	}
 }
+
+var _ Template = workspaceTemplate{}
+
+type workspaceTemplate struct {
+	t workspace.Template
+}
+
+func (t workspaceTemplate) Name() string                                             { return t.t.Name }
+func (t workspaceTemplate) Description() string                                      { return t.t.Description }
+func (t workspaceTemplate) ProjectDescription() string                               { return t.t.ProjectDescription }
+func (t workspaceTemplate) Error() error                                             { return t.t.Error }
+func (t workspaceTemplate) Download(ctx context.Context) (workspace.Template, error) { return t.t, nil }

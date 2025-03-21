@@ -53,6 +53,9 @@ type Source struct {
 }
 
 // Templates lists the templates available to the [Source].
+//
+// Templates *does not* produce a sorted list. If templates need to be sorted, then the
+// caller is responsible for sorting them.
 func (s *Source) Templates() ([]Template, error) {
 	s.wg.Wait() // Wait to ensure that all templates have been fetched before returning the template list.
 
@@ -68,6 +71,7 @@ func (s *Source) Templates() ([]Template, error) {
 }
 
 func (s *Source) addTemplate(t Template) {
+	contract.Assertf(t != nil, "We should never return nil templates")
 	s.lockOpen("add template")
 	s.templates = append(s.templates, t)
 	s.m.Unlock()
@@ -114,31 +118,12 @@ func (s *Source) Close() error {
 	return errors.Join(errs...)
 }
 
-type Template struct {
-	name               string
-	description        string
-	projectDescription string
-
-	error error
-
-	download func(ctx context.Context) (workspace.Template, error)
-
-	source *Source
-}
-
-func (t Template) Name() string               { return t.name }
-func (t Template) Description() string        { return t.description }
-func (t Template) ProjectDescription() string { return t.projectDescription }
-func (t Template) Error() error               { return t.error }
-
-func (t Template) Download(ctx context.Context) (workspace.Template, error) {
-	// This package should never emit a Template with a nil t.source.
-	contract.Assertf(t.source != nil, "Cannot download a template without a host")
-
-	// This represents a logic bug in either this package or the consuming package.
-	contract.Assertf(!t.source.closed, "Cannot download a template from an already closed host")
-
-	return t.download(ctx)
+type Template interface {
+	Name() string
+	Description() string
+	ProjectDescription() string
+	Error() error
+	Download(ctx context.Context) (workspace.Template, error)
 }
 
 // SearchScope dictates where [New] will search for templates.
@@ -156,6 +141,21 @@ func New(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
 	templateKind workspace.TemplateKind, interactive bool,
 ) *Source {
+	return newImpl(
+		ctx, templateNamePathOrURL, scope,
+		templateKind, interactive,
+		workspace.RetrieveTemplates,
+	)
+}
+
+// The impl for [New].
+//
+// having a separate impl function allows mocking out getWorkspaceTemplates.
+func newImpl(
+	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
+	templateKind workspace.TemplateKind, interactive bool,
+	getWorkspaceTemplates getWorkspaceTemplateFunc,
+) *Source {
 	var source Source
 	ctx, cancel := context.WithCancel(ctx)
 	source.closers = append(source.closers, func() error { cancel(); return nil })
@@ -163,7 +163,7 @@ func New(
 	if scope == ScopeAll || scope == ScopeLocal {
 		source.wg.Add(1)
 		go func() {
-			source.getWorkspaceTemplates(ctx, templateNamePathOrURL, scope, templateKind, &source.wg)
+			source.getWorkspaceTemplates(ctx, templateNamePathOrURL, scope, templateKind, &source.wg, getWorkspaceTemplates)
 			source.wg.Done()
 		}()
 	}
