@@ -70,12 +70,18 @@ func init() {
 						return assert.Equal(l, want, got, "expected property %q to be %v", key, want)
 					}
 
-					AssertPropertyMapMember(l, outputs, "outputTrySuccess", resource.MakeSecret(resource.NewStringProperty("MOK")))
-					assertPropertyMapMember(outputs, "outputTryFailure", resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess", resource.NewStringProperty("OOK"))
-					assertPropertyMapMember(outputs, "dynamicTryFailure", resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess", resource.MakeSecret(resource.NewStringProperty("OOK")))
-					assertPropertyMapMember(outputs, "outputDynamicTryFailure", resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
+						resource.MakeSecret(resource.NewStringProperty("MOK")))
+					assertPropertyMapMember(outputs, "outputTryFailure",
+						resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
+						resource.NewStringProperty("OOK"))
+					assertPropertyMapMember(outputs, "dynamicTryFailure",
+						resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
+						resource.MakeSecret(resource.NewStringProperty("OOK")))
+					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
+						resource.NewStringProperty("fallback"))
 				},
 			},
 		},
