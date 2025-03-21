@@ -235,6 +235,8 @@ func (r DocRef) IsWithin(other DocRef) bool {
 		return other.Type == DocRefTypeFunction && r.Token == other.Token
 	case DocRefTypeTypeProperty:
 		return other.Type == DocRefTypeType && r.Token == other.Token
+	case DocRefTypeResource, DocRefTypeFunction, DocRefTypeType, DocRefTypeUnknown:
+		return false
 	}
 	return false
 }
@@ -248,15 +250,15 @@ func NewDocRef(docRefType DocRefType, token string, property string) DocRef {
 	case DocRefTypeResource:
 		contract.Assertf(token != "", "resource token must be provided")
 		contract.Assertf(property == "", "property name must not be set for resource")
-		ref = fmt.Sprintf("#/resources/%s", url.PathEscape(token))
+		ref = "#/resources/" + url.PathEscape(token)
 	case DocRefTypeFunction:
 		contract.Assertf(token != "", "function token must be provided")
 		contract.Assertf(property == "", "property name must not be set for function")
-		ref = fmt.Sprintf("#/functions/%s", url.PathEscape(token))
+		ref = "#/functions/" + url.PathEscape(token)
 	case DocRefTypeType:
 		contract.Assertf(token != "", "type token must be provided")
 		contract.Assertf(property == "", "property name must not be set for type")
-		ref = fmt.Sprintf("#/types/%s", url.PathEscape(token))
+		ref = "#/types/" + url.PathEscape(token)
 	case DocRefTypeResourceProperty:
 		contract.Assertf(token != "", "resource token must be provided")
 		contract.Assertf(property != "", "property name must be provided")
