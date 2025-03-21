@@ -40,8 +40,12 @@ type Source struct {
 	templates    []Template
 	errorOnEmpty []error
 	errors       []error
-	closers      []func() error
-	closed       bool
+	// closers holds a list of functions to be invoked when the Source is closed.
+	//
+	// closers always has length at least one, and the first closer always cancels the
+	// context associated with fetch operations.
+	closers []func() error
+	closed  bool
 
 	// m should be held whenever Source is mutated.
 	m  sync.Mutex
@@ -96,6 +100,8 @@ func (s *Source) lockOpen(action string) {
 //
 // Close should always be called when [Source] is dropped.
 func (s *Source) Close() error {
+	contract.IgnoreError(s.closers[0]())
+
 	s.wg.Wait() // Wait to ensure that all templates have been fetched so all closers are visible.
 
 	s.lockOpen("close")
