@@ -34,7 +34,7 @@ describe("Schema", function () {
         };
 
         // Generate schema
-        const schema = generateSchema(packageJSON, components, typeDefinitions, packageReferences);
+        const schema = generateSchema(packageJSON, {}, components, typeDefinitions, packageReferences);
 
         // Verify NodeJS dependencies
         assert.deepStrictEqual(schema.language?.nodejs.dependencies, {
@@ -63,5 +63,45 @@ describe("Schema", function () {
             "com.pulumi:azure-native": "4.0.0",
             "com.pulumi:kubernetes": "3.0.0",
         });
+    });
+
+    it("should use the namespace from package.json if there is one", function () {
+        const packageJSON = {
+            name: "@my-namespace/test-provider",
+            version: "1.0.0",
+            description: "Test provider for Pulumi",
+            namespace: "test",
+        };
+
+        const components: Record<string, ComponentDefinition> = {};
+        const typeDefinitions: Record<string, TypeDefinition> = {};
+
+        const schema = generateSchema(packageJSON, {}, components, typeDefinitions, {});
+
+        assert.strictEqual(schema.namespace, "my-namespace");
+        assert.strictEqual(schema.name, "test-provider");
+    });
+
+    it("should override namespace and name from PulumiPlugin.yaml", function () {
+        const packageJSON = {
+            name: "@my-namespace/test-provider",
+            version: "1.0.0",
+            description: "Test provider for Pulumi",
+            namespace: "test",
+        };
+
+        const pulumiYAML = {
+            runtime: "nodejs",
+            namespace: "different-namespace",
+            name: "different-name",
+        };
+
+        const components: Record<string, ComponentDefinition> = {};
+        const typeDefinitions: Record<string, TypeDefinition> = {};
+
+        const schema = generateSchema(packageJSON, pulumiYAML, components, typeDefinitions, {});
+
+        assert.strictEqual(schema.namespace, "different-namespace");
+        assert.strictEqual(schema.name, "different-name");
     });
 });

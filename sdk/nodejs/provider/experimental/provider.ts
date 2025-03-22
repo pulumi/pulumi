@@ -14,6 +14,7 @@
 
 import { readFileSync } from "fs";
 import * as path from "path";
+import * as yaml from "js-yaml";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { ConstructResult, Provider } from "../provider";
 import { Inputs, Input, Output } from "../../output";
@@ -39,6 +40,7 @@ export class ComponentProvider implements Provider {
     private packageJSON: Record<string, any>;
     private path: string;
     private analyzer: Analyzer;
+    private pluginYAML: Record<string, any> = {};
 
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
@@ -63,13 +65,21 @@ export class ComponentProvider implements Provider {
         const absDir = path.resolve(dir);
         const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
         this.packageJSON = JSON.parse(packStr);
+        const pluginStr = readFileSync(`${absDir}/PulumiPlugin.yaml`, { encoding: "utf-8" });
+        this.pluginYAML = yaml.safeLoad(pluginStr) as Record<string, any>;
         this.path = absDir;
         this.analyzer = new Analyzer(this.path, this.packageJSON.name);
     }
 
     async getSchema(): Promise<string> {
         const { components, typeDefinitions, packageReferences } = this.analyzer.analyze();
-        const schema = generateSchema(this.packageJSON, components, typeDefinitions, packageReferences);
+        const schema = generateSchema(
+            this.packageJSON,
+            this.pluginYAML,
+            components,
+            typeDefinitions,
+            packageReferences,
+        );
         return JSON.stringify(schema);
     }
 
