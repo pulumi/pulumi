@@ -558,7 +558,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "getOutput":
 		g.Fgenf(w, "%s.getOutput(%v)", expr.Args[0], expr.Args[1])
 	case "try":
-		g.genTry(w, expr.Args)
+		g.genTry(w, expr)
 	case "can":
 		g.genCan(w, expr.Args)
 	case "rootDirectory":
@@ -578,19 +578,23 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 // expression of the form:
 //
 //	try_(
-//	    // @ts-ignore
 //	    () => <arg1>,
-//	    // @ts-ignore
 //	    () => <arg2>,
 //	    ...
 //	)
-func (g *generator) genTry(w io.Writer, args []model.Expression) {
+func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
+	args := expr.Args
 	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+	_, shouldUseOutputTry := expr.Signature.ReturnType.(*model.OutputType)
 
-	g.Fprintf(w, "try_(")
+	functionName := "try_"
+	if shouldUseOutputTry {
+		functionName = "tryOutput_"
+	}
+
+	g.Fprintf(w, "%s(", functionName)
 	for i, arg := range args {
 		g.Indented(func() {
-			g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
 			g.Fgenf(w, "\n%s() => %v", g.Indent, g.lowerExpression(arg, arg.Type()))
 		})
 		if i < len(args)-1 {

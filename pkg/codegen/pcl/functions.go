@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -436,27 +437,9 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				}
 
 				// Return a type that is a union of all argument types.
-				argTypes := make([]model.Type, len(args))
-				for i, arg := range args {
-					argTypes[i] = arg.Type()
-				}
-				returnType, _ := model.UnifyTypes(argTypes...)
+				returnType := returnTypeFromArgs(args)
 				// If this results in a union of a dynamic type and another type, we should just return output dynamic.
-				var containsDynamic func(t model.Type) bool
-				containsDynamic = func(t model.Type) bool {
-					if u, ok := t.(*model.UnionType); ok {
-						for _, e := range u.ElementTypes {
-							if containsDynamic(e) {
-								return true
-							}
-						}
-					}
-					if o, ok := t.(*model.OutputType); ok {
-						return containsDynamic(o.ElementType)
-					}
-					return t == model.DynamicType
-				}
-				if containsDynamic(returnType) {
+				if typeContainsDynamic(returnType) {
 					returnType = model.NewOutputType(model.DynamicType)
 				}
 
@@ -567,4 +550,25 @@ func newResourceFunction(functionName string) *model.Function {
 			}, nil
 		},
 	))
+}
+
+func returnTypeFromArgs(args []model.Expression) model.Type {
+	argTypes := make([]model.Type, len(args))
+	for i, arg := range args {
+		argTypes[i] = arg.Type()
+	}
+	returnType, _ := model.UnifyTypes(argTypes...)
+	return returnType
+}
+
+func typeContainsDynamic(t model.Type) bool {
+	if u, ok := t.(*model.UnionType); ok {
+		if slices.ContainsFunc(u.ElementTypes, typeContainsDynamic) {
+			return true
+		}
+	}
+	if o, ok := t.(*model.OutputType); ok {
+		return typeContainsDynamic(o.ElementType)
+	}
+	return t == model.DynamicType
 }
