@@ -77,7 +77,13 @@ strict = ["lib/test_types"]
 target-version = "py39"
 
 include = ["lib/pulumi/**.py", "lib/pulumi/**.pyi", "lib/test/**.py"]
-extend-exclude = ["*_pb2.py", "*_pb2.pyi", "*_pb2_grpc.py", "*_pb2_grpc.pyi"]
+extend-exclude = [
+    "*_pb2.py",
+    "*_pb2.pyi",
+    "*_pb2_grpc.py",
+    "*_pb2_grpc.pyi",
+    "lib/test/provider/experimental/testdata/analyzer-errors/syntax-error/component.py",
+]
 
 [tool.ruff.lint]
 exclude = ["lib/test/**.py"]
