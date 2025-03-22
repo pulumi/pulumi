@@ -2,9 +2,14 @@
 
 import * as pulumi from "@pulumi/pulumi";
 
+export interface MyComponentArgs {
+    a: pulumi.Input<string>;
+}
+
 export class MyComponent extends pulumi.ComponentResource {
-    constructor(name: string, args: number, opts?: pulumi.ComponentResourceOptions) {
-        // @ts-ignore
+    constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("provider:index:MyComponent", name, args, opts);
     }
 }
+
+syntax error here
