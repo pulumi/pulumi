@@ -379,26 +379,14 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Delete: rpcReq.Options.CustomTimeouts.Delete,
 				}
 			}
-			if rpcReq.Options.DeleteBeforeReplace != nil {
-				opts.DeleteBeforeReplace = *rpcReq.Options.DeleteBeforeReplace
-			}
+			opts.DeleteBeforeReplace = rpcReq.Options.DeleteBeforeReplace
 			opts.DependsOn = slice.Map(rpcReq.Options.DependsOn, func(d string) Resource {
 				return ctx.newDependencyResource(URN(d))
 			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
-
-			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
-			// optionality that the wire protocol can
-			flatten := func(s *bool) bool {
-				if s == nil {
-					return false
-				}
-				return *s
-			}
-
-			opts.Protect = flatten(rpcReq.Options.Protect)
+			opts.Protect = rpcReq.Options.Protect
 			if rpcReq.Options.Provider != "" {
 				opts.Provider = ctx.newDependencyProviderResourceFromRef(rpcReq.Options.Provider)
 			}
@@ -409,7 +397,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 			}
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
-			opts.RetainOnDelete = flatten(rpcReq.Options.RetainOnDelete)
+			opts.RetainOnDelete = rpcReq.Options.RetainOnDelete
 			opts.Version = rpcReq.Options.Version
 		}
 
@@ -481,10 +469,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 			}
 
-			if opts.DeleteBeforeReplace {
-				v := true
-				rpcRes.Options.DeleteBeforeReplace = &v
-			}
+			rpcRes.Options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
 			marshalToUrn := func(resource Resource) (string, error) {
 				urn, _, _, err := resource.URN().awaitURN(ctx.ctx)
@@ -500,7 +485,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
-			rpcRes.Options.Protect = &opts.Protect
+			rpcRes.Options.Protect = opts.Protect
 
 			if opts.Provider != nil {
 				rpcRes.Options.Provider, err = ctx.resolveProviderReference(opts.Provider)
@@ -521,7 +506,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				}
 			}
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
-			rpcRes.Options.RetainOnDelete = &opts.RetainOnDelete
+			rpcRes.Options.RetainOnDelete = opts.RetainOnDelete
 			rpcRes.Options.Version = opts.Version
 		}
 
