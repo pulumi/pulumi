@@ -10,7 +10,11 @@ First we need to let Pulumi's plugin system know which language runtime should b
 
 ```yaml
 runtime: python
+name: my-provider
 ```
+
+> [!NOTE]
+> The name specified must exactly match the package name in the type string of your component.
 
 > [!NOTE]
 > Python component providers currently only support the pip toolchain with a virtual environment named `venv`. Don't add any other runtime options to the `PulumiPlugin.yaml` file.
@@ -44,14 +48,11 @@ class MyComponent(pulumi.ComponentResource):
 Next, create a `__main__.py` file to host the provider:
 
 ```python
-from pulumi.provider.experimental import Metadata, component_provider_host
+from pulumi.provider.experimental import component_provider_host
 
 if __name__ == "__main__":
-    component_provider_host(Metadata(name="my-provider", version="1.0.0"))
+    component_provider_host()
 ```
-
-> [!NOTE]
-> The name passed to `Metadata` must exactly match the package name in the type string of your component.
 
 The call to `component_provider_host` will start the provider and listen for RPC requests from the Pulumi engine. Any subclasses of `pulumi.ComponentResource` found in any Python source code files in the provider's directory will be exposed as resources by the provider.
 

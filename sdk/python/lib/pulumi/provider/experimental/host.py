@@ -14,16 +14,14 @@
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 from ...provider import main
-from .metadata import Metadata
 from .provider import ComponentProvider
 
 is_hosting = False
 
 
-def component_provider_host(metadata: Optional[Metadata] = None):
+def component_provider_host():
     """
     component_provider_host starts the provider host for the plugin at path
     sys.argv[0]. This will discover all `pulumi.ComponentResource` sublcasses in
@@ -47,7 +45,4 @@ def component_provider_host(metadata: Optional[Metadata] = None):
     path = Path(sys.argv[0])
     args = sys.argv[1:]
 
-    if metadata is None:
-        metadata = Metadata(path.absolute().name, "0.0.1")
-
-    main(ComponentProvider(metadata, path), args)
+    main(ComponentProvider(path), args)

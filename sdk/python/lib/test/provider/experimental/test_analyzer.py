@@ -19,7 +19,6 @@ import typing
 from typing import Any, Optional, TypedDict, Union
 
 import pulumi
-from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.analyzer import (
     Analyzer,
     DuplicateTypeError,
@@ -39,8 +38,6 @@ from pulumi.provider.experimental.component import (
     TypeDefinition,
 )
 
-metadata = Metadata("my-component", "0.0.1")
-
 
 def test_analyze_component():
     class SelfSignedCertificateArgs(TypedDict):
@@ -57,7 +54,7 @@ def test_analyze_component():
 
         def __init__(self, args: SelfSignedCertificateArgs): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(SelfSignedCertificate, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="SelfSignedCertificate",
@@ -89,7 +86,7 @@ def test_analyze_component():
 def test_analyze_component_no_args():
     class NoArgs(pulumi.ComponentResource): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     try:
         component = analyzer.analyze_component(NoArgs, Path("test_analyzer"))
         assert False, f"expected an exception, got {component}"
@@ -104,7 +101,7 @@ def test_analyze_component_empty():
     class Empty(pulumi.ComponentResource):
         def __init__(self, args: dict[str, Any]): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Empty, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Empty",
@@ -150,7 +147,7 @@ def test_analyze_component_plain_types():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -299,7 +296,7 @@ def test_analyze_list_simple():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -360,7 +357,7 @@ def test_analyze_list_complex():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -410,7 +407,7 @@ def test_analyze_list_missing_type():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     try:
         analyzer.analyze_component(Component, Path("test_analyzer"))
     except InvalidListTypeError as e:
@@ -427,7 +424,7 @@ def test_analyze_dict_non_str_key():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     try:
         analyzer.analyze_component(Component, Path("test_analyzer"))
     except InvalidMapKeyError as e:
@@ -441,7 +438,7 @@ def test_analyze_dice_no_types():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     try:
         analyzer.analyze_component(Component, Path("test_analyzer"))
     except InvalidMapTypeError as e:
@@ -464,7 +461,7 @@ def test_analyze_dict_simple():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -535,7 +532,7 @@ def test_analyze_dict_complex():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -597,7 +594,7 @@ def test_analyze_component_complex_type():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -643,7 +640,7 @@ def test_analyze_archive():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -664,7 +661,7 @@ def test_analyze_asset():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -686,7 +683,7 @@ def test_analyze_any():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert component == ComponentDefinition(
         name="Component",
@@ -702,7 +699,7 @@ def test_analyze_any():
 
 
 def test_analyze_descriptions():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     (components, type_definitions) = analyzer.analyze(
         Path(Path(__file__).parent, "testdata", "docstrings")
     )
@@ -779,7 +776,7 @@ def test_analyze_resource_ref():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     try:
         analyzer.analyze_component(Component, Path("test_analyzer"))
     except Exception as e:
@@ -790,7 +787,7 @@ def test_analyze_resource_ref():
 
 
 def test_analyze_bad_type():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
 
     try:
         analyzer.analyze(Path(Path(__file__).parent, "testdata", "bad-type"))
@@ -803,7 +800,7 @@ def test_analyze_bad_type():
 
 
 def test_analyze_duplicate_type():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
 
     try:
         analyzer.analyze(Path(Path(__file__).parent, "testdata", "duplicate-type"))
@@ -818,7 +815,7 @@ def test_analyze_duplicate_type():
 
 
 def test_analyze_duplicate_components():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
 
     try:
         analyzer.analyze(
@@ -846,7 +843,7 @@ def test_analyze_component_self_recursive_complex_type():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert analyzer.type_definitions == {
         "RecursiveType": TypeDefinition(
@@ -898,7 +895,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
     component = analyzer.analyze_component(Component, Path("test_analyzer"))
     assert analyzer.type_definitions == {
         "RecursiveTypeA": TypeDefinition(
@@ -941,7 +938,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
 
 
 def test_analyze_component_mutually_recursive_complex_types_file():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
 
     (components, type_definitions) = analyzer.analyze(
         Path(Path(__file__).parent, "testdata", "mutually-recursive")
@@ -993,7 +990,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
 
 
 def test_analyze_component_excluded_files():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("my-component")
 
     (components, type_definitions) = analyzer.analyze(
         Path(Path(__file__).parent, "testdata", "excluded-files")
