@@ -18,6 +18,8 @@ import * as execa from "execa";
 import { Analyzer } from "../../../provider/experimental/analyzer";
 import { InputOutput } from "../../../provider/experimental/analyzer";
 
+const packageJSON = { name: "provider" };
+
 describe("Analyzer", function () {
     before(() => {
         // We need to link in the pulumi package to the testdata directories so
@@ -35,7 +37,7 @@ describe("Analyzer", function () {
 
     it("infers simple types", async function () {
         const dir = path.join(__dirname, "testdata", "simple-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -56,7 +58,7 @@ describe("Analyzer", function () {
 
     it("infers optional types", async function () {
         const dir = path.join(__dirname, "testdata", "optional-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -75,7 +77,7 @@ describe("Analyzer", function () {
 
     it("infers input types", async function () {
         const dir = path.join(__dirname, "testdata", "input-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -91,7 +93,7 @@ describe("Analyzer", function () {
 
     it("infers complex types", async function () {
         const dir = path.join(__dirname, "testdata", "complex-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -120,7 +122,7 @@ describe("Analyzer", function () {
 
     it("infers self recursive complex types", async function () {
         const dir = path.join(__dirname, "testdata", "recursive-complex-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -143,7 +145,7 @@ describe("Analyzer", function () {
 
     it("infers mutually recursive complex types", async function () {
         const dir = path.join(__dirname, "testdata", "mutually-recursive-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -170,7 +172,7 @@ describe("Analyzer", function () {
 
     it("rejects bad args", async function () {
         const dir = path.join(__dirname, "testdata", "bad-args");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         assert.throws(
             () => analyzer.analyze(),
             /Error: Component 'MyComponent' constructor 'args' parameter must be an interface/,
@@ -179,7 +181,7 @@ describe("Analyzer", function () {
 
     it("infers array types", async function () {
         const dir = path.join(__dirname, "testdata", "array-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -222,7 +224,7 @@ describe("Analyzer", function () {
 
     it("infers map types", async function () {
         const dir = path.join(__dirname, "testdata", "map-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -263,7 +265,7 @@ describe("Analyzer", function () {
 
     it("infers any type", async function () {
         const dir = path.join(__dirname, "testdata", "any-type");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -281,7 +283,7 @@ describe("Analyzer", function () {
 
     it("infers asset/archive types", async function () {
         const dir = path.join(__dirname, "testdata", "asset-archive-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -302,7 +304,7 @@ describe("Analyzer", function () {
 
     it("infers resource references", async function () {
         const dir = path.join(__dirname, "testdata", "resource-reference");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components, packageReferences } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -342,7 +344,7 @@ describe("Analyzer", function () {
 
     it("errors nicely for invalid property types for top-level properties", async function () {
         const dir = path.join(__dirname, "testdata", "bad-property-type", "top-level");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         assert.throws(
             () => analyzer.analyze(),
             (err) =>
@@ -353,7 +355,7 @@ describe("Analyzer", function () {
 
     it("errors nicely for invalid property types for sub-type properties", async function () {
         const dir = path.join(__dirname, "testdata", "bad-property-type", "sub-type");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         assert.throws(
             () => analyzer.analyze(),
             (err) =>
@@ -373,7 +375,7 @@ describe("Analyzer", function () {
 
     it("infers component description", async function () {
         const dir = path.join(__dirname, "testdata", "component-description");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -437,11 +439,81 @@ describe("Analyzer", function () {
             },
         });
     });
+
+    it("finds entry point from package.json main property", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(dir, { name: "provider", main: "src/mymain.ts" }, new Set(["MainComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("throws error when no entry points found", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MainComponent"]));
+
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) => {
+                return (
+                    err.message.includes("No entry points found in") ||
+                    err.message.includes("Failed to find the following components: MainComponent")
+                );
+            },
+        );
+    });
+
+    it("resolves components through complex import chains", async function () {
+        const dir = path.join(__dirname, "testdata", "complex-imports");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["DeepComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            DeepComponent: {
+                name: "DeepComponent",
+                inputs: {
+                    level: { type: "number", plain: true },
+                    name: { type: "string", plain: true, optional: true },
+                },
+                outputs: {
+                    path: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("reports missing components with clear error message", async function () {
+        const dir = path.join(__dirname, "testdata", "simple-types");
+        const analyzer = new Analyzer(
+            dir,
+            packageJSON,
+            new Set(["MyComponent", "NonExistentComponent", "AnotherMissingOne"]),
+        );
+
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) => {
+                return (
+                    err.message.includes(
+                        "Failed to find the following components: NonExistentComponent, AnotherMissingOne",
+                    ) && !err.message.includes("MyComponent")
+                ); // MyComponent exists, so it shouldn't be in the error
+            },
+        );
+    });
 });
 
 describe("formatErrorContext", () => {
     // We need to create an analyzer instance to test the private method
-    const analyzer = new Analyzer(__dirname, "provider");
+    const analyzer = new Analyzer(__dirname, packageJSON, new Set(["MyComponent"]));
     // Use any to access private method
     const formatErrorContext = (analyzer as any).formatErrorContext.bind(analyzer);
 

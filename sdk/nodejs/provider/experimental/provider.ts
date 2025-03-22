@@ -35,10 +35,23 @@ function getInputsFromOutputs<T extends ComponentResource>(resource: T): Outputs
     }
     return result as OutputsToInputs<T>;
 }
+
+export type ComponentResourceConstructor = {
+    // The ComponentResource base class has a 4 argument constructor, but
+    // the user defined component has a 3 argument constructor without the
+    // typestring.
+    new (name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
+};
+
+export interface ComponentProviderOptions {
+    components: ComponentResourceConstructor[];
+    dirname?: string;
+}
+
 export class ComponentProvider implements Provider {
     private packageJSON: Record<string, any>;
     private path: string;
-    private analyzer: Analyzer;
+    private componentConstructors: Record<string, ComponentResourceConstructor>;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
@@ -59,16 +72,27 @@ export class ComponentProvider implements Provider {
         }
     }
 
-    constructor(readonly dir: string) {
-        const absDir = path.resolve(dir);
+    constructor(readonly options: ComponentProviderOptions) {
+        if (!options.dirname) {
+            throw new Error("dirname is required");
+        }
+
+        const absDir = path.resolve(options.dirname);
         const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
         this.packageJSON = JSON.parse(packStr);
         this.path = absDir;
-        this.analyzer = new Analyzer(this.path, this.packageJSON.name);
+        this.componentConstructors = options.components.reduce(
+            (acc, component) => {
+                acc[component.name] = component;
+                return acc;
+            },
+            {} as Record<string, ComponentResourceConstructor>,
+        );
     }
 
     async getSchema(): Promise<string> {
-        const { components, typeDefinitions, packageReferences } = this.analyzer.analyze();
+        const analyzer = new Analyzer(this.path, this.packageJSON, new Set(Object.keys(this.componentConstructors)));
+        const { components, typeDefinitions, packageReferences } = analyzer.analyze();
         const schema = generateSchema(this.packageJSON, components, typeDefinitions, packageReferences);
         return JSON.stringify(schema);
     }
@@ -81,12 +105,11 @@ export class ComponentProvider implements Provider {
     ): Promise<ConstructResult> {
         ComponentProvider.validateResourceType(this.packageJSON.name, type);
         const componentName = type.split(":")[2];
-        const ComponentClass = await this.analyzer.findComponent(componentName);
-        // The ComponentResource base class has a 4 argument constructor, but
-        // the user defined component has a 3 argument constructor without the
-        // typestring.
-        // @ts-ignore
-        const instance = new ComponentClass(name, inputs, options);
+        const constructor = this.componentConstructors[componentName];
+        if (!constructor) {
+            throw new Error(`Component class not found for '${componentName}'`);
+        }
+        const instance = new constructor(name, inputs, options);
         return {
             urn: instance.urn,
             state: getInputsFromOutputs(instance),
@@ -94,10 +117,10 @@ export class ComponentProvider implements Provider {
     }
 }
 
-export function componentProviderHost(dirname?: string): Promise<void> {
+export function componentProviderHost(options: ComponentProviderOptions): Promise<void> {
     const args = process.argv.slice(2);
     // If dirname is not provided, get it from the call stack
-    if (!dirname) {
+    if (!options.dirname) {
         // Get the stack trace
         const stack = new Error().stack;
         // Parse the stack to get the caller's file
@@ -108,12 +131,12 @@ export function componentProviderHost(dirname?: string): Promise<void> {
         const callerLine = stack?.split("\n")[2];
         const match = callerLine?.match(/\((.+):[0-9]+:[0-9]+\)/);
         if (match?.[1]) {
-            dirname = path.dirname(match[1]);
+            options.dirname = path.dirname(match[1]);
         } else {
             throw new Error("Could not determine caller directory");
         }
     }
 
-    const prov = new ComponentProvider(dirname);
+    const prov = new ComponentProvider(options);
     return main(prov, args);
 }
