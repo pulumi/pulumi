@@ -94,7 +94,16 @@ export class ComponentProvider implements Provider {
     }
 }
 
+// Add a flag to track if componentProviderHost has been called
+let isHosting = false;
+
 export function componentProviderHost(dirname?: string): Promise<void> {
+    if (isHosting) {
+        // If we're already hosting, just return and don't start another host.
+        return Promise.resolve();
+    }
+    isHosting = true;
+
     const args = process.argv.slice(2);
     // If dirname is not provided, get it from the call stack
     if (!dirname) {

@@ -22,7 +22,8 @@ import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
-import * as stack from "../../runtime/stack";
+import { componentProviderHost } from "../../provider/experimental/provider";
+import { hasPulumiComponents } from "../../provider/experimental/analyzer";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -275,14 +276,21 @@ ${errMsg}`,
         // loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            // Execute the module and capture any module outputs it exported. If the exported value
-            // was itself a Function, then just execute it.  This allows for exported top level
-            // async functions that pulumi programs can live in.  Finally, await the value we get
-            // back.  That way, if it is async and throws an exception, we properly capture it here
-            // and handle it.
+            // Execute the module and capture any module outputs it exported.
             const reqResult = require(program);
+
+            // If the module exports at least one Pulumi Component, then we boot up a component
+            // provider host to host the component(s).
+            if (hasPulumiComponents(reqResult)) {
+                return await componentProviderHost(program);
+            }
+
+            // If the exported value was itself a Function, then just execute it. This allows for
+            // exported top level async functions that pulumi programs can live in.
             const invokeResult = reqResult instanceof Function ? reqResult() : reqResult;
 
+            // Finally, await the value we get back. That way, if it is async and throws an exception,
+            // we properly capture it here and handle it.
             return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
