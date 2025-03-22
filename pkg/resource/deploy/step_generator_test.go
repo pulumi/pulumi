@@ -495,7 +495,7 @@ func TestGenerateAliases(t *testing.T) {
 					Name: stack,
 				},
 				source: NewNullSource(project),
-			}, updateMode, nil)
+			}, false, updateMode, nil)
 
 			if tt.parentAlias != nil {
 				sg.aliases = map[resource.URN]resource.URN{

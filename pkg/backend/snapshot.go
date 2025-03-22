@@ -517,6 +517,15 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
 		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
 		// have changed.
+		refreshStep := step.(*deploy.RefreshStep)
+		if refreshStep.Modern() {
+			if successful {
+				rsm.manager.markDone(step.Old())
+				rsm.manager.markNew(step.New())
+			}
+			return true
+		}
+
 		return false
 	})
 }

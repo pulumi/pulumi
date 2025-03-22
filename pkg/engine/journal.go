@@ -47,6 +47,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// Build up a list of current resources by replaying the journal.
 	deletes := make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	refreshes := make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
@@ -118,6 +119,14 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpImport, deploy.OpImportReplacement:
 				resources = append(resources, e.Step.New())
 				dones[e.Step.New()] = true
+			case deploy.OpRefresh:
+				step, ok := e.Step.(*deploy.RefreshStep)
+				contract.Assertf(ok, "expected *deploy.RefreshStep, got %T", e.Step)
+				if step.Modern() {
+					resources = append(resources, e.Step.New())
+					dones[e.Step.Old()] = true
+					refreshes[e.Step.Old()] = true
+				}
 			}
 		}
 	}

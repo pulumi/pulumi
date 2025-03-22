@@ -153,8 +153,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		return ex.importResources(callerCtx)
 	}
 
-	// Before doing anything else, optionally refresh each resource in the base checkpoint.
-	if ex.deployment.opts.Refresh {
+	// Before doing anything else, optionally refresh each resource in the base checkpoint. If we're using
+	// refresh programs then we don't do this, we just run the step generator in refresh mode later.
+	if ex.deployment.opts.Refresh && !ex.deployment.opts.RefreshProgram {
 		if err := ex.refresh(callerCtx); err != nil {
 			return nil, err
 		}
@@ -183,12 +184,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if ex.deployment.opts.DestroyProgram {
 		mode = destroyMode
 	}
+	// If were doing a program based refresh we'll get down to here and we need to put the step generator into
+	// refresh mode.
+	refresh := ex.deployment.opts.RefreshProgram && ex.deployment.opts.Refresh
+	if ex.deployment.opts.RefreshOnly {
+		mode = refreshMode
+	}
 	// As well as generating steps from events produced by the source, the step generator can also generate
 	// events in order to support concurrency during step generation (e.g. for parallel diffing). We thus pass
 	// a channel that the step generator can write to in order to yield/resume at these points. We then pump
 	// these events back to the step gen in the main loop with program events.
 	stepGenEvents := make(chan SourceEvent)
-	ex.stepGen = newStepGenerator(ex.deployment, mode, stepGenEvents)
+	ex.stepGen = newStepGenerator(ex.deployment, refresh, mode, stepGenEvents)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -203,6 +210,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		Event SourceEvent
 		Error error
 	}
+	// The step generator can also self-generate events
 	incomingEvents := make(chan nextEvent)
 	go func() {
 		for {
@@ -492,6 +500,14 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	var steps []Step
 	var err error
 	switch e := event.(type) {
+	case ContinueResourceRefreshEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
+		ex.asyncEventsExpected--
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
 	case ContinueResourceDiffEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
 		ex.asyncEventsExpected--
@@ -516,7 +532,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
 	newSteps := slice.Prealloc[Step](len(steps))
-	skipped := false
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
 	}
@@ -524,7 +539,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		if doesStepDependOn(step, ex.skipped) {
 			step.Skip()
 			ex.skipped.Add(step.Res().URN)
-			skipped = true
 			continue
 		}
 		newSteps = append(newSteps, step)
@@ -532,7 +546,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 
 	// If we pass an empty chain to the step executors the workers will shut down.  However we don't want that
 	// if we just skipped a step because its dependencies errored out.  Return early in that case.
-	if skipped && len(newSteps) == 0 {
+	if len(newSteps) == 0 {
 		return nil
 	}
 
@@ -641,7 +655,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, res)
+				step := NewRefreshStep(ex.deployment, nil, res)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			}
@@ -657,7 +671,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, res)
+				step := NewRefreshStep(ex.deployment, nil, res)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
@@ -669,7 +683,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				// loop.
 				for _, dep := range allDeps {
 					if targetsActual.Contains(dep.URN) {
-						step := NewRefreshStep(ex.deployment, res)
+						step := NewRefreshStep(ex.deployment, nil, res)
 						steps = append(steps, step)
 						resourceToStep[res] = step
 
