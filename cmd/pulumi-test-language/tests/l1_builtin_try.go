@@ -29,7 +29,7 @@ func init() {
 			{
 				Config: config.Map{
 					config.MustMakeKey("l1-builtin-try", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
-					config.MustMakeKey("l1-builtin-try", "anObject"): config.NewObjectValue("{\"a\": \"OOK\"}"),
+					config.MustMakeKey("l1-builtin-try", "anObject"): config.NewObjectValue("{\"a\": \"OOK\", \"opt\": null}"),
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
@@ -43,7 +43,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 8, "expected 8 outputs")
+					assert.Len(l, outputs, 10, "expected 10 outputs")
 					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewStringProperty("MOK"))
 					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewStringProperty("fallback"))
 
@@ -82,6 +82,8 @@ func init() {
 						resource.MakeSecret(resource.NewStringProperty("OOK")))
 					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
 						resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewNullProperty())
+					assertPropertyMapMember(outputs, "outputTryNull", resource.NewNullProperty())
 				},
 			},
 		},

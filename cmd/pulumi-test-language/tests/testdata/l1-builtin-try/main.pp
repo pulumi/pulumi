@@ -39,3 +39,12 @@ output "outputDynamicTrySuccess" {
 output "outputDynamicTryFailure" {
   value = try(aSecretObject.b, "fallback")
 }
+
+# Check that explicit null values can be returned
+output "plainTryNull" {
+  value = try(anObject.opt, "fallback")
+}
+
+output "outputTryNull" {
+  value = try(aSecretObject.opt, "fallback")
+}
