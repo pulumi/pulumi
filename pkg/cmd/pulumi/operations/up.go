@@ -120,6 +120,11 @@ func NewUpCmd() *cobra.Command {
 	var planFilePath string
 	var attachDebugger bool
 
+	// Flags for Copilot.
+	var suppressCopilotSummary bool
+	var copilotSummaryModel string
+	var copilotSummaryMaxLen int
+
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
 		ctx context.Context,
@@ -591,6 +596,22 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
+			// Handle suppressCopilotSummary flag and environment variable
+			// If flag is explicitly set (via command line), use that value
+			// Otherwise fall back to environment variable, then default to false
+			var suppressSummary bool
+			if cmd.Flags().Changed("suppress-copilot-summary") {
+				suppressSummary = suppressCopilotSummary
+			} else {
+				suppressSummary = env.SuppressCopilotSummary.Value()
+			}
+			logging.V(7).Infof("suppress-copilot-summary flag=%v, PULUMI_SUPPRESS_COPILOT_SUMMARY=%v, using value=%v",
+				suppressCopilotSummary, env.SuppressCopilotSummary.Value(), suppressSummary)
+			opts.Display.ShowCopilotSummary = !suppressSummary
+
+			opts.Display.CopilotSummaryModel = copilotSummaryModel
+			opts.Display.CopilotSummaryMaxLen = copilotSummaryMaxLen
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
 					ctx,
@@ -739,6 +760,20 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
+
+	// Flags for Copilot.
+	cmd.PersistentFlags().BoolVar(
+		&suppressCopilotSummary, "suppress-copilot-summary", false,
+		"Suppress display of the Copilot summary in diagnostics "+
+			"(can also be set with PULUMI_SUPPRESS_COPILOT_SUMMARY environment variable)")
+
+	cmd.PersistentFlags().StringVar(
+		&copilotSummaryModel, "copilot-summary-model", "gpt-4o-mini",
+		"The LLM model to use for the Copilot summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.")
+
+	cmd.PersistentFlags().IntVar(
+		&copilotSummaryMaxLen, "copilot-summary-maxlen", 80,
+		"Max allowed length of Copilot summary in diagnostics. Allowed values are from 20 to 1920.")
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",

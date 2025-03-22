@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"runtime"
 	"sort"
@@ -172,6 +173,8 @@ type ProgressDisplay struct {
 	shownPolicyLoadEvent bool
 
 	permalink string
+
+	accumulatedLines []string
 }
 
 type opStopwatch struct {
@@ -344,6 +347,12 @@ func RenderProgressEvents(
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
+
+	// Store the line for summarization at the end.
+	if display.accumulatedLines == nil {
+		display.accumulatedLines = make([]string, 0)
+	}
+	display.accumulatedLines = append(display.accumulatedLines, line)
 }
 
 type treeNode struct {
@@ -713,14 +722,72 @@ func (display *ProgressDisplay) printDiagnostics() {
 	}
 
 	// Print a link to Copilot to explain the failure.
-	// Check for SuppressPermalink ensures we don't print the link for DIY backends
+	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
+		if display.failed && !display.isPreview {
+			startTime := time.Now()
+			summary := display.GetDiagnosticsSummary(display.proj, display.opts.CopilotSummaryModel, display.opts.CopilotSummaryMaxLen)
+			// TODO: clear accumulated lines
+			elapsedMs := time.Since(startTime).Milliseconds()
+			display.println("    " + colors.SpecCreateReplacement +
+				"--------------------------------------------------------------------------------")
+			summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
+			display.println("    " + colors.SpecCreateReplacement + summaryHeader)
+			display.println("")
+			// Summary itself provider the prefix for each line
+			display.println(colors.SpecCreateReplacement + summary)
+			display.println("")
+		}
+	}
+
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
-		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+		display.println(
+			"    " + colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset +
+				" Would you like additional help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 		display.println("")
 	}
+}
+
+// extractOrgFromPermalink extracts the organization name from a Pulumi permalink URL.
+// For example, given "https://app.pulumi.com/myorg/project/stack/updates/1",
+// it returns "myorg". Returns empty string if the permalink is invalid or empty.
+func extractOrgFromPermalink(permalink string) string {
+	if permalink == "" {
+		return ""
+	}
+
+	// Parse the URL
+	u, err := url.Parse(permalink)
+	if err != nil {
+		return ""
+	}
+
+	// Split the path into segments and ensure we have enough segments
+	segments := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+	if len(segments) < 1 {
+		return ""
+	}
+
+	// The first segment after the domain is the org name
+	return segments[0]
+}
+
+func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName, model string, maxSummaryLen int) string {
+	// Guard against nil or empty accumulated lines
+	if len(display.accumulatedLines) == 0 {
+		return ""
+	}
+
+	// Extract org from permalink for now as a hack
+	orgID := extractOrgFromPermalink(display.permalink)
+	if orgID == "" {
+		fmt.Fprintf(os.Stderr, "No org ID found in permalink: %s\n", display.permalink)
+		return ""
+	}
+
+	return summarizeErrorWithCopilot(orgID, display.accumulatedLines, "    ", model, maxSummaryLen)
 }
 
 type policyPackSummary struct {

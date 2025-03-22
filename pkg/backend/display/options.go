@@ -57,6 +57,9 @@ type Options struct {
 	SuppressTimings        bool                // true to suppress displaying timings of resource actions
 	SuppressProgress       bool                // true to suppress displaying progress spinner.
 	ShowLinkToCopilot      bool                // true to display a 'explainFailure' link to Copilot.
+	ShowCopilotSummary     bool                // true to display a Copilot summary.
+	CopilotSummaryModel    string              // the Copilot summary model to use.
+	CopilotSummaryMaxLen   int                 // the maximum length of the Copilot summary.
 	ShowSecrets            bool                // true to display secrets in the output.
 	// Low level options
 	term                terminal.Terminal
