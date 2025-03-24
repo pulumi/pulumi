@@ -153,7 +153,7 @@ func (cmd *packagePublishCmd) Run(
 		args.readmePath = readmePath
 	}
 	if args.readmePath == "" {
-		return errors.New("no readme specified, please provide the path to the readme file or add one to the package")
+		return errors.New("no README found. Please add one named README.md to the package, or use --readme to specify the path")
 	}
 
 	var publisher string
