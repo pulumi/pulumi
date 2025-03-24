@@ -16,6 +16,7 @@ package display
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -725,8 +726,12 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
 		if display.failed && !display.isPreview {
-			summary := display.GetDiagnosticsSummary(display.proj, display.opts.CopilotSummaryModel, display.opts.CopilotSummaryMaxLen)
-			display.println(colors.SpecCreateReplacement + summary)
+			summary, err := display.GetDiagnosticsSummary(display.proj, display.opts.CopilotSummaryModel, display.opts.CopilotSummaryMaxLen)
+			if err != nil {
+				display.println("    " + colors.BrightRed + "Error getting Copilot summary: " + err.Error() + colors.Reset)
+				return
+			}
+			display.println(colors.BrightGreen + summary + colors.Reset)
 		}
 	}
 
@@ -764,17 +769,16 @@ func extractOrgFromPermalink(permalink string) string {
 	return segments[0]
 }
 
-func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName, model string, maxSummaryLen int) string {
+func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName, model string, maxSummaryLen int) (string, error) {
 	// Guard against nil or empty accumulated lines
 	if len(display.accumulatedLines) == 0 {
-		return ""
+		return "", nil
 	}
 
 	// Extract org from permalink for now as a hack
 	orgID := extractOrgFromPermalink(display.permalink)
 	if orgID == "" {
-		fmt.Fprintf(os.Stderr, "No org ID found in permalink: %s\n", display.permalink)
-		return ""
+		return "", errors.New("no org ID found in permalink")
 	}
 
 	return summarizeErrorWithCopilot(orgID, display.accumulatedLines, "    ", model, maxSummaryLen)

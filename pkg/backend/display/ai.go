@@ -149,7 +149,7 @@ func summarizeInternal(content string, orgID string, model string, maxSummaryLen
 
 	var atlasResp apitype.CopilotSummarizeUpdateResponse
 	if err := json.Unmarshal(body, &atlasResp); err != nil {
-		return "", fmt.Errorf("got non-JSON response from Atlas: %s", body)
+		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
 	}
 
 	if atlasResp.Error != "" {
@@ -200,9 +200,9 @@ func addPrefixToLines(text, prefix string) string {
 }
 
 // summarize generates a summary of the update output
-func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string, model string, maxSummaryLen int) string {
+func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string, model string, maxSummaryLen int) (string, error) {
 	if len(lines) == 0 {
-		return ""
+		return "", nil
 	}
 
 	// Convert lines to a single string
@@ -214,9 +214,7 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 
 	summary, err := summarizeInternal(linesStr, orgID, model, maxSummaryLen)
 	if err != nil {
-		// TODO: Use proper logging once we have it
-		fmt.Fprintf(os.Stderr, "Error generating summary: %v\n", err)
-		return ""
+		return "", err
 	}
 	elapsedMs := time.Since(startTime).Milliseconds()
 
@@ -224,7 +222,7 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 	summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
 	output := fmt.Sprintf("%s\n%s\n\n%s\n", horizontalLine, summaryHeader, summary)
 
-	return addPrefixToLines(output, outputPrefix)
+	return addPrefixToLines(output, outputPrefix), nil
 }
 
 const truncationNotice = "... (truncated) ..."
