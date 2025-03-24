@@ -712,6 +712,8 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
 func TestNewPythonConvertRequirementsTxt(t *testing.T) {
+	t.Skip("Skipping: https://github.com/pypa/setuptools/issues/4910")
+
 	if runtime.GOOS != "windows" {
 		t.Parallel()
 	}

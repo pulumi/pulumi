@@ -92,6 +92,7 @@ jobs:
   test:
     name: ${{ inputs.test-name }}
     env:
+      PIP_CONSTRAINT: ${{ github.workspace }}/sdk/python/constraints.txt
       PULUMI_HOME: ${{ github.workspace }}/home
       TEST_ALL_DEPS: ""
 

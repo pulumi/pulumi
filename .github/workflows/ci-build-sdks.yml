@@ -41,6 +41,9 @@ jobs:
   build_python_sdk:
     name: python
     runs-on: ubuntu-22.04
+    env:
+      PIP_CONSTRAINT: ${{ github.workspace }}/sdk/python/constraints.txt
+
     steps:
       - uses: actions/checkout@v4
         with:
