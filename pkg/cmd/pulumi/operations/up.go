@@ -122,7 +122,7 @@ func NewUpCmd() *cobra.Command {
 	var attachDebugger bool
 
 	// Flags for Copilot.
-	var suppressCopilotSummary bool
+	var copilotSummary bool
 	var copilotSummaryModel string
 	var copilotSummaryMaxLen int
 
@@ -604,19 +604,19 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
-			// Handle suppressCopilotSummary flag and environment variable
+			// Handle copilot-summary flag and environment variable
 			// If flag is explicitly set (via command line), use that value
 			// Otherwise fall back to environment variable, then default to false
-			var suppressSummary bool
-			if cmd.Flags().Changed("suppress-copilot-summary") {
-				suppressSummary = suppressCopilotSummary
+			var showCopilotSummary bool
+			if cmd.Flags().Changed("copilot-summary") {
+				showCopilotSummary = copilotSummary
 			} else {
-				suppressSummary = env.SuppressCopilotSummary.Value()
+				showCopilotSummary = env.CopilotSummary.Value()
 			}
-			logging.V(7).Infof("suppress-copilot-summary flag=%v, PULUMI_SUPPRESS_COPILOT_SUMMARY=%v, using value=%v",
-				suppressCopilotSummary, env.SuppressCopilotSummary.Value(), suppressSummary)
-			opts.Display.ShowCopilotSummary = !suppressSummary
+			logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
+				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
 
+			opts.Display.ShowCopilotSummary = showCopilotSummary
 			opts.Display.CopilotSummaryModel = copilotSummaryModel
 			opts.Display.CopilotSummaryMaxLen = copilotSummaryMaxLen
 
@@ -771,9 +771,9 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for Copilot.
 	cmd.PersistentFlags().BoolVar(
-		&suppressCopilotSummary, "suppress-copilot-summary", false,
-		"Suppress display of the Copilot summary in diagnostics "+
-			"(can also be set with PULUMI_SUPPRESS_COPILOT_SUMMARY environment variable)")
+		&copilotSummary, "copilot-summary", false,
+		"Display the Copilot summary in diagnostics "+
+			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
 
 	cmd.PersistentFlags().StringVar(
 		&copilotSummaryModel, "copilot-summary-model", "gpt-4o-mini",
