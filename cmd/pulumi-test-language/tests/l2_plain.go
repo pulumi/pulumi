@@ -38,11 +38,8 @@ func init() {
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:plain", provider.Type.String(), "expected plain provider")
-
-					plain := snap.Resources[2]
-					assert.Equal(l, "plain:index:Resource", plain.Type.String(), "expected plain resource")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:plain")
+					plain := RequireSingleResource(l, snap.Resources, "plain:index:Resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"data": resource.NewPropertyMapFromMap(map[string]any{

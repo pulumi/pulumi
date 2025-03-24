@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -34,11 +33,7 @@ func init() {
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
 					RequireStackResource(l, err, changes)
-
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					assert.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-
-					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 
 					outputs := stack.Outputs
 					assert.Len(l, outputs, 4, "expected 4 outputs")

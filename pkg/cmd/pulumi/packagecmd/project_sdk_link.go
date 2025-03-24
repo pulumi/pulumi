@@ -687,6 +687,24 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 		return bind(spec)
 	}
 
+	var overrideNamespace string
+	var overrideName string
+
+	f, err := os.ReadFile(filepath.Join(packageSource, "PulumiPlugin.yaml"))
+	if err == nil {
+		var plugin workspace.PluginProject
+		err = yaml.Unmarshal(f, &plugin)
+		if err != nil {
+			return nil, err
+		}
+		if plugin.Name != "" {
+			overrideName = plugin.Name
+		}
+		if plugin.Namespace != "" {
+			overrideNamespace = plugin.Namespace
+		}
+	}
+
 	p, err := ProviderFromSource(pctx, packageSource)
 	if err != nil {
 		return nil, err
@@ -725,6 +743,12 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	}
 	if pluginSpec.Version != nil {
 		spec.Version = pluginSpec.Version.String()
+	}
+	if overrideName != "" {
+		spec.Name = overrideName
+	}
+	if overrideNamespace != "" {
+		spec.Namespace = overrideNamespace
 	}
 	return bind(spec)
 }

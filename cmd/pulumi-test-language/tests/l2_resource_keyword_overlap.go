@@ -33,8 +33,7 @@ func init() {
 				) {
 					RequireStackResource(l, err, changes)
 
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 
 					classRes := RequireSingleNamedResource(l, snap.Resources, "class")
 					assert.Equal(l, "simple:index:Resource", classRes.Type.String())

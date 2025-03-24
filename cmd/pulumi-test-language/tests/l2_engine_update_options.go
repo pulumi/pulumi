@@ -19,9 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,12 +41,9 @@ func init() {
 					require.Len(l, snap.Resources, 3, "expected 2 resource in snapshot")
 
 					// Check that we have the target in the snapshot, but not the other resource.
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
-					target := snap.Resources[2]
-					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
+					RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
+					target := RequireSingleResource(l, snap.Resources, "simple:index:Resource")
 					require.Equal(l, "target", target.URN.Name(), "expected target resource")
 				},
 			},

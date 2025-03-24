@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -36,10 +35,7 @@ func init() {
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
 					RequireStackResource(l, err, changes)
-
-					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 
 					outputs := stack.Outputs
 
@@ -82,8 +78,30 @@ func init() {
 						resource.MakeSecret(resource.NewStringProperty("OOK")))
 					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
 						resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewNullProperty())
-					assertPropertyMapMember(outputs, "outputTryNull", resource.NewNullProperty())
+					AssertPropertyMapMember(l, outputs, "plainTryNull",
+						resource.NewArrayProperty([]resource.PropertyValue{resource.NewNullProperty()}))
+
+					// This may be secret at the list level, or the element level, or none
+					got, ok := outputs["outputTryNull"]
+					if assert.True(l, ok, "expected property outputTryNull") {
+						// Must equal one of the following
+
+						ok := false
+						for _, want := range []resource.PropertyValue{
+							resource.NewArrayProperty([]resource.PropertyValue{resource.NewNullProperty()}),
+							resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{resource.NewNullProperty()})),
+							resource.NewArrayProperty([]resource.PropertyValue{resource.MakeSecret(resource.NewNullProperty())}),
+						} {
+							if got.DeepEquals(want) {
+								ok = true
+								break
+							}
+						}
+
+						if !ok {
+							assert.Fail(l, "expected property outputTryNull to be one of the expected values, was %v", got)
+						}
+					}
 				},
 			},
 		},
