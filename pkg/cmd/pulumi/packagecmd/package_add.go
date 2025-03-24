@@ -92,7 +92,7 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <provider|schema> [provider-parameter...]",
+		Use:   "add <provider|schema|path> [provider-parameter...]",
 		Args:  cobra.MinimumNArgs(1),
 		Short: "Add a package to your Pulumi project",
 		Long: `Add a package to your Pulumi project.
