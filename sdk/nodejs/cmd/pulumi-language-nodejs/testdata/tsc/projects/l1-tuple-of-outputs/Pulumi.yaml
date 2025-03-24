@@ -1,4 +1,4 @@
-name: l2-builtin-can-with-output
+name: l1-tuple-of-outputs
 runtime:
   name: nodejs
   options:
