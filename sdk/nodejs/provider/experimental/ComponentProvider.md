@@ -252,12 +252,10 @@ plugins:
   providers:
     - name: my-provider
       path: ../provider # Path to the provider directory
-outputs:
-  greeting: ${greeter.greeting}
 ```
 
 > [!NOTE]
-> To import the provider into a YAML project, you will also need to add an explicit resource to your `Pulumi.yaml`:
+> To import the provider into a YAML project, you will also need to add an explicit resource to your `Pulumi.yaml`, as well as the explicit `outputs`:
 >
 > ```yaml
 > resources:
@@ -265,6 +263,8 @@ outputs:
 >     type: my-provider:index:MyComponent
 >     properties:
 >       name: Bonnie
+> outputs:
+>   greeting: ${greeter.greeting}
 > ```
 
 ## Current Limitations
