@@ -62,7 +62,7 @@ const pulumi_kubernetes_operatorRole = new kubernetes.rbac.v1.Role("pulumi_kuber
     apiVersion: "rbac.authorization.k8s.io/v1",
     kind: "Role",
     metadata: {
-        creationTimestamp: undefined,
+        creationTimestamp: null,
         name: "pulumi-kubernetes-operator",
     },
     rules: [

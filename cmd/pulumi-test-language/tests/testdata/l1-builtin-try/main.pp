@@ -40,11 +40,12 @@ output "outputDynamicTryFailure" {
   value = try(aSecretObject.b, "fallback")
 }
 
-# Check that explicit null values can be returned
+# Check that explicit null values can be returned.
+# It's not safe to return a null value directly (see l1-output-null) so wrap these in a list.
 output "plainTryNull" {
-  value = try(anObject.opt, "fallback")
+  value = [try(anObject.opt, "fallback")]
 }
 
 output "outputTryNull" {
-  value = try(aSecretObject.opt, "fallback")
+  value = [try(aSecretObject.opt, "fallback")]
 }

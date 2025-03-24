@@ -703,7 +703,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
-		g.Fgen(w, "undefined")
+		g.Fgen(w, "null")
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
