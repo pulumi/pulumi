@@ -1,20 +1,20 @@
 config "aMap" "map(string)" {}
 
-output "plainCanSuccess" {
+output "plainTrySuccess" {
   value = can(aMap["a"])
 }
 
-output "plainCanFailure" {
+output "plainTryFailure" {
   value = can(aMap["b"])
 }
 
 aSecretMap = secret(aMap)
 
-output "outputCanSuccess" {
+output "outputTrySuccess" {
   value = can(aSecretMap["a"])
 }
 
-output "outputCanFailure" {
+output "outputTryFailure" {
   value = can(aSecretMap["b"])
 }
 
@@ -22,20 +22,29 @@ output "outputCanFailure" {
 # checker), but may fail dynamically, and can thus be used as test inputs to can.
 config "anObject" {}
 
-output "dynamicCanSuccess" {
+output "dynamicTrySuccess" {
   value = can(anObject.a)
 }
 
-output "dynamicCanFailure" {
+output "dynamicTryFailure" {
   value = can(anObject.b)
 }
 
 aSecretObject = secret(anObject)
 
-output "outputDynamicCanSuccess" {
+output "outputDynamicTrySuccess" {
   value = can(aSecretObject.a)
 }
 
-output "outputDynamicCanFailure" {
+output "outputDynamicTryFailure" {
   value = can(aSecretObject.b)
+}
+
+# Check that explicit null values can be returned
+output "plainTryNull" {
+  value = can(anObject.opt)
+}
+
+output "outputTryNull" {
+  value = can(aSecretObject.opt)
 }
