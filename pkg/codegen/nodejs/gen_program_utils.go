@@ -118,7 +118,7 @@ func generateCanFunction(outputCan bool, indent string) string {
 	}
 
 	return fmt.Sprintf(`%[1]sfunction can_(
-%[1]s    fn: () => unknown
+%[1]s    fn: () => any
 %[1]s): boolean {
 %[1]s    try {
 %[1]s        const result = fn();
@@ -135,10 +135,9 @@ func generateCanFunction(outputCan bool, indent string) string {
 
 func generateOutputtyCanFunction(indent string) string {
 	return fmt.Sprintf(`%[1]sfunction canOutput_(
-%[1]s    fn: () => pulumi.Input<unknown>
+%[1]s    fn: () => pulumi.Input<any>
 %[1]s): pulumi.Output<boolean> {
 %[1]s    try {
-%[1]s        // @ts-ignore
 %[1]s        return pulumi.output(fn()).apply(result => result !== undefined);
 %[1]s    } catch {
 %[1]s        return pulumi.output(false);
