@@ -15,8 +15,6 @@
 package tests
 
 import (
-	"sort"
-
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -39,16 +37,11 @@ func init() {
 					err = snap.VerifyIntegrity()
 					require.NoError(l, err, "expected snapshot to be valid")
 
-					sort.Slice(snap.Resources, func(i, j int) bool {
-						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
-					})
-
-					target := snap.Resources[2]
+					target := RequireSingleNamedResource(l, snap.Resources, "targetOnly")
 					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
-					require.Equal(l, "targetOnly", target.URN.Name(), "expected target resource")
-					unrelated := snap.Resources[3]
+
+					unrelated := RequireSingleNamedResource(l, snap.Resources, "unrelated")
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
-					require.Equal(l, "unrelated", unrelated.URN.Name(), "expected target resource")
 					require.Equal(l, 0, len(unrelated.Dependencies), "expected no dependencies")
 				},
 			},
@@ -64,16 +57,10 @@ func init() {
 				) {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
-					sort.Slice(snap.Resources, func(i, j int) bool {
-						return snap.Resources[i].URN.Name() < snap.Resources[j].URN.Name()
-					})
-
-					target := snap.Resources[2]
+					target := RequireSingleNamedResource(l, snap.Resources, "targetOnly")
 					require.Equal(l, "simple:index:Resource", target.Type.String(), "expected simple resource")
-					require.Equal(l, "targetOnly", target.URN.Name(), "expected target resource")
-					unrelated := snap.Resources[3]
+					unrelated := RequireSingleNamedResource(l, snap.Resources, "unrelated")
 					require.Equal(l, "simple:index:Resource", unrelated.Type.String(), "expected simple resource")
-					require.Equal(l, "unrelated", unrelated.URN.Name(), "expected target resource")
 					require.Equal(l, 0, len(unrelated.Dependencies), "expected still no dependencies")
 				},
 			},

@@ -39,8 +39,7 @@ func init() {
 
 					// Check that the large string is in the snapshot
 					largeString := resource.NewStringProperty(strings.Repeat("hello world", 9532509))
-					large := snap.Resources[2]
-					require.Equal(l, "large:index:String", large.Type.String(), "expected large string resource")
+					large := RequireSingleResource(l, snap.Resources, "large:index:String")
 					require.Equal(l,
 						resource.NewStringProperty("hello world"),
 						large.Inputs["value"],
@@ -51,7 +50,7 @@ func init() {
 					)
 
 					// Check the stack output value is as well
-					stack := snap.Resources[0]
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
 				},

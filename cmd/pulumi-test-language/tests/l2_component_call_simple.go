@@ -57,7 +57,7 @@ func init() {
 						"expected default component provider",
 					)
 
-					stack := snap.Resources[0]
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					component1 := RequireSingleNamedResource(l, snap.Resources, "component1")
 
 					// component1 should satisfy the following properties:

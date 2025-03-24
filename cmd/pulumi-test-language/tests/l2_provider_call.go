@@ -59,7 +59,7 @@ func init() {
 						"expected default call provider",
 					)
 
-					stack := snap.Resources[0]
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					// The stack should have the following outputs:
 					//

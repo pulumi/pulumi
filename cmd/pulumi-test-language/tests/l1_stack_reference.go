@@ -37,14 +37,11 @@ func init() {
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
 					RequireStackResource(l, err, changes)
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					require.Len(l, snap.Resources, 3, "expected at least 3 resources")
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-					prov := snap.Resources[1]
-					require.Equal(l, "pulumi:providers:pulumi", prov.Type.String(), "expected a default pulumi provider resource")
-					ref := snap.Resources[2]
-					require.Equal(l, "pulumi:pulumi:StackReference", ref.Type.String(), "expected a stack reference resource")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
+					RequireSingleResource(l, snap.Resources, "pulumi:pulumi:StackReference")
 
 					outputs := stack.Outputs
 

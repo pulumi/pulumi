@@ -38,19 +38,16 @@ func init() {
 					// Check we have the one resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
 						resource.NewStringProperty("Goodbye World"),
 						stack.Outputs["parameterValue"],
 						"parameter value and provider config should be correct")
 
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:goodbye", provider.Type.String(), "expected goodbye provider")
+					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:goodbye")
 					assert.Equal(l, "prov", provider.URN.Name(), "expected explicit provider resource")
 
-					simple := snap.Resources[2]
-					assert.Equal(l, "goodbye:index:Goodbye", simple.Type.String(), "expected Goodbye resource")
+					simple := RequireSingleResource(l, snap.Resources, "goodbye:index:Goodbye")
 					assert.Equal(l, string(provider.URN)+"::"+string(provider.ID), simple.Provider)
 				},
 			},
