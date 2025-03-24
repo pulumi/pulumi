@@ -54,18 +54,6 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 			return nil, false
 		}
 		then.Collection = arg
-
-		switch argExpr := arg.(type) {
-		case *model.IndexExpression:
-			argExpr.Key = then.Key
-		case *model.ScopeTraversalExpression:
-			arg = &model.IndexExpression{
-				Syntax:     then.Syntax,
-				Tokens:     then.Tokens,
-				Collection: then.Collection,
-				Key:        then.Key,
-			}
-		}
 	case *model.ScopeTraversalExpression:
 		if !isParameterReference(parameters, then) {
 			return nil, false

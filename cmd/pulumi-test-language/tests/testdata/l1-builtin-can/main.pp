@@ -1,41 +1,23 @@
-config "aMap" "map(string)" {}
-
-output "plainCanSuccess" {
-  value = can(aMap["a"])
-}
-
-output "plainCanFailure" {
-  value = can(aMap["b"])
-}
-
-aSecretMap = secret(aMap)
-
-output "outputCanSuccess" {
-  value = can(aSecretMap["a"])
-}
-
-output "outputCanFailure" {
-  value = can(aSecretMap["b"])
-}
+str = "str"
 
 # A dynamically typed value, whose field accesses will not be type errors (since the type is not known to the type
 # checker), but may fail dynamically, and can thus be used as test inputs to can.
-config "anObject" {}
+config "object" {}
 
-output "dynamicCanSuccess" {
-  value = can(anObject.a)
+anotherObject = {
+  nested = "nestedValue"
 }
 
-output "dynamicCanFailure" {
-  value = can(anObject.b)
+# This should return false, since object.a is undefined.
+output "canFalse" {
+  value = can(object.a)
 }
 
-aSecretObject = secret(anObject)
-
-output "outputDynamicCanSuccess" {
-  value = can(aSecretObject.a)
+output "canFalseDoubleNested" {
+  value = can(object.a.b)
 }
 
-output "outputDynamicCanFailure" {
-  value = can(aSecretObject.b)
+# This should return true, since anotherObject.nested is defined.
+output "canTrue" {
+  value = can(anotherObject.nested)
 }

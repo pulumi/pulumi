@@ -512,7 +512,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "try":
 		g.genTry(w, expr)
 	case "can":
-		g.genCan(w, expr)
+		g.genCan(w, expr.Args)
 	case "rootDirectory":
 		g.genRootDirectory(w)
 	case "pulumiResourceName":
@@ -579,21 +579,9 @@ func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
 // (which may fail) from happening until the `can_` utility function chooses. This results in an expression of the form:
 //
 //	can_(lambda: <arg>)
-func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
-	args := expr.Args
+func (g *generator) genCan(w io.Writer, args []model.Expression) {
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
-	_, shouldUseOutputCan := expr.Signature.ReturnType.(*model.OutputType)
-
-	functionName := "can_"
-	if shouldUseOutputCan {
-		functionName = "canOutput_"
-	}
-
-	arg := args[0]
-	lambda, temps := g.lowerExpression(arg, arg.Type())
-	g.genTemps(w, temps)
-
-	g.Fgenf(w, "%s(lambda: %v)", functionName, lambda)
+	g.Fgenf(w, "can_(lambda: %v)", args[0])
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {

@@ -36,6 +36,7 @@ func init() {
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					outputs := stack.Outputs
+
 					assert.Len(l, outputs, 4, "expected 4 outputs")
 					AssertPropertyMapMember(l, outputs, "bool", resource.NewBoolProperty(true))
 					AssertPropertyMapMember(l, outputs, "array", resource.NewBoolProperty(true))

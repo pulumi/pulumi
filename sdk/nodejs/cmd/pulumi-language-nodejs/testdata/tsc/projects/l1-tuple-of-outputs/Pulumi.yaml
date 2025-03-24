@@ -1,5 +1,0 @@
-name: l1-tuple-of-outputs
-runtime:
-  name: nodejs
-  options:
-    typescript: false
