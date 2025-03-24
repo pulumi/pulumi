@@ -440,9 +440,111 @@ describe("Analyzer", function () {
         });
     });
 
+    it("finds entry point from package.json exports string", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            { name: "provider", exports: "./src/mymain.js" },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("finds entry point from package.json exports object with dot", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            {
+                name: "provider",
+                exports: {
+                    ".": "./src/mymain.js",
+                },
+            },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("finds entry point from package.json exports with conditions", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            {
+                name: "provider",
+                exports: {
+                    ".": {
+                        default: "./src/mymain.ts",
+                        require: "./lib/index.js", // These won't exist but that's ok since we use default
+                        import: "./lib/index.mjs",
+                    },
+                },
+            },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
     it("finds entry point from package.json main property", async function () {
         const dir = path.join(__dirname, "testdata", "uncommon-main");
-        const analyzer = new Analyzer(dir, { name: "provider", main: "src/mymain.ts" }, new Set(["MainComponent"]));
+        const analyzer = new Analyzer(dir, { name: "provider", main: "./src/mymain.js" }, new Set(["MainComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("prefers exports over main when both are present", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            {
+                name: "provider",
+                exports: "./src/mymain.ts",
+                main: "./wrong/path.ts", // This should be ignored when exports is present
+            },
+            new Set(["MainComponent"]),
+        );
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MainComponent: {
@@ -458,15 +560,15 @@ describe("Analyzer", function () {
     });
 
     it("throws error when no entry points found", async function () {
-        const dir = path.join(__dirname, "testdata", "uncommon-main");
-        const analyzer = new Analyzer(dir, packageJSON, new Set(["MainComponent"]));
+        const tempDir = path.join(__dirname, "testdata", "no-entry");
+        const analyzer = new Analyzer(tempDir, { name: "provider" }, new Set(["MainComponent"]));
 
         assert.throws(
             () => analyzer.analyze(),
             (err) => {
                 return (
-                    err.message.includes("No entry points found in") ||
-                    err.message.includes("Failed to find the following components: MainComponent")
+                    err.message ===
+                    `No entry points found in ${tempDir}. Expected either 'exports' or 'main' in package.json, or an index.ts file in root or src directory.`
                 );
             },
         );

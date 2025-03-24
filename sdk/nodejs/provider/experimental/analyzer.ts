@@ -154,25 +154,53 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     private findProgramEntryPoint(): typescript.SourceFile {
-        // 1. Check package.json for main and module entries
-        for (const field of ["main", "module"]) {
-            if (!this.packageJSON[field]) {
-                continue;
+        // Helper to convert JS paths to TS paths and resolve them
+        const tryResolveSourceFile = (jsPath: string): typescript.SourceFile | undefined => {
+            let tsPath = jsPath.replace(/\.js$/, ".ts");
+            if (!path.isAbsolute(tsPath)) {
+                tsPath = path.join(this.dir, tsPath);
             }
-            let entryPath = this.packageJSON[field];
-            if (!path.isAbsolute(entryPath)) {
-                entryPath = path.join(this.dir, entryPath);
+            const sourceFile = this.program.getSourceFile(tsPath);
+            if (sourceFile) {
+                return sourceFile;
+            }
+            return undefined;
+        };
+
+        // 1. Check package.json for exports field
+        if (this.packageJSON.exports) {
+            let entryPath: string | undefined;
+
+            if (typeof this.packageJSON.exports === "string") {
+                entryPath = this.packageJSON.exports;
+            } else if (typeof this.packageJSON.exports === "object") {
+                const mainExport = this.packageJSON.exports["."];
+                if (typeof mainExport === "string") {
+                    entryPath = mainExport;
+                } else if (typeof mainExport === "object") {
+                    entryPath = mainExport.default || mainExport.require || mainExport.import;
+                }
             }
 
-            const sourceFile = this.program.getSourceFile(entryPath);
+            if (entryPath) {
+                const sourceFile = tryResolveSourceFile(entryPath);
+                if (sourceFile) {
+                    return sourceFile;
+                }
+            }
+        }
+
+        // 2. Check package.json for main field
+        if (this.packageJSON.main) {
+            const sourceFile = tryResolveSourceFile(this.packageJSON.main);
             if (sourceFile) {
                 return sourceFile;
             }
         }
 
-        // 2. Try "main" files in various common locations if we haven't found anything yet
-        const commonPaths = ["index.ts", "src/index.ts", "lib/index.ts", "main.ts", "app.ts"];
-        for (const relativePath of commonPaths) {
+        // 3. Default to index.ts in root or src directory
+        const defaultPaths = ["index.ts", "src/index.ts"];
+        for (const relativePath of defaultPaths) {
             const fullPath = path.join(this.dir, relativePath);
             const sourceFile = this.program.getSourceFile(fullPath);
             if (sourceFile) {
@@ -180,7 +208,9 @@ Please ensure these components are properly imported to your package's entry poi
             }
         }
 
-        throw new Error(`No entry points found in ${this.dir}`);
+        throw new Error(
+            `No entry points found in ${this.dir}. Expected either 'exports' or 'main' in package.json, or an index.ts file in root or src directory.`,
+        );
     }
 
     private collectImportedFiles(sourceFile: typescript.SourceFile, targetFiles: typescript.SourceFile[]): void {
