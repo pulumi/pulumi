@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	LanguageTests["l1-builtin-try"] = LanguageTest{
+	LanguageTests["l1-builtin-can"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				Config: config.Map{
