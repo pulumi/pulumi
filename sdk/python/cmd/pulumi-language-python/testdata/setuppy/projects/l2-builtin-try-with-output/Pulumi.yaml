@@ -1,6 +1,0 @@
-name: l2-builtin-try-with-output
-runtime:
-  name: python
-  options:
-    typechecker: mypy
-    virtualenv: venv

@@ -86,6 +86,7 @@ from .output import (
     Inputs,
     InputType,
     UNKNOWN,
+    UNDEFINED,
     contains_unknowns,
     deferred_output,
 )
@@ -168,6 +169,7 @@ __all__ = [
     "Inputs",
     "InputType",
     "UNKNOWN",
+    "UNDEFINED",
     "contains_unknowns",
     "deferred_output",
     # log

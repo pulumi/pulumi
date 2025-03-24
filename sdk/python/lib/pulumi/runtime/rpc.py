@@ -68,6 +68,8 @@ ERROR_ON_DEPENDENCY_CYCLES_VAR = "PULUMI_ERROR_ON_DEPENDENCY_CYCLES"
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
 
+UNDEFINED = "04da6b54-80e4-46f7-96ec-b56ff0331baA"
+
 _special_sig_key = "4dabf18193072939515e22adb298388d"
 """
 _special_sig_key is sometimes used to encode type identity inside of a map.
@@ -431,6 +433,9 @@ async def serialize_property(
 
     if known_types.is_unknown(value):
         return UNKNOWN
+
+    if known_types.is_undefined(value):
+        return UNDEFINED
 
     if known_types.is_resource(value):
         resource = cast("Resource", value)
@@ -815,9 +820,8 @@ def deserialize_properties(
             continue
 
         value = deserialize_property(v, keep_unknowns)
-        # We treat values that deserialize to "None" as if they don't exist.
-        if value is not None:
-            output[k] = value
+        # We do not treat None values as if they don't exist because null is a valid value.
+        output[k] = value
 
     return output
 
@@ -1053,6 +1057,8 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     if value == UNKNOWN:
         return Unknown() if settings.is_dry_run() or keep_unknowns else None
+    if value == UNDEFINED:
+        return Undefined()
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):

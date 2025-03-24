@@ -349,7 +349,14 @@ class Output(Generic[T_co]):
             raise AttributeError(f"'Output' object has no attribute '{item}'")
 
         def lift(v: Any) -> Any:
-            return UNKNOWN if isinstance(v, Unknown) else getattr(v, item)
+          try:
+            if isinstance(v, Unknown):
+              return UNKNOWN
+            if isinstance(v, Undefined):
+              return UNDEFINED
+            return getattr(v, item)
+          except AttributeError:
+            return UNDEFINED
 
         return self.apply(lift, True)
 
@@ -363,7 +370,14 @@ class Output(Generic[T_co]):
         """
 
         def lift(v: Any) -> Any:
-            return UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key]
+          try:
+            if isinstance(v, Unknown):
+              return UNKNOWN
+            if isinstance(v, Undefined):
+              return UNDEFINED
+            return cast(Any, v)[key]
+          except (KeyError, IndexError):
+            return UNDEFINED
 
         return self.apply(lift, True)
 
@@ -862,6 +876,18 @@ UNKNOWN = Unknown()
 UNKNOWN is the singleton unknown value.
 """
 
+class Undefined:
+    """
+    Undefined represents a value that is undefined in a getattr or getitem operation.
+    """
+
+    def __init__(self):
+        pass
+
+UNDEFINED = Undefined()
+"""
+UNDEFINED is the singleton undefined value.
+"""
 
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)
