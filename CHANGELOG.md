@@ -25,6 +25,9 @@
 - [cli/package] Disambiguate packages with a different namespace than "pulumi"
   [#18418](https://github.com/pulumi/pulumi/pull/18418)
 
+- [cli] Add parallel stack fetching for DIY backends (AWS S3, Azure Blob, GCP Storage) to improve performance when selecting stacks. Configure with PULUMI_DIY_BACKEND_PARALLEL environment variable.
+  [#18909](https://github.com/pulumi/pulumi/pull/18909)
+
 
 ### Bug Fixes
 
