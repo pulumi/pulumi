@@ -725,18 +725,8 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
 		if display.failed && !display.isPreview {
-			startTime := time.Now()
 			summary := display.GetDiagnosticsSummary(display.proj, display.opts.CopilotSummaryModel, display.opts.CopilotSummaryMaxLen)
-			// TODO: clear accumulated lines
-			elapsedMs := time.Since(startTime).Milliseconds()
-			display.println("    " + colors.SpecCreateReplacement +
-				"--------------------------------------------------------------------------------")
-			summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
-			display.println("    " + colors.SpecCreateReplacement + summaryHeader)
-			display.println("")
-			// Summary itself provider the prefix for each line
 			display.println(colors.SpecCreateReplacement + summary)
-			display.println("")
 		}
 	}
 

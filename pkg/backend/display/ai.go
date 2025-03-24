@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -87,8 +88,8 @@ func createSummarizeUpdateRequest(content string, orgID string, model string, ma
 			Skill: "summarizeUpdate",
 			Params: apitype.CopilotSkillParams{
 				PulumiUpdateOutput: content,
-				Model: 			model,
-				MaxLen: 		maxSummaryLen,
+				Model:              model,
+				MaxLen:             maxSummaryLen,
 			},
 		},
 	}
@@ -169,7 +170,7 @@ func summarizeInternal(content string, orgID string, model string, maxSummaryLen
 				}
 				return contentStr, nil
 			}
-			
+
 			// Handle the old format for backward compatibility
 			if msg.Kind == "summarizeUpdate" {
 				var content apitype.CopilotSummarizeUpdateMessage
@@ -209,14 +210,21 @@ func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string
 
 	linesStr = TruncateWithMiddleOut(linesStr, maxCopilotContentLength)
 
+	startTime := time.Now()
+
 	summary, err := summarizeInternal(linesStr, orgID, model, maxSummaryLen)
 	if err != nil {
 		// TODO: Use proper logging once we have it
 		fmt.Fprintf(os.Stderr, "Error generating summary: %v\n", err)
 		return ""
 	}
+	elapsedMs := time.Since(startTime).Milliseconds()
 
-	return addPrefixToLines(summary, outputPrefix)
+	horizontalLine := strings.Repeat("-", 80)
+	summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", elapsedMs)
+	output := fmt.Sprintf("%s\n%s\n\n%s\n", horizontalLine, summaryHeader, summary)
+
+	return addPrefixToLines(output, outputPrefix)
 }
 
 const truncationNotice = "... (truncated) ..."
