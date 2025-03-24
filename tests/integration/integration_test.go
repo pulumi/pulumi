@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1491,8 +1492,12 @@ func TestOverrideComponentNameAndNamespace(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.CWD = filepath.Join(e.RootPath, "python-component")
 	e.RunCommand("python", "-m", "venv", "venv")
-	e.RunCommand(filepath.Join("venv", "bin", "pip"), "install", "-r", "requirements.txt")
-	e.RunCommand(filepath.Join("venv", "bin", "pip"), "install", "-e", filepath.Join(cwd, "..", "..", "sdk", "python"))
+	pythonBin := "./venv/bin/python"
+	if runtime.GOOS == "windows" {
+		pythonBin = ".\\venv\\Scripts\\python.exe"
+	}
+	e.RunCommand(pythonBin, "-m", "pip", "install", "-r", "requirements.txt")
+	e.RunCommand(pythonBin, "-m", "pip", "install", "-e", filepath.Join(cwd, "..", "..", "sdk", "python"))
 
 	e.CWD = filepath.Join(e.RootPath, "ts-consumer")
 
