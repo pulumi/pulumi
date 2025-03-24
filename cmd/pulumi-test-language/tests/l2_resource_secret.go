@@ -38,11 +38,8 @@ func init() {
 					// Check we have the one simple resource in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:secret", provider.Type.String(), "expected secret provider")
-
-					simple := snap.Resources[2]
-					assert.Equal(l, "secret:index:Resource", simple.Type.String(), "expected secret resource")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:secret")
+					secret := RequireSingleResource(l, snap.Resources, "secret:index:Resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"public":  "open",
@@ -59,8 +56,8 @@ func init() {
 							"private": "closed",
 						}))),
 					})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
+					assert.Equal(l, want, secret.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, secret.Inputs, secret.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

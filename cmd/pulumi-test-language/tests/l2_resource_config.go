@@ -40,7 +40,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
-					explicitProvider := snap.Resources[1]
+					explicitProvider := RequireSingleNamedResource(l, snap.Resources, "prov")
 					require.Equal(l, "pulumi:providers:config", explicitProvider.Type.String(), "expected explicit provider resource")
 					expectedOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"name":              "my config",
@@ -56,9 +56,8 @@ func init() {
 					require.Equal(l, expectedInputs, explicitProvider.Inputs)
 					require.Equal(l, expectedOutputs, explicitProvider.Outputs)
 
-					defaultProvider := snap.Resources[2]
+					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_9_0_0_http_/example.com")
 					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
-					require.Equal(l, "default_9_0_0_http_/example.com", defaultProvider.URN.Name())
 					expectedOutputs = resource.NewPropertyMapFromMap(map[string]interface{}{
 						"version": "9.0.0",
 						"name":    "hello",

@@ -37,10 +37,10 @@ func init() {
 					// Check we have the one resource of the namespaced provider in the snapshot, its provider and the stack.
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
-					provider := snap.Resources[1]
+					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:namespaced")
 					require.Equal(l, "pulumi:providers:namespaced", provider.Type.String(), "expected namespaced provider")
 
-					namespaced := snap.Resources[2]
+					namespaced := RequireSingleResource(l, snap.Resources, "namespaced:index:Resource")
 					require.Equal(l, "namespaced:index:Resource", namespaced.Type.String(), "expected namespaced resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]interface{}{"value": true})

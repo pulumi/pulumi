@@ -41,8 +41,7 @@ func init() {
 					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
 					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
 
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:asset-archive")
 
 					// We don't know what order the resources will be in so we map by name
 					resources := map[string]*resource.State{}
