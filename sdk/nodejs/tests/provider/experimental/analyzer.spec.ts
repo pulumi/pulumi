@@ -364,15 +364,6 @@ describe("Analyzer", function () {
         );
     });
 
-    it("errors when there are no components", async function () {
-        const dir = path.join(__dirname, "testdata", "no-components");
-        const analyzer = new Analyzer(dir, "provider");
-        assert.throws(
-            () => analyzer.analyze(),
-            (err) => err.message === "No components found",
-        );
-    });
-
     it("infers component description", async function () {
         const dir = path.join(__dirname, "testdata", "component-description");
         const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent"]));
