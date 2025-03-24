@@ -6,3 +6,6 @@ import { DeepComponent as DeepComponent2 } from "./path2/shortcut";
 
 // Re-export both (should be the same component)
 export { DeepComponent1, DeepComponent2 };
+
+// Only export the component we care about
+export { OtherDeepComponent } from "./src/nested/deeper/deepest/component";

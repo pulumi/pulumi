@@ -75,6 +75,7 @@ export class Analyzer {
     private packageReferences: Record<string, string> = {};
     private docStrings: Record<string, string> = {};
     private componentNames: Set<string>;
+    private programFiles: Set<string>;
 
     constructor(dir: string, packageJSON: Record<string, any>, componentNames: Set<string>) {
         this.dir = dir;
@@ -90,6 +91,7 @@ export class Analyzer {
         });
         this.checker = this.program.getTypeChecker();
         this.componentNames = componentNames;
+        this.programFiles = new Set(this.program.getSourceFiles().map((f) => f.fileName));
     }
 
     public analyze(): AnalyzeResult {
@@ -136,7 +138,7 @@ export class Analyzer {
 
             // If we still have components to find, follow imports from this file
             if (componentNames.size > 0) {
-                this.collectImportedFiles(sourceFile, filesToProcess);
+                filesToProcess.push(...this.collectImportedFiles(sourceFile));
             }
         }
 
@@ -213,12 +215,15 @@ Please ensure these components are properly imported to your package's entry poi
         );
     }
 
-    private collectImportedFiles(sourceFile: typescript.SourceFile, targetFiles: typescript.SourceFile[]): void {
+    private collectImportedFiles(sourceFile: typescript.SourceFile): typescript.SourceFile[] {
+        const importedFiles: typescript.SourceFile[] = [];
+        
         // Find all import declarations
         sourceFile.forEachChild((node) => {
             if (!ts.isImportDeclaration(node)) {
                 return;
             }
+
             // Get the module specifier (the string in the import)
             const moduleSpecifier = node.moduleSpecifier;
             if (!ts.isStringLiteral(moduleSpecifier)) {
@@ -226,10 +231,6 @@ Please ensure these components are properly imported to your package's entry poi
             }
             const importPath = moduleSpecifier.text;
 
-            // Skip node_modules imports
-            if (!importPath.startsWith(".") && !importPath.startsWith("/")) {
-                return;
-            }
             // Resolve the import path relative to the current file
             const resolvedModule = ts.resolveModuleName(
                 importPath,
@@ -237,21 +238,19 @@ Please ensure these components are properly imported to your package's entry poi
                 this.program.getCompilerOptions(),
                 ts.sys,
             );
-
             if (!resolvedModule.resolvedModule) {
                 return;
             }
-            const resolvedFileName = resolvedModule.resolvedModule.resolvedFileName;
+
             // Find the source file for this import
+            const resolvedFileName = resolvedModule.resolvedModule.resolvedFileName;
             const importedFile = this.program.getSourceFile(resolvedFileName);
-            if (
-                importedFile &&
-                !importedFile.fileName.includes("node_modules") &&
-                !importedFile.fileName.endsWith(".d.ts")
-            ) {
-                targetFiles.push(importedFile);
+            if (importedFile && this.programFiles.has(importedFile.fileName)) {
+                importedFiles.push(importedFile);
             }
         });
+
+        return importedFiles;
     }
 
     private analyzeComponent(node: typescript.ClassDeclaration): ComponentDefinition {
