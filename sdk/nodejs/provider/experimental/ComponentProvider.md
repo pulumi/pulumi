@@ -169,10 +169,7 @@ pulumi package add $MY_GIT_REPO@v1.0.0
 ```
 
 > [!NOTE]
-> You still need to run this command even when [running the provider from a
-> local directory](#running-the-provider-from-a-local-directory). In this case,
-> just call `add` with a path to the directory of your component, rather than a
-> Git repository and version.
+> You still need to run this command even when [running the provider from a local directory](#running-the-provider-from-a-local-directory). In this case, just call `add` with a path to the directory of your component, rather than a Git repository and version.
 
 This will download the provider from the git repo, generate the Python SDK for the provider in `sdks/greeting` and add a references to it in `requirements.txt`.
 
@@ -260,8 +257,7 @@ outputs:
 ```
 
 > [!NOTE]
-> To import the provider into a YAML project, you will also need to add an
-> explicit resource to your `Pulumi.yaml`:
+> To import the provider into a YAML project, you will also need to add an explicit resource to your `Pulumi.yaml`:
 >
 > ```yaml
 > resources:
