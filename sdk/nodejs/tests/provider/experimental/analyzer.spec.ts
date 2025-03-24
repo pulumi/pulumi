@@ -611,6 +611,16 @@ describe("Analyzer", function () {
             },
         );
     });
+
+    it("throws error when componentNames is empty", async function () {
+        const dir = path.join(__dirname, "testdata", "simple-types");
+        assert.throws(
+            () => new Analyzer(dir, packageJSON, new Set()),
+            (err) => {
+                return err.message === "componentNames cannot be empty - at least one component name must be provided";
+            },
+        );
+    });
 });
 
 describe("formatErrorContext", () => {

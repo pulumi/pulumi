@@ -78,6 +78,9 @@ export class Analyzer {
     private programFiles: Set<string>;
 
     constructor(dir: string, packageJSON: Record<string, any>, componentNames: Set<string>) {
+        if (componentNames.size === 0) {
+            throw new Error("componentNames cannot be empty - at least one component name must be provided");
+        }
         this.dir = dir;
         this.packageJSON = packageJSON;
         this.providerName = packageJSON.name;
@@ -217,7 +220,7 @@ Please ensure these components are properly imported to your package's entry poi
 
     private collectImportedFiles(sourceFile: typescript.SourceFile): typescript.SourceFile[] {
         const importedFiles: typescript.SourceFile[] = [];
-        
+
         // Find all import declarations
         sourceFile.forEachChild((node) => {
             if (!ts.isImportDeclaration(node)) {
