@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/yaml
+  description: Upgrade pulumi-yaml to 1.15.0
