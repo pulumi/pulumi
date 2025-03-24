@@ -612,7 +612,6 @@ func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
 // We also disable type checking for the arguments, resulting in expression of the form:
 //
 //	can_(
-//	    // @ts-ignore
 //	    () => <arg1
 //	)
 //
@@ -628,7 +627,6 @@ func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
 	}
 
 	arg := args[0]
-	g.Fprintf(w, "// @ts-ignore")
 	g.Fgenf(w, "\n%s(() => %v)", functionName, g.lowerExpression(arg, arg.Type()))
 }
 

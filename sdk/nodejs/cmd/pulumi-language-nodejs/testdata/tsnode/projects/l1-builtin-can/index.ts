@@ -1,10 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 
 function canOutput_(
-    fn: () => pulumi.Input<unknown>
+    fn: () => pulumi.Input<any>
 ): pulumi.Output<boolean> {
     try {
-        // @ts-ignore
         return pulumi.output(fn()).apply(result => result !== undefined);
     } catch {
         return pulumi.output(false);
@@ -13,7 +12,7 @@ function canOutput_(
 
 
 function can_(
-    fn: () => unknown
+    fn: () => any
 ): boolean {
     try {
         const result = fn();
@@ -29,22 +28,26 @@ function can_(
 
 const config = new pulumi.Config();
 const aMap = config.requireObject<Record<string, string>>("aMap");
-export const plainCanSuccess = // @ts-ignore
+export const plainTrySuccess = 
 can_(() => aMap.a);
-export const plainCanFailure = // @ts-ignore
+export const plainTryFailure = 
 can_(() => aMap.b);
 const aSecretMap = pulumi.secret(aMap);
-export const outputCanSuccess = // @ts-ignore
+export const outputTrySuccess = 
 canOutput_(() => aSecretMap.a);
-export const outputCanFailure = // @ts-ignore
+export const outputTryFailure = 
 canOutput_(() => aSecretMap.b);
 const anObject = config.requireObject<any>("anObject");
-export const dynamicCanSuccess = // @ts-ignore
+export const dynamicTrySuccess = 
 canOutput_(() => anObject.a);
-export const dynamicCanFailure = // @ts-ignore
+export const dynamicTryFailure = 
 canOutput_(() => anObject.b);
 const aSecretObject = pulumi.secret(anObject);
-export const outputDynamicCanSuccess = // @ts-ignore
+export const outputDynamicTrySuccess = 
 canOutput_(() => aSecretObject.apply(aSecretObject => aSecretObject.a));
-export const outputDynamicCanFailure = // @ts-ignore
+export const outputDynamicTryFailure = 
 canOutput_(() => aSecretObject.apply(aSecretObject => aSecretObject.b));
+export const plainTryNull = 
+canOutput_(() => anObject.opt);
+export const outputTryNull = 
+canOutput_(() => aSecretObject.apply(aSecretObject => aSecretObject.opt));

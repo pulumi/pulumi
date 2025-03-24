@@ -27,8 +27,8 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-try", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
-					config.MustMakeKey("l1-builtin-try", "anObject"): config.NewObjectValue("{\"a\": \"OOK\", \"opt\": null}"),
+					config.MustMakeKey("l1-builtin-can", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
+					config.MustMakeKey("l1-builtin-can", "anObject"): config.NewObjectValue("{\"a\": \"OOK\", \"opt\": null}"),
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
