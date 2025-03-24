@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1476,4 +1477,30 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
 
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestOverrideComponentNameAndNamespace(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	e.ImportDirectory("component_test")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.CWD = filepath.Join(e.RootPath, "python-component")
+	e.RunCommand("python", "-m", "venv", "venv")
+	pythonBin := "./venv/bin/python"
+	if runtime.GOOS == "windows" {
+		pythonBin = ".\\venv\\Scripts\\python.exe"
+	}
+	e.RunCommand(pythonBin, "-m", "pip", "install", "-r", "requirements.txt")
+	e.RunCommand(pythonBin, "-m", "pip", "install", "-e", filepath.Join(cwd, "..", "..", "sdk", "python"))
+
+	e.CWD = filepath.Join(e.RootPath, "ts-consumer")
+
+	stdout, _ := e.RunCommand("pulumi", "install")
+	require.Contains(t, stdout, "import * as myComponent from \"@overridden-namespace/my-component\"")
 }
