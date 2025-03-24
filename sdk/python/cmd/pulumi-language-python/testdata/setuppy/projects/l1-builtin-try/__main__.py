@@ -6,14 +6,11 @@ def tryOutput_(*fns) -> pulumi.Output[typing.Any]:
 		raise Exception("tryOutput: all parameters failed")
 
 	fn, *rest = fns
-	result_output = None
 	try:
 		result = fn()
-		result_output = pulumi.Output.from_input(result)
+		return pulumi.Output.from_input(result).apply(lambda result: result if result != pulumi.UNDEFINED else tryOutput_(*rest))
 	except:
 		return tryOutput_(*rest)
-
-	return result_output
 
 
 def try_(*fns) -> typing.Any:
@@ -25,35 +22,48 @@ def try_(*fns) -> typing.Any:
 		raise Exception("try: all parameters failed")
 	
 
-str = "str"
-a_list = [
-    "a",
-    "b",
-    "c",
-]
-pulumi.export("nonOutputTry", try_(
-    lambda: a_list[0],
-    lambda: "fallback"
-))
 config = pulumi.Config()
-object = config.require_object("object")
-pulumi.export("trySucceed", tryOutput_(
-    lambda: str,
-    lambda: object["a"],
+a_map = config.require_object("aMap")
+pulumi.export("plainTrySuccess", try_(
+    lambda: a_map["a"],
     lambda: "fallback"
 ))
-pulumi.export("tryFallback1", tryOutput_(
-    lambda: object["a"],
+pulumi.export("plainTryFailure", try_(
+    lambda: a_map["b"],
     lambda: "fallback"
 ))
-pulumi.export("tryFallback2", tryOutput_(
-    lambda: object["a"],
-    lambda: object["b"],
+a_secret_map = pulumi.Output.secret(a_map)
+pulumi.export("outputTrySuccess", tryOutput_(
+    lambda: a_secret_map["a"],
     lambda: "fallback"
 ))
-pulumi.export("tryMultipleTypes", tryOutput_(
-    lambda: object["a"],
-    lambda: object["b"],
-    lambda: 42,
+pulumi.export("outputTryFailure", tryOutput_(
+    lambda: a_secret_map["b"],
+    lambda: "fallback"
+))
+an_object = config.require_object("anObject")
+pulumi.export("dynamicTrySuccess", tryOutput_(
+    lambda: an_object["a"],
+    lambda: "fallback"
+))
+pulumi.export("dynamicTryFailure", tryOutput_(
+    lambda: an_object["b"],
+    lambda: "fallback"
+))
+a_secret_object = pulumi.Output.secret(an_object)
+pulumi.export("outputDynamicTrySuccess", tryOutput_(
+    lambda: a_secret_object["a"],
+    lambda: "fallback"
+))
+pulumi.export("outputDynamicTryFailure", tryOutput_(
+    lambda: a_secret_object["b"],
+    lambda: "fallback"
+))
+pulumi.export("plainTryNull", tryOutput_(
+    lambda: an_object["opt"],
+    lambda: "fallback"
+))
+pulumi.export("outputTryNull", tryOutput_(
+    lambda: a_secret_object["opt"],
     lambda: "fallback"
 ))

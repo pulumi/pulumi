@@ -1,4 +1,0 @@
-ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
-ROOT/artifacts/pulumi_component-13.3.7-py3-none-any.whl
-ROOT/artifacts/pulumi_simple_invoke-10.0.0-py3-none-any.whl
-pyright

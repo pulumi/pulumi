@@ -98,3 +98,11 @@ def is_unknown(obj: Any) -> bool:
     from ..output import Unknown
 
     return isinstance(obj, Unknown)
+
+def is_undefined(obj: Any) -> bool:
+    """
+    Returns true if the given object is an Undefined, false otherwise.
+    """
+    from ..output import Undefined
+
+    return isinstance(obj, Undefined)

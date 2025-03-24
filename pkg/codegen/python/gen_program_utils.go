@@ -76,20 +76,17 @@ func generateTryFunction(outputTry bool, indent string) string {
 	`, indent)
 }
 
-// TODO NOW change back (All of them, this wont work until we do catch)
 func generateOutputtyTry(indent string) string {
+	//nolint:lll
 	return fmt.Sprintf(`%[1]sdef tryOutput_(*fns) -> pulumi.Output[typing.Any]:
 %[1]s	if len(fns) == 0:
 %[1]s		raise Exception("tryOutput: all parameters failed")
 %[1]s
 %[1]s	fn, *rest = fns
-%[1]s	result_output = None
 %[1]s	try:
 %[1]s		result = fn()
-%[1]s		result_output = pulumi.Output.from_input(result)
+%[1]s		return pulumi.Output.from_input(result).apply(lambda result: result if result != pulumi.UNDEFINED else tryOutput_(*rest))
 %[1]s	except:
 %[1]s		return tryOutput_(*rest)
-%[1]s
-%[1]s	return result_output
 %[1]s`, indent)
 }
