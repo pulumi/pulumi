@@ -1,5 +1,7 @@
 name: ts-consumer
 description: A minimal TypeScript Pulumi program
+packages:
+  my-component: ../python-component
 runtime:
   name: nodejs
   options:

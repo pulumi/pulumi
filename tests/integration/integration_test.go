@@ -1501,6 +1501,6 @@ func TestOverrideComponentNameAndNamespace(t *testing.T) {
 
 	e.CWD = filepath.Join(e.RootPath, "ts-consumer")
 
-	stdout, _ := e.RunCommand("pulumi", "package", "add", "../python-component")
+	stdout, _ := e.RunCommand("pulumi", "install")
 	require.Contains(t, stdout, "import * as myComponent from \"@overridden-namespace/my-component\"")
 }
