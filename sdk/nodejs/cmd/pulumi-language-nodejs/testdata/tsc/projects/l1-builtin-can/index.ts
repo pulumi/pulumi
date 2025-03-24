@@ -27,28 +27,24 @@ function can_(
 }
 
 
-const str = "str";
-const aList = [
-    "a",
-    "b",
-    "c",
-];
-export const nonOutputCan = // @ts-ignore
-can_(() => aList[0]);
 const config = new pulumi.Config();
-const object = config.requireObject<any>("object");
-const anotherObject = {
-    nested: "nestedValue",
-};
-export const canFalse = // @ts-ignore
-canOutput_(() => object.a);
-export const canFalseDoubleNested = // @ts-ignore
-canOutput_(() => object.a.b);
-export const canTrue = // @ts-ignore
-can_(() => anotherObject.nested);
-// canOutput should also generate, secrets are l1 functions which return outputs.
-const someSecret = pulumi.secret({
-    a: "a",
-});
-export const canOutput = // @ts-ignore
-canOutput_(() => someSecret.a).apply(can => can ? "true" : "false");
+const aMap = config.requireObject<Record<string, string>>("aMap");
+export const plainCanSuccess = // @ts-ignore
+can_(() => aMap.a);
+export const plainCanFailure = // @ts-ignore
+can_(() => aMap.b);
+const aSecretMap = pulumi.secret(aMap);
+export const outputCanSuccess = // @ts-ignore
+canOutput_(() => aSecretMap.a);
+export const outputCanFailure = // @ts-ignore
+canOutput_(() => aSecretMap.b);
+const anObject = config.requireObject<any>("anObject");
+export const dynamicCanSuccess = // @ts-ignore
+canOutput_(() => anObject.a);
+export const dynamicCanFailure = // @ts-ignore
+canOutput_(() => anObject.b);
+const aSecretObject = pulumi.secret(anObject);
+export const outputDynamicCanSuccess = // @ts-ignore
+canOutput_(() => aSecretObject.apply(aSecretObject => aSecretObject.a));
+export const outputDynamicCanFailure = // @ts-ignore
+canOutput_(() => aSecretObject.apply(aSecretObject => aSecretObject.b));
