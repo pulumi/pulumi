@@ -95,6 +95,10 @@ export class Analyzer {
             }
             this.analyzeFile(sourceFile);
         }
+
+        if (!Object.keys(this.components).length) {
+            throw new Error("No components found");
+        }
         return {
             components: this.components,
             typeDefinitions: this.typeDefinitions,
