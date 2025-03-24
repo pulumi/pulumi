@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/state
-  description: State rename no longer overly strictly validates resources names

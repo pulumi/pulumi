@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine sdk/go
-  description: Allow retain on delete to be overridden back to false by child resources that inherit it

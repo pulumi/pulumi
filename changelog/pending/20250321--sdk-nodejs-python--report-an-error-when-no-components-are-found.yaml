@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs,python
-  description: Report an error when no components are found
