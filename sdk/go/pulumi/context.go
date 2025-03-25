@@ -63,17 +63,19 @@ type contextState struct {
 	callbacksLock sync.Mutex
 	callbacks     *callbackServer
 
-	keepResources            bool       // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues         bool       // true if outputs should be marshaled as strongly-type output values.
-	supportsDeletedWith      bool       // true if deletedWith supported by pulumi
-	supportsAliasSpecs       bool       // true if full alias specification is supported by pulumi
-	supportsTransforms       bool       // true if remote transforms are supported by pulumi
-	supportsInvokeTransforms bool       // true if remote invoke transforms are supported by pulumi
-	supportsParameterization bool       // true if package references and parameterized providers are supported by pulumi
-	rpcs                     int        // the number of outstanding RPC requests.
-	rpcsDone                 *sync.Cond // an event signaling completion of RPCs.
-	rpcsLock                 sync.Mutex // a lock protecting the RPC count and event.
-	rpcError                 error      // the first error (if any) encountered during an RPC.
+	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
+	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
+	supportsTransforms       bool         // true if remote transforms are supported by pulumi
+	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
+	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
+	rpcs                     int          // the number of outstanding RPC requests.
+	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
+	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
+	rpcError                 error        // the first error (if any) encountered during an RPC.
+	registeredOutputsMu      sync.Mutex   // a lock protecting the registeredOutputs map
+	registeredOutputs        map[URN]bool // tracks which resources have had outputs registered
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 }
@@ -190,6 +192,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsTransforms:       supportsTransforms,
 		supportsInvokeTransforms: supportsInvokeTransforms,
 		supportsParameterization: supportsParameterization,
+		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -2453,7 +2456,26 @@ func (ctx *Context) endRPC(err error) {
 }
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
+// If called multiple times for the same resource, subsequent calls will be treated as no-ops.
 func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
+	// Check if the resource already has outputs registered
+	urn, _, _, err := resource.URN().awaitURN(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	// Check if outputs were already registered for this resource
+	ctx.state.registeredOutputsMu.Lock()
+	if ctx.state.registeredOutputs[urn] {
+		// Outputs were already registered, make this a no-op
+		logging.V(9).Infof("RegisterResourceOutputs(%s): outputs already registered, skipping", urn)
+		ctx.state.registeredOutputsMu.Unlock()
+		return nil
+	}
+	// Mark this resource as having outputs registered
+	ctx.state.registeredOutputs[urn] = true
+	ctx.state.registeredOutputsMu.Unlock()
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -2466,11 +2488,6 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			// Signal the completion of this RPC and notify any potential awaiters.
 			ctx.endRPC(err)
 		}()
-
-		urn, _, _, err := resource.URN().awaitURN(context.TODO())
-		if err != nil {
-			return
-		}
 
 		outsResolved, _, err := marshalInput(outs, anyType)
 		if err != nil {
