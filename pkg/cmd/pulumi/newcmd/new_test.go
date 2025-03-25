@@ -15,6 +15,7 @@
 package newcmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -252,6 +254,8 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
+		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	args := newArgs{
@@ -276,6 +280,8 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
+		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -307,6 +313,8 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
+		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -403,6 +411,8 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
+		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
 	})
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
@@ -744,14 +754,14 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			chdir(t, tempdir)
 			uniqueProjectName := filepath.Base(tempdir) + "test"
 
-			chooseTemplateMock := func(templates []workspace.Template, opts display.Options,
-			) (workspace.Template, error) {
+			chooseTemplateMock := func(templates []cmdTemplates.Template, opts display.Options,
+			) (cmdTemplates.Template, error) {
 				for _, template := range templates {
-					if template.Name == tt.prompted {
+					if template.Name() == tt.prompted {
 						return template, nil
 					}
 				}
-				return workspace.Template{}, errors.New("template not found")
+				return nil, errors.New("template not found")
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, info *workspace.ProjectRuntimeInfo,
@@ -817,4 +827,230 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	proj := loadProject(t, tempdir)
 	require.Equal(t, 1, len(proj.Runtime.Options()))
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
+}
+
+//nolint:paralleltest // Sets a global mock backend
+func TestPulumiNewWithOrgTemplates(t *testing.T) {
+	mockBackendInstance(t, &backend.MockBackend{
+		SupportsTemplatesF: func() bool { return true },
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "fred", []string{"org1", "personal"}, nil, nil
+		},
+		ListTemplatesF: func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+			switch orgName {
+			case "org1":
+				return apitype.ListOrgTemplatesResponse{
+					OrgHasTemplates: true,
+					Templates: map[string][]*apitype.PulumiTemplateRemote{
+						"github.com/example/foo": {
+							{
+								SourceName:  "Foo",
+								Name:        "template-1",
+								TemplateURL: "github.com/example/foo/template-1",
+								ProjectTemplate: apitype.ProjectTemplate{
+									DisplayName: "Display 1",
+									Description: "Describe 1",
+								},
+							},
+							{
+								SourceName:  "Foo",
+								Name:        "template-2",
+								TemplateURL: "github.com/example/foo/template-2",
+								ProjectTemplate: apitype.ProjectTemplate{
+									DisplayName: "Display 2",
+									Description: "Describe 2",
+								},
+							},
+						},
+					},
+				}, nil
+			case "personal":
+				return apitype.ListOrgTemplatesResponse{OrgHasTemplates: false}, nil
+			default:
+				return apitype.ListOrgTemplatesResponse{}, fmt.Errorf("unknown org %q", orgName)
+			}
+		},
+	})
+
+	newCmd := NewNewCmd()
+	var stdout, stderr bytes.Buffer
+	newCmd.SetOut(&stdout)
+	newCmd.SetErr(&stderr)
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
+
+	// Check that the normal prefix is still there
+	assert.Contains(t, stdout.String(), `
+Available Templates:
+`)
+	// Check that our org based templates are there
+	assert.Contains(t, stdout.String(), `
+  template-1                         Describe 1
+  template-2                         Describe 2
+`)
+
+	// Check that normal templates are there
+	assertTemplateContains(t, stdout.String(), `
+  aws-csharp                         A minimal AWS C# Pulumi program
+  aws-fsharp                         A minimal AWS F# Pulumi program
+  aws-go                             A minimal AWS Go Pulumi program
+  aws-java                           A minimal AWS Java Pulumi program
+  aws-javascript                     A minimal AWS JavaScript Pulumi program
+  aws-python                         A minimal AWS Python Pulumi program
+  aws-scala                          A minimal AWS Scala Pulumi program
+  aws-typescript                     A minimal AWS TypeScript Pulumi program
+  aws-visualbasic                    A minimal AWS VB.NET Pulumi program
+  aws-yaml                           A minimal AWS Pulumi YAML program
+`)
+	assert.Equal(t, "", stderr.String())
+}
+
+// TestPulumiNewWithoutPulumiAccessToken checks that we won't error if we run `pulumi new
+// --list-templates` without PULUMI_ACCESS_TOKEN set.
+//
+//nolint:paralleltest // Changes environmental variables
+func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	newCmd := NewNewCmd()
+	var stdout, stderr bytes.Buffer
+	newCmd.SetOut(&stdout)
+	newCmd.SetErr(&stderr)
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
+
+	assert.Contains(t, stdout.String(), `
+Available Templates:
+`)
+	assertTemplateContains(t, stdout.String(), `
+  aws-csharp                              A minimal AWS C# Pulumi program
+  aws-fsharp                              A minimal AWS F# Pulumi program
+  aws-go                                  A minimal AWS Go Pulumi program
+  aws-java                                A minimal AWS Java Pulumi program
+  aws-javascript                          A minimal AWS JavaScript Pulumi program
+  aws-python                              A minimal AWS Python Pulumi program
+  aws-scala                               A minimal AWS Scala Pulumi program
+  aws-typescript                          A minimal AWS TypeScript Pulumi program
+  aws-visualbasic                         A minimal AWS VB.NET Pulumi program
+  aws-yaml                                A minimal AWS Pulumi YAML program
+`)
+	assert.Equal(t, "", stderr.String())
+}
+
+//nolint:paralleltest // Sets a global mock backend
+func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
+	mockBackendInstance(t, &backend.MockBackend{
+		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
+	})
+
+	newCmd := NewNewCmd()
+	var stdout, stderr bytes.Buffer
+	newCmd.SetOut(&stdout)
+	newCmd.SetErr(&stderr)
+	newCmd.SetArgs([]string{"--list-templates"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
+
+	// Check that normal templates are there
+	assert.Contains(t, stdout.String(), `
+Available Templates:
+  aiven-go                           A minimal Aiven Go Pulumi program
+`)
+	assert.Equal(t, "", stderr.String())
+}
+
+//nolint:paralleltest // Sets a global mock backend, changes the directory
+func TestPulumiNewOrgTemplate(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+	mockBackendInstance(t, &backend.MockBackend{
+		SupportsTemplatesF: func() bool { return true },
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "fred", []string{"org1"}, nil, nil
+		},
+		ListTemplatesF: func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+			switch orgName {
+			case "org1":
+				return apitype.ListOrgTemplatesResponse{
+					OrgHasTemplates: true,
+					Templates: map[string][]*apitype.PulumiTemplateRemote{
+						"github.com/example/foo": {
+							{
+								SourceName:  "Foo",
+								Name:        "template-1",
+								TemplateURL: "https://github.com/example/foo/template-1",
+								ProjectTemplate: apitype.ProjectTemplate{
+									DisplayName: "Display 1",
+									Description: "Describe 1",
+								},
+							},
+						},
+					},
+				}, nil
+			default:
+				return apitype.ListOrgTemplatesResponse{}, fmt.Errorf("unknown org %q", orgName)
+			}
+		},
+		DownloadTemplateF: func(_ context.Context, orgName, templateSource string) (backend.TarReaderCloser, error) {
+			if orgName != "org1" {
+				return nil, fmt.Errorf("unknown org %q", orgName)
+			}
+			if templateSource != "https://github.com/example/foo/template-1" {
+				return nil, fmt.Errorf("unknown template source %q", templateSource)
+			}
+
+			return backend.MockTarReader{
+				"Pulumi.yaml": {Content: `name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: yaml
+template:
+  description: Describe 1
+
+resources:
+  # Create an AWS resource (S3 Bucket)
+  my-bucket:
+    type: aws:s3:BucketV2
+`},
+			}, nil
+		},
+	})
+
+	newCmd := NewNewCmd()
+	var stdout, stderr bytes.Buffer
+	newCmd.SetOut(&stdout)
+	newCmd.SetErr(&stderr)
+	newCmd.SetArgs([]string{"template-1", "--generate-only", "--yes"})
+	err := newCmd.Execute()
+	require.NoError(t, err)
+
+	proj := loadProject(t, tempdir)
+	require.Equal(t, "yaml", proj.Runtime.Name())
+}
+
+// Assert that actual contains the template rows show in expected.
+//
+// This parsing based comparison is necessary since raw string comparison is unstable
+// under insertion due to white-space changes.
+func assertTemplateContains(t *testing.T, actual, expected string) {
+	parse := func(stdout string) []struct{ name, description string } {
+		stdout = strings.TrimPrefix(stdout, `Available Templates:
+`)
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		out := make([]struct{ name, description string }, len(lines))
+		for i, l := range lines {
+			parts := strings.Fields(l)
+			out[i].name = parts[0]
+			out[i].description = strings.Join(parts[1:], " ")
+		}
+		return out
+	}
+
+	expectedP := parse(expected)
+	actualP := parse(actual)
+	for _, e := range expectedP {
+		assert.Contains(t, actualP, e)
+	}
 }
