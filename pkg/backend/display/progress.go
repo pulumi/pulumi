@@ -723,8 +723,8 @@ func (display *ProgressDisplay) printDiagnostics() {
 
 	if wroteDiagnosticHeader {
 		hookOuput := []string{}
-		for _, hook := range display.opts.DisplayHooks {
-			summaryLines := hook(DisplayHookContext{
+		for _, hook := range display.opts.RenderHooks {
+			summaryLines := hook(RenderHookContext{
 				Failed:      display.failed,
 				IsPreview:   display.isPreview,
 				OutputLines: display.accumulatedLines,

@@ -18,37 +18,71 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// extractSummaryFromResponse parses the Atlas API response and extracts the summary content
-func extractSummaryFromResponse(atlasResp apitype.CopilotSummarizeUpdateResponse) (string, error) {
-	for _, msg := range atlasResp.ThreadMessages {
-		if msg.Role == "assistant" {
-			// Handle the new format where content is a string directly
-			if msg.Kind == "response" {
-				// Unmarshal the RawMessage into a string
-				var contentStr string
-				if err := json.Unmarshal(msg.Content, &contentStr); err != nil {
-					// If it's not a simple string, it might be a raw JSON object
-					// Return it as a string representation
-					return string(msg.Content), nil
-				}
-				return contentStr, nil
-			}
+// createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
+func createSummarizeUpdateRequest(
+	lines []string,
+	orgID string,
+	model string,
+	maxSummaryLen int,
+) apitype.CopilotSummarizeUpdateRequest {
+	// Convert lines to a single string
+	content := strings.Join(lines, "\n")
+	content = TruncateWithMiddleOut(content, maxCopilotContentLength)
 
-			// Handle the old format for backward compatibility
-			if msg.Kind == "summarizeUpdate" {
-				var content apitype.CopilotSummarizeUpdateMessage
-				if err := json.Unmarshal(msg.Content, &content); err != nil {
-					return "", fmt.Errorf("parsing summary content: %w", err)
-				}
-				if content.Summary == "" {
-					return "", errors.New("no summary generated")
-				}
-				return content.Summary, nil
+	return apitype.CopilotSummarizeUpdateRequest{
+		State: apitype.CopilotState{
+			Client: apitype.CopilotClientState{
+				CloudContext: apitype.CopilotCloudContext{
+					OrgID: orgID,
+					URL:   "https://app.pulumi.com",
+				},
+			},
+		},
+		DirectSkillCall: apitype.CopilotDirectSkillCall{
+			Skill: "summarizeUpdate",
+			Params: apitype.CopilotSkillParams{
+				PulumiUpdateOutput: content,
+				Model:              model,
+				MaxLen:             maxSummaryLen,
+			},
+		},
+	}
+}
+
+// extractSummaryFromResponse parses the Copilot API response and extracts the summary content
+func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateResponse) (string, error) {
+	for _, msg := range copilotResp.ThreadMessages {
+		if msg.Role != "assistant" {
+			continue
+		}
+
+		// Handle the new format where content is a string directly
+		if msg.Kind == "response" {
+			// Unmarshal the RawMessage into a string
+			var contentStr string
+			if err := json.Unmarshal(msg.Content, &contentStr); err != nil {
+				// If it's not a simple string, it might be a raw JSON object
+				// Return it as a string representation
+				return string(msg.Content), nil
 			}
+			return contentStr, nil
+		}
+
+		// Handle the old format for backward compatibility
+		if msg.Kind == "summarizeUpdate" {
+			var content apitype.CopilotSummarizeUpdateMessage
+			if err := json.Unmarshal(msg.Content, &content); err != nil {
+				return "", fmt.Errorf("parsing summary content: %w", err)
+			}
+			if content.Summary == "" {
+				return "", errors.New("no summary generated")
+			}
+			return content.Summary, nil
 		}
 	}
 	return "", errors.New("no assistant message found in response")

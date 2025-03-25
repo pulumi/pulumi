@@ -1370,47 +1370,26 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	return res, err
 }
 
-func getCopilotApiPath() string {
+func getCopilotAPIPath() string {
 	return "/api/ai/chat/preview"
 }
 
-// createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
-func createSummarizeUpdateRequest(
-	content string,
+// SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
+func (pc *Client) SummarizeErrorWithCopilot(
+	ctx context.Context,
 	orgID string,
+	lines []string,
 	model string,
 	maxSummaryLen int,
-) apitype.CopilotSummarizeUpdateRequest {
-	return apitype.CopilotSummarizeUpdateRequest{
-		State: apitype.CopilotState{
-			Client: apitype.CopilotClientState{
-				CloudContext: apitype.CopilotCloudContext{
-					OrgID: orgID,
-					URL:   "https://app.pulumi.com",
-				},
-			},
-		},
-		DirectSkillCall: apitype.CopilotDirectSkillCall{
-			Skill: "summarizeUpdate",
-			Params: apitype.CopilotSkillParams{
-				PulumiUpdateOutput: content,
-				Model:              model,
-				MaxLen:             maxSummaryLen,
-			},
-		},
-	}
-}
-
-// doCopilotSummarizeUpdate handles the summarization of content using the Pulumi Service
-func (pc *Client) SummarizeErrorWithCopilot(ctx context.Context, orgID string, content string, model string, maxSummaryLen int) (string, error) {
-	request := createSummarizeUpdateRequest(content, orgID, model, maxSummaryLen)
+) (string, error) {
+	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen)
 
 	jsonData, err := json.Marshal(request)
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pc.apiURL+getCopilotApiPath(), bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pc.apiURL+getCopilotAPIPath(), bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
@@ -1431,16 +1410,16 @@ func (pc *Client) SummarizeErrorWithCopilot(ctx context.Context, orgID string, c
 		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
-	var atlasResp apitype.CopilotSummarizeUpdateResponse
-	if err := json.Unmarshal(body, &atlasResp); err != nil {
+	var copilotResp apitype.CopilotSummarizeUpdateResponse
+	if err := json.Unmarshal(body, &copilotResp); err != nil {
 		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
 	}
 
-	if atlasResp.Error != "" {
-		return "", fmt.Errorf("atlas API error: %s\n%s", atlasResp.Error, atlasResp.Details)
+	if copilotResp.Error != "" {
+		return "", fmt.Errorf("copilot API error: %s\n%s", copilotResp.Error, copilotResp.Details)
 	}
 
-	return extractSummaryFromResponse(atlasResp)
+	return extractSummaryFromResponse(copilotResp)
 }
 
 func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {

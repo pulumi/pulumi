@@ -65,22 +65,22 @@ type Options struct {
 	term                terminal.Terminal
 	DeterministicOutput bool // true to disable timing-based rendering
 	RenderOnDirty       bool // true to always render frames when marked dirty
-	DisplayHooks        []DisplayHook
+	RenderHooks         []RenderHook
 }
 
-type DisplayHookContext struct {
+type RenderHookContext struct {
 	Failed      bool
 	IsPreview   bool
 	OutputLines []string
 }
-type DisplayHook func(ctx DisplayHookContext) []string
+type RenderHook func(ctx RenderHookContext) []string
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {
 	opts.IsInteractive = isInteractive
 	return opts
 }
 
-func (opts Options) WithAppendedDisplayHook(hook DisplayHook) Options {
-	opts.DisplayHooks = append(opts.DisplayHooks, hook)
+func (opts Options) WithAppendedDisplayHook(hook RenderHook) Options {
+	opts.RenderHooks = append(opts.RenderHooks, hook)
 	return opts
 }

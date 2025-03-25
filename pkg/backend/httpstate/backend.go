@@ -1129,15 +1129,15 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.Display.ShowCopilotSummary {
-		op.Opts.Display = op.Opts.Display.WithAppendedDisplayHook(func(displayCtx display.DisplayHookContext) []string {
-			if displayCtx.Failed && !displayCtx.IsPreview {
-				summary, err := b.SummarizeErrorWithCopilot(ctx, displayCtx.OutputLines, stack, op.Opts.Display)
-				if err != nil {
-					return []string{fmt.Sprintf("Error summarizing error: %s", err)}
-				}
-				return summary
+		op.Opts.Display = op.Opts.Display.WithAppendedDisplayHook(func(displayCtx display.RenderHookContext) []string {
+			if !displayCtx.Failed || displayCtx.IsPreview {
+				return nil
 			}
-			return nil
+			summary, err := b.SummarizeErrorWithCopilot(ctx, displayCtx.OutputLines, stack, op.Opts.Display)
+			if err != nil {
+				return []string{fmt.Sprintf("Error summarizing update output: %s", err)}
+			}
+			return summary
 		})
 	}
 
@@ -1263,25 +1263,19 @@ func (b *cloudBackend) SummarizeErrorWithCopilot(
 
 	model := opts.CopilotSummaryModel
 	maxSummaryLen := opts.CopilotSummaryMaxLen
-
-	// Convert lines to a single string
-	linesStr := strings.Join(lines, "\n")
-
-	// FIXME: re-add this
-	// linesStr = TruncateWithMiddleOut(linesStr, maxCopilotContentLength)
 	startTime := time.Now()
-	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, linesStr, model, maxSummaryLen)
+	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, lines, model, maxSummaryLen)
 	if err != nil {
 		return nil, err
 	}
 
 	ellapsedMs := time.Since(startTime).Milliseconds()
 
-	horizontalLine := strings.Repeat("-", 80)
-	summaryLines := strings.Split(summary, "\n")
+	horizontalRule := strings.Repeat("-", 80)
 	summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", ellapsedMs)
+	summaryLines := strings.Split(summary, "\n")
 	emptyLine := ""
-	return append([]string{horizontalLine, summaryHeader, emptyLine}, summaryLines...), nil
+	return append([]string{horizontalRule, summaryHeader, emptyLine}, summaryLines...), nil
 }
 
 type updateMetadata struct {
