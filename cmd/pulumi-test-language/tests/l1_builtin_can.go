@@ -27,7 +27,8 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-can", "object"): config.NewObjectValue("{}"),
+					config.MustMakeKey("l1-builtin-can", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
+					config.MustMakeKey("l1-builtin-can", "anObject"): config.NewObjectValue("{\"a\": \"OOK\", \"opt\": null}"),
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
@@ -38,10 +39,47 @@ func init() {
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 3, "expected 3 outputs")
-					AssertPropertyMapMember(l, outputs, "canFalse", resource.NewBoolProperty(false))
-					AssertPropertyMapMember(l, outputs, "canFalseDoubleNested", resource.NewBoolProperty(false))
-					AssertPropertyMapMember(l, outputs, "canTrue", resource.NewBoolProperty(true))
+					assert.Len(l, outputs, 10, "expected 10 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewBoolProperty(true))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewBoolProperty(false))
+
+					// The output failure variants may or may not be secret, depending on the language. We allow either.
+					assertPropertyMapMember := func(
+						props resource.PropertyMap,
+						key string,
+						want resource.PropertyValue,
+					) (ok bool) {
+						l.Helper()
+
+						got, ok := props[resource.PropertyKey(key)]
+						if !assert.True(l, ok, "expected property %q", key) {
+							return false
+						}
+
+						if got.DeepEquals(want) {
+							return true
+						}
+						if got.DeepEquals(resource.MakeSecret(want)) {
+							return true
+						}
+
+						return assert.Equal(l, want, got, "expected property %q to be %v", key, want)
+					}
+
+					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
+						resource.MakeSecret(resource.NewBoolProperty(true)))
+					assertPropertyMapMember(outputs, "outputTryFailure",
+						resource.NewBoolProperty(false))
+					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
+						resource.NewBoolProperty(true))
+					assertPropertyMapMember(outputs, "dynamicTryFailure",
+						resource.NewBoolProperty(false))
+					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
+						resource.MakeSecret(resource.NewBoolProperty(true)))
+					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
+						resource.NewBoolProperty(false))
+					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewBoolProperty(true))
+					assertPropertyMapMember(outputs, "outputTryNull", resource.NewBoolProperty(true))
 				},
 			},
 		},

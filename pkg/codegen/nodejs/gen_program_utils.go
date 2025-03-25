@@ -52,25 +52,8 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 		_, outputTry := function.Signature.ReturnType.(*model.OutputType)
 		return generateTryFunction(outputTry, indent), true
 	case "can":
-		// Much like try, but instead of returning the result only returns true or
-		// false if the one argument has no error.  The "too safe" problem
-		// described above exists for can as well.
-		return fmt.Sprintf(`%[1]sfunction can_(
-%[1]s    fn: () => unknown
-%[1]s): boolean {
-%[1]s    try {
-%[1]s        const result = fn();
-%[1]s        if (result === undefined) {
-%[1]s            return false;
-%[1]s        }
-%[1]s        return true;
-%[1]s    } catch (e) {
-%[1]s        return false;
-%[1]s    }
-%[1]s}
-`,
-			indent,
-		), true
+		_, outputCan := function.Signature.ReturnType.(*model.OutputType)
+		return generateCanFunction(outputCan, indent), true
 	default:
 		return "", false
 	}
@@ -121,6 +104,44 @@ func generateOutputtyTryFunction(indent string) string {
 %[1]s		return tryOutput_(...rest);
 %[1]s	}
 %[1]s	throw new Error("try: all parameters failed");
+%[1]s}
+`, indent)
+}
+
+// Much like try, but instead of returning the result only returns true or
+// false (or a pulumi output of a boolean if the inputs were pulumi output
+// types) if the one argument has no error.  The "too safe" problem described
+// for try exists for can as well.
+func generateCanFunction(outputCan bool, indent string) string {
+	if outputCan {
+		return generateOutputtyCanFunction(indent)
+	}
+
+	return fmt.Sprintf(`%[1]sfunction can_(
+%[1]s    fn: () => any
+%[1]s): boolean {
+%[1]s    try {
+%[1]s        const result = fn();
+%[1]s        if (result === undefined) {
+%[1]s            return false;
+%[1]s        }
+%[1]s        return true;
+%[1]s    } catch (e) {
+%[1]s        return false;
+%[1]s    }
+%[1]s}
+`, indent)
+}
+
+func generateOutputtyCanFunction(indent string) string {
+	return fmt.Sprintf(`%[1]sfunction canOutput_(
+%[1]s    fn: () => pulumi.Input<any>
+%[1]s): pulumi.Output<boolean> {
+%[1]s    try {
+%[1]s        return pulumi.output(fn()).apply(result => result !== undefined);
+%[1]s    } catch {
+%[1]s        return pulumi.output(false);
+%[1]s    }
 %[1]s}
 `, indent)
 }
