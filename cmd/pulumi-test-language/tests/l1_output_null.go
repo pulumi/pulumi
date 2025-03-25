@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,10 +35,12 @@ func init() {
 					outputs := stack.Outputs
 
 					assert.Len(l, outputs, 1, "expected 1 outputs")
-					// TODO: Ideally we'd allow for nulls in the output map and in nested maps, but to do that
-					// we need to work out how to handle optional fields in resource properties as well. Is it
-					// ok to start sending nulls for optional fields in the resource properties?
+					// TODO(https://github.com/pulumi/pulumi/issues/19015): Ideally we'd allow for nulls in the output
+					// map and in nested maps, but to do that we need to work out how to handle optional fields in
+					// resource properties as well. Is it ok to start sending nulls for optional fields in the resource
+					// properties?
 
+					// These lines are commented out to show what _should_ be here, but isn't because of the issue above.
 					// AssertPropertyMapMember(l, outputs, "null", resource.NewNullProperty())
 					AssertPropertyMapMember(l, outputs, "array", resource.NewArrayProperty([]resource.PropertyValue{
 						resource.NewNullProperty(),
