@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add `GetRequiredPackages` to the Python Automation API
