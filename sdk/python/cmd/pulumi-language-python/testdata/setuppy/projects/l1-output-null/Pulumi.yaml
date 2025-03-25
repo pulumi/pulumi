@@ -1,0 +1,6 @@
+name: l1-output-null
+runtime:
+  name: python
+  options:
+    typechecker: mypy
+    virtualenv: venv

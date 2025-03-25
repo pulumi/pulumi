@@ -947,7 +947,7 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			}
 		}
 
-		if elmType != nil {
+		if elmType != nil && elmType != model.NoneType {
 			argTypeName := g.argumentTypeName(elmType, isInput)
 			if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
 				if argTypeName == "pulumi.Any" {

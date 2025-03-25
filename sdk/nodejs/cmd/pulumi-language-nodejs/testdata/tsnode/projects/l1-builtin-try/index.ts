@@ -71,11 +71,11 @@ export const outputDynamicTryFailure = tryOutput_(
     () => aSecretObject.apply(aSecretObject => aSecretObject.b),
     () => "fallback"
 );
-export const plainTryNull = tryOutput_(
+export const plainTryNull = [tryOutput_(
     () => anObject.opt,
     () => "fallback"
-);
-export const outputTryNull = tryOutput_(
+)];
+export const outputTryNull = [tryOutput_(
     () => aSecretObject.apply(aSecretObject => aSecretObject.opt),
     () => "fallback"
-);
+)];
