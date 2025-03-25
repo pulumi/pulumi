@@ -2429,8 +2429,6 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 
-	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
-
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
@@ -2485,8 +2483,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider")
-
-	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
 
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
