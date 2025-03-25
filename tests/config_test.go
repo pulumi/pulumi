@@ -414,7 +414,7 @@ func TestConfigCommandsUsingEnvironments(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	integration.CreateBasicPulumiRepo(e)
 	e.RunCommand("pulumi", "org", "set-default", getTestOrg())

@@ -60,7 +60,7 @@ func TestLanguageNewSmoke(t *testing.T) {
 			//nolint:paralleltest
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
@@ -86,7 +86,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("testdata/random_yaml")
 
@@ -124,7 +124,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			}
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			e.ImportDirectory("testdata/random_pp")
 
@@ -159,7 +159,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 			}
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			e.ImportDirectory("testdata/bad_random_pp")
 
@@ -192,7 +192,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 			}
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			e.ImportDirectory("testdata/component_pp")
 
@@ -230,7 +230,7 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 			t.Parallel()
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			e.ImportDirectory("testdata/simple_schema")
 			e.RunCommand("pulumi", "package", "gen-sdk", "--language", runtime, "schema.json")
@@ -243,7 +243,7 @@ func TestPackageGetSchema(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -315,7 +315,7 @@ func TestPackageGetMappingToFile(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -343,7 +343,7 @@ func TestPackageGetMapping(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -372,7 +372,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 			//nolint:paralleltest
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
@@ -394,7 +394,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 //nolint:paralleltest // changes env vars and plugin cache
 func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("testdata/aws_tf")
 
@@ -427,7 +427,7 @@ func TestPreviewImportFile(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("testdata/import_node")
 
@@ -481,7 +481,7 @@ func TestRelativePluginPath(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
 	// work.
@@ -502,7 +502,7 @@ func TestPluginRun(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
@@ -526,7 +526,7 @@ func TestInstall(t *testing.T) {
 			t.Parallel()
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			// Make sure the random provider is not installed locally
 			// so that we can test the `install` command works.
@@ -608,7 +608,7 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 				//nolint:paralleltest
 
 				e := ptesting.NewEnvironment(t)
-				defer deleteIfNotFailed(e)
+				defer e.DeleteIfNotFailed()
 
 				projectDir := filepath.Join(e.RootPath, "project")
 				err := os.Mkdir(projectDir, 0o700)
@@ -695,7 +695,7 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 			//nolint:paralleltest
 
 			e := ptesting.NewEnvironment(t)
-			defer deleteIfNotFailed(e)
+			defer e.DeleteIfNotFailed()
 
 			// `new` wants to work in an empty directory but our use of local url means we have a
 			// ".pulumi" directory at root.
@@ -744,7 +744,7 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestImportVersionSmoke(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// `new` wants to work in an empty directory but our use of local url means we have a
 	// ".pulumi" directory at root.
@@ -780,7 +780,7 @@ func TestImportVersionSmoke(t *testing.T) {
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestRefreshUpgradeWarning(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// `new` wants to work in an empty directory but our use of local url means we have a
 	// ".pulumi" directory at root.
@@ -821,7 +821,7 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarning(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// `new` wants to work in an empty directory but our use of local url means we have a
 	// ".pulumi" directory at root.
@@ -873,7 +873,7 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// `new` wants to work in an empty directory but our use of local url means we have a
 	// ".pulumi" directory at root.
@@ -918,7 +918,7 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 
 func testImportParameterizedSmoke(t *testing.T, withUp bool) {
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// `new` wants to work in an empty directory but our use of local url means we have a
 	// ".pulumi" directory at root.
