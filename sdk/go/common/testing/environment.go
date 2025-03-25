@@ -16,6 +16,7 @@ package testing
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -76,11 +77,15 @@ func WriteYarnRCForTest(root string) error {
 
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
-	root := t.TempDir()
+	//nolint:usetesting // We control the lifecycle of the environment.
+	root, err := os.MkdirTemp("", "test-env")
+	assert.NoError(t, err, "creating temp directory")
 	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
 	// We always use a clean PULUMI_HOME for each environment to avoid any potential conflicts with plugins or config.
-	home := t.TempDir()
+	//nolint:usetesting // We control the lifecycle of the environment.
+	home, err := os.MkdirTemp("", "test-env-home")
+	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
@@ -115,26 +120,29 @@ func (e *Environment) ImportDirectory(path string) {
 	}
 }
 
-// DeleteEnvironment deletes the environment's RootPath, and everything underneath it.
+// DeleteEnvironment deletes the environment's HomePath and RootPath, and everything underneath them.
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
-	err := os.RemoveAll(e.RootPath)
-	if err != nil {
-		// In CI, Windows sometimes lags behind in marking a resource
-		// as unused. This causes otherwise passing tests to fail.
-		// So ignore errors during cleanup.
-		e.Logf("error cleaning up test directory %q: %v", e.RootPath, err)
+	for _, path := range []string{e.HomePath, e.RootPath} {
+		if err := os.RemoveAll(path); err != nil {
+			// In CI, Windows sometimes lags behind in marking a resource
+			// as unused. This causes otherwise passing tests to fail.
+			// So ignore errors during cleanup.
+			e.Logf("error cleaning up test directory %q: %v", path, err)
+		}
 	}
 }
 
-// DeleteEnvironment deletes the environment's RootPath, and everything
-// underneath it. It tolerates failing to delete the environment.
+// DeleteEnvironment deletes the environment's HomePath and RootPath, and everything
+// underneath them. It tolerates failing to delete the environment.
 func (e *Environment) DeleteEnvironmentFallible() error {
 	e.Helper()
-	return os.RemoveAll(e.RootPath)
+	err1 := os.RemoveAll(e.HomePath)
+	err2 := os.RemoveAll(e.RootPath)
+	return errors.Join(err1, err2)
 }
 
-// DeleteIfNotFailed deletes the environment's RootPath if the test hasn't failed. Otherwise
+// DeleteIfNotFailed deletes the environment's HomePath and RootPath if the test hasn't failed. Otherwise
 // keeps the files around for aiding debugging.
 func (e *Environment) DeleteIfNotFailed() {
 	if !e.T.Failed() {
