@@ -41,7 +41,8 @@ output "outputDynamicTryFailure" {
 }
 
 # Check that explicit null values can be returned.
-# It's not safe to return a null value directly (see l1-output-null) so wrap these in a list.
+# It's not safe to return a null value directly (see l1-output-null 
+# and https://github.com/pulumi/pulumi/issues/19015) so wrap these in a list.
 output "plainTryNull" {
   value = [try(anObject.opt, "fallback")]
 }
