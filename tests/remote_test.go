@@ -90,7 +90,7 @@ func TestInvalidRemoteFlags(t *testing.T) {
 				t.Parallel()
 
 				e := ptesting.NewEnvironment(t)
-				defer deleteIfNotFailed(e)
+				defer e.DeleteIfNotFailed()
 
 				// Remote flags currently require PULUMI_EXPERIMENTAL.
 				e.Env = append(e.Env, "PULUMI_EXPERIMENTAL=true")
@@ -121,7 +121,7 @@ func TestRemoteLifecycle(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	// Remote flags currently require PULUMI_EXPERIMENTAL.
 	e.Env = append(e.Env, "PULUMI_EXPERIMENTAL=true")

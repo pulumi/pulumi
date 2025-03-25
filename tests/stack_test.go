@@ -114,7 +114,7 @@ func TestStackCommands(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer deleteIfNotFailed(e)
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
@@ -783,7 +783,7 @@ func TestNewStackConflictingOrg(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 
 	project, err := resource.NewUniqueHex("test-name-", 8, -1)
 	require.NoError(t, err)

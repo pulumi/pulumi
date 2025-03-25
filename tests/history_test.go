@@ -21,14 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// deleteIfNotFailed deletes the files in the testing environment if the testcase has
-// not failed. (Otherwise they are left to aid debugging.)
-func deleteIfNotFailed(e *ptesting.Environment) {
-	if !e.T.Failed() {
-		e.DeleteEnvironment()
-	}
-}
-
 // assertHasNoHistory runs `pulumi history` and confirms an error that the stack has not
 // ever been updated.
 func assertHasNoHistory(e *ptesting.Environment) {
@@ -55,7 +47,7 @@ func TestHistoryCommand(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer deleteIfNotFailed(e)
+		defer e.DeleteIfNotFailed()
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		out, err := e.RunCommandExpectError("pulumi", "stack", "history")
@@ -68,7 +60,7 @@ func TestHistoryCommand(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer deleteIfNotFailed(e)
+		defer e.DeleteIfNotFailed()
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "no-updates-test")
@@ -80,7 +72,7 @@ func TestHistoryCommand(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer deleteIfNotFailed(e)
+		defer e.DeleteIfNotFailed()
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_dependencies")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())

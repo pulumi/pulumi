@@ -28,7 +28,7 @@ func TestLogin(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
-		defer deleteIfNotFailed(e)
+		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
 

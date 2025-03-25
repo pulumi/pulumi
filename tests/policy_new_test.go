@@ -23,6 +23,6 @@ import (
 func TestPolicyNewNonInteractive(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
-	defer deleteIfNotFailed(e)
+	defer e.DeleteIfNotFailed()
 	e.RunCommand("pulumi", "policy", "new", "aws-typescript", "--force", "--generate-only")
 }
