@@ -88,23 +88,6 @@ export class Analyzer {
     }
 
     public analyze(): AnalyzeResult {
-        // Check for any errors in the source files
-        const diagnostics = ts.getPreEmitDiagnostics(this.program);
-        if (diagnostics.length > 0) {
-            const formattedDiagnostics = diagnostics
-                .map((diagnostic) => {
-                    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-                    if (diagnostic.file) {
-                        const { line, character } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!);
-                        const fileName = path.relative(this.program.getCurrentDirectory(), diagnostic.file.fileName);
-                        return `${fileName}(${line + 1},${character + 1}): ${message}`;
-                    }
-                    return message;
-                })
-                .join("\n");
-            throw new Error(`TypeScript errors detected:\n${formattedDiagnostics}`);
-        }
-
         const sourceFiles = this.program.getSourceFiles();
         for (const sourceFile of sourceFiles) {
             if (sourceFile.fileName.includes("node_modules") || sourceFile.fileName.endsWith(".d.ts")) {

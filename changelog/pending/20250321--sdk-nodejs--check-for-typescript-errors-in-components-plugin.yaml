@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Check for typescript errors in components plugin

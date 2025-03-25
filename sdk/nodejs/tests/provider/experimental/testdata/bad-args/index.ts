@@ -4,7 +4,6 @@ import * as pulumi from "@pulumi/pulumi";
 
 export class MyComponent extends pulumi.ComponentResource {
     constructor(name: string, args: number, opts?: pulumi.ComponentResourceOptions) {
-        // @ts-ignore
         super("provider:index:MyComponent", name, args, opts);
     }
 }
