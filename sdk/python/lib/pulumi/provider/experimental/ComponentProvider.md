@@ -44,16 +44,16 @@ class MyComponent(pulumi.ComponentResource):
 Next, create a `__main__.py` file to host the provider:
 
 ```python
-from pulumi.provider.experimental import Metadata, component_provider_host
+from pulumi.provider.experimental import component_provider_host
 
 if __name__ == "__main__":
-    component_provider_host(Metadata(name="my-provider", version="1.0.0"))
+    component_provider_host(name="my-provider", namespace="my-namespace")
 ```
 
 > [!NOTE]
-> The name passed to `Metadata` must exactly match the package name in the type string of your component.
+> The name specified must exactly match the package name in the type string of your component.
 
-The call to `component_provider_host` will start the provider and listen for RPC requests from the Pulumi engine. Any subclasses of `pulumi.ComponentResource` found in any Python source code files in the provider's directory will be exposed as resources by the provider.
+The call to `component_provider_host` will start the provider and listen for RPC requests from the Pulumi engine. Any subclasses of `pulumi.ComponentResource` found in any Python source code files in the provider's directory will be exposed as resources by the provider. The namespace parameter is optional, and is used to provide namespacing in the component. If none is given, the default "pulumi" namespace will be used.
 
 At this point, we can run the provider, but it does not yet do anything useful. To get data in and out of the provider we need to define the inputs and outputs of the component. Inputs are infered from the `args` parameter of the component's constructor. Add a new type `MyComponentArgs` derived from `TypedDict` to represent the arguments, and add it as an argument to the constructor.
 

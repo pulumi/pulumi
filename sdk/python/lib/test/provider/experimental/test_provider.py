@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
 from typing import Any, Optional, TypedDict
 from pulumi.errors import InputPropertyError
 from pulumi.output import Input
-from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.provider import ComponentProvider
 from pulumi.resource import ComponentResource, ResourceOptions
 
@@ -50,7 +48,7 @@ def test_map_inputs():
             super().__init__("component:index:MyComponent", name, {}, opts)
             self.register_outputs({})
 
-    provider = ComponentProvider(Metadata("test-provider", "0.0.1"), [MyComponent])
+    provider = ComponentProvider([MyComponent], "my-provider")
     component_def = provider._component_defs["MyComponent"]  # type: ignore
 
     try:
@@ -100,7 +98,7 @@ def test_map_complex_inputs():
         ):
             super().__init__("mycomp:index:MyComponent", name, {}, opts)
 
-    provider = ComponentProvider(Metadata("test-provider", "0.0.1"), [MyComponent])
+    provider = ComponentProvider([MyComponent], "my-provider")
     component_def = provider._component_defs["MyComponent"]  # type: ignore
 
     inputs = {

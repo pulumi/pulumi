@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from typing import Optional
+from pulumi.provider.experimental.schema import generate_schema
 
 
-@dataclass
-class Metadata:
-    """
-    Metadata about the provider, such as the name and version.
-    """
+def test_generate_schema_with_namespace():
+    schema = generate_schema("name", "namespace", {}, {})
+    assert schema.name == "name"
+    assert schema.namespace == "namespace"
 
-    name: str
-    """The name of the provider"""
-    version: Optional[str] = None
-    """The version of the provider"""
-    display_name: Optional[str] = None
-    """The display name of the provider"""
+
+def test_generate_schema_no_namespace():
+    schema = generate_schema("name", None, {}, {})
+    assert schema.name == "name"
+    assert schema.namespace is None

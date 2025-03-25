@@ -1955,8 +1955,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "provider", schema["name"].(string))
-	require.Equal(t, "1.2.3", schema["version"].(string))
-	require.Equal(t, "My Component Provider", schema["displayName"].(string))
+	require.Equal(t, "provider", schema["displayName"].(string))
 
 	// Check the component schema
 	expectedJSON := `{

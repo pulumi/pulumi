@@ -13,19 +13,19 @@
 # limitations under the License.
 
 import sys
-from pathlib import Path
 from typing import Optional
 
 from ...resource import ComponentResource
 from ...provider import main
-from .metadata import Metadata
 from .provider import ComponentProvider
 
 is_hosting = False
 
 
 def component_provider_host(
-    components: list[type[ComponentResource]], metadata: Optional[Metadata] = None
+    components: list[type[ComponentResource]],
+    name: str,
+    namespace: Optional[str] = None,
 ):
     """
     component_provider_host starts the provider and hosts the passed in components.
@@ -47,10 +47,6 @@ def component_provider_host(
     # When the languge runtime runs the plugin, the first argument is the path
     # to the plugin's installation directory. This is followed by the engine
     # address and other optional arguments flags, like `--logtostderr`.
-    path = Path(sys.argv[0])
     args = sys.argv[1:]
 
-    if metadata is None:
-        metadata = Metadata(path.absolute().name, "0.0.1")
-
-    main(ComponentProvider(metadata, components), args)
+    main(ComponentProvider(components, name, namespace), args)
