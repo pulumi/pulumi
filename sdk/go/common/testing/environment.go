@@ -16,7 +16,6 @@ package testing
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -131,15 +130,6 @@ func (e *Environment) DeleteEnvironment() {
 			e.Logf("error cleaning up test directory %q: %v", path, err)
 		}
 	}
-}
-
-// DeleteEnvironment deletes the environment's HomePath and RootPath, and everything
-// underneath them. It tolerates failing to delete the environment.
-func (e *Environment) DeleteEnvironmentFallible() error {
-	e.Helper()
-	err1 := os.RemoveAll(e.HomePath)
-	err2 := os.RemoveAll(e.RootPath)
-	return errors.Join(err1, err2)
 }
 
 // DeleteIfNotFailed deletes the environment's HomePath and RootPath if the test hasn't failed. Otherwise
