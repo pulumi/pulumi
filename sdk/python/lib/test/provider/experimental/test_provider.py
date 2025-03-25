@@ -13,9 +13,12 @@
 # limitations under the License.
 
 from pathlib import Path
+from typing import Any, Optional, TypedDict
 from pulumi.errors import InputPropertyError
+from pulumi.output import Input
 from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.provider import ComponentProvider
+from pulumi.resource import ComponentResource, ResourceOptions
 
 
 def test_validate_resource_type_invalid():
@@ -33,10 +36,21 @@ def test_validate_resource_type_valid():
 
 
 def test_map_inputs():
-    provider = ComponentProvider(
-        Metadata("test-provider", "0.0.1"),
-        Path(Path(__file__).parent, "testdata", "missing-input"),
-    )
+    class RequiredTypeNested(TypedDict):
+        c: Input[str]
+
+    class RequiredType(TypedDict):
+        b: Input[RequiredTypeNested]
+
+    class Args(TypedDict):
+        a: Input[RequiredType]
+
+    class MyComponent(ComponentResource):
+        def __init__(self, name: str, args: Args, opts: ResourceOptions):
+            super().__init__("component:index:MyComponent", name, {}, opts)
+            self.register_outputs({})
+
+    provider = ComponentProvider(Metadata("test-provider", "0.0.1"), [MyComponent])
     component_def = provider._component_defs["MyComponent"]  # type: ignore
 
     try:
@@ -59,10 +73,34 @@ def test_map_inputs():
 
 
 def test_map_complex_inputs():
-    provider = ComponentProvider(
-        Metadata("test-provider", "0.0.1"),
-        Path(Path(__file__).parent, "testdata", "complex-args"),
-    )
+    class SubArgs(TypedDict):
+        two_words: str
+        optional_prop: Optional[str]
+        input_prop: Input[Optional[str]]
+        any_prop: Optional[Any]
+
+    class ComplexSubArgs(TypedDict):
+        one_item: SubArgs
+        many_items: list[SubArgs]
+        key_items: dict[str, SubArgs]
+
+    class MyComponentArgs(TypedDict):
+        string_prop: str
+        int_prop: Input[int]
+        list_prop: Input[list[SubArgs]]
+        object_prop: Input[dict[str, SubArgs]]
+        complex_prop: ComplexSubArgs
+
+    class MyComponent(ComponentResource):
+        def __init__(
+            self,
+            name: str,
+            args: MyComponentArgs,
+            opts: Optional[ResourceOptions] = None,
+        ):
+            super().__init__("mycomp:index:MyComponent", name, {}, opts)
+
+    provider = ComponentProvider(Metadata("test-provider", "0.0.1"), [MyComponent])
     component_def = provider._component_defs["MyComponent"]  # type: ignore
 
     inputs = {
