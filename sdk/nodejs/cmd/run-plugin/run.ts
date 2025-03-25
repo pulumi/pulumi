@@ -22,8 +22,7 @@ import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
-import { componentProviderHost } from "../../provider/experimental/provider";
-import { hasPulumiComponents } from "../../provider/experimental/analyzer";
+import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -279,10 +278,11 @@ ${errMsg}`,
             // Execute the module and capture any module outputs it exported.
             const reqResult = require(program);
 
-            // If the module exports at least one Pulumi Component, then we boot up a component
-            // provider host to host the component(s).
-            if (hasPulumiComponents(reqResult)) {
-                return await componentProviderHost({ dirname: program, components: reqResult });
+            // Get any Pulumi Components exported by the module
+            const components = getPulumiComponents(reqResult);
+            if (components.length > 0) {
+                // If we found any components, boot up a component provider host
+                return await componentProviderHost({ dirname: program, components });
             }
 
             // If the exported value was itself a Function, then just execute it. This allows for

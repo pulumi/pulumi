@@ -14,7 +14,7 @@
 
 import * as assert from "assert";
 import * as path from "node:path";
-import { ComponentProvider } from "../../../provider/experimental/provider";
+import { ComponentProvider, getPulumiComponents } from "../../../provider/experimental/provider";
 import { ComponentResource, ComponentResourceOptions } from "../../../resource";
 import { Output, Input } from "../../../output";
 
@@ -143,5 +143,190 @@ describe("construct", function () {
             () => provider.construct("myInstance", "wrong-package:index:Component", {}, {}),
             /Invalid package name/,
         );
+    });
+});
+
+describe("getPulumiComponents", () => {
+    class TestComponent extends ComponentResource {
+        constructor(name: string, args: any, opts: any) {
+            super("test:index:TestComponent", name, args, opts);
+        }
+    }
+
+    class TestComponent1 extends ComponentResource {
+        constructor(name: string, args: any, opts: any) {
+            super("test:index:TestComponent1", name, args, opts);
+        }
+    }
+
+    class TestComponent2 extends ComponentResource {
+        constructor(name: string, args: any, opts: any) {
+            super("test:index:TestComponent2", name, args, opts);
+        }
+    }
+
+    class RegularClass {}
+
+    it("returns empty array for empty objects", () => {
+        assert.deepStrictEqual(getPulumiComponents(null), []);
+        assert.deepStrictEqual(getPulumiComponents(undefined), []);
+        assert.deepStrictEqual(getPulumiComponents({}), []);
+    });
+
+    it("returns empty array for objects without component classes", () => {
+        const exports = {
+            foo: "string",
+            bar: 123,
+            baz: function () {
+                return true;
+            },
+            regularClass: RegularClass,
+        };
+        assert.deepStrictEqual(getPulumiComponents(exports), []);
+    });
+
+    it("returns array with single component for single export", () => {
+        const exports = {
+            TestComponent,
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 1);
+        assert.strictEqual(result[0], TestComponent);
+    });
+
+    it("returns array with multiple components", () => {
+        const exports = {
+            TestComponent1,
+            TestComponent2,
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 2);
+        assert.ok(result.includes(TestComponent1));
+        assert.ok(result.includes(TestComponent2));
+    });
+
+    it("handles nested objects", () => {
+        const exports = {
+            nested: {
+                deeper: {
+                    component: TestComponent1,
+                },
+                another: TestComponent2,
+            },
+            top: TestComponent,
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 3);
+        assert.ok(result.includes(TestComponent));
+        assert.ok(result.includes(TestComponent1));
+        assert.ok(result.includes(TestComponent2));
+    });
+
+    it("handles nested arrays", () => {
+        const exports = {
+            components: [TestComponent1, [TestComponent2, [TestComponent]]],
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 3);
+        assert.ok(result.includes(TestComponent));
+        assert.ok(result.includes(TestComponent1));
+        assert.ok(result.includes(TestComponent2));
+    });
+
+    it("handles mixed nested structures", () => {
+        const exports = {
+            components: [{ comp: TestComponent1 }, [{ nested: TestComponent2 }], TestComponent],
+            extra: {
+                array: [TestComponent1],
+            },
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 3);
+        assert.ok(result.includes(TestComponent));
+        assert.ok(result.includes(TestComponent1));
+        assert.ok(result.includes(TestComponent2));
+    });
+
+    it("handles direct component constructor input", () => {
+        const result = getPulumiComponents(TestComponent);
+        assert.strictEqual(result.length, 1);
+        assert.strictEqual(result[0], TestComponent);
+    });
+
+    it("handles array input", () => {
+        const result = getPulumiComponents([TestComponent1, TestComponent2, RegularClass]);
+        assert.strictEqual(result.length, 2);
+        assert.ok(result.includes(TestComponent1));
+        assert.ok(result.includes(TestComponent2));
+    });
+
+    it("preserves order in flat structures", () => {
+        const exports = {
+            second: TestComponent2,
+            first: TestComponent1,
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 2);
+        assert.strictEqual(result[0], TestComponent2);
+        assert.strictEqual(result[1], TestComponent1);
+    });
+
+    it("preserves order in nested structures", () => {
+        const exports = {
+            nested: {
+                second: TestComponent2,
+            },
+            first: TestComponent1,
+            array: [TestComponent],
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 3);
+        assert.strictEqual(result[0], TestComponent2);
+        assert.strictEqual(result[1], TestComponent1);
+        assert.strictEqual(result[2], TestComponent);
+    });
+
+    it("handles non-component class constructors", () => {
+        class NonComponent {
+            public readonly value: number;
+            constructor(value: number) {
+                this.value = value;
+            }
+        }
+        const result = getPulumiComponents(NonComponent);
+        assert.strictEqual(result.length, 0);
+    });
+
+    it("handles edge cases", () => {
+        assert.deepStrictEqual(getPulumiComponents(0), []);
+        assert.deepStrictEqual(getPulumiComponents("string"), []);
+        assert.deepStrictEqual(getPulumiComponents(true), []);
+        assert.deepStrictEqual(getPulumiComponents(Symbol()), []);
+        assert.deepStrictEqual(getPulumiComponents(new Date()), []);
+        assert.deepStrictEqual(getPulumiComponents(/regex/), []);
+        assert.deepStrictEqual(getPulumiComponents(new Map()), []);
+        assert.deepStrictEqual(getPulumiComponents(new Set()), []);
+    });
+
+    it("deduplicates repeated components", () => {
+        const exports = {
+            first: TestComponent1,
+            second: TestComponent1,
+            nested: {
+                another: TestComponent1,
+                array: [TestComponent1],
+            },
+        };
+
+        const result = getPulumiComponents(exports);
+        assert.strictEqual(result.length, 1);
+        assert.strictEqual(result[0], TestComponent1);
     });
 });

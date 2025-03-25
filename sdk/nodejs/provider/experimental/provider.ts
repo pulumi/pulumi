@@ -43,6 +43,69 @@ export type ComponentResourceConstructor = {
     new (name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
 };
 
+/**
+ * Get all Pulumi Component constructors from a module's exports.
+ * @param moduleExports The exports object of the module to check.
+ * @returns Array of Pulumi Component constructors found in the exports.
+ */
+export function getPulumiComponents(moduleExports: any): ComponentResourceConstructor[] {
+    // Use a Set to track seen components and maintain uniqueness
+    const seen = new Set<ComponentResourceConstructor>();
+
+    function getComponents(value: any): ComponentResourceConstructor[] {
+        // If null/undefined, return empty array
+        if (!value) {
+            return [];
+        }
+
+        // If it's a single component constructor
+        if (typeof value === "function" && value.prototype) {
+            let proto = value.prototype;
+            while (proto?.__proto__) {
+                proto = proto.__proto__;
+                if (
+                    proto.constructor &&
+                    (proto.constructor.name === "ComponentResource" ||
+                        proto.constructor.__pulumiComponentResource === true)
+                ) {
+                    if (!seen.has(value)) {
+                        seen.add(value);
+                        return [value];
+                    }
+                    return [];
+                }
+            }
+            return [];
+        }
+
+        const components: ComponentResourceConstructor[] = [];
+
+        // If it's an array, process each item
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                components.push(...getComponents(item));
+            }
+            return components;
+        }
+
+        // If it's an object, process each property
+        if (typeof value === "object") {
+            for (const key in value) {
+                // Filter unwanted properties from the prototype
+                if (!Object.prototype.hasOwnProperty.call(value, key)) {
+                    continue;
+                }
+
+                components.push(...getComponents(value[key]));
+            }
+        }
+
+        return components;
+    }
+
+    return getComponents(moduleExports);
+}
+
 export interface ComponentProviderOptions {
     components: ComponentResourceConstructor[];
     dirname?: string;

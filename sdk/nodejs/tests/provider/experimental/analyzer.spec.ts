@@ -16,8 +16,7 @@ import * as assert from "node:assert";
 import * as path from "node:path";
 import * as execa from "execa";
 import { Analyzer } from "../../../provider/experimental/analyzer";
-import { ComponentResource } from "../../../resource";
-import { InputOutput, hasPulumiComponents } from "../../../provider/experimental/analyzer";
+import { InputOutput } from "../../../provider/experimental/analyzer";
 
 const packageJSON = { name: "provider" };
 
@@ -663,98 +662,5 @@ describe("formatErrorContext", () => {
             }),
             "component 'MyComponent' property 'MyType.myProp'",
         );
-    });
-});
-
-describe("hasPulumiComponents", () => {
-    it("returns false for empty objects", () => {
-        assert.strictEqual(hasPulumiComponents(null), false);
-        assert.strictEqual(hasPulumiComponents(undefined), false);
-        assert.strictEqual(hasPulumiComponents({}), false);
-    });
-
-    it("returns false for objects without component classes", () => {
-        const exports = {
-            foo: "string",
-            bar: 123,
-            baz: function () {
-                return true;
-            },
-            regularClass: class RegularClass {},
-        };
-        assert.strictEqual(hasPulumiComponents(exports), false);
-    });
-
-    it("returns true for objects with Pulumi component classes", () => {
-        class TestComponent extends ComponentResource {
-            constructor(name: string, args: any, opts: any) {
-                super("test:index:TestComponent", name, args, opts);
-            }
-        }
-
-        const exports = {
-            TestComponent,
-        };
-
-        assert.strictEqual(hasPulumiComponents(exports), true);
-    });
-
-    it("returns true for multiple Pulumi component classes", () => {
-        class TestComponent1 extends ComponentResource {
-            constructor(name: string, args: any, opts: any) {
-                super("test:index:TestComponent1", name, args, opts);
-            }
-        }
-        class TestComponent2 extends ComponentResource {
-            constructor(name: string, args: any, opts: any) {
-                super("test:index:TestComponent2", name, args, opts);
-            }
-        }
-
-        const exports = {
-            TestComponent1,
-            TestComponent2,
-        };
-
-        assert.strictEqual(hasPulumiComponents(exports), true);
-    });
-
-    it("returns true when one of many exports is a component", () => {
-        // Create a mock component class
-        class TestComponent extends ComponentResource {
-            constructor(name: string, args: any, opts: any) {
-                super("test:index:TestComponent", name, args, opts);
-            }
-        }
-
-        const exports = {
-            foo: "string",
-            bar: 123,
-            baz: function () {
-                return true;
-            },
-            regularClass: class RegularClass {},
-            TestComponent,
-        };
-
-        assert.strictEqual(hasPulumiComponents(exports), true);
-    });
-
-    it("detects components with multi-level inheritance", () => {
-        class Level1 extends ComponentResource {
-            constructor(name: string, args: any, opts: any) {
-                super("test:index:Level1", name, args, opts);
-            }
-        }
-
-        class Level2 extends Level1 {}
-
-        class Level3 extends Level2 {}
-
-        const exports = {
-            Level3,
-        };
-
-        assert.strictEqual(hasPulumiComponents(exports), true);
     });
 });
