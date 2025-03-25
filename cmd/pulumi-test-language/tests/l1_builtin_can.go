@@ -35,9 +35,7 @@ func init() {
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
 					RequireStackResource(l, err, changes)
-					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
 
 					outputs := stack.Outputs
 
