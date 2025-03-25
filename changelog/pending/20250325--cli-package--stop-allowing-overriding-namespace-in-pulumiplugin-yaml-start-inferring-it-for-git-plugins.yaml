@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Stop allowing overriding namespace in PulumiPlugin.yaml, start inferring it for Git plugins
