@@ -1965,10 +1965,9 @@ func HasPluginGTE(spec PluginSpec) (bool, error) {
 	// loader does, to minimize confusion when a user has to install new plugins.
 	var match *PluginInfo
 	if !enableLegacyPluginBehavior && spec.Version != nil {
-		requestedVersion := semver.MustParseRange(spec.Version.String())
-		match = SelectCompatiblePlugin(plugs, spec.Kind, spec.Name, requestedVersion)
+		match = SelectCompatiblePlugin(plugs, spec)
 	} else {
-		match = LegacySelectCompatiblePlugin(plugs, spec.Kind, spec.Name, spec.Version)
+		match = LegacySelectCompatiblePlugin(plugs, spec)
 	}
 	return match != nil, nil
 }
@@ -2294,11 +2293,11 @@ func getPluginInfoAndPath(
 	} else if !enableLegacyPluginBehavior && spec.Version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling new plugin behavior",
 			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
-		match = SelectCompatiblePlugin(plugins, spec.Kind, spec.Name, semver.MustParseRange(spec.Version.String()))
+		match = SelectCompatiblePlugin(plugins, spec)
 	} else {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): using legacy plugin behavior",
 			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
-		match = LegacySelectCompatiblePlugin(plugins, spec.Kind, spec.Name, spec.Version)
+		match = LegacySelectCompatiblePlugin(plugins, spec)
 	}
 
 	_, subdir := spec.LocalName()
@@ -2360,22 +2359,23 @@ func SelectPrereleasePlugin(
 // If there exist plugins in the plugin list that don't have a version, LegacySelectCompatiblePlugin will select
 // them if there are no other compatible plugins available.
 func LegacySelectCompatiblePlugin(
-	plugins []PluginInfo, kind apitype.PluginKind, name string, version *semver.Version,
+	plugins []PluginInfo, spec PluginSpec,
 ) *PluginInfo {
+	name, _ := spec.LocalName()
 	var match *PluginInfo
 	for _, cur := range plugins {
 		// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local
 		// that we can take a pointer to if this plugin is the best match yet.
 		plugin := cur
-		if plugin.Kind == kind && plugin.Name == name {
+		if plugin.Kind == spec.Kind && plugin.Name == name {
 			// Always pick the most recent version of the plugin available. Even if this is an exact match,
 			// we keep on searching just in case there's a newer version available.
 			var m *PluginInfo
 			if match == nil {
 				// no existing match
-				if version == nil {
+				if spec.Version == nil {
 					m = &plugin // no version spec, accept anything
-				} else if plugin.Version == nil || plugin.Version.GTE(*version) {
+				} else if plugin.Version == nil || plugin.Version.GTE(*spec.Version) {
 					// Either the plugin doesn't have a version, in which case we'll take it but prefer
 					// anything else, or it has a version >= requested.
 					m = &plugin
@@ -2394,7 +2394,7 @@ func LegacySelectCompatiblePlugin(
 					pluginIsPre := len(plugin.Version.Pre) != 0
 
 					// The plugin has to at least be greater than the requested version.
-					if version == nil || plugin.Version.GTE(*version) {
+					if spec.Version == nil || plugin.Version.GTE(*spec.Version) {
 						if matchIsPre && !pluginIsPre {
 							// If one is pre-release and the other is not, prefer the non-pre-release one.
 							m = &plugin
@@ -2411,7 +2411,7 @@ func LegacySelectCompatiblePlugin(
 			if m != nil {
 				match = m
 				logging.V(6).Infof("LegacySelectCompatiblePlugin(%s, %s, %s): found candidate (#%s)",
-					kind, name, version, match.Version)
+					spec.Kind, name, spec.Version, match.Version)
 			}
 		}
 	}
@@ -2425,8 +2425,10 @@ func LegacySelectCompatiblePlugin(
 // If there exist plugins in the plugin list that don't have a version, SelectCompatiblePlugin will select them if there
 // are no other compatible plugins available.
 func SelectCompatiblePlugin(
-	plugins []PluginInfo, kind apitype.PluginKind, name string, requested semver.Range,
+	plugins []PluginInfo, spec PluginSpec,
 ) *PluginInfo {
+	name, _ := spec.LocalName()
+	requested := semver.MustParseRange(spec.Version.String())
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
 	var bestMatch PluginInfo
 	var hasMatch bool
@@ -2440,7 +2442,7 @@ func SelectCompatiblePlugin(
 	sort.Sort(SortedPluginInfo(plugins))
 	for _, plugin := range plugins {
 		switch {
-		case plugin.Kind != kind || plugin.Name != name:
+		case plugin.Kind != spec.Kind || plugin.Name != name:
 			// Not the plugin we're looking for.
 		case !hasMatch && plugin.Version == nil:
 			// This is the plugin we're looking for, but it doesn't have a version. We haven't seen anything better yet,
