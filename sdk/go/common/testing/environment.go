@@ -76,11 +76,15 @@ func WriteYarnRCForTest(root string) error {
 
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
-	root := t.TempDir()
+	//nolint:usetesting // We control the lifecycle of the environment.
+	root, err := os.MkdirTemp("", "test-env")
+	assert.NoError(t, err, "creating temp directory")
 	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
 	// We always use a clean PULUMI_HOME for each environment to avoid any potential conflicts with plugins or config.
-	home := t.TempDir()
+	//nolint:usetesting // We control the lifecycle of the environment.
+	home, err := os.MkdirTemp("", "test-env-home")
+	assert.NoError(t, err, "creating temp PULUMI_HOME directory")
 
 	t.Logf("Created new test environment:  %v", root)
 	return &Environment{
