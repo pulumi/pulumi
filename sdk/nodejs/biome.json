@@ -14,7 +14,6 @@
             "cmd/pulumi-language-nodejs",
             "tests/mockpackage/lib/",
             "tests/runtime/testdata/closure-tests",
-            "tests/provider/experimental/testdata/syntax-error/index.ts",
             "vendor/"
         ]
     },
