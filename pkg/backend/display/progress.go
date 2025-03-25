@@ -705,7 +705,8 @@ func (display *ProgressDisplay) printDiagnostics() {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
 					display.println(
-						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset,
+					)
 				}
 
 				for _, line := range lines {
@@ -726,9 +727,15 @@ func (display *ProgressDisplay) printDiagnostics() {
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
 		if display.failed && !display.isPreview {
-			summary, err := display.GetDiagnosticsSummary(display.proj, display.opts.CopilotSummaryModel, display.opts.CopilotSummaryMaxLen)
+			summary, err := display.GetDiagnosticsSummary(
+				display.proj,
+				display.opts.CopilotSummaryModel,
+				display.opts.CopilotSummaryMaxLen,
+			)
 			if err != nil {
-				display.println("    " + colors.BrightRed + "Error getting Copilot summary: " + err.Error() + colors.Reset)
+				display.println(
+					"    " + colors.BrightRed + "Error getting Copilot summary: " + err.Error() + colors.Reset,
+				)
 				return
 			}
 			display.println(colors.BrightGreen + summary + colors.Reset)
@@ -769,7 +776,11 @@ func extractOrgFromPermalink(permalink string) string {
 	return segments[0]
 }
 
-func (display *ProgressDisplay) GetDiagnosticsSummary(proj tokens.PackageName, model string, maxSummaryLen int) (string, error) {
+func (display *ProgressDisplay) GetDiagnosticsSummary(
+	proj tokens.PackageName,
+	model string,
+	maxSummaryLen int,
+) (string, error) {
 	// Guard against nil or empty accumulated lines
 	if len(display.accumulatedLines) == 0 {
 		return "", nil

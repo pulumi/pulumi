@@ -74,7 +74,12 @@ func getAccessToken(cloudURL string) (string, error) {
 }
 
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
-func createSummarizeUpdateRequest(content string, orgID string, model string, maxSummaryLen int) apitype.CopilotSummarizeUpdateRequest {
+func createSummarizeUpdateRequest(
+	content string,
+	orgID string,
+	model string,
+	maxSummaryLen int,
+) apitype.CopilotSummarizeUpdateRequest {
 	return apitype.CopilotSummarizeUpdateRequest{
 		State: apitype.CopilotState{
 			Client: apitype.CopilotClientState{
@@ -200,7 +205,13 @@ func addPrefixToLines(text, prefix string) string {
 }
 
 // summarize generates a summary of the update output
-func summarizeErrorWithCopilot(orgID string, lines []string, outputPrefix string, model string, maxSummaryLen int) (string, error) {
+func summarizeErrorWithCopilot(
+	orgID string,
+	lines []string,
+	outputPrefix string,
+	model string,
+	maxSummaryLen int,
+) (string, error) {
 	if len(lines) == 0 {
 		return "", nil
 	}
