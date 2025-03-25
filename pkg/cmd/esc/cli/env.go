@@ -340,7 +340,11 @@ func (cmd *envCommand) writeYAMLEnvironmentDiagnostics(
 	}
 
 	files := map[string]*hcl.File{envName: {Bytes: yaml}}
-	writer := hcl.NewDiagnosticTextWriter(out, files, uint(width), color)
+
+	writer := hcl.NewDiagnosticTextWriter(out, files, 0, color)
+	if width > 0 { // Fixes gosec G115
+		writer = hcl.NewDiagnosticTextWriter(out, files, uint(width), color)
+	}
 
 	sortEnvironmentDiagnostics(diags)
 
