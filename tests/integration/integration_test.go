@@ -1319,7 +1319,8 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NoError(t, tc.InstallDependencies(context.Background(),
-		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false /*showOutput */, nil, nil))
+		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false, /*showOutput */
+		os.Stdout, os.Stderr))
 	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	gotSdk, err := test.PathExists(sdkDir)
