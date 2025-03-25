@@ -68,7 +68,12 @@ type Options struct {
 	DisplayHooks        []DisplayHook
 }
 
-type DisplayHook func(diagnostics []string) []string
+type DisplayHookContext struct {
+	Failed      bool
+	IsPreview   bool
+	OutputLines []string
+}
+type DisplayHook func(ctx DisplayHookContext) []string
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {
 	opts.IsInteractive = isInteractive

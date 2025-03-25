@@ -1129,12 +1129,15 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.Display.ShowCopilotSummary {
-		op.Opts.Display = op.Opts.Display.WithAppendedDisplayHook(func(lines []string) []string {
-			summary, err := b.SummarizeErrorWithCopilot(ctx, lines, stack, op.Opts.Display)
-			if err != nil {
-				return []string{fmt.Sprintf("Error summarizing error: %s", err)}
+		op.Opts.Display = op.Opts.Display.WithAppendedDisplayHook(func(displayCtx display.DisplayHookContext) []string {
+			if displayCtx.Failed && !displayCtx.IsPreview {
+				summary, err := b.SummarizeErrorWithCopilot(ctx, displayCtx.OutputLines, stack, op.Opts.Display)
+				if err != nil {
+					return []string{fmt.Sprintf("Error summarizing error: %s", err)}
+				}
+				return summary
 			}
-			return summary
+			return nil
 		})
 	}
 

@@ -721,22 +721,24 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Copilot to explain the failure.
-	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink {
-		if display.failed && !display.isPreview {
-			hookOuput := []string{}
-			for _, hook := range display.opts.DisplayHooks {
-				summaryLines := hook(display.accumulatedLines)
-				hookOuput = append(hookOuput, summaryLines...)
-			}
-			for _, line := range hookOuput {
-				display.println("    " + colors.BrightGreen + line + colors.Reset)
-			}
-			display.println("")
+	if wroteDiagnosticHeader {
+		hookOuput := []string{}
+		for _, hook := range display.opts.DisplayHooks {
+			summaryLines := hook(DisplayHookContext{
+				Failed:      display.failed,
+				IsPreview:   display.isPreview,
+				OutputLines: display.accumulatedLines,
+			})
+			hookOuput = append(hookOuput, summaryLines...)
 		}
+		for _, line := range hookOuput {
+			display.println("    " + colors.BrightGreen + line + colors.Reset)
+		}
+		display.println("")
 	}
 
+	// Print a link to Copilot to explain the failure.
+	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
 		display.println(
 			"    " + colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset +
