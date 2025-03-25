@@ -1128,6 +1128,16 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
+	if op.Opts.Display.ShowCopilotSummary {
+		op.Opts.Display = op.Opts.Display.WithAppendedDisplayHook(func(lines []string) []string {
+			summary, err := b.SummarizeErrorWithCopilot(ctx, lines, stack, op.Opts.Display)
+			if err != nil {
+				return []string{fmt.Sprintf("Error summarizing error: %s", err)}
+			}
+			return summary
+		})
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
@@ -1232,6 +1242,43 @@ func (b *cloudBackend) PromptAI(
 		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
 	}
 	return res, nil
+}
+
+func (b *cloudBackend) SummarizeErrorWithCopilot(
+	ctx context.Context, lines []string, stack backend.Stack, opts display.Options,
+) ([]string, error) {
+	if len(lines) == 0 {
+		return nil, nil
+	}
+
+	stackRef := stack.Ref()
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+	orgName := stackID.Owner
+
+	model := opts.CopilotSummaryModel
+	maxSummaryLen := opts.CopilotSummaryMaxLen
+
+	// Convert lines to a single string
+	linesStr := strings.Join(lines, "\n")
+
+	// FIXME: re-add this
+	// linesStr = TruncateWithMiddleOut(linesStr, maxCopilotContentLength)
+	startTime := time.Now()
+	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, linesStr, model, maxSummaryLen)
+	if err != nil {
+		return nil, err
+	}
+
+	ellapsedMs := time.Since(startTime).Milliseconds()
+
+	horizontalLine := strings.Repeat("-", 80)
+	summaryLines := strings.Split(summary, "\n")
+	summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", ellapsedMs)
+	emptyLine := ""
+	return append([]string{horizontalLine, summaryHeader, emptyLine}, summaryLines...), nil
 }
 
 type updateMetadata struct {

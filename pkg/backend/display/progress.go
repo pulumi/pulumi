@@ -16,10 +16,8 @@ package display
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"runtime"
 	"sort"
@@ -725,20 +723,17 @@ func (display *ProgressDisplay) printDiagnostics() {
 
 	// Print a link to Copilot to explain the failure.
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowCopilotSummary {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink {
 		if display.failed && !display.isPreview {
-			summary, err := display.GetDiagnosticsSummary(
-				display.proj,
-				display.opts.CopilotSummaryModel,
-				display.opts.CopilotSummaryMaxLen,
-			)
-			if err != nil {
-				display.println(
-					"    " + colors.BrightRed + "Error getting Copilot summary: " + err.Error() + colors.Reset,
-				)
-				return
+			hookOuput := []string{}
+			for _, hook := range display.opts.DisplayHooks {
+				summaryLines := hook(display.accumulatedLines)
+				hookOuput = append(hookOuput, summaryLines...)
 			}
-			display.println(colors.BrightGreen + summary + colors.Reset)
+			for _, line := range hookOuput {
+				display.println("    " + colors.BrightGreen + line + colors.Reset)
+			}
+			display.println("")
 		}
 	}
 
@@ -750,49 +745,6 @@ func (display *ProgressDisplay) printDiagnostics() {
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 		display.println("")
 	}
-}
-
-// extractOrgFromPermalink extracts the organization name from a Pulumi permalink URL.
-// For example, given "https://app.pulumi.com/myorg/project/stack/updates/1",
-// it returns "myorg". Returns empty string if the permalink is invalid or empty.
-func extractOrgFromPermalink(permalink string) string {
-	if permalink == "" {
-		return ""
-	}
-
-	// Parse the URL
-	u, err := url.Parse(permalink)
-	if err != nil {
-		return ""
-	}
-
-	// Split the path into segments and ensure we have enough segments
-	segments := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
-	if len(segments) < 1 {
-		return ""
-	}
-
-	// The first segment after the domain is the org name
-	return segments[0]
-}
-
-func (display *ProgressDisplay) GetDiagnosticsSummary(
-	proj tokens.PackageName,
-	model string,
-	maxSummaryLen int,
-) (string, error) {
-	// Guard against nil or empty accumulated lines
-	if len(display.accumulatedLines) == 0 {
-		return "", nil
-	}
-
-	// Extract org from permalink for now as a hack
-	orgID := extractOrgFromPermalink(display.permalink)
-	if orgID == "" {
-		return "", errors.New("no org ID found in permalink")
-	}
-
-	return summarizeErrorWithCopilot(orgID, display.accumulatedLines, "    ", model, maxSummaryLen)
 }
 
 type policyPackSummary struct {
