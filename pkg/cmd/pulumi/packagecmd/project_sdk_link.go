@@ -242,6 +242,7 @@ func linkNodeJsPackage(ws pkgWorkspace.Context, root string, pkg *schema.Package
 		// Assume npm if no packagemanager is specified
 		addCmd = exec.Command("npm", "add", packageSpecifier)
 	}
+	fmt.Println(addCmd.String())
 
 	addCmd.Stdout = os.Stdout
 	addCmd.Stderr = os.Stderr
