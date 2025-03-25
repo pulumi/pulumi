@@ -3,6 +3,7 @@
 **/node_modules/
 **/bin
 **/.vscode/**/*
+!.vscode/launch.json.example
 **/.vs/
 **/.ionide/
 **/.idea/
