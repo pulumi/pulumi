@@ -15,8 +15,10 @@
 package display
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,6 +73,91 @@ func TestTruncateWithMiddleOut(t *testing.T) {
 				totalChars := len(got)
 				assert.LessOrEqual(t, totalChars, tt.maxChars, "result exceeds character limit")
 			}
+		})
+	}
+}
+
+func TestExtractSummaryFromResponse(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		response apitype.CopilotSummarizeUpdateResponse
+		want     string
+		wantErr  bool
+	}{
+		{
+			name: "new format - direct string response",
+			response: apitype.CopilotSummarizeUpdateResponse{
+				ThreadMessages: []apitype.CopilotThreadMessage{
+					{
+						Role:    "assistant",
+						Kind:    "response",
+						Content: json.RawMessage(`"This is a summary"`),
+					},
+				},
+			},
+			want:    "This is a summary",
+			wantErr: false,
+		},
+		{
+			name: "old format - summarizeUpdate",
+			response: apitype.CopilotSummarizeUpdateResponse{
+				ThreadMessages: []apitype.CopilotThreadMessage{
+					{
+						Role: "assistant",
+						Kind: "summarizeUpdate",
+						Content: json.RawMessage(`{
+							"summary": "Legacy summary format"
+						}`),
+					},
+				},
+			},
+			want:    "Legacy summary format",
+			wantErr: false,
+		},
+		{
+			name: "no assistant message",
+			response: apitype.CopilotSummarizeUpdateResponse{
+				ThreadMessages: []apitype.CopilotThreadMessage{
+					{
+						Role:    "user",
+						Kind:    "response",
+						Content: json.RawMessage(`"User message"`),
+					},
+				},
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "empty summary in old format",
+			response: apitype.CopilotSummarizeUpdateResponse{
+				ThreadMessages: []apitype.CopilotThreadMessage{
+					{
+						Role: "assistant",
+						Kind: "summarizeUpdate",
+						Content: json.RawMessage(`{
+							"summary": ""
+						}`),
+					},
+				},
+			},
+			want:    "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := extractSummaryFromResponse(tt.response)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

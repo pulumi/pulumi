@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -34,14 +33,16 @@ import (
 const (
 	atlasAPIPath = "/api/ai/chat/preview"
 
-	// Environment variable to override the Atlas base URL for local development
-	debugAtlasBaseVar = "DEBUG_PULUMI_ATLAS_BASE"
-
 	// Maximum number of characters to send to Copilot.
 	// We do this to avoid including a proper token counting library for now.
 	// Tokens are 3-4 characters as a rough estimate. So this is 1000 tokens.
 	maxCopilotContentLength = 4000
 )
+
+// getAtlasEndpoint returns the configured Atlas endpoint
+func getAtlasEndpoint(cloudURL string) string {
+	return cloudURL + atlasAPIPath
+}
 
 func getCurrentCloudURL() (string, error) {
 	ws := pkgWorkspace.Instance
@@ -100,15 +101,6 @@ func createSummarizeUpdateRequest(
 	}
 }
 
-// getAtlasEndpoint returns the configured Atlas endpoint, allowing override via environment variable
-func getAtlasEndpoint(cloudURL string) string {
-	base := cloudURL
-	if debugBase := os.Getenv(debugAtlasBaseVar); debugBase != "" {
-		base = debugBase
-	}
-	return base + atlasAPIPath
-}
-
 // summarizeInternal handles the actual summarization logic and returns proper errors
 func summarizeInternal(content string, orgID string, model string, maxSummaryLen int) (string, error) {
 	cloudURL, err := getCurrentCloudURL()
@@ -129,7 +121,7 @@ func summarizeInternal(content string, orgID string, model string, maxSummaryLen
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", getAtlasEndpoint(cloudURL), bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest(http.MethodPost, getAtlasEndpoint(cloudURL), bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
@@ -161,7 +153,11 @@ func summarizeInternal(content string, orgID string, model string, maxSummaryLen
 		return "", fmt.Errorf("atlas API error: %s\n%s", atlasResp.Error, atlasResp.Details)
 	}
 
-	// Look for the first message from the assistant
+	return extractSummaryFromResponse(atlasResp)
+}
+
+// extractSummaryFromResponse parses the Atlas API response and extracts the summary content
+func extractSummaryFromResponse(atlasResp apitype.CopilotSummarizeUpdateResponse) (string, error) {
 	for _, msg := range atlasResp.ThreadMessages {
 		if msg.Role == "assistant" {
 			// Handle the new format where content is a string directly
