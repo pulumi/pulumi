@@ -1,5 +1,61 @@
 # Changelog
 
+## 3.158.0 (2025-03-24)
+
+
+### Features
+
+- [sdkgen] Aliases in provider schemas can now be set with just an array of strings for the aliased types
+  [#18925](https://github.com/pulumi/pulumi/pull/18925)
+
+- [cli/engine] Allow targets to be excluded with the `--exclude` flag. `--exclude-dependents` can also be used to exclude all children of an excluded target as well
+  [#18828](https://github.com/pulumi/pulumi/pull/18828)
+
+- [sdk/{go,python}] Add pulumiResourceName and pulumiResourceType to get the runtime name and type token for resources
+  [#18959](https://github.com/pulumi/pulumi/pull/18959)
+
+- [cli/{install,package}] Install package SDKs on `pulumi install`
+  [#18940](https://github.com/pulumi/pulumi/pull/18940)
+
+- [programgen/nodejs] Add tryOutput generation to nodejs
+  [#18852](https://github.com/pulumi/pulumi/pull/18852)
+
+- [sdk/{nodejs,python}] Report an error when no components are found
+  [#18988](https://github.com/pulumi/pulumi/pull/18988)
+
+- [cli/package] Add experimental package publishing command
+  [#18818](https://github.com/pulumi/pulumi/pull/18818)
+
+- [cli/package] Allow overriding name and namespace of plugins in PulumiPlugin.yaml
+  [#18990](https://github.com/pulumi/pulumi/pull/18990)
+
+- [sdk/yaml] Upgrade pulumi-yaml to 1.15.0
+  [#19002](https://github.com/pulumi/pulumi/pull/19002)
+
+
+### Bug Fixes
+
+- [cli/display] Don't print "same" outputs in `--refresh`
+  [#18943](https://github.com/pulumi/pulumi/pull/18943)
+
+- [engine sdk/go] Allow retain on delete to be overridden back to false by child resources that inherit it
+  [#18956](https://github.com/pulumi/pulumi/pull/18956)
+
+- [cli/{install,package}] Avoid duplicate packages in requirements.txt
+  [#18972](https://github.com/pulumi/pulumi/pull/18972)
+
+- [cli/state] State rename no longer overly strictly validates resources names
+  [#18938](https://github.com/pulumi/pulumi/pull/18938)
+
+- [pkg] The `refresh` command now respects `TargetDependents`
+  [#18905](https://github.com/pulumi/pulumi/pull/18905)
+
+- [sdk/python] Report better error messages for various error cases
+  [#18983](https://github.com/pulumi/pulumi/pull/18983)
+
+- [sdk/python] Remove the dev dependency on `pytest-watch`
+  [#19008](https://github.com/pulumi/pulumi/pull/19008)
+
 ## 3.157.0 (2025-03-18)
 
 

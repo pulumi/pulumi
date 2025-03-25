@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen
-  description: Aliases in provider schemas can now be set with just an array of strings for the aliased types

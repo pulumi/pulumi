@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Add experimental package publishing command
