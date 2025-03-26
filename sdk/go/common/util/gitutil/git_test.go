@@ -428,15 +428,19 @@ func TestParseAuthURL(t *testing.T) {
 	}
 
 	t.Run("with no auth", func(t *testing.T) {
-		t.Parallel()
-		_, auth, err := parseAuthURL("http://github.com/pulumi/templates")
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+
+		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Nil(t, auth)
 	})
 
 	t.Run("with basic auth user", func(t *testing.T) {
-		t.Parallel()
-		url, auth, err := parseAuthURL("http://user@github.com/pulumi/templates")
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+
+		url, auth, err := getAuthForURL("http://user@github.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "user"}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
@@ -444,10 +448,41 @@ func TestParseAuthURL(t *testing.T) {
 
 	t.Run("with basic auth user/password", func(t *testing.T) {
 		t.Parallel()
-		url, auth, err := parseAuthURL("http://user:password@github.com/pulumi/templates")
+		url, auth, err := getAuthForURL("http://user:password@github.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
+	})
+
+	t.Run("with GITHUB_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "token-1")
+		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
+		_, auth, err = getAuthForURL("http://gitlab.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with GITLAB_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("GITLAB_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		_, auth, err := getAuthForURL("http://gitlab.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
+
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
+		t.Setenv("GIT_USERNAME", "user")
+		t.Setenv("GIT_PASSWORD", "password")
+		_, auth, err := getAuthForURL("http://example.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
 	})
 
 	//nolint:paralleltest // global environment variables
