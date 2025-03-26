@@ -28,9 +28,9 @@ lifecycle looks roughly as follows:
 
 The choice of source depends on the operation.
 
-## Operations that do not execute the program
+## Operations that do not always execute the program
 
-`refresh` and `destroy` operations do not currently result in program execution.
+`refresh` and `destroy` operations historically did not result in program execution.
 Whether or not this is desirable/useful arguably depends on the context, but as
 far as the implementation is concerned at present, these operations are driven
 as follows:
@@ -47,6 +47,26 @@ as follows:
   As such it doesn't call into the step generator, instead it just creates a RefreshStep for
   each resource in state, sends them all in parallel to the step executor and then re-writes the
   state snapshot to handle any deletions.
+
+Both these operations now take a `--run-program` option, which currently defaults to false. When set to true
+these operations will run the step generator in either `destroy` or `refresh` mode. This changes how the step
+generator generates steps for custom resources. Note that providers and component resources behave similarly
+the same in `destroy`, `refresh`, and `up`.
+
+In `refresh` mode the step generator generates a `RefreshStep` or `SkippedCreateStep` for each custom
+resource. `SkippedCreateStep` is generated for custom resources that aren't currently in state, as we're doing
+a refresh we can't actually create them so we treat them similarly to when running with `--target`. Component
+resources and providers are created and updated as if `up` had been run. Note that while we could have
+`refresh` also delete removed providers and components, currently it just leaves them in state as is. The
+means things like stack outputs get fully updated by the operation.
+
+In `destroy` mode the step generator initially generates a `SameStep` or `SkippedCreateStep` for each custom
+resource. This is so the resource registration is returned to the program with the current state of the
+resource. It wouldn't be useful for the program to get the post-delete state of nothing. Component resources
+and providers are created and updated as if `up` had been run. However at the end of the program the
+step generator generates `DeleteStep`s for everything even though we've already done other steps for them.
+This differs from a normal run of the step generator where it would only generate `DeleteStep`s for resources
+that had not yet had any other step generated for them.
 
 ## Operations that execute the program
 
