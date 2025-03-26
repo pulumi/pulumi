@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Use correct local path for Git based components with a version tag

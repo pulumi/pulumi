@@ -471,7 +471,9 @@ func (host *pluginHost) ResolvePlugin(
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
 	for _, v := range host.pluginLoaders {
-		v := v
+		if spec.Version == nil && v.name == spec.Name && v.kind == spec.Kind {
+			spec.Version = &v.version
+		}
 		p := workspace.PluginInfo{
 			Kind:    v.kind,
 			Name:    v.name,
@@ -482,17 +484,10 @@ func (host *pluginHost) ResolvePlugin(
 		plugins = append(plugins, p)
 	}
 
-	var semverRange semver.Range
-	if spec.Version == nil {
-		semverRange = func(v semver.Version) bool {
-			return true
-		}
-	} else {
-		// Require an exact match:
-		semverRange = spec.Version.EQ
+	var match *workspace.PluginInfo
+	if spec.Version != nil {
+		match = workspace.SelectCompatiblePlugin(plugins, spec)
 	}
-
-	match := workspace.SelectCompatiblePlugin(plugins, spec.Kind, spec.Name, semverRange)
 	if match == nil {
 		return nil, errors.New("could not locate a compatible plugin in deploytest, the makefile and " +
 			"& constructor of the plugin host must define the location of the schema")

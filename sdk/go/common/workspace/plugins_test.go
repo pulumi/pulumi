@@ -76,7 +76,8 @@ func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 		},
 	}
 
-	result := LegacySelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", nil)
+	result := LegacySelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: nil})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
@@ -117,7 +118,8 @@ func TestLegacyPluginSelection_PrereleaseRequested(t *testing.T) {
 	}
 
 	v := semver.MustParse("0.2.0")
-	result := LegacySelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", &v)
+	result := LegacySelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &v})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.3.0-alpha", result.Version.String())
@@ -157,8 +159,9 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
@@ -198,56 +201,10 @@ func TestPluginSelection_ExactMatchNotFound(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.Nil(t, result)
-}
-
-func TestPluginSelection_PatchVersionSlide(t *testing.T) {
-	t.Parallel()
-
-	v1 := semver.MustParse("0.1.0")
-	v2 := semver.MustParse("0.2.0")
-	v21 := semver.MustParse("0.2.1")
-	v3 := semver.MustParse("0.3.0")
-	candidatePlugins := []PluginInfo{
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v1,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v2,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v21,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v3,
-		},
-		{
-			Name:    "notmyplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v3,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.AnalyzerPlugin,
-			Version: &v3,
-		},
-	}
-
-	requested := semver.MustParseRange(">=0.2.0 <0.3.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
-	assert.NotNil(t, result)
-	assert.Equal(t, "myplugin", result.Name)
-	assert.Equal(t, "0.2.1", result.Version.String())
 }
 
 func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
@@ -289,8 +246,9 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Nil(t, result.Version)
@@ -340,8 +298,9 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
