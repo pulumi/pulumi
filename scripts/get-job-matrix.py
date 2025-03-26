@@ -61,6 +61,9 @@ INTEGRATION_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/sdk/v3/go/common/constant",
     "github.com/pulumi/pulumi/sdk/v3/go/common/util/retry",
     "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
+    "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python",
+    "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs",
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go",
     # And the entirety of the 'tests' module
 }
 
