@@ -135,7 +135,7 @@ type LanguageRuntime interface {
 	// done channel to avoid deadlocks.
 	InstallDependencies(request InstallDependenciesRequest) (io.Reader, io.Reader, <-chan error, error)
 
-	// RuntimeOptions returns additional options that can be set for the runtime.
+	// RuntimeOptionsPrompts returns additional options that can be set for the runtime.
 	RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error)
 
 	// About returns information about the language runtime.
@@ -152,7 +152,7 @@ type LanguageRuntime interface {
 	GenerateProject(sourceDirectory, targetDirectory, project string,
 		strict bool, loaderTarget string, localDependencies map[string]string) (hcl.Diagnostics, error)
 
-	// GeneratePlugin generates an SDK package.
+	// GeneratePackage generates an SDK package.
 	GeneratePackage(
 		directory string, schema string, extraFiles map[string][]byte,
 		loaderTarget string, localDependencies map[string]string,
