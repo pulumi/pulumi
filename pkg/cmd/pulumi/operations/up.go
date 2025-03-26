@@ -123,8 +123,6 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for Copilot.
 	var copilotSummary bool
-	var copilotSummaryModel string
-	var copilotSummaryMaxLen int
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -617,8 +615,8 @@ func NewUpCmd() *cobra.Command {
 				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
 
 			opts.Display.ShowCopilotSummary = showCopilotSummary
-			opts.Display.CopilotSummaryModel = copilotSummaryModel
-			opts.Display.CopilotSummaryMaxLen = copilotSummaryMaxLen
+			opts.Display.CopilotSummaryModel = env.CopilotSummaryModel.Value()
+			opts.Display.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -776,14 +774,6 @@ func NewUpCmd() *cobra.Command {
 			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
 
 	cmd.PersistentFlags().StringVar(
-		&copilotSummaryModel, "copilot-summary-model", "gpt-4o-mini",
-		"The LLM model to use for the Copilot summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.")
-
-	cmd.PersistentFlags().IntVar(
-		&copilotSummaryMaxLen, "copilot-summary-maxlen", 80,
-		"Max allowed length of Copilot summary in diagnostics. Allowed values are from 20 to 1920.")
-
-	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
 		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
@@ -791,6 +781,12 @@ func NewUpCmd() *cobra.Command {
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
+
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot-summary"),
+		`Could not mark "copilot-summary" as hidden`,
+	)
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")

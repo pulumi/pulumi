@@ -102,6 +102,14 @@ var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 var CopilotSummary = env.Bool("COPILOT_SUMMARY",
 	"Enable showing the Copilot summary in the CLI output.")
 
+// TODO: This is a soft-release feature and will be removed after the feature flag is launched
+var CopilotSummaryModel = env.String("COPILOT_SUMMARY_MODEL",
+	"The LLM model to use for the Copilot summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.")
+
+// TODO: This is a soft-release feature and will be removed after the feature flag is launched
+var CopilotSummaryMaxLen = env.Int("COPILOT_SUMMARY_MAXLEN",
+	"Max allowed length of Copilot summary in diagnostics. Allowed values are from 20 to 1920.")
+
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
 	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
 
