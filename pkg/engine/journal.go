@@ -47,6 +47,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// Build up a list of current resources by replaying the journal.
 	deletes := make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	refreshDeletes := make(map[resource.URN]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
@@ -118,6 +119,17 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpImport, deploy.OpImportReplacement:
 				resources = append(resources, e.Step.New())
 				dones[e.Step.New()] = true
+			case deploy.OpRefresh:
+				step, ok := e.Step.(*deploy.RefreshStep)
+				contract.Assertf(ok, "expected *deploy.RefreshStep, got %T", e.Step)
+				if step.Modern() {
+					if e.Step.New() != nil {
+						resources = append(resources, e.Step.New())
+					} else {
+						refreshDeletes[e.Step.Old().URN] = true
+					}
+					dones[e.Step.Old()] = true
+				}
 			}
 		}
 	}
@@ -143,6 +155,8 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			}
 		}
 	}
+
+	FilterRefreshDeletes(refreshDeletes, filteredResources)
 
 	// Append any pending operations.
 	var operations []resource.Operation
@@ -259,4 +273,73 @@ func NewJournal() *Journal {
 		}
 	}()
 	return j
+}
+
+// FilterRefreshDeletes filters out any dependencies and parents from 'resource' that refer to a URN that has been
+// deleted by a refresh operation. This is pretty much the same as `rebuildBaseState` in the deployment executor (see
+// that function for a lot of details about why this is necessary). The main difference is that this function does not
+// mutate the state in place instead returning a new state with the appropriate fields filtered out.
+func FilterRefreshDeletes(
+	refreshDeletes map[resource.URN]bool,
+	resources []*resource.State,
+) {
+	availableParents := map[resource.URN]resource.URN{}
+
+	for i, res := range resources {
+		newDeps := []resource.URN{}
+		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+		newDeletedWith := resource.URN("")
+		newParent := resource.URN("")
+		filtered := false
+
+		_, allDeps := res.GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				if !refreshDeletes[dep.URN] {
+					availableParents[res.URN] = dep.URN
+					newParent = dep.URN
+				} else {
+					// dep.URN might have be gone so look up _it's_ parent
+					// Since existing must obey a topological sort, we have already addressed
+					// r.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
+					// exists, we set r.Parent as r.Parent.Parent.
+					newParent = availableParents[res.Parent]
+					availableParents[res.URN] = newParent
+					newParent = dep.URN
+					filtered = true
+				}
+			case resource.ResourceDependency:
+				if !refreshDeletes[dep.URN] {
+					newDeps = append(newDeps, dep.URN)
+				} else {
+					filtered = true
+				}
+			case resource.ResourcePropertyDependency:
+				if !refreshDeletes[dep.URN] {
+					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
+				} else {
+					filtered = true
+				}
+			case resource.ResourceDeletedWith:
+				if !refreshDeletes[dep.URN] {
+					newDeletedWith = dep.URN
+				} else {
+					filtered = true
+				}
+			}
+		}
+
+		if !filtered {
+			continue
+		}
+
+		// If we have filtered out any dependencies, we need to create a new state with the filtered dependencies.
+		newRes := res.Copy()
+		newRes.Dependencies = newDeps
+		newRes.PropertyDependencies = newPropDeps
+		newRes.DeletedWith = newDeletedWith
+		newRes.Parent = newParent
+		resources[i] = newRes
+	}
 }

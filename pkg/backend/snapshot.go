@@ -74,6 +74,8 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
+	refreshDeletes map[resource.URN]bool // The set of resources that have been delete by a refresh in this plan.
+
 	// The set of resources that have been deleted. These resources could also have been added to `resources`
 	// by other operations but need to be filtered out before writing the snapshot.
 	deletes map[*resource.State]bool
@@ -513,10 +515,25 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	contract.Requiref(step.Op() == deploy.OpRefresh, "step.Op", "must be %q, got %q", deploy.OpRefresh, step.Op())
 	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
 	return rsm.manager.mutate(func() bool {
-		// We always elide refreshes. The expectation is that all of these run before any actual mutations and that
+		// We normally elide refreshes. The expectation is that all of these run before any actual mutations and that
 		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
 		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
 		// have changed.
+		// The exception to this is new "modern" refreshes, which are not elided and are treated as normal operations.
+		// These can either update or delete a resource.
+		refreshStep := step.(*deploy.RefreshStep)
+		if refreshStep.Modern() {
+			if successful {
+				rsm.manager.markDone(step.Old())
+				if step.New() != nil {
+					rsm.manager.markNew(step.New())
+				} else {
+					rsm.manager.refreshDeletes[step.Old().URN] = true
+				}
+			}
+			return true
+		}
+
 		return false
 	})
 }
@@ -649,6 +666,9 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 			}
 		}
 	}
+
+	// Filter any refresh deletes
+	engine.FilterRefreshDeletes(sm.refreshDeletes, resources)
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
@@ -807,6 +827,7 @@ func NewSnapshotManager(
 		cancel:           cancel,
 		done:             done,
 		deletes:          make(map[*resource.State]bool),
+		refreshDeletes:   make(map[resource.URN]bool),
 	}
 
 	serviceLoop := manager.defaultServiceLoop
