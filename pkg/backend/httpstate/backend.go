@@ -1128,17 +1128,30 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
+	var events chan engine.Event
+
 	if op.Opts.Display.ShowCopilotSummary {
-		op.Opts.Display = op.Opts.Display.WithSummarizeUpdateFailure(func(outputLines []string) []string {
-			summary, err := b.SummarizeErrorWithCopilot(ctx, outputLines, stack, op.Opts.Display)
-			if err != nil {
-				return []string{fmt.Sprintf("Error summarizing update output: %s", err)}
+		events = make(chan engine.Event)
+		renderDone := make(chan bool)
+		renderer := display.NewCaptureProgressEvents(
+			stack.Ref().Name(),
+			op.Proj.Name,
+		)
+
+		go renderer.ProcessEvents(events, renderDone)
+
+		defer func() {
+			close(events)
+			<-renderDone
+			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled.
+			// So we check it again here.
+			if op.Opts.Display.ShowCopilotSummary && renderer.OutputIncludesFailure() {
+				b.ShowCopilotErrorSummary(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			}
-			return summary
-		})
+		}()
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, events)
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1159,7 +1172,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil /*events*/)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1177,7 +1190,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil /*events*/)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1195,7 +1208,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil /*events*/)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1244,14 +1257,28 @@ func (b *cloudBackend) PromptAI(
 	return res, nil
 }
 
-func (b *cloudBackend) SummarizeErrorWithCopilot(
-	ctx context.Context, lines []string, stack backend.Stack, opts display.Options,
+func (b *cloudBackend) ShowCopilotErrorSummary(
+	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+) {
+	summary, err := b.DoSummarizeErrorWithCopilot(ctx, pulumiOutput, stackRef, opts)
+	fmt.Println(opts.Color.Colorize(colors.SpecHeadline + "Summary:" + colors.Reset))
+	if err != nil {
+		fmt.Printf("error summarizing update output: %s", err)
+	}
+	for _, line := range summary {
+		fmt.Println("  " + opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
+	}
+	// nice empty line
+	fmt.Println()
+}
+
+func (b *cloudBackend) DoSummarizeErrorWithCopilot(
+	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
 ) ([]string, error) {
-	if len(lines) == 0 {
+	if len(pulumiOutput) == 0 {
 		return nil, nil
 	}
 
-	stackRef := stack.Ref()
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -1260,19 +1287,19 @@ func (b *cloudBackend) SummarizeErrorWithCopilot(
 
 	model := opts.CopilotSummaryModel
 	maxSummaryLen := opts.CopilotSummaryMaxLen
+
 	startTime := time.Now()
-	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, lines, model, maxSummaryLen)
+	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
 	if err != nil {
 		return nil, err
 	}
 
 	elapsedMs := time.Since(startTime).Milliseconds()
 
-	horizontalRule := strings.Repeat("-", 80)
 	summaryHeader := fmt.Sprintf("✨ AI-generated summary (%d ms):", elapsedMs)
 	summaryLines := strings.Split(summary, "\n")
 	emptyLine := ""
-	return append([]string{horizontalRule, summaryHeader, emptyLine}, summaryLines...), nil
+	return append([]string{summaryHeader, emptyLine}, summaryLines...), nil
 }
 
 type updateMetadata struct {

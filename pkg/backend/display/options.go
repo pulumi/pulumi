@@ -62,18 +62,12 @@ type Options struct {
 	CopilotSummaryMaxLen   int                 // the maximum length of the Copilot summary.
 	ShowSecrets            bool                // true to display secrets in the output.
 	// Low level options
-	term                   terminal.Terminal
-	DeterministicOutput    bool                                // true to disable timing-based rendering
-	RenderOnDirty          bool                                // true to always render frames when marked dirty
-	SummarizeUpdateFailure func(outputLines []string) []string // function to summarize the update, to be printed
+	term                terminal.Terminal
+	DeterministicOutput bool // true to disable timing-based rendering
+	RenderOnDirty       bool // true to always render frames when marked dirty
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {
 	opts.IsInteractive = isInteractive
-	return opts
-}
-
-func (opts Options) WithSummarizeUpdateFailure(summarizeUpdateFailure func(outputLines []string) []string) Options {
-	opts.SummarizeUpdateFailure = summarizeUpdateFailure
 	return opts
 }

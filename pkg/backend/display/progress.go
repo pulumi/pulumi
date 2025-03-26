@@ -172,8 +172,6 @@ type ProgressDisplay struct {
 	shownPolicyLoadEvent bool
 
 	permalink string
-
-	accumulatedLines []string
 }
 
 type opStopwatch struct {
@@ -344,14 +342,85 @@ func RenderProgressEvents(
 	close(done)
 }
 
+type captureProgressEvents struct {
+	Buffer  *bytes.Buffer
+	Stack   tokens.StackName
+	Proj    tokens.PackageName
+	display *ProgressDisplay
+}
+
+// NewCaptureProgressEvents is a wrapper around ProgressDisplay that
+// holds the instance for inspection after processing the events.
+// E.g. It exposes whether a failure was detected in the display layer
+// and allows for inspection of the output.
+func NewCaptureProgressEvents(
+	stack tokens.StackName,
+	proj tokens.PackageName,
+) *captureProgressEvents {
+	buffer := bytes.NewBuffer([]byte{})
+	width, height := 200, 80
+
+	o := Options{
+		ShowResourceChanges: true,
+		Stdout:              buffer,
+		Stderr:              io.Discard,
+		term:                terminal.NewSimpleTerminal(buffer, width, height),
+		IsInteractive:       true,
+		Color:               colors.Never,
+		RenderOnDirty:       false,
+	}
+
+	isPreview := false
+	action := apitype.UpdateUpdate
+	permalink := ""
+
+	printPermalinkInteractive(o.term, o, permalink)
+	renderer := newInteractiveRenderer(o.term, permalink, o)
+	display := &ProgressDisplay{
+		action:                action,
+		isPreview:             isPreview,
+		isTerminal:            true,
+		opts:                  o,
+		renderer:              renderer,
+		stack:                 stack,
+		proj:                  proj,
+		sames:                 make(map[resource.URN]bool),
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+		displayOrderCounter:   1,
+		opStopwatch:           newOpStopwatch(),
+		permalink:             permalink,
+	}
+	renderer.initializeDisplay(display)
+
+	return &captureProgressEvents{
+		Buffer:  buffer,
+		Stack:   stack,
+		Proj:    proj,
+		display: display,
+	}
+}
+
+func (r *captureProgressEvents) ProcessEvents(
+	renderChan <-chan engine.Event,
+	renderDone chan<- bool,
+) {
+	r.display.processEvents(&time.Ticker{}, renderChan)
+	contract.IgnoreClose(r.display.renderer)
+	close(renderDone)
+}
+
+func (r *captureProgressEvents) Output() []string {
+	return strings.Split(strings.TrimSpace(r.Buffer.String()), "\n")
+}
+
+func (r *captureProgressEvents) OutputIncludesFailure() bool {
+	return r.display.failed
+}
+
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
-
-	// Store the line for summarization at the end.
-	if display.accumulatedLines == nil {
-		display.accumulatedLines = make([]string, 0)
-	}
-	display.accumulatedLines = append(display.accumulatedLines, line)
 }
 
 type treeNode struct {
@@ -703,8 +772,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
 					display.println(
-						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset,
-					)
+						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
 				}
 
 				for _, line := range lines {
@@ -721,22 +789,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	isFailedUpdate := display.failed && !display.isPreview
-	runSummarizeUpdateFailure := wroteDiagnosticHeader && isFailedUpdate && display.opts.ShowCopilotSummary
-	if runSummarizeUpdateFailure && display.opts.SummarizeUpdateFailure != nil {
-		summaryLines := display.opts.SummarizeUpdateFailure(display.accumulatedLines)
-		for _, line := range summaryLines {
-			display.println("    " + colors.BrightGreen + line + colors.Reset)
-		}
-		display.println("")
-	}
-
 	// Print a link to Copilot to explain the failure.
-	// Check for SuppressPermalink ensures we don't print the link for DIY backends.
+	// Check for SuppressPermalink ensures we don't print the link for DIY backends
 	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
-		display.println(
-			"    " + colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset +
-				" Would you like additional help with these diagnostics?")
+		display.println("    " +
+			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
 		display.println("")
