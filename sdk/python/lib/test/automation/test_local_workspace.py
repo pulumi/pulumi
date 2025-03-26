@@ -223,8 +223,8 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_config_env_functions(self):
         if get_test_org() != "moolumi":
             self.skipTest(
-                "Skipping test because the required environments are in the moolumi org."
-            )
+                    "Skipping test because the required environments are in the moolumi org."
+                    )
         project_name = "python_env_test"
         project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
@@ -240,8 +240,8 @@ class TestLocalWorkspace(unittest.TestCase):
         # Ensure envs can be listed
         envs = stack.list_environments()
         self.assertListEqual(
-            envs, ["automation-api-test-env", "automation-api-test-env-2"]
-        )
+                envs, ["automation-api-test-env", "automation-api-test-env-2"]
+                )
 
         # Check that we can access config from each env.
         config = stack.get_all_config()
@@ -277,9 +277,9 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
-            "plain": ConfigValue(value="abc"),
-            "secret": ConfigValue(value="def", secret=True),
-        }
+                "plain": ConfigValue(value="abc"),
+                "secret": ConfigValue(value="def", secret=True),
+                }
 
         plain_key = normalize_config_key("plain", project_name)
         secret_key = normalize_config_key("secret", project_name)
@@ -323,14 +323,14 @@ class TestLocalWorkspace(unittest.TestCase):
         stack.set_config("key4", ConfigValue(value="value4", secret=True))
         # test subPath and key as secret
         stack.set_config(
-            "key5.subKey1", ConfigValue(value="value5", secret=True), path=True
-        )
+                "key5.subKey1", ConfigValue(value="value5", secret=True), path=True
+                )
         # test string with dots
         stack.set_config("key6.subKey1", ConfigValue(value="value6", secret=True))
         # test string with dots
         stack.set_config(
-            "key7.subKey1", ConfigValue(value="value7", secret=True), path=False
-        )
+                "key7.subKey1", ConfigValue(value="value7", secret=True), path=False
+                )
         # test subPath
         stack.set_config("key7.subKey2", ConfigValue(value="value8"), path=True)
         # test subPath
@@ -391,8 +391,8 @@ class TestLocalWorkspace(unittest.TestCase):
 
         cfg = stack.get_all_config()
         self.assertEqual(
-            cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}'
-        )
+                cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}'
+                )
 
         ws.remove_stack(stack_name)
 
@@ -403,20 +403,20 @@ class TestLocalWorkspace(unittest.TestCase):
         random_plugin_version = "4.16.3"
         ws.install_plugin("random", random_plugin_version)
         result = stack.import_resources(
-            protect=False,
-            resources=[
-                {
-                    "type": "random:index/randomPassword:RandomPassword",
-                    "name": "randomPassword",
-                    "id": "supersecret",
-                }
-            ],
-        )
+                protect=False,
+                resources=[
+                    {
+                        "type": "random:index/randomPassword:RandomPassword",
+                        "name": "randomPassword",
+                        "id": "supersecret",
+                        }
+                    ],
+                )
 
         self.assertEqual(result.summary.result, "succeeded")
         expected_generated_code_path = get_test_path(
-            "data", "import", "expected_generated_code.yaml"
-        )
+                "data", "import", "expected_generated_code.yaml"
+                )
         expected_generated_code = ""
         with open(expected_generated_code_path, "r") as codeFile:
             expected_generated_code = codeFile.read()
@@ -433,16 +433,16 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = Stack.create(stack_name, ws)
 
         stack.set_all_config(
-            {
-                "key1": ConfigValue(value="value1", secret=False),
-                "key2": ConfigValue(value="value2", secret=True),
-                "key3.subKey1": ConfigValue(value="value3", secret=False),
-                "key3.subKey2": ConfigValue(value="value4", secret=False),
-                "key3.subKey3": ConfigValue(value="value5", secret=False),
-                "key4.subKey1": ConfigValue(value="value6", secret=True),
-            },
-            path=True,
-        )
+                {
+                    "key1": ConfigValue(value="value1", secret=False),
+                    "key2": ConfigValue(value="value2", secret=True),
+                    "key3.subKey1": ConfigValue(value="value3", secret=False),
+                    "key3.subKey2": ConfigValue(value="value4", secret=False),
+                    "key3.subKey3": ConfigValue(value="value5", secret=False),
+                    "key4.subKey1": ConfigValue(value="value6", secret=True),
+                    },
+                path=True,
+                )
 
         # test the SetAllConfigWithOptions configured the first item
         cv1 = stack.get_config("key1")
@@ -470,8 +470,8 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertTrue(cv5.secret)
 
         stack.remove_all_config(
-            ["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True
-        )
+                ["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True
+                )
 
         cfg = stack.get_all_config()
         self.assertEqual(cfg["python_test:key3"].value, '{"subKey3":"value5"}')
@@ -486,17 +486,17 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
-            "one": ConfigValue(value="one"),
-            "two": ConfigValue(value="two"),
-            "three": ConfigValue(value="three", secret=True),
-            "four": ConfigValue(value="four", secret=True),
-            "five": ConfigValue(value="five"),
-            "six": ConfigValue(value="six"),
-            "seven": ConfigValue(value="seven", secret=True),
-            "eight": ConfigValue(value="eight", secret=True),
-            "nine": ConfigValue(value="nine"),
-            "ten": ConfigValue(value="ten"),
-        }
+                "one": ConfigValue(value="one"),
+                "two": ConfigValue(value="two"),
+                "three": ConfigValue(value="three", secret=True),
+                "four": ConfigValue(value="four", secret=True),
+                "five": ConfigValue(value="five"),
+                "six": ConfigValue(value="six"),
+                "seven": ConfigValue(value="seven", secret=True),
+                "eight": ConfigValue(value="eight", secret=True),
+                "nine": ConfigValue(value="nine"),
+                "ten": ConfigValue(value="ten"),
+                }
         stack.set_all_config(config)
         stack.remove_all_config(list(config))
 
@@ -531,8 +531,8 @@ class TestLocalWorkspace(unittest.TestCase):
         outer_val = all_config["nested_config:outer"]
         self.assertFalse(outer_val.secret)
         self.assertEqual(
-            outer_val.value, '{"inner":"my_value","other":"something_else"}'
-        )
+                outer_val.value, '{"inner":"my_value","other":"something_else"}'
+                )
 
         list_val = all_config["nested_config:myList"]
         self.assertFalse(list_val.secret)
@@ -541,8 +541,8 @@ class TestLocalWorkspace(unittest.TestCase):
         outer = stack.get_config("outer")
         self.assertFalse(outer.secret)
         self.assertEqual(
-            outer_val.value, '{"inner":"my_value","other":"something_else"}'
-        )
+                outer_val.value, '{"inner":"my_value","other":"something_else"}'
+                )
 
         arr = stack.get_config("myList")
         self.assertFalse(arr.secret)
@@ -551,8 +551,8 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
             self.skipTest(
-                "Skipping test because tag methods are only supported in the cloud backend."
-            )
+                    "Skipping test because tag methods are only supported in the cloud backend."
+                    )
         project_name = "python_test"
         runtime = "python"
         project_settings = ProjectSettings(name=project_name, runtime=runtime)
@@ -584,61 +584,61 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_list_stacks(self):
         mock_with_returned_stacks = PulumiCommand()
         mock_with_returned_stacks.run = lambda *args, **kwargs: CommandResult(
-            stdout=json.dumps(
-                [
-                    {
-                        "name": "testorg1/testproj1/teststack1",
-                        "current": False,
-                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
-                    },
-                    {
-                        "name": "testorg1/testproj1/teststack2",
-                        "current": False,
-                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack2",
-                    },
-                ]
-            ),
-            stderr="",
-            code=0,
-        )
-        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
-        stacks = ws.list_stacks()
-        self.assertEqual(len(stacks), 2)
-        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
-        self.assertEqual(stacks[0].current, False)
-        self.assertEqual(
-            stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
-        )
-        self.assertEqual(stacks[1].name, "testorg1/testproj1/teststack2")
-        self.assertEqual(stacks[1].current, False)
-        self.assertEqual(
-            stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2"
-        )
-
-    def test_list_stacks_with_correct_params(self):
-        captured_args = []
-        mock_with_returned_stacks = PulumiCommand()
-        mock_with_returned_stacks.run = lambda *args, **kwargs: (
-            captured_args.append(args[0]),
-            CommandResult(
                 stdout=json.dumps(
                     [
                         {
                             "name": "testorg1/testproj1/teststack1",
                             "current": False,
                             "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
-                        },
+                            },
                         {
-                            "name": "testorg1/testproj2/teststack2",
+                            "name": "testorg1/testproj1/teststack2",
                             "current": False,
-                            "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
-                        },
-                    ]
-                ),
+                            "url": "https://app.pulumi.com/testorg1/testproj1/teststack2",
+                            },
+                        ]
+                    ),
                 stderr="",
                 code=0,
-            ),
-        )[1]
+                )
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        stacks = ws.list_stacks()
+        self.assertEqual(len(stacks), 2)
+        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
+        self.assertEqual(stacks[0].current, False)
+        self.assertEqual(
+                stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
+                )
+        self.assertEqual(stacks[1].name, "testorg1/testproj1/teststack2")
+        self.assertEqual(stacks[1].current, False)
+        self.assertEqual(
+                stacks[1].url, "https://app.pulumi.com/testorg1/testproj1/teststack2"
+                )
+
+    def test_list_stacks_with_correct_params(self):
+        captured_args = []
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: (
+                captured_args.append(args[0]),
+                CommandResult(
+                    stdout=json.dumps(
+                        [
+                            {
+                                "name": "testorg1/testproj1/teststack1",
+                                "current": False,
+                                "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                                },
+                            {
+                                "name": "testorg1/testproj2/teststack2",
+                                "current": False,
+                                "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
+                                },
+                            ]
+                        ),
+                    stderr="",
+                    code=0,
+                    ),
+                )[1]
         ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
         ws.list_stacks()
         self.assertEqual(captured_args[0], ["stack", "ls", "--json"])
@@ -646,61 +646,61 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_list_all_stacks(self):
         mock_with_returned_stacks = PulumiCommand()
         mock_with_returned_stacks.run = lambda *args, **kwargs: CommandResult(
-            stdout=json.dumps(
-                [
-                    {
-                        "name": "testorg1/testproj1/teststack1",
-                        "current": False,
-                        "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
-                    },
-                    {
-                        "name": "testorg1/testproj2/teststack2",
-                        "current": False,
-                        "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
-                    },
-                ]
-            ),
-            stderr="",
-            code=0,
-        )
-        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
-        stacks = ws.list_stacks(include_all=True)
-        self.assertEqual(len(stacks), 2)
-        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
-        self.assertEqual(stacks[0].current, False)
-        self.assertEqual(
-            stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
-        )
-        self.assertEqual(stacks[1].name, "testorg1/testproj2/teststack2")
-        self.assertEqual(stacks[1].current, False)
-        self.assertEqual(
-            stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2"
-        )
-
-    def test_list_all_stacks_with_correct_params(self):
-        captured_args = []
-        mock_with_returned_stacks = PulumiCommand()
-        mock_with_returned_stacks.run = lambda *args, **kwargs: (
-            captured_args.append(args[0]),
-            CommandResult(
                 stdout=json.dumps(
                     [
                         {
                             "name": "testorg1/testproj1/teststack1",
                             "current": False,
                             "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
-                        },
+                            },
                         {
                             "name": "testorg1/testproj2/teststack2",
                             "current": False,
                             "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
-                        },
-                    ]
-                ),
+                            },
+                        ]
+                    ),
                 stderr="",
                 code=0,
-            ),
-        )[1]
+                )
+        ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
+        stacks = ws.list_stacks(include_all=True)
+        self.assertEqual(len(stacks), 2)
+        self.assertEqual(stacks[0].name, "testorg1/testproj1/teststack1")
+        self.assertEqual(stacks[0].current, False)
+        self.assertEqual(
+                stacks[0].url, "https://app.pulumi.com/testorg1/testproj1/teststack1"
+                )
+        self.assertEqual(stacks[1].name, "testorg1/testproj2/teststack2")
+        self.assertEqual(stacks[1].current, False)
+        self.assertEqual(
+                stacks[1].url, "https://app.pulumi.com/testorg1/testproj2/teststack2"
+                )
+
+    def test_list_all_stacks_with_correct_params(self):
+        captured_args = []
+        mock_with_returned_stacks = PulumiCommand()
+        mock_with_returned_stacks.run = lambda *args, **kwargs: (
+                captured_args.append(args[0]),
+                CommandResult(
+                    stdout=json.dumps(
+                        [
+                            {
+                                "name": "testorg1/testproj1/teststack1",
+                                "current": False,
+                                "url": "https://app.pulumi.com/testorg1/testproj1/teststack1",
+                                },
+                            {
+                                "name": "testorg1/testproj2/teststack2",
+                                "current": False,
+                                "url": "https://app.pulumi.com/testorg1/testproj2/teststack2",
+                                },
+                            ]
+                        ),
+                    stderr="",
+                    code=0,
+                    ),
+                )[1]
         ws = LocalWorkspace(pulumi_command=mock_with_returned_stacks)
         ws.list_stacks(include_all=True)
         self.assertEqual(captured_args[0], ["stack", "ls", "--json", "--all"])
@@ -727,9 +727,9 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNone(print(stack))
 
         config: ConfigMap = {
-            "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True),
-        }
+                "bar": ConfigValue(value="abc"),
+                "buzz": ConfigValue(value="secret", secret=True),
+                }
         stack.set_all_config(config)
 
         # pulumi up
@@ -764,13 +764,13 @@ class TestLocalWorkspace(unittest.TestCase):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
         stack = create_stack(
-            stack_name, program=pulumi_program, project_name=project_name
-        )
+                stack_name, program=pulumi_program, project_name=project_name
+                )
 
         stack_config: ConfigMap = {
-            "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True),
-        }
+                "bar": ConfigValue(value="abc"),
+                "buzz": ConfigValue(value="secret", secret=True),
+                }
 
         try:
             stack.set_all_config(stack_config)
@@ -799,6 +799,26 @@ class TestLocalWorkspace(unittest.TestCase):
             # pulumi destroy
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    def test_preview_destroy(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name,
+            program=pulumi_program,
+            project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi destroy
+            destroy_res = stack.destroy(preview_only=True)
+            self.assertEqual(destroy_res.summary.kind, "update")
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)

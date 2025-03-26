@@ -647,6 +647,7 @@ class Stack:
         continue_on_error: Optional[bool] = None,
         remove: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        preview_only: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -671,12 +672,18 @@ class Stack:
         :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
         :param remove: Remove the stack and its configuration after all resources in the stack have been deleted.
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
+        :param preview_only: Only show a preview of the destroy, but don't perform the destroy itself
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["destroy", "--yes", "--skip-preview"]
-        args.extend(extra_args)
+        args = ["destroy"]
 
+        if preview_only:
+            args.append("--preview-only")
+        else:
+            args.extend(["--skip-preview", "--yes"])
+
+        args.extend(extra_args)
         args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
