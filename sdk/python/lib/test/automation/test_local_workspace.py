@@ -803,6 +803,24 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_preview_destroy(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_or_select_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        try:
+            # pulumi up
+            stack.up()
+
+            # pulumi destroy
+            destroy_res = stack.destroy(preview_only=True)
+            self.assertEqual(destroy_res.summary.kind, "update")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_stack_lifecycle_inline_program_remove_without_destroy(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
