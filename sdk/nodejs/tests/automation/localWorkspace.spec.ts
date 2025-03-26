@@ -606,9 +606,12 @@ describe("LocalWorkspace", () => {
         await stack.workspace.removeStack(stackName);
     });
     it(`previews a destroy without executing it`, async () => {
-        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj", `int_test${getTestSuffix()}`);
-        const workDir = upath.joinSafe(__dirname, "data", "testproj");
-        const stack = await LocalWorkspace.createStack({ stackName, workDir }, withTestBackend({}));
+        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
+        const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");
+        const stack = await LocalWorkspace.createStack(
+            { stackName, workDir },
+            withTestBackend({}, "testproj_dotnet", "", "dotnet"),
+        );
 
         // pulumi up
         const upRes = await stack.up({ userAgent });
