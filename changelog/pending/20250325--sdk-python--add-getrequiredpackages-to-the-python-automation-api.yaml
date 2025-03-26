@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdk/python
-  description: Add `GetRequiredPackages` to the Python Automation API
+  description: Avoid error messages due to missing a missing implementation of `GetRequiredPackages` in the Python Automation API server
