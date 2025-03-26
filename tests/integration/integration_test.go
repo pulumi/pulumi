@@ -1490,5 +1490,7 @@ func TestOverrideComponentNamespace(t *testing.T) {
 	var packageSpec schema.PackageSpec
 	err := json.Unmarshal([]byte(stdout), &packageSpec)
 	require.NoError(t, err)
+	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
+	// it is 'pulumi', which we get from `github.com/*pulumi*/....
 	require.Equal(t, "pulumi", packageSpec.Namespace)
 }

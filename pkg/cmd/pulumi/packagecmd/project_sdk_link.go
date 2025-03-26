@@ -641,6 +641,16 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	return pluginCtx, nil
 }
 
+func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec) {
+	if spec.Namespace == "" && strings.HasPrefix(pluginSpec.PluginDownloadURL, "git://") {
+		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
+		if len(matches) == 2 {
+			spec.Namespace = matches[1]
+		}
+	}
+}
+
 // SchemaFromSchemaSource takes a schema source and returns its associated schema. A
 // schema source is either a file (ending with .[json|y[a]ml]) or a plugin with an
 // optional version:
@@ -726,13 +736,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if pluginSpec.Version != nil {
 		spec.Version = pluginSpec.Version.String()
 	}
-	if spec.Namespace == "" && strings.HasPrefix(pluginSpec.PluginDownloadURL, "git://") {
-		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
-		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
-		if len(matches) == 2 {
-			spec.Namespace = matches[1]
-		}
-	}
+	setSpecNamespace(&spec, pluginSpec)
 	return bind(spec)
 }
 
