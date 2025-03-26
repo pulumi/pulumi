@@ -15,7 +15,6 @@
 package httpstate
 
 import (
-	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
@@ -1129,6 +1128,16 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
+	if op.Opts.Display.ShowCopilotSummary {
+		op.Opts.Display = op.Opts.Display.WithSummarizeUpdateFailure(func(outputLines []string) []string {
+			summary, err := b.SummarizeErrorWithCopilot(ctx, outputLines, stack, op.Opts.Display)
+			if err != nil {
+				return []string{fmt.Sprintf("Error summarizing update output: %s", err)}
+			}
+			return summary
+		})
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
@@ -1236,12 +1245,13 @@ func (b *cloudBackend) PromptAI(
 }
 
 func (b *cloudBackend) SummarizeErrorWithCopilot(
-	ctx context.Context, lines []string, stackRef backend.StackReference, opts display.Options,
+	ctx context.Context, lines []string, stack backend.Stack, opts display.Options,
 ) ([]string, error) {
 	if len(lines) == 0 {
 		return nil, nil
 	}
 
+	stackRef := stack.Ref()
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -1438,28 +1448,6 @@ func (b *cloudBackend) runEngineAction(
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
-	renderEvents := make(chan engine.Event)
-	renderDone := make(chan bool)
-	stdout := bytes.Buffer{}
-	options := display.Options{
-		ShowResourceChanges: true,
-		Stdout:              &stdout,
-		Stderr:              io.Discard,
-	}
-	go display.RenderProgressEvents(
-		"", // op, unused?
-		apitype.UpdateUpdate,
-		stackRef.Name(),
-		op.Proj.Name,
-		"", // permalink, unused?
-		renderEvents,
-		renderDone,
-		options,
-		dryRun,
-		200,
-		80,
-	)
-
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)
 	engineEvents := make(chan engine.Event)
@@ -1467,7 +1455,6 @@ func (b *cloudBackend) runEngineAction(
 	go func() {
 		for e := range engineEvents {
 			displayEvents <- e
-			renderEvents <- e
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
 			}
@@ -1518,7 +1505,6 @@ func (b *cloudBackend) runEngineAction(
 
 	// Wait for dependent channels to finish processing engineEvents before closing.
 	<-displayDone
-	<-renderDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
 	if snapshotManager != nil {
@@ -1534,25 +1520,10 @@ func (b *cloudBackend) runEngineAction(
 		}
 	}
 
-	// FIXME: add "&& the update failed"
-	// maybe by exposing it out of RenderProgressEvents somehow.
-	if !dryRun && op.Opts.Display.ShowCopilotSummary {
-		lines := strings.Split(stdout.String(), "\n")
-		// summarize the events
-		summary, err := b.SummarizeErrorWithCopilot(ctx, lines, stackRef, op.Opts.Display)
-		if err != nil {
-			fmt.Printf("error summarizing update output: %s\n", err)
-		}
-		for _, line := range summary {
-			fmt.Printf("summary: %s\n", line)
-		}
-	}
-
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
 	close(displayEvents)
-	close(renderEvents)
 
 	// Mark the update as complete.
 	status := apitype.UpdateStatusSucceeded
