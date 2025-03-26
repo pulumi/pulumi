@@ -37,6 +37,9 @@ class LanguageServer(LanguageRuntimeServicer):
     def GetRequiredPlugins(self, request, context):
         return language_pb2.GetRequiredPluginsResponse()
 
+    def GetRequiredPackages(self, request, context):
+        return language_pb2.GetRequiredPackagesResponse()
+
     def _exception_handler(self, loop, context):
         # Exception are normally handler deeper in the stack. If this class of
         # exception bubble up to here, something is wrong and we should stop
