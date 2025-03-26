@@ -1516,19 +1516,18 @@ func TestTaggedComponent(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.RunCommand("pulumi", "stack", "init", "organization/component-consumer/test")
+	e.RunCommand("pulumi", "stack", "init", "organization/external_tagged_component/test")
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"}
 	e.RunCommand("pulumi", "install")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	// Make sure we have exactly the plugin we expect installed
 	assert.Equal(t, 1, strings.Count(stdout, "github.com_pulumi_pulumi-yaml.git"))
 
-	e.Env = []string{}
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	// Make sure we have no additional plugins after the up
-	assert.Equal(t, 1, strings.Count(stdout, "iaersntoiarsntoiarsntoairsetn"))
+	assert.Equal(t, 1, strings.Count(stdout, "github.com_pulumi_pulumi-yaml.git"))
 
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomPet")
 	// We expect 4 words separated by dashes.
