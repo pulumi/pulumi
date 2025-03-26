@@ -260,7 +260,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				Version:  &version,
 				Provider: &schema.Resource{},
 			},
-			expectedErr: "no readme specified, please provide the path to the readme file or add one to the package",
+			expectedErr: "no README found. Please add one named README.md to the package, or use --readme to specify the path",
 		},
 		{
 			name: "error when publish fails",
