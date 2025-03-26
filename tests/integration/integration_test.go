@@ -23,13 +23,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -1480,30 +1480,19 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
-func TestOverrideComponentNameAndNamespace(t *testing.T) {
-	t.Parallel()
-
+func TestOverrideComponentNamespace(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	cwd, err := os.Getwd()
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
+		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+	var packageSpec schema.PackageSpec
+	err := json.Unmarshal([]byte(stdout), &packageSpec)
 	require.NoError(t, err)
-
-	e.ImportDirectory("component_test")
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.CWD = filepath.Join(e.RootPath, "python-component")
-	e.RunCommand("python", "-m", "venv", "venv")
-	pythonBin := "./venv/bin/python"
-	if runtime.GOOS == "windows" {
-		pythonBin = ".\\venv\\Scripts\\python.exe"
-	}
-	e.RunCommand(pythonBin, "-m", "pip", "install", "-r", "requirements.txt")
-	e.RunCommand(pythonBin, "-m", "pip", "install", "-e", filepath.Join(cwd, "..", "..", "sdk", "python"))
-
-	e.CWD = filepath.Join(e.RootPath, "ts-consumer")
-
-	stdout, _ := e.RunCommand("pulumi", "install")
-	require.Contains(t, stdout, "import * as myComponent from \"@overridden-namespace/my-component\"")
+	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
+	// it is 'pulumi', which we get from `github.com/*pulumi*/....
+	require.Equal(t, "pulumi", packageSpec.Namespace)
 }
 
 func TestTaggedComponent(t *testing.T) {

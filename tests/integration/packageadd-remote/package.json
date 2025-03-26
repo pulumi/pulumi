@@ -7,6 +7,6 @@
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.113.0",
-        "tls-self-signed-cert": "file:sdks/tls-self-signed-cert"
+        "tls-self-signed-cert": "file:sdks/pulumi-tls-self-signed-cert"
     }
 }
