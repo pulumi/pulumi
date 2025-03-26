@@ -514,9 +514,9 @@ Event: ${line}\n${e.toString()}`);
         const args = ["destroy"];
 
         if (opts?.previewOnly) {
-          args.push("--preview-only")
+            args.push("--preview-only");
         } else {
-          args.push("--yes", "--skip-preview")
+            args.push("--yes", "--skip-preview");
         }
 
         args.push(...this.remoteArgs());
