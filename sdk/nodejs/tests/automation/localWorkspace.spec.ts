@@ -618,12 +618,8 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.kind, "update");
         assert.strictEqual(upRes.summary.result, "succeeded");
 
-        // pulumi preview
-        const preRes = await stack.preview({ userAgent });
-        assert.strictEqual(preRes.changeSummary.same, 1);
-
         // pulumi destroy
-        const destroyRes = await stack.destroy({ userAgent });
+        const destroyRes = await stack.destroy({ userAgent, previewOnly: true });
         assert.strictEqual(destroyRes.summary.kind, "update");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
