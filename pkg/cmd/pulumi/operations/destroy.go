@@ -47,6 +47,7 @@ import (
 )
 
 func NewDestroyCmd() *cobra.Command {
+	var runProgram bool
 	var debug bool
 	var remove bool
 	var stackName string
@@ -293,6 +294,7 @@ func NewDestroyCmd() *cobra.Command {
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
 				ContinueOnError:           continueOnError,
+				DestroyProgram:            runProgram,
 			}
 
 			_, destroyErr := s.Destroy(ctx, backend.UpdateOperation{
@@ -335,6 +337,10 @@ func NewDestroyCmd() *cobra.Command {
 			return destroyErr
 		},
 	}
+
+	cmd.PersistentFlags().BoolVar(
+		&runProgram, "run-program", false,
+		"Run the program to determine up-to date state for providers to destroy resources")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

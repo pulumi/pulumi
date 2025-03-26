@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `--run-program` support to `pulumi destroy`
