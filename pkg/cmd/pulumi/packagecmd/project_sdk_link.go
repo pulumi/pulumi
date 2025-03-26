@@ -735,6 +735,8 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	}
 	if pluginSpec.Version != nil {
 		spec.Version = pluginSpec.Version.String()
+	} else if spec.Version == "" {
+		spec.Version = "0.0.0"
 	}
 	setSpecNamespace(&spec, pluginSpec)
 	return bind(spec)

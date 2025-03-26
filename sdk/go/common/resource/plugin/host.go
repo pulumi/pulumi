@@ -462,7 +462,7 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 
 			// Warn if the plugin version was not what we expected
 			if version != nil && !env.Dev.Value() {
-				if info.Version == nil || !info.Version.GTE(*version) {
+				if info.Version != nil && !info.Version.GTE(*version) {
 					var v string
 					if info.Version != nil {
 						v = info.Version.String()
