@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -2693,4 +2694,19 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
+}
+
+func TestNodeComponentNamespaceInference(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("namespaced_component")
+	installNodejsProviderDependencies(t, e.CWD)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", ".")
+	var packageSpec schema.PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(stdout), &packageSpec))
+	require.Equal(t, "namespaced-component", packageSpec.Name)
+	require.Equal(t, "my-namespace", packageSpec.Namespace)
 }

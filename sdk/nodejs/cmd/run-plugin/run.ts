@@ -281,8 +281,23 @@ ${errMsg}`,
             // Get any Pulumi Components exported by the module
             const components = getPulumiComponents(reqResult);
             if (components.length > 0) {
+                const absDir = path.resolve(program);
+                const packStr = fs.readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
+                const packageJSON = JSON.parse(packStr);
+                const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
+                const providerName = matches[2];
+                let namespace = undefined;
+                if (matches[1]) {
+                    namespace = matches[1].substring(1, matches[1].length - 1);
+                }
+
                 // If we found any components, boot up a component provider host
-                return await componentProviderHost({ dirname: program, components });
+                return await componentProviderHost({
+                    name: providerName,
+                    namespace: namespace,
+                    dirname: program,
+                    components,
+                });
             }
 
             // If the exported value was itself a Function, then just execute it. This allows for
