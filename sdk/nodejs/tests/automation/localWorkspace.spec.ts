@@ -605,6 +605,27 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`previews a destroy without executing it`, async () => {
+        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj", `int_test${getTestSuffix()}`);
+        const workDir = upath.joinSafe(__dirname, "data", "testproj");
+        const stack = await LocalWorkspace.createStack({ stackName, workDir }, withTestBackend({}));
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        const preRes = await stack.preview({ userAgent });
+        assert.strictEqual(preRes.changeSummary.same, 1);
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "update");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`runs through the stack lifecycle with a local dotnet program`, async () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");

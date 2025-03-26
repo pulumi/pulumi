@@ -511,7 +511,13 @@ Event: ${line}\n${e.toString()}`);
      *  Options to customize the behavior of the destroy.
      */
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
-        const args = ["destroy", "--yes", "--skip-preview"];
+        const args = ["destroy"];
+
+        if (opts?.previewOnly) {
+          args.push("--preview-only")
+        } else {
+          args.push("--yes", "--skip-preview")
+        }
 
         args.push(...this.remoteArgs());
 
@@ -1601,6 +1607,11 @@ export interface DestroyOptions extends GlobalOpts {
      * Continue the operation to completion even if errors occur.
      */
     continueOnError?: boolean;
+
+    /**
+     * Only show a preview of the destroy, but don't perform the destroy itself.
+     */
+    previewOnly?: boolean;
 
     /**
      * Remove the stack and its configuration after all resources in the stack have been deleted.
