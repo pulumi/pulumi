@@ -153,7 +153,8 @@ func (cmd *packagePublishCmd) Run(
 		args.readmePath = readmePath
 	}
 	if args.readmePath == "" {
-		return errors.New("no README found. Please add one named README.md to the package, or use --readme to specify the path")
+		return errors.New("no README found. Please add one named README.md to the package, " +
+			"or use --readme to specify the path")
 	}
 
 	var publisher string
@@ -258,7 +259,7 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 	return b, nil
 }
 
-// findReadme attempts to find a readme file in the given package source.
+// findReadme attempts to find a file named README.md (case insensitive) in the given package source.
 // It tries to find a readme in the following order and returns the path to the first one it finds:
 // 1. The package source if it is a directory
 // 2. The installed plugin directory
@@ -288,6 +289,10 @@ func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
 		return ""
 	}
 
+	if ext := filepath.Ext(packageSrc); ext == ".json" || ext == ".yaml" || ext == ".yml" {
+		// If the package source is a schema file, there's no README.md to be found.
+		return "", nil
+	}
 	// If the source is a directory, check if it contains a readme.
 	if readmeFromPackage := findReadmeInDir(packageSrc); readmeFromPackage != "" {
 		return readmeFromPackage, nil

@@ -669,6 +669,17 @@ func TestFindReadme(t *testing.T) {
 		assert.NoError(t, err, "Should not return error when source is a file")
 	})
 
+	t.Run("SchemaFile", func(t *testing.T) {
+		t.Parallel()
+		schemaPath := filepath.Join(tmpDir, "schema.json")
+		err := os.WriteFile(schemaPath, []byte("{}"), 0o600)
+		require.NoError(t, err)
+
+		readme, err := cmd.findReadme(schemaPath)
+		assert.Empty(t, readme)
+		assert.NoError(t, err, "Should not return error when source is a schema file")
+	})
+
 	t.Run("DirectoryWithoutReadme", func(t *testing.T) {
 		t.Parallel()
 		dirPath := filepath.Join(tmpDir, "no-readme-dir")
