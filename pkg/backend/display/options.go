@@ -65,7 +65,7 @@ type Options struct {
 	term                   terminal.Terminal
 	DeterministicOutput    bool                                // true to disable timing-based rendering
 	RenderOnDirty          bool                                // true to always render frames when marked dirty
-	SummarizeUpdateFailure func(outputLines []string) []string // function to summarize the update failure and return a list of lines to print
+	SummarizeUpdateFailure func(outputLines []string) []string // function to summarize the update, to be printed
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {
