@@ -19,8 +19,10 @@ package display
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -173,6 +175,125 @@ func TestProgressEvents(t *testing.T) {
 
 			opts := defaultOpts()
 			testProgressEvents(t, path, accept, ".non-interactive", opts, 80, 24, false)
+		})
+	}
+}
+
+func TestSummarizeUpdateFailure(t *testing.T) {
+	t.Parallel()
+
+	// test events
+
+	// If we see a ResourceOperationFailed event, the update is marked as failed.
+	resourceOperationFailedEvent := engine.NewEvent(engine.ResourceOperationFailedPayload{
+		Metadata: engine.StepEventMetadata{
+			URN: "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+			Op:  deploy.OpUpdate,
+		},
+	})
+	// If we see a DiagEvent event we render the diagnostic section which contains the output of the summary.
+	diagEvent := engine.NewEvent(engine.DiagEventPayload{
+		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message: "something went wrong",
+	})
+
+	// Combined is a common failed update which renders the diagnostic section and the Copilot summary.
+	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
+
+	// test cases
+	testCases := []struct {
+		name string
+		// enable Copilot summary
+		showCopilotSummary bool
+		// is this a preview update
+		isPreview bool
+		// is this an update that failed
+		isFailure bool
+		// expect a summary to be printed
+		expectSummary bool
+	}{
+		// base case: update with Copilot enabled
+		{
+			name:               "update",
+			showCopilotSummary: true,
+			isPreview:          false,
+			isFailure:          true,
+			expectSummary:      true,
+		},
+		// Preview updates should not show the Copilot summary.
+		{
+			name:               "preview",
+			showCopilotSummary: true,
+			isPreview:          true,
+			isFailure:          true,
+			expectSummary:      false,
+		},
+		// Preview updates with Copilot disabled should not show the Copilot summary.
+		{
+			name:               "preview-copilot-disabled",
+			showCopilotSummary: false,
+			isPreview:          true,
+			isFailure:          true,
+			expectSummary:      false,
+		},
+		// Update with Copilot disabled should not show the Copilot summary.
+		{
+			name:               "update-copilot-disabled",
+			showCopilotSummary: false,
+			isPreview:          false,
+			isFailure:          true,
+			expectSummary:      false,
+		},
+		// Successful update should not show the Copilot summary.
+		{
+			name:               "update-success",
+			showCopilotSummary: true,
+			isPreview:          false,
+			isFailure:          false,
+			expectSummary:      false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			var stdout bytes.Buffer
+
+			opts := defaultOpts()
+			opts.Stdout = &stdout
+			opts.Stderr = io.Discard
+			opts.Color = colors.Never
+
+			var linesOutput []string
+			opts = opts.WithSummarizeUpdateFailure(func(outputLines []string) []string {
+				linesOutput = outputLines
+				return []string{"an example update failure summary"}
+			})
+			opts.ShowCopilotSummary = testCase.showCopilotSummary
+
+			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+			go ShowProgressEvents(
+				"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+				opts, testCase.isPreview)
+
+			if testCase.isFailure {
+				for _, event := range failureEvents {
+					eventChannel <- event
+				}
+			}
+
+			close(eventChannel)
+			<-doneChannel
+
+			if testCase.expectSummary {
+				assert.Contains(t, stdout.String(), "an example update failure summary")
+				assert.Contains(t, strings.Join(linesOutput, "\n"), "something went wrong")
+			} else {
+				assert.NotContains(t, stdout.String(), "an example update failure summary")
+				assert.NotContains(t, strings.Join(linesOutput, "\n"), "something went wrong")
+			}
 		})
 	}
 }

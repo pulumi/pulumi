@@ -1129,11 +1129,8 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.Display.ShowCopilotSummary {
-		op.Opts.Display = op.Opts.Display.WithAppendedDisplayHook(func(displayCtx display.RenderHookContext) []string {
-			if !displayCtx.Failed || displayCtx.IsPreview {
-				return nil
-			}
-			summary, err := b.SummarizeErrorWithCopilot(ctx, displayCtx.OutputLines, stack, op.Opts.Display)
+		op.Opts.Display = op.Opts.Display.WithSummarizeUpdateFailure(func(outputLines []string) []string {
+			summary, err := b.SummarizeErrorWithCopilot(ctx, outputLines, stack, op.Opts.Display)
 			if err != nil {
 				return []string{fmt.Sprintf("Error summarizing update output: %s", err)}
 			}
@@ -1363,6 +1360,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		}
 	} else {
 		op.Opts.Display.ShowLinkToCopilot = false
+		op.Opts.Display.ShowCopilotSummary = false
 		copilotEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",

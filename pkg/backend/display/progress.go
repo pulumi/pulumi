@@ -721,17 +721,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	if wroteDiagnosticHeader {
-		hookOuput := []string{}
-		for _, hook := range display.opts.RenderHooks {
-			summaryLines := hook(RenderHookContext{
-				Failed:      display.failed,
-				IsPreview:   display.isPreview,
-				OutputLines: display.accumulatedLines,
-			})
-			hookOuput = append(hookOuput, summaryLines...)
-		}
-		for _, line := range hookOuput {
+	isFailedUpdate := display.failed && !display.isPreview
+	runSummarizeUpdateFailure := wroteDiagnosticHeader && isFailedUpdate && display.opts.ShowCopilotSummary
+	if runSummarizeUpdateFailure && display.opts.SummarizeUpdateFailure != nil {
+		summaryLines := display.opts.SummarizeUpdateFailure(display.accumulatedLines)
+		for _, line := range summaryLines {
 			display.println("    " + colors.BrightGreen + line + colors.Reset)
 		}
 		display.println("")
