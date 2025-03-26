@@ -28,9 +28,9 @@ def component_provider_host(
     components: list[type[ComponentResource]], metadata: Optional[Metadata] = None
 ):
     """
-    component_provider_host starts the provider host for the plugin at path
-    sys.argv[0]. This will discover all `pulumi.ComponentResource` sublcasses in
-    the Python source code and infer their schema from their type annotations.
+    component_provider_host starts the provider and hosts the passed in components.
+    The provider's schema is inferred from the type annotations of the components.
+    See `analyzer.py` for more details.
 
     :param metadata: The metadata for the provider. If not provided, the name
     defaults to the plugin's directory name, and version defaults to "0.0.1".

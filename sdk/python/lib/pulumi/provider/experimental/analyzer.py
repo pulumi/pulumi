@@ -453,6 +453,19 @@ class Analyzer:
             raise ValueError(f"Unsupported type '{arg}' for '{typ.__name__}.{name}'")
 
     def get_docstring(self, typ: type, name: str) -> Optional[str]:
+        """
+        Returns the docstring for the property with the given name on the given type.
+
+        :param typ: The type on which the property is defined.
+        :param name: The name of the property.
+
+        Property docstrings are not available at runtime. To find the docstring,
+        we get the source code of the type and parse it using the ast module. We
+        iterate over the statements in the class definition and look for
+        `AnnAssign` nodes. These represent a property declaration with a type
+        annotation. Any string literal following the property declaration is the
+        docstring.
+        """
         if typ.__name__ in self.docstrings:
             return self.docstrings.get(typ.__name__, {}).get(name, None)
 
