@@ -707,12 +707,12 @@ func TestRegisterResourceOutputs(t *testing.T) {
 	mocks := &testMonitor{
 		RegisterResourceOutputsF: func() (*emptypb.Empty, error) {
 			resp := &emptypb.Empty{}
-			if count.Load() > 2 {
+			if c := count.Load(); c > 2 {
 				// Note: the first call registers the stack outputs for urn:
 				//  - urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack
 				// The second call registers the resource outputs for the component resource:
 				//  - urn:pulumi:stack::project::test:go:NewLoggingTestResource::res
-				return resp, fmt.Errorf("RegisterResourceOutputs called more than twice: %d", count.Load())
+				return resp, fmt.Errorf("RegisterResourceOutputs called %d times; expected only 2 calls", c)
 			}
 
 			count.Add(1)
