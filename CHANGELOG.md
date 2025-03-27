@@ -1,5 +1,63 @@
 # Changelog
 
+## 3.159.0 (2025-03-27)
+
+
+### Features
+
+- [auto/nodejs] Add the `--preview-only` option for `destroy` in the NodeJS Automation API
+  [#19030](https://github.com/pulumi/pulumi/pull/19030)
+
+- [auto/python] Add `--preview-only` option for `destroy` in the Python Automation API
+  [#19028](https://github.com/pulumi/pulumi/pull/19028)
+
+- [cli/new] Allow `pulumi new` to use templates defined in the Pulumi Cloud
+  [#18627](https://github.com/pulumi/pulumi/pull/18627)
+
+- [components/nodejs] Construct components based on explicit component classes
+  [#18996](https://github.com/pulumi/pulumi/pull/18996)
+
+- [cli/package] Support GITHUB_TOKEN and GITLAB_TOKEN in `pulumi package add` for Git packages
+  [#18991](https://github.com/pulumi/pulumi/pull/18991)
+
+- [cli/package] Stop allowing overriding namespace in PulumiPlugin.yaml, start inferring it for Git plugins
+  [#19016](https://github.com/pulumi/pulumi/pull/19016)
+
+- [programgen/nodejs] Add canOutput code generation and conformance tests
+  [#18897](https://github.com/pulumi/pulumi/pull/18897)
+
+- [sdk/nodejs] Allow namespace for components to be set in PulumiPlugin.yaml
+  [#18982](https://github.com/pulumi/pulumi/pull/18982)
+
+- [sdk/nodejs] Run componentProviderHost automatically in RunPlugin if any Components are exported
+  [#18984](https://github.com/pulumi/pulumi/pull/18984)
+
+- [sdk/python] Avoid error messages due to missing a missing implementation of `GetRequiredPackages` in the Python Automation API server
+  [#19020](https://github.com/pulumi/pulumi/pull/19020)
+
+- [sdk/python] Pass list of components to component_provider_host
+  [#19021](https://github.com/pulumi/pulumi/pull/19021)
+
+
+### Bug Fixes
+
+- [programgen] Fix plugin resolution in convert
+  [#19040](https://github.com/pulumi/pulumi/pull/19040)
+
+- [programgen/nodejs] Fix references to variables that were renamed due to keyword overlap etc in resource attributes
+  [#19041](https://github.com/pulumi/pulumi/pull/19041)
+
+- [cli/package] Use correct local path for Git based components with a version tag
+  [#19023](https://github.com/pulumi/pulumi/pull/19023)
+
+- [sdk/python] Set name and namespace via component_provider_host
+  [#18985](https://github.com/pulumi/pulumi/pull/18985)
+
+
+### Miscellaneous
+
+- [cli] Update language plugins to java@1.8.0 and yaml@1.15.1
+
 ## 3.158.0 (2025-03-24)
 
 

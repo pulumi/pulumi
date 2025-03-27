@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/nodejs
-  description: Fix references to variables that were renamed due to keyword overlap etc in resource attributes
