@@ -16,12 +16,12 @@ from pulumi.provider.experimental.schema import generate_schema
 
 
 def test_generate_schema_with_namespace():
-    schema = generate_schema("name", "namespace", {}, {})
+    schema = generate_schema("name", "1.2.3", "namespace", {}, {})
     assert schema.name == "name"
     assert schema.namespace == "namespace"
 
 
 def test_generate_schema_no_namespace():
-    schema = generate_schema("name", None, {}, {})
+    schema = generate_schema("name", "1.2.3", None, {}, {})
     assert schema.name == "name"
     assert schema.namespace is None

@@ -61,7 +61,7 @@ class ComponentProvider(Provider):
             self._component_defs,
             self._type_defs,
         )
-        super().__init__("", json.dumps(schema.to_json()))
+        super().__init__(version, json.dumps(schema.to_json()))
 
     def construct(
         self,
