@@ -1099,7 +1099,7 @@ func (spec PluginSpec) IsGitPlugin() bool {
 // LocalName returns the local name of the plugin, which is used in the directory name, and a path
 // within that directory if the plugin is located in a subdirectory.
 func (spec PluginSpec) LocalName() (string, string) {
-	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
+	if spec.IsGitPlugin() {
 		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
 		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
 		if err != nil {

@@ -105,17 +105,17 @@ func IsLocalPluginPath(source string) bool {
 		return true
 	}
 
-	// If the source starts with git://, it's definitely not a local path
-	if strings.HasPrefix(source, "git://") {
-		return false
-	}
-
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
 	pluginSpec, err := workspace.NewPluginSpec(source, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		// If we can't parse it as a plugin spec, assume it's a local path
 		return true
+	}
+
+	if pluginSpec.IsGitPlugin() {
+		// If it's a git plugin, it's not a local path
+		return false
 	}
 
 	// If there is a download URL or the name matches the plugin name regexp after parsing, it's not a local path
