@@ -954,7 +954,8 @@ func TestOverrideVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	var unmarshalledSchema map[string]any
-	err = json.Unmarshal([]byte(schema.Schema), &unmarshalledSchema)
+	err = json.Unmarshal(schema.Schema, &unmarshalledSchema)
+	require.NoError(t, err)
 	require.Equal(t, "1.2.3", unmarshalledSchema["version"])
 }
 

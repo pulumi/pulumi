@@ -2085,26 +2085,26 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 	label := p.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
 
-	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
-	// Thus, we access the clientRaw property, rather than calling getClient.
-	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-		return workspace.PluginInfo{}, rpcError
-	}
-
 	var version *semver.Version
-	if v := resp.Version; v != "" {
-		sv, err := semver.ParseTolerant(v)
-		if err != nil {
-			return workspace.PluginInfo{}, err
-		}
-		version = &sv
-	}
-
 	if p.overrideVersion != nil {
 		version = p.overrideVersion
+	} else {
+		// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
+		// Thus, we access the clientRaw property, rather than calling getClient.
+		resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
+		if err != nil {
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			return workspace.PluginInfo{}, rpcError
+		}
+
+		if v := resp.Version; v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return workspace.PluginInfo{}, err
+			}
+			version = &sv
+		}
 	}
 
 	path := ""
