@@ -95,6 +95,7 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 		return testProvider, nil
 	}
 
@@ -148,6 +149,7 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 		return testProvider, nil
 	}
 
@@ -211,6 +213,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 		return testProvider, nil
 	}
 
@@ -274,6 +277,7 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 		return testProvider, nil
 	}
 
@@ -426,6 +430,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 		return testProvider, nil
 	}
 
@@ -488,6 +493,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 
 		assert.Equal(t, descriptor.Parameterization.Name, "gcp")
 		assert.Equal(t, descriptor.Parameterization.Version, semver.MustParse("2.0.0"))
@@ -554,6 +560,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
+		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 		assert.Nil(t, descriptor.Parameterization)
 
 		return testProvider, nil

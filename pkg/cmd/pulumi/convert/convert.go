@@ -294,10 +294,12 @@ func runConvert(
 			return nil
 		}
 
-		pluginSpec := workspace.PluginSpec{
-			Name: pluginName,
-			Kind: apitype.ResourcePlugin,
+		pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
+		if err != nil {
+			pCtx.Diag.Errorf(diag.Message("", "failed to create plugin spec for %q: %v"), pluginName, err)
+			return nil
 		}
+
 		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)

@@ -909,6 +909,13 @@ type PackageDescriptor struct {
 	Parameterization *Parameterization
 }
 
+func NewPackageDescriptor(spec PluginSpec, parameterization *Parameterization) PackageDescriptor {
+	return PackageDescriptor{
+		PluginSpec:       spec,
+		Parameterization: parameterization,
+	}
+}
+
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
 	if pd.Parameterization != nil {

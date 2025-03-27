@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Fix plugin resolution in convert
