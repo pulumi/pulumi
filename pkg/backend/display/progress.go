@@ -342,7 +342,7 @@ func RenderProgressEvents(
 	close(done)
 }
 
-type captureProgressEvents struct {
+type CaptureProgressEvents struct {
 	Buffer  *bytes.Buffer
 	Stack   tokens.StackName
 	Proj    tokens.PackageName
@@ -359,7 +359,7 @@ func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
 	opts Options,
-) *captureProgressEvents {
+) *CaptureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
 	width, height := 200, 80
 
@@ -397,7 +397,7 @@ func NewCaptureProgressEvents(
 	}
 	renderer.initializeDisplay(display)
 
-	return &captureProgressEvents{
+	return &CaptureProgressEvents{
 		Buffer:  buffer,
 		Stack:   stack,
 		Proj:    proj,
@@ -405,7 +405,7 @@ func NewCaptureProgressEvents(
 	}
 }
 
-func (r *captureProgressEvents) ProcessEvents(
+func (r *CaptureProgressEvents) ProcessEvents(
 	renderChan <-chan engine.Event,
 	renderDone chan<- bool,
 ) {
@@ -414,11 +414,11 @@ func (r *captureProgressEvents) ProcessEvents(
 	close(renderDone)
 }
 
-func (r *captureProgressEvents) Output() []string {
+func (r *CaptureProgressEvents) Output() []string {
 	return strings.Split(strings.TrimSpace(r.Buffer.String()), "\n")
 }
 
-func (r *captureProgressEvents) OutputIncludesFailure() bool {
+func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
 	return r.display.failed
 }
 
