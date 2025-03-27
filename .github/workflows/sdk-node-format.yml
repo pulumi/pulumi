@@ -32,7 +32,7 @@ jobs:
         name: Caching
         uses: actions/cache@v4
         with:
-          key: node-sdk-${{ runner.os }}-${{ hashfiles("**/.mise.toml", "./sdk/nodejs/**") }}
+          key: node-sdk-${{ runner.os }}-${{ hashfiles('**/.mise.toml', './sdk/nodejs/**') }}
           path: |
             ./sdk/nodejs/node_modules
             ~/.local/share/mise
