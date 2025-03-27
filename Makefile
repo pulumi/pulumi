@@ -74,12 +74,8 @@ generate::
 bin/pulumi: build_proto .make/ensure/go .make/ensure/phony
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
+.PHONY: build
 build:: bin/pulumi build_display_wasm
-ifneq (${GOBIN},)
-	cp $< ${GOBIN}/pulumi
-else
-	cp $< $(shell go env GOPATH)/bin/pulumi
-endif
 
 build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
