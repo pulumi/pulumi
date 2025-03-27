@@ -55,7 +55,38 @@ func NewValue[T ValueType](v T) Value {
 
 // NewSecret creates a new secret value with the given representation.
 func NewSecret[T ValueType](v T) Value {
+	switch v := any(v).(type) {
+	case map[string]Value:
+		for k, e := range v {
+			if !e.Secret {
+				v[k] = e.MakeSecret()
+			}
+		}
+	case []Value:
+		for i, e := range v {
+			if !e.Secret {
+				v[i] = e.MakeSecret()
+			}
+		}
+	}
 	return Value{Value: v, Secret: true}
+}
+
+func (v Value) MakeSecret() Value {
+	switch v := v.Value.(type) {
+	case bool:
+		return NewSecret(v)
+	case json.Number:
+		return NewSecret(v)
+	case string:
+		return NewSecret(v)
+	case []Value:
+		return NewSecret(v)
+	case map[string]Value:
+		return NewSecret(v)
+	default:
+		panic("invalid value")
+	}
 }
 
 // Trace holds information about the expression and base of a value.
@@ -112,40 +143,28 @@ func (v *Value) UnmarshalJSON(data []byte) error {
 
 // FromJSON converts a plain-old-JSON value (i.e. a value of type nil, bool, json.Number, string, []any, or
 // map[string]any) into a Value.
-func FromJSON(v any, secret bool) (Value, error) {
-	return fromJSON("", v, secret)
+func FromJSON(v any) (Value, error) {
+	return fromJSON("", v)
 }
 
-func fromJSON(path string, v any, secret bool) (Value, error) {
+func fromJSON(path string, v any) (Value, error) {
 	switch v := v.(type) {
 	case nil:
 		return Value{}, nil
 	case bool:
-		if secret {
-			return NewSecret(v), nil
-		}
 		return NewValue(v), nil
 	case json.Number:
-		if secret {
-			return NewSecret(v), nil
-		}
 		return NewValue(v), nil
 	case string:
-		if secret {
-			return NewSecret(v), nil
-		}
 		return NewValue(v), nil
 	case []any:
 		vs := make([]Value, len(v))
 		for i, v := range v {
-			vv, err := fromJSON(fmt.Sprintf("[%v]", i), v, secret)
+			vv, err := fromJSON(fmt.Sprintf("[%v]", i), v)
 			if err != nil {
 				return Value{}, err
 			}
 			vs[i] = vv
-		}
-		if secret {
-			return NewSecret(vs), nil
 		}
 		return NewValue(vs), nil
 	case map[string]any:
@@ -153,14 +172,11 @@ func fromJSON(path string, v any, secret bool) (Value, error) {
 		sort.Strings(keys)
 		vs := make(map[string]Value, len(keys))
 		for _, k := range keys {
-			vv, err := fromJSON(util.JoinKey(path, k), v[k], secret)
+			vv, err := fromJSON(util.JoinKey(path, k), v[k])
 			if err != nil {
 				return Value{}, err
 			}
 			vs[k] = vv
-		}
-		if secret {
-			return NewSecret(vs), nil
 		}
 		return NewValue(vs), nil
 	default:

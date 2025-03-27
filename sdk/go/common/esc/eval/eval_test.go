@@ -138,6 +138,16 @@ func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, conte
 	return esc.NewValue(inputs), nil
 }
 
+type secretWrapperProvider struct{}
+
+func (secretWrapperProvider) Schema() (*schema.Schema, *schema.Schema) {
+	return schema.Always(), schema.Always()
+}
+
+func (secretWrapperProvider) Open(ctx context.Context, inputs map[string]esc.Value, context esc.EnvExecContext) (esc.Value, error) {
+	return esc.Value{Value: inputs, Secret: true}, nil
+}
+
 type swapRotator struct{}
 
 func (swapRotator) Schema() (*schema.Schema, *schema.Schema, *schema.Schema) {
@@ -216,6 +226,8 @@ func (tp testProviders) LoadProvider(ctx context.Context, name string) (esc.Prov
 		return testSchemaProvider{}, nil
 	case "test":
 		return testProvider{}, nil
+	case "secret-wrapper":
+		return secretWrapperProvider{}, nil
 	case "bench":
 		return benchProvider{delay: tp.benchDelay}, nil
 	}

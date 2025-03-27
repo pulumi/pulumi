@@ -1068,6 +1068,9 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 		v.unknown = true
 		return v
 	}
+	if v.secret || output.Secret {
+		output = output.MakeSecret()
+	}
 	return unexport(output, x)
 }
 
@@ -1156,6 +1159,9 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		// todo: validate newState conforms to state schema
 
 		// pass the updated state to open, as if it were already persisted
+		if v.secret || newState.Secret {
+			newState = newState.MakeSecret()
+		}
 		state = unexport(newState, x)
 	}
 
@@ -1169,6 +1175,9 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		e.errorf(repr.syntax(), "%s", err.Error())
 		v.unknown = true
 		return v
+	}
+	if v.secret || output.Secret {
+		output = output.MakeSecret()
 	}
 	return unexport(output, x)
 }
@@ -1258,13 +1267,16 @@ func (e *evalContext) evaluateBuiltinFromJSON(x *expr, repr *fromJSONExpr) *valu
 			return v
 		}
 
-		ev, err := esc.FromJSON(jv, v.secret)
+		ev, err := esc.FromJSON(jv)
 		if err != nil {
 			e.errorf(repr.syntax(), "internal error: decoding JSON value: %v", err)
 			v.unknown = true
 			return v
 		}
 
+		if v.secret || ev.Secret {
+			ev = ev.MakeSecret()
+		}
 		return unexport(ev, x)
 	}
 	return v
