@@ -81,6 +81,9 @@ type provider struct {
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
 
+	// The version to use for the provider if given. Used for Git sources.
+	overrideVersion *semver.Version
+
 	// Protocol information for the provider.
 	protocol *pluginProtocol
 
@@ -258,6 +261,11 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
+	var overrideVersion *semver.Version
+	if spec.IsGitPlugin() {
+		overrideVersion = spec.Version
+	}
+
 	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
@@ -266,6 +274,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
+		overrideVersion:        overrideVersion,
 	}
 
 	if handshakeRes != nil {
@@ -412,6 +421,19 @@ func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.Re
 	}
 }
 
+func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+	disableProviderPreview bool, version *semver.Version,
+) Provider {
+	return &provider{
+		ctx:                    ctx,
+		pkg:                    pkg,
+		clientRaw:              client,
+		disableProviderPreview: disableProviderPreview,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
+		overrideVersion:        version,
+	}
+}
+
 func (p *provider) Pkg() tokens.Package { return p.pkg }
 
 // label returns a base label for tracing functions.
@@ -518,7 +540,20 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	if err != nil {
 		return GetSchemaResponse{}, err
 	}
-	return GetSchemaResponse{[]byte(resp.GetSchema())}, nil
+	schema := []byte(resp.GetSchema())
+	if p.overrideVersion != nil {
+		var unmarshalled map[string]any
+		if err := json.Unmarshal([]byte(resp.GetSchema()), &unmarshalled); err != nil {
+			return GetSchemaResponse{}, err
+		}
+		unmarshalled["version"] = p.overrideVersion.String()
+		var err error
+		schema, err = json.Marshal(unmarshalled)
+		if err != nil {
+			return GetSchemaResponse{}, err
+		}
+	}
+	return GetSchemaResponse{schema}, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
@@ -2050,22 +2085,26 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 	label := p.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
 
-	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
-	// Thus, we access the clientRaw property, rather than calling getClient.
-	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-		return workspace.PluginInfo{}, rpcError
-	}
-
 	var version *semver.Version
-	if v := resp.Version; v != "" {
-		sv, err := semver.ParseTolerant(v)
+	if p.overrideVersion != nil {
+		version = p.overrideVersion
+	} else {
+		// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
+		// Thus, we access the clientRaw property, rather than calling getClient.
+		resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
 		if err != nil {
-			return workspace.PluginInfo{}, err
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			return workspace.PluginInfo{}, rpcError
 		}
-		version = &sv
+
+		if v := resp.Version; v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return workspace.PluginInfo{}, err
+			}
+			version = &sv
+		}
 	}
 
 	path := ""
