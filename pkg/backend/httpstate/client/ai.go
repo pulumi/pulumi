@@ -17,7 +17,6 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,18 +70,6 @@ func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateRespon
 				return string(msg.Content), nil
 			}
 			return contentStr, nil
-		}
-
-		// Handle the old format for backward compatibility
-		if msg.Kind == "summarizeUpdate" {
-			var content apitype.CopilotSummarizeUpdateMessage
-			if err := json.Unmarshal(msg.Content, &content); err != nil {
-				return "", fmt.Errorf("parsing summary content: %w", err)
-			}
-			if content.Summary == "" {
-				return "", errors.New("no summary generated")
-			}
-			return content.Summary, nil
 		}
 	}
 	return "", errors.New("no assistant message found in response")

@@ -1266,10 +1266,10 @@ func (b *cloudBackend) SummarizeErrorWithCopilot(
 		return nil, err
 	}
 
-	ellapsedMs := time.Since(startTime).Milliseconds()
+	elapsedMs := time.Since(startTime).Milliseconds()
 
 	horizontalRule := strings.Repeat("-", 80)
-	summaryHeader := fmt.Sprintf("✨ AI-generated summary (took %d ms):", ellapsedMs)
+	summaryHeader := fmt.Sprintf("✨ AI-generated summary (%d ms):", elapsedMs)
 	summaryLines := strings.Split(summary, "\n")
 	emptyLine := ""
 	return append([]string{horizontalRule, summaryHeader, emptyLine}, summaryLines...), nil
