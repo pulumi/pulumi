@@ -80,6 +80,7 @@ type provider struct {
 	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
+	overrideVersion        *semver.Version                  // The version to use for the provider if given. Used for Git sources.
 
 	// Protocol information for the provider.
 	protocol *pluginProtocol
@@ -258,6 +259,11 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
+	var overrideVersion *semver.Version
+	if spec.IsGitPlugin() {
+		overrideVersion = spec.Version
+	}
+
 	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
@@ -266,6 +272,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
+		overrideVersion:        overrideVersion,
 	}
 
 	if handshakeRes != nil {
@@ -518,7 +525,20 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	if err != nil {
 		return GetSchemaResponse{}, err
 	}
-	return GetSchemaResponse{[]byte(resp.GetSchema())}, nil
+	schema := []byte(resp.GetSchema())
+	if p.overrideVersion != nil {
+		var unmarshalled map[string]any
+		if err := json.Unmarshal([]byte(resp.GetSchema()), &unmarshalled); err != nil {
+			return GetSchemaResponse{}, err
+		}
+		unmarshalled["version"] = p.overrideVersion.String()
+		var err error
+		schema, err = json.Marshal(unmarshalled)
+		if err != nil {
+			return GetSchemaResponse{}, err
+		}
+	}
+	return GetSchemaResponse{schema}, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
@@ -2066,6 +2086,10 @@ func (p *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, err
 			return workspace.PluginInfo{}, err
 		}
 		version = &sv
+	}
+
+	if p.overrideVersion != nil {
+		version = p.overrideVersion
 	}
 
 	path := ""

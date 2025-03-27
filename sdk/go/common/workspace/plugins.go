@@ -1084,6 +1084,11 @@ func NewPluginSpec(
 	}, nil
 }
 
+// IsGitPlugin returns if the plugin comes from the git source
+func (spec PluginSpec) IsGitPlugin() bool {
+	return strings.HasPrefix(spec.PluginDownloadURL, "git://")
+}
+
 // LocalName returns the local name of the plugin, which is used in the directory name, and a path
 // within that directory if the plugin is located in a subdirectory.
 func (spec PluginSpec) LocalName() (string, string) {
