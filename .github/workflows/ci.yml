@@ -165,7 +165,7 @@ jobs:
             --partition-module sdk/go/pulumi-language-go 1 \
             --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
             --partition-module sdk/python/cmd/pulumi-language-python 1 \
-            --partition-module tests 2
+            --partition-module tests 8
           )
 
           INTEGRATION_TEST_MATRIX=$(
@@ -178,7 +178,7 @@ jobs:
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
             --partition-module sdk 1 \
-            --partition-module tests 2 \
+            --partition-module tests 8 \
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
 
@@ -195,7 +195,7 @@ jobs:
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
-              --partition-module tests 2 \
+              --partition-module tests 8 \
               --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
           fi
@@ -213,8 +213,8 @@ jobs:
               --version-set current \
               --partition-module pkg 1 \
               --partition-module sdk 1 \
-              --partition-module tests 1 \
-              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
+              --partition-module tests 8 \
+              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
             )
           fi
           echo "::endgroup::"
