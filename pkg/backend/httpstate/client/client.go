@@ -1370,10 +1370,6 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	return res, err
 }
 
-func getCopilotAPIPath() string {
-	return "/api/ai/chat/preview"
-}
-
 // SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
 func (pc *Client) SummarizeErrorWithCopilot(
 	ctx context.Context,
@@ -1390,12 +1386,11 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	}
 
 	// Requests that take longer that 10 seconds will result in this message being printed to the user:
-	// "Error summarizing update output: making request:
-	// Post "https://api.pulumi.com/api/ai/chat/preview": context deadline exceeded"
-	// Copilot backend will see this in telemetry as well
+	// "Error summarizing update output: making request: Post "https://api.pulumi.com/api/ai/chat/preview":
+	// context deadline exceeded" Copilot backend will see this in telemetry as well
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	url := pc.apiURL + getCopilotAPIPath()
+	url := pc.apiURL + "/api/ai/chat/preview"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)

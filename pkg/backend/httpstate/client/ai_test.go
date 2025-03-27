@@ -60,6 +60,38 @@ func TestTruncateWithMiddleOut(t *testing.T) {
 			maxChars: 10,
 			want:     "",
 		},
+		// make sure we're handling edge cases where maxChars is less
+		// than the truncation notice
+		{
+			name:     "maxChars less than truncation notice",
+			input:    "start middle1 middle2 end",
+			maxChars: 6,
+			want:     "start ",
+		},
+		{
+			name:     "maxChars is 0",
+			input:    "start middle1 middle2 end",
+			maxChars: 0,
+			want:     "",
+		},
+		{
+			name:     "maxChars is equal to truncation notice",
+			input:    "start middle1 middle2 end",
+			maxChars: 19,
+			want:     "start middle1 middl",
+		},
+		{
+			name:     "maxChars is one longer than truncation notice",
+			input:    "start middle1 middle2 end",
+			maxChars: 20,
+			want:     "s... (truncated) ...",
+		},
+		{
+			name:     "maxChars is two longer than truncation notice",
+			input:    "start middle1 middle2 end",
+			maxChars: 21,
+			want:     "s... (truncated) ...d",
+		},
 	}
 
 	for _, tt := range tests {

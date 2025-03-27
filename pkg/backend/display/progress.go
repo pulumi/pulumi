@@ -349,12 +349,10 @@ type CaptureProgressEvents struct {
 	display *ProgressDisplay
 }
 
-// NewCaptureProgressEvents is a wrapper around ProgressDisplay capturing
-// the output into an internal buffer and holding the display instance
-// for inspection after processing the events.
-//
-// E.g. It exposes whether a failure was detected in the display layer
-// and allows for inspection of the output.
+// NewCaptureProgressEvents renders the provided engine events channel to an internal buffer. It returns a
+// CaptureProgressEvents instance that can be used to access both the output and the display instance after processing
+// the events. This is useful for detecting whether a failure was detected in the display layer, e.g. used to send the
+// output to Copilot if a failure was detected.
 func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
@@ -368,7 +366,6 @@ func NewCaptureProgressEvents(
 	o.RenderOnDirty = false
 	o.IsInteractive = true
 
-	// o.ShowResourceChanges = true
 	o.Stdout = buffer
 	o.Stderr = io.Discard
 	o.term = terminal.NewSimpleTerminal(buffer, width, height)
@@ -415,7 +412,11 @@ func (r *CaptureProgressEvents) ProcessEvents(
 }
 
 func (r *CaptureProgressEvents) Output() []string {
-	return strings.Split(strings.TrimSpace(r.Buffer.String()), "\n")
+	v := strings.TrimSpace(r.Buffer.String())
+	if v == "" {
+		return nil
+	}
+	return strings.Split(v, "\n")
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {

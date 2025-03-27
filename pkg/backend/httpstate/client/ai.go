@@ -65,8 +65,7 @@ func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateRespon
 			// Unmarshal the RawMessage into a string
 			var contentStr string
 			if err := json.Unmarshal(msg.Content, &contentStr); err != nil {
-				// If it's not a simple string, it might be a raw JSON object
-				// Return it as a string representation
+				// If it's not a simple string, it might be a raw JSON object Return it as a string representation
 				return string(msg.Content), nil
 			}
 			return contentStr, nil
@@ -75,25 +74,31 @@ func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateRespon
 	return "", errors.New("no assistant message found in response")
 }
 
-// Maximum number of characters to send to Copilot.
-// We do this to avoid including a proper token counting library for now.
-// Tokens are 3-4 characters as a rough estimate. So this is 1000 tokens.
+// Maximum number of characters to send to Copilot. We do this to avoid including a proper token counting library for
+// now. Tokens are 3-4 characters as a rough estimate. So this is 1000 tokens.
 const maxCopilotContentLength = 4000
 
 const truncationNotice = "... (truncated) ..."
 
-// TruncateWithMiddleOut takes a string and a maximum character count,
-// and returns a new string with content truncated from the middle if the total
-// character count exceeds maxChars. This preserves both the beginning and end
-// of the content while removing content from the middle.
+// TruncateWithMiddleOut takes a string and a maximum character count, and returns a new string with content truncated
+// from the middle if the total character count exceeds maxChars. This preserves both the beginning and end of the
+// content while removing content from the middle.
 func TruncateWithMiddleOut(content string, maxChars int) string {
-	// If content is shorter than max or max is too small, return as is
-	if len(content) <= maxChars || maxChars <= len(truncationNotice) {
+	// If content is shorter than max, return as is
+	if len(content) <= maxChars {
 		return content
 	}
 
-	// Calculate how much text we can keep from start and end
-	// Subtract truncation notice length and divide remaining space for start/end
+	// If maxChars is too small to even fit truncation notice, just truncate the content directly
+	if maxChars <= len(truncationNotice) {
+		if maxChars <= 0 {
+			return ""
+		}
+		return content[:maxChars]
+	}
+
+	// Calculate how much text we can keep from start and end Subtract truncation notice length and divide remaining
+	// space for start/end
 	remaining := maxChars - len(truncationNotice)
 
 	startLen := (remaining + 1) / 2

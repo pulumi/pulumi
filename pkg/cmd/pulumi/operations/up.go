@@ -602,9 +602,8 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
-			// Handle copilot-summary flag and environment variable
-			// If flag is explicitly set (via command line), use that value
-			// Otherwise fall back to environment variable, then default to false
+			// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use
+			// that value Otherwise fall back to environment variable, then default to false
 			var showCopilotSummary bool
 			if cmd.Flags().Changed("copilot-summary") {
 				showCopilotSummary = copilotSummary

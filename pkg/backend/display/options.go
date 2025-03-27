@@ -56,11 +56,15 @@ type Options struct {
 	Stderr                 io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 	SuppressTimings        bool                // true to suppress displaying timings of resource actions
 	SuppressProgress       bool                // true to suppress displaying progress spinner.
-	ShowLinkToCopilot      bool                // true to display a 'explainFailure' link to Copilot.
-	ShowCopilotSummary     bool                // true to display a Copilot summary.
-	CopilotSummaryModel    string              // the Copilot summary model to use.
-	CopilotSummaryMaxLen   int                 // the maximum length of the Copilot summary.
 	ShowSecrets            bool                // true to display secrets in the output.
+
+	// Copilot options
+	ShowLinkToCopilot  bool // true to display a 'explainFailure' link to Copilot.
+	ShowCopilotSummary bool // true to display a Copilot summary.
+	// Copilot options that are ignored if ShowCopilotSummary is false.
+	CopilotSummaryModel  string // the Copilot summary model to use (default: "gpt-4o-mini")
+	CopilotSummaryMaxLen int    // the maximum length of the Copilot summary. (default 80 characters)
+
 	// Low level options
 	term                terminal.Terminal
 	DeterministicOutput bool // true to disable timing-based rendering
