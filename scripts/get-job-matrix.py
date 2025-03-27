@@ -144,18 +144,12 @@ ALL_VERSION_SET = {
 
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
-    "dotnet": ALL_VERSION_SET["dotnet"][0],
-    "go": ALL_VERSION_SET["go"][0],
-    "nodejs": ALL_VERSION_SET["nodejs"][0],
-    "python":   ALL_VERSION_SET["python"][0],
+    **{lang: versions[0] for lang, versions in ALL_VERSION_SET.items()}
 }
 
 CURRENT_VERSION_SET = {
     "name": "current",
-    "dotnet": ALL_VERSION_SET["dotnet"][-1],
-    "go": ALL_VERSION_SET["go"][-1],
-    "nodejs": ALL_VERSION_SET["nodejs"][-1],
-    "python": ALL_VERSION_SET["python"][-1],
+    **{lang: versions[-1] for lang, versions in ALL_VERSION_SET.items()}
 }
 
 
