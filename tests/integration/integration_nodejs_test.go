@@ -2541,7 +2541,6 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
-
 		"inputProperties": {
 			"aNumber": {
 				"type": "number",
