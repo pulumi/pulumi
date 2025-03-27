@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // WithDryRun is an internal, test-only option
@@ -48,8 +49,9 @@ func WrapResourceMonitorClient(
 }
 
 type testMonitor struct {
-	CallF        func(args MockCallArgs) (resource.PropertyMap, error)
-	NewResourceF func(args MockResourceArgs) (string, resource.PropertyMap, error)
+	CallF                    func(args MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF             func(args MockResourceArgs) (string, resource.PropertyMap, error)
+	RegisterResourceOutputsF func() (*emptypb.Empty, error)
 }
 
 func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
@@ -64,6 +66,13 @@ func (m *testMonitor) NewResource(args MockResourceArgs) (string, resource.Prope
 		return args.Name, resource.PropertyMap{}, nil
 	}
 	return m.NewResourceF(args)
+}
+
+func (m *testMonitor) RegisterResourceOutputs() (*emptypb.Empty, error) {
+	if m.RegisterResourceOutputsF == nil {
+		return &emptypb.Empty{}, nil
+	}
+	return m.RegisterResourceOutputsF()
 }
 
 type testResource2 struct {
