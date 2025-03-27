@@ -80,7 +80,9 @@ type provider struct {
 	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
-	overrideVersion        *semver.Version                  // The version to use for the provider if given. Used for Git sources.
+
+	// The version to use for the provider if given. Used for Git sources.
+	overrideVersion *semver.Version
 
 	// Protocol information for the provider.
 	protocol *pluginProtocol
@@ -416,6 +418,19 @@ func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.Re
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
+	}
+}
+
+func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+	disableProviderPreview bool, version *semver.Version,
+) Provider {
+	return &provider{
+		ctx:                    ctx,
+		pkg:                    pkg,
+		clientRaw:              client,
+		disableProviderPreview: disableProviderPreview,
+		configSource:           &promise.CompletionSource[pluginConfig]{},
+		overrideVersion:        version,
 	}
 }
 
