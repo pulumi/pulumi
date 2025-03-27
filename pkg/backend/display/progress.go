@@ -349,26 +349,29 @@ type captureProgressEvents struct {
 	display *ProgressDisplay
 }
 
-// NewCaptureProgressEvents is a wrapper around ProgressDisplay that
-// holds the instance for inspection after processing the events.
+// NewCaptureProgressEvents is a wrapper around ProgressDisplay capturing
+// the output into an internal buffer and holding the display instance
+// for inspection after processing the events.
+//
 // E.g. It exposes whether a failure was detected in the display layer
 // and allows for inspection of the output.
 func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
+	opts Options,
 ) *captureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
 	width, height := 200, 80
 
-	o := Options{
-		ShowResourceChanges: true,
-		Stdout:              buffer,
-		Stderr:              io.Discard,
-		term:                terminal.NewSimpleTerminal(buffer, width, height),
-		IsInteractive:       true,
-		Color:               colors.Never,
-		RenderOnDirty:       false,
-	}
+	o := opts
+	o.Color = colors.Never
+	o.RenderOnDirty = false
+	o.IsInteractive = true
+
+	// o.ShowResourceChanges = true
+	o.Stdout = buffer
+	o.Stderr = io.Discard
+	o.term = terminal.NewSimpleTerminal(buffer, width, height)
 
 	isPreview := false
 	action := apitype.UpdateUpdate

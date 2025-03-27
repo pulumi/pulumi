@@ -19,10 +19,8 @@ package display
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -179,7 +177,7 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
-func TestSummarizeUpdateFailure(t *testing.T) {
+func TestCaptureProgressEvents(t *testing.T) {
 	t.Parallel()
 
 	// test events
@@ -191,66 +189,29 @@ func TestSummarizeUpdateFailure(t *testing.T) {
 			Op:  deploy.OpUpdate,
 		},
 	})
-	// If we see a DiagEvent event we render the diagnostic section which contains the output of the summary.
-	diagEvent := engine.NewEvent(engine.DiagEventPayload{
-		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
-		Message: "something went wrong",
-	})
 
 	// Combined is a common failed update which renders the diagnostic section and the Copilot summary.
-	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
+	failureEvents := []engine.Event{resourceOperationFailedEvent}
 
 	// test cases
 	testCases := []struct {
 		name string
-		// enable Copilot summary
-		showCopilotSummary bool
-		// is this a preview update
-		isPreview bool
 		// is this an update that failed
 		isFailure bool
 		// expect a summary to be printed
-		expectSummary bool
+		expectFailure bool
 	}{
-		// base case: update with Copilot enabled
+		// Includes a failed resource operation
 		{
-			name:               "update",
-			showCopilotSummary: true,
-			isPreview:          false,
-			isFailure:          true,
-			expectSummary:      true,
+			name:          "update-failure",
+			isFailure:     true,
+			expectFailure: true,
 		},
-		// Preview updates should not show the Copilot summary.
+		// Includes a successful resource operation
 		{
-			name:               "preview",
-			showCopilotSummary: true,
-			isPreview:          true,
-			isFailure:          true,
-			expectSummary:      false,
-		},
-		// Preview updates with Copilot disabled should not show the Copilot summary.
-		{
-			name:               "preview-copilot-disabled",
-			showCopilotSummary: false,
-			isPreview:          true,
-			isFailure:          true,
-			expectSummary:      false,
-		},
-		// Update with Copilot disabled should not show the Copilot summary.
-		{
-			name:               "update-copilot-disabled",
-			showCopilotSummary: false,
-			isPreview:          false,
-			isFailure:          true,
-			expectSummary:      false,
-		},
-		// Successful update should not show the Copilot summary.
-		{
-			name:               "update-success",
-			showCopilotSummary: true,
-			isPreview:          false,
-			isFailure:          false,
-			expectSummary:      false,
+			name:          "update-success",
+			isFailure:     false,
+			expectFailure: false,
 		},
 	}
 
@@ -258,25 +219,9 @@ func TestSummarizeUpdateFailure(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			var stdout bytes.Buffer
-
-			opts := defaultOpts()
-			opts.Stdout = &stdout
-			opts.Stderr = io.Discard
-			opts.Color = colors.Never
-
-			var linesOutput []string
-			opts = opts.WithSummarizeUpdateFailure(func(outputLines []string) []string {
-				linesOutput = outputLines
-				return []string{"an example update failure summary"}
-			})
-			opts.ShowCopilotSummary = testCase.showCopilotSummary
-
+			captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
 			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-
-			go ShowProgressEvents(
-				"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
-				opts, testCase.isPreview)
+			go captureRenderer.ProcessEvents(eventChannel, doneChannel)
 
 			if testCase.isFailure {
 				for _, event := range failureEvents {
@@ -287,12 +232,10 @@ func TestSummarizeUpdateFailure(t *testing.T) {
 			close(eventChannel)
 			<-doneChannel
 
-			if testCase.expectSummary {
-				assert.Contains(t, stdout.String(), "an example update failure summary")
-				assert.Contains(t, strings.Join(linesOutput, "\n"), "something went wrong")
+			if testCase.expectFailure {
+				assert.True(t, captureRenderer.OutputIncludesFailure())
 			} else {
-				assert.NotContains(t, stdout.String(), "an example update failure summary")
-				assert.NotContains(t, strings.Join(linesOutput, "\n"), "something went wrong")
+				assert.False(t, captureRenderer.OutputIncludesFailure())
 			}
 		})
 	}

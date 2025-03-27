@@ -1136,6 +1136,9 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 		renderer := display.NewCaptureProgressEvents(
 			stack.Ref().Name(),
 			op.Proj.Name,
+			display.Options{
+				ShowResourceChanges: true,
+			},
 		)
 
 		go renderer.ProcessEvents(events, renderDone)
@@ -1143,8 +1146,8 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 		defer func() {
 			close(events)
 			<-renderDone
-			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled.
-			// So we check it again here.
+			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled
+			// so we check it again here.
 			if op.Opts.Display.ShowCopilotSummary && renderer.OutputIncludesFailure() {
 				b.ShowCopilotErrorSummary(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			}
