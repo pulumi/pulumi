@@ -74,7 +74,7 @@ type contextState struct {
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
 	rpcError                 error        // the first error (if any) encountered during an RPC.
-	registeredOutputsMu      sync.Mutex   // a lock protecting the registeredOutputs map
+	registeredOutputsLock    sync.Mutex   // a lock protecting the registeredOutputs map
 	registeredOutputs        map[URN]bool // tracks which resources have had outputs registered
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
@@ -2465,16 +2465,16 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	}
 
 	// Check if outputs were already registered for this resource
-	ctx.state.registeredOutputsMu.Lock()
+	ctx.state.registeredOutputsLock.Lock()
 	if ctx.state.registeredOutputs[urn] {
 		// Outputs were already registered, make this a no-op
 		logging.V(9).Infof("RegisterResourceOutputs(%s): outputs already registered, skipping", urn)
-		ctx.state.registeredOutputsMu.Unlock()
+		ctx.state.registeredOutputsLock.Unlock()
 		return nil
 	}
 	// Mark this resource as having outputs registered
 	ctx.state.registeredOutputs[urn] = true
-	ctx.state.registeredOutputsMu.Unlock()
+	ctx.state.registeredOutputsLock.Unlock()
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
