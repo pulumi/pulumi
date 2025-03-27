@@ -15,15 +15,13 @@
 import ast
 import collections
 from enum import Enum
-import importlib.util
 import inspect
-import re
 import sys
 import typing
 from collections import abc
 from collections.abc import Awaitable
 from pathlib import Path
-from types import GenericAlias, ModuleType
+from types import GenericAlias
 from typing import (  # type: ignore
     Any,
     ForwardRef,
@@ -112,8 +110,8 @@ class InvalidListTypeError(Exception):
 
 class Analyzer:
     """
-    Analyzer searches a directory for subclasses of `ComponentResource` and
-    infers a Pulumi Schema for these components based on type annotations.
+    Analyzer infers component and type definitions for a set of
+    ComponentResources types using type annotations.
 
     The entrypoint for this is `Analyzer.analyze`, which returns a dictionary of
     `ComponentDefinition`, which represent components, and a dictionary of
@@ -125,7 +123,8 @@ class Analyzer:
       defined in a nested scope, such as a function, are not discovered.
       Essentially the analyser iterates over each element in `dir(module)` and
       looks for the subclasses at that level.
-    * The names used in `ForwardRef`s can be resolved similarly.
+    * The underlying types in `ForwardRef`s are imported in one of the modules
+      that are being analyzed.
     * The `__init__` method for each component has a typed argument named `args`
       which represent the inputs the component takes.
     * The types are put in a single Pulumi module, `index`. That is, all the Pulumi
@@ -146,10 +145,8 @@ class Analyzer:
     The type and property descriptions are inferred from the docstrings of the
     Python classes and their attributes. For classes, the docstrings are
     available on type.__doc__. Unfortunately, the docstrings of the class
-    attributes are not present at runtime. We have to parse the source code to
-    retrieve them, which means we are doing two passes over all the Python files
-    in the module: one pass of runtime inspection to determine the types, and a
-    second pass of source code parsing to get the docstrings.
+    attributes are not present at runtime. We use inspect.getsource to get the
+    source code and parse that to retrieve the docstrings.
     """
 
     def __init__(self, metadata: Metadata):
@@ -157,99 +154,58 @@ class Analyzer:
         self.type_definitions: dict[str, TypeDefinition] = {}
         self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
         self.docstrings: dict[str, dict[str, str]] = {}
-        """A map of component/type names to a map of property -> docstring."""
-        self.excluded_patterns = {
-            r"(^|/)\.",  # matches files/dirs starting with dot, either at root or in subfolders
-            r"(^|/)tests/",  # matches tests directory at root or in subfolders
-            r"(^|/)__pycache__/",  # matches pycache at root or in subfolders
-        }
 
     def analyze(
-        self, module_path: Path
+        self,
+        components: list[type[ComponentResource]],
     ) -> tuple[dict[str, ComponentDefinition], dict[str, TypeDefinition]]:
         """
         Analyze walks the directory at `path` and searches for
         ComponentResources in Python files.
         """
-        self.docstrings = self.find_docstrings(module_path)
-
-        components: dict[str, ComponentDefinition] = {}
-        for file_path in self.iter(module_path):
-            new_components = self.analyze_file(file_path, module_path)
-            new_names = set(new_components.keys())
-            old_names = set(components.keys())
-            duplicates = old_names.intersection(new_names)
-            if len(duplicates) > 0:
-                name = duplicates.pop()
-                duplicate = new_components[name]
-                original = components[name]
-                raise DuplicateTypeError(cast(str, duplicate.module), original)
-            components.update(new_components)
+        component_defs: dict[str, ComponentDefinition] = {}
+        for component in components:
+            if component.__name__ in component_defs:
+                raise DuplicateTypeError(
+                    component.__module__, component_defs[component.__name__]
+                )
+            c = self.analyze_component(component)
+            component_defs[c.name] = c
 
         # Look for any forward references we could not resolve in the first
         # pass. This happens for types that are only ever referenced in
         # ForwardRefs.
+        # We expect the types to be imported in one of the modules of the
+        # component we are analyzing.
         # With https://peps.python.org/pep-0649/ we might be able to let
         # Python handle this for us.
+        checked_modules: set[str] = set()
         for name, type_def in [*self.unresolved_forward_refs.items()]:
-            a = self.find_type(module_path, type_def.name)
-            (properties, properties_mapping) = self.analyze_type(a, can_be_plain=False)
-            type_def.properties = properties
-            type_def.properties_mapping = properties_mapping
-            del self.unresolved_forward_refs[name]
+            for component in components:
+                if component.__module__ in checked_modules:
+                    continue
+                checked_modules.add(component.__module__)
+                module_name = component.__module__
+                module = sys.modules.get(module_name)
+                if module:
+                    typ = getattr(module, type_def.name, None)
+                    if typ:
+                        (properties, properties_mapping) = self.analyze_type(
+                            typ, can_be_plain=False
+                        )
+                        type_def.properties = properties
+                        type_def.properties_mapping = properties_mapping
+                        del self.unresolved_forward_refs[name]
+                        break
+
+        if len(self.unresolved_forward_refs) > 0:
+            first_unresolved_ref = next(iter(self.unresolved_forward_refs))
+            raise TypeNotFoundError(first_unresolved_ref)
 
         if len(components) == 0:
             raise Exception("No components found")
 
-        return (components, self.type_definitions)
-
-    def iter(self, path: Path):
-        for file_path in sorted(path.glob("**/*.py")):
-            if is_in_venv(file_path):
-                continue
-            # Get path relative to the base directory and check if it matches any of the exclusion patterns
-            rel_path = file_path.relative_to(path)
-            path_str = str(rel_path).replace("\\", "/")
-            if any(re.search(pattern, path_str) for pattern in self.excluded_patterns):
-                continue
-            yield file_path
-
-    def analyze_file(
-        self, file_path: Path, module_path: Path
-    ) -> dict[str, ComponentDefinition]:
-        components: dict[str, ComponentDefinition] = {}
-        module_type = self.load_module(file_path, module_path)
-        for name in dir(module_type):
-            obj = getattr(module_type, name)
-            if inspect.isclass(obj) and ComponentResource in obj.__bases__:
-                components[name] = self.analyze_component(obj, module_path)
-        return components
-
-    def find_type(self, path: Path, name: str) -> type:
-        """
-        Find a type by name in the directory at `self.path`.
-
-        :param name: The name of the type to find.
-        """
-        for file_path in self.iter(path):
-            mod = self.load_module(file_path, path)
-            comp = getattr(mod, name, None)
-            if comp:
-                return comp
-        raise TypeNotFoundError(name)
-
-    def load_module(self, file_path: Path, module_path: Path) -> ModuleType:
-        name = file_path.name.replace(".py", "")
-        rel_path = file_path.resolve().relative_to(module_path.resolve())
-        spec = importlib.util.spec_from_file_location(str(rel_path), file_path)
-        if not spec:
-            raise Exception(f"Could not load module spec at {file_path}")
-        module_type = importlib.util.module_from_spec(spec)
-        sys.modules[name] = module_type
-        if not spec.loader:
-            raise Exception(f"Could not load module at {file_path}")
-        spec.loader.exec_module(module_type)
-        return module_type
+        return (component_defs, self.type_definitions)
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
         if sys.version_info >= (3, 10):
@@ -266,7 +222,7 @@ class Analyzer:
                 return getattr(o, "__annotations__", {})
 
     def analyze_component(
-        self, component: type[ComponentResource], module_path: Path
+        self, component: type[ComponentResource]
     ) -> ComponentDefinition:
         ann = self.get_annotations(component.__init__)
         args = ann.get("args", None)
@@ -346,7 +302,7 @@ class Analyzer:
                 # wrapped in a pulumi.Input or pulumi.Output, in which case this
                 # isn't plain.
                 plain=plain,
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
         elif is_input(arg):
             return self.analyze_property(
@@ -365,7 +321,7 @@ class Analyzer:
                 ref="pulumi.json#/Any",
                 optional=optional,
                 plain=plain,
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
 
         elif is_list(arg):
@@ -378,7 +334,7 @@ class Analyzer:
                 optional=optional,
                 plain=plain,
                 items=items,
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
         elif is_dict(arg):
             args = get_args(arg)
@@ -396,7 +352,7 @@ class Analyzer:
                     name,
                     plain=True,
                 ),
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
         elif is_forward_ref(arg):
             ref_name = cast(ForwardRef, arg).__forward_arg__
@@ -412,7 +368,7 @@ class Analyzer:
                     ref=ref,
                     optional=optional,
                     plain=plain,
-                    description=self.get_docstring(typ.__name__, name),
+                    description=self.get_docstring(typ, name),
                 )
             else:
                 # Forward ref to a type we haven't seen yet. We create an empty
@@ -426,7 +382,7 @@ class Analyzer:
                     properties={},
                     properties_mapping={},
                     module=module,
-                    description=self.get_docstring(typ.__name__, name),
+                    description=self.get_docstring(typ, name),
                 )
                 self.unresolved_forward_refs[ref_name] = type_def
                 self.type_definitions[type_def.name] = type_def
@@ -435,19 +391,19 @@ class Analyzer:
                     ref=ref,
                     optional=optional,
                     plain=plain,
-                    description=self.get_docstring(typ.__name__, name),
+                    description=self.get_docstring(typ, name),
                 )
         elif is_asset(arg):
             return PropertyDefinition(
                 ref="pulumi.json#/Asset",
                 optional=optional,
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
         elif is_archive(arg):
             return PropertyDefinition(
                 ref="pulumi.json#/Archive",
                 optional=optional,
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
             # TODO: https://github.com/pulumi/pulumi/issues/18484
@@ -491,78 +447,62 @@ class Analyzer:
                 ref=ref,
                 optional=optional,
                 plain=plain,
-                description=self.get_docstring(typ.__name__, name),
+                description=self.get_docstring(typ, name),
             )
         else:
             raise ValueError(f"Unsupported type '{arg}' for '{typ.__name__}.{name}'")
 
-    def find_docstrings(self, path: Path) -> dict[str, dict[str, str]]:
+    def get_docstring(self, typ: type, name: str) -> Optional[str]:
         """
-        find_docstrings returns the docstrings for all the attributes of all
-        the classes in `self.path.
+        Returns the docstring for the property with the given name on the given type.
 
-        Unfortunately, only class docstrings are available at runtime, the
-        docstrings of the attributes are not available. Instead of relying on
-        runtime information we parse the source code to extract the docstrings.
+        :param typ: The type on which the property is defined.
+        :param name: The name of the property.
+
+        Property docstrings are not available at runtime. To find the docstring,
+        we get the source code of the type and parse it using the ast module. We
+        iterate over the statements in the class definition and look for
+        `AnnAssign` nodes. These represent a property declaration with a type
+        annotation. Any string literal following the property declaration is the
+        docstring.
         """
-        docs: dict[str, dict[str, str]] = {}
-        for file_path in self.iter(path):
-            if file_path.suffix != ".py":
-                continue
-            with open(file_path) as f:
-                src = f.read()
-                try:
-                    t = ast.parse(src)
-                    docs.update(self.find_docstrings_in_module(t))
-                except SyntaxError as e:
-                    rel_path = file_path.relative_to(path)
-                    raise Exception(f"Failed to parse {rel_path}: {e}") from e
-        return docs
+        if typ.__name__ in self.docstrings:
+            return self.docstrings.get(typ.__name__, {}).get(name, None)
 
-    def find_docstrings_in_module(self, mod: ast.Module) -> dict[str, dict[str, str]]:
-        """
-        Find the docstrings for all the class attributes in the module. The
-        return dict has an entry for each class name, with a dict of attribute
-        name to docstring.
+        try:
+            src = inspect.getsource(typ)
+            mod = ast.parse(src)
+            for stmt in mod.body:
+                if isinstance(stmt, ast.ClassDef):
+                    class_name = stmt.name
+                    self.docstrings[class_name] = {}
+                    it = iter(stmt.body)
+                    while True:
+                        try:
+                            node = next(it)
+                            # Look for an assignment with a type annotation
+                            if isinstance(node, ast.AnnAssign):
+                                if isinstance(node.target, ast.Name):
+                                    target = node.target.id
+                                    # Look for a docstring right after the assignment
+                                    node = next(it)
+                                    if (
+                                        isinstance(node, ast.Expr)
+                                        and isinstance(node.value, ast.Constant)
+                                        and isinstance(node.value.value, str)
+                                    ):
+                                        self.docstrings[class_name][target] = (
+                                            node.value.value
+                                        )
+                                    else:
+                                        # Push back the node if it's not a docstring
+                                        it = iter([node] + list(it))
+                        except StopIteration:
+                            break
+        except Exception:  # noqa
+            pass
 
-        We look for all the (top level) class definitions in the module, and for
-        each class we look for attribute assignments with type annotations. If
-        we find such an assignment, we look for a string constant right after
-        the assignment, which we assume is the docstring for the attribute.
-        """
-        docs: dict[str, dict[str, str]] = {}
-        for stmt in mod.body:
-            if isinstance(stmt, ast.ClassDef):
-                class_name = stmt.name
-                docs[class_name] = {}
-                it = iter(stmt.body)
-                while True:
-                    try:
-                        node = next(it)
-                        # Look for an assignment with a type annotation
-                        if isinstance(node, ast.AnnAssign):
-                            if isinstance(node.target, ast.Name):
-                                name = node.target.id
-                                # Look for a docstring right after the assignment
-                                node = next(it)
-                                if (
-                                    isinstance(node, ast.Expr)
-                                    and isinstance(node.value, ast.Constant)
-                                    and isinstance(node.value.value, str)
-                                ):
-                                    docs[class_name][name] = node.value.value
-                                else:
-                                    # Push back the node if it's not a docstring
-                                    it = iter([node] + list(it))
-                    except StopIteration:
-                        break
-        return docs
-
-    def get_docstring(self, type_name: str, property_name: str) -> Optional[str]:
-        typ = self.docstrings.get(type_name)
-        if typ:
-            return typ.get(property_name)
-        return None
+        return self.docstrings.get(typ.__name__, {}).get(name, None)
 
 
 def is_in_venv(path: Path):

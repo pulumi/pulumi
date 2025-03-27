@@ -14,8 +14,14 @@
 
 
 from pulumi.provider.experimental import Metadata, component_provider_host
+from component import MyComponent
 
 if __name__ == "__main__":
     component_provider_host(
-        Metadata(name="provider", version="1.2.3", display_name="My Component Provider")
+        [MyComponent],
+        Metadata(
+            name="provider",
+            version="1.2.3",
+            display_name="My Component Provider",
+        ),
     )

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Pass list of components to component_provider_host

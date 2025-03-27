@@ -41,13 +41,16 @@ class ComponentProvider(Provider):
 
     _type_defs: dict[str, TypeDefinition]
     _component_defs: dict[str, ComponentDefinition]
+    _components: dict[str, type[ComponentResource]]
 
-    def __init__(self, metadata: Metadata, path: Path) -> None:
-        self.path = path
+    def __init__(
+        self, metadata: Metadata, components: list[type[ComponentResource]]
+    ) -> None:
         self.metadata = metadata
         self.analyzer = Analyzer(self.metadata)
-        (components, type_definitions) = self.analyzer.analyze(self.path)
-        self._component_defs = components
+        (components_defs, type_definitions) = self.analyzer.analyze(components)
+        self._components = {component.__name__: component for component in components}
+        self._component_defs = components_defs
         self._type_defs = type_definitions
         schema = generate_schema(
             metadata,
@@ -65,7 +68,7 @@ class ComponentProvider(Provider):
     ) -> ConstructResult:
         self.validate_resource_type(self.metadata.name, resource_type)
         component_name = resource_type.split(":")[-1]
-        comp = self.analyzer.find_type(self.path, component_name)
+        constructor = self._components[component_name]
         component_def = self._component_defs[component_name]
         mapped_args = self.map_inputs(inputs, component_def)
         # Wrap the call to the component constuctor in a try except block to
@@ -74,7 +77,7 @@ class ComponentProvider(Provider):
         # code vs errors that occur in the SDK.
         try:
             # ComponentResource's init signature is different from the derived class signature.
-            comp_instance = comp(name, mapped_args, options)  # type: ignore
+            comp_instance = constructor(name, mapped_args, options)  # type: ignore
         except Exception as e:  # noqa
             raise ComponentInitError(e)
         state = self.get_state(comp_instance, component_def)
