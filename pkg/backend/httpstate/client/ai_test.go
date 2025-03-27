@@ -101,22 +101,6 @@ func TestExtractSummaryFromResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "old format - summarizeUpdate",
-			response: apitype.CopilotSummarizeUpdateResponse{
-				ThreadMessages: []apitype.CopilotThreadMessage{
-					{
-						Role: "assistant",
-						Kind: "summarizeUpdate",
-						Content: json.RawMessage(`{
-							"summary": "Legacy summary format"
-						}`),
-					},
-				},
-			},
-			want:    "Legacy summary format",
-			wantErr: false,
-		},
-		{
 			name: "no assistant message",
 			response: apitype.CopilotSummarizeUpdateResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
