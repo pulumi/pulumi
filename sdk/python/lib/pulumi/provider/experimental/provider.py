@@ -46,6 +46,7 @@ class ComponentProvider(Provider):
         components: list[type[ComponentResource]],
         name: str,
         namespace: Optional[str] = None,
+        version: str = "0.0.0",
     ) -> None:
         self._name = name
         self.analyzer = Analyzer(name)
@@ -55,6 +56,7 @@ class ComponentProvider(Provider):
         self._type_defs = type_definitions
         schema = generate_schema(
             name,
+            version,
             namespace,
             self._component_defs,
             self._type_defs,

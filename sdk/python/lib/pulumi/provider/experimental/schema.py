@@ -161,6 +161,7 @@ class PackageSpec:
     """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package"""
 
     name: str
+    version: str
     displayName: str
     namespace: Optional[str]
     resources: dict[str, Resource]
@@ -171,6 +172,7 @@ class PackageSpec:
         return remove_none(
             {
                 "name": self.name,
+                "version": self.version,
                 "displayName": self.displayName,
                 "namespace": self.namespace,
                 "resources": {k: v.to_json() for k, v in self.resources.items()},
@@ -182,12 +184,14 @@ class PackageSpec:
 
 def generate_schema(
     name: str,
+    version: str,
     namespace: Optional[str],
     components: dict[str, ComponentDefinition],
     type_definitions: dict[str, TypeDefinition],
 ) -> PackageSpec:
     pkg = PackageSpec(
         name=name,
+        version=version,
         displayName=name,
         namespace=namespace,
         resources={},

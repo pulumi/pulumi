@@ -119,6 +119,7 @@ export class ComponentProvider implements Provider {
     private componentConstructors: Record<string, ComponentResourceConstructor>;
     private name: string;
     private namespace?: string;
+    private version: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
@@ -139,7 +140,7 @@ export class ComponentProvider implements Provider {
         }
     }
 
-    constructor(readonly options: ComponentProviderOptions) {
+    constructor(readonly options: ComponentProviderOptions & { version?: string }) {
         if (!options.dirname) {
             throw new Error("dirname is required");
         }
@@ -149,6 +150,7 @@ export class ComponentProvider implements Provider {
         this.packageJSON = JSON.parse(packStr);
         this.path = absDir;
         this.name = options.name;
+        this.version = options.version ?? "0.0.0";
         this.namespace = options.namespace;
         this.componentConstructors = options.components.reduce(
             (acc, component) => {
@@ -164,6 +166,7 @@ export class ComponentProvider implements Provider {
         const { components, typeDefinitions, packageReferences } = analyzer.analyze();
         const schema = generateSchema(
             this.name,
+            this.version,
             this.packageJSON.description,
             components,
             typeDefinitions,
@@ -221,7 +224,9 @@ export function componentProviderHost(options: ComponentProviderOptions): Promis
             throw new Error("Could not determine caller directory");
         }
     }
-
+    // Default the version to "0.0.0" for now, otherwise SDK codegen gets
+    // confused without a version.
+    const version = "0.0.0";
     const prov = new ComponentProvider(options);
     return main(prov, args);
 }

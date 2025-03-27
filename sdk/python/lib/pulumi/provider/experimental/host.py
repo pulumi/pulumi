@@ -48,5 +48,7 @@ def component_provider_host(
     # to the plugin's installation directory. This is followed by the engine
     # address and other optional arguments flags, like `--logtostderr`.
     args = sys.argv[1:]
-
-    main(ComponentProvider(components, name, namespace), args)
+    # Default the version to "0.0.0" for now, otherwise SDK codegen gets
+    # confused without a version.
+    version = "0.0.0"
+    main(ComponentProvider(components, name, namespace, version), args)

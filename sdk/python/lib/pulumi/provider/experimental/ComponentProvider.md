@@ -47,7 +47,11 @@ Next, create a `__main__.py` file to host the provider:
 from pulumi.provider.experimental import component_provider_host
 
 if __name__ == "__main__":
-    component_provider_host(name="my-provider", namespace="my-namespace")
+    component_provider_host(
+        components=[MyComponent],
+        name="my-provider",
+        namespace="my-namespace
+    )
 ```
 
 > [!NOTE]
