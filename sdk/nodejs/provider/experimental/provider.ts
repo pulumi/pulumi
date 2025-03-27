@@ -119,7 +119,7 @@ export class ComponentProvider implements Provider {
     private componentConstructors: Record<string, ComponentResourceConstructor>;
     private name: string;
     private namespace?: string;
-    private version: string;
+    public version: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
