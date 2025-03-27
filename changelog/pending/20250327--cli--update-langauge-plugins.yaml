@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Update language plugins to java@1.8.0 and yaml@1.15.1
