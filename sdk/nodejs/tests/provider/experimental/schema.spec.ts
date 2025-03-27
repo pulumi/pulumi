@@ -31,6 +31,7 @@ describe("Schema", function () {
         // Generate schema
         const schema = generateSchema(
             "test-provider",
+            "1.0.0",
             "Test provider for Pulumi",
             components,
             typeDefinitions,
@@ -74,6 +75,7 @@ describe("Schema", function () {
 
         const schema = generateSchema(
             "test-provider",
+            "1.0.0",
             "my-description",
             components,
             typeDefinitions,

@@ -24,7 +24,6 @@ from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
 from .analyzer import Analyzer
 from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
-from .metadata import Metadata
 from .schema import generate_schema
 
 
@@ -36,28 +35,33 @@ class ComponentProvider(Provider):
 
     path: Path
     """The path to the Python source code."""
-    metadata: Metadata
-    """The metadata for the provider, such as the name and version."""
 
     _type_defs: dict[str, TypeDefinition]
     _component_defs: dict[str, ComponentDefinition]
     _components: dict[str, type[ComponentResource]]
+    _name: str
 
     def __init__(
-        self, metadata: Metadata, components: list[type[ComponentResource]]
+        self,
+        components: list[type[ComponentResource]],
+        name: str,
+        namespace: Optional[str] = None,
+        version: str = "0.0.0",
     ) -> None:
-        self.metadata = metadata
-        self.analyzer = Analyzer(self.metadata)
+        self._name = name
+        self.analyzer = Analyzer(name)
         (components_defs, type_definitions) = self.analyzer.analyze(components)
         self._components = {component.__name__: component for component in components}
         self._component_defs = components_defs
         self._type_defs = type_definitions
         schema = generate_schema(
-            metadata,
+            name,
+            version,
+            namespace,
             self._component_defs,
             self._type_defs,
         )
-        super().__init__(metadata.version, json.dumps(schema.to_json()))
+        super().__init__(version, json.dumps(schema.to_json()))
 
     def construct(
         self,
@@ -66,7 +70,7 @@ class ComponentProvider(Provider):
         inputs: Inputs,
         options: Optional[ResourceOptions] = None,
     ) -> ConstructResult:
-        self.validate_resource_type(self.metadata.name, resource_type)
+        self.validate_resource_type(self._name, resource_type)
         component_name = resource_type.split(":")[-1]
         constructor = self._components[component_name]
         component_def = self._component_defs[component_name]

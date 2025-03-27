@@ -43,7 +43,6 @@ from .component import (
     PropertyType,
     TypeDefinition,
 )
-from .metadata import Metadata
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
@@ -149,8 +148,8 @@ class Analyzer:
     source code and parse that to retrieve the docstrings.
     """
 
-    def __init__(self, metadata: Metadata):
-        self.metadata = metadata
+    def __init__(self, name: str):
+        self.name = name
         self.type_definitions: dict[str, TypeDefinition] = {}
         self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
         self.docstrings: dict[str, dict[str, str]] = {}
@@ -363,7 +362,7 @@ class Analyzer:
                 if type_def.module != module:
                     raise DuplicateTypeError(module, type_def)
                 # Forward ref to a type we saw before, return a reference to it.
-                ref = f"#/types/{self.metadata.name}:index:{ref_name}"
+                ref = f"#/types/{self.name}:index:{ref_name}"
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
@@ -386,7 +385,7 @@ class Analyzer:
                 )
                 self.unresolved_forward_refs[ref_name] = type_def
                 self.type_definitions[type_def.name] = type_def
-                ref = f"#/types/{self.metadata.name}:index:{type_def.name}"
+                ref = f"#/types/{self.name}:index:{type_def.name}"
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
@@ -442,7 +441,7 @@ class Analyzer:
             type_def.properties_mapping = properties_mapping
             if type_def.name in self.unresolved_forward_refs:
                 del self.unresolved_forward_refs[type_def.name]
-            ref = f"#/types/{self.metadata.name}:index:{type_def.name}"
+            ref = f"#/types/{self.name}:index:{type_def.name}"
             return PropertyDefinition(
                 ref=ref,
                 optional=optional,

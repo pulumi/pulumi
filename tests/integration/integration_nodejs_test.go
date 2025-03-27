@@ -2534,13 +2534,14 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
-	require.Nil(t, schema["version"])
+	require.Equal(t, "0.0.0", schema["version"].(string))
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
 	// Check the component schema
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
+
 		"inputProperties": {
 			"aNumber": {
 				"type": "number",
