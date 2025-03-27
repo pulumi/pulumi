@@ -302,8 +302,8 @@ func TestLanguage(t *testing.T) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout: %s", result.Stdout)
-					ptesting.LogTruncated(t, "stderr: %s", result.Stderr)
+					ptesting.LogTruncated(t, "stdout", result.Stdout)
+					ptesting.LogTruncated(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}
