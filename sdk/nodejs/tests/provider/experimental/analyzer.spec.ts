@@ -612,6 +612,32 @@ describe("Analyzer", function () {
             },
         );
     });
+
+    it("finds components through re-exports", async function () {
+        const dir = path.join(__dirname, "testdata", "re-exports");
+        const analyzer = new Analyzer(dir, packageJSON, new Set(["MyComponent", "AnotherComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    output: { type: "string" },
+                },
+            },
+            AnotherComponent: {
+                name: "AnotherComponent",
+                inputs: {
+                    count: { type: "number", plain: true },
+                },
+                outputs: {
+                    result: { type: "number" },
+                },
+            },
+        });
+    });
 });
 
 describe("formatErrorContext", () => {
