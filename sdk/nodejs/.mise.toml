@@ -3,8 +3,3 @@ _.path = ["{{config_root}}/node_modules/.bin"]
 
 [hooks]
 postinstall = "yarn"
-
-[tools]
-"node" = "18"
-"npm:pnpm" = "latest"
-"npm:yarn" = "latest"
