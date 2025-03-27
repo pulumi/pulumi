@@ -1,0 +1,42 @@
+name: Format Node SDK
+
+on:
+  pull_request:
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            changes:
+              - 'sdk/nodejs/'
+              - '.github/workflows/sdk-node-format.yml'
+
+      - if: steps.filter.outputs.changes == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.filter.outputs.changes == 'true'
+        uses: Install Mise
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/share/mise/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/mise/shims" >> "$GITHUB_PATH"
+          mise settings experimental=true
+          mise install
+
+      - if: steps.filter.outputs.changes == 'true'
+        name: Caching
+        uses: actions/cache@v4
+        with:
+          key: node-sdk-${{ runner.os }}-${{ hashfiles("**/.mise.toml", "./sdk/nodejs/**") }}
+          path: |
+            ./sdk/nodejs/node_modules
+            ~/.local/share/mise
+
+      - if: steps.filter.outputs.changes == 'true'
+        name: Run format
+        run: make format
