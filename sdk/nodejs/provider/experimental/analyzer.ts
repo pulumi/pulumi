@@ -221,35 +221,59 @@ Please ensure these components are properly imported to your package's entry poi
     private collectImportedFiles(sourceFile: typescript.SourceFile): typescript.SourceFile[] {
         const importedFiles: typescript.SourceFile[] = [];
 
-        // Find all import declarations
         sourceFile.forEachChild((node) => {
-            if (!ts.isImportDeclaration(node)) {
-                return;
-            }
+            // Handle import declarations
+            if (ts.isImportDeclaration(node)) {
+                const moduleSpecifier = node.moduleSpecifier;
+                if (!ts.isStringLiteral(moduleSpecifier)) {
+                    return;
+                }
+                const importPath = moduleSpecifier.text;
 
-            // Get the module specifier (the string in the import)
-            const moduleSpecifier = node.moduleSpecifier;
-            if (!ts.isStringLiteral(moduleSpecifier)) {
-                return;
-            }
-            const importPath = moduleSpecifier.text;
+                // Resolve the import path relative to the current file
+                const resolvedModule = ts.resolveModuleName(
+                    importPath,
+                    sourceFile.fileName,
+                    this.program.getCompilerOptions(),
+                    ts.sys,
+                );
+                if (!resolvedModule.resolvedModule) {
+                    return;
+                }
 
-            // Resolve the import path relative to the current file
-            const resolvedModule = ts.resolveModuleName(
-                importPath,
-                sourceFile.fileName,
-                this.program.getCompilerOptions(),
-                ts.sys,
-            );
-            if (!resolvedModule.resolvedModule) {
-                return;
+                // Find the source file for this import
+                const resolvedFileName = resolvedModule.resolvedModule.resolvedFileName;
+                const importedFile = this.program.getSourceFile(resolvedFileName);
+                if (importedFile && this.programFiles.has(importedFile.fileName)) {
+                    importedFiles.push(importedFile);
+                }
             }
+            // Handle export declarations
+            else if (ts.isExportDeclaration(node)) {
+                // Skip export declarations without a module specifier (e.g., export { foo })
+                if (!node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier)) {
+                    return;
+                }
 
-            // Find the source file for this import
-            const resolvedFileName = resolvedModule.resolvedModule.resolvedFileName;
-            const importedFile = this.program.getSourceFile(resolvedFileName);
-            if (importedFile && this.programFiles.has(importedFile.fileName)) {
-                importedFiles.push(importedFile);
+                const exportPath = node.moduleSpecifier.text;
+
+                // Resolve the export path relative to the current file
+                const resolvedModule = ts.resolveModuleName(
+                    exportPath,
+                    sourceFile.fileName,
+                    this.program.getCompilerOptions(),
+                    ts.sys,
+                );
+                if (!resolvedModule.resolvedModule) {
+                    return;
+                }
+
+                // Find the source file for this export
+                const resolvedFileName = resolvedModule.resolvedModule.resolvedFileName;
+                const exportedFile = this.program.getSourceFile(resolvedFileName);
+                if (exportedFile && this.programFiles.has(exportedFile.fileName)) {
+                    importedFiles.push(exportedFile);
+                }
             }
         });
 
