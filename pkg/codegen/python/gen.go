@@ -457,6 +457,9 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 	genStandardHeader(w, mod.tool)
 
+	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
+	fmt.Fprintf(w, "import builtins\n")
+
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
 		typings := typingImports()
@@ -470,6 +473,9 @@ func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function,
 	if function.Outputs == nil || len(function.Outputs.Properties) == 0 {
 		typings = append(typings, "Awaitable")
 	}
+
+	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
+	fmt.Fprintf(w, "import builtins\n")
 	mod.generateCommonImports(w, imports, typings)
 }
 
@@ -2120,6 +2126,7 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	mod.genHeader(w, false /*needsSDK*/, nil)
 
 	// Enum import
+	fmt.Fprintf(w, "import builtins\n")
 	fmt.Fprintf(w, "from enum import Enum\n\n")
 
 	// Export only the symbols we want exported.
@@ -2605,13 +2612,13 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forD
 	default:
 		switch t {
 		case schema.BoolType:
-			return "bool"
+			return "builtins.bool"
 		case schema.IntType:
-			return "int"
+			return "builtins.int"
 		case schema.NumberType:
-			return "float"
+			return "builtins.float"
 		case schema.StringType:
-			return "str"
+			return "builtins.str"
 		case schema.ArchiveType:
 			return "pulumi.Archive"
 		case schema.AssetType:
