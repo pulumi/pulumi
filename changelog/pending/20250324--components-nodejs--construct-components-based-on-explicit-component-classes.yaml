@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: components/nodejs
-  description: Construct components based on explicit component classes

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/nodejs
-  description: Add canOutput code generation and conformance tests

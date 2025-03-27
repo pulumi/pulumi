@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Add the `--preview-only` option for `destroy` in the NodeJS Automation API

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Support GITHUB_TOKEN and GITLAB_TOKEN in `pulumi package add` for Git packages
