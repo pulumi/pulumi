@@ -915,13 +915,20 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
+				// Rewrite variable names separate from lowering to avoid rewriting
+				// keywords that are generated elsewhere (e.g. `this` in the case of
+				// setting a resource parent).
+				x, diagnostics := g.RewriteVariableRenames(attr.Value, attr.Value.Type())
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+
 				if r.Schema != nil {
 					destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
 					g.diagnostics = append(g.diagnostics, diagnostics...)
+
 					g.Fgenf(w, fmtString, propertyName,
-						g.lowerExpression(attr.Value, destType.(model.Type)))
+						g.lowerExpression(x, destType.(model.Type)))
 				} else {
-					g.Fgenf(w, fmtString, propertyName, attr.Value)
+					g.Fgenf(w, fmtString, propertyName, x)
 				}
 			}
 		})
