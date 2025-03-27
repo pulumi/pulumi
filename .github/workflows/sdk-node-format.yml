@@ -1,4 +1,4 @@
-name: Format Node SDK
+name: Node SDK
 
 on:
   pull_request:
