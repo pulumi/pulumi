@@ -1296,6 +1296,11 @@ func (b *cloudBackend) DoSummarizeErrorWithCopilot(
 		return nil, err
 	}
 
+	if(summary == "") {
+		// Summarization did not return output, this is not an error.
+		return nil, nil
+	}
+
 	elapsedMs := time.Since(startTime).Milliseconds()
 
 	summaryHeader := fmt.Sprintf("✨ AI-generated summary (%d ms):", elapsedMs)
