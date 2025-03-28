@@ -24,10 +24,10 @@ ensure:: .make/ensure/yarn .make/ensure/node .make/ensure/phony
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 format:: ensure
-	yarn biome format
-
-format_fix:: ensure
 	yarn biome format --write .
+
+format_check:: ensure
+	yarn biome format
 
 lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .
