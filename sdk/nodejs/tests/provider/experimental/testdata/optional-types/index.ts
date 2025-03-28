@@ -5,6 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 export interface MyComponentArgs {
     optionalNumber?: number;
     optionalNumberType: number | undefined;
+    optionalBool?: boolean;
 }
 
 export class MyComponent extends pulumi.ComponentResource {

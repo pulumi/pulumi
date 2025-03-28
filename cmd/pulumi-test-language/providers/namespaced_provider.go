@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -57,8 +58,23 @@ func (p *NamespacedProvider) GetSchema(
 				Type: "boolean",
 			},
 		},
+		"resourceRef": {
+			TypeSpec: schema.TypeSpec{
+				Ref: "/simple/v2.0.0/schema.json#/resources/simple:index:Resource",
+			},
+		},
 	}
 	resourceRequired := []string{"value"}
+
+	nodejsPackageInfo := nodejs.NodePackageInfo{
+		Dependencies: map[string]string{
+			"@pulumi/simple": "^2.0.0",
+		},
+	}
+	nodejsMarshalled, err := json.Marshal(nodejsPackageInfo)
+	if err != nil {
+		return plugin.GetSchemaResponse{}, err
+	}
 
 	pkg := schema.PackageSpec{
 		Name:      "namespaced",
@@ -74,6 +90,9 @@ func (p *NamespacedProvider) GetSchema(
 				InputProperties: resourceProperties,
 				RequiredInputs:  resourceRequired,
 			},
+		},
+		Language: map[string]schema.RawMessage{
+			"nodejs": nodejsMarshalled,
 		},
 	}
 

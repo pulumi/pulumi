@@ -5,7 +5,7 @@
         "build": "tsc"
     },
     "dependencies": {
-        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+        "@pulumi/pulumi": "^3.142.0"
     },
     "devDependencies": {
         "@types/node": "^18",

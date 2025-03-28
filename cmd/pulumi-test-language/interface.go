@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -596,6 +597,10 @@ func (eng *languageTestServer) RunLanguageTest(
 	if token.CoreArtifact != "" {
 		localDependencies["pulumi"] = token.CoreArtifact
 	}
+	// Sort packages with no Language block first, so other packages can depend on them.
+	sort.Slice(packages, func(i, j int) bool {
+		return packages[i].Language != nil
+	})
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
