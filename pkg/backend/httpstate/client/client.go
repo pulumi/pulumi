@@ -1430,3 +1430,26 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 
 	return nil
 }
+
+func (pc *Client) ListRegistryPackages(ctx context.Context, name string) ([]apitype.PackageMetadata, error) {
+	var packages []apitype.PackageMetadata
+	const baseURL = "/api/preview/registry/packages"
+	var ctk *string
+	var resp apitype.ListPackagesResponse
+	for {
+		url := baseURL
+		if ctk != nil {
+			url += "?continuationToken=" + *ctk
+		}
+		err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+		if err != nil {
+			return nil, err
+		}
+		packages = append(packages, resp.Packages...)
+		if resp.ContinuationToken == nil {
+			break
+		}
+		ctk = resp.ContinuationToken
+	}
+	return packages, nil
+}

@@ -37,3 +37,7 @@ var _ backend.PackageRegistry = (*cloudPackageRegistry)(nil)
 func (r *cloudPackageRegistry) Publish(ctx ctx.Context, op apitype.PackagePublishOp) error {
 	return r.cl.PublishPackage(ctx, op)
 }
+
+func (r *cloudPackageRegistry) List(ctx ctx.Context, name string) ([]apitype.PackageMetadata, error) {
+	return r.cl.ListRegistryPackages(ctx, name)
+}

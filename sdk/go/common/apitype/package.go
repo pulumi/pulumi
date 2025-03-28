@@ -16,6 +16,7 @@ package apitype
 
 import (
 	"io"
+	"time"
 
 	"github.com/blang/semver"
 )
@@ -74,3 +75,50 @@ type PackagePublishOp struct {
 	// This is optional, and if omitted, the package will not have installation documentation.
 	InstallDocs io.Reader
 }
+
+type ListPackagesResponse struct {
+	Packages          []PackageMetadata `json:"packages"`
+	ContinuationToken *string           `json:"continuationToken,omitempty"`
+}
+
+type PackageMetadata struct {
+	// The name of the package.
+	Name string `json:"name"`
+	// The publisher of the package.
+	Publisher string `json:"publisher"`
+	// The source of the package.
+	Source string `json:"source"`
+	// The version of the package in semver format.
+	Version semver.Version `json:"version"`
+	// The title/display name of the package.
+	Title string `json:"title,omitempty"`
+	// The description of the package.
+	Description string `json:"description,omitempty"`
+	// The URL of the logo for the package.
+	LogoURL string `json:"logoUrl,omitempty"`
+	// The URL of the repository the package is hosted in.
+	RepoURL string `json:"repoUrl,omitempty"`
+	// The category of the package.
+	Category string `json:"category,omitempty"`
+	// Whether the package is featured.
+	IsFeatured bool `json:"isFeatured"`
+	// The package types, e.g. "native", "component", "bridged"
+	PackageTypes []PackageType `json:"packageTypes,omitempty"`
+	// The maturity level of the package, e.g. "ga", "public_preview"
+	PackageStatus string `json:"packageStatus"`
+	// The URL of the schema for the package.
+	SchemaURL string `json:"schemaURL"`
+	// The date and time the package version was created.
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type PackageType string
+
+const (
+	// A package that offers native resources.
+	PackageTypeNative PackageType = "native"
+	// A package that offers component resources.
+	PackageTypeComponent PackageType = "component"
+	// A package that is bridged from a different ecosystem (e.g. OpenTofu).
+	PackageTypeBridged PackageType = "bridged"
+)

@@ -841,6 +841,7 @@ func (m MockTarReader) Tar() *tar.Reader {
 
 type MockPackageRegistry struct {
 	PublishF func(context.Context, apitype.PackagePublishOp) error
+	ListF    func(context.Context /*name*/, string) ([]apitype.PackageMetadata, error)
 }
 
 var _ PackageRegistry = (*MockPackageRegistry)(nil)
@@ -848,6 +849,13 @@ var _ PackageRegistry = (*MockPackageRegistry)(nil)
 func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePublishOp) error {
 	if mr.PublishF != nil {
 		return mr.PublishF(ctx, op)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockPackageRegistry) List(ctx context.Context, name string) ([]apitype.PackageMetadata, error) {
+	if mr.ListF != nil {
+		return mr.ListF(ctx, name)
 	}
 	panic("not implemented")
 }

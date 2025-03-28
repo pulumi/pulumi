@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	ctx "context"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -23,4 +24,5 @@ import (
 type PackageRegistry interface {
 	// Publish publishes a package to the package registry.
 	Publish(ctx ctx.Context, op apitype.PackagePublishOp) error
+	List(ctx context.Context, name string) ([]apitype.PackageMetadata, error)
 }
