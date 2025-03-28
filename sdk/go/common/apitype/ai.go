@@ -17,6 +17,7 @@ package apitype
 import "encoding/json"
 
 // Requests
+
 type CopilotSummarizeUpdateRequest struct {
 	Query           string                 `json:"query"`
 	State           CopilotState           `json:"state"`
@@ -32,19 +33,19 @@ type CopilotClientState struct {
 }
 
 type CopilotCloudContext struct {
-	OrgID string `json:"orgId"`
-	URL   string `json:"url"`
+	OrgID string `json:"orgId"` // The organization ID.
+	URL   string `json:"url"`   // The URL the user is viewing. Mock value often used.
 }
 
 type CopilotDirectSkillCall struct {
-	Skill  string             `json:"skill"`
+	Skill  string             `json:"skill"` // The skill to call. e.g. "summarizeUpdate"
 	Params CopilotSkillParams `json:"params"`
 }
 
 type CopilotSkillParams struct {
-	PulumiUpdateOutput string `json:"pulumiUpdateOutput"`
-	Model              string `json:"model,omitempty"`
-	MaxLen             int    `json:"maxLen,omitempty"`
+	PulumiUpdateOutput string `json:"pulumiUpdateOutput"` // The Pulumi update output to summarize.
+	Model              string `json:"model,omitempty"`    // The model to use for the summary.
+	MaxLen             int    `json:"maxLen,omitempty"`   // The maximum length of the summary.
 }
 
 // Responses

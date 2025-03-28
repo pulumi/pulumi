@@ -1149,7 +1149,10 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled so we
 			// check it again here.
 			if op.Opts.Display.ShowCopilotSummary && renderer.OutputIncludesFailure() {
-				b.ShowCopilotErrorSummary(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+				// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update if we
+				// can't generate a summary.
+				display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
 			}
 		}()
 	}
@@ -1260,23 +1263,9 @@ func (b *cloudBackend) PromptAI(
 	return res, nil
 }
 
-func (b *cloudBackend) ShowCopilotErrorSummary(
+func (b *cloudBackend) summarizeErrorWithCopilot(
 	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
-) {
-	summary, err := b.DoSummarizeErrorWithCopilot(ctx, pulumiOutput, stackRef, opts)
-	fmt.Println(opts.Color.Colorize(colors.SpecHeadline + "Summary:" + colors.Reset))
-	if err != nil {
-		fmt.Printf("error summarizing update output: %s", err)
-	}
-	for _, line := range summary {
-		fmt.Println("  " + opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
-	}
-	fmt.Println()
-}
-
-func (b *cloudBackend) DoSummarizeErrorWithCopilot(
-	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
-) ([]string, error) {
+) (*display.CopilotErrorSummaryMetadata, error) {
 	if len(pulumiOutput) == 0 {
 		return nil, nil
 	}
@@ -1303,10 +1292,10 @@ func (b *cloudBackend) DoSummarizeErrorWithCopilot(
 
 	elapsedMs := time.Since(startTime).Milliseconds()
 
-	summaryHeader := fmt.Sprintf("✨ AI-generated summary (%d ms):", elapsedMs)
-	summaryLines := strings.Split(summary, "\n")
-	emptyLine := ""
-	return append([]string{summaryHeader, emptyLine}, summaryLines...), nil
+	return &display.CopilotErrorSummaryMetadata{
+		Summary:   summary,
+		ElapsedMs: elapsedMs,
+	}, nil
 }
 
 type updateMetadata struct {
