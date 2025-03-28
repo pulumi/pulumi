@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Log safely in Python in the presence of `PULUMI_ERROR_OUTPUT_STRING`
