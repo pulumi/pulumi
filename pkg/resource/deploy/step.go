@@ -1154,7 +1154,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	complete := func() {
-		// s.reg will be empty for refreshes that are just being done on state, rather than via a program.
+		// s.cts will be empty for refreshes that are just being done on state, rather than via a program.
 		if s.cts != nil {
 			s.cts.MustFulfill(s.new)
 		}

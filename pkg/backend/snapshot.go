@@ -74,7 +74,7 @@ type SnapshotManager struct {
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
-	refreshDeletes map[resource.URN]bool // The set of resources that have been delete by a refresh in this plan.
+	refreshDeletes map[resource.URN]bool // The set of resources that have been deleted by a refresh in this plan.
 
 	// The set of resources that have been deleted. These resources could also have been added to `resources`
 	// by other operations but need to be filtered out before writing the snapshot.

@@ -673,9 +673,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	return sg.continueStepsFromRefresh(continueEvent)
 }
 
-// This function is called by the deployment executor in response to a ContinueResourceDiffEvent. It simply
-// calls into continueStepsFromDiff and then validateSteps to continue the work that GenerateSteps would have
-// done with a synchronous diff.
+// This function is called by the deployment executor in response to a ContinueResourceRefreshEvent. It simply
+// calls into continueStepsFromRefresh and then validateSteps to continue the work that GenerateSteps would
+// have done without a refresh step.
 func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
 	steps, async, err := sg.continueStepsFromRefresh(event)
 	if err != nil {

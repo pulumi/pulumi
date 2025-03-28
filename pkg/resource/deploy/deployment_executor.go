@@ -184,7 +184,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if ex.deployment.opts.DestroyProgram {
 		mode = destroyMode
 	}
-	// If were doing a program based refresh we'll get down to here and we need to put the step generator into
+	// If we're doing a program-based refresh we'll get down to here and we need to put the step generator into
 	// refresh mode.
 	refresh := ex.deployment.opts.RefreshProgram && ex.deployment.opts.Refresh
 	if ex.deployment.opts.RefreshOnly {
@@ -429,7 +429,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
 		if err != nil {
-			logging.V(7).Infof("performPostSteps(...): generating deletes produced error result")
+			logging.V(7).Infof("performPostSteps(...): generating refreshes produced error result")
 			return err
 		}
 

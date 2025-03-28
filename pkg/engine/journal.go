@@ -275,10 +275,11 @@ func NewJournal() *Journal {
 	return j
 }
 
-// FilterRefreshDeletes filters out any dependencies and parents from 'resource' that refer to a URN that has been
-// deleted by a refresh operation. This is pretty much the same as `rebuildBaseState` in the deployment executor (see
-// that function for a lot of details about why this is necessary). The main difference is that this function does not
-// mutate the state in place instead returning a new state with the appropriate fields filtered out.
+// FilterRefreshDeletes filters out any dependencies and parents from 'resources' that refer to a URN that has
+// been deleted by a refresh operation. This is pretty much the same as `rebuildBaseState` in the deployment
+// executor (see that function for a lot of details about why this is necessary). The main difference is that
+// this function does not mutate the state objects in place instead returning a new state object with the
+// appropriate fields filtered out, note that the slice containing the states is mutated.
 func FilterRefreshDeletes(
 	refreshDeletes map[resource.URN]bool,
 	resources []*resource.State,
@@ -300,7 +301,7 @@ func FilterRefreshDeletes(
 					availableParents[res.URN] = dep.URN
 					newParent = dep.URN
 				} else {
-					// dep.URN might have be gone so look up _it's_ parent
+					// dep.URN might have be gone so look up _its_ parent
 					// Since existing must obey a topological sort, we have already addressed
 					// r.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
 					// exists, we set r.Parent as r.Parent.Parent.
