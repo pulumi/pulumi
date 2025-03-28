@@ -122,7 +122,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpRefresh:
 				step, ok := e.Step.(*deploy.RefreshStep)
 				contract.Assertf(ok, "expected *deploy.RefreshStep, got %T", e.Step)
-				if step.Modern() {
+				if step.Persisted() {
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
 					} else {

@@ -522,7 +522,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// The exception to this is new "modern" refreshes, which are not elided and are treated as normal operations.
 		// These can either update or delete a resource.
 		refreshStep := step.(*deploy.RefreshStep)
-		if refreshStep.Modern() {
+		if refreshStep.Persisted() {
 			if successful {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {

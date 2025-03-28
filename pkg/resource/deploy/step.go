@@ -972,8 +972,8 @@ func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resou
 	}
 }
 
-// True if this is a modern refresh step that should be respected by the snapshot system.
-func (s *RefreshStep) Modern() bool { return s.cts != nil }
+// True if this is a persisted refresh step that should be respected by the snapshot system.
+func (s *RefreshStep) Persisted() bool { return s.cts != nil }
 
 func (s *RefreshStep) Op() display.StepOp                           { return OpRefresh }
 func (s *RefreshStep) Deployment() *Deployment                      { return s.deployment }
