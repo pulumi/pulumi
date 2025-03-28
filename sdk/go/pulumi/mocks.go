@@ -17,6 +17,7 @@ package pulumi
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"sync"
 
 	"golang.org/x/net/context"
@@ -34,6 +35,15 @@ import (
 type MockResourceMonitor interface {
 	Call(args MockCallArgs) (resource.PropertyMap, error)
 	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
+}
+
+// mockResourceMonitorWithRegisterResource is a mock resource monitor that
+// also implements the RegisterResource method. A new resource monitor interface
+// is created to avoid needing to implement additional methods for existing implementations
+// of MockResourceMonitor.
+type mockResourceMonitorWithRegisterResourceOutput interface {
+	MockResourceMonitor
+	RegisterResourceOutputs() (*emptypb.Empty, error)
 }
 
 func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
@@ -275,6 +285,17 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
+	// Get the concrete type of the mock resource monitor.
+	// This is needed to call the RegisterResourceOutputs method on the mock resource monitor if it exists.
+	if reflect.TypeOf(m.mocks).Implements(reflect.TypeOf((*mockResourceMonitorWithRegisterResourceOutput)(nil)).Elem()) {
+		// Call the RegisterResourceOutputs method on the mock resource monitor.
+		if m, ok := m.mocks.(mockResourceMonitorWithRegisterResourceOutput); ok {
+			return m.RegisterResourceOutputs()
+		}
+
+		panic("RegisterResourceOutputs is not implemented")
+	}
+
 	return &emptypb.Empty{}, nil
 }
 

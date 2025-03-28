@@ -17,14 +17,17 @@ package pulumi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -690,4 +693,52 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 		return ctx.Invoke("test:invoke:success", args, &res)
 	}, WithMocks("project", "stack", mocks))
 	require.ErrorContains(t, err, "cannot marshal an input of type")
+}
+
+// This test ensures that ctx.RegisterResourceOutputs is a no-op on subsequent
+// calls. This is important because user programs may call this method multiple
+// times, and we don't want to error out if they do.
+func TestRegisterResourceOutputs(t *testing.T) {
+	t.Parallel()
+
+	// Keep track of the number of times [monitor.RegisterResourceOutputs] is called.
+	var count atomic.Int32
+
+	mocks := &testMonitor{
+		RegisterResourceOutputsF: func() (*emptypb.Empty, error) {
+			resp := &emptypb.Empty{}
+			if c := count.Load(); c > 2 {
+				// Note: the first call registers the stack outputs for urn:
+				//  - urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack
+				// The second call registers the resource outputs for the component resource:
+				//  - urn:pulumi:stack::project::test:go:NewLoggingTestResource::res
+				return resp, fmt.Errorf("RegisterResourceOutputs called %d times; expected only 2 calls", c)
+			}
+
+			count.Add(1)
+			return resp, nil
+		},
+	}
+
+	var _ mockResourceMonitorWithRegisterResourceOutput = mocks // Surface compile-time error if the interface changes.
+
+	err := RunErr(func(ctx *Context) error {
+		resource, err := NewLoggingTestResource(t, ctx, "res", String("A"))
+		require.NoError(t, err)
+
+		// Attempt to register outputs again, it should be a no-op.
+		err = ctx.RegisterResourceOutputs(resource, Map(map[string]Input{
+			"testOutput": resource.TestOutput,
+		}))
+		require.NoError(t, err)
+
+		// Attempt to register outputs again, it should be a no-op.
+		err = ctx.RegisterResourceOutputs(resource, Map(map[string]Input{
+			"testOutput": resource.TestOutput,
+		}))
+		require.NoError(t, err)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
 }
