@@ -455,9 +455,7 @@ func marshalInputOptionsImpl(v interface{},
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
-				if !e.IsNull() {
-					arr = append(arr, e)
-				}
+				arr = append(arr, e)
 				deps = append(deps, d...)
 			}
 			return resource.NewArrayProperty(arr), deps, nil
