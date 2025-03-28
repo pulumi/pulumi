@@ -640,7 +640,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		// Only need to do refresh steps here for custom non-provider resources that have an old state.
 		if old != nil && goal.Custom && !providers.IsProviderType(goal.Type) {
 			cts := &promise.CompletionSource[*resource.State]{}
-			// Set up the cts to trigger a subGenerateStep when it resolves
+			// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 			go func() {
 				// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
 				// but a goroutine blocked on Result and then posting to a channel is very cheap.
