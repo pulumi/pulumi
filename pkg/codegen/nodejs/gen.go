@@ -20,6 +20,7 @@ package nodejs
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
@@ -2356,11 +2357,14 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool) error {
+func genPackageMetadata(
+	pkg *schema.Package, info NodePackageInfo, fs codegen.Fs, localDependencies map[string]string, localSDK bool,
+	loader schema.ReferenceLoader,
+) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK)
+	packageJSON, err := genNPMPackageMetadata(pkg, info, localDependencies, localSDK, loader)
 	if err != nil {
 		return err
 	}
@@ -2390,7 +2394,10 @@ type npmPackage struct {
 	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
-func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
+func genNPMPackageMetadata(
+	pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool,
+	loader schema.ReferenceLoader,
+) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
 		if pkg.Namespace != "" {
@@ -2499,6 +2506,26 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 			npminfo.Resolutions = make(map[string]string)
 		}
 		npminfo.Resolutions[resk] = resv
+	}
+
+	for _, dep := range pkg.Dependencies {
+		ref, err := loader.LoadPackageReferenceV2(context.TODO(), &dep)
+		if err != nil {
+			return "", err
+		}
+		if npminfo.Dependencies == nil {
+			npminfo.Dependencies = make(map[string]string)
+		}
+		namespace := "pulumi"
+		if ref.Namespace() != "" {
+			namespace = ref.Namespace()
+		}
+		depName := "@" + namespace + "/" + ref.Name()
+		if path, ok := localDependencies[dep.Name]; ok {
+			npminfo.Dependencies[depName] = path
+		} else {
+			npminfo.Dependencies[depName] = dep.Version.String()
+		}
 	}
 
 	// If there is no @pulumi/pulumi, add "latest" as a peer dependency (for npm linking style usage).
@@ -2808,6 +2835,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 
 func GeneratePackage(tool string, pkg *schema.Package,
 	extraFiles map[string][]byte, localDependencies map[string]string, localSDK bool,
+	loader schema.ReferenceLoader,
 ) (map[string][]byte, error) {
 	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
@@ -2826,7 +2854,7 @@ func GeneratePackage(tool string, pkg *schema.Package,
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK); err != nil {
+	if err = genPackageMetadata(pkg, info, files, localDependencies, localSDK, loader); err != nil {
 		return nil, err
 	}
 	return files, nil
