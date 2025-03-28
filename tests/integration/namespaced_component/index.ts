@@ -2,8 +2,11 @@
 
 import * as pulumi from "@pulumi/pulumi"
 
+export interface Nested {
+}
+
 export interface MyComponentArgs {
-    // Define the inputs to your component here
+    anInput: Nested;
 }
 
 export class MyComponent extends pulumi.ComponentResource {

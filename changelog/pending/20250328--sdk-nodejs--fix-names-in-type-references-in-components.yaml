@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix names in type references in components
