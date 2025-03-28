@@ -1378,7 +1378,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	model string,
 	maxSummaryLen int,
 ) (string, error) {
-	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen)
+	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
 
 	jsonData, err := json.Marshal(request)
 	if err != nil {

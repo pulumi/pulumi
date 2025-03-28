@@ -35,6 +35,8 @@ var expectedCopilotSummaryWithError = fmt.Sprintf(`AI-generated summary%s: 100ms
 `, copilotEmojiOr())
 
 func TestRenderCopilotErrorSummary(t *testing.T) {
+	t.Parallel()
+
 	summary := "This is a test summary"
 	elapsedMs := int64(100)
 	buf := new(bytes.Buffer)
@@ -53,6 +55,8 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 }
 
 func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
+	t.Parallel()
+
 	summary := "This is a test summary"
 	elapsedMs := int64(100)
 	buf := new(bytes.Buffer)

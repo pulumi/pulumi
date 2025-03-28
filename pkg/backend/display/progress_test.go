@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -177,10 +178,29 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
-func TestCaptureProgressEvents(t *testing.T) {
+func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	t.Parallel()
 
-	// test events
+	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
+
+	// Push some example events
+	eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
+		Message: "Hello, world!",
+		// Note: System events need their own Color instance
+		Color: colors.Never,
+	})
+
+	close(eventChannel)
+	<-doneChannel
+
+	assert.False(t, captureRenderer.OutputIncludesFailure())
+	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Hello, world!")
+}
+
+func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
+	t.Parallel()
 
 	// If we see a ResourceOperationFailed event, the update is marked as failed.
 	resourceOperationFailedEvent := engine.NewEvent(engine.ResourceOperationFailedPayload{
@@ -190,55 +210,27 @@ func TestCaptureProgressEvents(t *testing.T) {
 		},
 	})
 
-	// Combined is a common failed update which renders the diagnostic section and the Copilot summary.
-	failureEvents := []engine.Event{resourceOperationFailedEvent}
+	// Some diagnostics which is what we're usually interested in.
+	diagEvent := engine.NewEvent(engine.DiagEventPayload{
+		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message: "Failed to update",
+	})
 
-	// test cases
-	testCases := []struct {
-		name string
-		// is this an update that failed
-		isFailure bool
-		// expect a summary to be printed
-		expectFailure bool
-	}{
-		// Includes a failed resource operation
-		{
-			name:          "update-failure",
-			isFailure:     true,
-			expectFailure: true,
-		},
-		// Includes a successful resource operation
-		{
-			name:          "update-success",
-			isFailure:     false,
-			expectFailure: false,
-		},
+	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
+
+	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
+
+	for _, event := range failureEvents {
+		eventChannel <- event
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel()
+	close(eventChannel)
+	<-doneChannel
 
-			captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-			go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
-			if testCase.isFailure {
-				for _, event := range failureEvents {
-					eventChannel <- event
-				}
-			}
-
-			close(eventChannel)
-			<-doneChannel
-
-			if testCase.expectFailure {
-				assert.True(t, captureRenderer.OutputIncludesFailure())
-			} else {
-				assert.False(t, captureRenderer.OutputIncludesFailure())
-			}
-		})
-	}
+	assert.True(t, captureRenderer.OutputIncludesFailure())
+	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
 }
 
 func BenchmarkProgressEvents(t *testing.B) {

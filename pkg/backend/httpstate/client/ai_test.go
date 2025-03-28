@@ -177,3 +177,70 @@ func TestExtractSummaryFromResponse(t *testing.T) {
 		})
 	}
 }
+
+// Model and maxLen are optional and the field should be omitted if not provided.
+// This is testing some serialization logic too..
+func TestCreateSummarizeUpdateRequestOmitsDefaults(t *testing.T) {
+	t.Parallel()
+
+	updateRequest := createSummarizeUpdateRequest([]string{"line1", "line2", "line3"}, "org1", "", 0, 100)
+	expectedOutput := `{
+		"query": "",
+		"directSkillCall": {
+			"skill": "summarizeUpdate",
+			"params": {
+				"pulumiUpdateOutput": "line1\nline2\nline3"
+			}
+		},
+		"state": {
+			"client": {
+				"cloudContext": {
+					"orgId": "org1",
+					"url": "https://app.pulumi.com"
+				}
+			}
+		}
+	}`
+
+	jsonBytes, err := json.Marshal(updateRequest)
+	assert.NoError(t, err)
+	// pretty marshal the expected output
+	assert.JSONEq(t, expectedOutput, string(jsonBytes))
+}
+
+func TestCreateSummarizeUpdateRequestWithModelAndMaxLen(t *testing.T) {
+	t.Parallel()
+
+	updateRequest := createSummarizeUpdateRequest([]string{"line1", "line2", "line3"}, "org1", "gpt-4o-mini", 100, 100)
+	expectedOutput := `{
+		"query": "",
+		"directSkillCall": {
+			"skill": "summarizeUpdate",
+			"params": {
+				"pulumiUpdateOutput": "line1\nline2\nline3",
+				"model": "gpt-4o-mini",
+				"maxLen": 100
+			}
+		},
+		"state": {
+			"client": {
+				"cloudContext": {
+					"orgId": "org1",
+					"url": "https://app.pulumi.com"
+				}
+			}
+		}
+	}`
+
+	jsonBytes, err := json.Marshal(updateRequest)
+	assert.NoError(t, err)
+	assert.JSONEq(t, expectedOutput, string(jsonBytes))
+}
+
+func TestCreateSummarizeUpdateRequestTruncatesContent(t *testing.T) {
+	t.Parallel()
+
+	updateRequest := createSummarizeUpdateRequest([]string{"line1", "line2", "line3"}, "org1", "", 0, 10)
+	// The content should be truncated to 10 characters
+	assert.Equal(t, "line1\nline", updateRequest.DirectSkillCall.Params.PulumiUpdateOutput)
+}

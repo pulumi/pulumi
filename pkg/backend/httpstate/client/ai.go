@@ -28,10 +28,11 @@ func createSummarizeUpdateRequest(
 	orgID string,
 	model string,
 	maxSummaryLen int,
+	maxUpdateOutputLen int,
 ) apitype.CopilotSummarizeUpdateRequest {
 	// Convert lines to a single string
 	content := strings.Join(lines, "\n")
-	content = TruncateWithMiddleOut(content, maxCopilotContentLength)
+	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
 	return apitype.CopilotSummarizeUpdateRequest{
 		State: apitype.CopilotState{

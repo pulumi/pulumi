@@ -47,7 +47,8 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 	if summary != nil {
 		timeString = fmt.Sprintf(" %dms", summary.ElapsedMs)
 	}
-	header := opts.Color.Colorize(colors.SpecHeadline + "AI-generated summary" + copilotEmojiOr() + ":" + colors.Reset + timeString)
+	header := opts.Color.Colorize(
+		colors.SpecHeadline + "AI-generated summary" + copilotEmojiOr() + ":" + colors.Reset + timeString)
 
 	// Print the header.
 	fmt.Fprintln(out, header)
