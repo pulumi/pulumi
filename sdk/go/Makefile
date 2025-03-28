@@ -49,10 +49,11 @@ dist:: ../../bin/pulumi-language-go
 ifneq (${GOBIN},)
 	@# We need to do this dance instead of just calling `cp` because `make build_local`
 	@# (from root) sets ${GOBIN} such that the copy is a no op.
-	@if ! [[ "$<" -ef ${GOBIN}/pulumi-language-go ]]; then \
-	echo cp -f $< ${GOBIN}/pulumi-language-go; \
-	cp $< ${GOBIN}/pulumi-language-go; \
-	fi
+	@bash -c ' \
+	if ! [[ "$<" -ef ${GOBIN}/pulumi-language-go ]]; then \
+		echo cp -f $< ${GOBIN}/pulumi-language-go; \
+		cp $< ${GOBIN}/pulumi-language-go; \
+	fi'
 else
 	cp -f $< $(shell go env GOPATH)/bin/pulumi-language-go
 endif
