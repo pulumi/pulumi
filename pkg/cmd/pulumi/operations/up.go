@@ -567,7 +567,7 @@ func NewUpCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
-					targetDependents, planFilePath, cmdStack.ConfigFile)
+					targetDependents, planFilePath, cmdStack.ConfigFile, false)
 				if err != nil {
 					return err
 				}

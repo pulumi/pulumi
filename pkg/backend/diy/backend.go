@@ -1182,7 +1182,11 @@ func (b *diyBackend) apply(
 	case apitype.RefreshUpdate:
 		_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		if op.Opts.Engine.DestroyProgram {
+			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
 	case apitype.StackImportUpdate, apitype.RenameUpdate:
 		contract.Failf("unexpected %s event", kind)
 	default:

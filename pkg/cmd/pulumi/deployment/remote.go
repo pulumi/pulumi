@@ -81,6 +81,7 @@ func ValidateUnsupportedRemoteFlags(
 	targetDependents bool,
 	planFilePath string,
 	stackConfigFile string,
+	runProgram bool,
 ) error {
 	if expectNop {
 		return errors.New("--expect-no-changes is not supported with --remote")
@@ -151,6 +152,9 @@ func ValidateUnsupportedRemoteFlags(
 	}
 	if stackConfigFile != "" {
 		return errors.New("--config-file is not supported with --remote")
+	}
+	if runProgram {
+		return errors.New("--run-program is not supported with --remote")
 	}
 
 	return nil

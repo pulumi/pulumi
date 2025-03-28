@@ -1454,7 +1454,11 @@ func (b *cloudBackend) runEngineAction(
 	case apitype.RefreshUpdate:
 		_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		if op.Opts.Engine.DestroyProgram {
+			_, changes, updateErr = engine.DestroyV2(u, engineCtx, op.Opts.Engine, dryRun)
+		} else {
+			_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		}
 	case apitype.StackImportUpdate, apitype.RenameUpdate:
 		contract.Failf("unexpected %s event", kind)
 	default:
