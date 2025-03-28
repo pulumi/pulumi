@@ -42,6 +42,12 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 		out = os.Stdout
 	}
 
+	// Copilot does not generate a summary under some conditions. It may have been disabled on the server etc.
+	// Don't render anything in that case.
+	if err == nil && summary == nil {
+		return
+	}
+
 	// Generate the header with the time taken to generate the summary.
 	timeString := ""
 	if summary != nil {

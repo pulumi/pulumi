@@ -24,16 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var expectedCopilotSummary = fmt.Sprintf(`AI-generated summary%s: 100ms
-  This is a test summary
-
-`, copilotEmojiOr())
-
-var expectedCopilotSummaryWithError = fmt.Sprintf(`AI-generated summary%s: 100ms
-  error summarizing update output: test error
-
-`, copilotEmojiOr())
-
 func TestRenderCopilotErrorSummary(t *testing.T) {
 	t.Parallel()
 
@@ -51,9 +41,46 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 		ElapsedMs: elapsedMs,
 	}, nil, opts)
 
+	expectedCopilotSummary := fmt.Sprintf(`AI-generated summary%s: 100ms
+  This is a test summary
+
+`, copilotEmojiOr())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
 }
 
+func TestRenderCopilotErrorSummaryError(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout: buf,
+		Color:  colors.Never,
+	}
+
+	RenderCopilotErrorSummary(nil, errors.New("test error"), opts)
+
+	expectedCopilotSummaryWithError := fmt.Sprintf(`AI-generated summary%s:
+  error summarizing update output: test error
+
+`, copilotEmojiOr())
+	assert.Equal(t, expectedCopilotSummaryWithError, buf.String())
+}
+
+func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout: buf,
+		Color:  colors.Never,
+	}
+
+	RenderCopilotErrorSummary(nil, nil, opts)
+
+	assert.Equal(t, "", buf.String())
+}
+
+// Edge case, just make sure we're handling this gracefully.
 func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	t.Parallel()
 
@@ -70,5 +97,9 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 		ElapsedMs: elapsedMs,
 	}, errors.New("test error"), opts)
 
-	assert.Equal(t, expectedCopilotSummaryWithError, buf.String())
+	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`AI-generated summary%s: 100ms
+  error summarizing update output: test error
+
+`, copilotEmojiOr())
+	assert.Equal(t, expectedCopilotSummaryWithErrorAndSummary, buf.String())
 }
