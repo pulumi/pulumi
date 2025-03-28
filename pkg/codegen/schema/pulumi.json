@@ -110,6 +110,23 @@
                 "$ref": "#/$defs/token"
             }
         },
+	"dependencies": {
+	    "description": "A map from package name to version that describes the set of dependencies for this package.",
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"properties": {
+		    "name": {
+			"description": "The name of the package.",
+			"type": "string"
+		    },
+		    "version": {
+			"description": "The version of the package. The version must be valid semver.",
+			"type": "string"
+		    }
+		}
+	    }
+	},
         "provider": {
             "description": "The provider type for this package.",
             "$ref": "#/$defs/resourceSpec"
