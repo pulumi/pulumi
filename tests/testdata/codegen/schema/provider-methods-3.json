@@ -1,0 +1,54 @@
+{
+    "name": "pulumi",
+    "version": "0.0.1",
+    "provider": {
+        "methods": {
+            "quux": "pulumi:providers:pulumi/quux"
+        }
+    },
+    "resources": {
+        "pulumi:index:StackReference": {
+            "methods": {
+                "method": "pulumi:index:StackReference/method"
+            }
+        }
+    },
+    "functions": {
+        "pulumi:index:StackReference/method": {
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/pulumi:index:StackReference"
+                    }
+                },
+                "required": ["__self__"]
+            },
+            "outputs": {
+                "properties": {
+                    "someValue": {
+                        "type": "string"
+                    }
+                },
+                "required": ["someValue"]
+            }
+        },
+        "pulumi:providers:pulumi/quux": {
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/pulumi:providers:pulumi"
+                    }
+                },
+                "required": ["__self__"]
+            },
+            "outputs": {
+                "properties": {
+                    "someValue": {
+                        "type": "string"
+                    }
+                },
+                "required": ["someValue"]
+            }
+        }
+    }
+}
