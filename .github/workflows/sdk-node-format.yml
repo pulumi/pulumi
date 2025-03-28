@@ -39,4 +39,4 @@ jobs:
 
       - if: steps.filter.outputs.changes == 'true'
         name: Run format
-        run: make format
+        run: make format_check
