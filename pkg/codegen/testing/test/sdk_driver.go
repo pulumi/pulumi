@@ -147,6 +147,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema with local resource properties",
 	},
 	{
+		Directory:   "resource-schema-docs",
+		Description: "Simple schema with documentation refs & examples",
+		Skip:        codegen.NewStringSet("go/any", "dotnet/any", "nodejs/any", "docs/any"),
+	},
+	{
 		Directory:   "simple-resource-schema-custom-pypackage-name",
 		Description: "Simple schema with local resource properties and custom Python package name",
 	},
