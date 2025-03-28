@@ -1296,7 +1296,7 @@ func (b *cloudBackend) DoSummarizeErrorWithCopilot(
 		return nil, err
 	}
 
-	if(summary == "") {
+	if summary == "" {
 		// Summarization did not return output, this is not an error.
 		return nil, nil
 	}
