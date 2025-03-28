@@ -2505,6 +2505,17 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 		npminfo.Resolutions[resk] = resv
 	}
 
+	for _, dep := range pkg.Dependencies {
+		if npminfo.Dependencies == nil {
+			npminfo.Dependencies = make(map[string]string)
+		}
+		if path, ok := localDependencies[dep.Name]; ok {
+			npminfo.Dependencies["@pulumi/"+dep.Name] = path
+		} else {
+			npminfo.Dependencies["@pulumi/"+dep.Name] = dep.Version
+		}
+	}
+
 	// If there is no @pulumi/pulumi, add "latest" as a peer dependency (for npm linking style usage).
 	sdkPack := "@pulumi/pulumi"
 	if npminfo.Dependencies[sdkPack] == "" &&
