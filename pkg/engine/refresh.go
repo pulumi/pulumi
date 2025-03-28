@@ -126,6 +126,9 @@ func newRefreshSource(
 	return deploy.NewErrorSource(proj.Name), nil
 }
 
+// RefreshV2 is a version of Refresh that uses the normal update source (i.e. it runs the user program) and
+// runs the step generator in "refresh" mode. This allows it to get up-to-date configuration for provider
+// resources.
 func RefreshV2(
 	u UpdateInfo,
 	ctx *Context,
