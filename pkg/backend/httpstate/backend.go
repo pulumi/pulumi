@@ -1367,6 +1367,26 @@ func (b *cloudBackend) createAndStartUpdate(
 	}, nil
 }
 
+func withTap(wrappedSink chan<- engine.Event) (chan<- engine.Event, <-chan engine.Event) {
+	input := make(chan engine.Event)
+	tapped := make(chan engine.Event)
+
+	go func() {
+		defer close(tapped)
+		for ev := range input {
+			// Always send to tapped
+			tapped <- ev
+
+			// Conditionally forward to wrappedSink if it's not nil
+			if wrappedSink != nil {
+				wrappedSink <- ev
+			}
+		}
+	}()
+
+	return input, tapped
+}
+
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -1395,11 +1415,9 @@ func (b *cloudBackend) apply(
 	// `pulumi preview --import-file`. We don't support Copilot summary + that use case yet.
 	// However we still defensively check for something else using the events channel.
 	// In the future we could support multiplexing the events channel if we wanted to.
-	if op.Opts.Display.ShowCopilotSummary && events == nil {
-		eventsChan := make(chan engine.Event)
-
-		// Take over the events channel passed in from the caller.
-		events = eventsChan
+	if op.Opts.Display.ShowCopilotSummary {
+		var eventsChan <-chan engine.Event
+		events, eventsChan = withTap(events)
 
 		renderDone := make(chan bool)
 		renderer := display.NewCaptureProgressEvents(
@@ -1415,7 +1433,6 @@ func (b *cloudBackend) apply(
 		go renderer.ProcessEvents(eventsChan, renderDone)
 
 		defer func() {
-			close(eventsChan)
 			<-renderDone
 			if renderer.OutputIncludesFailure() {
 				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
