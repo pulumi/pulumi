@@ -403,6 +403,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	return ex.deployment.newPlans.plan(), err
 }
 
+// performPostSteps either generates and schedules deletes or refreshes based on what resources were left in
+// state after the source program finished registering resources.
 func (ex *deploymentExecutor) performPostSteps(
 	ctx context.Context, targetsOpt UrnTargets, excludesOpt UrnTargets,
 ) error {
