@@ -422,6 +422,18 @@ class ProviderServicer(ResourceProviderServicer):
         schema = self.provider.schema if self.provider.schema else "{}"
         return proto.GetSchemaResponse(schema=schema)
 
+    async def Parameterize(
+        self, request: proto.ParameterizeRequest, context
+    ) -> proto.ParameterizeResponse:
+        if request.HasField("args"):
+            res = self.provider.parameterize_args(list(request.args.args))
+        else:
+            value = request.value.value.decode("utf-8")
+            res = self.provider.parameterize_value(
+                request.value.name, request.value.version, value
+            )
+        return proto.ParameterizeResponse(name=res.name, version=res.version)
+
     def __init__(
         self, provider: Provider, args: List[str], engine_address: str
     ) -> None:
@@ -447,7 +459,7 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
     argp.add_argument("--logflow", action="store_true", help="Currently ignored")
     argp.add_argument("--logtostderr", action="store_true", help="Currently ignored")
 
-    known_args, _ = argp.parse_known_args()
+    known_args, _ = argp.parse_known_args(args)
     engine_address: str = known_args.engine
 
     async def serve() -> None:
