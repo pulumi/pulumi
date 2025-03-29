@@ -1689,6 +1689,8 @@ func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
 	// delete steps for the same URN if the old checkpoint contained pending deletes.
 }
 
+// GenerateRefreshes generates refresh steps for the resources that are present in the old snapshot and were
+// not seen registered into the new snapshot.
 func (sg *stepGenerator) GenerateRefreshes(
 	targetsOpt UrnTargets, excludesOpt UrnTargets,
 ) ([]Step, map[*resource.State]Step, error) {
@@ -1749,6 +1751,9 @@ func (sg *stepGenerator) GenerateRefreshes(
 	return steps, resourceToStep, nil
 }
 
+// GenerateDeletes generates delete steps for the resources that are pending delete from the snapshot, or were not
+// registered in the new snapshot. It also generates delete steps for any resources that were marked for deletion
+// because of `destroy` mode.
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, error) {
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
 	steps := slice.Prealloc[Step](len(sg.toDelete))
