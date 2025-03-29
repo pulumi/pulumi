@@ -94,3 +94,42 @@ func (g *continueDiffResourceEvent) Autonaming() *plugin.AutonamingOptions {
 func (g *continueDiffResourceEvent) RandomSeed() []byte {
 	return g.randomSeed
 }
+
+// ContinueResourceRefreshEvent is a step that asks the engine to continue provisioning a resource after a
+// refresh, it is always created from a base RegisterResourceEvent.
+type ContinueResourceRefreshEvent interface {
+	RegisterResourceEvent
+
+	URN() resource.URN
+	Old() *resource.State
+	Aliases() []resource.URN
+	Invalid() bool
+}
+
+type continueResourceRefreshEvent struct {
+	RegisterResourceEvent
+	urn     resource.URN    // the URN of the resource being processed.
+	old     *resource.State // the old state of the resource being processed.
+	aliases []resource.URN  // the aliases of the resource being processed.
+	invalid bool            // whether the resource is invalid.
+}
+
+var _ ContinueResourceRefreshEvent = (*continueResourceRefreshEvent)(nil)
+
+func (g *continueResourceRefreshEvent) event() {}
+
+func (g *continueResourceRefreshEvent) URN() resource.URN {
+	return g.urn
+}
+
+func (g *continueResourceRefreshEvent) Old() *resource.State {
+	return g.old
+}
+
+func (g *continueResourceRefreshEvent) Aliases() []resource.URN {
+	return g.aliases
+}
+
+func (g *continueResourceRefreshEvent) Invalid() bool {
+	return g.invalid
+}
