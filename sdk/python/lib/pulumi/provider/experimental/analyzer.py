@@ -509,7 +509,7 @@ class Analyzer:
                                 node, ast.Assign
                             ):
                                 if isinstance(node, ast.AnnAssign):
-                                    target_node = node.target
+                                    target_node: ast.expr = node.target
                                 else:
                                     target_node = node.targets[0]
                                 if isinstance(target_node, ast.Name):

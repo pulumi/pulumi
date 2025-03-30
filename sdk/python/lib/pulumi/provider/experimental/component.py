@@ -15,7 +15,7 @@
 import builtins
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 
 class PropertyType(Enum):
@@ -30,7 +30,7 @@ class PropertyType(Enum):
 @dataclass
 class EnumValueDefinition:
     name: str
-    value: str | float | int | bool
+    value: Union[str, float, int, bool]
     description: Optional[str] = None
 
 

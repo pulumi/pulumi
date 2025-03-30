@@ -29,7 +29,7 @@ class EnumValue:
     """https://www.pulumi.com/docs/iac/using-pulumi/extending-pulumi/schema/#enumvalue"""
 
     name: str
-    value: str | float | int | bool
+    value: Union[str, float, int, bool]
     description: Optional[str] = None
 
     def to_json(self) -> dict[str, Any]:
