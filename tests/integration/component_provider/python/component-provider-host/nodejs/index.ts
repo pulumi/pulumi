@@ -31,6 +31,7 @@ let comp = new provider.MyComponent("comp", {
     archiveInput: new pulumi.asset.AssetArchive({
         asset1: new pulumi.asset.StringAsset("im inside an archive"),
     }),
+    enumInput: provider.Emu.A,
 })
 
 export const urn = comp.urn;
@@ -41,3 +42,4 @@ export const listOutput = comp.listOutput;
 export const dictOutput = comp.dictOutput;
 export const assetOutput = comp.assetOutput;
 export const archiveOutput = comp.archiveOutput;
+export const enumOutput = comp.enumOutput;

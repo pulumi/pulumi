@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from typing import Optional, TypedDict
+from enum import Enum
 
 import pulumi
+
+
+class Emu(Enum):
+    A = "a"
+    B = "b"
 
 
 class Nested(TypedDict):
@@ -41,6 +46,7 @@ class Args(TypedDict):
     dict_input: pulumi.Input[dict[str, int]]
     asset_input: pulumi.Input[pulumi.Asset]
     archive_input: pulumi.Input[pulumi.Archive]
+    enum_input: pulumi.Input[Emu]
 
 
 class MyComponent(pulumi.ComponentResource):
@@ -54,6 +60,7 @@ class MyComponent(pulumi.ComponentResource):
     dict_output: pulumi.Output[dict[str, int]]
     asset_output: pulumi.Output[pulumi.Asset]
     archive_output: pulumi.Output[pulumi.Archive]
+    enum_output: pulumi.Output[Emu]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("component:index:MyComponent", name, {}, opts)
@@ -85,6 +92,9 @@ class MyComponent(pulumi.ComponentResource):
         self.archive_output = pulumi.Output.from_input(args.get("archive_input")).apply(
             self.transform_archive
         )
+        self.enum_output = pulumi.Output.from_input(args.get("enum_input")).apply(
+            self.transform_enum
+        )
         self.register_outputs(
             {
                 "asset_output": self.asset_output,
@@ -107,3 +117,10 @@ class MyComponent(pulumi.ComponentResource):
             return pulumi.AssetArchive({"asset1": self.transform_asset(asset)})  # type: ignore
         else:
             raise ValueError(f"Unexpected archive type {asset.__class__.__name__}")
+
+    def transform_enum(self, e: Emu) -> Emu:
+        if e == Emu.A:
+            return Emu.B
+        elif e == Emu.B:
+            return Emu.A
+        raise Exception(f"Unexpected enum value: {e}")

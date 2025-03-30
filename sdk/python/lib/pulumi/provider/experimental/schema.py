@@ -17,10 +17,35 @@ from typing import Any, Optional, Union
 
 from .component import (
     ComponentDefinition,
+    EnumValueDefinition,
     PropertyDefinition,
     PropertyType,
     TypeDefinition,
 )
+
+
+@dataclass
+class EnumValue:
+    """https://www.pulumi.com/docs/iac/using-pulumi/extending-pulumi/schema/#enumvalue"""
+
+    name: str
+    value: str | float | int | bool
+    description: Optional[str] = None
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "value": self.value,
+            "description": self.description,
+        }
+
+    @staticmethod
+    def from_definition(definition: EnumValueDefinition) -> "EnumValue":
+        return EnumValue(
+            name=definition.name,
+            value=definition.value,
+            description=definition.description,
+        )
 
 
 @dataclass
@@ -85,15 +110,17 @@ class ComplexType(ObjectType):
     """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#complextype"""
 
     description: Optional[str] = None
-    enum: Optional[list[Any]] = None
+    enum: Optional[list[EnumValue]] = None
 
     def to_json(self) -> dict[str, Any]:
         return {
             "type": self.type.value,
-            "properties": {k: v.to_json() for k, v in self.properties.items()},
-            "required": self.required,
+            "properties": {k: v.to_json() for k, v in self.properties.items()}
+            if self.properties
+            else None,
+            "required": self.required if self.required else None,
             "description": self.description,
-            "enum": self.enum,
+            "enum": [v.to_json() for v in self.enum] if self.enum else None,
         }
 
     @staticmethod
@@ -101,7 +128,7 @@ class ComplexType(ObjectType):
         type_def: TypeDefinition,
     ) -> "ComplexType":
         return ComplexType(
-            type=PropertyType.OBJECT,
+            type=type_def.type,
             properties={
                 k: Property.from_definition(v) for k, v in type_def.properties.items()
             },
@@ -109,6 +136,9 @@ class ComplexType(ObjectType):
                 [k for k, prop in type_def.properties.items() if not prop.optional]
             ),
             description=type_def.description,
+            enum=[EnumValue.from_definition(v) for v in type_def.enum]
+            if type_def.enum
+            else None,
         )
 
 

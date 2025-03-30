@@ -29,6 +29,7 @@ resources:
         fn::assetArchive:
           asset1:
             fn::stringAsset: im inside an archive
+      enumInput: "a"
 outputs:
   urn: ${comp.urn}
   strOutput: ${comp.strOutput}
@@ -38,3 +39,4 @@ outputs:
   dictOutput: ${comp.dictOutput}
   assetOutput: ${comp.assetOutput}
   archiveOutput: ${comp.archiveOutput}
+  enumOutput: ${comp.enumOutput}

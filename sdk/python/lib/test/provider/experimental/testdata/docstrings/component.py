@@ -1,5 +1,13 @@
+from enum import Enum
 from typing import TypedDict
 import pulumi
+
+
+class Enu(Enum):
+    """This is an enum"""
+
+    A = "a"
+    """Docstring for Enu.A"""
 
 
 class NestedComplexType(TypedDict):
@@ -32,6 +40,8 @@ class Args(TypedDict):
     # A comment and blank line before the description
 
     """input_with_comment_and_description doc string"""
+
+    enu: pulumi.Input[Enu]
 
 
 class Component(pulumi.ComponentResource):
