@@ -184,18 +184,32 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
-	switch expr.Collection.Type().(type) {
+	buffer := &bytes.Buffer{}
+
+	t := expr.Collection.Type()
+	var collectionPlaceholder any = expr.Collection
+
+	var isCollectionOutput bool
+	var tOutput *model.OutputType
+	if tOutput, isCollectionOutput = t.(*model.OutputType); isCollectionOutput {
+		// When the collection is an Output, rather than generating directly
+		// against it we should generate against the anonymous variable passed in to `apply`.
+		t = tOutput.ElementType
+		collectionPlaceholder = "col__"
+	}
+
+	switch t.(type) {
 	case *model.ListType, *model.TupleType:
 		if expr.KeyVariable == nil {
-			g.Fgenf(w, "%.20v", expr.Collection)
+			g.Fgenf(buffer, "%.20v", collectionPlaceholder)
 		} else {
-			g.Fgenf(w, "%.20v.map((v, k) => [k, v])", expr.Collection)
+			g.Fgenf(buffer, "%.20v.map((v, k) => [k, v])", collectionPlaceholder)
 		}
 	case *model.MapType, *model.ObjectType:
 		if expr.KeyVariable == nil {
-			g.Fgenf(w, "Object.values(%.v)", expr.Collection)
+			g.Fgenf(buffer, "Object.values(%.v)", collectionPlaceholder)
 		} else {
-			g.Fgenf(w, "Object.entries(%.v)", expr.Collection)
+			g.Fgenf(buffer, "Object.entries(%.v)", collectionPlaceholder)
 		}
 	}
 
@@ -206,15 +220,23 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	}
 
 	if expr.Condition != nil {
-		g.Fgenf(w, ".filter(%s => %.v)", fnParams, expr.Condition)
+		loweredCondition := g.lowerExpression(expr.Condition, expr.Condition.Type())
+		g.Fgenf(buffer, ".filter(%s => %.v)", fnParams, loweredCondition)
 	}
 
 	if expr.Key != nil {
 		// TODO(pdg): grouping
-		g.Fgenf(w, ".reduce((__obj, %s) => ({ ...__obj, [%.v]: %.v }))", reduceParams, expr.Key, expr.Value)
+		g.Fgenf(buffer, ".reduce((__obj, %s) => ({ ...__obj, [%.v]: %.v }))", reduceParams, expr.Key, expr.Value)
 	} else {
-		g.Fgenf(w, ".map(%s => (%.v))", fnParams, expr.Value)
+		g.Fgenf(buffer, ".map(%s => (%.v))", fnParams, expr.Value)
 	}
+
+	if !isCollectionOutput {
+		g.Fgen(w, buffer.String())
+		return
+	}
+
+	g.Fgenf(w, "%.20v.apply(%s => %s)", expr.Collection, collectionPlaceholder, buffer.String())
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
@@ -579,6 +601,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genCan(w, expr)
 	case "rootDirectory":
 		g.genRootDirectory(w)
+	case "toOutput":
+		g.Fgenf(w, "pulumi.output(%v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
