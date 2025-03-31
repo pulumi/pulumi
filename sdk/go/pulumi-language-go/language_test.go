@@ -205,6 +205,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 			filepath.Join("testdata", "overrides", "l2-provider-call"),
 		},
 	},
+
+	// Doesn't add necessary casts for pulumi inputs
+	"l3-component-simple": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l3-component-simple"),
+		},
+	},
 }
 
 func TestLanguage(t *testing.T) {
