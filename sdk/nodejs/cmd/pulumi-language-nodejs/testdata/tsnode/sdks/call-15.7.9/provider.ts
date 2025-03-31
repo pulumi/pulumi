@@ -43,6 +43,25 @@ export class Provider extends pulumi.ProviderResource {
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Provider.__pulumiType, name, resourceInputs, opts);
     }
+
+    /**
+     * The `identity` method of the `call` package's provider. Returns the provider's `value` configuration unaltered.
+     */
+    identity(): pulumi.Output<Provider.IdentityResult> {
+        return pulumi.runtime.call("pulumi:providers:call/identity", {
+            "__self__": this,
+        }, this);
+    }
+
+    /**
+     * The `prefixed` method of the `call` package's provider. Accepts a string and returns the provider's `value` configuration prefixed with that string.
+     */
+    prefixed(args: Provider.PrefixedArgs): pulumi.Output<Provider.PrefixedResult> {
+        return pulumi.runtime.call("pulumi:providers:call/prefixed", {
+            "__self__": this,
+            "prefix": args.prefix,
+        }, this);
+    }
 }
 
 /**
@@ -50,4 +69,28 @@ export class Provider extends pulumi.ProviderResource {
  */
 export interface ProviderArgs {
     value: pulumi.Input<string>;
+}
+
+export namespace Provider {
+    /**
+     * The results of the Provider.identity method.
+     */
+    export interface IdentityResult {
+        readonly result: string;
+    }
+
+    /**
+     * The set of arguments for the Provider.prefixed method.
+     */
+    export interface PrefixedArgs {
+        prefix: pulumi.Input<string>;
+    }
+
+    /**
+     * The results of the Provider.prefixed method.
+     */
+    export interface PrefixedResult {
+        readonly result: string;
+    }
+
 }

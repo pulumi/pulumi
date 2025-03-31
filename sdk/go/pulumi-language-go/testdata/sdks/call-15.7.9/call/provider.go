@@ -51,6 +51,65 @@ func (ProviderArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*providerArgs)(nil)).Elem()
 }
 
+// The `identity` method of the `call` package's provider. Returns the provider's `value` configuration unaltered.
+func (r *Provider) Identity(ctx *pulumi.Context) (ProviderIdentityResultOutput, error) {
+	out, err := ctx.Call("pulumi:providers:call/identity", nil, ProviderIdentityResultOutput{}, r)
+	if err != nil {
+		return ProviderIdentityResultOutput{}, err
+	}
+	return out.(ProviderIdentityResultOutput), nil
+}
+
+type ProviderIdentityResult struct {
+	Result string `pulumi:"result"`
+}
+
+type ProviderIdentityResultOutput struct{ *pulumi.OutputState }
+
+func (ProviderIdentityResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ProviderIdentityResult)(nil)).Elem()
+}
+
+func (o ProviderIdentityResultOutput) Result() pulumi.StringOutput {
+	return o.ApplyT(func(v ProviderIdentityResult) string { return v.Result }).(pulumi.StringOutput)
+}
+
+// The `prefixed` method of the `call` package's provider. Accepts a string and returns the provider's `value` configuration prefixed with that string.
+func (r *Provider) Prefixed(ctx *pulumi.Context, args *ProviderPrefixedArgs) (ProviderPrefixedResultOutput, error) {
+	out, err := ctx.Call("pulumi:providers:call/prefixed", args, ProviderPrefixedResultOutput{}, r)
+	if err != nil {
+		return ProviderPrefixedResultOutput{}, err
+	}
+	return out.(ProviderPrefixedResultOutput), nil
+}
+
+type providerPrefixedArgs struct {
+	Prefix string `pulumi:"prefix"`
+}
+
+// The set of arguments for the Prefixed method of the Provider resource.
+type ProviderPrefixedArgs struct {
+	Prefix pulumi.StringInput
+}
+
+func (ProviderPrefixedArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*providerPrefixedArgs)(nil)).Elem()
+}
+
+type ProviderPrefixedResult struct {
+	Result string `pulumi:"result"`
+}
+
+type ProviderPrefixedResultOutput struct{ *pulumi.OutputState }
+
+func (ProviderPrefixedResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ProviderPrefixedResult)(nil)).Elem()
+}
+
+func (o ProviderPrefixedResultOutput) Result() pulumi.StringOutput {
+	return o.ApplyT(func(v ProviderPrefixedResult) string { return v.Result }).(pulumi.StringOutput)
+}
+
 type ProviderInput interface {
 	pulumi.Input
 
@@ -91,4 +150,6 @@ func (o ProviderOutput) Value() pulumi.StringOutput {
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ProviderInput)(nil)).Elem(), &Provider{})
 	pulumi.RegisterOutputType(ProviderOutput{})
+	pulumi.RegisterOutputType(ProviderIdentityResultOutput{})
+	pulumi.RegisterOutputType(ProviderPrefixedResultOutput{})
 }
