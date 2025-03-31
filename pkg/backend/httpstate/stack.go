@@ -130,7 +130,19 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
+	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
+	return path, err == nil
+}
+
+func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	return workspace.DetectProjectStack(s.Ref().Name().Q())
+}
+
+func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
+}
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
