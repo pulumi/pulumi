@@ -35,6 +35,7 @@ type projectListResult struct {
 	Name         string `json:"name"`
 	Organization string `json:"organization,omitempty"`
 	StackCount   int    `json:"stackCount,omitempty"`
+	Backend      string `json:"backend,omitempty"` // Added to show backend type
 }
 
 func newProjectLsCmd() *cobra.Command {
@@ -70,94 +71,10 @@ func newProjectLsCmd() *cobra.Command {
 				return err
 			}
 
-			// Handle DIY backends - they don't support organizations directly
-			if !b.SupportsOrganizations() {
-				// If user specifically requested organization info but we can't provide it
-				if orgName != "" {
-					return fmt.Errorf("organizations are not supported by the current backend (%s)", b.Name())
-				}
-
-				// For DIY backends, list all local projects by stack names
-				stackSummaries, _, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil)
-				if err != nil {
-					return err
-				}
-
-				// Map to track projects and stack counts (in DIY mode)
-				projectMap := make(map[string]projectListResult)
-
-				// Group stacks by project
-				for _, stack := range stackSummaries {
-					// Get project name from stack reference
-					projectName, ok := stack.Name().Project()
-					if !ok {
-						// Skip stacks without a project
-						continue
-					}
-
-					// Use the string representation of projectName
-					projectNameStr := string(projectName)
-
-					// Update project entry
-					project, exists := projectMap[projectNameStr]
-					if !exists {
-						project = projectListResult{
-							Name:       projectNameStr,
-							StackCount: 0,
-						}
-					}
-					project.StackCount++
-					projectMap[projectNameStr] = project
-				}
-
-				// Convert map to slice for output
-				var results []projectListResult
-				for _, project := range projectMap {
-					results = append(results, project)
-				}
-
-				// If no projects, display a message
-				if len(results) == 0 {
-					fmt.Println("No projects found")
-					return nil
-				}
-
-				// Output the results
-				if jsonOut {
-					out, err := json.MarshalIndent(results, "", "    ")
-					if err != nil {
-						return err
-					}
-					fmt.Println(string(out))
-				} else {
-					fmt.Println("PROJECTS (local):")
-					for _, result := range results {
-						fmt.Printf("  %s (stacks: %d)\n", result.Name, result.StackCount)
-					}
-				}
-
-				return nil
-			}
-
-			// Get the current user.
-			_, userOrgs, _, err := b.CurrentUser()
-			if err != nil {
-				return err
-			}
-
-			// If org name is specified, verify the user has access to it.
-			if orgName != "" {
-				// Verify the organization exists and the user has access to it.
-				hasAccess := false
-				for _, org := range userOrgs {
-					if org == orgName {
-						hasAccess = true
-						break
-					}
-				}
-				if !hasAccess {
-					return fmt.Errorf("you do not have access to the organization %s", orgName)
-				}
+			// Handle all backend types uniformly
+			// If user specifically requested organization info but we can't provide it
+			if orgName != "" && !b.SupportsOrganizations() {
+				return fmt.Errorf("organizations are not supported by the current backend (%s)", b.Name())
 			}
 
 			// Create a filter for ListStacks
@@ -187,14 +104,16 @@ func newProjectLsCmd() *cobra.Command {
 				// Use the string representation of projectName
 				projectNameStr := string(projectName)
 
-				// Get organization from the fully qualified name
-				// Format is typically org/project/stack
-				stackFullName := stack.Name().String()
-				stackOrg := getOrgFromStackName(stackFullName)
+				// For backends that support organizations, get the org from the stack name
+				var org string
+				if b.SupportsOrganizations() {
+					stackFullName := stack.Name().String()
+					org = getOrgFromStackName(stackFullName)
 
-				// Skip if we're filtering by organization and this stack doesn't match
-				if orgName != "" && stackOrg != orgName {
-					continue
+					// Skip if we're filtering by organization and this stack doesn't match
+					if orgName != "" && org != orgName {
+						continue
+					}
 				}
 
 				// Update project entry
@@ -202,8 +121,9 @@ func newProjectLsCmd() *cobra.Command {
 				if !exists {
 					project = projectListResult{
 						Name:         projectNameStr,
-						Organization: stackOrg,
+						Organization: org,
 						StackCount:   0,
+						Backend:      b.Name(),
 					}
 				}
 				project.StackCount++
@@ -216,7 +136,7 @@ func newProjectLsCmd() *cobra.Command {
 				results = append(results, project)
 			}
 
-			// If no projects, display a message.
+			// If no projects, display a message
 			if len(results) == 0 {
 				if orgName != "" {
 					fmt.Println("No projects found in organization", orgName)
@@ -226,7 +146,7 @@ func newProjectLsCmd() *cobra.Command {
 				return nil
 			}
 
-			// Output the results.
+			// Output the results
 			if jsonOut {
 				out, err := json.MarshalIndent(results, "", "    ")
 				if err != nil {
@@ -234,17 +154,26 @@ func newProjectLsCmd() *cobra.Command {
 				}
 				fmt.Println(string(out))
 			} else {
-				// Print a nice formatted table.
-				if orgName != "" {
-					fmt.Printf("PROJECTS IN ORGANIZATION %s:\n", orgName)
-				} else {
-					fmt.Println("PROJECTS:")
-				}
-
-				for _, result := range results {
-					if orgName == "" {
-						fmt.Printf("  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
+				// Display header based on backend type
+				if b.SupportsOrganizations() {
+					if orgName != "" {
+						fmt.Printf("PROJECTS IN ORGANIZATION %s:\n", orgName)
 					} else {
+						fmt.Println("PROJECTS:")
+					}
+
+					for _, result := range results {
+						if orgName == "" {
+							fmt.Printf("  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
+						} else {
+							fmt.Printf("  %s (stacks: %d)\n", result.Name, result.StackCount)
+						}
+					}
+				} else {
+					// Display backend type for DIY backends
+					backendType := getDIYBackendType(b.URL())
+					fmt.Printf("PROJECTS (%s):\n", backendType)
+					for _, result := range results {
 						fmt.Printf("  %s (stacks: %d)\n", result.Name, result.StackCount)
 					}
 				}
@@ -270,4 +199,18 @@ func getOrgFromStackName(stackName string) string {
 		return "" // No organization in the stack name
 	}
 	return parts[0]
+}
+
+// getDIYBackendType returns a user-friendly name for the DIY backend type
+func getDIYBackendType(url string) string {
+	if strings.HasPrefix(url, "file://") {
+		return "local"
+	} else if strings.HasPrefix(url, "s3://") {
+		return "aws-s3"
+	} else if strings.HasPrefix(url, "azblob://") {
+		return "azure-blob"
+	} else if strings.HasPrefix(url, "gs://") {
+		return "google-cloud"
+	}
+	return "diy" // Generic fallback
 }
