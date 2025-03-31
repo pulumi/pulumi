@@ -66,7 +66,6 @@ describe("Analyzer", function () {
                 inputs: {
                     optionalNumber: { type: "number", optional: true, plain: true },
                     optionalNumberType: { type: "number", optional: true, plain: true },
-                    optionalBool: { type: "boolean", optional: true, plain: true },
                 },
                 outputs: {
                     optionalOutputNumber: { type: "number", optional: true },
