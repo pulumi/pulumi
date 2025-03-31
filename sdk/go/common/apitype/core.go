@@ -442,6 +442,17 @@ type Stack struct {
 	ActiveUpdate     string                  `json:"activeUpdate"`
 	Tags             map[StackTagName]string `json:"tags,omitempty"`
 
+	// Optional reference to ESC environment to use as stack configuration.
+	Environment string `json:"environment"`
+	// SecretsProvider is this stack's secrets provider. Only settable if environment is set.
+	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
+	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
+	// Only used for cloud-based secrets providers. Only settable if environment is set.
+	EncryptedKey string `json:"encryptedkey,omitempty" yaml:"encryptedkey,omitempty"`
+	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
+	// passphrase-based secrets providers. Only settable if environment is set.
+	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
+
 	Version int `json:"version"`
 }
 
