@@ -553,15 +553,18 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 //
 
 type MockStack struct {
-	RefF      func() StackReference
-	OrgNameF  func() string
-	ConfigF   func() config.Map
-	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	TagsF     func() map[apitype.StackTagName]string
-	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF   func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF   func(ctx context.Context, op UpdateOperation,
+	RefF              func() StackReference
+	GetStackFilenameF func(ctx context.Context) (string, bool)
+	LoadF             func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveF             func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF          func() string
+	ConfigF           func() config.Map
+	SnapshotF         func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	TagsF             func() map[apitype.StackTagName]string
+	BackendF          func() Backend
+	PreviewF          func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	UpdateF           func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	ImportF           func(ctx context.Context, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
@@ -580,6 +583,27 @@ var _ Stack = (*MockStack)(nil)
 func (ms *MockStack) Ref() StackReference {
 	if ms.RefF != nil {
 		return ms.RefF()
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) GetStackFilename(ctx context.Context) (string, bool) {
+	if ms.GetStackFilenameF != nil {
+		return ms.GetStackFilenameF(ctx)
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	if ms.LoadF != nil {
+		return ms.LoadF(ctx, project)
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) Save(ctx context.Context, project *workspace.ProjectStack) error {
+	if ms.SaveF != nil {
+		return ms.SaveF(ctx, project)
 	}
 	panic("not implemented")
 }

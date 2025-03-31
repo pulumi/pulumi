@@ -194,7 +194,7 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
-		ps, err := cmdStack.LoadProjectStack(project, dest)
+		ps, err := dest.Load(ctx, project)
 		if err != nil {
 			return err
 		}
