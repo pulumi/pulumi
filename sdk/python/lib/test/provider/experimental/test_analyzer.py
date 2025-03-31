@@ -287,6 +287,7 @@ def test_analyze_component_plain_types():
                 "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
             },
             properties_mapping={"aInputListStr": "a_input_list_str", "aStr": "a_str"},
+            python_type=ComplexType,
         )
     }
 
@@ -404,6 +405,7 @@ def test_analyze_list_complex():
             properties_mapping={
                 "name": "name",
             },
+            python_type=ComplexType,
         )
     }
 
@@ -585,6 +587,7 @@ def test_analyze_dict_complex():
             properties_mapping={
                 "name": "name",
             },
+            python_type=ComplexType,
         )
     }
 
@@ -635,6 +638,7 @@ def test_analyze_component_complex_type():
                 "value": "value",
                 "optionalValue": "optional_value",
             },
+            python_type=ComplexType,
         )
     }
 
@@ -761,6 +765,7 @@ def test_analyze_descriptions():
                 ),
             },
             properties_mapping={"value": "value", "anotherValue": "another_value"},
+            python_type=load_type(Path("testdata", "docstrings"), "ComplexType"),
         ),
         "NestedComplexType": TypeDefinition(
             description="NestedComplexType doc string",
@@ -774,6 +779,7 @@ def test_analyze_descriptions():
                 )
             },
             properties_mapping={"nestedValue": "nested_value"},
+            python_type=load_type(Path("testdata", "docstrings"), "NestedComplexType"),
         ),
         "Enu": TypeDefinition(
             name="Enu",
@@ -787,6 +793,7 @@ def test_analyze_descriptions():
                     name="A", value="a", description="Docstring for Enu.A"
                 ),
             ],
+            python_type=load_type(Path("testdata", "docstrings"), "Enu"),
         ),
     }
 
@@ -913,6 +920,7 @@ def test_analyze_enum_type():
                 EnumValueDefinition(name="A", value="a"),
                 EnumValueDefinition(name="B", value="b"),
             ],
+            python_type=MyEnumStr,
         ),
         "MyEnumBool": TypeDefinition(
             name="MyEnumBool",
@@ -924,6 +932,7 @@ def test_analyze_enum_type():
                 EnumValueDefinition(name="A", value=True),
                 EnumValueDefinition(name="B", value=False),
             ],
+            python_type=MyEnumBool,
         ),
         "MyEnumFloat": TypeDefinition(
             name="MyEnumFloat",
@@ -935,6 +944,7 @@ def test_analyze_enum_type():
                 EnumValueDefinition(name="A", value=1.1),
                 EnumValueDefinition(name="B", value=2.2),
             ],
+            python_type=MyEnumFloat,
         ),
         "MyEnumInt": TypeDefinition(
             name="MyEnumInt",
@@ -946,6 +956,7 @@ def test_analyze_enum_type():
                 EnumValueDefinition(name="A", value=1),
                 EnumValueDefinition(name="B", value=2),
             ],
+            python_type=MyEnumInt,
         ),
     }
 
@@ -1043,6 +1054,7 @@ def test_analyze_component_self_recursive_complex_type():
                 )
             },
             properties_mapping={"rec": "rec"},
+            python_type=RecursiveType,
         ),
     }
     assert component == ComponentDefinition(
@@ -1052,74 +1064,6 @@ def test_analyze_component_self_recursive_complex_type():
         inputs_mapping={"rec": "rec"},
         outputs={
             "rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")
-        },
-        outputs_mapping={"rec": "rec"},
-    )
-
-
-def test_analyze_component_mutually_recursive_complex_types_inline():
-    class RecursiveTypeA(TypedDict):
-        b: Optional[pulumi.Input["RecursiveTypeB"]]
-
-    class RecursiveTypeB(TypedDict):
-        a: Optional[pulumi.Input[RecursiveTypeA]]
-
-    class Args(TypedDict):
-        rec: pulumi.Input[RecursiveTypeA]
-
-    class Component(pulumi.ComponentResource):
-        rec: pulumi.Output[RecursiveTypeB]
-        # rec: pulumi.Output["RecursiveTypeB"]
-        # Using a forward ref instead here causes the test to fail because we
-        # would never encounter the type as we walk the tree of types that
-        # starts with the Component.
-        # When doing full analysis via Analyser.analyze, we can handle this case.
-        # See test_analyze_component_mutually_recursive_complex_types_file for
-        # an example of this.
-
-        def __init__(self, args: Args): ...
-
-    analyzer = Analyzer("mutually-recursive")
-    component = analyzer.analyze_component(Component)
-    assert analyzer.type_definitions == {
-        "RecursiveTypeA": TypeDefinition(
-            name="RecursiveTypeA",
-            module="test_analyzer",
-            type=PropertyType.OBJECT,
-            properties={
-                "b": PropertyDefinition(
-                    optional=True,
-                    ref="#/types/mutually-recursive:index:RecursiveTypeB",
-                )
-            },
-            properties_mapping={"b": "b"},
-        ),
-        "RecursiveTypeB": TypeDefinition(
-            name="RecursiveTypeB",
-            module="test_analyzer",
-            type=PropertyType.OBJECT,
-            properties={
-                "a": PropertyDefinition(
-                    optional=True,
-                    ref="#/types/mutually-recursive:index:RecursiveTypeA",
-                )
-            },
-            properties_mapping={"a": "a"},
-        ),
-    }
-    assert component == ComponentDefinition(
-        name="Component",
-        module="test_analyzer",
-        inputs={
-            "rec": PropertyDefinition(
-                ref="#/types/mutually-recursive:index:RecursiveTypeA"
-            )
-        },
-        inputs_mapping={"rec": "rec"},
-        outputs={
-            "rec": PropertyDefinition(
-                ref="#/types/mutually-recursive:index:RecursiveTypeB"
-            )
         },
         outputs_mapping={"rec": "rec"},
     )
@@ -1143,6 +1087,9 @@ def test_analyze_component_mutually_recursive_complex_types_file():
                 )
             },
             properties_mapping={"b": "b"},
+            python_type=load_type(
+                Path("testdata", "mutually-recursive"), "RecursiveTypeA"
+            ),
         ),
         "RecursiveTypeB": TypeDefinition(
             name="RecursiveTypeB",
@@ -1155,6 +1102,9 @@ def test_analyze_component_mutually_recursive_complex_types_file():
                 )
             },
             properties_mapping={"a": "a"},
+            python_type=load_type(
+                Path("testdata", "mutually-recursive"), "RecursiveTypeB"
+            ),
         ),
     }
     assert components == {
@@ -1296,3 +1246,13 @@ def load_components(p: Path) -> list[type[ComponentResource]]:
         if isclass(v) and issubclass(v, ComponentResource):
             components.append(v)
     return components
+
+
+def load_type(p: Path, type_name: str) -> type:
+    mod_name = p.name.replace("-", "_")
+    mod = sys.modules[mod_name]
+    if not mod:
+        raise Exception(
+            f"failed to load {mod_name}. Expected {mod_name} to already be loaded."
+        )
+    return getattr(mod, type_name)

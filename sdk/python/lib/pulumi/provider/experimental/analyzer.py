@@ -195,6 +195,7 @@ class Analyzer:
                         )
                         type_def.properties = properties
                         type_def.properties_mapping = properties_mapping
+                        type_def.python_type = typ
                         del self.unresolved_forward_refs[name]
                         break
 
