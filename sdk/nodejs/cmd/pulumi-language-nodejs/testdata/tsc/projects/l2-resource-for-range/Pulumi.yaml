@@ -1,0 +1,5 @@
+name: l2-resource-for-range
+runtime:
+  name: nodejs
+  options:
+    typescript: false
