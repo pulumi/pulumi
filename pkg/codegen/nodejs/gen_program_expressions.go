@@ -413,7 +413,17 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
 		output, isOutput := to.(*model.OutputType)
+
 		if isOutput {
+			_, isFromOutput := from.Type().(*model.OutputType)
+			conversionKind := from.Type().ConversionFrom(output.ElementType)
+			if !isFromOutput && conversionKind == model.SafeConversion {
+				// If the from type is a union which contains the output element type, then this is just
+				// an explicit call to convert to an output type from an input union.
+				g.Fgenf(w, "pulumi.output(%v)", expr.Args[0])
+				return
+			}
+
 			to = output.ElementType
 		}
 		switch to := to.(type) {
@@ -601,8 +611,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genCan(w, expr)
 	case "rootDirectory":
 		g.genRootDirectory(w)
-	case "toOutput":
-		g.Fgenf(w, "pulumi.output(%v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

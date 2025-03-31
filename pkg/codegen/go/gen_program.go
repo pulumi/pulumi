@@ -1214,7 +1214,34 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	if r.Options != nil && r.Options.Range != nil {
 		rangeType := model.ResolveOutputs(r.Options.Range.Type())
-		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType)
+
+		rangeExpr := r.Options.Range
+		if g.isComponent {
+			// In the case of a component, the range expression must treat Inputs as
+			// Outputs so code generation succeeds. This is because the component
+			// inputs may be outputs or promises, so we must explicitly cast them so
+			// code generation and apply lowering succeeds.
+			var diagnostics hcl.Diagnostics
+			rangeExpr, diagnostics = model.VisitExpression(
+				rangeExpr,
+				model.IdentityVisitor, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+					switch n := n.(type) {
+					case *model.ForExpression:
+						cvars := g.program.ConfigVariables()
+						cvarNames := make([]string, len(cvars))
+						for _, cvar := range cvars {
+							cvarNames = append(cvarNames, cvar.Name())
+						}
+						forExpr, diags := pcl.ConvertVariablesToOutputs(n, cvarNames)
+						return forExpr, diags
+					default:
+						return n, nil
+					}
+				})
+
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+		}
+		rangeExpr, temps := g.lowerExpression(rangeExpr, rangeType)
 		g.genTemps(w, temps)
 
 		g.Fgenf(w, "var %s []*%s.%s\n", resNameVar, modOrAlias, typ)

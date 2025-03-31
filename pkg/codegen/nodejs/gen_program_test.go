@@ -15,8 +15,11 @@
 package nodejs
 
 import (
+	"bytes"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
@@ -55,4 +58,70 @@ func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	// These are redundant, but serve to clarify our expectations around package alias names.
 	assert.NotEqual(t, "bar.WebhookFilters", result)
 	assert.NotEqual(t, "@pulumi/bar.WebhookFilters", result)
+}
+
+func TestGenFunctionCallConvertToOutput(t *testing.T) {
+	t.Parallel()
+
+	buffer := &bytes.Buffer{}
+	gen := &generator{}
+	gen.Formatter = format.NewFormatter(gen)
+
+	gen.GenFunctionCallExpression(buffer, &model.FunctionCallExpression{
+		Name: "__convert",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "value",
+					Type: model.InputType(model.NumberType),
+				},
+			},
+			ReturnType: &model.OutputType{
+				ElementType: model.NumberType,
+			},
+		},
+		Args: []model.Expression{
+			model.VariableReference(
+				&model.Variable{
+					Name:         "someNumberInput",
+					VariableType: model.InputType(model.NumberType),
+				},
+			),
+		},
+	})
+
+	assert.Equal(t, "pulumi.output(someNumberInput)", buffer.String())
+}
+
+func TestGenFunctionCallOutputsDontAddConvertToOutput(t *testing.T) {
+	t.Parallel()
+
+	buffer := &bytes.Buffer{}
+	gen := &generator{}
+	gen.Formatter = format.NewFormatter(gen)
+
+	gen.GenFunctionCallExpression(buffer, &model.FunctionCallExpression{
+		Name: "__convert",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "value",
+					Type: model.InputType(model.NumberType),
+				},
+			},
+			ReturnType: &model.OutputType{
+				ElementType: model.NumberType,
+			},
+		},
+		Args: []model.Expression{
+			model.VariableReference(
+				&model.Variable{
+					Name:         "someNumberInput",
+					VariableType: &model.OutputType{ElementType: model.NumberType},
+				},
+			),
+		},
+	})
+
+	assert.Equal(t, "someNumberInput", buffer.String())
 }

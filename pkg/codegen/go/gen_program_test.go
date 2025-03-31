@@ -546,3 +546,69 @@ func TestDeferredOutputCastTypeParameter(t *testing.T) {
 	assert.Equal(t, "pulumi.Float64MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.NumberType)))
 	assert.Equal(t, "pulumi.MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.DynamicType)))
 }
+
+func TestGenFunctionCallConvertToOutput(t *testing.T) {
+	t.Parallel()
+
+	buffer := &bytes.Buffer{}
+	gen := &generator{}
+	gen.Formatter = format.NewFormatter(gen)
+
+	gen.GenFunctionCallExpression(buffer, &model.FunctionCallExpression{
+		Name: "__convert",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "value",
+					Type: model.InputType(model.NumberType),
+				},
+			},
+			ReturnType: &model.OutputType{
+				ElementType: model.NumberType,
+			},
+		},
+		Args: []model.Expression{
+			model.VariableReference(
+				&model.Variable{
+					Name:         "someNumberInput",
+					VariableType: model.InputType(model.NumberType),
+				},
+			),
+		},
+	})
+
+	assert.Equal(t, "pulumi.ToOutput(someNumberInput)", buffer.String())
+}
+
+func TestGenFunctionCallOutputsDontAddConvertToOutput(t *testing.T) {
+	t.Parallel()
+
+	buffer := &bytes.Buffer{}
+	gen := &generator{}
+	gen.Formatter = format.NewFormatter(gen)
+
+	gen.GenFunctionCallExpression(buffer, &model.FunctionCallExpression{
+		Name: "__convert",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "value",
+					Type: model.InputType(model.NumberType),
+				},
+			},
+			ReturnType: &model.OutputType{
+				ElementType: model.NumberType,
+			},
+		},
+		Args: []model.Expression{
+			model.VariableReference(
+				&model.Variable{
+					Name:         "someNumberInput",
+					VariableType: &model.OutputType{ElementType: model.NumberType},
+				},
+			),
+		},
+	})
+
+	assert.Equal(t, "someNumberInput", buffer.String())
+}

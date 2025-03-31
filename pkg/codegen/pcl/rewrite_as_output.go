@@ -21,16 +21,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-// RewriteAsOutputs rewrites the given expression to replace any references to
-// the given variables with calls to `toOutput`. This is used in, for example,
-// a ForExpression inside a component to ensure all calls are correctly lifted
-// with apply.
+// ConvertVariablesToOutputs rewrites the given expression to replace any references to
+// the given variables with conversions to `model.OutputType`. This is used to explicitly cast
+// ambiguous union types
 //
 // In typescript, for instance, all inputs to a component resource are of type
 // pulumi.Input<T> which can be either T, pulumi.Output<T> or Promise<T>. This
 // rewriter will convert all the pulumi.Input's to pulumi.Output so codegen
 // code is always valid.
-func RewriteAsOutputs(x model.Expression, variablesToRewrite []string) (model.Expression, hcl.Diagnostics) {
+func ConvertVariablesToOutputs(x model.Expression, variablesToRewrite []string) (model.Expression, hcl.Diagnostics) {
 	if x == nil {
 		return x, nil
 	}
@@ -48,58 +47,58 @@ func RewriteAsOutputs(x model.Expression, variablesToRewrite []string) (model.Ex
 			}
 		}
 
-		newBody, bDiags := RewriteAsOutputs(x.Body, vars)
+		newBody, bDiags := ConvertVariablesToOutputs(x.Body, vars)
 		x.Body = newBody
 		diags = append(diags, bDiags...)
 	case *model.BinaryOpExpression:
-		lo, lDiags := RewriteAsOutputs(x.LeftOperand, variablesToRewrite)
+		lo, lDiags := ConvertVariablesToOutputs(x.LeftOperand, variablesToRewrite)
 		x.LeftOperand = lo
 		diags = append(diags, lDiags...)
-		ro, rDiags := RewriteAsOutputs(x.RightOperand, variablesToRewrite)
+		ro, rDiags := ConvertVariablesToOutputs(x.RightOperand, variablesToRewrite)
 		x.RightOperand = ro
 		diags = append(diags, rDiags...)
 	case *model.ScopeTraversalExpression:
 		if slices.Contains(variablesToRewrite, x.RootName) {
-			return NewToOutputCall(x), nil
+			return NewConvertToOutputCall(x), nil
 		}
 	case *model.ConditionalExpression:
-		cond, cDiags := RewriteAsOutputs(x.Condition, variablesToRewrite)
+		cond, cDiags := ConvertVariablesToOutputs(x.Condition, variablesToRewrite)
 		diags = append(diags, cDiags...)
 		x.Condition = cond
-		tru, tDiags := RewriteAsOutputs(x.TrueResult, variablesToRewrite)
+		tru, tDiags := ConvertVariablesToOutputs(x.TrueResult, variablesToRewrite)
 		diags = append(diags, tDiags...)
 		x.TrueResult = tru
-		fal, fDiags := RewriteAsOutputs(x.FalseResult, variablesToRewrite)
+		fal, fDiags := ConvertVariablesToOutputs(x.FalseResult, variablesToRewrite)
 		diags = append(diags, fDiags...)
 		x.FalseResult = fal
 	case *model.ForExpression:
-		col, cDiags := RewriteAsOutputs(x.Collection, variablesToRewrite)
+		col, cDiags := ConvertVariablesToOutputs(x.Collection, variablesToRewrite)
 		diags = append(diags, cDiags...)
 		x.Collection = col
-		cond, condDiags := RewriteAsOutputs(x.Condition, variablesToRewrite)
+		cond, condDiags := ConvertVariablesToOutputs(x.Condition, variablesToRewrite)
 		diags = append(diags, condDiags...)
 		x.Condition = cond
 	case *model.FunctionCallExpression:
 		args := x.Args
 		x.Args = make([]model.Expression, 0, len(args))
 		for _, arg := range args {
-			arg, d := RewriteAsOutputs(arg, variablesToRewrite)
+			arg, d := ConvertVariablesToOutputs(arg, variablesToRewrite)
 			diags = append(diags, d...)
 			x.Args = append(x.Args, arg)
 		}
 	case *model.IndexExpression:
-		coll, cDiags := RewriteAsOutputs(x.Collection, variablesToRewrite)
+		coll, cDiags := ConvertVariablesToOutputs(x.Collection, variablesToRewrite)
 		diags = append(diags, cDiags...)
 		x.Collection = coll
-		key, kDiags := RewriteAsOutputs(x.Key, variablesToRewrite)
+		key, kDiags := ConvertVariablesToOutputs(x.Key, variablesToRewrite)
 		diags = append(diags, kDiags...)
 		x.Key = key
 	case *model.ObjectConsExpression:
 		for _, item := range x.Items {
-			key, kDiags := RewriteAsOutputs(item.Key, variablesToRewrite)
+			key, kDiags := ConvertVariablesToOutputs(item.Key, variablesToRewrite)
 			item.Key = key
 			diags = append(diags, kDiags...)
-			value, vDiags := RewriteAsOutputs(item.Value, variablesToRewrite)
+			value, vDiags := ConvertVariablesToOutputs(item.Value, variablesToRewrite)
 			item.Value = value
 			diags = append(diags, vDiags...)
 		}
@@ -107,12 +106,12 @@ func RewriteAsOutputs(x model.Expression, variablesToRewrite []string) (model.Ex
 		exprs := x.Expressions
 		x.Expressions = make([]model.Expression, 0, len(exprs))
 		for _, arg := range exprs {
-			arg, d := RewriteAsOutputs(arg, variablesToRewrite)
+			arg, d := ConvertVariablesToOutputs(arg, variablesToRewrite)
 			diags = append(diags, d...)
 			x.Expressions = append(x.Expressions, arg)
 		}
 	case *model.UnaryOpExpression:
-		op, d := RewriteAsOutputs(x.Operand, variablesToRewrite)
+		op, d := ConvertVariablesToOutputs(x.Operand, variablesToRewrite)
 		diags = append(diags, d...)
 		x.Operand = op
 	}

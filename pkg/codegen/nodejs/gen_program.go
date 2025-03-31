@@ -956,7 +956,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 						for _, cvar := range cvars {
 							cvarNames = append(cvarNames, cvar.Name())
 						}
-						forExpr, diags := pcl.RewriteAsOutputs(n, cvarNames)
+						forExpr, diags := pcl.ConvertVariablesToOutputs(n, cvarNames)
 						return forExpr, diags
 					default:
 						return n, nil
