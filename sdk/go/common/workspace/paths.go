@@ -129,9 +129,8 @@ var ErrProjectNotFound = errors.New("no project file found")
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
 // hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(dir string) (string, error) {
-	path, err := fsutil.WalkUp(dir, isProject, func(s string) bool {
-		return true
-	})
+	path, err := fsutil.WalkUpDirs(dir, isProjectDir)
+
 	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
 	// users can run pulumi with unreadable root directories.
 	if errors.Is(err, fs.ErrPermission) {
@@ -245,6 +244,18 @@ func SaveProjectStackDeployment(stackName tokens.QName, deployment *ProjectStack
 	}
 
 	return deployment.Save(path)
+}
+
+// Check if a directory contains any files that appear to be a valid project that is satisfy [isProject].
+func isProjectDir(path string) bool {
+	// Check all supported extensions.
+	for _, mext := range encoding.Exts {
+		p := filepath.Join(path, ProjectFile+mext)
+		if isProject(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like
