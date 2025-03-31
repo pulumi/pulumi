@@ -47,7 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdbackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -65,6 +65,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -369,8 +370,9 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(),
 				auth.NewLogoutCmd(),
-				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
+				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdbackend.DefaultLoginManager),
 				org.NewOrgCmd(),
+				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(),
 			},
 		},
