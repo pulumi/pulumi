@@ -15,9 +15,11 @@
 package python
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -66,4 +68,70 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			return GenerateProject(directory, project, program, localDependencies, "")
 		},
 	)
+}
+
+func TestGenFunctionCallConvertToOutput(t *testing.T) {
+	t.Parallel()
+
+	buffer := &bytes.Buffer{}
+	gen := &generator{}
+	gen.Formatter = format.NewFormatter(gen)
+
+	gen.GenFunctionCallExpression(buffer, &model.FunctionCallExpression{
+		Name: "__convert",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "value",
+					Type: model.InputType(model.NumberType),
+				},
+			},
+			ReturnType: &model.OutputType{
+				ElementType: model.NumberType,
+			},
+		},
+		Args: []model.Expression{
+			model.VariableReference(
+				&model.Variable{
+					Name:         "some_number_input",
+					VariableType: model.InputType(model.NumberType),
+				},
+			),
+		},
+	})
+
+	assert.Equal(t, "pulumi.Output.from_input(some_number_input)", buffer.String())
+}
+
+func TestGenFunctionCallOutputsDontAddConvertToOutput(t *testing.T) {
+	t.Parallel()
+
+	buffer := &bytes.Buffer{}
+	gen := &generator{}
+	gen.Formatter = format.NewFormatter(gen)
+
+	gen.GenFunctionCallExpression(buffer, &model.FunctionCallExpression{
+		Name: "__convert",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "value",
+					Type: model.InputType(model.NumberType),
+				},
+			},
+			ReturnType: &model.OutputType{
+				ElementType: model.NumberType,
+			},
+		},
+		Args: []model.Expression{
+			model.VariableReference(
+				&model.Variable{
+					Name:         "some_number_input",
+					VariableType: &model.OutputType{ElementType: model.NumberType},
+				},
+			),
+		},
+	})
+
+	assert.Equal(t, "some_number_input", buffer.String())
 }
