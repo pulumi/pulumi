@@ -15,8 +15,10 @@
 from importlib.machinery import SourceFileLoader
 from collections import abc
 import collections
+from importlib.util import module_from_spec, spec_from_loader
 from inspect import isclass
 from pathlib import Path
+import sys
 import typing
 from typing import Any, Optional, TypedDict, Union
 
@@ -1132,10 +1134,13 @@ def load_components(p: Path) -> list[type[ComponentResource]]:
     init_file = Path(parent, p, "__init__.py")
     file_to_load = component_file if component_file.exists() else init_file
     mod_name = p.name.replace("-", "_")
-    mod = SourceFileLoader(
-        mod_name,
-        str(file_to_load),
-    ).load_module()
+    loader = SourceFileLoader(mod_name, str(file_to_load))
+    spec = spec_from_loader(mod_name, loader)
+    if not spec:
+        raise Exception(f"failed to load {file_to_load}")
+    mod = module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    loader.exec_module(mod)
     components: list[type[ComponentResource]] = []
     for _, v in mod.__dict__.items():
         if isclass(v) and issubclass(v, ComponentResource):
