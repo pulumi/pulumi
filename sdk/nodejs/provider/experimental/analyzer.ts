@@ -77,13 +77,13 @@ export class Analyzer {
     private componentNames: Set<string>;
     private programFiles: Set<string>;
 
-    constructor(dir: string, packageJSON: Record<string, any>, componentNames: Set<string>) {
+    constructor(dir: string, name: string, packageJSON: Record<string, any>, componentNames: Set<string>) {
         if (componentNames.size === 0) {
             throw new Error("componentNames cannot be empty - at least one component name must be provided");
         }
         this.dir = dir;
         this.packageJSON = packageJSON;
-        this.providerName = packageJSON.name;
+        this.providerName = name;
         const configPath = `${dir}/tsconfig.json`;
         const config = ts.readConfigFile(configPath, ts.sys.readFile);
         const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configPath));
@@ -147,7 +147,7 @@ export class Analyzer {
 
         // Check if all components were found
         if (componentNames.size > 0) {
-            throw new Error(`Failed to find the following components: ${Array.from(componentNames).join(", ")}. 
+            throw new Error(`Failed to find the following components: ${Array.from(componentNames).join(", ")}.
 Please ensure these components are properly imported to your package's entry point.`);
         }
 
