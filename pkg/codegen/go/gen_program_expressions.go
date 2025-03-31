@@ -434,6 +434,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v.PulumiResourceName()", expr.Args[0])
 	case "pulumiResourceType":
 		g.Fgenf(w, "%v.PulumiResourceType()", expr.Args[0])
+	case "toOutput":
+		g.Fgenf(w, "pulumi.ToOutput(%v)", expr.Args[0])
 	default:
 		// toJSON and readDir are reduced away, shouldn't see them here
 		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
