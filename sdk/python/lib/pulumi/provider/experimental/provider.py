@@ -16,15 +16,15 @@ import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from pulumi.provider.server import ComponentInitError
-
 from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
-from ...resource import ComponentResource, ResourceOptions
-from ..provider import ConstructResult, Provider
+from ...resource import ComponentResource
+from .new_provider import ConstructResponse, Provider, GetSchemaResponse
+from .server import ComponentInitError
 from .analyzer import Analyzer
 from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
-from .schema import generate_schema
+from .schema import generate_schema, PackageSpec
+from .property_value import PropertyValue
 
 
 class ComponentProvider(Provider):
@@ -40,6 +40,7 @@ class ComponentProvider(Provider):
     _component_defs: dict[str, ComponentDefinition]
     _components: dict[str, type[ComponentResource]]
     _name: str
+    _schema: PackageSpec
 
     def __init__(
         self,
@@ -54,26 +55,23 @@ class ComponentProvider(Provider):
         self._components = {component.__name__: component for component in components}
         self._component_defs = components_defs
         self._type_defs = type_definitions
-        schema = generate_schema(
+        self._schema = generate_schema(
             name,
             version,
             namespace,
             self._component_defs,
             self._type_defs,
         )
-        super().__init__(version, json.dumps(schema.to_json()))
 
-    def construct(
-        self,
-        name: str,
-        resource_type: str,
-        inputs: Inputs,
-        options: Optional[ResourceOptions] = None,
-    ) -> ConstructResult:
-        self.validate_resource_type(self._name, resource_type)
-        component_name = resource_type.split(":")[-1]
+    async def get_schema(self, request):
+        return GetSchemaResponse(schema=json.dumps(self._schema.to_json()))
+
+    async def construct(self, request):
+        self.validate_resource_type(self._name, request.resource_type)
+        component_name = request.resource_type.split(":")[-1]
         constructor = self._components[component_name]
         component_def = self._component_defs[component_name]
+        inputs = PropertyValue.deserialize_map(request.inputs)
         mapped_args = self.map_inputs(inputs, component_def)
         # Wrap the call to the component constuctor in a try except block to
         # catch any exceptions, so that we can re-raise a ComponentInitError.
@@ -81,11 +79,17 @@ class ComponentProvider(Provider):
         # code vs errors that occur in the SDK.
         try:
             # ComponentResource's init signature is different from the derived class signature.
-            comp_instance = constructor(name, mapped_args, options)  # type: ignore
+            comp_instance = constructor(request.name, mapped_args, request.options)  # type: ignore
         except Exception as e:  # noqa
             raise ComponentInitError(e)
         state = self.get_state(comp_instance, component_def)
-        return ConstructResult(comp_instance.urn, state)
+        outputs = await PropertyValue.serialize_map(state)
+        urn = await comp_instance.urn.future()
+        if not isinstance(urn, str):
+            raise ValueError(
+                f"ComponentResource {constructor} did not return a valid URN"
+            )
+        return ConstructResponse(urn, outputs, {})
 
     def get_type_definition(self, prop: PropertyDefinition) -> Optional[TypeDefinition]:
         """
@@ -149,6 +153,7 @@ class ComponentProvider(Provider):
                         if not property_path
                         else f"{property_path}.{schema_name}"
                     )
+
                     raise InputPropertyError(
                         full_path,
                         f"Missing required input '{full_path}' on '{component_name}'",
