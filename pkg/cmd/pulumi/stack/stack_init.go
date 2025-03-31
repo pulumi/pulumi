@@ -204,13 +204,13 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		copyProjectStack, err := LoadProjectStack(proj, copyStack)
+		copyProjectStack, err := copyStack.Load(ctx, proj)
 		if err != nil {
 			return err
 		}
 
 		// get the project for the newly created stack
-		newProjectStack, err := LoadProjectStack(proj, newStack)
+		newProjectStack, err := newStack.Load(ctx, proj)
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// The use of `requiresSaving` here ensures that there was actually some config
 		// that needed saved, otherwise it's an unnecessary save call
 		if requiresSaving {
-			err := SaveProjectStack(newStack, newProjectStack)
+			err := newStack.Save(ctx, newProjectStack)
 			if err != nil {
 				return err
 			}

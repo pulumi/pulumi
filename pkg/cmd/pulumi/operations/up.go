@@ -144,7 +144,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(ws, s, configArray, path); err != nil {
+		if err := parseAndSaveConfigArray(ctx, ws, s, configArray, path); err != nil {
 			return err
 		}
 
