@@ -89,7 +89,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 		stack.Ref().FullyQualifiedName())
 
 	for range events {
-		fmt.Printf(color.Colorize(
+		fmt.Print(color.Colorize(
 			colors.SpecHeadline + "🚀 Save detected. " +
 				colors.Reset + colors.Magenta + "Deploying changes...\n" + colors.Reset))
 
@@ -119,7 +119,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 		if opCount == 0 {
 			summary += "None"
 		}
-		summary = fmt.Sprintf("changes made: %s", summary)
+		summary = "changes made: " + summary
 
 		// Now summarize the outcome.
 		if err != nil {

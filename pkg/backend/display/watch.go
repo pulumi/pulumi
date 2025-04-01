@@ -154,7 +154,9 @@ func WatchPrefixPrintf(t time.Time, colorization colors.Colorization, resourceNa
 		// Deterministically map the name to a color.
 		h := fnv.New32a()
 		h.Write([]byte(resourceName))
-		color = colorMap[int(h.Sum32()%uint32(len(colorMap)))]
+		// #nosec G115 -- safe conversion because len(colorMap) is small and result is bounded.
+		idx := int(h.Sum32() % uint32(len(colorMap)))
+		color = colorMap[idx]
 	}
 
 	// Create a colorized prefix:
