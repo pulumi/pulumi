@@ -374,7 +374,7 @@ func NewCaptureProgressEvents(
 	action := apitype.UpdateUpdate
 	permalink := ""
 
-	printPermalinkInteractive(o.term, o, permalink)
+	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
 		action:                action,
