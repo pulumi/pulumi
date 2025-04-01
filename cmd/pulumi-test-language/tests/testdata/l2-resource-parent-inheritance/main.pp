@@ -22,6 +22,7 @@ resource "parent2" "simple:index:Resource" {
     value = true
     options {
         protect = true
+        retainOnDelete = true
     }
 }
 
@@ -29,6 +30,15 @@ resource "child2" "simple:index:Resource" {
     value = true
     options {
         parent = parent2
+    }
+}
+
+resource "child3" "simple:index:Resource" {
+    value = true
+    options {
+        parent = parent2
+        protect = false
+        retainOnDelete = false
     }
 }
 

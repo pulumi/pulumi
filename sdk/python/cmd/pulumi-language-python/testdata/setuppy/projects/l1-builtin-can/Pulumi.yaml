@@ -1,6 +1,0 @@
-name: l1-builtin-can
-runtime:
-  name: python
-  options:
-    typechecker: mypy
-    virtualenv: venv

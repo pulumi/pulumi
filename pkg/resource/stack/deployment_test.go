@@ -511,7 +511,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 		},
 	}, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.EqualError(t, err, "snapshot contains encrypted secrets but no secrets manager could be found")
+	assert.EqualError(t, err, "decrypting secret value: failed to decrypt: snapshot contains encrypted secrets but no secrets manager could be found")
 
 	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{

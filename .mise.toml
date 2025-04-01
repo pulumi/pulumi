@@ -1,5 +1,5 @@
 [env]
-PULUMI_ROOT = "{{env.PWD}}/.root"
+PULUMI_ROOT = "{{config_root}}/.root"
 
 _.path = [
   "{{env.PULUMI_ROOT}}/bin",
@@ -9,7 +9,7 @@ _.path = [
 github-cli = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
-go = "1.23"
+go = "1.24"
 gofumpt = "latest"
 golangci-lint = "1.64.2"
 jq = "latest"

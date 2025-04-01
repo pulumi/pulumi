@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -122,7 +123,7 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 		"new", "must have or be a provider if it is a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
-	// Make the old state here a direct copy of the new state
+	// If we don't have an old state make the old state here a direct copy of the new state
 	old := new.Copy()
 	return &SameStep{
 		deployment:    deployment,
@@ -1499,6 +1500,7 @@ const (
 	OpRemovePendingReplace display.StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               display.StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
+	OpDiff                 display.StepOp = "diff"                   // diffing a resource
 	// with an imported resource.
 )
 
@@ -1519,6 +1521,7 @@ var StepOps = []display.StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+	OpDiff,
 }
 
 func IsReplacementStep(op display.StepOp) bool {
@@ -1692,4 +1695,71 @@ func getProvider(s Step, override plugin.Provider) (plugin.Provider, error) {
 		return nil, fmt.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.URN())
 	}
 	return provider, nil
+}
+
+// DiffStep isn't really a step like a normal step. It's just a way to get access to the parallel but bounded step
+// workers. We use this step to call `provider.Diff` in parallel with other steps.
+type DiffStep struct {
+	deployment    *Deployment                                  // the deployment that produced this diff
+	pcs           *promise.CompletionSource[plugin.DiffResult] // the completion source for this diff
+	old           *resource.State                              // the old resource state
+	new           *resource.State                              // the new resource state
+	ignoreChanges []string                                     // a list of property paths to ignore when diffing
+}
+
+func NewDiffStep(
+	deployment *Deployment, pcs *promise.CompletionSource[plugin.DiffResult], old, new *resource.State,
+	ignoreChanges []string,
+) Step {
+	return &DiffStep{
+		deployment:    deployment,
+		pcs:           pcs,
+		old:           old,
+		new:           new,
+		ignoreChanges: ignoreChanges,
+	}
+}
+
+func (s *DiffStep) Op() display.StepOp {
+	return OpDiff
+}
+
+func (s *DiffStep) Deployment() *Deployment { return s.deployment }
+func (s *DiffStep) Type() tokens.Type       { return s.new.Type }
+func (s *DiffStep) Provider() string        { return s.new.Provider }
+func (s *DiffStep) URN() resource.URN       { return s.new.URN }
+func (s *DiffStep) Old() *resource.State    { return s.old }
+func (s *DiffStep) New() *resource.State    { return s.new }
+func (s *DiffStep) Res() *resource.State    { return s.new }
+func (s *DiffStep) Logical() bool           { return true }
+
+func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// DiffStep is a special step in that we're just using it as a way to get access to the parallel step
+	// workers. We don't actually want it to participate in the rest of what normally happens for step
+	// execution. As such we never actually return an error here, we just reject the completion source in an
+	// error case instead. The step generator will pick that error up and turn it into a stepgen error.
+
+	prov, err := getProvider(s, nil)
+	if err != nil {
+		s.pcs.Reject(err)
+		return resource.StatusOK, nil, nil
+	}
+
+	diff, err := diffResource(
+		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges)
+	if err != nil {
+		s.pcs.Reject(err)
+		return resource.StatusOK, nil, nil
+	}
+	s.pcs.Fulfill(diff)
+
+	return resource.StatusOK, nil, nil
+}
+
+func (s *DiffStep) Fail() {
+	s.pcs.Reject(errors.New("failed diff resource"))
+}
+
+func (s *DiffStep) Skip() {
+	s.pcs.Reject(errors.New("skipped diff resource"))
 }

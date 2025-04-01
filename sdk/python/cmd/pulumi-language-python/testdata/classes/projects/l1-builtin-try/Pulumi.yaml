@@ -1,6 +1,0 @@
-name: l1-builtin-try
-runtime:
-  name: python
-  options:
-    typechecker: pyright
-    virtualenv: venv

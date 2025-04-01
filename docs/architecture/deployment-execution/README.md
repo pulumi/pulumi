@@ -44,6 +44,9 @@ as follows:
   event if it is iterated. This is to capture the invariant that a `refresh`
   operation should not consult its source, since it is only concerned with
   changes in the various providers, and not the program.
+  As such it doesn't call into the step generator, instead it just creates a RefreshStep for
+  each resource in state, sends them all in parallel to the step executor and then re-writes the
+  state snapshot to handle any deletions.
 
 ## Operations that execute the program
 

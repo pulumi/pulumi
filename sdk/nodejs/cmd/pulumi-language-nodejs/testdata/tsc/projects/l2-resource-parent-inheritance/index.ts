@@ -11,8 +11,14 @@ const child1 = new simple.Resource("child1", {value: true}, {
 const orphan1 = new simple.Resource("orphan1", {value: true});
 const parent2 = new simple.Resource("parent2", {value: true}, {
     protect: true,
+    retainOnDelete: true,
 });
 const child2 = new simple.Resource("child2", {value: true}, {
     parent: parent2,
+});
+const child3 = new simple.Resource("child3", {value: true}, {
+    parent: parent2,
+    protect: false,
+    retainOnDelete: false,
 });
 const orphan2 = new simple.Resource("orphan2", {value: true});

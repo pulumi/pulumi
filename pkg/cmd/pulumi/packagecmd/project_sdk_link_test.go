@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,12 +39,12 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 				Name: "aws-native",
 				Language: map[string]interface{}{
 					"nodejs": nodejs.NodePackageInfo{
-						PackageName: "awsnative",
+						PackageName: "@pulumi/aws-native-renamed",
 					},
 				},
 			},
 			options:        map[string]interface{}{},
-			wantImportLine: "import * as awsnative from \"@pulumi/aws-native\";\n",
+			wantImportLine: "import * as awsNative from \"@pulumi/aws-native-renamed\";\n",
 		},
 		{
 			name: "falls back to camelCase when no package info",
@@ -76,6 +77,54 @@ func TestPrintNodeJsImportInstructions(t *testing.T) {
 
 			output := buf.String()
 			assert.Contains(t, output, tt.wantImportLine, "output should contain the import line")
+		})
+	}
+}
+
+func TestSetSpecNamespace(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		pluginDownloadURL string
+		wantNamespace     string
+	}{
+		{
+			pluginDownloadURL: "https://pulumi.com/terraform/v1.0.0",
+			wantNamespace:     "",
+		},
+		{
+			pluginDownloadURL: "git://github.com/pulumi/pulumi-terraform",
+			wantNamespace:     "pulumi",
+		},
+		{
+			pluginDownloadURL: "git://",
+			wantNamespace:     "",
+		},
+		{
+			pluginDownloadURL: "git://example.com",
+			wantNamespace:     "",
+		},
+		{
+			pluginDownloadURL: "git://example.com/pulumi",
+			wantNamespace:     "",
+		},
+		{
+			pluginDownloadURL: "git://example.com/pulumi/a/long/path",
+			wantNamespace:     "pulumi",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.pluginDownloadURL, func(t *testing.T) {
+			t.Parallel()
+
+			pluginSpec := workspace.PluginSpec{
+				PluginDownloadURL: tt.pluginDownloadURL,
+			}
+			schemaSpec := &schema.PackageSpec{}
+			setSpecNamespace(schemaSpec, pluginSpec)
+			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
 		})
 	}
 }

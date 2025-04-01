@@ -1516,12 +1516,43 @@ func TestPackageAddPython(t *testing.T) {
 
 				assert.Equal(t, "sdks/random", pf)
 			} else {
-				b, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
+				b1, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
 				assert.NoError(t, err)
-				assert.Contains(t, string(b), "sdks/random")
+				assert.Contains(t, string(b1), "sdks/random")
+
+				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
+				_, _ = e.RunCommand("pulumi", "package", "add", "random")
+				b2, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
+				assert.NoError(t, err)
+				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
+				var sdksRandomCount int
+				for _, line := range lines {
+					if strings.Contains(line, "sdks/random") {
+						sdksRandomCount++
+					}
+				}
+				assert.Equal(t, 1, sdksRandomCount, "sdks/random should only appear once in requirements.txt")
+				assert.Equal(t, b1, b2, "requirements.txt should not change")
 			}
 		})
 	}
+}
+
+func TestPackageAddWithPublisherSetPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packageadd-namespace")
+	e.CWD = filepath.Join(e.RootPath, "python")
+	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+	require.Contains(t, stdout,
+		"You can then import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
+
+	// Make sure the SDK was generated in the expected directory
+	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "my_namespace_mypkg"))
+	require.NoError(t, err)
 }
 
 //nolint:paralleltest // mutates environment
@@ -1924,8 +1955,8 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "provider", schema["name"].(string))
-	require.Equal(t, "1.2.3", schema["version"].(string))
-	require.Equal(t, "My Component Provider", schema["displayName"].(string))
+	require.Equal(t, "0.0.0", schema["version"].(string))
+	require.Equal(t, "provider", schema["displayName"].(string))
 
 	// Check the component schema
 	expectedJSON := `{

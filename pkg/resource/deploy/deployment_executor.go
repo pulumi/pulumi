@@ -42,6 +42,10 @@ type deploymentExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this deployment
 
 	skipped mapset.Set[urn.URN] // The set of resources that have failed
+
+	// The number of expected events remaining from step generaton, this tells us we're still expecting events
+	// to be posted back to us from async work such as DiffSteps.
+	asyncEventsExpected int32
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -175,7 +179,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment)
+	mode := updateMode
+	if ex.deployment.opts.DestroyProgram {
+		mode = destroyMode
+	}
+	// As well as generating steps from events produced by the source, the step generator can also generate
+	// events in order to support concurrency during step generation (e.g. for parallel diffing). We thus pass
+	// a channel that the step generator can write to in order to yield/resume at these points. We then pump
+	// these events back to the step gen in the main loop with program events.
+	stepGenEvents := make(chan SourceEvent)
+	ex.stepGen = newStepGenerator(ex.deployment, mode, stepGenEvents)
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -206,20 +219,38 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		}
 	}()
 
-	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are
-	// a three ways we can exit this loop:
-	//  1. The SourceIterator sends us a `nil` event. This means that we're done processing source events and
-	//     we should begin processing deletes.
+	// The main loop. We'll continuously select for incoming events and the cancellation signal. There are three ways
+	// we can exit this loop:
+	//  1. The SourceIterator sends us a `nil` event and the step generator has completed all its async work.
+	//     This means that we're done processing source events and we should begin processing deletes.
 	//  2. The SourceIterator sends us an error. This means some error occurred in the source program and we
 	//     should bail.
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+
+		// We're ingesting events from two sources: the source iterator and the step generator. We need to make sure
+		// that both are done before we exit the loop. The source iterator is done when it sends us nil. The step
+		// generator is done when its async counter is 0, i.e. for each async event it said it was going to do we've
+		// seen and posted that event back to it.
+		seenNil := false
 		for {
 			select {
+			case event := <-stepGenEvents:
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
+
+				if err := ex.handleSingleEvent(event); err != nil {
+					if !result.IsBail(err) {
+						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+						ex.reportError(ex.deployment.generateEventURN(event), err)
+					}
+					cancel()
+					return false, result.BailError(err)
+				}
+
 			case event := <-incomingEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming event (nil? %v, %v)", event.Event == nil,
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
 					event.Error)
 
 				if event.Error != nil {
@@ -233,32 +264,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				}
 
 				if event.Event == nil {
-					// Check targets before performDeletes mutates the initial Snapshot.
-					targetErr := ex.checkTargets(ex.deployment.opts.Targets)
-
-					err := ex.performDeletes(ctx, ex.deployment.opts.Targets)
-					if err != nil {
+					seenNil = true
+				} else {
+					if err := ex.handleSingleEvent(event.Event); err != nil {
 						if !result.IsBail(err) {
-							logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
-							ex.reportError("", err)
-							return false, result.BailError(err)
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
 						}
+						cancel()
+						return false, result.BailError(err)
 					}
-
-					if targetErr != nil {
-						// Propagate the target error as it hasn't been reported yet.
-						return false, targetErr
-					}
-					return false, nil
-				}
-
-				if err := ex.handleSingleEvent(event.Event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), err)
-					}
-					cancel()
-					return false, result.BailError(err)
 				}
 			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
@@ -266,6 +281,28 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
 				return callerCtx.Err() != nil, nil
+			}
+
+			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
+			// the top of the loop for more details.
+			if seenNil && ex.asyncEventsExpected == 0 {
+				// Check targets before performDeletes mutates the initial Snapshot.
+				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
+
+				err := ex.performDeletes(ctx, ex.deployment.opts.Targets, ex.deployment.opts.Excludes)
+				if err != nil {
+					if !result.IsBail(err) {
+						logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
+						ex.reportError("", err)
+						return false, result.BailError(err)
+					}
+				}
+
+				if targetErr != nil {
+					// Propagate the target error as it hasn't been reported yet.
+					return false, targetErr
+				}
+				return false, nil
 			}
 		}
 	}()
@@ -360,7 +397,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 }
 
 func (ex *deploymentExecutor) performDeletes(
-	ctx context.Context, targetsOpt UrnTargets,
+	ctx context.Context, targetsOpt UrnTargets, excludesOpt UrnTargets,
 ) error {
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
@@ -380,7 +417,7 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt)
+	deleteSteps, err := ex.stepGen.GenerateDeletes(targetsOpt, excludesOpt)
 	// Regardless of if this error'd or not the step executor needs unlocking
 	ex.stepExec.Unlock()
 	if err != nil {
@@ -455,9 +492,17 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	var steps []Step
 	var err error
 	switch e := event.(type) {
+	case ContinueResourceDiffEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
+		ex.asyncEventsExpected--
+		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
-		steps, err = ex.stepGen.GenerateSteps(e)
+		var async bool
+		steps, async, err = ex.stepGen.GenerateSteps(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
 	case ReadResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ReadResourceEvent")
 		steps, err = ex.stepGen.GenerateReadSteps(e)
@@ -547,22 +592,92 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		return err
 	}
 
+	// Make sure all specified excludes refer to existing resources.
+	if err := ex.checkTargets(ex.deployment.opts.Excludes); err != nil {
+		return err
+	}
+
 	// If the user did not provide any --target's, create a refresh step for each resource in the
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
-	for _, res := range prev.Resources {
-		if ex.deployment.opts.Targets.Contains(res.URN) {
-			// For each resource we're going to refresh we need to ensure we have a provider for it
-			err := ex.deployment.EnsureProvider(res.Provider)
-			if err != nil {
-				return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+
+	// We also keep track of dependents as we find them in order to exclude
+	// transitive dependents as well.
+	if ex.deployment.opts.Excludes.IsConstrained() {
+		excludesActual := ex.deployment.opts.Excludes
+
+		for _, res := range prev.Resources {
+			// If the resource is known to be excluded, we can skip this step
+			// entirely at this point.
+			if excludesActual.Contains(res.URN) {
+				continue
 			}
 
-			step := NewRefreshStep(ex.deployment, res)
-			steps = append(steps, step)
-			resourceToStep[res] = step
+			knownToBeExcluded := false
+
+			// In the case of `--exclude-dependents`, we need to check through all
+			// the dependencies to see if they have already been marked as excluded.
+			// If so, this dependent is also to be excluded, and we add it to the
+			// list of known excludes to catch transitive excludes as well.
+			if ex.deployment.opts.ExcludeDependents {
+				_, allDeps := res.GetAllDependencies()
+
+				for _, dep := range allDeps {
+					if excludesActual.Contains(dep.URN) {
+						excludesActual.addLiteral(res.URN)
+
+						knownToBeExcluded = true
+						break
+					}
+				}
+			}
+
+			if !knownToBeExcluded {
+				// For each resource we're going to refresh we need to ensure we have a provider for it
+				err := ex.deployment.EnsureProvider(res.Provider)
+				if err != nil {
+					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+
+				step := NewRefreshStep(ex.deployment, res)
+				steps = append(steps, step)
+				resourceToStep[res] = step
+			}
+		}
+	} else {
+		targetsActual := ex.deployment.opts.Targets
+
+		for _, res := range prev.Resources {
+			if targetsActual.Contains(res.URN) {
+				// For each resource we're going to refresh we need to ensure we have a provider for it
+				err := ex.deployment.EnsureProvider(res.Provider)
+				if err != nil {
+					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+
+				step := NewRefreshStep(ex.deployment, res)
+				steps = append(steps, step)
+				resourceToStep[res] = step
+			} else if ex.deployment.opts.TargetDependents {
+				// The provider reference is already ensured.
+				_, allDeps := res.GetAllDependencies()
+
+				// Because we always visit a target before its dependents, these
+				// dependents will all be caught by the check at the start of this
+				// loop.
+				for _, dep := range allDeps {
+					if targetsActual.Contains(dep.URN) {
+						step := NewRefreshStep(ex.deployment, res)
+						steps = append(steps, step)
+						resourceToStep[res] = step
+
+						targetsActual.addLiteral(res.URN)
+						break
+					}
+				}
+			}
 		}
 	}
 

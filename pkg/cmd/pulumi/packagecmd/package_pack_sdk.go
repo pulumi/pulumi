@@ -15,7 +15,6 @@
 package packagecmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -27,50 +26,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newPackagePackCmd() *cobra.Command {
-	var packCmd packCmd
+func newPackagePackSdkCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "pack-sdk <language> <path>",
 		Args:   cobra.ExactArgs(2),
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			return packCmd.Run(ctx, args)
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("get current working directory: %w", err)
+			}
+
+			pCtx, err := NewPluginContext(cwd)
+			if err != nil {
+				return fmt.Errorf("create plugin context: %w", err)
+			}
+			defer contract.IgnoreClose(pCtx.Host)
+
+			language := args[0]
+			path := args[1]
+
+			programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, ".", nil)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+			if err != nil {
+				return err
+			}
+
+			artifact, err := languagePlugin.Pack(path, cwd)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("%s", artifact)
+
+			return nil
 		},
 	}
 	return cmd
-}
-
-type packCmd struct{}
-
-func (cmd *packCmd) Run(ctx context.Context, args []string) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get current working directory: %w", err)
-	}
-
-	pCtx, err := NewPluginContext(cwd)
-	if err != nil {
-		return fmt.Errorf("create plugin context: %w", err)
-	}
-	defer contract.IgnoreClose(pCtx.Host)
-
-	language := args[0]
-	path := args[1]
-
-	programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, ".", nil)
-	languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
-	if err != nil {
-		return err
-	}
-
-	artifact, err := languagePlugin.Pack(path, cwd)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%s", artifact)
-
-	return nil
 }

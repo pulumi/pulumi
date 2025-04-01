@@ -534,7 +534,10 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 	var gomod modfile.File
 	err = gomod.AddModuleStmt(project.Name.String())
 	contract.AssertNoErrorf(err, "could not add module statement to go.mod")
-	err = gomod.AddGoStmt("1.20")
+	// Target the older supported Go version. This should be updated as we drop support for older versions.
+	// i.e. If 1.19 and 1.20 were the currently supported version this would be 1.19, when 1.21 released and
+	// changed the support set to 1.20 and 1.21 this would change to 1.20.
+	err = gomod.AddGoStmt("1.23")
 	contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 
 	packagePaths := map[string]string{}

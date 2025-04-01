@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -538,8 +539,9 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	e.RunCommand("pulumi", "stack", "rm", "--yes", "-s", stackRef)
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestDestroyStackRef_LocalProject(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -547,28 +549,31 @@ func TestDestroyStackRef_LocalProject(t *testing.T) {
 	testDestroyStackRef(e, "organization")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	t.Setenv("PULUMI_DIY_BACKEND_LEGACY_LAYOUT", "true")
+	e.Env = []string{"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true"}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	t.Setenv("PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT", "true")
+	e.Env = []string{"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true"}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestDestroyStackRef_Cloud(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -1072,8 +1077,9 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	e.RunCommand("pulumi", "stack", "rm", "--force", "--yes", "-s", stackRef)
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestProjectRename_LocalProject(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -1081,8 +1087,9 @@ func TestProjectRename_LocalProject(t *testing.T) {
 	testProjectRename(e, "organization")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestProjectRename_Cloud(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -1177,8 +1184,9 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 	assert.NoError(e, err)
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestStackRmConfig_LocalProject(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -1186,8 +1194,9 @@ func TestStackRmConfig_LocalProject(t *testing.T) {
 	testStackRmConfig(e, "organization")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestStackRmConfig_Cloud(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
@@ -1200,8 +1209,9 @@ func TestStackRmConfig_Cloud(t *testing.T) {
 	testStackRmConfig(e, organization)
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestAdvisoryPolicyPack(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("single_resource")
@@ -1226,8 +1236,9 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestMandatoryPolicyPack(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("single_resource")
@@ -1253,8 +1264,9 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestMultiplePolicyPacks(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("single_resource")
@@ -1284,10 +1296,10 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: advisory_policy_pack; mandatory_policy_pack)")
 }
 
-// regresses https://github.com/pulumi/pulumi/issues/11092
-//
-//nolint:paralleltest // uses parallel programtest
+// regression test for https://github.com/pulumi/pulumi/issues/11092
 func TestPolicyPluginExtraArguments(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("single_resource")
@@ -1307,7 +1319,8 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NoError(t, tc.InstallDependencies(context.Background(),
-		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false /*showOutput */, nil, nil))
+		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false, /*showOutput */
+		os.Stdout, os.Stderr))
 	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	gotSdk, err := test.PathExists(sdkDir)
@@ -1326,8 +1339,9 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestPolicyPackNewGenerateOnly(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	require.False(t, e.PathExists("venv"))
@@ -1336,8 +1350,9 @@ func TestPolicyPackNewGenerateOnly(t *testing.T) {
 	require.False(t, e.PathExists("venv"))
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestPolicyPackNew(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	require.False(t, e.PathExists("venv"))
@@ -1348,8 +1363,9 @@ func TestPolicyPackNew(t *testing.T) {
 	require.True(t, e.PathExists("venv"))
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestPolicyPackInstallDependencies(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("policy/python_policy_pack")
@@ -1360,8 +1376,9 @@ func TestPolicyPackInstallDependencies(t *testing.T) {
 	require.True(t, e.PathExists("venv"))
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestProjectInstallDependencies(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("single_resource")
@@ -1371,8 +1388,9 @@ func TestProjectInstallDependencies(t *testing.T) {
 	require.True(t, e.PathExists("node_modules"))
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestInstallDependenciesForPolicyPackWithParentProject(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	// create a directory structure with a pulumi project and a nested policy pack
@@ -1391,8 +1409,9 @@ func TestInstallDependenciesForPolicyPackWithParentProject(t *testing.T) {
 	require.True(t, e.PathExists(filepath.Join("policy", "node_modules")), "node_modules should exist in the policy pack")
 }
 
-//nolint:paralleltest // uses parallel programtest
 func TestInstallDependenciesProjectWithParentPolicyPack(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	// create a directory structure with a policy pack and a nested project
@@ -1413,9 +1432,9 @@ func TestInstallDependenciesProjectWithParentPolicyPack(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/17862
-//
-//nolint:paralleltest // uses parallel programtest
 func TestPulumiNewLocalTemplatePath(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -1434,4 +1453,76 @@ func TestPulumiNewLocalTemplatePath(t *testing.T) {
 	stdout, stderr := e.RunCommand("pulumi", "new", templatePath, "--generate-only", "--yes", "--force")
 	require.Empty(t, stderr)
 	require.Contains(t, stdout, "Your new project is ready to go")
+}
+
+func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packageadd-remote")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/packageadd-remote", "--create")
+
+	e.RunCommand("pulumi", "package", "add",
+		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+
+	// Remove the plugin from the local cache and try to install it using `pulumi install`
+	e.RunCommand("pulumi", "plugin", "rm", "--all", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	require.NotContains(t, stdout, "github.com_pulumi_component-test-providers")
+
+	e.RunCommand("pulumi", "install")
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestOverrideComponentNamespace(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
+		"github.com/pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+	var packageSpec schema.PackageSpec
+	err := json.Unmarshal([]byte(stdout), &packageSpec)
+	require.NoError(t, err)
+	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
+	// it is 'pulumi', which we get from `github.com/*pulumi*/....
+	require.Equal(t, "pulumi", packageSpec.Namespace)
+}
+
+func TestTaggedComponent(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory(filepath.Join("external_tagged_component"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "organization/external_tagged_component/test")
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"}
+	e.RunCommand("pulumi", "install")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
+	// Make sure we have exactly the plugin we expect installed
+	assert.Equal(t, 1, strings.Count(stdout, "github.com_pulumi_pulumi-yaml.git"))
+
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+
+	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	// Make sure we have no additional plugins after the up
+	assert.Equal(t, 1, strings.Count(stdout, "github.com_pulumi_pulumi-yaml.git"))
+
+	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomPet")
+	// We expect 4 words separated by dashes.
+	require.Equal(t, 4, len(strings.Split(stdout, "-")))
+	require.Equal(t, "test-", stdout[:5])
+
+	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomString")
+	require.Len(t, strings.TrimSuffix(stdout, "\n"), 8, fmt.Sprintf("expected %s to have 8 characters", stdout))
 }

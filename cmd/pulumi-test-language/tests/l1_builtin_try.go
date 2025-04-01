@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -28,7 +27,8 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-try", "object"): config.NewObjectValue("{}"),
+					config.MustMakeKey("l1-builtin-try", "aMap"):     config.NewObjectValue("{\"a\": \"MOK\"}"),
+					config.MustMakeKey("l1-builtin-try", "anObject"): config.NewObjectValue("{\"a\": \"OOK\", \"opt\": null}"),
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
@@ -36,17 +36,51 @@ func init() {
 				) {
 					RequireStackResource(l, err, changes)
 
-					require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					outputs := stack.Outputs
 
-					assert.Len(l, outputs, 4, "expected 4 outputs")
-					AssertPropertyMapMember(l, outputs, "trySucceed", resource.NewStringProperty("str"))
-					AssertPropertyMapMember(l, outputs, "tryFallback1", resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "tryFallback2", resource.NewStringProperty("fallback"))
-					AssertPropertyMapMember(l, outputs, "tryMultipleTypes", resource.NewNumberProperty(42))
+					assert.Len(l, outputs, 10, "expected 10 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewStringProperty("MOK"))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewStringProperty("fallback"))
+
+					// The output failure variants may or may not be secret, depending on the language. We allow either.
+					assertPropertyMapMember := func(
+						props resource.PropertyMap,
+						key string,
+						want resource.PropertyValue,
+					) (ok bool) {
+						l.Helper()
+
+						got, ok := props[resource.PropertyKey(key)]
+						if !assert.True(l, ok, "expected property %q", key) {
+							return false
+						}
+
+						if got.DeepEquals(want) {
+							return true
+						}
+						if got.DeepEquals(resource.MakeSecret(want)) {
+							return true
+						}
+
+						return assert.Equal(l, want, got, "expected property %q to be %v", key, want)
+					}
+
+					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
+						resource.MakeSecret(resource.NewStringProperty("MOK")))
+					assertPropertyMapMember(outputs, "outputTryFailure",
+						resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
+						resource.NewStringProperty("OOK"))
+					assertPropertyMapMember(outputs, "dynamicTryFailure",
+						resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
+						resource.MakeSecret(resource.NewStringProperty("OOK")))
+					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
+						resource.NewStringProperty("fallback"))
+					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewNullProperty())
+					assertPropertyMapMember(outputs, "outputTryNull", resource.NewNullProperty())
 				},
 			},
 		},

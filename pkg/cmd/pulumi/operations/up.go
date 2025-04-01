@@ -34,6 +34,7 @@ import (
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
@@ -54,8 +55,8 @@ import (
 
 func defaultParallel() int32 {
 	// Initialize parallel from environment if available, otherwise use defaultParallel
-	osDefaultParallel := int32(runtime.NumCPU()) * 4 //nolint:gosec // NumCPU is an int32 internally,
-	// but the NumCPU function returns an int.
+	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4 //nolint:gosec
+	// GOMAXPROCS is an int32 internally, but the GOMAXPROCS function returns an int.
 	var defaultParallel int32
 	if p := env.Parallel.Value(); p > 0 {
 		if p > math.MaxInt32 {
@@ -66,7 +67,7 @@ func defaultParallel() int32 {
 			defaultParallel = int32(p) //nolint:gosec
 		}
 	} else {
-		defaultParallel = osDefaultParallel //nolint:gosec
+		defaultParallel = osDefaultParallel
 	}
 
 	return defaultParallel
@@ -112,11 +113,16 @@ func NewUpCmd() *cobra.Command {
 	var yes bool
 	var secretsProvider string
 	var targets []string
+	var excludes []string
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var excludeDependents bool
 	var planFilePath string
 	var attachDebugger bool
+
+	// Flags for Copilot.
+	var copilotSummary bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -175,8 +181,9 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("validating stack config: %w", configErr)
 		}
 
-		targetURNs, replaceURNs := []string{}, []string{}
+		targetURNs, replaceURNs, excludeURNs := []string{}, []string{}, []string{}
 		targetURNs = append(targetURNs, targets...)
+		excludeURNs = append(excludeURNs, excludes...)
 		replaceURNs = append(replaceURNs, replaces...)
 
 		for _, tr := range targetReplaces {
@@ -195,6 +202,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
+			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
 			Debug:                     debug,
@@ -207,7 +215,9 @@ func NewUpCmd() *cobra.Command {
 			DisableOutputValues:       env.DisableOutputValues.Value(),
 			ShowSecrets:               showSecrets,
 			Targets:                   deploy.NewUrnTargets(targetURNs),
+			Excludes:                  deploy.NewUrnTargets(excludeURNs),
 			TargetDependents:          targetDependents,
+			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
 			GeneratePlan:    true,
@@ -259,16 +269,15 @@ func NewUpCmd() *cobra.Command {
 		cmd *cobra.Command,
 	) error {
 		// Retrieve the template repo.
-		repo, err := workspace.RetrieveTemplates(ctx, templateNameOrURL, false, workspace.TemplateKindPulumiProject)
-		if err != nil {
-			return err
-		}
+		templateSource := cmdTemplates.New(ctx,
+			templateNameOrURL, cmdTemplates.ScopeAll,
+			workspace.TemplateKindPulumiProject, cmdutil.Interactive())
 		defer func() {
-			contract.IgnoreError(repo.Delete())
+			contract.IgnoreError(templateSource.Close())
 		}()
 
 		// List the templates from the repo.
-		templates, err := repo.Templates()
+		templates, err := templateSource.Templates()
 		if err != nil {
 			return err
 		}
@@ -277,9 +286,17 @@ func NewUpCmd() *cobra.Command {
 		if len(templates) == 0 {
 			return errors.New("no template found")
 		} else if len(templates) == 1 {
-			template = templates[0]
+			template, err = templates[0].Download(ctx)
+			if err != nil {
+				return err
+			}
 		} else {
-			if template, err = newcmd.ChooseTemplate(templates, opts.Display); err != nil {
+			t, err := newcmd.ChooseTemplate(templates, opts.Display)
+			if err != nil {
+				return err
+			}
+			template, err = t.Download(ctx)
+			if err != nil {
 				return err
 			}
 		}
@@ -429,6 +446,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 		opts.Engine = engine.UpdateOptions{
+			ParallelDiff:     env.ParallelDiff.Value(),
 			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:         parallel,
 			Debug:            debug,
@@ -551,8 +569,8 @@ func NewUpCmd() *cobra.Command {
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
-					showReads, suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
-					targetDependents, planFilePath, cmdStack.ConfigFile)
+					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
+					targetDependents, planFilePath, cmdStack.ConfigFile, false)
 				if err != nil {
 					return err
 				}
@@ -583,6 +601,21 @@ func NewUpCmd() *cobra.Command {
 			// Link to Copilot will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
+
+			// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use
+			// that value Otherwise fall back to environment variable, then default to false
+			var showCopilotSummary bool
+			if cmd.Flags().Changed("copilot-summary") {
+				showCopilotSummary = copilotSummary
+			} else {
+				showCopilotSummary = env.CopilotSummary.Value()
+			}
+			logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
+				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
+
+			opts.Display.ShowCopilotSummary = showCopilotSummary
+			opts.Display.CopilotSummaryModel = env.CopilotSummaryModel.Value()
+			opts.Display.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -644,6 +677,11 @@ func NewUpCmd() *cobra.Command {
 			" Multiple resources can be specified using --target urn1 --target urn2."+
 			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
+		&excludes, "exclude", []string{},
+		"Specify a resource URN to ignore. These resources will not be updated."+
+			" Multiple resources can be specified using --exclude urn1 --exclude urn2."+
+			" Wildcards (*, **) are also supported")
+	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
 		"Specify a single resource URN to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
 			" Wildcards (*, **) are also supported")
@@ -654,6 +692,12 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows updating of dependent targets discovered but not specified in --target list")
+	cmd.PersistentFlags().BoolVar(
+		&excludeDependents, "exclude-dependents", false,
+		"Allows ignoring of dependent targets discovered but not specified in --exclude list")
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
@@ -722,6 +766,12 @@ func NewUpCmd() *cobra.Command {
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
 
+	// Flags for Copilot.
+	cmd.PersistentFlags().BoolVar(
+		&copilotSummary, "copilot-summary", false,
+		"Display the Copilot summary in diagnostics "+
+			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
+
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
 		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
@@ -730,6 +780,15 @@ func NewUpCmd() *cobra.Command {
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
+
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot-summary"),
+		`Could not mark "copilot-summary" as hidden`,
+	)
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

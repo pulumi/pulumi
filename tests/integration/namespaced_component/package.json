@@ -1,0 +1,9 @@
+{
+    "name": "@my-namespace/namespaced-component",
+    "description": "Namespaced component",
+    "version": "0.1.3",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.158.0"
+    }
+
+}

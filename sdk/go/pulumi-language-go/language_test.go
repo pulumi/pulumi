@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -68,8 +70,8 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	message := req.Message
 	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
 		// Cut down logs so they don't overwhelm the test output
-		if len(message) > 1024 {
-			message = message[:1024] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		if len(message) > 2048 {
+			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
 		}
 	}
 
@@ -172,19 +174,51 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try": "pulumi#18506 Support try in Go program generation",
-	"l1-builtin-can": "pulumi#18570 Support can in Go program generation",
+	"l1-config-types": "fails to compile",
+	"l1-proxy-index":  "fails to compile",
+	"l2-proxy-index":  "fails to compile",
+	"l1-builtin-try":  "pulumi#18506 Support try in Go program generation",
+	"l1-builtin-can":  "pulumi#18570 Support can in Go program generation",
 
 	// pulumi/pulumi#18345
-	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                           //nolint:lll
-	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
-	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
-	"l2-resource-parent-inheritance":      "not implemented yet",
+	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
+	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
+	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
-	"l2-component-property-deps":          "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll                                                   //nolint:lll
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                     //nolint:lll
+}
+
+// Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
+var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_ProgramOverride{
+	// TODO[pulumi/pulumi#18202]: Delete this override when the programgen issue is addressed.
+	"l2-component-property-deps": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-component-property-deps"),
+		},
+	},
+
+	// TODO[pulumi/pulumi#18202]: Delete this override when the programgen issue is addressed.
+	"l2-provider-call": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-provider-call"),
+		},
+	},
+
+	// Doesn't add necessary casts for pulumi inputs
+	"l3-component-simple": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l3-component-simple"),
+		},
+	},
+
+	// TODO[pulumi/pulumi#18202]: Delete this override when the programgen issue is addressed.
+	"l2-provider-call-explicit": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-provider-call-explicit"),
+		},
+	},
 }
 
 func TestLanguage(t *testing.T) {
@@ -192,7 +226,7 @@ func TestLanguage(t *testing.T) {
 
 	engineAddress, engine := runTestingHost(t)
 
-	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
+	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	cancel := make(chan bool)
@@ -214,7 +248,7 @@ func TestLanguage(t *testing.T) {
 	snapshotDir := "./testdata/"
 
 	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "go",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   rootDir,
@@ -228,6 +262,7 @@ func TestLanguage(t *testing.T) {
 				Replacement: "/ROOT/artifacts",
 			},
 		},
+		ProgramOverrides: programOverrides,
 	})
 	require.NoError(t, err)
 
@@ -240,7 +275,7 @@ func TestLanguage(t *testing.T) {
 				t.Skipf("Skipping known failure: %s", expected)
 			}
 
-			result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 				Token: prepare.Token,
 				Test:  tt,
 			})
@@ -249,8 +284,8 @@ func TestLanguage(t *testing.T) {
 			for _, msg := range result.Messages {
 				t.Log(msg)
 			}
-			t.Logf("stdout: %s", result.Stdout)
-			t.Logf("stderr: %s", result.Stderr)
+			ptesting.LogTruncated(t, "stdout", result.Stdout)
+			ptesting.LogTruncated(t, "stderr", result.Stderr)
 			assert.True(t, result.Success)
 		})
 	}

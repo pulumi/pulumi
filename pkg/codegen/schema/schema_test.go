@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1012,6 +1012,29 @@ func TestMethods(t *testing.T) {
 			filename:      "bad-methods-6.json",
 			expectedError: "xyz:index:Foo already has a property named bar",
 		},
+
+		// Tests for schemata which define methods on provider resources. For these to work, Pulumi needs to accept
+		// pulumi:providers:... URNs as valid types for function definitions. The following tests check this with various
+		// combinations of package names, resources, and allowed package names.
+
+		{
+			filename: "provider-methods-1.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Functions, 1)
+			},
+		},
+		{
+			filename: "provider-methods-2.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Functions, 2)
+			},
+		},
+		{
+			filename: "provider-methods-3.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Functions, 2)
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -1270,7 +1293,7 @@ func TestValidateTypeToken(t *testing.T) {
 		name          string
 		input         string
 		expectError   bool
-		allowedExtras []string
+		allowedExtras map[string][]string
 	}{
 		{
 			name:  "valid",
@@ -1291,9 +1314,50 @@ func TestValidateTypeToken(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:          "allowed-extras-valid",
-			input:         "other:index:typename",
-			allowedExtras: []string{"other"},
+			name:  "allowed-extras-valid",
+			input: "other:index:typename",
+			allowedExtras: map[string][]string{
+				"other": nil,
+			},
+		},
+		{
+			name:        "allowed-extras-invalid-module",
+			input:       "other:foo:typename",
+			expectError: true,
+			allowedExtras: map[string][]string{
+				"other": {"bar"},
+			},
+		},
+		{
+			name:        "allowed-extras-invalid-module-multiple",
+			input:       "other:baz:typename",
+			expectError: true,
+			allowedExtras: map[string][]string{
+				"other": {"foo", "bar"},
+			},
+		},
+		{
+			name:  "allowed-extras-valid-module",
+			input: "other:foo:typename",
+			allowedExtras: map[string][]string{
+				"other": {"foo"},
+			},
+		},
+		{
+			name:  "allowed-extras-valid-module-multiple",
+			input: "other:bar:typename",
+			allowedExtras: map[string][]string{
+				"other": {"foo", "bar"},
+			},
+		},
+		{
+			name:        "reserved-provider-token-invalid",
+			input:       "example:index:provider",
+			expectError: true,
+		},
+		{
+			name:  "non-reserved-provider-token-valid",
+			input: "example:other:provider",
 		},
 	}
 	for _, c := range cases {
@@ -1302,9 +1366,9 @@ func TestValidateTypeToken(t *testing.T) {
 			t.Parallel()
 
 			spec := &PackageSpec{Name: "example"}
-			allowed := map[string]bool{"example": true}
-			for _, e := range c.allowedExtras {
-				allowed[e] = true
+			allowed := map[string][]string{"example": nil}
+			for pkg, mods := range c.allowedExtras {
+				allowed[pkg] = mods
 			}
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
@@ -1930,4 +1994,48 @@ func TestProviderVersionIsAnError(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors())
 	assert.NotNil(t, pkg)
+}
+
+func TestRoundtripAliasesJSON(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("aliases-1.0.0.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	jsonData, err := json.Marshal(&newSpec)
+	require.NoError(t, err)
+
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.json"))
+	require.NoError(t, err)
+
+	assert.JSONEq(t, string(schemaBytes), string(jsonData))
+}
+
+func TestRoundtripAliasesYAML(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+
+	yamlData, err := yaml.Marshal(&newSpec)
+	require.NoError(t, err)
+
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.yaml"))
+	require.NoError(t, err)
+
+	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
 }

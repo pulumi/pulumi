@@ -1007,7 +1007,7 @@ message ConstructRequest {
 
     // True if and only if the resource (and by extension, its nested resources) should be marked as protected.
     // Protected resources cannot be deleted without first being unprotected.
-    bool protect = 12;
+    optional bool protect = 12;
 
     // A list of additional URNs that should be considered the same as this component's URN (and which will therefore be
     // used to build aliases for its nested resource URNs). These may be URNs that previously referred to this component
@@ -1028,7 +1028,7 @@ message ConstructRequest {
     string deletedWith = 20;
 
     // If true, this resource (and its nested resources) must be deleted *before* its replacement is created.
-    bool deleteBeforeReplace = 21;
+    optional bool deleteBeforeReplace = 21;
 
     // A set of [property paths](property-paths) that should be treated as unchanged.
     repeated string ignoreChanges = 22;
@@ -1038,7 +1038,7 @@ message ConstructRequest {
 
     // True if [](pulumirpc.ResourceProvider.Delete) should *not* be called when the resource (and by extension, its
     // nested resources) are removed from a Pulumi program.
-    bool retainOnDelete = 24;
+    optional bool retainOnDelete = 24;
 
     // True if the caller is capable of accepting output values in response to the call. If this is set, these outputs
     // may be used to communicate dependency information and so there is no need to populate

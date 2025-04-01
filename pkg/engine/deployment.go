@@ -55,7 +55,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 
 	// Create a context for plugins.
 	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config, debugging)
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
+		projinfo.Proj.GetPackageSpecs(), config, debugging)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -219,13 +220,17 @@ func newDeployment(
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
 	deplOpts := &deploy.Options{
+		ParallelDiff:              opts.ParallelDiff,
 		DryRun:                    opts.DryRun,
 		Parallel:                  opts.Parallel,
 		Refresh:                   opts.Refresh,
 		RefreshOnly:               opts.isRefresh,
+		DestroyProgram:            opts.DestroyProgram,
 		ReplaceTargets:            opts.ReplaceTargets,
 		Targets:                   opts.Targets,
+		Excludes:                  opts.Excludes,
 		TargetDependents:          opts.TargetDependents,
+		ExcludeDependents:         opts.ExcludeDependents,
 		UseLegacyDiff:             opts.UseLegacyDiff,
 		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
 		DisableResourceReferences: opts.DisableResourceReferences,
@@ -424,8 +429,8 @@ func isDefaultProviderStep(step deploy.Step) bool {
 	return providers.IsDefaultProvider(step.URN())
 }
 
-func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
-	if !targetUrns.IsConstrained() {
+func checkTargets(targetUrns deploy.UrnTargets, excludeUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
+	if !targetUrns.IsConstrained() && !excludeUrns.IsConstrained() {
 		return nil
 	}
 	if snap == nil {
@@ -436,6 +441,11 @@ func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
 		urns[res.URN] = struct{}{}
 	}
 	for _, target := range targetUrns.Literals() {
+		if _, ok := urns[target]; !ok {
+			return fmt.Errorf("no resource named '%s' found", target)
+		}
+	}
+	for _, target := range excludeUrns.Literals() {
 		if _, ok := urns[target]; !ok {
 			return fmt.Errorf("no resource named '%s' found", target)
 		}

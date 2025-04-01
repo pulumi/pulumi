@@ -1145,7 +1145,10 @@ export class ConstructRequest extends jspb.Message {
     addConfigsecretkeys(value: string, index?: number): string;
     getOrganization(): string;
     setOrganization(value: string): ConstructRequest;
-    getProtect(): boolean;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
     setProtect(value: boolean): ConstructRequest;
     clearAliasesList(): void;
     getAliasesList(): Array<string>;
@@ -1162,7 +1165,10 @@ export class ConstructRequest extends jspb.Message {
     setCustomtimeouts(value?: ConstructRequest.CustomTimeouts): ConstructRequest;
     getDeletedwith(): string;
     setDeletedwith(value: string): ConstructRequest;
-    getDeletebeforereplace(): boolean;
+
+    hasDeletebeforereplace(): boolean;
+    clearDeletebeforereplace(): void;
+    getDeletebeforereplace(): boolean | undefined;
     setDeletebeforereplace(value: boolean): ConstructRequest;
     clearIgnorechangesList(): void;
     getIgnorechangesList(): Array<string>;
@@ -1172,7 +1178,10 @@ export class ConstructRequest extends jspb.Message {
     getReplaceonchangesList(): Array<string>;
     setReplaceonchangesList(value: Array<string>): ConstructRequest;
     addReplaceonchanges(value: string, index?: number): string;
-    getRetainondelete(): boolean;
+
+    hasRetainondelete(): boolean;
+    clearRetainondelete(): void;
+    getRetainondelete(): boolean | undefined;
     setRetainondelete(value: boolean): ConstructRequest;
     getAcceptsOutputValues(): boolean;
     setAcceptsOutputValues(value: boolean): ConstructRequest;
@@ -1207,15 +1216,15 @@ export namespace ConstructRequest {
         dependenciesList: Array<string>,
         configsecretkeysList: Array<string>,
         organization: string,
-        protect: boolean,
+        protect?: boolean,
         aliasesList: Array<string>,
         additionalsecretoutputsList: Array<string>,
         customtimeouts?: ConstructRequest.CustomTimeouts.AsObject,
         deletedwith: string,
-        deletebeforereplace: boolean,
+        deletebeforereplace?: boolean,
         ignorechangesList: Array<string>,
         replaceonchangesList: Array<string>,
-        retainondelete: boolean,
+        retainondelete?: boolean,
         acceptsOutputValues: boolean,
     }
 

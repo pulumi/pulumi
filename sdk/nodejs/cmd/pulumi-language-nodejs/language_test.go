@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -69,8 +70,8 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	message := req.Message
 	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
 		// Cut down logs so they don't overwhelm the test output
-		if len(message) > 1024 {
-			message = message[:1024] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		if len(message) > 2048 {
+			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
 		}
 	}
 
@@ -174,6 +175,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l2-invoke-options-depends-on": "not implemented yet",
+	"l2-rtti":                      "not implemented yet",
 }
 
 func TestLanguage(t *testing.T) {
@@ -181,7 +183,7 @@ func TestLanguage(t *testing.T) {
 
 	engineAddress, engine := runTestingHost(t)
 
-	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
+	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
@@ -215,7 +217,7 @@ func TestLanguage(t *testing.T) {
 			}
 
 			// Prepare to run the tests
-			prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
+			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
 				LanguagePluginName:   "nodejs",
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
@@ -246,7 +248,7 @@ func TestLanguage(t *testing.T) {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
-					result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
+					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,
 						Test:  tt,
 					})
@@ -255,8 +257,8 @@ func TestLanguage(t *testing.T) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					t.Logf("stdout: %s", result.Stdout)
-					t.Logf("stderr: %s", result.Stderr)
+					ptesting.LogTruncated(t, "stdout", result.Stdout)
+					ptesting.LogTruncated(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

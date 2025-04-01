@@ -119,7 +119,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	}
 
 	plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}

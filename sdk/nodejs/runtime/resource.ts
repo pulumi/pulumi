@@ -17,15 +17,13 @@ import * as query from "@pulumi/query";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { getAllResources, Input, Inputs, Output, output } from "../output";
+import { Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
 import {
     Alias,
     allAliases,
-    ComponentResource,
     ComponentResourceOptions,
     createUrn,
-    CustomResource,
     CustomResourceOptions,
     expandProviders,
     ID,
@@ -35,8 +33,8 @@ import {
     ResourceOptions,
     URN,
 } from "../resource";
-import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
+import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { invoke } from "./invoke";
 import { getStore } from "./state";
 
@@ -562,7 +560,9 @@ export function registerResource(
                 req.setParent(resop.parentURN || "");
                 req.setCustom(custom);
                 req.setObject(gstruct.Struct.fromJavaScript(resop.serializedProps));
-                req.setProtect(opts.protect || false);
+                if (opts.protect !== undefined) {
+                    req.setProtect(opts.protect);
+                }
                 req.setProvider(resop.providerRef || "");
                 req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
                 req.setDeletebeforereplace((<any>opts).deleteBeforeReplace || false);
@@ -589,7 +589,9 @@ export function registerResource(
                 req.setRemote(remote);
                 req.setReplaceonchangesList(opts.replaceOnChanges || []);
                 req.setPlugindownloadurl(opts.pluginDownloadURL || "");
-                req.setRetainondelete(opts.retainOnDelete || false);
+                if (opts.retainOnDelete !== undefined) {
+                    req.setRetainondelete(opts.retainOnDelete);
+                }
                 req.setDeletedwith(resop.deletedWithURN || "");
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));

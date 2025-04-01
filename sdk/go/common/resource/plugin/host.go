@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/blang/semver"
@@ -77,8 +78,8 @@ type Host interface {
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
 
-	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
-	ResolvePlugin(kind apitype.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+	// ResolvePlugin resolves a pluginspec to a candidate plugin to load.
+	ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error)
 
 	GetProjectPlugins() []workspace.ProjectPlugin
 
@@ -96,10 +97,35 @@ type Host interface {
 	Close() error
 }
 
+// IsLocalPluginPath determines if a plugin source refers to a local path rather than a downloadable plugin.
+// A plugin is considered local if it doesn't match the plugin name regexp and doesn't have a download URL.
+func IsLocalPluginPath(source string) bool {
+	// If the source starts with ./ or ../ or / it's definitely a local path
+	if strings.HasPrefix(source, "./") || strings.HasPrefix(source, "..") || strings.HasPrefix(source, "/") {
+		return true
+	}
+
+	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
+	// and check if it has a download URL.
+	pluginSpec, err := workspace.NewPluginSpec(source, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		// If we can't parse it as a plugin spec, assume it's a local path
+		return true
+	}
+
+	if pluginSpec.IsGitPlugin() {
+		// If it's a git plugin, it's not a local path
+		return false
+	}
+
+	// If there is a download URL or the name matches the plugin name regexp after parsing, it's not a local path
+	return pluginSpec.PluginDownloadURL == "" && !workspace.PluginNameRegexp.MatchString(pluginSpec.Name)
+}
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
-	disableProviderPreview bool, plugins *workspace.Plugins, config map[config.Key]string,
-	debugging DebugEventEmitter, projectName tokens.PackageName,
+	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
+	config map[config.Key]string, debugging DebugEventEmitter, projectName tokens.PackageName,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -125,6 +151,26 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
+	}
+
+	for name, pkg := range packages {
+		// Skip downloadable plugins, so that only local folder paths remain.
+		if !IsLocalPluginPath(pkg.Source) {
+			continue
+		}
+
+		// Resolve the absolute path to the plugin folder.
+		path, err := resolvePluginPath(ctx.Root, pkg.Source)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add the plugin to the project plugins list.
+		projectPlugins = append(projectPlugins, workspace.ProjectPlugin{
+			Kind: apitype.ResourcePlugin,
+			Name: name,
+			Path: path,
+		})
 	}
 
 	host := &defaultHost{
@@ -170,6 +216,28 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	return host, nil
 }
 
+func resolvePluginPath(root string, path string) (string, error) {
+	// The path is relative to the project root. Make it absolute here so we don't need to track that everywhere its used.
+	var err error
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(filepath.Join(root, path))
+		if err != nil {
+			return "", fmt.Errorf("getting absolute path for plugin path %s: %w", path, err)
+		}
+	}
+
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("no folder at path '%s'", path)
+	} else if err != nil {
+		return "", fmt.Errorf("checking provider folder: %w", err)
+	} else if !stat.IsDir() {
+		return "", fmt.Errorf("provider folder '%s' is not a directory", path)
+	}
+
+	return path, nil
+}
+
 func parsePluginOpts(
 	root string, providerOpts workspace.PluginOptions, k apitype.PluginKind,
 ) (workspace.ProjectPlugin, error) {
@@ -189,22 +257,9 @@ func parsePluginOpts(
 		v = &ver
 	}
 
-	stat, err := os.Stat(providerOpts.Path)
-	if os.IsNotExist(err) {
-		return handleErr("no folder at path '%s'", providerOpts.Path)
-	} else if err != nil {
-		return handleErr("checking provider folder: %w", err)
-	} else if !stat.IsDir() {
-		return handleErr("provider folder '%s' is not a directory", providerOpts.Path)
-	}
-
-	// The path is relative to the project root. Make it absolute here so we don't need to track that everywhere its used.
-	path := providerOpts.Path
-	if !filepath.IsAbs(path) {
-		path, err = filepath.Abs(filepath.Join(root, path))
-		if err != nil {
-			return handleErr("getting absolute path for plugin path %s: %w", providerOpts.Path, err)
-		}
+	path, err := resolvePluginPath(root, providerOpts.Path)
+	if err != nil {
+		return handleErr(err.Error())
 	}
 
 	pluginInfo := workspace.ProjectPlugin{
@@ -379,7 +434,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 
 func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
-		pkg, path := descriptor.LocalName()
+		pkg := descriptor.Name
 		version := descriptor.Version
 
 		// Try to load and bind to a plugin.
@@ -396,8 +451,8 @@ func (host *defaultHost) Provider(descriptor workspace.PackageDescriptor) (Provi
 			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 		}
 
-		plug, err := NewProviderFromSubdir(
-			host, host.ctx, tokens.Package(pkg), path, version,
+		plug, err := NewProvider(
+			host, host.ctx, descriptor.PluginSpec,
 			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig), host.projectName)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
@@ -523,10 +578,8 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	return result
 }
 
-func (host *defaultHost) ResolvePlugin(
-	kind apitype.PluginKind, name string, version *semver.Version,
-) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(host.ctx.Diag, kind, name, version, host.GetProjectPlugins())
+func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+	return workspace.GetPluginInfo(host.ctx.Diag, spec, host.GetProjectPlugins())
 }
 
 func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {

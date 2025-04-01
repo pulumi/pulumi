@@ -147,6 +147,7 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
+				ParallelDiff:              env.ParallelDiff.Value(),
 				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 				Parallel:                  parallel,
 				Debug:                     debug,

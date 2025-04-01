@@ -189,7 +189,7 @@ func newOpStopwatch() opStopwatch {
 // policyPayloads is a collection of policy violation events for a single resource.
 var policyPayloads []engine.PolicyViolationEventPayload
 
-// getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
+// getEventUrnAndMetadata returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
@@ -340,6 +340,87 @@ func RenderProgressEvents(
 
 	// let our caller know we're done.
 	close(done)
+}
+
+type CaptureProgressEvents struct {
+	Buffer  *bytes.Buffer
+	Stack   tokens.StackName
+	Proj    tokens.PackageName
+	display *ProgressDisplay
+}
+
+// NewCaptureProgressEvents renders the provided engine events channel to an internal buffer. It returns a
+// CaptureProgressEvents instance that can be used to access both the output and the display instance after processing
+// the events. This is useful for detecting whether a failure was detected in the display layer, e.g. used to send the
+// output to Copilot if a failure was detected.
+func NewCaptureProgressEvents(
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	opts Options,
+) *CaptureProgressEvents {
+	buffer := bytes.NewBuffer([]byte{})
+	width, height := 200, 80
+
+	o := opts
+	o.Color = colors.Never
+	o.RenderOnDirty = false
+	o.IsInteractive = true
+
+	o.Stdout = buffer
+	o.Stderr = io.Discard
+	o.term = terminal.NewSimpleTerminal(buffer, width, height)
+
+	isPreview := false
+	action := apitype.UpdateUpdate
+	permalink := ""
+
+	printPermalinkInteractive(o.term, o, permalink)
+	renderer := newInteractiveRenderer(o.term, permalink, o)
+	display := &ProgressDisplay{
+		action:                action,
+		isPreview:             isPreview,
+		isTerminal:            true,
+		opts:                  o,
+		renderer:              renderer,
+		stack:                 stack,
+		proj:                  proj,
+		sames:                 make(map[resource.URN]bool),
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+		displayOrderCounter:   1,
+		opStopwatch:           newOpStopwatch(),
+		permalink:             permalink,
+	}
+	renderer.initializeDisplay(display)
+
+	return &CaptureProgressEvents{
+		Buffer:  buffer,
+		Stack:   stack,
+		Proj:    proj,
+		display: display,
+	}
+}
+
+func (r *CaptureProgressEvents) ProcessEvents(
+	renderChan <-chan engine.Event,
+	renderDone chan<- bool,
+) {
+	r.display.processEvents(&time.Ticker{}, renderChan)
+	contract.IgnoreClose(r.display.renderer)
+	close(renderDone)
+}
+
+func (r *CaptureProgressEvents) Output() []string {
+	v := strings.TrimSpace(r.Buffer.String())
+	if v == "" {
+		return nil
+	}
+	return strings.Split(v, "\n")
+}
+
+func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
+	return r.display.failed
 }
 
 func (display *ProgressDisplay) println(line string) {
@@ -592,7 +673,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 }
 
-// printResourceChanges prints a "Changes:" section with all of the resource diffs grouped by
+// printResourceDiffs prints a "Changes:" section with all of the resource diffs grouped by
 // resource.printResourceChanges
 func (display *ProgressDisplay) printResourceDiffs() {
 	if !display.opts.ShowResourceChanges {

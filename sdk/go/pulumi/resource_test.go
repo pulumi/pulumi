@@ -238,7 +238,8 @@ func TestResourceOptionMergingProtect(t *testing.T) {
 
 	// last value wins
 	opts := merge(Protect(true), Protect(false))
-	assert.Equal(t, false, opts.Protect)
+	expected := false
+	assert.Equal(t, &expected, opts.Protect)
 }
 
 func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
@@ -246,11 +247,16 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 
 	// last value wins
 	opts := merge(DeleteBeforeReplace(true), DeleteBeforeReplace(false))
-	assert.Equal(t, false, opts.DeleteBeforeReplace)
+	expected := false
+	assert.Equal(t, &expected, opts.DeleteBeforeReplace)
 }
 
 func TestResourceOptionComposite(t *testing.T) {
 	t.Parallel()
+
+	ptr := func(b bool) *bool {
+		return &b
+	}
 
 	tests := []struct {
 		name  string
@@ -268,7 +274,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 		},
 		{
@@ -278,7 +284,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(false),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: false,
+				DeleteBeforeReplace: ptr(false),
 			},
 		},
 		{
@@ -289,7 +295,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 		},
 		{
@@ -299,8 +305,8 @@ func TestResourceOptionComposite(t *testing.T) {
 				Protect(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: true,
-				Protect:             true,
+				DeleteBeforeReplace: ptr(true),
+				Protect:             ptr(true),
 			},
 		},
 	}
@@ -1220,7 +1226,7 @@ func assertHasDeps(
 	res Resource,
 	expectedDeps ...Resource,
 ) {
-	name := res.getName()
+	name := res.PulumiResourceName()
 	resDeps := depTracker.dependencies(urnForRes(t, ctx, res))
 
 	expDeps := slice.Prealloc[URN](len(expectedDeps))

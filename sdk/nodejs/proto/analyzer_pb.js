@@ -1224,7 +1224,8 @@ proto.pulumirpc.AnalyzerResourceOptions.toObject = function(includeInstance, msg
     deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
     aliasesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
-    customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.toObject(includeInstance, f)
+    customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.toObject(includeInstance, f),
+    parent: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -1289,6 +1290,10 @@ proto.pulumirpc.AnalyzerResourceOptions.deserializeBinaryFromReader = function(m
       var value = new proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts;
       reader.readMessage(value,proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.deserializeBinaryFromReader);
       msg.setCustomtimeouts(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParent(value);
       break;
     default:
       reader.skipField();
@@ -1367,6 +1372,13 @@ proto.pulumirpc.AnalyzerResourceOptions.serializeBinaryToWriter = function(messa
       7,
       f,
       proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.serializeBinaryToWriter
+    );
+  }
+  f = message.getParent();
+  if (f.length > 0) {
+    writer.writeString(
+      8,
+      f
     );
   }
 };
@@ -1761,6 +1773,24 @@ proto.pulumirpc.AnalyzerResourceOptions.prototype.clearCustomtimeouts = function
  */
 proto.pulumirpc.AnalyzerResourceOptions.prototype.hasCustomtimeouts = function() {
   return jspb.Message.getField(this, 7) != null;
+};
+
+
+/**
+ * optional string parent = 8;
+ * @return {string}
+ */
+proto.pulumirpc.AnalyzerResourceOptions.prototype.getParent = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.AnalyzerResourceOptions} returns this
+ */
+proto.pulumirpc.AnalyzerResourceOptions.prototype.setParent = function(value) {
+  return jspb.Message.setProto3StringField(this, 8, value);
 };
 
 

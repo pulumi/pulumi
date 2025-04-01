@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -436,27 +437,9 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				}
 
 				// Return a type that is a union of all argument types.
-				argTypes := make([]model.Type, len(args))
-				for i, arg := range args {
-					argTypes[i] = arg.Type()
-				}
-				returnType, _ := model.UnifyTypes(argTypes...)
+				returnType := returnTypeFromArgs(args)
 				// If this results in a union of a dynamic type and another type, we should just return output dynamic.
-				var containsDynamic func(t model.Type) bool
-				containsDynamic = func(t model.Type) bool {
-					if u, ok := t.(*model.UnionType); ok {
-						for _, e := range u.ElementTypes {
-							if containsDynamic(e) {
-								return true
-							}
-						}
-					}
-					if o, ok := t.(*model.OutputType); ok {
-						return containsDynamic(o.ElementType)
-					}
-					return t == model.DynamicType
-				}
-				if containsDynamic(returnType) {
+				if typeContainsDynamic(returnType) {
 					returnType = model.NewOutputType(model.DynamicType)
 				}
 
@@ -518,5 +501,74 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
+		// pulumiResourceType/Name takes a single argument, the resource, and returns a string. There isn't a good way
+		// to do this with a StaticFunctionSignature so we use a GenericFunctionSignature with a similar check for
+		// "resource type" as we do for `call` expressions.
+		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
+		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
 	}
+}
+
+func newResourceFunction(functionName string) *model.Function {
+	return model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			if len(args) != 1 {
+				var r hcl.Range
+				if len(args) > 0 {
+					r = args[0].SyntaxNode().Range()
+				} else {
+					r = hcl.Range{}
+				}
+
+				return model.StaticFunctionSignature{}, hcl.Diagnostics{
+					errorf(r, functionName+" expects exactly one argument"),
+				}
+			}
+
+			arg := args[0]
+			var res *Resource
+			if objectType, ok := arg.Type().(*model.ObjectType); ok {
+				if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
+					res = annotation.Node
+				}
+			}
+
+			if res == nil {
+				return model.StaticFunctionSignature{}, hcl.Diagnostics{
+					errorf(args[0].SyntaxNode().Range(), functionName+" argument must be a single resource"),
+				}
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{
+					{
+						Name: "resource",
+						Type: arg.Type(),
+					},
+				},
+				ReturnType: model.StringType,
+			}, nil
+		},
+	))
+}
+
+func returnTypeFromArgs(args []model.Expression) model.Type {
+	argTypes := make([]model.Type, len(args))
+	for i, arg := range args {
+		argTypes[i] = arg.Type()
+	}
+	returnType, _ := model.UnifyTypes(argTypes...)
+	return returnType
+}
+
+func typeContainsDynamic(t model.Type) bool {
+	if u, ok := t.(*model.UnionType); ok {
+		if slices.ContainsFunc(u.ElementTypes, typeContainsDynamic) {
+			return true
+		}
+	}
+	if o, ok := t.(*model.OutputType); ok {
+		return typeContainsDynamic(o.ElementType)
+	}
+	return t == model.DynamicType
 }

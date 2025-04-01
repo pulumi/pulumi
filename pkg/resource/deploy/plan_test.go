@@ -334,7 +334,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					resource.PropertyMap{},
 					&resource.Goal{
-						Protect: false,
+						Protect: nil,
 					})
 				assert.ErrorContains(t, err, "protect changed")
 			})

@@ -779,7 +779,7 @@ class Resource:
     The specified provider version or None.
     """
 
-    _protect: bool
+    _protect: Optional[bool]
     """
     When set to true, protect ensures this resource cannot be deleted.
     """
@@ -841,7 +841,6 @@ class Resource:
         """
 
         if dependency:
-            self._protect = False
             self._providers = {}
             return
 
@@ -934,7 +933,7 @@ class Resource:
         pkg = _pkg_from_type(t)
         opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
-        self._protect = bool(opts.protect)
+        self._protect = opts.protect
         self._provider = opts.provider if (custom or remote) else None
         if self._provider and self._provider.package != pkg:
             action = (
@@ -1039,6 +1038,20 @@ class Resource:
         providers = {**self._providers, **opts_providers}
 
         return provider, providers
+
+    @property
+    def pulumi_resource_type(self) -> str:
+        """
+        The type assigned to the resource at construction.
+        """
+        return self._type
+
+    @property
+    def pulumi_resource_name(self) -> str:
+        """
+        The name assigned to the resource at construction.
+        """
+        return self._name
 
     @property
     def urn(self) -> "Output[str]":

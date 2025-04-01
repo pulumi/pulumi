@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from importlib.machinery import SourceFileLoader
 from collections import abc
 import collections
+from importlib.util import module_from_spec, spec_from_loader
+from inspect import isclass
 from pathlib import Path
+import sys
 import typing
 from typing import Any, Optional, TypedDict, Union
 
 import pulumi
-from pulumi.provider.experimental.metadata import Metadata
 from pulumi.provider.experimental.analyzer import (
     Analyzer,
     DuplicateTypeError,
@@ -38,8 +41,7 @@ from pulumi.provider.experimental.component import (
     PropertyType,
     TypeDefinition,
 )
-
-metadata = Metadata("my-component", "0.0.1")
+from pulumi.resource import ComponentResource
 
 
 def test_analyze_component():
@@ -57,8 +59,8 @@ def test_analyze_component():
 
         def __init__(self, args: SelfSignedCertificateArgs): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(SelfSignedCertificate, Path("test_analyzer"))
+    analyzer = Analyzer("component")
+    component = analyzer.analyze_component(SelfSignedCertificate)
     assert component == ComponentDefinition(
         name="SelfSignedCertificate",
         module="test_analyzer",
@@ -89,9 +91,9 @@ def test_analyze_component():
 def test_analyze_component_no_args():
     class NoArgs(pulumi.ComponentResource): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("no-args")
     try:
-        component = analyzer.analyze_component(NoArgs, Path("test_analyzer"))
+        component = analyzer.analyze_component(NoArgs)
         assert False, f"expected an exception, got {component}"
     except Exception as e:
         assert (
@@ -104,8 +106,8 @@ def test_analyze_component_empty():
     class Empty(pulumi.ComponentResource):
         def __init__(self, args: dict[str, Any]): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Empty, Path("test_analyzer"))
+    analyzer = Analyzer("empty")
+    component = analyzer.analyze_component(Empty)
     assert component == ComponentDefinition(
         name="Empty",
         module="test_analyzer",
@@ -150,8 +152,8 @@ def test_analyze_component_plain_types():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("plain-types")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -212,11 +214,11 @@ def test_analyze_component_plain_types():
                 plain=False,
             ),
             "aComplexType": PropertyDefinition(
-                ref="#/types/my-component:index:ComplexType",
+                ref="#/types/plain-types:index:ComplexType",
                 plain=True,
             ),
             "aInputComplexType": PropertyDefinition(
-                ref="#/types/my-component:index:ComplexType",
+                ref="#/types/plain-types:index:ComplexType",
                 plain=False,
             ),
         },
@@ -251,10 +253,10 @@ def test_analyze_component_plain_types():
                 plain=False,
             ),
             "aOutputComplex": PropertyDefinition(
-                ref="#/types/my-component:index:ComplexType", plain=False
+                ref="#/types/plain-types:index:ComplexType", plain=False
             ),
             "aOptionalOutputComplex": PropertyDefinition(
-                ref="#/types/my-component:index:ComplexType", plain=False, optional=True
+                ref="#/types/plain-types:index:ComplexType", plain=False, optional=True
             ),
         },
         outputs_mapping={
@@ -299,8 +301,8 @@ def test_analyze_list_simple():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("list-simple")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -360,8 +362,8 @@ def test_analyze_list_complex():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("list-complex")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -369,7 +371,7 @@ def test_analyze_list_complex():
             "listInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/my-component:index:ComplexType", plain=True
+                    ref="#/types/list-complex:index:ComplexType", plain=True
                 ),
             )
         },
@@ -378,7 +380,7 @@ def test_analyze_list_complex():
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/my-component:index:ComplexType", plain=True
+                    ref="#/types/list-complex:index:ComplexType", plain=True
                 ),
             )
         },
@@ -410,9 +412,9 @@ def test_analyze_list_missing_type():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("missing-type")
     try:
-        analyzer.analyze_component(Component, Path("test_analyzer"))
+        analyzer.analyze_component(Component)
     except InvalidListTypeError as e:
         assert (
             str(e)
@@ -427,9 +429,9 @@ def test_analyze_dict_non_str_key():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("dict-non-str-key")
     try:
-        analyzer.analyze_component(Component, Path("test_analyzer"))
+        analyzer.analyze_component(Component)
     except InvalidMapKeyError as e:
         assert str(e) == "map keys must be strings, got 'int' for 'Args.bad_dict'"
 
@@ -441,9 +443,9 @@ def test_analyze_dice_no_types():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("dict-no-types")
     try:
-        analyzer.analyze_component(Component, Path("test_analyzer"))
+        analyzer.analyze_component(Component)
     except InvalidMapTypeError as e:
         assert (
             str(e)
@@ -464,8 +466,8 @@ def test_analyze_dict_simple():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("dict-simple")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -535,8 +537,8 @@ def test_analyze_dict_complex():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("dict-complex")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -544,7 +546,7 @@ def test_analyze_dict_complex():
             "dictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/my-component:index:ComplexType", plain=True
+                    ref="#/types/dict-complex:index:ComplexType", plain=True
                 ),
             )
         },
@@ -553,7 +555,7 @@ def test_analyze_dict_complex():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/my-component:index:ComplexType",
+                    ref="#/types/dict-complex:index:ComplexType",
                     optional=True,
                     plain=True,
                 ),
@@ -597,20 +599,20 @@ def test_analyze_component_complex_type():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("complex-type")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
         inputs={
             "someComplexType": PropertyDefinition(
-                ref="#/types/my-component:index:ComplexType"
+                ref="#/types/complex-type:index:ComplexType"
             ),
         },
         inputs_mapping={"someComplexType": "some_complex_type"},
         outputs={
             "complexOutput": PropertyDefinition(
-                ref="#/types/my-component:index:ComplexType"
+                ref="#/types/complex-type:index:ComplexType"
             )
         },
         outputs_mapping={"complexOutput": "complex_output"},
@@ -643,8 +645,8 @@ def test_analyze_archive():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("archive")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -664,8 +666,8 @@ def test_analyze_asset():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("asset")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -686,8 +688,8 @@ def test_analyze_any():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("any")
+    component = analyzer.analyze_component(Component)
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
@@ -702,20 +704,20 @@ def test_analyze_any():
 
 
 def test_analyze_descriptions():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("descriptions")
     (components, type_definitions) = analyzer.analyze(
-        Path(Path(__file__).parent, "testdata", "docstrings")
+        components=load_components(Path("testdata", "docstrings")),
     )
     print(analyzer.docstrings)
     assert components == {
         "Component": ComponentDefinition(
             description="Component doc string",
             name="Component",
-            module="component.py",
+            module="docstrings",
             inputs={
                 "someComplexType": PropertyDefinition(
                     description="some_complex_type doc string",
-                    ref="#/types/my-component:index:ComplexType",
+                    ref="#/types/descriptions:index:ComplexType",
                 ),
                 "inputWithCommentAndDescription": PropertyDefinition(
                     description="input_with_comment_and_description doc string",
@@ -729,7 +731,7 @@ def test_analyze_descriptions():
             outputs={
                 "complexOutput": PropertyDefinition(
                     description="complex_output doc string",
-                    ref="#/types/my-component:index:ComplexType",
+                    ref="#/types/descriptions:index:ComplexType",
                 )
             },
             outputs_mapping={"complexOutput": "complex_output"},
@@ -739,7 +741,7 @@ def test_analyze_descriptions():
         "ComplexType": TypeDefinition(
             description="ComplexType doc string",
             name="ComplexType",
-            module="component.py",
+            module="docstrings",
             type="object",
             properties={
                 "value": PropertyDefinition(
@@ -748,7 +750,7 @@ def test_analyze_descriptions():
                     plain=True,
                 ),
                 "anotherValue": PropertyDefinition(
-                    ref="#/types/my-component:index:NestedComplexType",
+                    ref="#/types/descriptions:index:NestedComplexType",
                     description=None,
                 ),
             },
@@ -757,7 +759,7 @@ def test_analyze_descriptions():
         "NestedComplexType": TypeDefinition(
             description="NestedComplexType doc string",
             name="NestedComplexType",
-            module="component.py",
+            module="docstrings",
             type="object",
             properties={
                 "nestedValue": PropertyDefinition(
@@ -779,9 +781,9 @@ def test_analyze_resource_ref():
     class Component(pulumi.ComponentResource):
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("resource-ref")
     try:
-        analyzer.analyze_component(Component, Path("test_analyzer"))
+        analyzer.analyze_component(Component)
     except Exception as e:
         assert (
             str(e)
@@ -790,10 +792,12 @@ def test_analyze_resource_ref():
 
 
 def test_analyze_bad_type():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("bad-type")
 
     try:
-        analyzer.analyze(Path(Path(__file__).parent, "testdata", "bad-type"))
+        analyzer.analyze(
+            components=load_components(Path("testdata", "analyzer-errors", "bad-type")),
+        )
         assert False, "expected an exception"
     except TypeNotFoundError as e:
         assert (
@@ -802,36 +806,104 @@ def test_analyze_bad_type():
         )
 
 
-def test_analyze_duplicate_type():
-    analyzer = Analyzer(metadata)
+def test_analyze_union_type():
+    analyzer = Analyzer("union-type")
 
     try:
-        analyzer.analyze(Path(Path(__file__).parent, "testdata", "duplicate-type"))
+        analyzer.analyze(
+            components=load_components(
+                Path("testdata", "analyzer-errors", "union-type")
+            ),
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        assert (
+            str(e)
+            == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
+        )
+
+
+def test_analyze_enum_type():
+    analyzer = Analyzer("enum-type")
+
+    try:
+        analyzer.analyze(
+            components=load_components(
+                Path("testdata", "analyzer-errors", "enum-type")
+            ),
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        assert (
+            str(e) == "Enum types are not supported: found type 'MyEnum' for 'Args.enu'"
+        )
+
+
+def test_analyze_syntax_error():
+    analyzer = Analyzer("syntax-error")
+
+    try:
+        analyzer.analyze(
+            components=load_components(
+                Path("testdata", "analyzer-errors", "syntax-error")
+            ),
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        print(e)
+        import traceback
+
+        stack = traceback.extract_tb(e.__traceback__)[:]
+        print(stack)
+        assert str(e) == "invalid syntax (component.py, line 13)"
+
+
+def test_analyze_duplicate_type():
+    analyzer = Analyzer("duplicate-type")
+
+    try:
+        analyzer.analyze(
+            components=load_components(
+                Path("testdata", "analyzer-errors", "duplicate-type"),
+            ),
+        )
         assert False, "expected an exception"
     except DuplicateTypeError as e:
         assert (
             str(e)
             == "Duplicate type 'MyDuplicateType': "
-            + "orginally defined in 'component_a.py', "
-            + "but also found in 'component_b.py'"
+            + "orginally defined in 'duplicate_type.component_a', "
+            + "but also found in 'duplicate_type.component_b'"
         )
 
 
 def test_analyze_duplicate_components():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("duplicate-components")
 
     try:
         analyzer.analyze(
-            Path(Path(__file__).parent, "testdata", "duplicate-components")
+            components=load_components(
+                Path("testdata", "analyzer-errors", "duplicate-components"),
+            ),
         )
         assert False, "expected an exception"
     except DuplicateTypeError as e:
         assert (
             str(e)
             == "Duplicate type 'MyComponent': "
-            + "orginally defined in 'component_a.py', "
-            + "but also found in 'component_b.py'"
+            + "orginally defined in 'duplicate_components.component_a', "
+            + "but also found in 'duplicate_components.component_b'"
         )
+
+
+def test_analyze_no_components():
+    analyzer = Analyzer("no-components")
+
+    try:
+        analyzer.analyze(components=[])
+        assert False, "expected an exception"
+    except Exception as e:
+        assert str(e) == "No components found"
 
 
 def test_analyze_component_self_recursive_complex_type():
@@ -846,8 +918,8 @@ def test_analyze_component_self_recursive_complex_type():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("recursive")
+    component = analyzer.analyze_component(Component)
     assert analyzer.type_definitions == {
         "RecursiveType": TypeDefinition(
             name="RecursiveType",
@@ -856,7 +928,7 @@ def test_analyze_component_self_recursive_complex_type():
             properties={
                 "rec": PropertyDefinition(
                     optional=True,
-                    ref="#/types/my-component:index:RecursiveType",
+                    ref="#/types/recursive:index:RecursiveType",
                 )
             },
             properties_mapping={"rec": "rec"},
@@ -865,12 +937,10 @@ def test_analyze_component_self_recursive_complex_type():
     assert component == ComponentDefinition(
         name="Component",
         module="test_analyzer",
-        inputs={
-            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
-        },
+        inputs={"rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")},
         inputs_mapping={"rec": "rec"},
         outputs={
-            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveType")
+            "rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")
         },
         outputs_mapping={"rec": "rec"},
     )
@@ -898,8 +968,8 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
 
         def __init__(self, args: Args): ...
 
-    analyzer = Analyzer(metadata)
-    component = analyzer.analyze_component(Component, Path("test_analyzer"))
+    analyzer = Analyzer("mutually-recursive")
+    component = analyzer.analyze_component(Component)
     assert analyzer.type_definitions == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
@@ -908,7 +978,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
             properties={
                 "b": PropertyDefinition(
                     optional=True,
-                    ref="#/types/my-component:index:RecursiveTypeB",
+                    ref="#/types/mutually-recursive:index:RecursiveTypeB",
                 )
             },
             properties_mapping={"b": "b"},
@@ -920,7 +990,7 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
             properties={
                 "a": PropertyDefinition(
                     optional=True,
-                    ref="#/types/my-component:index:RecursiveTypeA",
+                    ref="#/types/mutually-recursive:index:RecursiveTypeA",
                 )
             },
             properties_mapping={"a": "a"},
@@ -930,43 +1000,47 @@ def test_analyze_component_mutually_recursive_complex_types_inline():
         name="Component",
         module="test_analyzer",
         inputs={
-            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeA")
+            "rec": PropertyDefinition(
+                ref="#/types/mutually-recursive:index:RecursiveTypeA"
+            )
         },
         inputs_mapping={"rec": "rec"},
         outputs={
-            "rec": PropertyDefinition(ref="#/types/my-component:index:RecursiveTypeB")
+            "rec": PropertyDefinition(
+                ref="#/types/mutually-recursive:index:RecursiveTypeB"
+            )
         },
         outputs_mapping={"rec": "rec"},
     )
 
 
 def test_analyze_component_mutually_recursive_complex_types_file():
-    analyzer = Analyzer(metadata)
+    analyzer = Analyzer("mutually-recursive")
 
     (components, type_definitions) = analyzer.analyze(
-        Path(Path(__file__).parent, "testdata", "mutually-recursive")
+        components=load_components(Path("testdata", "mutually-recursive")),
     )
     assert type_definitions == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
-            module="component.py",
+            module="mutually_recursive",
             type="object",
             properties={
                 "b": PropertyDefinition(
                     optional=True,
-                    ref="#/types/my-component:index:RecursiveTypeB",
+                    ref="#/types/mutually-recursive:index:RecursiveTypeB",
                 )
             },
             properties_mapping={"b": "b"},
         ),
         "RecursiveTypeB": TypeDefinition(
             name="RecursiveTypeB",
-            module="component.py",
+            module="mutually_recursive",
             type="object",
             properties={
                 "a": PropertyDefinition(
                     optional=True,
-                    ref="#/types/my-component:index:RecursiveTypeA",
+                    ref="#/types/mutually-recursive:index:RecursiveTypeA",
                 )
             },
             properties_mapping={"a": "a"},
@@ -975,41 +1049,19 @@ def test_analyze_component_mutually_recursive_complex_types_file():
     assert components == {
         "Component": ComponentDefinition(
             name="Component",
-            module="component.py",
+            module="mutually_recursive",
             inputs={
                 "rec": PropertyDefinition(
-                    ref="#/types/my-component:index:RecursiveTypeA"
+                    ref="#/types/mutually-recursive:index:RecursiveTypeA"
                 )
             },
             inputs_mapping={"rec": "rec"},
             outputs={
                 "rec": PropertyDefinition(
-                    ref="#/types/my-component:index:RecursiveTypeA"
+                    ref="#/types/mutually-recursive:index:RecursiveTypeA"
                 )
             },
             outputs_mapping={"rec": "rec"},
-        )
-    }
-
-
-def test_analyze_component_excluded_files():
-    analyzer = Analyzer(metadata)
-
-    (components, type_definitions) = analyzer.analyze(
-        Path(Path(__file__).parent, "testdata", "excluded-files")
-    )
-    assert components == {
-        "Component": ComponentDefinition(
-            name="Component",
-            module="component.py",
-            inputs={
-                "foo": PropertyDefinition(
-                    type=PropertyType.STRING,
-                )
-            },
-            inputs_mapping={"foo": "foo"},
-            outputs={},
-            outputs_mapping={},
         )
     }
 
@@ -1071,3 +1123,26 @@ def test_is_list():
     assert is_list(typing.List[str])
     assert is_list(typing.Sequence[str])
     assert is_list(typing.MutableSequence[str])
+
+
+def load_components(p: Path) -> list[type[ComponentResource]]:
+    """
+    Load all the components from `component.py` if present, or from `__init__.py`.
+    """
+    parent = Path(__file__).parent
+    component_file = Path(parent, p, "component.py")
+    init_file = Path(parent, p, "__init__.py")
+    file_to_load = component_file if component_file.exists() else init_file
+    mod_name = p.name.replace("-", "_")
+    loader = SourceFileLoader(mod_name, str(file_to_load))
+    spec = spec_from_loader(mod_name, loader)
+    if not spec:
+        raise Exception(f"failed to load {file_to_load}")
+    mod = module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    loader.exec_module(mod)
+    components: list[type[ComponentResource]] = []
+    for _, v in mod.__dict__.items():
+        if isclass(v) and issubclass(v, ComponentResource):
+            components.append(v)
+    return components

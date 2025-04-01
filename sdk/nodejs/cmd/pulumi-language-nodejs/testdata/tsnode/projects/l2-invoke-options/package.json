@@ -1,7 +1,7 @@
 {
 	"name": "l2-invoke-options",
 	"devDependencies": {
-		"@types/node": "^14"
+		"@types/node": "^18"
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",

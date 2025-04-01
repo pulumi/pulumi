@@ -41,8 +41,7 @@ func init() {
 					// Check we have the the asset, archive, and folder resources in the snapshot, the provider and the stack.
 					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
 
-					provider := snap.Resources[1]
-					assert.Equal(l, "pulumi:providers:asset-archive", provider.Type.String(), "expected asset-archive provider")
+					RequireSingleResource(l, snap.Resources, "pulumi:providers:asset-archive")
 
 					// We don't know what order the resources will be in so we map by name
 					resources := map[string]*resource.State{}
@@ -124,8 +123,8 @@ func init() {
 					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
 
 					remoteassValue, err := resource.NewURIAsset(
-						"https://raw.githubusercontent.com/pulumi/pulumi/master" +
-							"/cmd/pulumi-test-language/testdata/l2-resource-asset-archive/test.txt",
+						"https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c" +
+							"/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/test.txt",
 					)
 					require.NoError(l, err)
 

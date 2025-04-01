@@ -35,12 +35,91 @@ function getInputsFromOutputs<T extends ComponentResource>(resource: T): Outputs
     }
     return result as OutputsToInputs<T>;
 }
+
+export type ComponentResourceConstructor = {
+    // The ComponentResource base class has a 4 argument constructor, but
+    // the user defined component has a 3 argument constructor without the
+    // typestring.
+    new (name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
+};
+
+/**
+ * Get all Pulumi Component constructors from a module's exports.
+ * @param moduleExports The exports object of the module to check.
+ * @returns Array of Pulumi Component constructors found in the exports.
+ */
+export function getPulumiComponents(moduleExports: any): ComponentResourceConstructor[] {
+    // Use a Set to track seen components and maintain uniqueness
+    const seen = new Set<ComponentResourceConstructor>();
+
+    function getComponents(value: any): ComponentResourceConstructor[] {
+        // If null/undefined, return empty array
+        if (!value) {
+            return [];
+        }
+
+        // If it's a single component constructor
+        if (typeof value === "function" && value.prototype) {
+            let proto = value.prototype;
+            while (proto?.__proto__) {
+                proto = proto.__proto__;
+                if (
+                    proto.constructor &&
+                    (proto.constructor.name === "ComponentResource" ||
+                        proto.constructor.__pulumiComponentResource === true)
+                ) {
+                    if (!seen.has(value)) {
+                        seen.add(value);
+                        return [value];
+                    }
+                    return [];
+                }
+            }
+            return [];
+        }
+
+        const components: ComponentResourceConstructor[] = [];
+
+        // If it's an array, process each item
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                components.push(...getComponents(item));
+            }
+            return components;
+        }
+
+        // If it's an object, process each property
+        if (typeof value === "object") {
+            for (const key in value) {
+                // Filter unwanted properties from the prototype
+                if (!Object.prototype.hasOwnProperty.call(value, key)) {
+                    continue;
+                }
+
+                components.push(...getComponents(value[key]));
+            }
+        }
+
+        return components;
+    }
+
+    return getComponents(moduleExports);
+}
+
+export interface ComponentProviderOptions {
+    components: ComponentResourceConstructor[];
+    dirname?: string;
+    name: string;
+    namespace?: string;
+}
+
 export class ComponentProvider implements Provider {
     private packageJSON: Record<string, any>;
     private path: string;
-    private analyzer: Analyzer;
-
-    version: string;
+    private componentConstructors: Record<string, ComponentResourceConstructor>;
+    private name: string;
+    private namespace?: string;
+    public version: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
         const parts = resourceType.split(":");
@@ -61,18 +140,44 @@ export class ComponentProvider implements Provider {
         }
     }
 
-    constructor(readonly dir: string) {
-        const absDir = path.resolve(dir);
+    constructor(readonly options: ComponentProviderOptions & { version?: string }) {
+        if (!options.dirname) {
+            throw new Error("dirname is required");
+        }
+
+        const absDir = path.resolve(options.dirname);
         const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
         this.packageJSON = JSON.parse(packStr);
-        this.version = this.packageJSON.version;
         this.path = absDir;
-        this.analyzer = new Analyzer(this.path, this.packageJSON.name);
+        this.name = options.name;
+        this.version = options.version ?? "0.0.0";
+        this.namespace = options.namespace;
+        this.componentConstructors = options.components.reduce(
+            (acc, component) => {
+                acc[component.name] = component;
+                return acc;
+            },
+            {} as Record<string, ComponentResourceConstructor>,
+        );
     }
 
     async getSchema(): Promise<string> {
-        const { components, typeDefinitions } = this.analyzer.analyze();
-        const schema = generateSchema(this.packageJSON, components, typeDefinitions);
+        const analyzer = new Analyzer(
+            this.path,
+            this.name,
+            this.packageJSON,
+            new Set(Object.keys(this.componentConstructors)),
+        );
+        const { components, typeDefinitions, packageReferences } = analyzer.analyze();
+        const schema = generateSchema(
+            this.name,
+            this.version,
+            this.packageJSON.description,
+            components,
+            typeDefinitions,
+            packageReferences,
+            this.namespace,
+        );
         return JSON.stringify(schema);
     }
 
@@ -84,12 +189,11 @@ export class ComponentProvider implements Provider {
     ): Promise<ConstructResult> {
         ComponentProvider.validateResourceType(this.packageJSON.name, type);
         const componentName = type.split(":")[2];
-        const ComponentClass = await this.analyzer.findComponent(componentName);
-        // The ComponentResource base class has a 4 argument constructor, but
-        // the user defined component has a 3 argument constructor without the
-        // typestring.
-        // @ts-ignore
-        const instance = new ComponentClass(name, inputs, options);
+        const constructor = this.componentConstructors[componentName];
+        if (!constructor) {
+            throw new Error(`Component class not found for '${componentName}'`);
+        }
+        const instance = new constructor(name, inputs, options);
         return {
             urn: instance.urn,
             state: getInputsFromOutputs(instance),
@@ -97,10 +201,19 @@ export class ComponentProvider implements Provider {
     }
 }
 
-export function componentProviderHost(dirname?: string): Promise<void> {
+// Add a flag to track if componentProviderHost has been called
+let isHosting = false;
+
+export function componentProviderHost(options: ComponentProviderOptions): Promise<void> {
+    if (isHosting) {
+        // If we're already hosting, just return and don't start another host.
+        return Promise.resolve();
+    }
+    isHosting = true;
+
     const args = process.argv.slice(2);
     // If dirname is not provided, get it from the call stack
-    if (!dirname) {
+    if (!options.dirname) {
         // Get the stack trace
         const stack = new Error().stack;
         // Parse the stack to get the caller's file
@@ -111,12 +224,14 @@ export function componentProviderHost(dirname?: string): Promise<void> {
         const callerLine = stack?.split("\n")[2];
         const match = callerLine?.match(/\((.+):[0-9]+:[0-9]+\)/);
         if (match?.[1]) {
-            dirname = path.dirname(match[1]);
+            options.dirname = path.dirname(match[1]);
         } else {
             throw new Error("Could not determine caller directory");
         }
     }
-
-    const prov = new ComponentProvider(dirname);
+    // Default the version to "0.0.0" for now, otherwise SDK codegen gets
+    // confused without a version.
+    const version = "0.0.0";
+    const prov = new ComponentProvider(options);
     return main(prov, args);
 }

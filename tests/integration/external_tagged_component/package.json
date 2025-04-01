@@ -1,0 +1,12 @@
+{
+    "name": "external_tagged_component",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.113.0",
+        "@pulumi/random-plugin-component": "file:sdks/random-plugin-component"
+    }
+}

@@ -1050,13 +1050,19 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
-	// Unless the function is already automatically using an
-	// Output-returning version, modify the signature to account
+	// TODO(https://github.com/pulumi/pulumi/issues/8439): This lifting is overly aggressive, we special case this for
+	// pulumiResourceName and pulumiResourceType as they should return a plain string even with an output input. But
+	// this should be covered more generally, only lifting when needed.
+	//
+	// Unless the function is already automatically using an Output-returning version, modify the signature to account
 	// for automatic lifting to Promise or Output.
-	_, isOutput := x.Signature.ReturnType.(*OutputType)
-	if !isOutput {
-		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+	if x.Name != "pulumiResourceName" && x.Name != "pulumiResourceType" {
+		_, isOutput := x.Signature.ReturnType.(*OutputType)
+		if !isOutput {
+			x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+		}
 	}
+
 	return diagnostics
 }
 

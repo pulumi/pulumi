@@ -31,13 +31,19 @@ func main() {
 		}
 		parent2, err := simple.NewResource(ctx, "parent2", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
-		}, pulumi.Protect(true))
+		}, pulumi.Protect(true), pulumi.RetainOnDelete(true))
 		if err != nil {
 			return err
 		}
 		_, err = simple.NewResource(ctx, "child2", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		}, pulumi.Parent(parent2))
+		if err != nil {
+			return err
+		}
+		_, err = simple.NewResource(ctx, "child3", &simple.ResourceArgs{
+			Value: pulumi.Bool(true),
+		}, pulumi.Parent(parent2), pulumi.Protect(false), pulumi.RetainOnDelete(false))
 		if err != nil {
 			return err
 		}

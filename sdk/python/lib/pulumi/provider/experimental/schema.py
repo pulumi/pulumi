@@ -21,7 +21,6 @@ from .component import (
     PropertyType,
     TypeDefinition,
 )
-from .metadata import Metadata
 
 
 @dataclass
@@ -162,8 +161,9 @@ class PackageSpec:
     """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package"""
 
     name: str
+    version: str
     displayName: str
-    version: Optional[str]
+    namespace: Optional[str]
     resources: dict[str, Resource]
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
@@ -172,8 +172,9 @@ class PackageSpec:
         return remove_none(
             {
                 "name": self.name,
-                "displayName": self.displayName,
                 "version": self.version,
+                "displayName": self.displayName,
+                "namespace": self.namespace,
                 "resources": {k: v.to_json() for k, v in self.resources.items()},
                 "types": {k: v.to_json() for k, v in self.types.items()},
                 "language": self.language,
@@ -182,14 +183,17 @@ class PackageSpec:
 
 
 def generate_schema(
-    metadata: Metadata,
+    name: str,
+    version: str,
+    namespace: Optional[str],
     components: dict[str, ComponentDefinition],
     type_definitions: dict[str, TypeDefinition],
 ) -> PackageSpec:
     pkg = PackageSpec(
-        name=metadata.name,
-        version=metadata.version,
-        displayName=metadata.display_name or metadata.name,
+        name=name,
+        version=version,
+        displayName=name,
+        namespace=namespace,
         resources={},
         types={},
         language={
@@ -211,13 +215,12 @@ def generate_schema(
         },
     )
     for component_name, component in components.items():
-        name = f"{metadata.name}:index:{component_name}"
-        pkg.resources[name] = Resource.from_definition(component)
+        pkg.resources[f"{name}:index:{component_name}"] = Resource.from_definition(
+            component
+        )
 
     for type_name, type in type_definitions.items():
-        pkg.types[f"{metadata.name}:index:{type_name}"] = ComplexType.from_definition(
-            type
-        )
+        pkg.types[f"{name}:index:{type_name}"] = ComplexType.from_definition(type)
 
     return pkg
 

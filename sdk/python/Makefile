@@ -67,14 +67,6 @@ test_all:: test_fast test_auto test_go
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 
-# Watches all the python files and runs the tests every time they change.
-# Can optionally be given a substring search of tests to match. For example, to
-# iterate on one test specifically, one could use the following command:
-#
-# $ make test_watch TEST_GREP="lists tag values"
-test_watch::
-	. .venv/*/activate && PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) ptw --runner "pytest lib/test -k $(TEST_GREP)"
-
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	GOBIN=${GOBIN} go install -C cmd/pulumi-language-python \

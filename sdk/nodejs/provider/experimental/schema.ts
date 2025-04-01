@@ -65,21 +65,26 @@ export interface PackageSpec {
     name: string;
     version?: string;
     description?: string;
+    namespace?: string;
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
 }
 
 export function generateSchema(
-    packageJSON: Record<string, any>,
+    providerName: string,
+    version: string,
+    description: string,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
+    packageReferences: Record<string, string>,
+    namespace?: string,
 ): PackageSpec {
-    const providerName = packageJSON.name;
     const result: PackageSpec = {
         name: providerName,
-        version: packageJSON.version,
-        description: packageJSON.description,
+        version: version,
+        description: description,
+        namespace: namespace,
         resources: {},
         types: {},
         language: {
@@ -123,6 +128,28 @@ export function generateSchema(
             properties: type.properties,
             required: required(type.properties),
         };
+    }
+
+    for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
+        result.language!.nodejs.dependencies[`@pulumi/${packageName}`] = packageVersion;
+        if (!result.language!.python.requires) {
+            result.language!.python.requires = {};
+        }
+        if (!result.language!.csharp.packageReferences) {
+            result.language!.csharp.packageReferences = {};
+        }
+        if (!result.language!.java.dependencies) {
+            result.language!.java.dependencies = {};
+        }
+        result.language!.python.requires[`pulumi-${packageName}`] = `==${packageVersion}`;
+
+        const csharpPackageName = packageName
+            .split("-")
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join("");
+        result.language!.csharp.packageReferences[`Pulumi.${csharpPackageName}`] = packageVersion;
+
+        result.language!.java.dependencies[`com.pulumi:${packageName}`] = packageVersion;
     }
 
     return result;

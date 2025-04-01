@@ -17,7 +17,7 @@ _404html = azure_native.storage.Blob("_404html",
     resource_group_name=some_string,
     account_name=some_string,
     container_name=some_string,
-    type=staticwebsite.index_document.apply(lambda x: azure_native.storage.BlobType(x)))
+    type=staticwebsite.index_document)
 # Unsafe enum
 another = azure_native.storage.Blob("another",
     resource_group_name=some_string,

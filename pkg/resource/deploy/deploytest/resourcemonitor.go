@@ -124,7 +124,7 @@ func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor
 
 type ResourceOptions struct {
 	Parent                  resource.URN
-	Protect                 bool
+	Protect                 *bool
 	Dependencies            []resource.URN
 	Provider                string
 	Inputs                  resource.PropertyMap
@@ -139,7 +139,7 @@ type ResourceOptions struct {
 	Aliases                 []*pulumirpc.Alias
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
-	RetainOnDelete          bool
+	RetainOnDelete          *bool
 	DeletedWith             resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool

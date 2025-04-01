@@ -15,7 +15,10 @@
 package backend
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -61,7 +65,6 @@ type MockBackend struct {
 		[]StackSummary, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
-	QueryF                                func(context.Context, QueryOperation) error
 	GetLatestConfigurationF               func(context.Context, Stack) (config.Map, error)
 	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
@@ -92,6 +95,11 @@ type MockBackend struct {
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
+
+	SupportsTemplatesF  func() bool
+	ListTemplatesF      func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF   func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	GetPackageRegistryF func() (PackageRegistry, error)
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -320,13 +328,6 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Query(ctx context.Context, op QueryOperation) error {
-	if be.QueryF != nil {
-		return be.QueryF(ctx, op)
-	}
-	panic("not implemented")
-}
-
 func (be *MockBackend) GetHistory(ctx context.Context,
 	stackRef StackReference,
 	pageSize int,
@@ -447,6 +448,34 @@ func (be *MockBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets
 	panic("not implemented")
 }
 
+func (be *MockBackend) SupportsTemplates() bool {
+	if be.SupportsTemplatesF != nil {
+		return be.SupportsTemplatesF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) ListTemplates(ctx context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
+	if be.ListTemplatesF != nil {
+		return be.ListTemplatesF(ctx, orgName)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) DownloadTemplate(ctx context.Context, orgName, templateSource string) (TarReaderCloser, error) {
+	if be.DownloadTemplateF != nil {
+		return be.DownloadTemplateF(ctx, orgName, templateSource)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetPackageRegistry() (PackageRegistry, error) {
+	if be.GetPackageRegistryF != nil {
+		return be.GetPackageRegistryF()
+	}
+	panic("not implemented")
+}
+
 var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
 
 type MockEnvironmentsBackend struct {
@@ -528,7 +557,6 @@ type MockStack struct {
 	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) error
-	QueryF   func(ctx context.Context, op UpdateOperation) error
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
 	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
 	GetLogsF func(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
@@ -625,13 +653,6 @@ func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDispla
 func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) error {
 	if ms.WatchF != nil {
 		return ms.WatchF(ctx, op, paths)
-	}
-	panic("not implemented")
-}
-
-func (ms *MockStack) Query(ctx context.Context, op UpdateOperation) error {
-	if ms.QueryF != nil {
-		return ms.QueryF(ctx, op)
 	}
 	panic("not implemented")
 }
@@ -780,6 +801,53 @@ func (mp *MockPolicyPack) Validate(ctx context.Context, op PolicyPackOperation) 
 func (mp *MockPolicyPack) Remove(ctx context.Context, op PolicyPackOperation) error {
 	if mp.RemoveF != nil {
 		return mp.RemoveF(ctx, op)
+	}
+	panic("not implemented")
+}
+
+type MockTarReader map[string]MockTarFile
+
+type MockTarFile struct{ Content string }
+
+func (m MockTarReader) Close() error { return nil }
+
+func (m MockTarReader) Tar() *tar.Reader {
+	paths := make([]string, 0, len(m))
+	for k := range m {
+		paths = append(paths, k)
+	}
+	slices.Sort(paths)
+
+	var b bytes.Buffer
+	w := tar.NewWriter(&b)
+
+	for _, p := range paths {
+		f := m[p]
+		err := w.WriteHeader(&tar.Header{
+			Name:     p,
+			Size:     int64(len(f.Content)),
+			Typeflag: tar.TypeReg,
+			Mode:     0o600,
+		})
+		contract.AssertNoErrorf(err, "impossible")
+
+		_, err = w.Write([]byte(f.Content))
+		contract.AssertNoErrorf(err, "impossible")
+	}
+
+	contract.AssertNoErrorf(w.Close(), "impossible")
+	return tar.NewReader(&b)
+}
+
+type MockPackageRegistry struct {
+	PublishF func(context.Context, apitype.PackagePublishOp) error
+}
+
+var _ PackageRegistry = (*MockPackageRegistry)(nil)
+
+func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePublishOp) error {
+	if mr.PublishF != nil {
+		return mr.PublishF(ctx, op)
 	}
 	panic("not implemented")
 }

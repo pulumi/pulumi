@@ -16,12 +16,14 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -485,6 +487,9 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			v.Set(reflect.Zero(v.Type()))
 		}
 	}
+	ptr := func(v bool) *bool {
+		return &v
+	}
 
 	tests := []struct {
 		desc   string
@@ -529,10 +534,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "protect",
 			give: ConstructOptions{
-				Protect: true,
+				Protect: ptr(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				Protect: true,
+				Protect: ptr(true),
 			},
 		},
 		{
@@ -603,10 +608,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "delete before replace",
 			give: ConstructOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: ptr(true),
 			},
 		},
 		{
@@ -630,10 +635,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "retain on delete",
 			give: ConstructOptions{
-				RetainOnDelete: true,
+				RetainOnDelete: ptr(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				RetainOnDelete: true,
+				RetainOnDelete: ptr(true),
 			},
 		},
 	}
@@ -787,10 +792,12 @@ func newTestContext(t testing.TB) *Context {
 type stubClient struct {
 	pulumirpc.ResourceProviderClient
 
-	DiffConfigF func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
-	ConstructF  func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
-	ConfigureF  func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
-	DeleteF     func(*pulumirpc.DeleteRequest) error
+	DiffConfigF    func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
+	ConstructF     func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
+	ConfigureF     func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
+	DeleteF        func(*pulumirpc.DeleteRequest) error
+	GetSchemaF     func(*pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error)
+	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
 }
 
 func (c *stubClient) DiffConfig(
@@ -836,6 +843,28 @@ func (c *stubClient) Delete(
 		return &emptypb.Empty{}, err
 	}
 	return c.ResourceProviderClient.Delete(ctx, req, opts...)
+}
+
+func (c *stubClient) GetSchema(
+	ctx context.Context,
+	req *pulumirpc.GetSchemaRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.GetSchemaResponse, error) {
+	if f := c.GetSchemaF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.GetSchema(ctx, req, opts...)
+}
+
+func (c *stubClient) GetPluginInfo(
+	ctx context.Context,
+	in *emptypb.Empty,
+	opts ...grpc.CallOption,
+) (*pulumirpc.PluginInfo, error) {
+	if f := c.GetPluginInfoF; f != nil {
+		return f()
+	}
+	return c.ResourceProviderClient.GetPluginInfo(ctx, in, opts...)
 }
 
 // Test for https://github.com/pulumi/pulumi/issues/14529, ensure a kubernetes DiffConfig error is ignored
@@ -895,6 +924,39 @@ func TestKubernetesDiffError(t *testing.T) {
 		nil,
 	})
 	assert.ErrorContains(t, err, "some other error")
+}
+
+func TestOverrideVersion(t *testing.T) {
+	t.Parallel()
+
+	client := &stubClient{
+		GetPluginInfoF: func() (*pulumirpc.PluginInfo, error) {
+			return &pulumirpc.PluginInfo{
+				Version: "0.0.0",
+			}, nil
+		},
+		GetSchemaF: func(req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+			schema := `{"name": "test", "version": "0.0.0"}`
+			return &pulumirpc.GetSchemaResponse{
+				Schema: schema,
+			}, nil
+		},
+	}
+
+	version := semver.MustParse("1.2.3")
+
+	prov := NewProviderWithVersionOverride(newTestContext(t), "azure", client, false /* disablePreview */, &version)
+	resp, err := prov.GetPluginInfo(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, &version, resp.Version)
+
+	schema, err := prov.GetSchema(context.Background(), GetSchemaRequest{})
+	require.NoError(t, err)
+
+	var unmarshalledSchema map[string]any
+	err = json.Unmarshal(schema.Schema, &unmarshalledSchema)
+	require.NoError(t, err)
+	require.Equal(t, "1.2.3", unmarshalledSchema["version"])
 }
 
 //nolint:paralleltest // using t.Setenv which is incompatible with t.Parallel

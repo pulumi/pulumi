@@ -345,7 +345,7 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			continue
 		}
 
-		path, err := workspace.GetPluginPath(d, plug.Kind, plug.Name, plug.Version, projectPlugins)
+		path, err := workspace.GetPluginPath(d, plug, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)

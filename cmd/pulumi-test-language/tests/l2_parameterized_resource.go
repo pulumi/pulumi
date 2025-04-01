@@ -33,12 +33,15 @@ func init() {
 					snap *deploy.Snapshot, changes display.ResourceChanges,
 				) {
 					RequireStackResource(l, err, changes)
-					stack := snap.Resources[0]
-					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
 						resource.NewStringProperty("HelloWorld"),
 						stack.Outputs["parameterValue"],
 						"parameter value should be correct")
+					require.Equal(l,
+						resource.NewStringProperty("HelloWorldComponent"),
+						stack.Outputs["parameterValueFromComponent"],
+						"parameter value from component should be correct")
 				},
 			},
 		},

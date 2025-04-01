@@ -16,6 +16,9 @@ import * as assert from "node:assert";
 import * as path from "node:path";
 import * as execa from "execa";
 import { Analyzer } from "../../../provider/experimental/analyzer";
+import { InputOutput } from "../../../provider/experimental/analyzer";
+
+const packageJSON = { name: "@my-namespace/provider" };
 
 describe("Analyzer", function () {
     before(() => {
@@ -34,7 +37,7 @@ describe("Analyzer", function () {
 
     it("infers simple types", async function () {
         const dir = path.join(__dirname, "testdata", "simple-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -55,7 +58,7 @@ describe("Analyzer", function () {
 
     it("infers optional types", async function () {
         const dir = path.join(__dirname, "testdata", "optional-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -74,7 +77,7 @@ describe("Analyzer", function () {
 
     it("infers input types", async function () {
         const dir = path.join(__dirname, "testdata", "input-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -90,7 +93,7 @@ describe("Analyzer", function () {
 
     it("infers complex types", async function () {
         const dir = path.join(__dirname, "testdata", "complex-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -119,7 +122,7 @@ describe("Analyzer", function () {
 
     it("infers self recursive complex types", async function () {
         const dir = path.join(__dirname, "testdata", "recursive-complex-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -142,7 +145,7 @@ describe("Analyzer", function () {
 
     it("infers mutually recursive complex types", async function () {
         const dir = path.join(__dirname, "testdata", "mutually-recursive-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -169,7 +172,7 @@ describe("Analyzer", function () {
 
     it("rejects bad args", async function () {
         const dir = path.join(__dirname, "testdata", "bad-args");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         assert.throws(
             () => analyzer.analyze(),
             /Error: Component 'MyComponent' constructor 'args' parameter must be an interface/,
@@ -178,7 +181,7 @@ describe("Analyzer", function () {
 
     it("infers array types", async function () {
         const dir = path.join(__dirname, "testdata", "array-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -221,7 +224,7 @@ describe("Analyzer", function () {
 
     it("infers map types", async function () {
         const dir = path.join(__dirname, "testdata", "map-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -262,7 +265,7 @@ describe("Analyzer", function () {
 
     it("infers any type", async function () {
         const dir = path.join(__dirname, "testdata", "any-type");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -280,7 +283,7 @@ describe("Analyzer", function () {
 
     it("infers asset/archive types", async function () {
         const dir = path.join(__dirname, "testdata", "asset-archive-types");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -299,15 +302,71 @@ describe("Analyzer", function () {
         });
     });
 
-    it("errors nicely for resource references", async function () {
+    it("infers resource references", async function () {
         const dir = path.join(__dirname, "testdata", "resource-reference");
-        const analyzer = new Analyzer(dir, "provider");
-        assert.throws(() => analyzer.analyze(), /Resource references are not supported yet: found type 'MyResource'/);
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, packageReferences } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    inputResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        description: "A reference to a resource in the TLS package.",
+                    },
+                    inputPlainResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        plain: true,
+                        optional: true,
+                    },
+                    inputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
+                },
+                outputs: {
+                    outputResource: { $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey" },
+                    outputPlainResource: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        plain: true,
+                    },
+                    outputResourceOrUndefined: {
+                        $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
+                        optional: true,
+                    },
+                },
+            },
+        });
+        assert.deepStrictEqual(packageReferences, {
+            tls: "4.11.1",
+        });
+    });
+
+    it("errors nicely for invalid property types for top-level properties", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type", "top-level");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) =>
+                err.message ===
+                "Union types are not supported for component 'MyComponent' input 'MyComponentArgs.invalidProp': type 'string | boolean'",
+        );
+    });
+
+    it("errors nicely for invalid property types for sub-type properties", async function () {
+        const dir = path.join(__dirname, "testdata", "bad-property-type", "sub-type");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) =>
+                err.message ===
+                "Unsupported type for component 'MyComponent' input 'MyOtherArgs.invalidProp values': type '\"fixed value\"'",
+        );
     });
 
     it("infers component description", async function () {
         const dir = path.join(__dirname, "testdata", "component-description");
-        const analyzer = new Analyzer(dir, "provider");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
         const { components, typeDefinitions } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
@@ -370,5 +429,274 @@ describe("Analyzer", function () {
                 description: "myClassType comment",
             },
         });
+    });
+
+    it("finds entry point from package.json exports string", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            "provider",
+            { name: "provider", exports: "./src/mymain.js" },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("finds entry point from package.json exports object with dot", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            "provider",
+            {
+                name: "provider",
+                exports: {
+                    ".": "./src/mymain.js",
+                },
+            },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("finds entry point from package.json exports with conditions", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            "provider",
+            {
+                name: "provider",
+                exports: {
+                    ".": {
+                        default: "./src/mymain.ts",
+                        require: "./lib/index.js", // These won't exist but that's ok since we use default
+                        import: "./lib/index.mjs",
+                    },
+                },
+            },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("finds entry point from package.json main property", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            "provider",
+            { name: "provider", main: "./src/mymain.js" },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("prefers exports over main when both are present", async function () {
+        const dir = path.join(__dirname, "testdata", "uncommon-main");
+        const analyzer = new Analyzer(
+            dir,
+            "provider",
+            {
+                name: "provider",
+                exports: "./src/mymain.ts",
+                main: "./wrong/path.ts", // This should be ignored when exports is present
+            },
+            new Set(["MainComponent"]),
+        );
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MainComponent: {
+                name: "MainComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    formattedMessage: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("throws error when no entry points found", async function () {
+        const tempDir = path.join(__dirname, "testdata", "no-entry");
+        const analyzer = new Analyzer(tempDir, "provider", { name: "provider" }, new Set(["MainComponent"]));
+
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) => {
+                return (
+                    err.message ===
+                    `No entry points found in ${tempDir}. Expected either 'exports' or 'main' in package.json, or an index.ts file in root or src directory.`
+                );
+            },
+        );
+    });
+
+    it("resolves components through complex import chains", async function () {
+        const dir = path.join(__dirname, "testdata", "complex-imports");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["DeepComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            DeepComponent: {
+                name: "DeepComponent",
+                inputs: {
+                    level: { type: "number", plain: true },
+                    name: { type: "string", plain: true, optional: true },
+                },
+                outputs: {
+                    path: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("reports missing components with clear error message", async function () {
+        const dir = path.join(__dirname, "testdata", "simple-types");
+        const analyzer = new Analyzer(
+            dir,
+            "provider",
+            packageJSON,
+            new Set(["MyComponent", "NonExistentComponent", "AnotherMissingOne"]),
+        );
+
+        assert.throws(
+            () => analyzer.analyze(),
+            (err) => {
+                return (
+                    err.message.includes(
+                        "Failed to find the following components: NonExistentComponent, AnotherMissingOne",
+                    ) && !err.message.includes("MyComponent")
+                ); // MyComponent exists, so it shouldn't be in the error
+            },
+        );
+    });
+
+    it("throws error when componentNames is empty", async function () {
+        const dir = path.join(__dirname, "testdata", "simple-types");
+        assert.throws(
+            () => new Analyzer(dir, "provider", packageJSON, new Set()),
+            (err) => {
+                return err.message === "componentNames cannot be empty - at least one component name must be provided";
+            },
+        );
+    });
+
+    it("finds components through re-exports", async function () {
+        const dir = path.join(__dirname, "testdata", "re-exports");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent", "AnotherComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    message: { type: "string", plain: true },
+                },
+                outputs: {
+                    output: { type: "string" },
+                },
+            },
+            AnotherComponent: {
+                name: "AnotherComponent",
+                inputs: {
+                    count: { type: "number", plain: true },
+                },
+                outputs: {
+                    result: { type: "number" },
+                },
+            },
+        });
+    });
+});
+
+describe("formatErrorContext", () => {
+    // We need to create an analyzer instance to test the private method
+    const analyzer = new Analyzer(__dirname, "provider", packageJSON, new Set(["MyComponent"]));
+    // Use any to access private method
+    const formatErrorContext = (analyzer as any).formatErrorContext.bind(analyzer);
+
+    it("formats basic component context", () => {
+        assert.strictEqual(formatErrorContext({ component: "MyComponent" }), "component 'MyComponent'");
+    });
+
+    it("formats property context", () => {
+        assert.strictEqual(
+            formatErrorContext({ component: "MyComponent", property: "myProp" }),
+            "component 'MyComponent' property 'myProp'",
+        );
+    });
+
+    it("formats input property context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                property: "myProp",
+                inputOutput: InputOutput.Input,
+            }),
+            "component 'MyComponent' input 'myProp'",
+        );
+    });
+
+    it("formats output property context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                property: "myProp",
+                inputOutput: InputOutput.Output,
+            }),
+            "component 'MyComponent' output 'myProp'",
+        );
+    });
+
+    it("formats type context", () => {
+        assert.strictEqual(
+            formatErrorContext({
+                component: "MyComponent",
+                typeName: "MyType",
+                property: "myProp",
+            }),
+            "component 'MyComponent' property 'MyType.myProp'",
+        );
     });
 });

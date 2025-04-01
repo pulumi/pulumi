@@ -218,12 +218,7 @@ func TestDSFileParsing(t *testing.T) {
 }
 
 func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
-	workDir, err := os.MkdirTemp("", "pulumi_deployment_settings")
-	assert.NoError(t, err)
-
-	t.Cleanup(func() {
-		os.RemoveAll(workDir)
-	})
+	workDir := t.TempDir()
 
 	cloneOptions := &git.CloneOptions{
 		RemoteName:    "origin",
@@ -233,7 +228,7 @@ func setUpGitWorkspace(ctx context.Context, t *testing.T) string {
 		ReferenceName: plumbing.ReferenceName("master"),
 	}
 
-	_, err = git.PlainCloneContext(ctx, workDir, false, cloneOptions)
+	_, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
 	assert.NoError(t, err)
 
 	return workDir

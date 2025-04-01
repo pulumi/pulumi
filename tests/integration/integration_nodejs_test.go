@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -2429,14 +2430,35 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 
-	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
-
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
+	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
+	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestPackagesInstall(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+
+	e.ImportDirectory("packages-install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/packages-install", "--create")
+
+	// This command should install the referenced package from the remote source.
+	e.RunCommand("pulumi", "install")
+
+	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
+	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
+	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
+	// above is used.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
@@ -2463,8 +2485,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider")
 
-	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
-
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
@@ -2474,6 +2494,23 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
+func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packageadd-namespace")
+	e.CWD = filepath.Join(e.RootPath, "nodejs")
+	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+	require.Contains(t, stdout,
+		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
+
+	// Make sure the SDK was generated in the expected directory
+	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
+	require.NoError(t, err)
 }
 
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.
@@ -2486,6 +2523,9 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
+	// Install the random plugin so we can use it in the component provider.
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "v4.18.0")
+
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
@@ -2494,13 +2534,14 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
-	require.Equal(t, "1.2.3", schema["version"].(string))
+	require.Equal(t, "0.0.0", schema["version"].(string))
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
 	// Check the component schema
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
+
 		"inputProperties": {
 			"aNumber": {
 				"type": "number",
@@ -2530,9 +2571,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aComplexTypeOutput": {
 				"$ref": "#/types/nodejs-component-provider:index:Complex"
+			},
+			"aResourceOutput": {
+				"$ref": "/random/v4.18.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
 			}
 		},
-		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput"]
+		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -2574,9 +2618,9 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host
+//
+//nolint:paralleltest // Sets env vars
 func TestNodejsComponentProviderRun(t *testing.T) {
-	t.Parallel()
-
 	testData, err := filepath.Abs(filepath.Join("component_provider", "nodejs", "component-provider-host"))
 	require.NoError(t, err)
 	providerDir := filepath.Join(testData, "provider")
@@ -2585,7 +2629,11 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, runtime := range []string{"yaml", "python"} {
 		t.Run(runtime, func(t *testing.T) {
+			// This uses the random plugin so needs to be able to download it
+			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				NoParallel: true,
 				PrepareProject: func(info *engine.Projinfo) error {
 					if runtime != "yaml" {
 						cmd := exec.Command("pulumi", "package", "add", providerDir)
@@ -2606,6 +2654,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
 					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
 					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]interface{})
+					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
@@ -2642,4 +2691,26 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
+}
+
+func TestNodeComponentNamespaceInference(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("namespaced_component")
+	installNodejsProviderDependencies(t, e.CWD)
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", ".")
+	var packageSpec schema.PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(stdout), &packageSpec))
+	require.Equal(t, "namespaced-component", packageSpec.Name)
+	require.Equal(t, "my-namespace", packageSpec.Namespace)
+
+	res, ok := packageSpec.Resources["namespaced-component:index:MyComponent"]
+	require.True(t, ok, fmt.Sprintf("missing expected resource in %v", packageSpec.Resources))
+
+	input, ok := res.InputProperties["anInput"]
+	require.True(t, ok, fmt.Sprintf("missing expected input property in %v", res.InputProperties))
+	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }

@@ -179,7 +179,7 @@ export interface Provider {
     /**
      * The version of the provider. Must be valid semver.
      */
-    version: string;
+    version?: string;
 
     /**
      * The JSON-encoded schema for this provider's package.

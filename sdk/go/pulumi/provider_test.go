@@ -1802,8 +1802,9 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 	t.Run("Protect", func(t *testing.T) {
 		t.Parallel()
 
+		protect := true
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
-			Protect: true,
+			Protect: &protect,
 		})
 		assert.True(t, snap.Protect, "protect was not set")
 	})
@@ -1904,8 +1905,9 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 	t.Run("DeleteBeforeReplace", func(t *testing.T) {
 		t.Parallel()
 
+		dbr := true
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
-			DeleteBeforeReplace: true,
+			DeleteBeforeReplace: &dbr,
 		})
 		assert.True(t, snap.DeleteBeforeReplace, "deleteBeforeReplace was not set")
 	})
@@ -1931,8 +1933,9 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 	t.Run("RetainOnDelete", func(t *testing.T) {
 		t.Parallel()
 
+		rod := true
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
-			RetainOnDelete: true,
+			RetainOnDelete: &rod,
 		})
 		assert.True(t, snap.RetainOnDelete, "retainOnDelete was not set")
 	})

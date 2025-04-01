@@ -49,7 +49,7 @@ const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion   string = "^3.142.0"
 	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^14"
+	MinimumNodeTypesVersion  string = "^18"
 )
 
 type typeDetails struct {
@@ -882,11 +882,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
 		for i, alias := range r.Aliases {
-			if alias.Type != nil {
-				fmt.Fprintf(w, "{ type: \"%v\" }", *alias.Type)
-				if i != len(r.Aliases)-1 {
-					fmt.Fprintf(w, ", ")
-				}
+			fmt.Fprintf(w, "{ type: \"%v\" }", alias.Type)
+			if i != len(r.Aliases)-1 {
+				fmt.Fprintf(w, ", ")
 			}
 		}
 		fmt.Fprintf(w, "] };\n")
@@ -1489,7 +1487,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 			externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", externalModuleName(pkg), imp))
 		} else {
-			externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", externalModuleName(pkg), pkg))
+			namespace := "@pulumi"
+			if res != nil && res.PackageReference != nil && res.PackageReference.Namespace() != "" {
+				namespace = "@" + res.PackageReference.Namespace()
+			}
+			externalImports.Add(fmt.Sprintf("import * as %s from \"%s/%s\";", externalModuleName(pkg), namespace, pkg))
 		}
 	}
 
@@ -2395,7 +2397,11 @@ type npmPackage struct {
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDependencies map[string]string, localSDK bool) (string, error) {
 	packageName := info.PackageName
 	if packageName == "" {
-		packageName = "@pulumi/" + pkg.Name
+		if pkg.Namespace != "" {
+			packageName = "@" + pkg.Namespace + "/" + pkg.Name
+		} else {
+			packageName = "@pulumi/" + pkg.Name
+		}
 	}
 
 	devDependencies := map[string]string{}

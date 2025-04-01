@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.155.0"
+version = "3.160.0"
 license = "Apache-2.0"
 license-files = ["../..LICENSE"]
 requires-python = ">=3.9"
@@ -23,11 +23,10 @@ dependencies = [
     'grpcio~=1.66.2',
     'dill~=0.3',
     'six~=1.12',
-    'semver~=2.13',
+    'semver~=3.0',
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
     'pip>=24.3.1,<26',
-    "pytest-watch>=4.2.0",
 ]
 
 [dependency-groups]
@@ -77,7 +76,13 @@ strict = ["lib/test_types"]
 target-version = "py39"
 
 include = ["lib/pulumi/**.py", "lib/pulumi/**.pyi", "lib/test/**.py"]
-extend-exclude = ["*_pb2.py", "*_pb2.pyi", "*_pb2_grpc.py", "*_pb2_grpc.pyi"]
+extend-exclude = [
+    "*_pb2.py",
+    "*_pb2.pyi",
+    "*_pb2_grpc.py",
+    "*_pb2_grpc.pyi",
+    "lib/test/provider/experimental/testdata/analyzer-errors/syntax-error/component.py",
+]
 
 [tool.ruff.lint]
 exclude = ["lib/test/**.py"]

@@ -15,6 +15,7 @@
 package client
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -206,6 +207,14 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 	return getStackPath(update.StackIdentifier, components...)
 }
 
+func publishPackagePath(source, publisher, name string) string {
+	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions", source, publisher, name)
+}
+
+func completePackagePublishPath(source, publisher, name, version string) string {
+	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+}
+
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
 type serviceUserInfo struct {
 	Name        string `json:"name"`
@@ -344,6 +353,40 @@ func (pc *Client) ListStacks(
 	}
 
 	return resp.Stacks, resp.ContinuationToken, nil
+}
+
+// ListOrgTemplates lists the project templates associated with an org.
+func (pc *Client) ListOrgTemplates(ctx context.Context, org string) (apitype.ListOrgTemplatesResponse, error) {
+	var resp apitype.ListOrgTemplatesResponse
+	if err := pc.restCall(ctx, "GET", "/api/orgs/"+url.PathEscape(org)+"/templates", nil, nil, &resp); err != nil {
+		return apitype.ListOrgTemplatesResponse{}, err
+	}
+
+	return resp, nil
+}
+
+// A [tar.Reader] that owns it's underlying data, and is thus responsible for closing it.
+type TarReaderCloser struct {
+	data io.ReadCloser
+}
+
+func (trc *TarReaderCloser) Tar() *tar.Reader { return tar.NewReader(trc.data) }
+
+func (trc *TarReaderCloser) Close() error { return trc.data.Close() }
+
+func (pc *Client) DownloadOrgTemplate(ctx context.Context, org, sourceURL string) (*TarReaderCloser, error) {
+	path := "/api/orgs/" + url.PathEscape(org) + "/template/download?url=" + url.PathEscape(sourceURL)
+
+	header := make(http.Header, 1)
+	header.Add("Accept", "application/x-tar")
+
+	var resp io.ReadCloser
+	if err := pc.restCallWithOptions(ctx, "GET", path, nil, nil, &resp, httpCallOptions{
+		Header: header,
+	}); err != nil {
+		return nil, err
+	}
+	return &TarReaderCloser{data: resp}, nil
 }
 
 // ErrNoPreviousDeployment is returned when there isn't a previous deployment.
@@ -1325,4 +1368,126 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
 	res, err := pc.do(ctx, request)
 	return res, err
+}
+
+// SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
+func (pc *Client) SummarizeErrorWithCopilot(
+	ctx context.Context,
+	orgID string,
+	lines []string,
+	model string,
+	maxSummaryLen int,
+) (string, error) {
+	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
+
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return "", fmt.Errorf("preparing request: %w", err)
+	}
+
+	// Requests that take longer that 10 seconds will result in this message being printed to the user:
+	// "Error summarizing update output: making request: Post "https://api.pulumi.com/api/ai/chat/preview":
+	// context deadline exceeded" Copilot backend will see this in telemetry as well
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	url := pc.apiURL + "/api/ai/chat/preview"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+
+	resp, err := pc.do(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("making request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNoContent {
+		// Copilot API returns 204 No Content when it decided that it should not summarize the input.
+		// This can happen when the input is too short or Copilot thinks it cannot make it any better.
+		// In this case, we will not show the summary to the user. This is better than showing a useless summary.
+		return "", nil
+	}
+
+	// Read the body first so we can use it for error reporting if needed
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response body: %w", err)
+	}
+
+	var copilotResp apitype.CopilotSummarizeUpdateResponse
+	if err := json.Unmarshal(body, &copilotResp); err != nil {
+		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
+	}
+
+	if copilotResp.Error != "" {
+		return "", fmt.Errorf("copilot API error: %s\n%s", copilotResp.Error, copilotResp.Details)
+	}
+
+	return extractSummaryFromResponse(copilotResp)
+}
+
+func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {
+	req := apitype.StartPackagePublishRequest{
+		Version: input.Version.String(),
+	}
+	var resp apitype.StartPackagePublishResponse
+	err := pc.restCall(ctx, "POST", publishPackagePath(input.Source, input.Publisher, input.Name), nil, req, &resp)
+	if err != nil {
+		return fmt.Errorf("publish package failed: %w", err)
+	}
+
+	uploadFile := func(url string, reader io.Reader, fileType string) error {
+		putReq, err := http.NewRequest(http.MethodPut, url, reader)
+		if err != nil {
+			return fmt.Errorf("failed to upload %s: %w", fileType, err)
+		}
+		for k, v := range resp.RequiredHeaders {
+			putReq.Header.Add(k, v)
+		}
+
+		uploadResp, err := pc.do(ctx, putReq)
+		if err != nil {
+			return fmt.Errorf("failed to upload %s: %w", fileType, err)
+		} else if uploadResp.StatusCode >= 400 {
+			body, bodyErr := readBody(uploadResp)
+			if bodyErr != nil {
+				return fmt.Errorf("failed to upload %s: %s", fileType, uploadResp.Status)
+			}
+			return fmt.Errorf("failed to upload %s: %s - %s", fileType, uploadResp.Status, string(body))
+		}
+
+		return nil
+	}
+
+	err = uploadFile(resp.UploadURLs.Schema, input.Schema, "schema")
+	if err != nil {
+		return err
+	}
+	err = uploadFile(resp.UploadURLs.Index, input.Readme, "index")
+	if err != nil {
+		return err
+	}
+	if input.InstallDocs != nil {
+		err = uploadFile(resp.UploadURLs.InstallationConfiguration, input.InstallDocs, "installation configuration")
+		if err != nil {
+			return err
+		}
+	}
+
+	completeReq := apitype.CompletePackagePublishRequest{
+		OperationID: resp.OperationID,
+	}
+
+	requestPath := completePackagePublishPath(input.Source, input.Publisher, input.Name, input.Version.String())
+	err = pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
+	if err != nil {
+		return fmt.Errorf("failed to complete package publishing operation %q: %w", resp.OperationID, err)
+	}
+
+	return nil
 }

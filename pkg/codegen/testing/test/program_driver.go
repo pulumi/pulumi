@@ -241,6 +241,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo),
 	},
 	{
+		Directory: "this-keyword-resource-attr",
+		Description: "ensure that the this keyword is rewritten when it is a variable but kept as is" +
+			"when it is a reference to this pointer in nodejs",
+		Skip: codegen.NewStringSet(TestDotnet, TestPython, TestGo),
+	},
+	{
 		Directory:   "invalid-go-sprintf",
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),

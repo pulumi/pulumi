@@ -76,7 +76,8 @@ func TestLegacyPluginSelection_Prerelease(t *testing.T) {
 		},
 	}
 
-	result := LegacySelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", nil)
+	result := LegacySelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: nil})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
@@ -117,7 +118,8 @@ func TestLegacyPluginSelection_PrereleaseRequested(t *testing.T) {
 	}
 
 	v := semver.MustParse("0.2.0")
-	result := LegacySelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", &v)
+	result := LegacySelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &v})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.3.0-alpha", result.Version.String())
@@ -157,8 +159,9 @@ func TestPluginSelection_ExactMatch(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
@@ -198,56 +201,10 @@ func TestPluginSelection_ExactMatchNotFound(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.Nil(t, result)
-}
-
-func TestPluginSelection_PatchVersionSlide(t *testing.T) {
-	t.Parallel()
-
-	v1 := semver.MustParse("0.1.0")
-	v2 := semver.MustParse("0.2.0")
-	v21 := semver.MustParse("0.2.1")
-	v3 := semver.MustParse("0.3.0")
-	candidatePlugins := []PluginInfo{
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v1,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v2,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v21,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v3,
-		},
-		{
-			Name:    "notmyplugin",
-			Kind:    apitype.ResourcePlugin,
-			Version: &v3,
-		},
-		{
-			Name:    "myplugin",
-			Kind:    apitype.AnalyzerPlugin,
-			Version: &v3,
-		},
-	}
-
-	requested := semver.MustParseRange(">=0.2.0 <0.3.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
-	assert.NotNil(t, result)
-	assert.Equal(t, "myplugin", result.Name)
-	assert.Equal(t, "0.2.1", result.Version.String())
 }
 
 func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
@@ -289,8 +246,9 @@ func TestPluginSelection_EmptyVersionNoAlternatives(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Nil(t, result.Version)
@@ -340,8 +298,9 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 		},
 	}
 
-	requested := semver.MustParseRange("0.2.0")
-	result := SelectCompatiblePlugin(candidatePlugins, apitype.ResourcePlugin, "myplugin", requested)
+	version := semver.MustParse("0.2.0")
+	result := SelectCompatiblePlugin(candidatePlugins,
+		PluginSpec{Kind: apitype.ResourcePlugin, Name: "myplugin", Version: &version})
 	assert.NotNil(t, result)
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
@@ -1413,10 +1372,11 @@ func TestMissingErrorText(t *testing.T) {
 
 	v1 := semver.MustParse("0.1.0")
 	tests := []struct {
-		Name           string
-		Plugin         PluginInfo
-		IncludeAmbient bool
-		ExpectedError  string
+		Name              string
+		Plugin            PluginInfo
+		IncludeAmbient    bool
+		PluginDownloadURL string
+		ExpectedError     string
 	}{
 		{
 			Name: "ResourceWithVersion",
@@ -1469,13 +1429,32 @@ func TestMissingErrorText(t *testing.T) {
 			IncludeAmbient: true,
 			ExpectedError:  "no language plugin 'pulumi-language-dotnet' found in the workspace or on your $PATH",
 		},
+		{
+			Name: "ResourceWithVersionAndDownloadURL",
+			Plugin: PluginInfo{
+				Name:    "myplugin",
+				Kind:    apitype.ResourcePlugin,
+				Version: &v1,
+			},
+			PluginDownloadURL: "https://example.com/myplugin",
+			IncludeAmbient:    true,
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v0.1.0 " +
+				"or on your $PATH from https://example.com/myplugin",
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
-			err := NewMissingError(tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.IncludeAmbient)
+			err := NewMissingError(
+				PluginSpec{
+					Kind:              tt.Plugin.Kind,
+					Name:              tt.Plugin.Name,
+					Version:           tt.Plugin.Version,
+					PluginDownloadURL: tt.PluginDownloadURL,
+				},
+				tt.IncludeAmbient)
 			assert.EqualError(t, err, tt.ExpectedError)
 		})
 	}
@@ -1508,13 +1487,13 @@ func TestBundledPluginSearch(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
 	// Lookup the plugin with ambient search turned off
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-	path, err = GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err = GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 }
@@ -1537,7 +1516,7 @@ func TestAmbientPluginsWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.ResourcePlugin, "mock", nil, nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "mock", Kind: apitype.ResourcePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1577,7 +1556,7 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
@@ -1614,7 +1593,7 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
 
@@ -1655,7 +1634,7 @@ func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(d, apitype.LanguagePlugin, "nodejs", nil, nil)
+	path, err := GetPluginPath(d, PluginSpec{Name: "nodejs", Kind: apitype.LanguagePlugin}, nil)
 	require.NoError(t, err)
 	// We expect the ambient path to be returned, but not to warn because it resolves to the same file as the
 	// bundled path.
@@ -1688,7 +1667,7 @@ func TestPluginInfoShimless(t *testing.T) {
 		diag.FormatOptions{Color: "never"},
 	)
 
-	info, err := GetPluginInfo(d, apitype.ResourcePlugin, "mock", nil, []ProjectPlugin{
+	info, err := GetPluginInfo(d, PluginSpec{Kind: apitype.ResourcePlugin, Name: "mock"}, []ProjectPlugin{
 		{
 			Name: "mock",
 			Kind: apitype.ResourcePlugin,
@@ -1712,7 +1691,7 @@ func TestProjectPluginsWithUncleanPath(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
+	path, err := GetPluginPath(diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"}, []ProjectPlugin{
 		{
 			Name: "aws",
 			Kind: apitype.ResourcePlugin,
@@ -1735,7 +1714,7 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(diagtest.LogSink(t), apitype.ResourcePlugin, "aws", nil, []ProjectPlugin{
+	path, err := GetPluginPath(diagtest.LogSink(t), PluginSpec{Kind: apitype.ResourcePlugin, Name: "aws"}, []ProjectPlugin{
 		{
 			Name: "aws",
 			Kind: apitype.ResourcePlugin,
@@ -1983,6 +1962,10 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
+	require.Equal(t, "path/", header.Name)
+
+	header, err = tarReader.Next()
+	require.NoError(t, err)
 	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
@@ -2022,6 +2005,10 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
 	require.NoError(t, err)
+	require.Equal(t, "path/", header.Name)
+
+	header, err = tarReader.Next()
+	require.NoError(t, err)
 	require.Equal(t, "path/test", header.Name)
 
 	buf, err := io.ReadAll(tarReader)
@@ -2060,6 +2047,10 @@ func TestGitSourceDownloadHash(t *testing.T) {
 
 	tarReader := tar.NewReader(zip)
 	header, err := tarReader.Next()
+	require.NoError(t, err)
+	require.Equal(t, "path/", header.Name)
+
+	header, err = tarReader.Next()
 	require.NoError(t, err)
 	require.Equal(t, "path/test", header.Name)
 

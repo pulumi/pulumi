@@ -24,6 +24,7 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -1225,6 +1226,14 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 			"", /*packageRef*/
 		)
 		require.NoError(t, err)
+
+		stateProvider := state["provider"].StringValue()
+		stateProviderRef, err := providers.ParseReference(stateProvider)
+		require.NoError(t, err)
+		require.Equal(t, stateProviderRef.URN().Name(), "default")
+		require.Equal(t, stateProviderRef.URN().Type().String(), "pulumi:providers:pkgA")
+		delete(state, "provider")
+
 		require.Equal(
 			t,
 			resource.PropertyMap{
@@ -1324,6 +1333,14 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 							"", /*packageRef*/
 						)
 						require.NoError(t, err)
+
+						stateProvider := state["provider"].StringValue()
+						stateProviderRef, err := providers.ParseReference(stateProvider)
+						require.NoError(t, err)
+						require.Equal(t, stateProviderRef.URN().Name(), "default")
+						require.Equal(t, stateProviderRef.URN().Type().String(), "pulumi:providers:pkgA")
+						delete(state, "provider")
+
 						require.Equal(
 							t,
 							resource.PropertyMap{
@@ -1464,6 +1481,14 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 			"", /*packageRef*/
 		)
 		require.NoError(t, err)
+
+		stateProvider := state["provider"].StringValue()
+		stateProviderRef, err := providers.ParseReference(stateProvider)
+		require.NoError(t, err)
+		require.Equal(t, stateProviderRef.URN().Name(), "default")
+		require.Equal(t, stateProviderRef.URN().Type().String(), "pulumi:providers:pkgA")
+		delete(state, "provider")
+
 		require.Equal(
 			t,
 			resource.PropertyMap{
@@ -1573,6 +1598,14 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 							"", /*packageRef*/
 						)
 						require.NoError(t, err)
+
+						stateProvider := state["provider"].StringValue()
+						stateProviderRef, err := providers.ParseReference(stateProvider)
+						require.NoError(t, err)
+						require.Equal(t, stateProviderRef.URN().Name(), "default")
+						require.Equal(t, stateProviderRef.URN().Type().String(), "pulumi:providers:pkgA")
+						delete(state, "provider")
+
 						require.Equal(
 							t,
 							resource.PropertyMap{

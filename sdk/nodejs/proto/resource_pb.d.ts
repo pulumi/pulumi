@@ -166,7 +166,10 @@ export class RegisterResourceRequest extends jspb.Message {
     clearObject(): void;
     getObject(): google_protobuf_struct_pb.Struct | undefined;
     setObject(value?: google_protobuf_struct_pb.Struct): RegisterResourceRequest;
-    getProtect(): boolean;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
     setProtect(value: boolean): RegisterResourceRequest;
     clearDependenciesList(): void;
     getDependenciesList(): Array<string>;
@@ -222,7 +225,10 @@ export class RegisterResourceRequest extends jspb.Message {
 
     getPluginchecksumsMap(): jspb.Map<string, Uint8Array | string>;
     clearPluginchecksumsMap(): void;
-    getRetainondelete(): boolean;
+
+    hasRetainondelete(): boolean;
+    clearRetainondelete(): void;
+    getRetainondelete(): boolean | undefined;
     setRetainondelete(value: boolean): RegisterResourceRequest;
     clearAliasesList(): void;
     getAliasesList(): Array<pulumi_alias_pb.Alias>;
@@ -263,7 +269,7 @@ export namespace RegisterResourceRequest {
         parent: string,
         custom: boolean,
         object?: google_protobuf_struct_pb.Struct.AsObject,
-        protect: boolean,
+        protect?: boolean,
         dependenciesList: Array<string>,
         provider: string,
 
@@ -286,7 +292,7 @@ export namespace RegisterResourceRequest {
         plugindownloadurl: string,
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
-        retainondelete: boolean,
+        retainondelete?: boolean,
         aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
         deletedwith: string,
         aliasspecs: boolean,
@@ -577,7 +583,10 @@ export class TransformResourceOptions extends jspb.Message {
     getDependsOnList(): Array<string>;
     setDependsOnList(value: Array<string>): TransformResourceOptions;
     addDependsOn(value: string, index?: number): string;
-    getProtect(): boolean;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
     setProtect(value: boolean): TransformResourceOptions;
     clearIgnoreChangesList(): void;
     getIgnoreChangesList(): Array<string>;
@@ -602,7 +611,10 @@ export class TransformResourceOptions extends jspb.Message {
     setCustomTimeouts(value?: RegisterResourceRequest.CustomTimeouts): TransformResourceOptions;
     getPluginDownloadUrl(): string;
     setPluginDownloadUrl(value: string): TransformResourceOptions;
-    getRetainOnDelete(): boolean;
+
+    hasRetainOnDelete(): boolean;
+    clearRetainOnDelete(): void;
+    getRetainOnDelete(): boolean | undefined;
     setRetainOnDelete(value: boolean): TransformResourceOptions;
     getDeletedWith(): string;
     setDeletedWith(value: string): TransformResourceOptions;
@@ -635,7 +647,7 @@ export class TransformResourceOptions extends jspb.Message {
 export namespace TransformResourceOptions {
     export type AsObject = {
         dependsOnList: Array<string>,
-        protect: boolean,
+        protect?: boolean,
         ignoreChangesList: Array<string>,
         replaceOnChangesList: Array<string>,
         version: string,
@@ -643,7 +655,7 @@ export namespace TransformResourceOptions {
         provider: string,
         customTimeouts?: RegisterResourceRequest.CustomTimeouts.AsObject,
         pluginDownloadUrl: string,
-        retainOnDelete: boolean,
+        retainOnDelete?: boolean,
         deletedWith: string,
         deleteBeforeReplace?: boolean,
         additionalSecretOutputsList: Array<string>,

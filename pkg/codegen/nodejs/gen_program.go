@@ -212,11 +212,11 @@ func GenerateProject(
 	fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"devDependencies": {
-		"@types/node": "^14"
+		"@types/node": "%s"
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",
-		`, project.Name.String())
+		`, project.Name.String(), MinimumNodeTypesVersion)
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
 	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
@@ -246,7 +246,11 @@ func GenerateProject(
 			return err
 		}
 
-		packageName := "@pulumi/" + p.Name
+		namespace := "@pulumi"
+		if p.Namespace != "" {
+			namespace = "@" + p.Namespace
+		}
+		packageName := namespace + "/" + p.Name
 		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
 		if err != nil {
 			return err
@@ -383,7 +387,11 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			if pkg == PulumiToken {
 				continue
 			}
-			pkgName := "@pulumi/" + pkg
+			namespace := "@pulumi"
+			if n.Schema != nil && n.Schema.PackageReference != nil && n.Schema.PackageReference.Namespace() != "" {
+				namespace = "@" + n.Schema.PackageReference.Namespace()
+			}
+			pkgName := namespace + "/" + pkg
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				def, err := n.Schema.PackageReference.Definition()
 				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", n.Schema.Token)
@@ -410,7 +418,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 						importSet.Add(importPackage)
 					}
 				}
-				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, g.Indent); ok {
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
@@ -907,13 +915,20 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
+				// Rewrite variable names separate from lowering to avoid rewriting
+				// keywords that are generated elsewhere (e.g. `this` in the case of
+				// setting a resource parent).
+				x, diagnostics := g.RewriteVariableRenames(attr.Value, attr.Value.Type())
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+
 				if r.Schema != nil {
 					destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
 					g.diagnostics = append(g.diagnostics, diagnostics...)
+
 					g.Fgenf(w, fmtString, propertyName,
-						g.lowerExpression(attr.Value, destType.(model.Type)))
+						g.lowerExpression(x, destType.(model.Type)))
 				} else {
-					g.Fgenf(w, fmtString, propertyName, attr.Value)
+					g.Fgenf(w, fmtString, propertyName, x)
 				}
 			}
 		})
@@ -1275,10 +1290,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if getType == "Object" {
 		// compute the type parameter T for the call to config.getObject<T>(...)
 		computedTypeParam := computeConfigTypeParam(v.Type())
-		if computedTypeParam != "any" {
-			// any is redundant
-			typeParam = fmt.Sprintf("<%s>", computedTypeParam)
-		}
+		typeParam = fmt.Sprintf("<%s>", computedTypeParam)
 	}
 
 	getOrRequire := "get"

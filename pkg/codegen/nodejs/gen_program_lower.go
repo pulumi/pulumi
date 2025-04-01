@@ -91,6 +91,11 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 	}
 
 	arg := args[0]
+	// If arg is output<dynamic>, then we can't lift the traversal.
+	if arg.Type().Equals(model.NewOutputType(model.DynamicType)) {
+		return nil, false
+	}
+
 	switch then := then.(type) {
 	case *model.IndexExpression:
 		t := arg.Type()

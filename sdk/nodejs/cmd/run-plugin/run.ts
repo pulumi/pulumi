@@ -22,7 +22,7 @@ import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
-import * as stack from "../../runtime/stack";
+import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -275,14 +275,37 @@ ${errMsg}`,
         // loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            // Execute the module and capture any module outputs it exported. If the exported value
-            // was itself a Function, then just execute it.  This allows for exported top level
-            // async functions that pulumi programs can live in.  Finally, await the value we get
-            // back.  That way, if it is async and throws an exception, we properly capture it here
-            // and handle it.
+            // Execute the module and capture any module outputs it exported.
             const reqResult = require(program);
+
+            // Get any Pulumi Components exported by the module
+            const components = getPulumiComponents(reqResult);
+            if (components.length > 0) {
+                const absDir = path.resolve(program);
+                const packStr = fs.readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
+                const packageJSON = JSON.parse(packStr);
+                const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
+                const providerName = matches[2];
+                let namespace = undefined;
+                if (matches[1]) {
+                    namespace = matches[1].substring(1, matches[1].length - 1);
+                }
+
+                // If we found any components, boot up a component provider host
+                return await componentProviderHost({
+                    name: providerName,
+                    namespace: namespace,
+                    dirname: program,
+                    components,
+                });
+            }
+
+            // If the exported value was itself a Function, then just execute it. This allows for
+            // exported top level async functions that pulumi programs can live in.
             const invokeResult = reqResult instanceof Function ? reqResult() : reqResult;
 
+            // Finally, await the value we get back. That way, if it is async and throws an exception,
+            // we properly capture it here and handle it.
             return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely

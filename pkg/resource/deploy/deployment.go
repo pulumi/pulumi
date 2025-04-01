@@ -53,6 +53,8 @@ type BackendClient interface {
 
 // Options controls the deployment process.
 type Options struct {
+	// true if the step generator should calculate diffs in parallel via DiffSteps.
+	ParallelDiff bool
 	// true if the process is a dry run (that is, won't make any changes), such as
 	// during a preview action or when previewing another action like refresh or
 	// destroy.
@@ -64,12 +66,18 @@ type Options struct {
 	// whether or not to exit after refreshing (i.e. this is specifically a
 	// refresh operation).
 	RefreshOnly bool
+	// true if the plan should run the program as part of destroy.
+	DestroyProgram bool
 	// if specified, only operate on the specified resources.
 	Targets UrnTargets
 	// if specified, mark the specified resources for replacement.
 	ReplaceTargets UrnTargets
 	// true if target dependents should be computed automatically.
 	TargetDependents bool
+	// if specified, ignore the specified resources
+	Excludes UrnTargets
+	// true if target dependents should be excluded automatically.
+	ExcludeDependents bool
 	// whether or not to use legacy diffing behavior.
 	UseLegacyDiff bool
 	// true if the deployment should use legacy refresh diffing behavior and

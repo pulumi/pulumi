@@ -442,8 +442,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.DefaultName(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, "", ""),
+			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
+			nil, nil, nil, "", nil, nil, nil, "", ""),
 		done: done,
 	}
 	return event, done, nil
@@ -812,14 +812,11 @@ func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req p
 	rawProviderRef string,
 ) (providers.Reference, error) {
 	if rawProviderRef != "" {
-		// Check if this is a real provider ref (URN::ID) or a package reference (a dashed uuid)
-		if strings.Contains(rawProviderRef, "::") {
-			ref, err := providers.ParseReference(rawProviderRef)
-			if err != nil {
-				return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
-			}
-			return ref, nil
+		ref, err := providers.ParseReference(rawProviderRef)
+		if err != nil {
+			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %w", err)
 		}
+		return ref, nil
 	}
 
 	ref, err := defaultProviders.getDefaultProviderRef(req)
@@ -1084,13 +1081,61 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(
-		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+
+	// In order to allow method calls on *provider resources themselves*, we'll check if the token references a provider
+	// type (e.g. pulumi:providers:<package>/<method>). If it does, we need to use that provider resource *both* as the
+	// receiver of the method *and* the provider instance that handles the `Call` implementation itself. That is, we
+	// *don't* want to e.g. boot up a default provider instance and then call `Call` on it with a `__self__` referencing
+	// some explicit provider -- `__self__` and the handling instance must be the same. To this end, if we see a provider
+	// token type, we'll build a provider request and reference from the token and `__self__` arguments. If it doesn't,
+	// we'll proceed as normal, using the request's provider information to boot an instance.
+	var providerReq providers.ProviderRequest
+	var rawProviderRef string
+	var err error
+	if providers.IsProviderType(tokens.Type(tok)) {
+		parts := strings.Split(tok.Name().String(), "/")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid provider method token %v", tok)
+		}
+
+		packageName := tokens.Package(parts[0])
+		providerReq, err = parseProviderRequest(
+			packageName, req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+
+		self, ok := req.GetArgs().Fields["__self__"]
+		if !ok {
+			return nil, errors.New("missing __self__ argument for provider method call")
+		}
+
+		selfFields := self.GetStructValue().Fields
+		if selfFields == nil {
+			return nil, errors.New("missing __self__ argument properties for provider method call")
+		}
+
+		provURN, hasProvURN := self.GetStructValue().Fields["urn"]
+		if !hasProvURN {
+			return nil, errors.New("missing __self__.urn for provider method call")
+		}
+
+		provID, hasProvID := self.GetStructValue().Fields["id"]
+		if !hasProvID {
+			return nil, errors.New("missing __self__.id for provider method call")
+		}
+
+		rawProviderRef = fmt.Sprintf("%s::%s", provURN.GetStringValue(), provID.GetStringValue())
+	} else {
+		providerReq, err = parseProviderRequest(
+			tok.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+
+		rawProviderRef = req.GetProvider()
+	}
 	if err != nil {
 		return nil, err
 	}
 
+	// If we've got a package reference, this takes precedence over any provider request we'd compute.
 	packageRef := req.GetPackageRef()
 	if packageRef != "" {
 		var has bool
@@ -1100,7 +1145,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		}
 	}
 
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, rawProviderRef, tok)
 	if err != nil {
 		return nil, err
 	}
@@ -1579,11 +1624,17 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
-// Currently only inherits DeletedWith from parent.
+// Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
 	goal := child
 	if goal.DeletedWith == "" {
 		goal.DeletedWith = parent.DeletedWith
+	}
+	if goal.Protect == nil {
+		goal.Protect = parent.Protect
+	}
+	if goal.RetainOnDelete == nil {
+		goal.RetainOnDelete = parent.RetainOnDelete
 	}
 	return &goal
 }
@@ -1900,7 +1951,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	opts := &pulumirpc.TransformResourceOptions{
 		DependsOn:               req.GetDependencies(),
-		Protect:                 req.GetProtect(),
+		Protect:                 req.Protect,
 		IgnoreChanges:           req.GetIgnoreChanges(),
 		ReplaceOnChanges:        req.GetReplaceOnChanges(),
 		Version:                 req.GetVersion(),
@@ -1909,7 +1960,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Providers:               req.GetProviders(),
 		CustomTimeouts:          req.GetCustomTimeouts(),
 		PluginDownloadUrl:       req.GetPluginDownloadURL(),
-		RetainOnDelete:          req.GetRetainOnDelete(),
+		RetainOnDelete:          req.RetainOnDelete,
 		DeletedWith:             req.GetDeletedWith(),
 		DeleteBeforeReplace:     deleteBeforeReplace,
 		AdditionalSecretOutputs: req.GetAdditionalSecretOutputs(),
@@ -2241,9 +2292,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Delete: customTimeouts.Delete,
 			}
 		}
-		if opts.DeleteBeforeReplace != nil {
-			options.DeleteBeforeReplace = *opts.DeleteBeforeReplace
-		}
+		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
 		constructResult, err := provider.Construct(ctx, plugin.ConstructRequest{
 			Info:    rm.constructInfo,
@@ -2438,7 +2487,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return len(replaceOnChanges) > 0
 		})
 		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
-			return retainOnDelete
+			return retainOnDelete != nil
 		})
 		rm.checkComponentOption(result.State.URN, "deletedWith", func() bool {
 			return deletedWith != ""

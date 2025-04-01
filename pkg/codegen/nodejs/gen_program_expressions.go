@@ -45,6 +45,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	if g.asyncMain {
 		expr = g.awaitInvokes(expr)
 	}
+
 	expr = pcl.RewritePropertyReferences(expr)
 	skipToJSONWhenRewritingApplies := true
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncMain, skipToJSONWhenRewritingApplies)
@@ -57,6 +58,21 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	diags = diags.Extend(lowerProxyDiags)
 	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr
+}
+
+func (g *generator) RewriteVariableRenames(expr model.Expression, typ model.Type) (model.Expression, hcl.Diagnostics) {
+	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+		traversal, ok := expr.(*model.ScopeTraversalExpression)
+		if !ok {
+			return expr, nil
+		}
+
+		traversal.RootName = makeValidIdentifier(traversal.RootName)
+
+		return expr, nil
+	}
+
+	return model.VisitExpression(expr, model.IdentityVisitor, rewriter)
 }
 
 func (g *generator) GetPrecedence(expr model.Expression) int {
@@ -558,9 +574,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "getOutput":
 		g.Fgenf(w, "%s.getOutput(%v)", expr.Args[0], expr.Args[1])
 	case "try":
-		g.genTry(w, expr.Args)
+		g.genTry(w, expr)
 	case "can":
-		g.genCan(w, expr.Args)
+		g.genCan(w, expr)
 	case "rootDirectory":
 		g.genRootDirectory(w)
 	default:
@@ -578,19 +594,23 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 // expression of the form:
 //
 //	try_(
-//	    // @ts-ignore
 //	    () => <arg1>,
-//	    // @ts-ignore
 //	    () => <arg2>,
 //	    ...
 //	)
-func (g *generator) genTry(w io.Writer, args []model.Expression) {
+func (g *generator) genTry(w io.Writer, expr *model.FunctionCallExpression) {
+	args := expr.Args
 	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+	_, shouldUseOutputTry := expr.Signature.ReturnType.(*model.OutputType)
 
-	g.Fprintf(w, "try_(")
+	functionName := "try_"
+	if shouldUseOutputTry {
+		functionName = "tryOutput_"
+	}
+
+	g.Fprintf(w, "%s(", functionName)
 	for i, arg := range args {
 		g.Indented(func() {
-			g.Fgenf(w, "\n%s// @ts-ignore", g.Indent)
 			g.Fgenf(w, "\n%s() => %v", g.Indent, g.lowerExpression(arg, arg.Type()))
 		})
 		if i < len(args)-1 {
@@ -608,17 +628,22 @@ func (g *generator) genTry(w io.Writer, args []model.Expression) {
 // We also disable type checking for the arguments, resulting in expression of the form:
 //
 //	can_(
-//	    // @ts-ignore
 //	    () => <arg1
 //	)
 //
 // which returns a bool indicating if the closure ran successfully.
-func (g *generator) genCan(w io.Writer, args []model.Expression) {
+func (g *generator) genCan(w io.Writer, expr *model.FunctionCallExpression) {
+	args := expr.Args
 	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+	_, shouldUseOutputCan := expr.Signature.ReturnType.(*model.OutputType)
+
+	functionName := "can_"
+	if shouldUseOutputCan {
+		functionName = "canOutput_"
+	}
 
 	arg := args[0]
-	g.Fprintf(w, "// @ts-ignore")
-	g.Fgenf(w, "\ncan_(() => %v)", g.lowerExpression(arg, arg.Type()))
+	g.Fgenf(w, "\n%s(() => %v)", functionName, g.lowerExpression(arg, arg.Type()))
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {

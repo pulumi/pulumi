@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -449,6 +450,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		Stderr:               &stderr,
 		DeterministicOutput:  true,
 		ShowLinkToCopilot:    false,
+		ShowCopilotSummary:   false,
 	})
 
 	for _, e := range expectedEvents {
@@ -498,6 +500,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			Stderr:               &stderr,
 			DeterministicOutput:  true,
 			ShowLinkToCopilot:    false,
+			ShowCopilotSummary:   false,
 		}, false)
 
 	for _, e := range expectedEvents {
@@ -552,6 +555,11 @@ func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	if o.HostF != nil {
 		opts.Host = o.HostF()
 	}
+	// Set a sensible parallel count because most tests leave this zero.
+	if opts.Parallel == 0 {
+		opts.Parallel = int32(runtime.NumCPU()) //nolint:gosec // NumCPU isn't going to overflow int32
+	}
+
 	return opts
 }
 

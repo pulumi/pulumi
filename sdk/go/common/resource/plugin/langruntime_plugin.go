@@ -107,9 +107,10 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	} else {
 		path, err := workspace.GetPluginPath(
 			ctx.Diag,
-			apitype.LanguagePlugin,
-			strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
-			nil,
+			workspace.PluginSpec{
+				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
+				Kind: apitype.LanguagePlugin,
+			},
 			host.GetProjectPlugins(),
 		)
 		if err != nil {
@@ -296,20 +297,14 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 			}
 		}
 
-		source := info.Name
-		if strings.HasPrefix(info.Server, "git://") {
-			source = strings.TrimPrefix(info.Server, "git://")
-			info.Server = ""
-		}
-
-		pluginSpec, err := workspace.NewPluginSpec(
-			source, apitype.PluginKind(info.Kind), version, info.Server, info.Checksums)
-		if err != nil {
-			return nil, err
-		}
-
 		results = append(results, workspace.PackageDescriptor{
-			PluginSpec:       pluginSpec,
+			PluginSpec: workspace.PluginSpec{
+				Name:              info.Name,
+				Kind:              apitype.PluginKind(info.Kind),
+				Version:           version,
+				PluginDownloadURL: info.Server,
+				Checksums:         info.Checksums,
+			},
 			Parameterization: parameterization,
 		})
 	}

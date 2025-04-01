@@ -984,7 +984,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
 	if r.IsComponent {
-		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
+		if mod.parameterization != nil {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true, %s)\n",
+				tok,
+				argsOverride,
+				"Utilities.PackageParameterization()")
+		} else {
+			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
+		}
 	} else {
 		if mod.parameterization != nil {
 			fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), %s)\n",
@@ -1072,9 +1079,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "                {\n")
 		for _, alias := range r.Aliases {
 			fmt.Fprintf(w, "                    ")
-			if alias.Type != nil {
-				fmt.Fprintf(w, "new global::Pulumi.Alias { Type = \"%v\" },\n", *alias.Type)
-			}
+			fmt.Fprintf(w, "new global::Pulumi.Alias { Type = \"%v\" },\n", alias.Type)
 		}
 		fmt.Fprintf(w, "                },\n")
 	}
@@ -2372,7 +2377,7 @@ func genProjectFile(pkg *schema.Package,
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = "[3.71.1.0,4)"
+			packageReferences["Pulumi"] = "[3.76.1.0,4)"
 		}
 	}
 
@@ -2439,6 +2444,9 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 			info = &csharpInfo
 			infos[def] = info
+		}
+		if info.RootNamespace == "" && pkg.Namespace != "" {
+			info.RootNamespace = namespaceName(nil, pkg.Namespace)
 		}
 		return info
 	}

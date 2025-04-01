@@ -17,6 +17,8 @@ package testing
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"os"
+	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -26,4 +28,16 @@ func RandomStackName() string {
 	_, err := rand.Read(b)
 	contract.AssertNoErrorf(err, "failed to generate random stack name")
 	return "test" + hex.EncodeToString(b)
+}
+
+// LogTruncated logs a message, truncating it if it is too long.  PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT can be set to
+// "true" to see the full log message.
+func LogTruncated(t *testing.T, name, message string) {
+	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
+		// Cut down logs so they don't overwhelm the test output
+		if len(message) > 2048 {
+			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		}
+	}
+	t.Logf("%s: %s", name, message)
 }
