@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -1725,7 +1726,23 @@ runtime: yaml
 	// Run pulumi watch in a separate goroutine, so it runs in the background and installs the CLI.
 	go func() {
 		e.Env = append(e.Env, "PULUMI_AUTO_UPDATE_CLI=true")
-		e.RunCommand(filepath.Join(e.HomePath, "bin", pulumiName), "watch")
+		for {
+			t.Log("running watch")
+			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+			cmd := exec.CommandContext(ctx, filepath.Join(e.HomePath, "bin", pulumiName), "watch")
+			cmd.Dir = e.RootPath
+			cmd.Cancel = func() error {
+				syscall.Kill(cmd.Process.Pid, syscall.SIGINT)
+				return nil
+			}
+			cmd.WaitDelay = 5 * time.Second
+			env := os.Environ()
+			env = append(env, "PULUMI_AUTO_UPDATE_CLI=true")
+			cmd.Env = append(append(append(env, "PULUMI_HOME="+e.HomePath), "PULUMI_CREDENTIALS_PATH="+e.RootPath), "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+
+			out, err := cmd.CombinedOutput()
+			t.Log("ran watch" + string(out) + err.Error())
+		}
 	}()
 	// Wait for the new CLI to be installed, give it two minutes at most
 	endTime := time.Now().Add(time.Minute)
@@ -1740,5 +1757,6 @@ runtime: yaml
 		if strings.Contains(stdout, "v3.160.0-alpha.x35ab291") {
 			break
 		}
+		time.Sleep(5 * time.Second)
 	}
 }

@@ -457,7 +457,6 @@ func NewPulumiCmd() *cobra.Command {
 
 // haveNewerDevVersion checks whethere we have a newer dev version available.
 func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) bool {
-	return true
 	if devVersion.Major != curVersion.Major {
 		return devVersion.Major > curVersion.Major
 	}
@@ -550,11 +549,12 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 	tgzFile := fmt.Sprintf("pulumi-v%s-%s-%s.tar.gz", version, runtime.GOOS, arch)
 
 	downloadURL := fmt.Sprintf("https://github.com/pulumi/pulumi/releases/download/v%s/", version)
-	if isDevVersion(version) {
+	if isDevVersion(version) || isLocalVersion(version) {
 		downloadURL = fmt.Sprintf("https://get.pulumi.com/releases/sdk/")
 	}
 
 	downloadURL = fmt.Sprintf("%s/%s", downloadURL, tgzFile)
+	fmt.Println(downloadURL)
 
 	os.MkdirAll(filepath.Join(homeDir, "tmp"), 0o700)
 	tmpFile := filepath.Join(homeDir, "tmp", tgzFile)
@@ -633,6 +633,22 @@ func installNewCLI(ctx context.Context, version semver.Version) *semver.Version 
 	if err != nil {
 		logging.V(3).Infof("error extracting new CLI: %s", err)
 		return nil
+	}
+	if runtime.GOOS == "windows" {
+		err := os.WriteFile(filepath.Join(tmpDir, "updater.ps1"), []byte(windowsScript), 0o755)
+		if err != nil {
+			logging.V(3).Infof("error writing updater script: %s", err)
+			return nil
+		}
+		//nolint:gosec
+		cmd := exec.Command("powershell", "-File", filepath.Join(tmpDir, "updater.ps1"),
+			strconv.Itoa(os.Getpid()), tmpDir, filepath.Join(homeDir, "bin"))
+		err = cmd.Start()
+		if err != nil {
+			logging.V(3).Infof("error running updater script: %s", err)
+			return nil
+		}
+		return &version
 	}
 	entries, err := os.ReadDir(filepath.Join(tmpDir, "pulumi"))
 	if err != nil {
@@ -981,3 +997,97 @@ func isDevVersion(s semver.Version) bool {
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
 }
+
+const windowsScript = `
+param(
+    [Parameter(Mandatory=$true)]
+    [int]$ProcessId,
+
+    [Parameter(Mandatory=$true)]
+    [string]$SourceFolder,
+
+    [Parameter(Mandatory=$true)]
+    [string]$DestinationFolder
+)
+
+# Display script information
+Write-Host "Process Monitor and File Mover"
+Write-Host "Monitoring process ID: $ProcessId"
+Write-Host "Will move files from: $SourceFolder"
+Write-Host "To: $DestinationFolder"
+Write-Host "Waiting for process to exit..."
+
+# Check if source and destination folders exist
+if (-not (Test-Path -Path $SourceFolder)) {
+    Write-Error "Source folder does not exist: $SourceFolder"
+    exit 1
+}
+
+if (-not (Test-Path -Path $DestinationFolder)) {
+    Write-Host "Destination folder does not exist. Creating it now."
+    New-Item -ItemType Directory -Path $DestinationFolder | Out-Null
+}
+
+# Function to check if process is running
+function Test-ProcessRunningById {
+    param (
+        [int]$Id
+    )
+
+    $process = Get-Process -Id $Id -ErrorAction SilentlyContinue
+    return $null -ne $process
+}
+
+# Wait for the process to exit if it's running
+try {
+    if (Test-ProcessRunningById -Id $ProcessId) {
+        $processInfo = Get-Process -Id $ProcessId
+        Write-Host "Process ID $ProcessId ($($processInfo.ProcessName)) is running. Waiting for it to exit..."
+
+        do {
+            Start-Sleep -Seconds 5
+        } while (Test-ProcessRunningById -Id $ProcessId)
+
+        Write-Host "Process ID $ProcessId has exited."
+    } else {
+        Write-Host "Process ID $ProcessId is not currently running or doesn't exist."
+        exit 1
+    }
+} catch {
+    Write-Error "Error checking process status: $_"
+    exit 1
+}
+
+# Move files from source to destination
+Write-Host "Moving files from $SourceFolder to $DestinationFolder"
+
+$files = Get-ChildItem -Path $SourceFolder -File
+
+if ($files.Count -eq 0) {
+    Write-Host "No files found in source folder."
+} else {
+    foreach ($file in $files) {
+        $destinationPath = Join-Path -Path $DestinationFolder -ChildPath $file.Name
+
+        # Check if file already exists in destination
+        if (Test-Path -Path $destinationPath) {
+            Write-Warning "File already exists in destination: $($file.Name)"
+            $newName = "{0}_{1}{2}" -f $file.BaseName, (Get-Date -Format "yyyyMMdd_HHmmss"), $file.Extension
+            $destinationPath = Join-Path -Path $DestinationFolder -ChildPath $newName
+            Write-Host "Renaming to: $newName"
+        }
+
+        # Move the file
+        try {
+            Move-Item -Path $file.FullName -Destination $destinationPath -Force
+            Write-Host "Moved: $($file.Name)"
+        } catch {
+            Write-Error "Failed to move file $($file.Name): $_"
+        }
+    }
+
+    Write-Host "File moving complete. Moved $($files.Count) files."
+}
+
+Write-Host "Script execution complete."
+`
