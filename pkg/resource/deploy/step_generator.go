@@ -1703,34 +1703,31 @@ func (sg *stepGenerator) GenerateRefreshes(
 				// transitive dependents as well.
 				var add bool
 				if excludesOpt.IsConstrained() {
-					// If the resource is known to be excluded, we can skip this step
-					// entirely at this point.
-					if excludesOpt.Contains(res.URN) {
-						continue
-					}
+					add = excludesOpt.Contains(res.URN)
 
-					knownToBeExcluded := false
-
-					// In the case of `--exclude-dependents`, we need to check through all
-					// the dependencies to see if they have already been marked as excluded.
-					// If so, this dependent is also to be excluded, and we add it to the
-					// list of known excludes to catch transitive excludes as well.
-					if sg.deployment.opts.ExcludeDependents {
+					// In the case of `--exclude-dependents`, we need to flag all our dependents as excluded as well. We
+					// always visit the target before its dependents, so when we get round to the dependent in the loop
+					// it'll be tagged correctly.
+					if !add && sg.deployment.opts.ExcludeDependents {
 						_, allDeps := res.GetAllDependencies()
-
 						for _, dep := range allDeps {
-							if excludesOpt.Contains(dep.URN) {
-								excludesOpt.addLiteral(res.URN)
-
-								knownToBeExcluded = true
-								break
-							}
+							excludesOpt.addLiteral(dep.URN)
 						}
 					}
-
-					add = !knownToBeExcluded
-				} else {
+				} else if targetsOpt.IsConstrained() {
 					add = targetsOpt.Contains(res.URN)
+
+					// In the case of `--target-dependents`, we need to flag all our dependents as targeted as well. We
+					// always visit the target before its dependents, so when we get round to the dependent in the loop
+					// it'll be tagged correctly.
+					if add && sg.deployment.opts.TargetDependents {
+						_, allDeps := res.GetAllDependencies()
+						for _, dep := range allDeps {
+							targetsOpt.addLiteral(dep.URN)
+						}
+					}
+				} else {
+					add = true
 				}
 
 				if add {
