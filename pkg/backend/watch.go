@@ -24,10 +24,12 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -48,6 +50,8 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 
 	startTime := time.Now()
 
+	color := op.Opts.Display.Color
+
 	go func() {
 		shown := map[operations.LogEntry]bool{}
 		for {
@@ -63,7 +67,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 					message := strings.TrimRight(logEntry.Message, "\n")
-					display.WatchPrefixPrintf(eventTime, logEntry.ID, "%s\n", message)
+					display.WatchPrefixPrintf(eventTime, color, logEntry.ID, "%s\n", message)
 
 					shown[logEntry] = true
 				}
@@ -79,25 +83,59 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	}
 	defer stop()
 
-	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
+	fmt.Printf(color.Colorize(
+		colors.SpecHeadline+"👀 Watch mode enabled. "+colors.Reset+colors.Magenta+
+			"Make an edit to %s and save to deploy.\n"+colors.Reset),
+		stack.Ref().FullyQualifiedName())
 
 	for range events {
-		display.WatchPrefixPrintf(time.Now(), "", "%s",
-			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
+		fmt.Printf(color.Colorize(
+			colors.SpecHeadline + "🚀 Save detected. " +
+				colors.Reset + colors.Magenta + "Deploying changes...\n" + colors.Reset))
 
 		// Perform the update operation
-		_, _, err = apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		_, changes, err := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+
+		// Display the kinds of updates performed.
+		var opKinds []string
+		for opKind := range changes {
+			opKinds = append(opKinds, string(opKind))
+		}
+		opCount := 0
+		sort.Strings(opKinds)
+		var summary string
+		for _, opKind := range opKinds {
+			if opKind == "same" {
+				continue
+			}
+			if c := changes[sdkDisplay.StepOp(opKind)]; c > 0 {
+				if summary != "" {
+					summary += ", "
+				}
+				summary += fmt.Sprintf("%d %s", c, opKind)
+				opCount += c
+			}
+		}
+		if opCount == 0 {
+			summary += "None"
+		}
+		summary = fmt.Sprintf("changes made: %s", summary)
+
+		// Now summarize the outcome.
 		if err != nil {
 			logging.V(5).Infof("watch update failed: %v", err)
 			if err == context.Canceled {
 				return err
 			}
-			display.WatchPrefixPrintf(time.Now(), "", "%s",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
+			display.WatchPrefixPrintf(time.Now(), color, "",
+				colors.BrightRed+colors.Bold+"❌ Update failed; "+
+					colors.Reset+colors.Red+"%s."+colors.Reset+"\n", summary)
+			display.WatchPrefixPrintf(time.Now(), color, "",
+				colors.SpecError+fmt.Sprintf("error: %v", err)+colors.Reset+"\n")
 		} else {
-			display.WatchPrefixPrintf(time.Now(), "", "%s",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
+			display.WatchPrefixPrintf(time.Now(), color, "",
+				colors.BrightGreen+colors.Bold+"🎉 Update complete; "+
+					colors.Reset+colors.Green+"%s."+colors.Reset+"\n", summary)
 		}
 	}
 

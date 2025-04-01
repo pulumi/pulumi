@@ -38,20 +38,22 @@ import (
 // This message is printed in non-interactive scenarios.
 // In order to maintain backwards compatibility with older versions of the Automation API,
 // the message is not changed for non-interactive scenarios.
-func printPermalinkNonInteractive(out io.Writer, opts Options, permalink string) {
-	printPermalink(out, opts, "View Live", permalink)
+func printPermalinkNonInteractive(out io.Writer, opts Options, permalink, prefix string) {
+	printPermalink(out, opts, "View Live", permalink, prefix)
 }
 
 // printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `.
 // This is printed in interactive scenarios that use the tree renderer.
-func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink string) {
-	printPermalink(term, opts, "View in Browser (Ctrl+O)", permalink)
+func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink, prefix string) {
+	printPermalink(term, opts, "View in Browser (Ctrl+O)", permalink, prefix)
 }
 
-func printPermalink(out io.Writer, opts Options, message, permalink string) {
+func printPermalink(out io.Writer, opts Options, message, permalink, prefix string) {
 	if !opts.SuppressPermalink && permalink != "" {
 		// Print a URL at the beginning of the update pointing to the Pulumi Service.
-		headline := colors.SpecHeadline + message + ": " + colors.Underline + colors.BrightBlue + permalink +
+		headline := prefix +
+			colors.SpecHeadline + message + ": " +
+			colors.Underline + colors.BrightBlue + permalink +
 			colors.Reset + "\n\n"
 		fmt.Fprint(out, opts.Color.Colorize(headline))
 	}
@@ -84,8 +86,8 @@ func ShowEvents(
 		return
 	}
 
-	if opts.Type != DisplayProgress {
-		printPermalinkNonInteractive(os.Stdout, opts, permalink)
+	if opts.Type != DisplayProgress && opts.Type != DisplayWatch {
+		printPermalinkNonInteractive(os.Stdout, opts, permalink, "")
 	}
 
 	switch opts.Type {
@@ -97,7 +99,7 @@ func ShowEvents(
 		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
 			"directly instead of through ShowEvents")
 	case DisplayWatch:
-		ShowWatchEvents(op, events, done, opts)
+		ShowWatchEvents(op, permalink, events, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}
