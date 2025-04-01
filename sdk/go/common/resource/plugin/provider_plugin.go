@@ -1779,6 +1779,8 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	monitorEndpoint := strings.Replace(req.Info.MonitorAddress, "127.0.0.1", "host.docker.internal", -1)
+
 	rpcReq := &pulumirpc.ConstructRequest{
 		Project:                 req.Info.Project,
 		Stack:                   req.Info.Stack,
@@ -1786,7 +1788,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		ConfigSecretKeys:        configSecretKeys,
 		DryRun:                  req.Info.DryRun,
 		Parallel:                req.Info.Parallel,
-		MonitorEndpoint:         req.Info.MonitorAddress,
+		MonitorEndpoint:         monitorEndpoint,
 		Type:                    string(req.Type),
 		Name:                    req.Name,
 		Parent:                  string(req.Parent),

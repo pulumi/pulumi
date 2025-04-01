@@ -366,6 +366,8 @@ func newPlugin[T any](
 			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
 	}
 
+	fmt.Printf("got port %d\n", port)
+
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
 	stdoutDone := make(chan bool)
 	plug.stdoutDone = stdoutDone

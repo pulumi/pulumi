@@ -1866,6 +1866,7 @@ func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
 	}
 	if proj != nil {
 		runtime := strings.ToLower(proj.Runtime.Name())
+		logging.V(6).Infof("InstallDependencies runtime=%s", runtime)
 		// For now, we only do this for Node.js and Python. For Go, the expectation is the binary is
 		// already built. For .NET, similarly, a single self-contained binary could be used, but
 		// otherwise `dotnet run` will implicitly run `dotnet restore`.
@@ -1891,6 +1892,19 @@ func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
 				false /*showOutput*/, os.Stdout, os.Stderr); err != nil {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
+		case "docker":
+			// options := proj.Runtime.Options()
+			// image, ok := options["image"].(string)
+			// if !ok {
+			// 	return fmt.Errorf("missing runtime.options.image")
+			// }
+			// cmd := exec.CommandContext(ctx, "docker", "pull", image)
+			// logging.V(6).Infof("InstallDependencies docker running %s", cmd.String())
+			// out, err := cmd.CombinedOutput()
+			// if err != nil {
+			// 	return fmt.Errorf("pulling docker image %s: %w", image, err)
+			// }
+			// logging.V(6).Infof("InstallDependencies docker output: %s", out)
 		}
 	}
 	return nil
