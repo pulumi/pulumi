@@ -1487,11 +1487,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 			externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", externalModuleName(pkg), imp))
 		} else {
-			namespace := "@pulumi"
-			if res != nil && res.PackageReference != nil && res.PackageReference.Namespace() != "" {
-				namespace = "@" + res.PackageReference.Namespace()
-			}
-			externalImports.Add(fmt.Sprintf("import * as %s from \"%s/%s\";", externalModuleName(pkg), namespace, pkg))
+			externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", externalModuleName(pkg), pkg))
 		}
 	}
 
