@@ -14,11 +14,10 @@
 
 //go:build windows
 
-package display
+package sysutil
 
 import (
 	"fmt"
-	"os"
 	"syscall"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -38,7 +37,7 @@ func init() {
 	generateConsoleCtrlEvent = proc
 }
 
-func sigint() {
-	_, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_BREAK_EVENT, uintptr(os.Getpid()))
+func Sigint(pid int) {
+	_, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_BREAK_EVENT, uintptr(pid))
 	contract.IgnoreError(err)
 }
