@@ -817,10 +817,6 @@ func (proj *PolicyPackProject) Save(path string) error {
 type PluginProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
-	// Namespace is the namespace for the plugin.
-	Namespace string `json:"namespace" yaml:"namespace"`
-	// Name is the name for the plugin.
-	Name string `json:"name" yaml:"name"`
 }
 
 func (proj *PluginProject) Validate() error {

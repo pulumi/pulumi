@@ -35,6 +35,7 @@ func Destroy(
 ) (*deploy.Plan, display.ResourceChanges, error) {
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
+	contract.Requiref(!opts.DestroyProgram, "opts.DestroyProgram", "must be false")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 

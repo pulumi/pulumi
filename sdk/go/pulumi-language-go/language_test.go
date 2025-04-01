@@ -70,8 +70,8 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	message := req.Message
 	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
 		// Cut down logs so they don't overwhelm the test output
-		if len(message) > 1024 {
-			message = message[:1024] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		if len(message) > 2048 {
+			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
 		}
 	}
 
@@ -203,6 +203,20 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 	"l2-provider-call": {
 		Paths: []string{
 			filepath.Join("testdata", "overrides", "l2-provider-call"),
+		},
+	},
+
+	// Doesn't add necessary casts for pulumi inputs
+	"l3-component-simple": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l3-component-simple"),
+		},
+	},
+
+	// TODO[pulumi/pulumi#18202]: Delete this override when the programgen issue is addressed.
+	"l2-provider-call-explicit": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-provider-call-explicit"),
 		},
 	},
 }

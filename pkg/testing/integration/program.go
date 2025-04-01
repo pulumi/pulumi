@@ -281,7 +281,7 @@ type ProgramTestOptions struct {
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
 
-	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`. This
+	// DebugLogLevel may be set to anything >0 to enable excessively verbose debug logging from `pulumi`. This
 	// is equivalent to `--logflow --logtostderr -v=N`, where N is the value of DebugLogLevel. This may also
 	// be enabled by setting the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
 	DebugLogLevel int

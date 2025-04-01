@@ -45,6 +45,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	if g.asyncMain {
 		expr = g.awaitInvokes(expr)
 	}
+
 	expr = pcl.RewritePropertyReferences(expr)
 	skipToJSONWhenRewritingApplies := true
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncMain, skipToJSONWhenRewritingApplies)
@@ -57,6 +58,21 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	diags = diags.Extend(lowerProxyDiags)
 	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr
+}
+
+func (g *generator) RewriteVariableRenames(expr model.Expression, typ model.Type) (model.Expression, hcl.Diagnostics) {
+	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+		traversal, ok := expr.(*model.ScopeTraversalExpression)
+		if !ok {
+			return expr, nil
+		}
+
+		traversal.RootName = makeValidIdentifier(traversal.RootName)
+
+		return expr, nil
+	}
+
+	return model.VisitExpression(expr, model.IdentityVisitor, rewriter)
 }
 
 func (g *generator) GetPrecedence(expr model.Expression) int {

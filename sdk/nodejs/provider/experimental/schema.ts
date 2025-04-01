@@ -73,6 +73,7 @@ export interface PackageSpec {
 
 export function generateSchema(
     providerName: string,
+    version: string,
     description: string,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
@@ -81,6 +82,7 @@ export function generateSchema(
 ): PackageSpec {
     const result: PackageSpec = {
         name: providerName,
+        version: version,
         description: description,
         namespace: namespace,
         resources: {},

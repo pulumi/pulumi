@@ -61,6 +61,9 @@ INTEGRATION_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/sdk/v3/go/common/constant",
     "github.com/pulumi/pulumi/sdk/v3/go/common/util/retry",
     "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
+    "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python",
+    "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs",
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go",
     # And the entirety of the 'tests' module
 }
 
@@ -133,29 +136,23 @@ ALL_PLATFORMS = ["ubuntu-22.04", "windows-latest", "macos-latest"]
 # versions in the the pulumi-docker-containers repo by updating the file
 # https://github.com/pulumi/pulumi-docker-containers/blob/main/.github/scripts/matrix/versions.py
 
-MINIMUM_SUPPORTED_VERSION_SET = {
-    "name": "minimum",
-    "dotnet": "6",
-    "go": "1.23.x",
-    "nodejs": "18.x",
-    # When updating the minimum Python version here, also update `pyproject.toml`, including the
-    # `mypy` and `ruff` sections.
-    "python": "3.9.x",
-}
-
 ALL_VERSION_SET = {
-    "dotnet": ["6", "8", "9"],
+    "dotnet": ["8", "9"],
     "go": ["1.23.x", "1.24.x"],
     "nodejs": ["18.x", "20.x", "22.x", "23.x"],
+    # When updating the minimum Python version here, also update `pyproject.toml`, including the
+    # `mypy` and `ruff` sections.
     "python": ["3.9.x", "3.10.x", "3.11.x", "3.12.x", "3.13.x"],
+}
+
+MINIMUM_SUPPORTED_VERSION_SET = {
+    "name": "minimum",
+    **{lang: versions[0] for lang, versions in ALL_VERSION_SET.items()}
 }
 
 CURRENT_VERSION_SET = {
     "name": "current",
-    "dotnet": "9",
-    "go": "1.24.x",
-    "nodejs": "23.x",
-    "python": "3.13.x",
+    **{lang: versions[-1] for lang, versions in ALL_VERSION_SET.items()}
 }
 
 

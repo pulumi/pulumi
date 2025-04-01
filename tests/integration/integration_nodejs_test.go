@@ -2430,8 +2430,6 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider@d47cf0910e0450400775594609ee82566d1fb355")
 
-	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
-
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
@@ -2487,8 +2485,6 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider")
 
-	e.RunCommand("yarn", "add", "tls-self-signed-cert@file:sdks/tls-self-signed-cert")
-
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
@@ -2538,13 +2534,14 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
 	require.Equal(t, "nodejs-component-provider", schema["name"].(string))
-	require.Nil(t, schema["version"])
+	require.Equal(t, "0.0.0", schema["version"].(string))
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
 	// Check the component schema
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
+
 		"inputProperties": {
 			"aNumber": {
 				"type": "number",
@@ -2709,4 +2706,11 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stdout), &packageSpec))
 	require.Equal(t, "namespaced-component", packageSpec.Name)
 	require.Equal(t, "my-namespace", packageSpec.Namespace)
+
+	res, ok := packageSpec.Resources["namespaced-component:index:MyComponent"]
+	require.True(t, ok, fmt.Sprintf("missing expected resource in %v", packageSpec.Resources))
+
+	input, ok := res.InputProperties["anInput"]
+	require.True(t, ok, fmt.Sprintf("missing expected input property in %v", res.InputProperties))
+	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }

@@ -13,6 +13,5 @@
 # limitations under the License.
 
 from .host import component_provider_host
-from .metadata import Metadata
 
-__all__ = ["component_provider_host", "Metadata"]
+__all__ = ["component_provider_host"]

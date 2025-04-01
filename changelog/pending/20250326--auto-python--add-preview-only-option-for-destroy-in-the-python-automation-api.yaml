@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Add `--preview-only` option for `destroy` in the Python Automation API

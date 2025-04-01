@@ -92,7 +92,7 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <provider|schema> [provider-parameter...]",
+		Use:   "add <provider|schema|path> [provider-parameter...]",
 		Args:  cobra.MinimumNArgs(1),
 		Short: "Add a package to your Pulumi project",
 		Long: `Add a package to your Pulumi project.
@@ -102,15 +102,31 @@ and prints instructions on how to link it into your project. The SDK is based on
 a Pulumi package schema extracted from a given resource plugin or provided
 directly.
 
-When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to
-resolve a resource plugin first, installing it on-demand, similarly to:
+The <provider> argument can be specified in one of the following ways:
 
-  pulumi plugin install resource PLUGIN [VERSION]
+- When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to
+  resolve a resource plugin first, installing it on-demand, similarly to:
 
-When <provider> is specified as a local path, Pulumi executes the provider
-binary to extract its package schema:
+    pulumi plugin install resource PLUGIN [VERSION]
 
-  pulumi package add ./my-provider
+- When <provider> is specified as a local path, Pulumi executes the provider
+  binary to extract its package schema:
+
+    pulumi package add ./my-provider
+
+- When <provider> is a path to a local file with a '.json', '.yml' or '.yaml'
+  extension, Pulumi package schema is read from it directly:
+
+    pulumi package add ./my/schema.json
+
+- When <provider> is a reference to a Git repo, Pulumi clones the repo and
+  executes the source. Optionally a version can be specified.  It can either
+  be a tag (in semver format), or a Git commit hash.  By default the latest
+  tag (by semver version), or if not available the latest commit on the
+  default branch is used. Paths can be disambiguated from the repo name by
+  appending '.git' to the repo URL, followed by the path to the package:
+
+    pulumi package add example.org/org/repo.git/path[@<version>]
 
 For parameterized providers, parameters may be specified as additional
 arguments. The exact format of parameters is provider-specific; consult the
@@ -119,11 +135,7 @@ that begin with dashes, you may need to use '--' to separate the provider name
 from the parameters, as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value
-
-When <schema> is a path to a local file with a '.json', '.yml' or '.yaml'
-extension, Pulumi package schema is read from it directly:
-
-  pulumi package add ./my/schema.json`,
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ws := pkgWorkspace.Instance
 			proj, root, err := ws.ReadProject()

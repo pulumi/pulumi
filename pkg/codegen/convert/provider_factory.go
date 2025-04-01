@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -31,6 +32,10 @@ type ProviderFactory func(descriptor workspace.PackageDescriptor) (plugin.Provid
 // lifecycles.
 func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFactory {
 	return func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		if descriptor.Kind != apitype.ResourcePlugin {
+			return nil, fmt.Errorf("provider factory must be a resource plugin package, was %v", descriptor.Kind)
+		}
+
 		provider, err := host.Provider(descriptor)
 		if err != nil {
 			desc := descriptor.PackageName()

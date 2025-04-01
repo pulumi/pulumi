@@ -909,6 +909,13 @@ type PackageDescriptor struct {
 	Parameterization *Parameterization
 }
 
+func NewPackageDescriptor(spec PluginSpec, parameterization *Parameterization) PackageDescriptor {
+	return PackageDescriptor{
+		PluginSpec:       spec,
+		Parameterization: parameterization,
+	}
+}
+
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
 	if pd.Parameterization != nil {
@@ -1018,10 +1025,11 @@ func NewPluginSpec(
 	}
 
 	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
-	if strings.HasPrefix(name, "https://") || urlRegex.MatchString(name) {
+	if strings.HasPrefix(name, "https://") || strings.HasPrefix(name, "git://") || urlRegex.MatchString(name) {
 		// We support URLs with and without the https:// prefix.  Standardize them here, so we can work with
 		// them uniformly.
 		name = strings.TrimPrefix(name, "https://")
+		name = strings.TrimPrefix(name, "git://")
 		u, err := url.Parse(name)
 		// If we don't have a URL, we just treat it as a normal plugin name.
 		if err == nil {
@@ -1084,10 +1092,15 @@ func NewPluginSpec(
 	}, nil
 }
 
+// IsGitPlugin returns if the plugin comes from the git source
+func (spec PluginSpec) IsGitPlugin() bool {
+	return strings.HasPrefix(spec.PluginDownloadURL, "git://")
+}
+
 // LocalName returns the local name of the plugin, which is used in the directory name, and a path
 // within that directory if the plugin is located in a subdirectory.
 func (spec PluginSpec) LocalName() (string, string) {
-	if strings.HasPrefix(spec.PluginDownloadURL, "git://") {
+	if spec.IsGitPlugin() {
 		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
 		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
 		if err != nil {

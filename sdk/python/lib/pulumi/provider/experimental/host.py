@@ -13,21 +13,24 @@
 # limitations under the License.
 
 import sys
-from pathlib import Path
 from typing import Optional
 
+from ...resource import ComponentResource
 from ...provider import main
-from .metadata import Metadata
 from .provider import ComponentProvider
 
 is_hosting = False
 
 
-def component_provider_host(metadata: Optional[Metadata] = None):
+def component_provider_host(
+    components: list[type[ComponentResource]],
+    name: str,
+    namespace: Optional[str] = None,
+):
     """
-    component_provider_host starts the provider host for the plugin at path
-    sys.argv[0]. This will discover all `pulumi.ComponentResource` sublcasses in
-    the Python source code and infer their schema from their type annotations.
+    component_provider_host starts the provider and hosts the passed in components.
+    The provider's schema is inferred from the type annotations of the components.
+    See `analyzer.py` for more details.
 
     :param metadata: The metadata for the provider. If not provided, the name
     defaults to the plugin's directory name, and version defaults to "0.0.1".
@@ -44,10 +47,8 @@ def component_provider_host(metadata: Optional[Metadata] = None):
     # When the languge runtime runs the plugin, the first argument is the path
     # to the plugin's installation directory. This is followed by the engine
     # address and other optional arguments flags, like `--logtostderr`.
-    path = Path(sys.argv[0])
     args = sys.argv[1:]
-
-    if metadata is None:
-        metadata = Metadata(path.absolute().name, "0.0.1")
-
-    main(ComponentProvider(metadata, path), args)
+    # Default the version to "0.0.0" for now, otherwise SDK codegen gets
+    # confused without a version.
+    version = "0.0.0"
+    main(ComponentProvider(components, name, namespace, version), args)

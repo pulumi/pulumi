@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Run componentProviderHost automatically in RunPlugin if any Components are exported

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Allow namespace for components to be set in PulumiPlugin.yaml

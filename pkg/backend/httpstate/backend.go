@@ -1128,7 +1128,36 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+	var events chan engine.Event
+
+	if op.Opts.Display.ShowCopilotSummary {
+		events = make(chan engine.Event)
+		renderDone := make(chan bool)
+		renderer := display.NewCaptureProgressEvents(
+			stack.Ref().Name(),
+			op.Proj.Name,
+			display.Options{
+				ShowResourceChanges: true,
+			},
+		)
+
+		go renderer.ProcessEvents(events, renderDone)
+
+		defer func() {
+			close(events)
+			<-renderDone
+			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled so we
+			// check it again here.
+			if op.Opts.Display.ShowCopilotSummary && renderer.OutputIncludesFailure() {
+				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+				// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update if we
+				// can't generate a summary.
+				display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
+			}
+		}()
+	}
+
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, events)
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1149,7 +1178,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil /*events*/)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1167,7 +1196,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil /*events*/)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1185,7 +1214,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil /*events*/)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1232,6 +1261,41 @@ func (b *cloudBackend) PromptAI(
 		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
 	}
 	return res, nil
+}
+
+func (b *cloudBackend) summarizeErrorWithCopilot(
+	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+) (*display.CopilotErrorSummaryMetadata, error) {
+	if len(pulumiOutput) == 0 {
+		return nil, nil
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+	orgName := stackID.Owner
+
+	model := opts.CopilotSummaryModel
+	maxSummaryLen := opts.CopilotSummaryMaxLen
+
+	startTime := time.Now()
+	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
+	if err != nil {
+		return nil, err
+	}
+
+	if summary == "" {
+		// Summarization did not return output, this is not an error.
+		return nil, nil
+	}
+
+	elapsedMs := time.Since(startTime).Milliseconds()
+
+	return &display.CopilotErrorSummaryMetadata{
+		Summary:   summary,
+		ElapsedMs: elapsedMs,
+	}, nil
 }
 
 type updateMetadata struct {
@@ -1319,6 +1383,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		}
 	} else {
 		op.Opts.Display.ShowLinkToCopilot = false
+		op.Opts.Display.ShowCopilotSummary = false
 		copilotEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",
@@ -1454,7 +1519,11 @@ func (b *cloudBackend) runEngineAction(
 	case apitype.RefreshUpdate:
 		_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		if op.Opts.Engine.DestroyProgram {
+			_, changes, updateErr = engine.DestroyV2(u, engineCtx, op.Opts.Engine, dryRun)
+		} else {
+			_, changes, updateErr = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		}
 	case apitype.StackImportUpdate, apitype.RenameUpdate:
 		contract.Failf("unexpected %s event", kind)
 	default:

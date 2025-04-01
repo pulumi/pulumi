@@ -1370,6 +1370,67 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 	return res, err
 }
 
+// SummarizeErrorWithCopilot summarizes Pulumi Update output using the Copilot API
+func (pc *Client) SummarizeErrorWithCopilot(
+	ctx context.Context,
+	orgID string,
+	lines []string,
+	model string,
+	maxSummaryLen int,
+) (string, error) {
+	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
+
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return "", fmt.Errorf("preparing request: %w", err)
+	}
+
+	// Requests that take longer that 10 seconds will result in this message being printed to the user:
+	// "Error summarizing update output: making request: Post "https://api.pulumi.com/api/ai/chat/preview":
+	// context deadline exceeded" Copilot backend will see this in telemetry as well
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	url := pc.apiURL + "/api/ai/chat/preview"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+
+	resp, err := pc.do(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("making request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNoContent {
+		// Copilot API returns 204 No Content when it decided that it should not summarize the input.
+		// This can happen when the input is too short or Copilot thinks it cannot make it any better.
+		// In this case, we will not show the summary to the user. This is better than showing a useless summary.
+		return "", nil
+	}
+
+	// Read the body first so we can use it for error reporting if needed
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response body: %w", err)
+	}
+
+	var copilotResp apitype.CopilotSummarizeUpdateResponse
+	if err := json.Unmarshal(body, &copilotResp); err != nil {
+		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
+	}
+
+	if copilotResp.Error != "" {
+		return "", fmt.Errorf("copilot API error: %s\n%s", copilotResp.Error, copilotResp.Details)
+	}
+
+	return extractSummaryFromResponse(copilotResp)
+}
+
 func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {
 	req := apitype.StartPackagePublishRequest{
 		Version: input.Version.String(),

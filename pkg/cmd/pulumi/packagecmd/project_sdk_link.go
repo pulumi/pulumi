@@ -641,6 +641,16 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	return pluginCtx, nil
 }
 
+func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec) {
+	if spec.Namespace == "" && pluginSpec.IsGitPlugin() {
+		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
+		if len(matches) == 2 {
+			spec.Namespace = matches[1]
+		}
+	}
+}
+
 // SchemaFromSchemaSource takes a schema source and returns its associated schema. A
 // schema source is either a file (ending with .[json|y[a]ml]) or a plugin with an
 // optional version:
@@ -687,24 +697,6 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 		return bind(spec)
 	}
 
-	var overrideNamespace string
-	var overrideName string
-
-	f, err := os.ReadFile(filepath.Join(packageSource, "PulumiPlugin.yaml"))
-	if err == nil {
-		var plugin workspace.PluginProject
-		err = yaml.Unmarshal(f, &plugin)
-		if err != nil {
-			return nil, err
-		}
-		if plugin.Name != "" {
-			overrideName = plugin.Name
-		}
-		if plugin.Namespace != "" {
-			overrideNamespace = plugin.Namespace
-		}
-	}
-
 	p, err := ProviderFromSource(pctx, packageSource)
 	if err != nil {
 		return nil, err
@@ -744,12 +736,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if pluginSpec.Version != nil {
 		spec.Version = pluginSpec.Version.String()
 	}
-	if overrideName != "" {
-		spec.Name = overrideName
-	}
-	if overrideNamespace != "" {
-		spec.Namespace = overrideNamespace
-	}
+	setSpecNamespace(&spec, pluginSpec)
 	return bind(spec)
 }
 

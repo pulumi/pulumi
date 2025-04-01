@@ -1,6 +1,6 @@
 # Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
-# common.mk provides most of the scalfholding for our build system. It
+# common.mk provides most of the scaffolding for our build system. It
 # provides default targets for each project we want to build.
 #
 # The default targets we use are:
@@ -8,9 +8,7 @@
 #  - ensure: restores any dependencies needed for the build from
 #            remote sources (e.g dep ensure or yarn install)
 #
-#  - build: builds a project but does not install it. In the case of
-#           go code, this usually means running go install (which
-#           would place them in `GOBIN`, but not `PULUMI_ROOT`
+#  - build: builds a project but does not install it.
 #
 #  - install: copies the bits we plan to ship into a layout in
 #             `PULUMI_ROOT` that looks like what a customer would get

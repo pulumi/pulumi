@@ -38,8 +38,8 @@
                   "plain": "string[] | undefined"
                 },
                 "python": {
-                  "input": "Optional[Sequence[pulumi.Input[str]]]",
-                  "plain": "Optional[Sequence[str]]"
+                  "input": "Optional[Sequence[pulumi.Input[builtins.str]]]",
+                  "plain": "Optional[Sequence[builtins.str]]"
                 }
               }
             }
@@ -66,8 +66,8 @@
                   "plain": "{[key: string]: string} | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]",
-                  "plain": "Optional[Mapping[str, str]]"
+                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[builtins.str]]]]",
+                  "plain": "Optional[Mapping[str, builtins.str]]"
                 }
               }
             }
@@ -172,8 +172,8 @@
                   "plain": "boolean | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[bool]]",
-                  "plain": "Optional[bool]"
+                  "input": "Optional[pulumi.Input[builtins.bool]]",
+                  "plain": "Optional[builtins.bool]"
                 }
               }
             }
@@ -197,8 +197,8 @@
                   "plain": "number | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[int]]",
-                  "plain": "Optional[int]"
+                  "input": "Optional[pulumi.Input[builtins.int]]",
+                  "plain": "Optional[builtins.int]"
                 }
               }
             }
@@ -247,8 +247,8 @@
                   "plain": "number | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[float]]",
-                  "plain": "Optional[float]"
+                  "input": "Optional[pulumi.Input[builtins.float]]",
+                  "plain": "Optional[builtins.float]"
                 }
               }
             }
@@ -347,8 +347,8 @@
                   "plain": "boolean"
                 },
                 "python": {
-                  "input": "pulumi.Input[bool]",
-                  "plain": "bool"
+                  "input": "pulumi.Input[builtins.bool]",
+                  "plain": "builtins.bool"
                 }
               }
             }
@@ -372,8 +372,8 @@
                   "plain": "number"
                 },
                 "python": {
-                  "input": "pulumi.Input[int]",
-                  "plain": "int"
+                  "input": "pulumi.Input[builtins.int]",
+                  "plain": "builtins.int"
                 }
               }
             }
@@ -422,8 +422,8 @@
                   "plain": "number"
                 },
                 "python": {
-                  "input": "pulumi.Input[float]",
-                  "plain": "float"
+                  "input": "pulumi.Input[builtins.float]",
+                  "plain": "builtins.float"
                 }
               }
             }
@@ -447,8 +447,8 @@
                   "plain": "string"
                 },
                 "python": {
-                  "input": "pulumi.Input[str]",
-                  "plain": "str"
+                  "input": "pulumi.Input[builtins.str]",
+                  "plain": "builtins.str"
                 }
               }
             }
@@ -472,8 +472,8 @@
                   "plain": "string | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[str]]",
-                  "plain": "Optional[str]"
+                  "input": "Optional[pulumi.Input[builtins.str]]",
+                  "plain": "Optional[builtins.str]"
                 }
               }
             }
@@ -516,8 +516,8 @@
                   "plain": "{[key: string]: string} | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]",
-                  "plain": "Optional[Mapping[str, str]]"
+                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[builtins.str]]]]",
+                  "plain": "Optional[Mapping[str, builtins.str]]"
                 }
               }
             }
