@@ -221,9 +221,11 @@ func TestDetectProjectPathFrom(t *testing.T) {
 
 	indexTs := filepath.Join(d4, "index.ts")
 	err = os.WriteFile(indexTs, []byte("..."), 0o600)
+	assert.NoError(t, err)
 
 	f1 := filepath.Join(d2, "Pulumi.yaml")
 	err = os.WriteFile(f1, []byte("..."), 0o600)
+	assert.NoError(t, err)
 
 	for _, path := range []string{
 		filepath.Join(d4, "index.ts"),
