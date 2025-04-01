@@ -2054,6 +2054,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 			"required": ["strPlain"]
 		},
 		"provider:index:Emu": {
+			"description": "A or B",
 			"type": "string",
 			"enum": [
 				{ "name": "A", "value": "a" },

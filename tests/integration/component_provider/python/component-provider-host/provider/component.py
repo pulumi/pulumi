@@ -19,6 +19,8 @@ import pulumi
 
 
 class Emu(Enum):
+    """A or B"""
+
     A = "a"
     B = "b"
 
