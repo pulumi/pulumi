@@ -46,6 +46,7 @@ type stepGeneratorMode int
 const (
 	updateMode stepGeneratorMode = iota
 	destroyMode
+	refreshMode
 )
 
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
@@ -53,6 +54,9 @@ const (
 // state and the existing state of the world.
 type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
+
+	// if true we will refresh resources before updating them
+	refresh bool
 
 	// what mode to run the step generator in
 	mode stepGeneratorMode
@@ -65,13 +69,14 @@ type stepGenerator struct {
 	// report them all at once.
 	sawError bool
 
-	urns     map[resource.URN]bool // set of URNs discovered for this deployment
-	reads    map[resource.URN]bool // set of URNs read for this deployment
-	deletes  map[resource.URN]bool // set of URNs deleted in this deployment
-	replaces map[resource.URN]bool // set of URNs replaced in this deployment
-	updates  map[resource.URN]bool // set of URNs updated in this deployment
-	creates  map[resource.URN]bool // set of URNs created in this deployment
-	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+	urns      map[resource.URN]bool // set of URNs discovered for this deployment
+	reads     map[resource.URN]bool // set of URNs read for this deployment
+	deletes   map[resource.URN]bool // set of URNs deleted in this deployment
+	replaces  map[resource.URN]bool // set of URNs replaced in this deployment
+	updates   map[resource.URN]bool // set of URNs updated in this deployment
+	creates   map[resource.URN]bool // set of URNs created in this deployment
+	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
+	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target, or because they were skipped as part of a destroy run where we
@@ -582,21 +587,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
-	var oldInputs resource.PropertyMap
-	var oldOutputs resource.PropertyMap
 	var old *resource.State
-	var hasOld bool
 	var alias []resource.Alias
-	var createdAt, modifiedAt *time.Time
 	// Important: Check the URN first, then aliases. Otherwise we may pick the wrong resource which
 	// could lead to a corrupt snapshot.
 	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
+		var hasOld bool
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
-			oldInputs = old.Inputs
-			oldOutputs = old.Outputs
-			createdAt = old.Created
-			modifiedAt = old.Modified
 			if urnOrAlias != urn {
 				if _, alreadySeen := sg.urns[urnOrAlias]; alreadySeen {
 					// This resource is claiming to X but we've already seen that urn created
@@ -627,20 +625,96 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
+	aliasUrns := make([]resource.URN, len(alias))
+	for i, a := range alias {
+		aliasUrns[i] = a.URN
+	}
+
+	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
+	// lookup providers for calculating replacement of resources that use the provider.
+	sg.deployment.goals.Store(urn, goal)
+
+	// If we're doing refreshes then this is the point where we need to fire off a refresh step for this
+	// resource, to call back into GenerateSteps later.
+	if sg.refresh {
+		// Only need to do refresh steps here for custom non-provider resources that have an old state.
+		if old != nil && goal.Custom && !providers.IsProviderType(goal.Type) {
+			cts := &promise.CompletionSource[*resource.State]{}
+			// Set up the cts to trigger a continueStepsFromRefresh when it resolves
+			go func() {
+				// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
+				// but a goroutine blocked on Result and then posting to a channel is very cheap.
+				state, err := cts.Promise().Result(context.Background())
+				contract.AssertNoErrorf(err, "expected a result from refresh step")
+				sg.events <- &continueResourceRefreshEvent{
+					RegisterResourceEvent: event,
+					urn:                   urn,
+					old:                   state,
+					aliases:               aliasUrns,
+					invalid:               invalid,
+				}
+			}()
+
+			step := NewRefreshStep(sg.deployment, cts, old)
+			sg.refreshes[urn] = true
+			return []Step{step}, true, nil
+		}
+	}
+
+	// Anything else just flow on to the normal step generation.
+	continueEvent := &continueResourceRefreshEvent{
+		RegisterResourceEvent: event,
+		urn:                   urn,
+		old:                   old,
+		aliases:               aliasUrns,
+		invalid:               invalid,
+	}
+
+	return sg.continueStepsFromRefresh(continueEvent)
+}
+
+// This function is called by the deployment executor in response to a ContinueResourceRefreshEvent. It simply
+// calls into continueStepsFromRefresh and then validateSteps to continue the work that GenerateSteps would
+// have done without a refresh step.
+func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
+	steps, async, err := sg.continueStepsFromRefresh(event)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if async {
+		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
+		// DiffStep.
+		return steps, true, nil
+	}
+
+	steps, err = sg.validateSteps(steps)
+	return steps, false, err
+}
+
+func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
+	goal := event.Goal()
+	urn := event.URN()
+	old := event.Old()
+	invalid := event.Invalid()
+	aliasUrns := event.Aliases()
+
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
-	if hasOld {
+	if old != nil {
 		// Set inputs back to their old values (if any) for any "ignored" properties
-		processedInputs, err := processIgnoreChanges(inputs, oldInputs, goal.IgnoreChanges)
+		processedInputs, err := processIgnoreChanges(inputs, old.Inputs, goal.IgnoreChanges)
 		if err != nil {
 			return nil, false, err
 		}
 		inputs = processedInputs
 	}
 
-	aliasUrns := make([]resource.URN, len(alias))
-	for i, a := range alias {
-		aliasUrns[i] = a.URN
+	var createdAt *time.Time
+	var modifiedAt *time.Time
+	if old != nil {
+		createdAt = old.Created
+		modifiedAt = old.Modified
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
@@ -658,9 +732,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)
 
-	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
-	// lookup providers for calculating replacement of resources that use the provider.
-	sg.deployment.goals.Store(urn, goal)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
@@ -668,6 +739,25 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
+	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
+	// custom non-provider resources.
+	if sg.mode == refreshMode {
+		if goal.Custom && !providers.IsProviderType(goal.Type) {
+			// Custom resources that aren't in state just have to be skipped.
+			if old == nil {
+				sg.sames[urn] = true
+				sg.skippedCreates[urn] = true
+				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+			}
+			// We've already refreshed this resource, so we can just trigger the done event (refresh steps never do this
+			// alone) and return no further steps.
+			event.Done(&RegisterResult{
+				State:  event.Old(),
+				Result: ResultStateSuccess,
+			})
+			return []Step{}, false, nil
+		}
+	}
 	// If this is a destroy generation we're _always_ going to do a skip create or skip step here for custom
 	// non-provider resources. This is because we don't want to actually create any cloud resources as part of
 	// the destroy, but we do want to "create/update" providers, construct component resources and it's fine
@@ -697,7 +787,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				// also skip this resource. Oddly we're calling NewSkippedCreateStep here even if we do have
 				// an old state, but skipped create actually behaves as a general skip just fine.
 				sg.skippedCreates[urn] = true
-				if hasOld {
+				if old != nil {
 					// If this has an old state maintain the old outputs to return to the program
 					new.Outputs = old.Outputs
 				}
@@ -709,7 +799,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		// it or skip create it (we don't want to actually do real resource creates and updates in destroy).
 		if goal.Custom && !providers.IsProviderType(goal.Type) {
 			// Custom resources that aren't in state just have to be skipped creates.
-			if !hasOld {
+			if old == nil {
 				sg.skippedCreates[urn] = true
 				return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 			}
@@ -738,7 +828,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	_, recreating := sg.deletes[urn]
 
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
-	wasExternal := hasOld && old.External
+	wasExternal := old != nil && old.External
 
 	// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
 	var randomSeed []byte
@@ -769,7 +859,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
 	// resource's ID does not match the ID in the goal state.
 	var oldImportID resource.ID
-	if hasOld {
+	if old != nil {
 		oldImportID = old.ID
 		// If the old resource has an ImportID, look at that rather than the ID, since some resources use a different
 		// format of identifier for the import input than the ID property.
@@ -777,7 +867,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			oldImportID = old.ImportID
 		}
 	}
-	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
+	isImport := goal.Custom && goal.ID != "" && (old == nil || old.External || oldImportID != goal.ID)
 	if isImport {
 		// TODO(seqnum) Not sure how sequence numbers should interact with imports
 
@@ -795,7 +885,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
-		if isReplace := hasOld && !recreating; isReplace {
+		if isReplace := old != nil && !recreating; isReplace {
 			return []Step{
 				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
@@ -821,6 +911,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		isTargeted = !sg.isExcludedFromUpdate(new)
 	}
 
+	var oldInputs resource.PropertyMap
+	var oldOutputs resource.PropertyMap
+	if old != nil {
+		oldInputs = old.Inputs
+		oldOutputs = old.Outputs
+	}
+
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	if prov != nil {
 		var resp plugin.CheckResponse
@@ -837,7 +934,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
 				News:          goal.Properties,
@@ -867,7 +964,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 
 	// If the resource is valid and we're generating plans then generate a plan
 	if !invalid && sg.deployment.opts.GeneratePlan {
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || old == nil {
 			oldInputs = nil
 		}
 		inputDiff := oldInputs.Diff(inputs)
@@ -1013,7 +1110,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	//
 	//  Logically, recreating implies hasOld, since in order to delete something it must have
 	//  already existed.
-	contract.Assertf(!recreating || hasOld, "cannot recreate a resource that doesn't exist")
+	contract.Assertf(!recreating || old != nil, "cannot recreate a resource that doesn't exist")
 	if recreating {
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 
@@ -1073,7 +1170,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	//
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
-	if hasOld {
+	if old != nil {
 		contract.Assertf(old != nil, "must have old resource if hasOld is true")
 
 		// If the user requested only specific resources to update, and this resource was not in
@@ -1577,9 +1674,86 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	return nil, nil
 }
 
+// Returns true if this resource has been operated on by any steps generated so far.
+func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
+	alias, aliased := sg.aliased[urn]
+	// If this URN isn't an alias see if it directly had any operation. If it was aliased see if it's
+	// new name had any operations, against it. It's possible in a destroy to see a new resource and
+	// thus fill in `aliased` but then skip the operation on it, the resource still needs deleting
+	// though.
+	if aliased {
+		urn = alias
+	}
+	return !sg.sames[urn] && !sg.updates[urn] && !sg.replaces[urn] && !sg.reads[urn] && !sg.refreshes[urn]
+	// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
+	// delete steps for the same URN if the old checkpoint contained pending deletes.
+}
+
+// GenerateRefreshes generates refresh steps for the resources that are present in the old snapshot and were
+// not seen registered into the new snapshot.
+func (sg *stepGenerator) GenerateRefreshes(
+	targetsOpt UrnTargets, excludesOpt UrnTargets,
+) ([]Step, map[*resource.State]Step, error) {
+	var steps []Step
+	resourceToStep := map[*resource.State]Step{}
+	if prev := sg.deployment.prev; prev != nil {
+		for _, res := range prev.Resources {
+			if sg.isOperatedOn(res.URN) {
+				// We also keep track of dependents as we find them in order to exclude
+				// transitive dependents as well.
+				var add bool
+				if excludesOpt.IsConstrained() {
+					add = excludesOpt.Contains(res.URN)
+
+					// In the case of `--exclude-dependents`, we need to flag all our dependents as excluded as well. We
+					// always visit the target before its dependents, so when we get round to the dependent in the loop
+					// it'll be tagged correctly.
+					if !add && sg.deployment.opts.ExcludeDependents {
+						_, allDeps := res.GetAllDependencies()
+						for _, dep := range allDeps {
+							excludesOpt.addLiteral(dep.URN)
+						}
+					}
+				} else if targetsOpt.IsConstrained() {
+					add = targetsOpt.Contains(res.URN)
+
+					// In the case of `--target-dependents`, we need to flag all our dependents as targeted as well. We
+					// always visit the target before its dependents, so when we get round to the dependent in the loop
+					// it'll be tagged correctly.
+					if add && sg.deployment.opts.TargetDependents {
+						_, allDeps := res.GetAllDependencies()
+						for _, dep := range allDeps {
+							targetsOpt.addLiteral(dep.URN)
+						}
+					}
+				} else {
+					add = true
+				}
+
+				if add {
+					logging.V(7).Infof("Planner decided to refresh '%v'", res.URN)
+					step := NewRefreshStep(sg.deployment, nil, res)
+					sg.refreshes[res.URN] = true
+					steps = append(steps, step)
+					resourceToStep[res] = step
+
+					err := sg.deployment.EnsureProvider(res.Provider)
+					if err != nil {
+						return nil, nil, fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+					}
+				}
+			}
+		}
+	}
+	return steps, resourceToStep, nil
+}
+
+// GenerateDeletes generates delete steps for the resources that are pending delete from the snapshot, or were not
+// registered in the new snapshot. It also generates delete steps for any resources that were marked for deletion
+// because of `destroy` mode.
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, error) {
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
-	dels := slice.Prealloc[Step](len(sg.toDelete))
+	steps := slice.Prealloc[Step](len(sg.toDelete))
 	if prev := sg.deployment.prev; prev != nil {
 		for _, res := range prev.Resources {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
@@ -1613,22 +1787,14 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
-				dels = append(dels, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
-			} else if alias, aliased := sg.aliased[res.URN];
-			// If this URN isn't an alias see if it directly had any operation. If it was aliased see if it's
-			// new name had any operations, against it. It's possible in a destroy to see a new resource and
-			// thus fill in `aliased` but then skip the operation on it, the resource still needs deleting
-			// though.
-			(!aliased && !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN]) ||
-				(aliased && !sg.sames[alias] && !sg.updates[alias] && !sg.replaces[alias] && !sg.reads[alias]) {
-				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
-				// delete steps for the same URN if the old checkpoint contained pending deletes.
+				steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
+			} else if sg.isOperatedOn(res.URN) {
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				if !res.PendingReplacement {
-					dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
+					steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res))
 				} else {
-					dels = append(dels, NewRemovePendingReplaceStep(sg.deployment, res))
+					steps = append(steps, NewRemovePendingReplaceStep(sg.deployment, res))
 				}
 			}
 
@@ -1646,11 +1812,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	// operation.
 	for _, res := range sg.toDelete {
 		sg.deletes[res.URN] = true
-		dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
+		steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res))
 	}
 
 	// Check each proposed delete against the relevant resource plan
-	for _, s := range dels {
+	for _, s := range steps {
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
@@ -1704,28 +1870,28 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 	if allowedResourcesToDelete != nil {
 		filtered := []Step{}
-		for _, step := range dels {
+		for _, step := range steps {
 			if _, has := allowedResourcesToDelete[step.URN()]; has {
 				filtered = append(filtered, step)
 			}
 		}
 
-		dels = filtered
+		steps = filtered
 	}
 
 	if forbiddenResourcesToDelete != nil {
 		filtered := []Step{}
-		for _, step := range dels {
+		for _, step := range steps {
 			if _, has := forbiddenResourcesToDelete[step.URN()]; !has {
 				filtered = append(filtered, step)
 			}
 		}
 
-		dels = filtered
+		steps = filtered
 	}
 
 	deletingUnspecifiedTarget := false
-	for _, step := range dels {
+	for _, step := range steps {
 		urn := step.URN()
 		if !targetsOpt.Contains(urn) && !sg.deployment.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
@@ -1752,7 +1918,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		return nil, result.BailErrorf("delete untargeted resource")
 	}
 
-	return dels, nil
+	return steps, nil
 }
 
 // getTargetDependents returns the (transitive) set of dependents on the target resources.
@@ -2579,10 +2745,13 @@ func (sg *stepGenerator) hasGeneratedStep(urn resource.URN) bool {
 }
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
-func newStepGenerator(deployment *Deployment, mode stepGeneratorMode, events chan<- SourceEvent) *stepGenerator {
+func newStepGenerator(
+	deployment *Deployment, refresh bool, mode stepGeneratorMode, events chan<- SourceEvent,
+) *stepGenerator {
 	return &stepGenerator{
 		deployment:           deployment,
 		mode:                 mode,
+		refresh:              refresh,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
@@ -2590,6 +2759,7 @@ func newStepGenerator(deployment *Deployment, mode stepGeneratorMode, events cha
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
+		refreshes:            make(map[resource.URN]bool),
 		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),

@@ -136,6 +136,9 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
+	// true if the plan should run the program as part of refresh.
+	RefreshProgram bool
+
 	// true if the plan should run the program as part of destroy.
 	DestroyProgram bool
 
