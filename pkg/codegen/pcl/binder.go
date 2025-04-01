@@ -693,7 +693,7 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 							diagnostics = append(diagnostics, diag)
 							continue
 						}
-						packageDescriptor.Parameterization = descriptor
+						packageDescriptor.Replacement = descriptor
 					}
 				}
 			}

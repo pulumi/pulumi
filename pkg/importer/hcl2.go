@@ -127,10 +127,10 @@ func GenerateHCL2Definition(
 	}
 
 	pkgDesc := &schema.PackageDescriptor{
-		Name:             string(pluginName),
-		Version:          pluginVersion,
-		DownloadURL:      downloadURL,
-		Parameterization: parameterization,
+		Name:        string(pluginName),
+		Version:     pluginVersion,
+		DownloadURL: downloadURL,
+		Replacement: parameterization,
 	}
 
 	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, pkgDesc)

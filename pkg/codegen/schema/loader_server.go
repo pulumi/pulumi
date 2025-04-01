@@ -58,7 +58,7 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 		DownloadURL: req.DownloadUrl,
 	}
 	if req.Parameterization != nil {
-		descriptor.Parameterization = &ParameterizationDescriptor{
+		descriptor.Replacement = &ParameterizationDescriptor{
 			Name:  req.Parameterization.Name,
 			Value: req.Parameterization.Value,
 		}
@@ -68,7 +68,7 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 			logging.V(7).Infof("%s failed: %v", label, err)
 			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
 		}
-		descriptor.Parameterization.Version = v
+		descriptor.Replacement.Version = v
 	}
 
 	pkg, err := m.loader.LoadPackageV2(ctx, descriptor)

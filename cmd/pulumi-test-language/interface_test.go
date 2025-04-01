@@ -250,11 +250,11 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 	}
 
 	getSchemaRequest := plugin.GetSchemaRequest{}
-	if descriptor.Parameterization != nil {
+	if descriptor.Replacement != nil {
 		parameter := &plugin.ParameterizeValue{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
+			Name:    descriptor.Replacement.Name,
+			Version: descriptor.Replacement.Version,
+			Value:   descriptor.Replacement.Value,
 		}
 
 		_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
@@ -264,8 +264,8 @@ func (l *inMemoryProviderLoader) LoadPackageReferenceV2(
 			return nil, fmt.Errorf("parameterize package '%s' failed: %w", descriptor.Name, err)
 		}
 
-		getSchemaRequest.SubpackageName = descriptor.Parameterization.Name
-		getSchemaRequest.SubpackageVersion = &descriptor.Parameterization.Version
+		getSchemaRequest.SubpackageName = descriptor.Replacement.Name
+		getSchemaRequest.SubpackageVersion = &descriptor.Replacement.Version
 	}
 
 	jsonSchema, err := provider.GetSchema(context.TODO(), getSchemaRequest)

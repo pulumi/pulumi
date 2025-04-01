@@ -187,7 +187,7 @@ func TestLoadParameterized(t *testing.T) {
 	ref, err := loader.LoadPackageReferenceV2(context.Background(), &PackageDescriptor{
 		Name:    "terraform-provider",
 		Version: &version,
-		Parameterization: &ParameterizationDescriptor{
+		Replacement: &ParameterizationDescriptor{
 			Name:    "aws",
 			Version: semver.MustParse("3.0.0"),
 			Value:   []byte("testdata"),
@@ -366,7 +366,7 @@ func TestPackageDescriptorString(t *testing.T) {
 			PackageDescriptor{
 				Name:    "base",
 				Version: &version,
-				Parameterization: &ParameterizationDescriptor{
+				Replacement: &ParameterizationDescriptor{
 					Name:    "gcp",
 					Version: semver.MustParse("6.0.0"),
 				},
@@ -375,7 +375,7 @@ func TestPackageDescriptorString(t *testing.T) {
 		{
 			PackageDescriptor{
 				Name: "base",
-				Parameterization: &ParameterizationDescriptor{
+				Replacement: &ParameterizationDescriptor{
 					Name:    "gcp",
 					Version: semver.MustParse("6.0.0"),
 				},

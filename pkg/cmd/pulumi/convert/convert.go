@@ -504,7 +504,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("failed to create temporary directory: %w", err)
 		}
 
-		if pkg.Parameterization == nil {
+		if pkg.Replacement == nil {
 			// Only generate SDKs for packages that have parameterization for now, others should be implicit.
 			continue
 		}
@@ -512,7 +512,7 @@ func generateAndLinkSdksForPackages(
 		pkgSchema, err := packagecmd.SchemaFromSchemaSourceValueArgs(
 			pctx,
 			pkg.Name,
-			pkg.Parameterization.Value,
+			pkg.Replacement.Value,
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
@@ -529,7 +529,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
 
-		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Parameterization.Name)
+		sdkOut := filepath.Join(sdkTargetDirectory, pkg.Replacement.Name)
 		err = packagecmd.CopyAll(sdkOut, filepath.Join(tempOut, language))
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
@@ -540,7 +540,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("could not remove temp dir: %w", err)
 		}
 
-		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Replacement.Name)
 
 		// If we don't change the working directory, the workspace instance (when
 		// reading project etc) will not be correct when doing the local sdk
@@ -555,7 +555,7 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("generated root is not a valid pulumi workspace %q: %w", convertOutputDirectory, err)
 		}
 
-		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
+		sdkRelPath := filepath.Join("sdks", pkg.Replacement.Name)
 		err = packagecmd.LinkPackage(ws, language, "./", pkgSchema, sdkRelPath)
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)

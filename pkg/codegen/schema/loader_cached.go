@@ -65,10 +65,10 @@ func (l *cachedLoader) LoadPackageReferenceV2(
 	defer l.m.Unlock()
 
 	var key string
-	if descriptor.Parameterization == nil {
+	if descriptor.Replacement == nil {
 		key = packageIdentity(descriptor.Name, descriptor.Version)
 	} else {
-		key = packageIdentity(descriptor.Parameterization.Name, &descriptor.Parameterization.Version)
+		key = packageIdentity(descriptor.Replacement.Name, &descriptor.Replacement.Version)
 	}
 	if p, ok := l.entries[key]; ok {
 		return p, nil

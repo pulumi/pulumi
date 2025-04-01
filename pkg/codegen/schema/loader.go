@@ -44,24 +44,24 @@ type ParameterizationDescriptor struct {
 // PackageDescriptor is a descriptor for a package, this is similar to a plugin spec but also contains parameterization
 // info.
 type PackageDescriptor struct {
-	Name             string                      // the simple name of the plugin.
-	Version          *semver.Version             // the plugin's semantic version, if present.
-	DownloadURL      string                      // an optional server to use when downloading this plugin.
-	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
+	Name        string                      // the simple name of the plugin.
+	Version     *semver.Version             // the plugin's semantic version, if present.
+	DownloadURL string                      // an optional server to use when downloading this plugin.
+	Replacement *ParameterizationDescriptor // the optional replacement parameterization of the package.
 }
 
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
-	if pd.Parameterization != nil {
-		return pd.Parameterization.Name
+	if pd.Replacement != nil {
+		return pd.Replacement.Name
 	}
 	return pd.Name
 }
 
 // PackageVersion returns the version of the package.
 func (pd PackageDescriptor) PackageVersion() *semver.Version {
-	if pd.Parameterization != nil {
-		return &pd.Parameterization.Version
+	if pd.Replacement != nil {
+		return &pd.Replacement.Version
 	}
 	return pd.Version
 }
@@ -73,8 +73,8 @@ func (pd *PackageDescriptor) String() string {
 	}
 
 	// If the package descriptor has a parameterization, write that information out first.
-	if pd.Parameterization != nil {
-		return fmt.Sprintf("%s@%s (%s@%s)", pd.Parameterization.Name, pd.Parameterization.Version, pd.Name, version)
+	if pd.Replacement != nil {
+		return fmt.Sprintf("%s@%s (%s@%s)", pd.Replacement.Name, pd.Replacement.Version, pd.Name, version)
 	}
 	return fmt.Sprintf("%s@%s", pd.Name, version)
 }
@@ -203,7 +203,7 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	// 0.1.0. We thus guard against this case, though in theory this is unnecessary -- schema versions are required for
 	// parameterized providers, so we should expect not to hit this case and overwrite a (parameterized) package version
 	// with an almost certainly different plugin version.
-	if pluginVersion != nil && descriptor.Parameterization == nil && spec.PackageInfoSpec.Version == "" {
+	if pluginVersion != nil && descriptor.Replacement == nil && spec.PackageInfoSpec.Version == "" {
 		spec.PackageInfoSpec.Version = pluginVersion.String()
 	}
 
@@ -251,12 +251,12 @@ func LoadPackageReferenceV2(
 	}
 
 	name := descriptor.Name
-	if descriptor.Parameterization != nil {
-		name = descriptor.Parameterization.Name
+	if descriptor.Replacement != nil {
+		name = descriptor.Replacement.Name
 	}
 	version := descriptor.Version
-	if descriptor.Parameterization != nil {
-		version = &descriptor.Parameterization.Version
+	if descriptor.Replacement != nil {
+		version = &descriptor.Replacement.Version
 	}
 
 	if name != ref.Name() {
@@ -422,7 +422,7 @@ func (l *pluginLoader) loadSchemaBytes(
 		pluginVersion = pluginInfo.Version
 	}
 
-	canCache := pluginInfo.SchemaPath != "" && pluginVersion != nil && descriptor.Parameterization == nil
+	canCache := pluginInfo.SchemaPath != "" && pluginVersion != nil && descriptor.Replacement == nil
 
 	if canCache {
 		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
@@ -462,11 +462,11 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 			Kind:              apitype.ResourcePlugin,
 		},
 	}
-	if descriptor.Parameterization != nil {
+	if descriptor.Replacement != nil {
 		wsDescriptor.Replacement = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
+			Name:    descriptor.Replacement.Name,
+			Version: descriptor.Replacement.Version,
+			Value:   descriptor.Replacement.Value,
 		}
 	}
 
@@ -482,25 +482,25 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 	}
 
 	// If this is a parameterized package, we need to pass the parameter value to the provider.
-	if descriptor.Parameterization != nil {
+	if descriptor.Replacement != nil {
 		parameterization := plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
-				Name:    descriptor.Parameterization.Name,
-				Version: descriptor.Parameterization.Version,
-				Value:   descriptor.Parameterization.Value,
+				Name:    descriptor.Replacement.Name,
+				Version: descriptor.Replacement.Version,
+				Value:   descriptor.Replacement.Value,
 			},
 		}
 		resp, err := provider.Parameterize(ctx, parameterization)
 		if err != nil {
 			return nil, nil, err
 		}
-		if resp.Name != descriptor.Parameterization.Name {
+		if resp.Name != descriptor.Replacement.Name {
 			return nil, nil, fmt.Errorf(
-				"unexpected parameterization response: %s != %s", resp.Name, descriptor.Parameterization.Name)
+				"unexpected parameterization response: %s != %s", resp.Name, descriptor.Replacement.Name)
 		}
-		if !resp.Version.EQ(descriptor.Parameterization.Version) {
+		if !resp.Version.EQ(descriptor.Replacement.Version) {
 			return nil, nil, fmt.Errorf(
-				"unexpected parameterization response: %s != %s", resp.Version, descriptor.Parameterization.Version)
+				"unexpected parameterization response: %s != %s", resp.Version, descriptor.Replacement.Version)
 		}
 
 		getSchemaRequest.SubpackageName = resp.Name

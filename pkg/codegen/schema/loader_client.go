@@ -86,11 +86,11 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 	}
 
 	var parameterization *codegenrpc.Parameterization
-	if descriptor.Parameterization != nil {
+	if descriptor.Replacement != nil {
 		parameterization = &codegenrpc.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version.String(),
-			Value:   descriptor.Parameterization.Value,
+			Name:    descriptor.Replacement.Name,
+			Version: descriptor.Replacement.Version.String(),
+			Value:   descriptor.Replacement.Value,
 		}
 	}
 

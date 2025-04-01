@@ -655,7 +655,7 @@ package "random" {
 	require.Equal(t, "aws", packageDescriptors["aws"].Name)
 	require.Nil(t, packageDescriptors["aws"].Version)
 	require.Equal(t, "", packageDescriptors["aws"].DownloadURL)
-	require.Nil(t, packageDescriptors["aws"].Parameterization)
+	require.Nil(t, packageDescriptors["aws"].Replacement)
 
 	require.Equal(t, "azure", packageDescriptors["azure"].Name)
 	require.Equal(t, "1.2.3", packageDescriptors["azure"].Version.String())
@@ -663,10 +663,10 @@ package "random" {
 	assert.Equal(t, "terraform-provider", packageDescriptors["random"].Name)
 	assert.Equal(t, "0.1.0", packageDescriptors["random"].Version.String())
 	assert.Equal(t, "https://example.com/terraform-provider.zip", packageDescriptors["random"].DownloadURL)
-	require.NotNil(t, packageDescriptors["random"].Parameterization)
-	assert.Equal(t, "random", packageDescriptors["random"].Parameterization.Name)
-	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
-	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
+	require.NotNil(t, packageDescriptors["random"].Replacement)
+	assert.Equal(t, "random", packageDescriptors["random"].Replacement.Name)
+	assert.Equal(t, "4.5.6", packageDescriptors["random"].Replacement.Version.String())
+	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Replacement.Value)
 	assert.Equal(t, "SGVsbG8=", base64Value)
 }
 
