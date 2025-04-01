@@ -25,7 +25,7 @@ import (
 
 func init() {
 	LanguageTests["l2-namespaced-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.NamespacedProvider{}},
+		Providers: []plugin.Provider{&providers.SimpleProvider{}, &providers.NamespacedProvider{}},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -35,10 +35,12 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					// Check we have the one resource of the namespaced provider in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					require.Len(l, snap.Resources, 5, "expected 3 resources in snapshot")
 
 					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:namespaced")
 					require.Equal(l, "pulumi:providers:namespaced", provider.Type.String(), "expected namespaced provider")
+					simpleProv := RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
+					require.Equal(l, "pulumi:providers:simple", simpleProv.Type.String(), "expected simple provider")
 
 					namespaced := RequireSingleResource(l, snap.Resources, "namespaced:index:Resource")
 					require.Equal(l, "namespaced:index:Resource", namespaced.Type.String(), "expected namespaced resource")
@@ -46,6 +48,9 @@ func init() {
 					want := resource.NewPropertyMapFromMap(map[string]interface{}{"value": true})
 					require.Equal(l, want, namespaced.Inputs, "expected inputs to be {value: true}")
 					require.Equal(l, namespaced.Inputs, namespaced.Outputs, "expected inputs and outputs to match")
+
+					simple := RequireSingleResource(l, snap.Resources, "simple:index:Resource")
+					require.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
 				},
 			},
 		},
