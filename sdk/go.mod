@@ -1,6 +1,7 @@
 module github.com/pulumi/pulumi/sdk/v3
 
 go 1.22
+toolchain go1.24.1
 
 replace golang.org/x/text => golang.org/x/text v0.3.8
 
@@ -26,9 +27,9 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/mod v0.19.0 // indirect
-	golang.org/x/net v0.35.0
+	golang.org/x/net v0.36.0
 	golang.org/x/sys v0.30.0
 	google.golang.org/grpc v1.63.2
 	gopkg.in/yaml.v2 v2.4.0
