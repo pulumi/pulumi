@@ -16,13 +16,11 @@ package httpstate
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
@@ -33,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -138,6 +135,8 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	}
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+
+// GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
 func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
 	if s.usesCloudConfig {
 		return "", false
@@ -148,51 +147,21 @@ func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
 
 func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 	if s.usesCloudConfig {
-		stackId, err := s.b.getCloudStackIdentifier(s.ref)
+		stackID, err := s.b.getCloudStackIdentifier(s.ref)
 		if err != nil {
 			return nil, err
 		}
-		stack, err := s.b.client.GetStack(ctx, stackId)
+		stack, err := s.b.client.GetStack(ctx, stackID)
 		if err != nil {
 			return nil, err
 		}
 		if stack.Environment != "" {
 			projectStack := &workspace.ProjectStack{
+				Environment:     workspace.NewEnvironment([]string{stack.Environment}),
 				SecretsProvider: stack.SecretsProvider,
 				EncryptedKey:    stack.EncryptedKey,
 				EncryptionSalt:  stack.EncryptionSalt,
 			}
-			envParts := strings.Split(stack.Environment, "/")
-			if len(envParts) != 2 {
-				return nil, fmt.Errorf("invalid environment name: %s", stack.Environment)
-			}
-			projectName, envName := envParts[0], envParts[1]
-			exists, err := s.b.escClient.EnvironmentExists(ctx, s.OrgName(), projectName, envName)
-			if err != nil {
-				return nil, err
-			}
-			if !exists {
-				return projectStack, nil
-			}
-
-			yaml, _, _, err := s.b.escClient.GetEnvironment(ctx, s.OrgName(), envParts[0], envParts[1], "", true)
-			if err != nil {
-				return nil, err
-			}
-			environment, _, err := s.b.OpenYAMLEnvironment(ctx, s.OrgName(), yaml, 2*time.Hour)
-			if err != nil {
-				return nil, err
-			}
-			envJSON, err := json.MarshalIndent(esc.NewValue(environment.Properties).ToJSON(false), "", "  ")
-			if err != nil {
-				return nil, err
-			}
-			loadedProjectStack, err := workspace.LoadProjectStackBytes(project, envJSON, "", encoding.Marshalers["json"])
-			if err != nil {
-				return nil, err
-			}
-			projectStack.Config = loadedProjectStack.Config
-			projectStack.Environment = loadedProjectStack.Environment
 			return projectStack, nil
 		}
 		// Allow fall-through to local file if environment was removed.
@@ -201,6 +170,26 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*wor
 }
 
 func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	if s.usesCloudConfig {
+		if projectStack.Config != nil {
+			return errors.New("cannot set config for a stack with cloud config")
+		}
+		imports := projectStack.Environment.Imports()
+		if len(imports) != 1 {
+			return errors.New("cloud stacks must have exactly 1 import")
+		}
+		stackID, err := s.b.getCloudStackIdentifier(s.ref)
+		if err != nil {
+			return err
+		}
+		err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
+			Environment:     imports[0],
+			SecretsProvider: projectStack.SecretsProvider,
+			EncryptedKey:    projectStack.EncryptedKey,
+			EncryptionSalt:  projectStack.EncryptionSalt,
+		})
+		return err
+	}
 	return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
 }
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
