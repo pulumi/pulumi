@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/package
-  description: Update `package add` command format string to show that file paths to packages can also be used
