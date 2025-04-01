@@ -16,10 +16,13 @@ package httpstate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
@@ -30,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -109,6 +113,8 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
+	// usesCloudConfig indicates whether this stack's config exists in ESC instead of a local file.
+	usesCloudConfig bool
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
@@ -128,15 +134,69 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		tags:             apistack.Tags,
 		b:                b,
 		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
+		usesCloudConfig: apistack.Environment != "",
 	}
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
+	if s.usesCloudConfig {
+		return "", false
+	}
 	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 	return path, err == nil
 }
 
 func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	if s.usesCloudConfig {
+		stackId, err := s.b.getCloudStackIdentifier(s.ref)
+		if err != nil {
+			return nil, err
+		}
+		stack, err := s.b.client.GetStack(ctx, stackId)
+		if err != nil {
+			return nil, err
+		}
+		if stack.Environment != "" {
+			projectStack := &workspace.ProjectStack{
+				SecretsProvider: stack.SecretsProvider,
+				EncryptedKey:    stack.EncryptedKey,
+				EncryptionSalt:  stack.EncryptionSalt,
+			}
+			envParts := strings.Split(stack.Environment, "/")
+			if len(envParts) != 2 {
+				return nil, fmt.Errorf("invalid environment name: %s", stack.Environment)
+			}
+			projectName, envName := envParts[0], envParts[1]
+			exists, err := s.b.escClient.EnvironmentExists(ctx, s.OrgName(), projectName, envName)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				return projectStack, nil
+			}
+
+			yaml, _, _, err := s.b.escClient.GetEnvironment(ctx, s.OrgName(), envParts[0], envParts[1], "", true)
+			if err != nil {
+				return nil, err
+			}
+			environment, _, err := s.b.OpenYAMLEnvironment(ctx, s.OrgName(), yaml, 2*time.Hour)
+			if err != nil {
+				return nil, err
+			}
+			envJSON, err := json.MarshalIndent(esc.NewValue(environment.Properties).ToJSON(false), "", "  ")
+			if err != nil {
+				return nil, err
+			}
+			loadedProjectStack, err := workspace.LoadProjectStackBytes(project, envJSON, "", encoding.Marshalers["json"])
+			if err != nil {
+				return nil, err
+			}
+			projectStack.Config = loadedProjectStack.Config
+			projectStack.Environment = loadedProjectStack.Environment
+			return projectStack, nil
+		}
+		// Allow fall-through to local file if environment was removed.
+	}
 	return workspace.DetectProjectStack(s.Ref().Name().Q())
 }
 
