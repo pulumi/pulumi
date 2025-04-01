@@ -132,7 +132,8 @@ var colorMap = map[int]string{
 // WatchPrefixPrintf wraps fmt.Printf with a watch mode prefixer that adds a timestamp and
 // resource metadata.
 func WatchPrefixPrintf(t time.Time, colorization colors.Colorization, resourceName string,
-	format string, a ...interface{}) {
+	format string, a ...interface{},
+) {
 	watchPrintfMutex.Lock()
 	defer watchPrintfMutex.Unlock()
 
