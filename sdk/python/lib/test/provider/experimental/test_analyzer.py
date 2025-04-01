@@ -851,18 +851,26 @@ def test_analyze_union_type():
 
 def test_analyze_enum_type():
     class MyEnumStr(Enum):
+        """string enum"""
+
         A = "a"
         B = "b"
 
     class MyEnumBool(Enum):
+        """bool enum"""
+
         A = True
         B = False
 
     class MyEnumFloat(Enum):
+        """float enum"""
+
         A = 1.1
         B = 2.2
 
     class MyEnumInt(Enum):
+        """int enum"""
+
         A = 1
         B = 2
 
@@ -912,6 +920,7 @@ def test_analyze_enum_type():
     assert type_defs == {
         "MyEnumStr": TypeDefinition(
             name="MyEnumStr",
+            description="string enum",
             module="test_analyzer",
             properties={},
             properties_mapping={},
@@ -924,6 +933,7 @@ def test_analyze_enum_type():
         ),
         "MyEnumBool": TypeDefinition(
             name="MyEnumBool",
+            description="bool enum",
             module="test_analyzer",
             properties={},
             properties_mapping={},
@@ -936,6 +946,7 @@ def test_analyze_enum_type():
         ),
         "MyEnumFloat": TypeDefinition(
             name="MyEnumFloat",
+            description="float enum",
             module="test_analyzer",
             properties={},
             properties_mapping={},
@@ -948,6 +959,7 @@ def test_analyze_enum_type():
         ),
         "MyEnumInt": TypeDefinition(
             name="MyEnumInt",
+            description="int enum",
             module="test_analyzer",
             properties={},
             properties_mapping={},
