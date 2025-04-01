@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Improve the usability and expressiveness of the pulumi watch command.
