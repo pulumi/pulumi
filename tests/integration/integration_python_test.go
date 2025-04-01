@@ -1962,6 +1962,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
+		"description": "MyComponent is the best",
 		"properties": {
 			"optionalIntOutput": { "type": "integer" },
 			"strOutput": {
