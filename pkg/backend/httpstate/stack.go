@@ -16,6 +16,7 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -116,6 +118,8 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
+	// usesCloudConfig indicates whether this stack's config exists in ESC instead of a local file.
+	usesCloudConfig bool
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -141,19 +145,66 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		tags:             apistack.Tags,
 		b:                b,
 		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
+		usesCloudConfig: apistack.Config != nil,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+
+// GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
 func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
+	if s.usesCloudConfig {
+		return "", false
+	}
 	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 	return path, err == nil
 }
 
 func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	if s.usesCloudConfig {
+		stackID, err := s.b.getCloudStackIdentifier(s.ref)
+		if err != nil {
+			return nil, err
+		}
+		stack, err := s.b.client.GetStack(ctx, stackID)
+		if err != nil {
+			return nil, err
+		}
+		if stack.Config != nil {
+			projectStack := &workspace.ProjectStack{
+				Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
+				SecretsProvider: stack.Config.SecretsProvider,
+				EncryptedKey:    stack.Config.EncryptedKey,
+				EncryptionSalt:  stack.Config.EncryptionSalt,
+				Config:          config.Map{},
+			}
+			return projectStack, nil
+		}
+		// Allow fall-through to local file if environment was removed.
+	}
 	return workspace.DetectProjectStack(s.Ref().Name().Q())
 }
 
 func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	if s.usesCloudConfig {
+		if projectStack.Config != nil {
+			return errors.New("cannot set config for a stack with cloud config")
+		}
+		imports := projectStack.Environment.Imports()
+		if len(imports) != 1 {
+			return errors.New("cloud stacks must have exactly 1 import")
+		}
+		stackID, err := s.b.getCloudStackIdentifier(s.ref)
+		if err != nil {
+			return err
+		}
+		err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
+			Environment:     imports[0],
+			SecretsProvider: projectStack.SecretsProvider,
+			EncryptedKey:    projectStack.EncryptedKey,
+			EncryptionSalt:  projectStack.EncryptionSalt,
+		})
+		return err
+	}
 	return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
 }
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
