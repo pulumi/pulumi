@@ -471,7 +471,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 2},
 				},
-				Parameterization: &workspace.Parameterization{
+				Replacement: &workspace.Parameterization{
 					Name:    "bar",
 					Version: semver.Version{Major: 2},
 					Value:   []byte("data"),
@@ -487,7 +487,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 1},
 				},
-				Parameterization: &workspace.Parameterization{
+				Replacement: &workspace.Parameterization{
 					Name:    "bar",
 					Version: semver.Version{Major: 1},
 					Value:   []byte("data"),
@@ -499,7 +499,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 1},
 				},
-				Parameterization: &workspace.Parameterization{
+				Replacement: &workspace.Parameterization{
 					Name:    "bar",
 					Version: semver.Version{Major: 2},
 					Value:   []byte("data"),
@@ -513,7 +513,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 							Kind:    apitype.ResourcePlugin,
 							Version: &semver.Version{Major: 1},
 						},
-						Parameterization: &workspace.Parameterization{
+						Replacement: &workspace.Parameterization{
 							Name:    "bar",
 							Version: semver.Version{Major: 1},
 							Value:   []byte("data"),
@@ -525,7 +525,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 							Kind:    apitype.ResourcePlugin,
 							Version: &semver.Version{Major: 1},
 						},
-						Parameterization: &workspace.Parameterization{
+						Replacement: &workspace.Parameterization{
 							Name:    "bar",
 							Version: semver.Version{Major: 2},
 							Value:   []byte("data"),
@@ -549,7 +549,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 1},
 				},
-				Parameterization: &workspace.Parameterization{
+				Replacement: &workspace.Parameterization{
 					Name:    "foo",
 					Version: semver.Version{Major: 2},
 					Value:   []byte("data"),
@@ -570,7 +570,7 @@ func TestPackageSetUpdatesTo(t *testing.T) {
 							Kind:    apitype.ResourcePlugin,
 							Version: &semver.Version{Major: 1},
 						},
-						Parameterization: &workspace.Parameterization{
+						Replacement: &workspace.Parameterization{
 							Name:    "foo",
 							Version: semver.Version{Major: 2},
 							Value:   []byte("data"),

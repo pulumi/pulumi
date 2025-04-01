@@ -305,7 +305,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 				PluginDownloadURL: info.Server,
 				Checksums:         info.Checksums,
 			},
-			Parameterization: parameterization,
+			Replacement: parameterization,
 		})
 	}
 

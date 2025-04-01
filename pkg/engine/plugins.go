@@ -325,7 +325,7 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 				PluginDownloadURL: downloadURL,
 				Checksums:         checksums,
 			},
-			Parameterization: packageParameterization,
+			Replacement: packageParameterization,
 		})
 	}
 	return set, nil

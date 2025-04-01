@@ -241,12 +241,12 @@ func (m *basePluginMapper) GetMapping(
 			return nil, fmt.Errorf("could not create plugin spec for plugin %s: %w", pluginSpec.Name, err)
 		}
 
-		descriptor := workspace.NewPackageDescriptor(pluginSpec, nil)
+		descriptor := workspace.PackageDescriptor{PluginSpec: pluginSpec}
 
 		// If the current plugin's name matches that which we are looking for, and we have a hint that includes
 		// parameterization information, we will pass that to the plugin as part of its instantiation.
 		if mapperSpec.name == pluginName && hint != nil && hint.Parameterization != nil {
-			descriptor.Parameterization = hint.Parameterization
+			descriptor.Replacement = hint.Parameterization
 		}
 
 		providerPlugin, err := m.providerFactory(descriptor)

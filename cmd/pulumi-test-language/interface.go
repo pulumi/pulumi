@@ -153,7 +153,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 		},
 	}
 	if descriptor.Parameterization != nil {
-		workspaceDescriptor.Parameterization = &workspace.Parameterization{
+		workspaceDescriptor.Replacement = &workspace.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version,
 			Value:   descriptor.Parameterization.Value,
@@ -1057,7 +1057,7 @@ func (eng *languageTestServer) RunLanguageTest(
 						Name:    pkgDef.Parameterization.BaseProvider.Name,
 						Version: &pkgDef.Parameterization.BaseProvider.Version,
 					},
-					Parameterization: &workspace.Parameterization{
+					Replacement: &workspace.Parameterization{
 						Name:    pkgDef.Name,
 						Version: *pkgDef.Version,
 						Value:   pkgDef.Parameterization.Parameter,
@@ -1093,7 +1093,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			for _, actual := range packages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) {
 					found = true
 					break
 				}
@@ -1109,7 +1109,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			for _, expectedPackage := range expectedPackages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) {
 					found = true
 					break
 				}

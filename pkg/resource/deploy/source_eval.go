@@ -357,7 +357,8 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		if version := d.defaultProviderInfo[req.PackageName()].Version; version != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default version hit on version %s", req, version)
 			req = providers.NewProviderRequest(
-				req.PackageName(), version, req.PluginDownloadURL(), req.PluginChecksums(), req.Replacement())
+				req.PackageName(), version, req.PluginDownloadURL(), req.PluginChecksums(),
+				req.Replacement(), req.Extension())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default provider miss, sending nil version to engine", req)
@@ -372,7 +373,8 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginDownloadURL hit on %s",
 				req, pluginDownloadURL)
 			req = providers.NewProviderRequest(
-				req.PackageName(), req.Version(), pluginDownloadURL, req.PluginChecksums(), req.Replacement())
+				req.PackageName(), req.Version(), pluginDownloadURL, req.PluginChecksums(),
+				req.Replacement(), req.Extension())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default pluginDownloadURL miss, sending empty string to engine", req)
@@ -387,7 +389,8 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginChecksums hit on %v",
 				req, pluginChecksums)
 			req = providers.NewProviderRequest(
-				req.PackageName(), req.Version(), req.PluginDownloadURL(), pluginChecksums, req.Replacement())
+				req.PackageName(), req.Version(), req.PluginDownloadURL(), pluginChecksums,
+				req.Replacement(), req.Extension())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default pluginChecksums miss, sending empty map to engine", req)
@@ -395,18 +398,36 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 	}
 
 	if req.Replacement() != nil {
-		logging.V(5).Infof("normalizeProviderRequest(%s): using parameterization %v from request",
+		logging.V(5).Infof("normalizeProviderRequest(%s): using replacement parameterization %v from request",
 			req, req.Replacement())
 	} else {
-		if parameterization := d.defaultProviderInfo[req.PackageName()].Parameterization; parameterization != nil {
-			logging.V(5).Infof("normalizeProviderRequest(%s): default parameterization hit on %v",
-				req, parameterization)
+		if replacement := d.defaultProviderInfo[req.PackageName()].Replacement; replacement != nil {
+			logging.V(5).Infof("normalizeProviderRequest(%s): default replacement parameterization hit on %v",
+				req, replacement)
 
 			req = providers.NewProviderRequest(
-				req.PackageName(), req.Version(), req.PluginDownloadURL(), req.PluginChecksums(), parameterization)
+				req.PackageName(), req.Version(), req.PluginDownloadURL(), req.PluginChecksums(),
+				replacement, req.Extension())
 		} else {
 			logging.V(5).Infof(
-				"normalizeProviderRequest(%s): default parameterization miss, sending nil to engine", req)
+				"normalizeProviderRequest(%s): default replacement parameterization miss, sending nil to engine", req)
+		}
+	}
+
+	if req.Extension() != nil {
+		logging.V(5).Infof("normalizeProviderRequest(%s): using extension parameterization %v from request",
+			req, req.Replacement())
+	} else {
+		if extension := d.defaultProviderInfo[req.PackageName()].Extension; extension != nil {
+			logging.V(5).Infof("normalizeProviderRequest(%s): default extension parameterization hit on %v",
+				req, extension)
+
+			req = providers.NewProviderRequest(
+				req.PackageName(), req.Version(), req.PluginDownloadURL(), req.PluginChecksums(),
+				req.Replacement(), extension)
+		} else {
+			logging.V(5).Infof(
+				"normalizeProviderRequest(%s): default extension parameterization miss, sending nil to engine", req)
 		}
 	}
 
@@ -852,11 +873,13 @@ func (rm *resmon) getProviderFromSource(
 func parseProviderRequest(
 	pkg tokens.Package, version,
 	pluginDownloadURL string, pluginChecksums map[string][]byte,
-	parameterization *workspace.Parameterization,
+	replacement *workspace.Parameterization,
+	extension *workspace.Parameterization,
 ) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(pkg, nil, pluginDownloadURL, pluginChecksums, parameterization), nil
+		return providers.NewProviderRequest(pkg, nil, pluginDownloadURL, pluginChecksums,
+			replacement, extension), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -867,7 +890,7 @@ func parseProviderRequest(
 
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
-	return providers.NewProviderRequest(pkg, &parsedVersion, url, pluginChecksums, parameterization), nil
+	return providers.NewProviderRequest(pkg, &parsedVersion, url, pluginChecksums, replacement, extension), nil
 }
 
 func (rm *resmon) RegisterPackage(ctx context.Context,
@@ -889,27 +912,44 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		}
 		version = &v
 	}
-	// Parse the parameterization
-	var parameterization *workspace.Parameterization
+	// Parse the replacement parameterization
+	var replacement *workspace.Parameterization
 	if req.Parameterization != nil {
-		parameterizationVersion, err := semver.Parse(req.Parameterization.Version)
+		replacementVersion, err := semver.Parse(req.Parameterization.Version)
 		if err != nil {
-			return nil, fmt.Errorf("parse parameter version %s: %w", req.Parameterization.Version, err)
+			return nil, fmt.Errorf("parse replacement parameter version %s: %w", req.Parameterization.Version, err)
 		}
 
 		// RegisterPackageRequest keeps all the plugin information in the root fields "name", "version" etc, while the
 		// information about the parameterized package is in the "parameterization" field. Internally in the engine, and
 		// for resource state we need to flip that around a bit.
-		parameterization = &workspace.Parameterization{
+		replacement = &workspace.Parameterization{
 			Name:    req.Parameterization.Name,
-			Version: parameterizationVersion,
+			Version: replacementVersion,
 			Value:   req.Parameterization.Value,
+		}
+	}
+	// Parse the extension parameterization
+	var extension *workspace.Parameterization
+	if req.Extension != nil {
+		extensionVersion, err := semver.Parse(req.Extension.Version)
+		if err != nil {
+			return nil, fmt.Errorf("parse extension parameter version %s: %w", req.Extension.Version, err)
+		}
+
+		// RegisterPackageRequest keeps all the plugin information in the root fields "name", "version" etc, while the
+		// information about the parameterized package is in the "parameterization" field. Internally in the engine, and
+		// for resource state we need to flip that around a bit.
+		extension = &workspace.Parameterization{
+			Name:    req.Extension.Name,
+			Version: extensionVersion,
+			Value:   req.Extension.Value,
 		}
 	}
 
 	pi := providers.NewProviderRequest(
 		tokens.Package(req.Name), version, req.DownloadUrl, req.Checksums,
-		parameterization)
+		replacement, extension)
 
 	rm.packageRefLock.Lock()
 	defer rm.packageRefLock.Unlock()
@@ -1020,7 +1060,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 
 	// Load up the resource provider if necessary.
 	providerReq, err := parseProviderRequest(
-		tok.Package(), opts.Version, opts.PluginDownloadUrl, opts.PluginChecksums, nil)
+		tok.Package(), opts.Version, opts.PluginDownloadUrl, opts.PluginChecksums, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1101,7 +1141,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		packageName := tokens.Package(parts[0])
 		providerReq, err = parseProviderRequest(
 			packageName, req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil, nil)
 
 		self, ok := req.GetArgs().Fields["__self__"]
 		if !ok {
@@ -1127,7 +1167,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	} else {
 		providerReq, err = parseProviderRequest(
 			tok.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil, nil)
 
 		rawProviderRef = req.GetProvider()
 	}
@@ -1265,7 +1305,7 @@ func (rm *resmon) StreamInvoke(
 
 	providerReq, err := parseProviderRequest(
 		tok.Package(), req.GetVersion(),
-		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+		req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -1344,7 +1384,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	if !providers.IsProviderType(t) && provider == "" {
 		providerReq, err := parseProviderRequest(
 			t.Package(), req.GetVersion(),
-			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -2076,7 +2116,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if custom && !providers.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
 			t.Package(), opts.GetVersion(),
-			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
+			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -2227,8 +2267,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if defaultProvider.Checksums != nil {
 				providers.SetProviderChecksums(props, defaultProvider.Checksums)
 			}
-			if defaultProvider.Parameterization != nil {
-				providers.SetProviderParameterization(props, defaultProvider.Parameterization)
+			if defaultProvider.Replacement != nil {
+				providers.SetProviderParameterization(props, defaultProvider.Replacement)
 			}
 		}
 	}

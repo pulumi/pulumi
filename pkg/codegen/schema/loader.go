@@ -463,7 +463,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		},
 	}
 	if descriptor.Parameterization != nil {
-		wsDescriptor.Parameterization = &workspace.Parameterization{
+		wsDescriptor.Replacement = &workspace.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version,
 			Value:   descriptor.Parameterization.Value,

@@ -54,6 +54,7 @@ func NewProviderRequest(
 	name tokens.Package, version *semver.Version,
 	pluginDownloadURL string, checksums map[string][]byte,
 	replacement *workspace.Parameterization,
+	extension *workspace.Parameterization,
 ) ProviderRequest {
 	return ProviderRequest{
 		version:           version,
@@ -61,7 +62,7 @@ func NewProviderRequest(
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
 		replacement:       replacement,
-		extension:         nil,
+		extension:         extension,
 	}
 }
 
