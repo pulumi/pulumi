@@ -2224,6 +2224,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if defaultProvider.PluginDownloadURL != "" {
 				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
 			}
+			if defaultProvider.Checksums != nil {
+				providers.SetProviderChecksums(props, defaultProvider.Checksums)
+			}
+			if defaultProvider.Parameterization != nil {
+				providers.SetProviderParameterization(props, defaultProvider.Parameterization)
+			}
 		}
 	}
 
