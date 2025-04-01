@@ -519,7 +519,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
 		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
 		// have changed.
-		// The exception to this is new "modern" refreshes, which are not elided and are treated as normal operations.
+		// The exception to this is persisted refreshes, which are not elided and are treated as normal operations.
 		// These can either update or delete a resource.
 		refreshStep := step.(*deploy.RefreshStep)
 		if refreshStep.Persisted() {
