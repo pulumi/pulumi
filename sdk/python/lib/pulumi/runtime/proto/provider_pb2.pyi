@@ -1920,3 +1920,146 @@ class GetMappingsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["providers", b"providers"]) -> None: ...
 
 global___GetMappingsResponse = GetMappingsResponse
+
+@typing_extensions.final
+class Dependencies(google.protobuf.message.Message):
+    """Dependencies describes a list of dependencies."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URNS_FIELD_NUMBER: builtins.int
+    @property
+    def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """A list of URNs that are the dependencies."""
+    def __init__(
+        self,
+        *,
+        urns: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["urns", b"urns"]) -> None: ...
+
+global___Dependencies = Dependencies
+
+@typing_extensions.final
+class MigrateRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class OldPropertyDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___Dependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___Dependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    OLD_TYPE_FIELD_NUMBER: builtins.int
+    OLD_VERSION_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_PROPERTY_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the resource being migrated."""
+    urn: builtins.str
+    """The URN of the resource being migrated."""
+    name: builtins.str
+    """The name of the resource being migrated. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the resource being migrated. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    old_type: builtins.str
+    """The old type of the resource being migrated."""
+    old_version: builtins.str
+    """THe old version of the resource being migrated."""
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old output properties of the resource being migrated."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old input properties of the resource being migrated."""
+    @property
+    def old_property_dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___Dependencies]:
+        """a map from property keys to the dependencies of the property."""
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        old_type: builtins.str = ...,
+        old_version: builtins.str = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_property_dependencies: collections.abc.Mapping[builtins.str, global___Dependencies] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "old_property_dependencies", b"old_property_dependencies", "old_type", b"old_type", "old_version", b"old_version", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___MigrateRequest = MigrateRequest
+
+@typing_extensions.final
+class MigrateResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class NewPropertyDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___Dependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___Dependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    NEW_ID_FIELD_NUMBER: builtins.int
+    NEW_OUTPUTS_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    NEW_PROPERTY_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    new_id: builtins.str
+    """The new ID of the resource being migrated."""
+    @property
+    def new_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The new output properties of the resource being migrated."""
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The new input properties of the resource being migrated."""
+    @property
+    def new_property_dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___Dependencies]:
+        """The new map from property keys to the dependencies of the property."""
+    def __init__(
+        self,
+        *,
+        new_id: builtins.str = ...,
+        new_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_property_dependencies: collections.abc.Mapping[builtins.str, global___Dependencies] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["new_inputs", b"new_inputs", "new_outputs", b"new_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["new_id", b"new_id", "new_inputs", b"new_inputs", "new_outputs", b"new_outputs", "new_property_dependencies", b"new_property_dependencies"]) -> None: ...
+
+global___MigrateResponse = MigrateResponse

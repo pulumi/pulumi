@@ -436,6 +436,8 @@ type Provider interface {
 	// If a provider implements this method GetMapping will be called using the results from this method.
 	GetMappings(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
 
+	Migrate(context.Context, MigrateRequest) (MigrateResponse, error)
+
 	// mustEmbed *requires* that implementers make an explicit choice about forward compatibility.
 	//
 	// If [UnimplementedProvider] is embedded, then the struct will be forward compatible.
@@ -824,4 +826,26 @@ type CallResult struct {
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
 	Failures []CheckFailure
+}
+
+type MigrateRequest struct {
+	ID resource.ID
+
+	URN  resource.URN
+	Name string
+	Type tokens.Type
+
+	OldType    tokens.Type
+	OldVersion *semver.Version
+
+	OldOutputs              resource.PropertyMap
+	OldInputs               resource.PropertyMap
+	OldPropertyDependencies map[resource.PropertyKey][]resource.URN
+}
+
+type MigrateResponse struct {
+	NewID                   resource.ID
+	NewInputs               resource.PropertyMap
+	NewOutputs              resource.PropertyMap
+	NewPropertyDependencies map[resource.PropertyKey][]resource.URN
 }

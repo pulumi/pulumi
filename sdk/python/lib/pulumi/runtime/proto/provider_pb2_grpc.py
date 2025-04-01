@@ -125,6 +125,11 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.GetMappingsRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.GetMappingsResponse.FromString,
                 )
+        self.Migrate = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Migrate',
+                request_serializer=pulumi_dot_provider__pb2.MigrateRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.MigrateResponse.FromString,
+                )
 
 
 class ResourceProviderServicer(object):
@@ -434,6 +439,16 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Migrate(self, request, context):
+        """Migrate is called by the engine every time a resources type or version has changed. That is if the engine has an
+        old state for a resource from version 1 of a package, and we're now trying to update that resource to version 2
+        of the package, then the engine will call Migrate to give the provider a chance to marshal the shape of the
+        resources state into a shape understood in version 2.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -541,6 +556,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.GetMappings,
                     request_deserializer=pulumi_dot_provider__pb2.GetMappingsRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.GetMappingsResponse.SerializeToString,
+            ),
+            'Migrate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Migrate,
+                    request_deserializer=pulumi_dot_provider__pb2.MigrateRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.MigrateResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -910,5 +930,22 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetMappings',
             pulumi_dot_provider__pb2.GetMappingsRequest.SerializeToString,
             pulumi_dot_provider__pb2.GetMappingsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Migrate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Migrate',
+            pulumi_dot_provider__pb2.MigrateRequest.SerializeToString,
+            pulumi_dot_provider__pb2.MigrateResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

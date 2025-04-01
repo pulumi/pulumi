@@ -882,6 +882,11 @@ func (r *Registry) GetPluginInfo(context.Context) (workspace.PluginInfo, error) 
 	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
 }
 
+func (r *Registry) Migrate(context.Context, plugin.MigrateRequest) (plugin.MigrateResponse, error) {
+	// return an error: this should not be called for the provider registry
+	return plugin.MigrateResponse{}, errors.New("the provider registry does not implement migration")
+}
+
 func (r *Registry) SignalCancellation(context.Context) error {
 	// At the moment there isn't anything reasonable we can do here. In the future, it might be nice to plumb
 	// cancellation through the plugin loader and cancel any outstanding load requests here.

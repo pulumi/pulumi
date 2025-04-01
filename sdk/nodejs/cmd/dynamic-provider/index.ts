@@ -429,6 +429,16 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             undefined,
         );
     }
+
+    migrate(call: any, callback: any): void {
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "Migrate is not implemented by the dynamic provider",
+            },
+            undefined,
+        );
+    }
 }
 
 function resultIncludingProvider(result: any, props: any): any {
