@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -43,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/sysutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
@@ -1732,7 +1732,7 @@ runtime: yaml
 			cmd := exec.CommandContext(ctx, filepath.Join(e.HomePath, "bin", pulumiName), "watch")
 			cmd.Dir = e.RootPath
 			cmd.Cancel = func() error {
-				syscall.Kill(cmd.Process.Pid, syscall.SIGINT)
+				sysutil.Sigint(cmd.Process.Pid)
 				return nil
 			}
 			cmd.WaitDelay = 5 * time.Second
