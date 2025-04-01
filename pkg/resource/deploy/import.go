@@ -266,7 +266,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		req := providers.NewProviderRequest(
 			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+		typ, name := providers.MakeProviderType(req.PackageName()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
@@ -291,15 +291,15 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		return defaultProviderRequests[i].String() < defaultProviderRequests[j].String()
 	})
 	for idx, req := range defaultProviderRequests {
-		if req.Package() == "" {
+		if req.PackageName() == "" {
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+		typ, name := providers.MakeProviderType(req.PackageName()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
+		inputs, err := i.deployment.target.GetPackageConfig(req.PackageName())
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
@@ -314,7 +314,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
 		}
-		if parameterization := req.Parameterization(); parameterization != nil {
+		if parameterization := req.Replacement(); parameterization != nil {
 			providers.SetProviderName(inputs, req.Name())
 			providers.SetProviderParameterization(inputs, parameterization)
 		}
@@ -414,7 +414,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			}
 			req := providers.NewProviderRequest(
 				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+			typ, name := providers.MakeProviderType(req.PackageName()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
 

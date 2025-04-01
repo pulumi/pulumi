@@ -354,10 +354,10 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 	if req.Version() != nil {
 		logging.V(5).Infof("normalizeProviderRequest(%s): using version %s from request", req, req.Version())
 	} else {
-		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
+		if version := d.defaultProviderInfo[req.PackageName()].Version; version != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default version hit on version %s", req, version)
 			req = providers.NewProviderRequest(
-				req.Package(), version, req.PluginDownloadURL(), req.PluginChecksums(), req.Parameterization())
+				req.PackageName(), version, req.PluginDownloadURL(), req.PluginChecksums(), req.Replacement())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default provider miss, sending nil version to engine", req)
@@ -368,11 +368,11 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		logging.V(5).Infof("normalizeProviderRequest(%s): using pluginDownloadURL %s from request",
 			req, req.PluginDownloadURL())
 	} else {
-		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
+		if pluginDownloadURL := d.defaultProviderInfo[req.PackageName()].PluginDownloadURL; pluginDownloadURL != "" {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginDownloadURL hit on %s",
 				req, pluginDownloadURL)
 			req = providers.NewProviderRequest(
-				req.Package(), req.Version(), pluginDownloadURL, req.PluginChecksums(), req.Parameterization())
+				req.PackageName(), req.Version(), pluginDownloadURL, req.PluginChecksums(), req.Replacement())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default pluginDownloadURL miss, sending empty string to engine", req)
@@ -383,27 +383,27 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		logging.V(5).Infof("normalizeProviderRequest(%s): using pluginChecksums %v from request",
 			req, req.PluginChecksums())
 	} else {
-		if pluginChecksums := d.defaultProviderInfo[req.Package()].Checksums; pluginChecksums != nil {
+		if pluginChecksums := d.defaultProviderInfo[req.PackageName()].Checksums; pluginChecksums != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginChecksums hit on %v",
 				req, pluginChecksums)
 			req = providers.NewProviderRequest(
-				req.Package(), req.Version(), req.PluginDownloadURL(), pluginChecksums, req.Parameterization())
+				req.PackageName(), req.Version(), req.PluginDownloadURL(), pluginChecksums, req.Replacement())
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default pluginChecksums miss, sending empty map to engine", req)
 		}
 	}
 
-	if req.Parameterization() != nil {
+	if req.Replacement() != nil {
 		logging.V(5).Infof("normalizeProviderRequest(%s): using parameterization %v from request",
-			req, req.Parameterization())
+			req, req.Replacement())
 	} else {
-		if parameterization := d.defaultProviderInfo[req.Package()].Parameterization; parameterization != nil {
+		if parameterization := d.defaultProviderInfo[req.PackageName()].Parameterization; parameterization != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default parameterization hit on %v",
 				req, parameterization)
 
 			req = providers.NewProviderRequest(
-				req.Package(), req.Version(), req.PluginDownloadURL(), req.PluginChecksums(), parameterization)
+				req.PackageName(), req.Version(), req.PluginDownloadURL(), req.PluginChecksums(), parameterization)
 		} else {
 			logging.V(5).Infof(
 				"normalizeProviderRequest(%s): default parameterization miss, sending nil to engine", req)
@@ -419,7 +419,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	req providers.ProviderRequest,
 ) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
-	inputs, err := d.config.GetPackageConfig(req.Package())
+	inputs, err := d.config.GetPackageConfig(req.PackageName())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -432,16 +432,16 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	if req.PluginChecksums() != nil {
 		providers.SetProviderChecksums(inputs, req.PluginChecksums())
 	}
-	if req.Parameterization() != nil {
+	if req.Replacement() != nil {
 		providers.SetProviderName(inputs, req.Name())
-		providers.SetProviderParameterization(inputs, req.Parameterization())
+		providers.SetProviderParameterization(inputs, req.Replacement())
 	}
 
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
-			providers.MakeProviderType(req.Package()),
+			providers.MakeProviderType(req.PackageName()),
 			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
 			nil, nil, nil, "", nil, nil, nil, "", ""),
 		done: done,
@@ -467,7 +467,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(string(req.Package().Name())), nil
+		return providers.NewDenyDefaultProvider(string(req.PackageName().Name())), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
@@ -517,7 +517,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (bool, error) {
 	logging.V(9).Infof("checking if %#v should be denied", req)
 
-	if req.Package().Name().String() == "pulumi" {
+	if req.PackageName().Name().String() == "pulumi" {
 		logging.V(9).Infof("we always allow %#v through", req)
 		return false, nil
 	}
@@ -548,7 +548,7 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 				return true, fmt.Errorf("pulumi:disable-default-providers[%d] must be a string", i)
 			}
 			barred := strings.TrimSpace(s)
-			if barred == "*" || barred == req.Package().Name().String() {
+			if barred == "*" || barred == req.PackageName().Name().String() {
 				logging.V(7).Infof("denying %s (star=%t)", req, barred == "*")
 				denyCreation = true
 				break
@@ -839,7 +839,7 @@ func (rm *resmon) getProviderFromSource(
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
 	} else if providers.IsDenyDefaultsProvider(providerRef) {
 		msg := diag.GetDefaultProviderDenied("Invoke").Message
-		return nil, fmt.Errorf(msg, req.Package(), token)
+		return nil, fmt.Errorf(msg, req.PackageName(), token)
 	}
 
 	provider, ok := providerSource.GetProvider(providerRef)
@@ -2208,9 +2208,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if providerReq.PluginChecksums() != nil {
 				providers.SetProviderChecksums(props, providerReq.PluginChecksums())
 			}
-			if providerReq.Parameterization() != nil {
+			if providerReq.Replacement() != nil {
 				providers.SetProviderName(props, providerReq.Name())
-				providers.SetProviderParameterization(props, providerReq.Parameterization())
+				providers.SetProviderParameterization(props, providerReq.Replacement())
 			}
 		}
 
