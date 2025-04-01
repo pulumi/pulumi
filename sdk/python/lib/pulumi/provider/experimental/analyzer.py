@@ -505,13 +505,30 @@ class Analyzer:
                     while True:
                         try:
                             node = next(it)
-                            # Look for an assignment with a type annotation
+                            # For argument types or complex types, we'll have
+                            # assignments with type annotations (ast.AnnAssign):
+                            #
+                            #   class SomeArgs(TypedDict):
+                            #     abc: str                  # <- ast.AnnAssign
+                            #
+                            # Here we have an `ast.AnnAssign` with the target `abc`.
+                            # For Enums, we instead have assignments without annotations:
+                            #
+                            #   class SomeEnum(Enum):
+                            #     abc = "abc"               # <- ast.Assign
+                            #
+                            # In this case we have an `ast.Assign`. Since Python supports
+                            # multiple assignement, this node type has a list of targets.
+                            # We are only interested in cases with exactly one.
                             if isinstance(node, ast.AnnAssign) or isinstance(
                                 node, ast.Assign
                             ):
                                 if isinstance(node, ast.AnnAssign):
                                     target_node: ast.expr = node.target
                                 else:
+                                    # We have an ast.Assign
+                                    if len(node.targets) != 1:
+                                        continue
                                     target_node = node.targets[0]
                                 if isinstance(target_node, ast.Name):
                                     target = target_node.id
