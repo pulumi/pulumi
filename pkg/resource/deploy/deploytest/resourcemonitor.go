@@ -498,15 +498,23 @@ func (rm *ResourceMonitor) RegisterStackInvokeTransform(callback *pulumirpc.Call
 	return err
 }
 
-func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, checksums map[string][]byte,
-	parameterization *pulumirpc.Parameterization,
-) (string, error) {
+type RegisterPackageRequest struct {
+	Name        string
+	Version     string
+	DownloadURL string
+	Checksums   map[string][]byte
+	Replacement *pulumirpc.Parameterization
+	Extension   *pulumirpc.Parameterization
+}
+
+func (rm *ResourceMonitor) RegisterPackage(req RegisterPackageRequest) (string, error) {
 	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
-		Name:             pkg,
-		Version:          version,
-		DownloadUrl:      downloadURL,
-		Checksums:        checksums,
-		Parameterization: parameterization,
+		Name:             req.Name,
+		Version:          req.Version,
+		DownloadUrl:      req.DownloadURL,
+		Checksums:        req.Checksums,
+		Parameterization: req.Replacement,
+		Extension:        req.Extension,
 	})
 	if err != nil {
 		return "", err
