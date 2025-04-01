@@ -348,6 +348,20 @@ func (pc *Client) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganiza
 	return resp, nil
 }
 
+// DownloadCLIVersion downloads the latest CLI from the given url. It supports a range argument,
+// which can be used to resume a download that was interrupted.
+func (pc *Client) DownloadCLI(ctx context.Context, url string, rangeStart int64) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if rangeStart > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", rangeStart))
+	}
+	req.Header.Set("Accept-Encoding", "gzip")
+	return pc.do(ctx, req)
+}
+
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
 	Project      *string

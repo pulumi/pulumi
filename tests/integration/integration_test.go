@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1668,4 +1669,76 @@ func TestGetSchemaUsesCorrectVersion(t *testing.T) {
 	err = json.Unmarshal([]byte(stdout), &packageSpec)
 	require.NoError(t, err)
 	require.Equal(t, "3.6.0", packageSpec.Version)
+}
+
+//nolint:paralleltest // modifies the environment
+func TestCLIInstallation(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("PULUMI_HOME", filepath.Join(tmpDir, ".pulumi"))
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	pulumiName := "pulumi"
+	if runtime.GOOS == "windows" {
+		pulumiName = "pulumi.exe"
+	}
+
+	e.RunCommand(pulumiName, "login", "--cloud-url", e.LocalURL())
+
+	// Find the pulumi binary
+	pulumiBin, err := exec.LookPath(pulumiName)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(filepath.Join(e.HomePath, "bin"), 0o755)
+	require.NoError(t, err)
+
+	err = fsutil.CopyFile(filepath.Join(e.HomePath, "bin", pulumiName), pulumiBin, nil)
+	require.NoError(t, err)
+
+	os.WriteFile(filepath.Join(e.RootPath, "Pulumi.yaml"), []byte(`name: pulumi-test-yaml
+description: A minimal Pulumi YAML program
+runtime: yaml
+`), 0o755)
+
+	e.RunCommand(pulumiName, "stack", "init", "organization/pulumi-test-yaml/test")
+
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = "x64"
+	case "arm64":
+		arch = "arm64"
+	case "aarch64":
+		arch = "arm64"
+	default:
+		panic(fmt.Sprintf("unsupported architecture: %s", runtime.GOARCH))
+	}
+
+	err = os.MkdirAll(filepath.Join(e.HomePath, "tmp"), 0o755)
+	require.NoError(t, err)
+
+	// Fake having started a download, so we can test with a known version.
+	_, err = os.Create(filepath.Join(e.HomePath, "tmp", fmt.Sprintf("pulumi-v3.160.0-alpha.x35ab291-%s-%s.tar.gz", runtime.GOOS, arch)))
+	require.NoError(t, err)
+
+	// Run pulumi watch in a separate goroutine, so it runs in the background and installs the CLI.
+	go func() {
+		e.Env = append(e.Env, "PULUMI_AUTO_UPDATE_CLI=true")
+		e.RunCommand(filepath.Join(e.HomePath, "bin", pulumiName), "watch")
+	}()
+	// Wait for the new CLI to be installed, give it two minutes at most
+	endTime := time.Now().Add(time.Minute)
+	for {
+		if time.Now().After(endTime) {
+			t.Fatal("timed out waiting for new CLI to be installed")
+		}
+		stdout, _ := e.RunCommand(filepath.Join(e.HomePath, "bin", pulumiName), "version")
+		t.Logf("Got version: %s", stdout)
+		// We found the right version, pulumi has been updated.
+		// break out of the loop and end the test
+		if strings.Contains(stdout, "v3.160.0-alpha.x35ab291") {
+			break
+		}
+	}
 }
