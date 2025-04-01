@@ -77,14 +77,14 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
 				WatchPrefixPrintf(time.Now(), opts.Color, p.Metadata.URN.Name(),
-					colors.Bold+"%s"+colors.Reset+": %s...\n", p.Metadata.URN.Type(), p.Metadata.Op)
+					colors.Bold+"%s"+colors.Reset+": %s...\n", p.Metadata.URN.Type().DisplayName(), p.Metadata.Op)
 			}
 		case engine.ResourceOutputsEvent:
 			p := e.Payload().(engine.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
 				WatchPrefixPrintf(time.Now(), opts.Color, p.Metadata.URN.Name(),
 					colors.Bold+"%s"+colors.Reset+": %s... ✅\n",
-					p.Metadata.URN.Type(), p.Metadata.Op)
+					p.Metadata.URN.Type().DisplayName(), p.Metadata.Op)
 			}
 
 			// If it's the stack, print out the stack outputs.
@@ -100,7 +100,7 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			p := e.Payload().(engine.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
 				WatchPrefixPrintf(time.Now(), opts.Color, p.Metadata.URN.Name(),
-					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
+					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type().DisplayName())
 			}
 		case engine.ProgressEvent:
 			// Progress events are ephemeral and should be skipped.
@@ -140,12 +140,6 @@ func WatchPrefixPrintf(t time.Time, colorization colors.Colorization, resourceNa
 	format = colorization.Colorize(format)
 
 	// Also trim extra space.
-	format = strings.TrimSpace(format)
-	format = strings.TrimSpace(format)
-	format = strings.TrimSpace(format)
-	format = strings.TrimSpace(format)
-	format = strings.TrimSpace(format)
-	format = strings.TrimSpace(format)
 	format = strings.TrimSpace(format)
 
 	// If empty, we should bail.
