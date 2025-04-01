@@ -675,6 +675,116 @@ func (source *githubSource) URL() string {
 	return fmt.Sprintf("github://%s/%s/%s", source.host, source.organization, source.repository)
 }
 
+type dockerSource struct {
+	name string
+	kind apitype.PluginKind
+	url  string
+}
+
+func newDockerSource(url *url.URL, name string, kind apitype.PluginKind) (*dockerSource, error) {
+	logging.V(6).Infof("newDockerSource(%s, %s, %s)", url.String(), name, kind)
+	return &dockerSource{
+		kind: kind,
+		name: name,         // docker.io_jpoissonnier_pulumi-docker-plugin-example
+		url:  url.String(), // docker://docker.io/jpoissonnier/pulumi-docker-plugin-example
+	}, nil
+}
+
+func (ds *dockerSource) Download(ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+
+	var buf bytes.Buffer
+	gzipWriter := gzip.NewWriter(&buf)
+	tarWriter := tar.NewWriter(gzipWriter)
+
+	logging.V(6).Infof("Downloading plugin from %s", ds.url)
+
+	image := strings.TrimPrefix(ds.url, "docker://")
+	logging.V(6).Infof("image %s", image)
+	pluginYaml := "runtime:\n  name: docker\n  options:\n    image: " + image + ":" + version.String()
+	hdr := &tar.Header{
+		Name: "PulumiPlugin.yaml",
+		Mode: 0644,
+		Size: int64(len(pluginYaml)),
+	}
+	if err := tarWriter.WriteHeader(hdr); err != nil {
+		return nil, -1, fmt.Errorf("failed to write tar header: %w", err)
+	}
+	if _, err := tarWriter.Write([]byte(pluginYaml)); err != nil {
+		return nil, -1, fmt.Errorf("failed to write tar content: %w", err)
+	}
+	if err := tarWriter.Close(); err != nil {
+		return nil, -1, fmt.Errorf("failed to close tar writer: %w", err)
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return nil, -1, fmt.Errorf("failed to close gzip writer: %w", err)
+	}
+
+	return io.NopCloser(&buf), int64(buf.Len()), nil
+}
+
+func (ds *dockerSource) GetLatestVersion(ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	imageURL := ds.url
+	imageURL = strings.TrimPrefix(imageURL, "http://")
+	imageURL = strings.TrimPrefix(imageURL, "https://")
+	imageURL = strings.TrimPrefix(imageURL, "docker://")
+	if strings.HasPrefix(imageURL, "docker.io/") {
+		imageURL = strings.TrimPrefix(imageURL, "docker.io/")
+	}
+	parts := strings.SplitN(imageURL, "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid Docker image URI format: %s", ds.url)
+	}
+	repository := parts[0]
+	imageName := parts[1]
+	logging.V(6).Infof("Parsed Docker image: repository=%s, imageName=%s", repository, imageName)
+	tagsURL := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/", repository, imageName)
+	req, err := http.NewRequestWithContext(ctx, "GET", tagsURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker Hub request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, _, err := getHTTPResponse(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query Docker Hub: %w", err)
+	}
+	defer contract.IgnoreClose(resp)
+
+	var tags struct {
+		Results []struct {
+			Name string `json:"name"`
+		} `json:"results"`
+	}
+	if err = json.NewDecoder(resp).Decode(&tags); err != nil {
+		return nil, fmt.Errorf("failed to decode Docker Hub tags response: %w", err)
+	}
+
+	if len(tags.Results) == 0 {
+		return nil, fmt.Errorf("no tags found for Docker image %s/%s", ds.name, ds.kind)
+	}
+
+	// Find the first valid semver tag
+	for _, tag := range tags.Results {
+		if tag.Name == "latest" {
+			continue
+		}
+		parsedVersion, err := semver.ParseTolerant(tag.Name)
+		if err == nil {
+			return &parsedVersion, nil
+		}
+	}
+
+	// TODO: fallback to latest? v0.0.0.xdigest
+
+	return nil, fmt.Errorf("no valid semver tags found for Docker image %s/%s", ds.name, ds.kind)
+}
+
+func (ds *dockerSource) URL() string {
+	return ds.url
+}
+
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
 type httpSource struct {
 	name string
@@ -1025,7 +1135,16 @@ func NewPluginSpec(
 	}
 
 	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
-	if strings.HasPrefix(name, "https://") || strings.HasPrefix(name, "git://") || urlRegex.MatchString(name) {
+
+	if strings.HasPrefix(name, "docker.io/") ||
+		strings.HasPrefix(name, "http://docker.io/") ||
+		strings.HasPrefix(name, "https://docker.io/") {
+		name = strings.TrimPrefix(name, "http://")
+		name = strings.TrimPrefix(name, "https://")
+		// TODO: Don't love using a `docker://` scheme here
+		pluginDownloadURL = "docker://" + name
+		name = strings.ReplaceAll(name, "/", "_")
+	} else if strings.HasPrefix(name, "https://") || strings.HasPrefix(name, "git://") || urlRegex.MatchString(name) {
 		// We support URLs with and without the https:// prefix.  Standardize them here, so we can work with
 		// them uniformly.
 		name = strings.TrimPrefix(name, "https://")
@@ -1271,6 +1390,8 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 		return newHTTPSource(name, kind, url), nil
 	case "git":
 		return newGitHTTPSSource(url)
+	case "docker":
+		return newDockerSource(url, name, kind)
 	default:
 		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 	}

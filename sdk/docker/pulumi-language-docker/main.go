@@ -230,6 +230,7 @@ func (host *dockerLanguageHost) RunPlugin(
 	if !ok {
 		return fmt.Errorf("missing 'image' option")
 	}
+	image = strings.TrimPrefix(image, "docker://")
 
 	args := []string{"run", "--rm", "-p", "4242:4242", image}
 	args = append(args, req.Args...)
@@ -249,6 +250,8 @@ func (host *dockerLanguageHost) RunPlugin(
 		return fmt.Errorf("running docker image %s: %w", image, err)
 	}
 	logging.V(6).Infof("RunPlugin: docker finished")
+
+	// TODO: check (language) plugin shutdown, we're leaving the docker container running at the moment.
 
 	return closer.Close()
 }
