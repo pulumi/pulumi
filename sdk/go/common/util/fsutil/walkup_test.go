@@ -25,14 +25,6 @@ import (
 
 func Test_WalkUpDirs(t *testing.T) {
 	t.Parallel()
-	d1, err := filepath.Abs(t.TempDir())
-	assert.NoError(t, err)
-	d2 := filepath.Join(d1, "a")
-	d3 := filepath.Join(d2, "b")
-	d4 := filepath.Join(d3, "c")
-
-	err = os.MkdirAll(d4, 0o700)
-	require.NoError(t, err)
 
 	walkUpDirsCollect := func(path string, checkDir func(dir string) bool) (string, []string) {
 		var result []string
@@ -47,9 +39,22 @@ func Test_WalkUpDirs(t *testing.T) {
 		return found, result
 	}
 
+	setup := func(t *testing.T) (string, string, string, string) {
+		d1, err := filepath.Abs(t.TempDir())
+		assert.NoError(t, err)
+		d2 := filepath.Join(d1, "a")
+		d3 := filepath.Join(d2, "b")
+		d4 := filepath.Join(d3, "c")
+
+		err = os.MkdirAll(d4, 0o700)
+		require.NoError(t, err)
+		return d1, d2, d3, d4
+	}
+
 	t.Run("walks from a sub-directory", func(t *testing.T) {
 		t.Parallel()
 
+		d1, d2, d3, d4 := setup(t)
 		_, d4Up := walkUpDirsCollect(d4, nil)
 		assert.Contains(t, d4Up, d4)
 		assert.Contains(t, d4Up, d3)
@@ -60,8 +65,10 @@ func Test_WalkUpDirs(t *testing.T) {
 	t.Run("walks from a file path", func(t *testing.T) {
 		t.Parallel()
 
+		d1, d2, d3, d4 := setup(t)
+
 		f1 := filepath.Join(d4, "hello.txt")
-		err = os.WriteFile(f1, []byte("hello world"), 0o600)
+		err := os.WriteFile(f1, []byte("hello world"), 0o600)
 		require.NoError(t, err)
 
 		_, f1Up := walkUpDirsCollect(f1, nil)
@@ -74,8 +81,10 @@ func Test_WalkUpDirs(t *testing.T) {
 	t.Run("terminates the walk early if requested", func(t *testing.T) {
 		t.Parallel()
 
+		_, d2, d3, d4 := setup(t)
+
 		f1 := filepath.Join(d4, "hello.txt")
-		err = os.WriteFile(f1, []byte("hello world"), 0o600)
+		err := os.WriteFile(f1, []byte("hello world"), 0o600)
 		require.NoError(t, err)
 
 		found, visited := walkUpDirsCollect(f1, func(dir string) bool {
