@@ -1646,14 +1646,8 @@ func TestTranspileOnly(t *testing.T) {
 
 			stackName := ptesting.RandomStackName()
 
-			// For this test we need to properly install the core SDK instead of yarn
-			// linkining, because yarn link breaks the typescript version detection, and
-			// causes us to use the vendored typescript 3.8.3, which does not support
-			// the `noCheck` option.
-			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
-			require.NoError(t, err)
 			e.RunCommand("npm", "install")
-			e.RunCommand("npm", "add", coreSDK)
+			e.RunCommand("npm", "link", "@pulumi/pulumi")
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
 			e.RunCommand("pulumi", "stack", "select", stackName)
