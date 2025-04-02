@@ -721,6 +721,14 @@ func (ds *dockerSource) Download(ctx context.Context,
 		return nil, -1, fmt.Errorf("failed to close gzip writer: %w", err)
 	}
 
+	logging.V(6).Infof("Pulling docker image %s", image)
+	cmd := exec.Command("docker", "pull", "--quiet", image)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to pull docker image: %w: %s", err, out)
+	}
+	logging.V(6).Infof("Pulling docker image %s completed: %s", image, out)
+
 	return io.NopCloser(&buf), int64(buf.Len()), nil
 }
 

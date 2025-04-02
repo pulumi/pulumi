@@ -232,7 +232,7 @@ func (host *dockerLanguageHost) RunPlugin(
 	}
 	image = strings.TrimPrefix(image, "docker://")
 
-	args := []string{"run", "--rm", "-p", "4242:4242", image}
+	args := []string{"run", "--rm", "-p", "4242:4242", "--pull", "missing", image}
 	args = append(args, req.Args...)
 	for i, arg := range args {
 		args[i] = strings.ReplaceAll(arg, "127.0.0.1", "host.docker.internal")
