@@ -1,5 +1,39 @@
 # Changelog
 
+## 3.160.0 (2025-04-01)
+
+
+### Features
+
+- [cli] Add `--run-program` support to `pulumi destroy`
+  [#19044](https://github.com/pulumi/pulumi/pull/19044)
+
+- [cli] Improve the usability and expressiveness of the pulumi watch command.
+  [#19083](https://github.com/pulumi/pulumi/pull/19083)
+
+- [programgen/go] Generated Go programs now target Go 1.23
+  [#19026](https://github.com/pulumi/pulumi/pull/19026)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix names in type references in components
+  [#19066](https://github.com/pulumi/pulumi/pull/19066)
+
+- [sdk/nodejs] Fix SDK generation for components that use resource references and are namespaced
+
+
+### Miscellaneous
+
+- [cli] Update pulumi-language-dotnet to 3.77.0
+  [#19053](https://github.com/pulumi/pulumi/pull/19053)
+
+- [cli] Update moby/moby to 26.1.5
+  [#19081](https://github.com/pulumi/pulumi/pull/19081)
+
+- [cli/package] Update `package add` command format string to show that file paths to packages can also be used
+  [#19003](https://github.com/pulumi/pulumi/pull/19003)
+
 ## 3.159.0 (2025-03-27)
 
 

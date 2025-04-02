@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli
-  description: Update pulumi-language-dotnet to 3.77.0

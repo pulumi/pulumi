@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Fix SDK generation for components that use resource references and are namespaced
