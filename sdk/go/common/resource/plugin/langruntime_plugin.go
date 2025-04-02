@@ -218,6 +218,10 @@ func buildArgsForNewPlugin(host Host, root string, options map[string]interface{
 	args = append(args, "-root="+filepath.Clean(root))
 
 	// NOTE: positional argument for the server addresss must come last
+
+	// TODO: This should know we're about to run in docker, and use
+	// `host.docker.internal`. This will allow us to get rid of the
+	// `strings.ReplaceAll` hack in `sdk/docker/pulumi-language-docker/main.go`.
 	args = append(args, host.ServerAddr())
 
 	return args, nil

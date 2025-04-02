@@ -216,7 +216,7 @@ func (host *dockerLanguageHost) GetProgramDependencies(
 func (host *dockerLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("RunPlugin: Attempting to run docker plugin")
+	logging.V(5).Infof("RunPlugin: Attempting to run docker plugin with req.Args=%v", req.Args)
 
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
 	if err != nil {
@@ -232,8 +232,14 @@ func (host *dockerLanguageHost) RunPlugin(
 	}
 	image = strings.TrimPrefix(image, "docker://")
 
-	args := []string{"run", "--rm", "-p", "4242:4242", "--pull", "missing", image}
+	args := []string{"run", "--rm", "-p", "4242:4242", "--pull", "missing",
+		"--add-host=host.docker.internal:host-gateway", image}
 	args = append(args, req.Args...)
+	// Hackety hack: When running inside the docker, we need to connect back
+	// from docker to the host. On macOs `host.docker.internal` is set to point
+	// to the docker host. On Linux we make it work with the `--add-host`
+	// option.
+	// Args is something like [--logtostderr, -v=6, 127.0.0.1:63047].
 	for i, arg := range args {
 		args[i] = strings.ReplaceAll(arg, "127.0.0.1", "host.docker.internal")
 	}
