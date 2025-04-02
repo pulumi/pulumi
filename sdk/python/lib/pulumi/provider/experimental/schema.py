@@ -153,6 +153,7 @@ class Resource(ObjectType):
             required=sorted(
                 [k for k, prop in component.outputs.items() if not prop.optional]
             ),
+            description=component.description,
         )
 
 
