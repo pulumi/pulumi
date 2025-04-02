@@ -41,7 +41,6 @@ from typing import (
     get_origin,
 )
 
-import six
 from google.protobuf import struct_pb2
 from semver import VersionInfo as Version
 
@@ -104,8 +103,6 @@ _special_output_value_sig is a randomly assigned hash used to identify outputs i
 See sdk/go/common/resource/properties.go.
 """
 
-_INT_OR_FLOAT = six.integer_types + (float,)
-
 # This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
 # exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
 # Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs [2]. If this setting ends
@@ -145,9 +142,7 @@ def isLegalProtobufValue(value: Any) -> bool:
     Returns True if the given value is a legal Protobuf value as per the source at
     https://github.com/protocolbuffers/protobuf/blob/master/python/google/protobuf/internal/well_known_types.py#L714-L732
     """
-    return value is None or isinstance(
-        value, (bool, six.string_types, _INT_OR_FLOAT, dict, list)
-    )
+    return value is None or isinstance(value, (bool, str, int, float, dict, list))
 
 
 def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
