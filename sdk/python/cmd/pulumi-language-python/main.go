@@ -381,7 +381,12 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		}
 	}
 
-	buildCmd, err := tc.ModuleCommand(ctx, "build", "--wheel", "--outdir", tmp)
+	args := []string{"--wheel", "--outdir", tmp}
+	if err == nil {
+		args = append(args, "--installer", "uv")
+	}
+
+	buildCmd, err := tc.ModuleCommand(ctx, "build", args...)
 	if err != nil {
 		return nil, err
 	}
