@@ -1779,6 +1779,8 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
+	// Hackety hack: Construct sends the monitor endpoint, but when running
+	// inside docker, this needs to point to the docker host, not localhost.
 	monitorEndpoint := strings.Replace(req.Info.MonitorAddress, "127.0.0.1", "host.docker.internal", -1)
 
 	rpcReq := &pulumirpc.ConstructRequest{

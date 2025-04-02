@@ -38,9 +38,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Launches the language host RPC endpoint, which in turn fires
-// up an RPC server implementing the LanguageRuntimeServer RPC
-// endpoint.
 func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "",
@@ -53,7 +50,6 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-docker", "pulumi-language-docker", tracing)
 
-	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
 	if len(args) > 0 {
 		engineAddress = args[0]
@@ -89,17 +85,13 @@ func main() {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
 	}
 
-	// Otherwise, print out the port so that the spawner knows how to reach us.
 	fmt.Printf("%d\n", handle.Port)
 
-	// And finally wait for the server to stop serving.
 	if err := <-handle.Done; err != nil {
 		cmdutil.Exit(fmt.Errorf("language host RPC stopped serving: %w", err))
 	}
 }
 
-// dockerLanguageHost implements the LanguageRuntimeServer interface
-// for use as an API endpoint.
 type dockerLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer
 
