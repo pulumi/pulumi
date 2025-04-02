@@ -2714,3 +2714,11 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	require.True(t, ok, fmt.Sprintf("missing expected input property in %v", res.InputProperties))
 	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }
+
+func TestConditionalResource(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "conditional_resource",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}

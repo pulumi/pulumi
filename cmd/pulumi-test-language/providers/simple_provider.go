@@ -30,6 +30,9 @@ import (
 
 type SimpleProvider struct {
 	plugin.UnimplementedProvider
+
+	// If true the provider will return unknown outputs for the value property in preview.
+	UnknownOutputs bool
 }
 
 var _ plugin.Provider = (*SimpleProvider)(nil)
@@ -163,9 +166,16 @@ func (p *SimpleProvider) Create(
 		id = ""
 	}
 
+	properties := req.Properties
+	if p.UnknownOutputs && req.Preview {
+		properties = resource.PropertyMap{
+			"value": resource.MakeComputed(resource.NewStringProperty("")),
+		}
+	}
+
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

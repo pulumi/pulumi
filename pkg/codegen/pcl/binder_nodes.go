@@ -109,6 +109,9 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)
+	case *Condition:
+		diags := b.bindCondition(node)
+		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
 	}

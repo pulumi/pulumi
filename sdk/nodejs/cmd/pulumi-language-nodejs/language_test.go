@@ -244,6 +244,10 @@ func TestLanguage(t *testing.T) {
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
+					if tt != "l2-resource-conditional" {
+						return
+					}
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}

@@ -151,6 +151,8 @@ type StepEventMetadata struct {
 	Logical bool `json:"logical,omitempty"`
 	// Provider actually performing the step.
 	Provider string `json:"provider"`
+	// Conditional is true if this step is a conditional resource that was not actually acted on.
+	Conditional bool `json:"conditional,omitempty"`
 }
 
 // StepEventStateMetadata is the more detailed state information for a resource as it relates to

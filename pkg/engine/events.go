@@ -272,6 +272,7 @@ type StepEventMetadata struct {
 	DetailedDiff map[string]plugin.PropertyDiff // the rich, structured diff
 	Logical      bool                           // true if this step represents a logical operation in the program.
 	Provider     string                         // the provider that performed this step.
+	Conditional  bool                           // true if this step is conditional and was not acted on.
 }
 
 // StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.
@@ -429,6 +430,7 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		Res:          makeStepEventStateMetadata(step.Res(), debug, showSecrets),
 		Logical:      step.Logical(),
 		Provider:     step.Provider(),
+		Conditional:  step.Conditional(),
 	}
 }
 

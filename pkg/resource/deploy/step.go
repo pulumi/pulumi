@@ -72,6 +72,9 @@ type Step interface {
 	Fail()
 	// Calling Skip will mark the step as skipped.
 	Skip()
+
+	// True if this is a conditional step and should be displayed but not acted on.
+	Conditional() bool
 }
 
 // SameStep is a mutating step that does nothing.
@@ -143,6 +146,7 @@ func (s *SameStep) Old() *resource.State    { return s.old }
 func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
+func (s *SameStep) Conditional() bool       { return false }
 
 func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Lock.Lock()
@@ -210,11 +214,12 @@ type CreateStep struct {
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
 	provider      plugin.Provider                // the optional provider to use.
+	conditional   bool                           // true if this is a conditional resource.
 }
 
 var _ Step = (*CreateStep)(nil)
 
-func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State) Step {
+func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State, conditional bool) Step {
 	contract.Requiref(reg != nil, "reg", "must not be nil")
 
 	contract.Requiref(new != nil, "new", "must not be nil")
@@ -226,9 +231,10 @@ func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 	contract.Requiref(!new.External, "new", "must not be external")
 
 	return &CreateStep{
-		deployment: deployment,
-		reg:        reg,
-		new:        new,
+		deployment:  deployment,
+		reg:         reg,
+		new:         new,
+		conditional: conditional,
 	}
 }
 
@@ -280,6 +286,7 @@ func (s *CreateStep) Keys() []resource.PropertyKey                 { return s.ke
 func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
+func (s *CreateStep) Conditional() bool                            { return s.conditional }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
@@ -301,7 +308,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			Type:       s.new.URN.Type(),
 			Properties: s.new.Inputs,
 			Timeout:    s.new.CustomTimeouts.Create,
-			Preview:    s.deployment.opts.DryRun,
+			// If this step is conditional ask the provider to treat like a preview, i.e. give us the best
+			// information you can but don't actually do anything.
+			Preview: s.deployment.opts.DryRun || s.conditional,
 		})
 		if err != nil {
 			if resp.Status != resource.StatusPartialFailure {
@@ -435,6 +444,7 @@ func (s *DeleteStep) Old() *resource.State    { return s.old }
 func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
+func (s *DeleteStep) Conditional() bool       { return false }
 
 func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
 	if with == "" {
@@ -558,6 +568,7 @@ func (s *RemovePendingReplaceStep) Old() *resource.State    { return s.old }
 func (s *RemovePendingReplaceStep) New() *resource.State    { return nil }
 func (s *RemovePendingReplaceStep) Res() *resource.State    { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool           { return false }
+func (s *RemovePendingReplaceStep) Conditional() bool       { return false }
 
 func (s *RemovePendingReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
@@ -629,6 +640,7 @@ func (s *UpdateStep) Res() *resource.State                         { return s.ne
 func (s *UpdateStep) Logical() bool                                { return true }
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *UpdateStep) Conditional() bool                            { return false }
 
 func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID and timestamps even in previews and refreshes.
@@ -755,6 +767,7 @@ func (s *ReplaceStep) Keys() []resource.PropertyKey                 { return s.k
 func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
+func (s *ReplaceStep) Conditional() bool                            { return false }
 
 func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
@@ -851,6 +864,7 @@ func (s *ReadStep) Old() *resource.State    { return s.old }
 func (s *ReadStep) New() *resource.State    { return s.new }
 func (s *ReadStep) Res() *resource.State    { return s.new }
 func (s *ReadStep) Logical() bool           { return !s.replacing }
+func (s *ReadStep) Conditional() bool       { return false }
 
 func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
@@ -986,6 +1000,7 @@ func (s *RefreshStep) Res() *resource.State                         { return s.o
 func (s *RefreshStep) Logical() bool                                { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
+func (s *RefreshStep) Conditional() bool                            { return false }
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
@@ -1265,6 +1280,7 @@ func (s *ImportStep) Res() *resource.State                         { return s.ne
 func (s *ImportStep) Logical() bool                                { return !s.replacing }
 func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *ImportStep) Conditional() bool                            { return false }
 
 func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	complete := func() {
@@ -1742,6 +1758,7 @@ func (s *DiffStep) Old() *resource.State    { return s.old }
 func (s *DiffStep) New() *resource.State    { return s.new }
 func (s *DiffStep) Res() *resource.State    { return s.new }
 func (s *DiffStep) Logical() bool           { return true }
+func (s *DiffStep) Conditional() bool       { return false }
 
 func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// DiffStep is a special step in that we're just using it as a way to get access to the parallel step

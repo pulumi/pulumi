@@ -61,15 +61,25 @@ func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepE
 
 func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 	var extra string
+	// If this step was conditional add a question mark
+	if step.Conditional {
+		extra += "❓"
+	}
+
 	old := step.Old
 	new := step.New
 	if new != nil && !new.Protect && old != nil && old.Protect {
 		// show an unlocked symbol, since we are unprotecting a resource.
-		extra = " 🔓"
+		extra += "🔓"
 	} else if (new != nil && new.Protect) || (old != nil && old.Protect) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
-		extra = " 🔒"
+		extra += "🔒"
 	}
+
+	if extra != "" {
+		extra = " " + extra
+	}
+
 	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 

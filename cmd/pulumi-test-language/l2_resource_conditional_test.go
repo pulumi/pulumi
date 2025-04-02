@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,13 +37,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type L2ContinueOnErrorHost struct {
+type L2ResourceConditionalHost struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
 	tempDir string
 }
 
-func (h *L2ContinueOnErrorHost) Pack(
+func (h *L2ResourceConditionalHost) Pack(
 	ctx context.Context, req *pulumirpc.PackRequest,
 ) (*pulumirpc.PackResponse, error) {
 	if req.DestinationDirectory != filepath.Join(h.tempDir, "artifacts") {
@@ -67,7 +67,7 @@ func (h *L2ContinueOnErrorHost) Pack(
 	return nil, fmt.Errorf("unexpected package directory %s", req.PackageDirectory)
 }
 
-func (h *L2ContinueOnErrorHost) GenerateProject(
+func (h *L2ResourceConditionalHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
 	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
@@ -106,7 +106,7 @@ func (h *L2ContinueOnErrorHost) GenerateProject(
 	return &pulumirpc.GenerateProjectResponse{}, nil
 }
 
-func (h *L2ContinueOnErrorHost) GeneratePackage(
+func (h *L2ResourceConditionalHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
 	if req.Directory != filepath.Join(h.tempDir, "sdks", "simple-2.0.0") &&
@@ -122,7 +122,7 @@ func (h *L2ContinueOnErrorHost) GeneratePackage(
 	return &pulumirpc.GeneratePackageResponse{}, nil
 }
 
-func (h *L2ContinueOnErrorHost) GetRequiredPlugins(
+func (h *L2ResourceConditionalHost) GetRequiredPlugins(
 	ctx context.Context, req *pulumirpc.GetRequiredPluginsRequest,
 ) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-failed-create-continue-on-error") {
@@ -145,7 +145,7 @@ func (h *L2ContinueOnErrorHost) GetRequiredPlugins(
 	}, nil
 }
 
-func (h *L2ContinueOnErrorHost) GetProgramDependencies(
+func (h *L2ResourceConditionalHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
 	if req.Info.ProgramDirectory != filepath.Join(h.tempDir, "projects", "l2-failed-create-continue-on-error") {
@@ -170,7 +170,7 @@ func (h *L2ContinueOnErrorHost) GetProgramDependencies(
 	}, nil
 }
 
-func (h *L2ContinueOnErrorHost) InstallDependencies(
+func (h *L2ResourceConditionalHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
 	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-failed-create-continue-on-error") {
@@ -185,7 +185,7 @@ func (h *L2ContinueOnErrorHost) InstallDependencies(
 	return nil
 }
 
-func (h *L2ContinueOnErrorHost) Run(
+func (h *L2ResourceConditionalHost) Run(
 	ctx context.Context, req *pulumirpc.RunRequest,
 ) (*pulumirpc.RunResponse, error) {
 	if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "l2-failed-create-continue-on-error") {
@@ -267,13 +267,13 @@ func (h *L2ContinueOnErrorHost) Run(
 }
 
 // Run a simple successful test with a mocked runtime.
-func TestL2ContinueOnError(t *testing.T) {
+func TestL2ResourceConditional(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
 	engine := &languageTestServer{}
-	runtime := &L2ContinueOnErrorHost{tempDir: tempDir}
+	runtime := &L2ResourceConditionalHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, runtime)
@@ -294,7 +294,7 @@ func TestL2ContinueOnError(t *testing.T) {
 
 	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
-		Test:  "l2-failed-create-continue-on-error",
+		Test:  "l2-resource-conditional",
 	})
 	require.NoError(t, err)
 	t.Logf("stdout: %s", runResponse.Stdout)

@@ -142,6 +142,19 @@ func NewRootScope(syntax hclsyntax.Node) *Scope {
 	}
 }
 
+func (s *Scope) Definitions(yield func(string, Definition) bool) {
+	for name, def := range s.defs {
+		if !yield(name, def) {
+			return
+		}
+	}
+	for name, def := range s.outputs {
+		if !yield(name, def) {
+			return
+		}
+	}
+}
+
 // Traverse attempts to traverse the scope using the given traverser. If the traverser is a literal string that refers
 // to a name defined within the scope or one of its ancestors, the traversal returns the corresponding definition.
 func (s *Scope) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {

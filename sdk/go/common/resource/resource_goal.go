@@ -44,6 +44,9 @@ type Goal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
 	SourcePosition string // If set, the source location of the resource registration
+
+	// If true this is a conditional resource, that shouldn't actually be acted on but needs displaying to the user.
+	Conditional bool
 }
 
 // NewGoal allocates a new resource goal state.
@@ -52,6 +55,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
 	replaceOnChanges []string, retainOnDelete *bool, deletedWith URN, sourcePosition string,
+	conditional bool,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,
@@ -73,6 +77,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             deletedWith,
 		SourcePosition:          sourcePosition,
+		Conditional:             conditional,
 	}
 
 	if customTimeouts != nil {

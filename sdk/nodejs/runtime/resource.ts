@@ -598,6 +598,10 @@ export function registerResource(
                 req.setTransformsList(callbacks);
                 req.setSupportsresultreporting(true);
 
+                if (getStore().conditional) {
+                    req.setConditional(true);
+                }
+
                 if (resop.deletedWithURN && !getStore().supportsDeletedWith) {
                     throw new Error(
                         "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.",

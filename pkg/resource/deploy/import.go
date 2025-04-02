@@ -220,7 +220,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
 		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
-	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
+	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state, false)) {
 		return "", false, false
 	}
 	return urn, true, true
@@ -335,7 +335,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &resource.Goal{})
-		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
+		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state, false)
 	}
 
 	// Issue the create steps.

@@ -206,12 +206,19 @@ export interface Store {
      * Tracks the list of resource modules that have been registered.
      */
     resourceModules: Map<string, ResourceModule[]>;
+
+    /**
+     * Within an unknown conditional.
+     */
+    conditional: boolean;
 }
 
 /**
  * @internal
  */
 export class LocalStore implements Store {
+    callbacks?: ICallbackServer | undefined;
+    conditional = false;
     settings = {
         options: {
             organization: process.env[nodeEnvKeys.organization],
@@ -313,19 +320,22 @@ declare global {
 /**
  * @internal
  */
+export function runConditional<R>(callback: () => R): R {
+    const store = getStore();
+    const newStore ={
+                ...store,
+        conditional: true,
+    };
+    return asyncLocalStorage.run(newStore, () => { return callback(); });
+}
+
+/**
+ * @internal
+ */
 export function getLocalStore(): Store | undefined {
     return asyncLocalStorage.getStore();
 }
 
-(<any>getLocalStore).captureReplacement = () => {
-    const returnFunc = () => {
-        if (global.globalStore === undefined) {
-            global.globalStore = new LocalStore();
-        }
-        return global.globalStore;
-    };
-    return returnFunc;
-};
 
 /**
  * @internal

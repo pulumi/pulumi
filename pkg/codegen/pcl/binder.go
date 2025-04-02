@@ -91,8 +91,17 @@ type binder struct {
 	schemaTypes        map[schema.Type]model.Type
 
 	tokens syntax.TokenMap
-	nodes  []Node
 	root   *model.Scope
+}
+
+func (b *binder) nodes(yield func(Node) bool) {
+	for _, def := range b.root.Definitions {
+		if def, ok := def.(Node); ok {
+			if !yield(def) {
+				break
+			}
+		}
+	}
 }
 
 type BindOption func(*bindOptions)
@@ -232,8 +241,10 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}
 
 	// Now bind the nodes.
-	for _, n := range b.nodes {
+	nodes := make([]Node, 0)
+	for n := range b.nodes {
 		diagnostics = append(diagnostics, b.bindNode(n)...)
+		nodes = append(nodes, n)
 	}
 
 	if diagnostics.HasErrors() {
@@ -241,7 +252,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}
 
 	return &Program{
-		Nodes:  b.nodes,
+		Nodes:  nodes,
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
@@ -378,7 +389,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				resource := &Resource{
 					syntax: item,
 				}
-				declareDiags := b.declareNode(item.Labels[0], resource)
+				declareDiags := declareNode(b.root, item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
 
 				if err := b.loadReferencedPackageSchemas(resource); err != nil {
@@ -392,7 +403,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
 			v := &LocalVariable{syntax: item}
-			attrDiags := b.declareNode(item.Name, v)
+			attrDiags := declareNode(b.root, item.Name, v)
 			diagnostics = append(diagnostics, attrDiags...)
 
 			if err := b.loadReferencedPackageSchemas(v); err != nil {
@@ -400,6 +411,9 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 			}
 		case *hclsyntax.Block:
 			switch item.Type {
+			case "resource":
+				// Skip resources, as they are already declared above.
+				continue
 			case "config":
 				name, typ := "<unnamed>", model.Type(model.DynamicType)
 				switch len(item.Labels) {
@@ -440,7 +454,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					typ:    typ,
 					syntax: item,
 				}
-				diags := b.declareNode(name, v)
+				diags := declareNode(b.root, name, v)
 				diagnostics = append(diagnostics, diags...)
 
 				if err := b.loadReferencedPackageSchemas(v); err != nil {
@@ -465,7 +479,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					typ:    typ,
 					syntax: item,
 				}
-				diags := b.declareNode(name, v)
+				diags := declareNode(b.root, name, v)
 				diagnostics = append(diagnostics, diags...)
 
 				if err := b.loadReferencedPackageSchemas(v); err != nil {
@@ -485,8 +499,31 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					source:       source,
 					VariableType: model.DynamicType,
 				}
-				diags := b.declareNode(name, v)
+				diags := declareNode(b.root, name, v)
 				diagnostics = append(diagnostics, diags...)
+
+				if err := b.loadReferencedPackageSchemas(v); err != nil {
+					return nil, err
+				}
+			case "condition":
+				if len(item.Labels) != 1 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "conditions must have exactly one label"))
+					continue
+				}
+
+				name := item.Labels[0]
+
+				v := &Condition{
+					name:   name,
+					syntax: item,
+				}
+
+				diags := declareNode(b.root, name, v)
+				diagnostics = append(diagnostics, diags...)
+
+			default:
+				// Error on any other block types.
+				diagnostics = append(diagnostics, labelsErrorf(item, "unknown block type %q", item.Type))
 			}
 		}
 	}
@@ -709,14 +746,13 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 	return packageDescriptors, diagnostics
 }
 
-// declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
+// declareNode declares a single node. If a node with the same name has already been declared, it returns an
 // appropriate diagnostic.
-func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
-	if !b.root.Define(name, n) {
-		existing, _ := b.root.BindReference(name)
+func declareNode(scope *model.Scope, name string, n Node) hcl.Diagnostics {
+	if !scope.Define(name, n) {
+		existing, _ := scope.BindReference(name)
 		return hcl.Diagnostics{errorf(existing.SyntaxNode().Range(), "%q already declared", name)}
 	}
-	b.nodes = append(b.nodes, n)
 	return nil
 }
 

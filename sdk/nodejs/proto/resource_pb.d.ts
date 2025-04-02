@@ -251,6 +251,8 @@ export class RegisterResourceRequest extends jspb.Message {
     setSupportsresultreporting(value: boolean): RegisterResourceRequest;
     getPackageref(): string;
     setPackageref(value: string): RegisterResourceRequest;
+    getConditional(): boolean;
+    setConditional(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -300,6 +302,7 @@ export namespace RegisterResourceRequest {
         transformsList: Array<pulumi_callback_pb.Callback.AsObject>,
         supportsresultreporting: boolean,
         packageref: string,
+        conditional: boolean,
     }
 
 

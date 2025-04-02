@@ -151,6 +151,10 @@ message RegisterResourceRequest {
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 
     string packageRef = 33; // a reference from RegisterPackageRequest.
+
+    // if true this registration is conditional and should not be actually acted on but should be displayed to
+    // the user as a possibility.
+    bool conditional = 34;
 }
 
 enum Result {
