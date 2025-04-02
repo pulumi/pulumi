@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Define gRPC plumbing to expose a custom user-defined `Provider`
+"""
+Define gRPC plumbing to expose a custom user-defined `Provider`
 instance as a gRPC server so that it can be used as a Pulumi plugin.
-
 """
 
 from typing import Dict, List, Set, Optional, TypeVar, Any, cast
