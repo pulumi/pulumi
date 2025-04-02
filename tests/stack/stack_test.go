@@ -268,7 +268,7 @@ func TestStackCommands(t *testing.T) {
 		defer e.DeleteIfNotFailed()
 		stackName := addRandomSuffix("invalid-resources")
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/stack_dependencies")
+		e.ImportDirectory("../integration/stack_dependencies")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -334,7 +334,7 @@ func TestStackBackups(t *testing.T) {
 		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/stack_outputs/nodejs")
+		e.ImportDirectory("../integration/stack_outputs/nodejs")
 
 		// We're testing that backups are created so ensure backups aren't disabled.
 		disableCheckpointBackups := env.DIYBackendDisableCheckpointBackups.Var().Name()
@@ -415,7 +415,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 		e.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/stack_outputs/nodejs")
+		e.ImportDirectory("../integration/stack_outputs/nodejs")
 
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
@@ -518,7 +518,7 @@ func TestLocalStateLocking(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	integration.CreateBasicPulumiRepo(e)
-	e.ImportDirectory("integration/single_resource")
+	e.ImportDirectory("../integration/single_resource")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "foo")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -631,7 +631,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	defer e.DeleteIfNotFailed()
 	stackName := addRandomSuffix("gzip-state")
 	integration.CreateBasicPulumiRepo(e)
-	e.ImportDirectory("integration/stack_dependencies")
+	e.ImportDirectory("../integration/stack_dependencies")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
