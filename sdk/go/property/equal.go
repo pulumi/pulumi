@@ -41,7 +41,7 @@ type eqOpts struct {
 //     equality: a.IsComputed() => (a.Equals(b) <=> b.IsComputed()) (up to secrets and
 //     dependencies).
 //
-//     If EqualRelaxComputed is passed, then computed values are considered equal to all
+//     If [EqualRelaxComputed] is passed, then computed values are considered equal to all
 //     other values. (up to secrets and dependencies)
 func (v Value) Equals(other Value, opts ...EqualOption) bool {
 	var eqOpts eqOpts

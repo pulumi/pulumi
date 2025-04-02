@@ -26,7 +26,25 @@ import (
 // - [IndexSegment]: For indexing into [Array]s.
 type Path []PathSegment
 
-func (p Path) Get(v Value) (Value, PathApplyFailure) {
+// Get the [Value] from v by applying the [Path].
+//
+//	value := property.New(map[string]property.Value{
+//		"cities": property.New([]property.Value{
+//			property.New("Seattle"),
+//			property.New("London"),
+//		}),
+//	})
+//
+//	firstCity := property.Path{
+//		property.NewSegment("cities"),
+//		property.NewSegment(0),
+//	}
+//
+//	city, _ := firstCity.Get(value) // Seattle
+//
+// If the [Path] does not describe a value in v, then an error will be returned. The
+// returned error can be safely cast to [PathApplyFailure].
+func (p Path) Get(v Value) (Value, error) {
 	for _, segment := range p {
 		var err PathApplyFailure
 		v, err = segment.apply(v)
@@ -37,12 +55,15 @@ func (p Path) Get(v Value) (Value, PathApplyFailure) {
 	return v, nil
 }
 
-// Set a value.
+// Set the value described by the path in src to newValue.
 //
-// Set does not change src in place, rather producing a copy.
-func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
+// Set does not mutate src, instead a copy of src with the change applied is returned. is
+// returned that holds the change.
+//
+// Any returned error will implement [PathApplyFailure].
+func (p Path) Set(src, newValue Value) (Value, error) {
 	if len(p) == 0 {
-		return to, nil
+		return newValue, nil
 	}
 	butLast, last := p[:len(p)-1], p[len(p)-1]
 	v, err := butLast.Get(src)
@@ -56,10 +77,10 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 			return Value{}, pathErrorf(v, "expected an IndexSegment, found %T", last)
 		}
 		slice := v.AsArray().AsSlice()
-		if i.int < 0 || i.int > len(slice) {
+		if i.int < 0 || i.int >= len(slice) {
 			return Value{}, pathApplyIndexOutOfBoundsError{found: v.AsArray(), idx: i.int}
 		}
-		slice[i.int] = to
+		slice[i.int] = newValue
 		return butLast.Set(src, New(slice))
 	case v.IsMap():
 		k, ok := last.(KeySegment)
@@ -67,9 +88,9 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 			return Value{}, pathErrorf(v, "expected a KeySegment, found %T", last)
 		}
 
-		return butLast.Set(src, New(v.AsMap().Set(k.string, to)))
+		return butLast.Set(src, New(v.AsMap().Set(k.string, newValue)))
 	default:
-		return Value{}, pathErrorf(v, "expected a map or array, found %s", typeString(v))
+		return Value{}, pathApplyKeyExpectedMapError{found: v}
 	}
 }
 
@@ -82,7 +103,9 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 //	})
 //
 // This will preserve any secrets or dependencies encoded in `v`.
-func (p Path) Alter(v Value, f func(v Value) Value) (Value, PathApplyFailure) {
+//
+// Any returned error will implement [PathApplyFailure].
+func (p Path) Alter(v Value, f func(v Value) Value) (Value, error) {
 	oldValue, err := p.Get(v)
 	if err != nil {
 		return Value{}, err
@@ -109,12 +132,15 @@ func NewSegment[T interface{ string | int }](v T) PathSegment {
 type PathApplyFailure interface {
 	error
 
+	// The last value in a path traversal successfully reached.
 	Found() Value
 }
 
-// KeySegment represents a traversal into a map by a key.
+// KeySegment represents a traversal into a [Map] by a key.
 //
 // KeySegment does not support glob ("*") expansion. Values are treated as is.
+//
+// To create an KeySegment, use [NewSegment].
 type KeySegment struct{ string }
 
 func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
@@ -129,6 +155,9 @@ func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
 	return Value{}, pathApplyKeyExpectedMapError{found: v}
 }
 
+// IndexSegment represents an index into an [Array].
+//
+// To create an IndexSegment, use [NewSegment].
 type IndexSegment struct{ int }
 
 func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {

@@ -47,7 +47,7 @@ type Value struct {
 	v any
 }
 
-// GoValue constrains the set of go values that can be contained inside a Value.
+// GoValue defines the set of go values that can be contained inside a [Value].
 //
 // Value can also be a null value.
 type GoValue interface {
@@ -60,6 +60,8 @@ type GoValue interface {
 }
 
 // New creates a new Value from a GoValue.
+//
+// To create a new value from an unknown type, use [Any].
 func New[T GoValue](goValue T) Value {
 	return Value{v: normalize(goValue)}
 }
@@ -92,8 +94,8 @@ func normalize(goValue any) any {
 	return goValue
 }
 
-// Any creates a new Value from a GoValue of unknown type. An error is returned if goValue
-// is not a member of GoValue.
+// Any creates a new [Value] from a [GoValue] of unknown type. An error is returned if
+// goValue is not a member of [GoValue].
 func Any(goValue any) (Value, error) {
 	switch goValue := goValue.(type) {
 	case bool:
@@ -131,8 +133,25 @@ func Any(goValue any) (Value, error) {
 // values (there is no other value to mutate to).
 var (
 	// Mark a property as an untyped computed value.
+	//
+	//	value := property.New(property.Computed)
+	//
+	// Computed can also be used to mark a [Value] as computed without changing other
+	// markers.
+	//
+	//	value := property.WithValue(maybeSecretValue, property.Computed)
 	Computed computed
-	// Mark a property as an untyped empty value.
+	// Mark a property as an untyped null value.
+	//
+	//	value := property.New(property.Null)
+	//
+	// Null can also be used to mark a [Value] as null without changing other
+	// markers.
+	//
+	//	value := property.WithValue(maybeSecretValue, property.Null)
+	//
+	// [Value]s can be null, and a null value *is not* equivalent to the absence of a
+	// value.
 	Null null
 )
 
@@ -209,9 +228,10 @@ func copyArchive(a Archive) Archive {
 func (v Value) asAssetMut() Asset     { return asMut[Asset](v) }
 func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
 
-// Secret returns true if the Value is secret.
+// Secret returns true if the [Value] is secret.
 //
-// It does not check if a contained Value is secret.
+// It does not check if there are nested values that are secret. To recursively check if
+// the [Value] contains a secret, use [Value.HasSecrets].
 func (v Value) Secret() bool { return v.isSecret }
 
 // HasSecrets returns true if the Value or any nested Value is secret.
@@ -224,13 +244,16 @@ func (v Value) HasSecrets() bool {
 	return hasSecret
 }
 
-// WithSecret copies v where secret is true.
+// WithSecret produces a new [Value] identical to it's receiver except that it's secret
+// market is set to isSecret.
 func (v Value) WithSecret(isSecret bool) Value {
 	v.isSecret = isSecret
 	return v
 }
 
 // HasComputed returns true if the Value or any nested Value is computed.
+//
+// To check if the receiver is itself computed, use [Value.IsComputed].
 func (v Value) HasComputed() bool {
 	var hasComputed bool
 	v.visit(func(v Value) bool {
@@ -241,6 +264,8 @@ func (v Value) HasComputed() bool {
 }
 
 // Dependencies returns the dependency set of v.
+//
+// To set the dependencies of a value, use [Value.WithDependencies].
 func (v Value) Dependencies() []urn.URN {
 	// Create a copy of v.dependencies to keep v immutable.
 	cp := make([]urn.URN, len(v.dependencies))
@@ -248,19 +273,21 @@ func (v Value) Dependencies() []urn.URN {
 	return cp
 }
 
-// Set deps as the v.Dependencies() value of the returned Value.
+// WithDependencies returns a new value identical to the receiver, except that it has as
+// it's dependencies the passed in value.
 func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	// Create a copy of dependencies to keep v immutable.
 	//
 	// We don't want exiting references to dependencies to be able to effect
 	// v.dependencies.
-	v.dependencies = append(v.dependencies[:0], dependencies...)
+	v.dependencies = copyArray(dependencies)
 	return v
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.
 //
-// To set to a null or computed value, pass Null or Computed as newGoValue.
+// To set a [Value] to a null or computed value, pass [Null] or [Computed] as the new
+// value.
 func WithGoValue[T GoValue](value Value, newGoValue T) Value {
 	value.v = normalize(newGoValue)
 	return value
