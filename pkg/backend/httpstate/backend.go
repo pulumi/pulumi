@@ -1128,7 +1128,38 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b.explainer)
+}
+
+func (b *cloudBackend) explainer(stack backend.Stack, op backend.UpdateOperation, events []engine.Event, opts display.Options) (string, error) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+
+	renderer := display.NewCaptureProgressEvents(
+		stack.Ref().Name(),
+		op.Proj.Name,
+		display.Options{
+			ShowResourceChanges: true,
+		},
+		true,
+		apitype.UpdateUpdate,
+	)
+
+	go renderer.ProcessEvents(eventsChan, renderDone)
+
+	for _, event := range events {
+		eventsChan <- event
+	}
+
+	close(eventsChan)
+	<-renderDone
+
+	summary, err := b.summarizeErrorWithCopilot(context.Background(), renderer.Output(), stack.Ref(), op.Opts.Display)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("\n%s\n", summary.Summary), nil
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1149,7 +1180,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b.explainer)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1167,7 +1198,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b.explainer)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1185,7 +1216,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b.explainer)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1411,10 +1442,6 @@ func (b *cloudBackend) apply(
 	}
 
 	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
-	// This also overwrites the events channel passed in from the caller. The only caller that does this is:
-	// `pulumi preview --import-file`. We don't support Copilot summary + that use case yet.
-	// However we still defensively check for something else using the events channel.
-	// In the future we could support multiplexing the events channel if we wanted to.
 	if op.Opts.Display.ShowCopilotSummary {
 		var eventsChan <-chan engine.Event
 		events, eventsChan = withTap(events)
