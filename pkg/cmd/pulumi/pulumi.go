@@ -505,7 +505,7 @@ func checkForExistingTempFile() (*semver.Version, error) {
 	tgzRegex := regexp.MustCompile(`pulumi-v(.+)-.+-.+.tar.gz`)
 	for _, entry := range entries {
 		submatches := tgzRegex.FindStringSubmatch(entry.Name())
-		if submatches[1] != "" {
+		if len(submatches) == 2 && submatches[1] != "" {
 			v := semver.MustParse(submatches[1])
 			return &v, nil
 		}
@@ -554,7 +554,6 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 	}
 
 	downloadURL = fmt.Sprintf("%s/%s", downloadURL, tgzFile)
-	fmt.Println(downloadURL)
 
 	os.MkdirAll(filepath.Join(homeDir, "tmp"), 0o700)
 	tmpFile := filepath.Join(homeDir, "tmp", tgzFile)
@@ -615,34 +614,38 @@ func installNewCLI(ctx context.Context, version semver.Version) *semver.Version 
 	if err != nil {
 		return nil
 	}
+
+	f, err := os.Open(tmpFile)
+	if err != nil {
+		logging.V(3).Infof("error opening temporary file: %s, %s", tmpFile, err)
+		return nil
+	}
+	defer os.Remove(tmpFile)
+
 	tmpDir, err := os.MkdirTemp(homeDir, "pulumi-update")
 	if err != nil {
 		logging.V(3).Infof("error creating temporary directory: %s", err)
 		return nil
 	}
-	defer os.RemoveAll(tmpDir)
 
-	f, err := os.Open(tmpFile)
-	if err != nil {
-		logging.V(3).Infof("error opening temporary file: %s", err)
-		return nil
-	}
-	defer os.Remove(tmpFile)
 	// Extract the tarball into the temporary directory.
 	err = archive.ExtractTGZ(f, tmpDir)
 	if err != nil {
+		os.RemoveAll(tmpDir)
 		logging.V(3).Infof("error extracting new CLI: %s", err)
 		return nil
 	}
 	if runtime.GOOS == "windows" {
-		err := os.WriteFile(filepath.Join(tmpDir, "updater.ps1"), []byte(windowsScript), 0o755)
+		err = os.WriteFile(filepath.Join(homeDir, "tmp", "updater.ps1"), []byte(windowsScript), 0o755)
 		if err != nil {
 			logging.V(3).Infof("error writing updater script: %s", err)
 			return nil
 		}
 		//nolint:gosec
-		cmd := exec.Command("powershell", "-File", filepath.Join(tmpDir, "updater.ps1"),
-			strconv.Itoa(os.Getpid()), tmpDir, filepath.Join(homeDir, "bin"))
+		cmd := exec.Command("pwsh", "-File", filepath.Join(homeDir, "tmp", "updater.ps1"),
+			strconv.Itoa(os.Getpid()), filepath.Join(tmpDir, "pulumi"), filepath.Join(homeDir, "bin"))
+		fmt.Println(tmpDir)
+		cmdutil.RegisterProcessGroup(cmd)
 		err = cmd.Start()
 		if err != nil {
 			logging.V(3).Infof("error running updater script: %s", err)
@@ -650,6 +653,8 @@ func installNewCLI(ctx context.Context, version semver.Version) *semver.Version 
 		}
 		return &version
 	}
+	defer os.RemoveAll(tmpDir)
+
 	entries, err := os.ReadDir(filepath.Join(tmpDir, "pulumi"))
 	if err != nil {
 		logging.V(3).Infof("error reading temporary directory: %s", err)
@@ -1045,7 +1050,7 @@ try {
         Write-Host "Process ID $ProcessId ($($processInfo.ProcessName)) is running. Waiting for it to exit..."
 
         do {
-            Start-Sleep -Seconds 5
+            Start-Sleep -Seconds 1
         } while (Test-ProcessRunningById -Id $ProcessId)
 
         Write-Host "Process ID $ProcessId has exited."
@@ -1068,14 +1073,6 @@ if ($files.Count -eq 0) {
 } else {
     foreach ($file in $files) {
         $destinationPath = Join-Path -Path $DestinationFolder -ChildPath $file.Name
-
-        # Check if file already exists in destination
-        if (Test-Path -Path $destinationPath) {
-            Write-Warning "File already exists in destination: $($file.Name)"
-            $newName = "{0}_{1}{2}" -f $file.BaseName, (Get-Date -Format "yyyyMMdd_HHmmss"), $file.Extension
-            $destinationPath = Join-Path -Path $DestinationFolder -ChildPath $newName
-            Write-Host "Renaming to: $newName"
-        }
 
         # Move the file
         try {

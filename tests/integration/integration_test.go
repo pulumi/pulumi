@@ -40,9 +40,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/sysutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
@@ -1729,10 +1729,11 @@ runtime: yaml
 		for {
 			t.Log("running watch")
 			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
-			cmd := exec.CommandContext(ctx, filepath.Join(e.HomePath, "bin", pulumiName), "watch")
+			cmd := exec.CommandContext(ctx, filepath.Join(e.HomePath, "bin", pulumiName), "watch", "--logtostderr", "-v3")
 			cmd.Dir = e.RootPath
+			cmdutil.RegisterProcessGroup(cmd)
 			cmd.Cancel = func() error {
-				sysutil.Sigint(cmd.Process.Pid)
+				cmdutil.KillChildren(cmd.Process.Pid)
 				return nil
 			}
 			cmd.WaitDelay = 5 * time.Second
