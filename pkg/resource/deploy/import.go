@@ -316,7 +316,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		if parameterization := req.Replacement(); parameterization != nil {
 			providers.SetProviderName(inputs, req.Name())
-			providers.SetProviderParameterization(inputs, parameterization)
+			providers.SetProviderReplacementParameterization(inputs, parameterization)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:  urn,

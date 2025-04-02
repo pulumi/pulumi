@@ -455,7 +455,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	}
 	if req.Replacement() != nil {
 		providers.SetProviderName(inputs, req.Name())
-		providers.SetProviderParameterization(inputs, req.Replacement())
+		providers.SetProviderReplacementParameterization(inputs, req.Replacement())
 	}
 
 	// Create the result channel and the event.
@@ -2250,7 +2250,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			if providerReq.Replacement() != nil {
 				providers.SetProviderName(props, providerReq.Name())
-				providers.SetProviderParameterization(props, providerReq.Replacement())
+				providers.SetProviderReplacementParameterization(props, providerReq.Replacement())
 			}
 		}
 
@@ -2268,7 +2268,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				providers.SetProviderChecksums(props, defaultProvider.Checksums)
 			}
 			if defaultProvider.Replacement != nil {
-				providers.SetProviderParameterization(props, defaultProvider.Replacement)
+				providers.SetProviderReplacementParameterization(props, defaultProvider.Replacement)
 			}
 		}
 	}

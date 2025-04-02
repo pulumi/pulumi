@@ -213,7 +213,7 @@ func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.P
 }
 
 // Sets the provider parameterization in the given property map, this should be called _after_ SetVersion.
-func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
+func SetProviderReplacementParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
 	internalInputs := addOrGetInternal(inputs)
 
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
