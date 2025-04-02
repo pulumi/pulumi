@@ -209,8 +209,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
@@ -336,7 +336,7 @@ jobs:
           cd sdk/nodejs
           make build_package
           cd bin
-          yarn link
+          npm link
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python
@@ -372,7 +372,7 @@ jobs:
           if [ -e .nyc_output ]; then
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
             COVERAGE_PATH="${PULUMI_TEST_COVERAGE_PATH:-./coverage}"
-            yarn run nyc report -r cobertura --report-dir "$COVERAGE_PATH"
+            npx nyc report -r cobertura --report-dir "$COVERAGE_PATH"
             mv "$COVERAGE_PATH/cobertura-coverage.xml" "$COVERAGE_PATH/cobertura-coverage-$UUID.xml"
           fi
       - name: Merge integration test code coverage

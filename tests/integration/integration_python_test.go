@@ -800,6 +800,7 @@ func TestConstructSlowPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
+		UseNPM:         true,
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		NoParallel:     true,
@@ -871,6 +872,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
+		UseNPM:         true,
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {

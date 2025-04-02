@@ -31,6 +31,7 @@ func TestDependencySteps(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseNPM:       true,
 		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{

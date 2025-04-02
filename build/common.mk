@@ -6,14 +6,14 @@
 # The default targets we use are:
 #
 #  - ensure: restores any dependencies needed for the build from
-#            remote sources (e.g dep ensure or yarn install)
+#            remote sources (e.g dep ensure or npm install)
 #
 #  - build: builds a project but does not install it.
 #
 #  - install: copies the bits we plan to ship into a layout in
 #             `PULUMI_ROOT` that looks like what a customer would get
 #             when they download and install Pulumi. For JavaScript
-#             projects, installing also runs yarn link to register
+#             projects, installing also runs npm link to register
 #             this package, so that other projects can depend on it.
 #
 #  - lint: runs relevent linters for the project
@@ -189,13 +189,15 @@ ifneq ($(NODE_MODULE_NAME),)
 install::
 	[ ! -e "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" ] || rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	mkdir -p "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp -r bin/. "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
+	cd bin && PACKED_TGZ=$$(npm pack) && \
+		tar -xzf "$$PACKED_TGZ" -C "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" --strip-components=1 && \
+		rm "$$PACKED_TGZ"
+	cp package-lock.json "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
-	yarn install --prefer-offline --production && \
-	(yarn unlink > /dev/null 2>&1 || true) && \
-	yarn link
+	npm ci --prefer-offline --omit=dev && \
+	(npm unlink > /dev/null 2>&1 || true) && \
+	npm link
 endif
 
 only_build:: build install

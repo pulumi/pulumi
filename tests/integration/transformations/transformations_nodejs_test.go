@@ -33,6 +33,7 @@ func TestNodejsTransformations(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          d,
 				Dependencies: []string{"@pulumi/pulumi"},
+				UseNPM:       true,
 				LocalProviders: []integration.LocalDependency{
 					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 				},

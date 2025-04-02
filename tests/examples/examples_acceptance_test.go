@@ -94,5 +94,6 @@ func getCwd(t *testing.T) string {
 func getBaseOptions() integration.ProgramTestOptions {
 	return integration.ProgramTestOptions{
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseNPM:       true,
 	}
 }

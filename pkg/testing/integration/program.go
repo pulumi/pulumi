@@ -160,7 +160,7 @@ type ConfigValue struct {
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
-	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
+	// Array of NPM packages which must be linked via `yarn link` or `npm link` (e.g. {"pulumi", "@pulumi/aws"})
 	Dependencies []string
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
@@ -237,7 +237,7 @@ type ProgramTestOptions struct {
 	UpdateCommandlineFlags []string
 	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
 	QueryCommandlineFlags []string
-	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
+	// RunBuild indicates that the build step should be run (e.g. run `yarn build` or `npm build` for `nodejs` programs)
 	RunBuild bool
 	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
 	RunUpdateTest bool
@@ -293,6 +293,8 @@ type ProgramTestOptions struct {
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+	// NPMBin is a location of a `npm` executable to be run.  Taken from the $PATH if missing.
+	NPMBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
 	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
@@ -346,6 +348,9 @@ type ProgramTestOptions struct {
 	// The directory to use for PULUMI_HOME. Useful for benchmarks where you want to run a warmup run of `ProgramTest`
 	// to download plugins before running the timed run of `ProgramTest`.
 	PulumiHomeDir string
+
+	// Whether `npm` should be used instead of `yarn` for Node projects.
+	UseNPM bool
 }
 
 func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
@@ -376,6 +381,10 @@ func (opts *ProgramTestOptions) GetDebugLogLevel() int {
 
 func (opts *ProgramTestOptions) GetDebugUpdates() bool {
 	return opts.DebugUpdates || os.Getenv("PULUMI_TEST_DEBUG_UPDATES") != ""
+}
+
+func (opts *ProgramTestOptions) GetUseNPM() bool {
+	return opts.UseNPM || os.Getenv("PULUMI_TEST_USE_NPM") != ""
 }
 
 // GetStackName returns a stack name to use for this test.
@@ -628,6 +637,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.YarnBin != "" {
 		opts.YarnBin = overrides.YarnBin
 	}
+	if overrides.NPMBin != "" {
+		opts.NPMBin = overrides.NPMBin
+	}
 	if overrides.GoBin != "" {
 		opts.GoBin = overrides.GoBin
 	}
@@ -675,6 +687,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.PulumiHomeDir != "" {
 		opts.PulumiHomeDir = overrides.PulumiHomeDir
+	}
+	if overrides.UseNPM {
+		opts.UseNPM = overrides.UseNPM
 	}
 	return opts
 }
@@ -833,10 +848,10 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 }
 
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
-// binaries available on PATH.  It essentially executes the following workflow:
+// or `npm` binaries available on PATH.  It essentially executes the following workflow:
 //
 //	yarn install
-//	yarn link <each opts.Depencies>
+//	yarn link <each opts.Dependencies>
 //	(+) yarn run build
 //	pulumi init
 //	(*) pulumi login
@@ -877,6 +892,7 @@ type ProgramTester struct {
 	opts           *ProgramTestOptions // options that control this test run.
 	bin            string              // the `pulumi` binary we are using.
 	yarnBin        string              // the `yarn` binary we are using.
+	npmBin         string              // the `npm` binary we are using.
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
@@ -926,6 +942,10 @@ func (pt *ProgramTester) getBin() (string, error) {
 
 func (pt *ProgramTester) getYarnBin() (string, error) {
 	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
+}
+
+func (pt *ProgramTester) getNPMBin() (string, error) {
+	return getCmdBin(&pt.npmBin, "npm", pt.opts.NPMBin)
 }
 
 func (pt *ProgramTester) getGoBin() (string, error) {
@@ -995,6 +1015,15 @@ func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	result := []string{bin}
 	result = append(result, args...)
 	return withOptionalYarnFlags(result), nil
+}
+
+func (pt *ProgramTester) npmCmd(args []string) ([]string, error) {
+	bin, err := pt.getNPMBin()
+	if err != nil {
+		return nil, err
+	}
+	result := []string{bin}
+	return append(result, args...), nil
 }
 
 func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
@@ -1117,6 +1146,33 @@ func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) e
 				return true, nil, nil
 			} else if _, ok := runerr.(*exec.ExitError); ok {
 				// yarn failed, let's try again, assuming we haven't failed a few times.
+				if try+1 >= 3 {
+					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
+				}
+
+				return false, nil, nil
+			}
+
+			// someother error, fail
+			return false, nil, runerr
+		},
+	})
+	return err
+}
+
+func (pt *ProgramTester) runNPMCommand(name string, args []string, wd string) error {
+	cmd, err := pt.npmCmd(args)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok {
+				// npm failed, let's try again, assuming we haven't failed a few times.
 				if try+1 >= 3 {
 					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
 				}
@@ -1331,8 +1387,14 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 
 	switch rt := projInfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
-		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
-			return err
+		if pt.opts.GetUseNPM() {
+			if err = pt.npmLinkPackageDeps(projectDir); err != nil {
+				return err
+			}
+		} else {
+			if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+				return err
+			}
 		}
 	case PythonRuntime:
 		if err = pt.installPipPackageDeps(projectDir); err != nil {
@@ -2121,11 +2183,20 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0o600); err != nil {
 			return "", "", err
 		}
-		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
-			return "", "", err
-		}
-		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
-			return "", "", err
+		if pt.opts.GetUseNPM() {
+			if err := pt.runNPMCommand("npm-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+				return "", "", err
+			}
+			if err = pt.runNPMCommand("npm-install", []string{"install"}, projdir); err != nil {
+				return "", "", err
+			}
+		} else {
+			if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+				return "", "", err
+			}
+			if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+				return "", "", err
+			}
 		}
 	}
 
@@ -2162,11 +2233,13 @@ func (pt *ProgramTester) prepareProjectDir(projectDir string) error {
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
-	if err := ptesting.WriteYarnRCForTest(projinfo.Root); err != nil {
-		return err
+	if !pt.opts.GetUseNPM() {
+		if err := ptesting.WriteYarnRCForTest(projinfo.Root); err != nil {
+			return err
+		}
 	}
 
-	// Get the correct pwd to run Yarn in.
+	// Get the correct pwd to run npm or yarn in.
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
@@ -2187,15 +2260,20 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	// package.json to use them.  Note that Overrides take
 	// priority over installing dev versions.
 	if pt.opts.InstallDevReleases {
-		err := pt.runYarnCommand("yarn-add", []string{"add", "@pulumi/pulumi@dev"}, cwd)
-		if err != nil {
-			return err
+		if pt.opts.GetUseNPM() {
+			if err := pt.runNPMCommand("npm-add", []string{"add", "@pulumi/pulumi@dev"}, cwd); err != nil {
+				return err
+			}
+		} else {
+			if err := pt.runYarnCommand("yarn-add", []string{"add", "@pulumi/pulumi@dev"}, cwd); err != nil {
+				return err
+			}
 		}
 	}
 
 	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
 	// direct dependency of the project, we change the version constraint in the package.json. For transitive
-	// dependencies, we use yarn's "resolutions" feature to force them to a specific version.
+	// dependencies, we use yarn's "resolutions" or npm's "overrides" feature to force them to a specific version.
 	if len(pt.opts.Overrides) > 0 {
 		packageJSON, err := readPackageJSON(cwd)
 		if err != nil {
@@ -2216,11 +2294,20 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 			}
 
 			pt.t.Logf("adding resolution for %s to version %s", packageName, packageVersion)
-			resolutions["**/"+packageName] = packageVersion
+
+			var prefix string
+			if !pt.opts.GetUseNPM() {
+				prefix = "**/"
+			}
+			resolutions[prefix+packageName] = packageVersion
 		}
 
-		// Wack any existing resolutions section with our newly computed one.
-		packageJSON["resolutions"] = resolutions
+		// Wack any existing resolutions/overrides section with our newly computed one.
+		section := "overrides"
+		if !pt.opts.GetUseNPM() {
+			section = "resolutions"
+		}
+		packageJSON[section] = resolutions
 
 		if err := writePackageJSON(cwd, packageJSON); err != nil {
 			return err
@@ -2228,20 +2315,38 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	}
 
 	// Now ensure dependencies are present.
-	if err = pt.runYarnCommand("yarn-install", []string{"install"}, cwd); err != nil {
-		return err
+	if pt.opts.GetUseNPM() {
+		if err = pt.runNPMCommand("npm-install", []string{"install"}, cwd); err != nil {
+			return err
+		}
+	} else {
+		if err = pt.runYarnCommand("yarn-install", []string{"install"}, cwd); err != nil {
+			return err
+		}
 	}
 
 	if !pt.opts.RunUpdateTest {
-		if err = pt.yarnLinkPackageDeps(cwd); err != nil {
-			return err
+		if pt.opts.GetUseNPM() {
+			if err = pt.npmLinkPackageDeps(cwd); err != nil {
+				return err
+			}
+		} else {
+			if err = pt.yarnLinkPackageDeps(cwd); err != nil {
+				return err
+			}
 		}
 	}
 
 	if pt.opts.RunBuild {
 		// And finally compile it using whatever build steps are in the package.json file.
-		if err = pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd); err != nil {
-			return err
+		if pt.opts.GetUseNPM() {
+			if err = pt.runNPMCommand("npm-build", []string{"run", "build"}, cwd); err != nil {
+				return err
+			}
+		} else {
+			if err = pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -2373,6 +2478,17 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 	for _, dependency := range pt.opts.Dependencies {
 		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// npmLinkPackageDeps bring in package dependencies via npm
+func (pt *ProgramTester) npmLinkPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runNPMCommand("npm-link", []string{"link", dependency}, cwd); err != nil {
 			return err
 		}
 	}

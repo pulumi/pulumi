@@ -152,6 +152,7 @@ func optsForConstructPython(
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python"),
 		},
+		UseNPM:         true,
 		LocalProviders: localProviders,
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",

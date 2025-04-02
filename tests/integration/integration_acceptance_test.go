@@ -133,6 +133,7 @@ func TestJSONOutputWithStreamingPreview(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseNPM:       true,
 		Stdout:       stdout,
 		Verbose:      true,
 		JSONOutput:   true,

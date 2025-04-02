@@ -39,6 +39,7 @@ func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseNPM:       true,
 		Quick:        true,
 	})
 }
@@ -90,6 +91,7 @@ func optsForConstructNode(
 	return &integration.ProgramTestOptions{
 		Dir:            filepath.Join("construct_component", "nodejs"),
 		Dependencies:   []string{"@pulumi/pulumi"},
+		UseNPM:         true,
 		LocalProviders: localProviders,
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
@@ -171,14 +173,14 @@ func TestConstructComponentConfigureProviderNode(t *testing.T) {
 		" test has generated the Node SDK:\n%s\n%s\n",
 		stdout.String(), stderr.String())
 
-	t.Logf("yarn run tsc # precompile @pulumi/metaprovider")
-	cmd2 := exec.Command("yarn", "run", "tsc")
+	t.Logf("npx tsc # precompile @pulumi/metaprovider")
+	cmd2 := exec.Command("npx", "tsc")
 	cmd2.Dir = filepath.Join(componentSDK)
 	err = cmd2.Run()
 	require.NoError(t, err)
 
-	t.Logf("yarn link # prelink @pulumi/metaprovider")
-	cmd3 := exec.Command("yarn", "link")
+	t.Logf("npm link # prelink @pulumi/metaprovider")
+	cmd3 := exec.Command("npm", "link")
 	cmd3.Dir = filepath.Join(componentSDK, "bin")
 	err = cmd3.Run()
 	require.NoError(t, err)
@@ -191,6 +193,7 @@ func TestConstructComponentConfigureProviderNode(t *testing.T) {
 			"@pulumi/pulumi",
 			"@pulumi/metaprovider",
 		},
+		UseNPM: true,
 	})
 	integration.ProgramTest(t, &opts)
 }

@@ -88,11 +88,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
-      - name: Install yarn
-        run: |
-          npm install -g yarn
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
       # TODO something in `cd sdk/nodejs && make ensure` executes Go
       # downloads, which is unfortunate and wasteful in this context.
       # When this is fixed the no-op Go command can be removed.
