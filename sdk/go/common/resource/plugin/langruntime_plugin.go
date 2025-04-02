@@ -657,8 +657,8 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 }
 
 func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
-	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
-		h.runtime, info.Info.String())
+	logging.V(7).Infof("langhost[%v].RunPlugin(prefix=%v,%s) executing",
+		h.runtime, info.Prefix, info.Info.String())
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
@@ -672,6 +672,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		Args:           info.Args,
 		Env:            info.Env,
 		Info:           minfo,
+		Prefix:         info.Prefix,
 		AttachDebugger: info.AttachDebugger,
 	})
 	if err != nil {

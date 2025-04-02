@@ -445,8 +445,11 @@ message RunPluginRequest{
     // The [plugin program](pulumirpc.ProgramInfo) to use.
     ProgramInfo info = 5;
 
+    // The plugin prefix for display purposes.
+    string prefix = 6; 
+
     // True if and only if the host should start the program under a debugger.
-    bool attach_debugger = 6;
+    bool attach_debugger = 7;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.

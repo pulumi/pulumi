@@ -925,7 +925,7 @@ func runProgram(
 		defer cancel()
 		go func() {
 			info := programInfo{
-				Name: "Program (Go)",
+				Name: fmt.Sprintf("%s (program)", req.Project),
 				Cwd:  pwd,
 			}
 			err := startDebugging(ctx, engineClient, dbg, info)
@@ -1267,7 +1267,7 @@ func (host *goLanguageHost) RunPlugin(
 		defer cancel()
 		go func() {
 			info := programInfo{
-				Name: "Plugin (Go)",
+				Name: req.Prefix,
 				Cwd:  req.Pwd,
 			}
 			err := startDebugging(ctx, engineClient, dbg, info)

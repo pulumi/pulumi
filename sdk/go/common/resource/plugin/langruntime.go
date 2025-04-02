@@ -189,6 +189,7 @@ type RunPluginInfo struct {
 	WorkingDirectory string
 	Args             []string
 	Env              []string
+	Prefix           string
 	AttachDebugger   bool // true if we are starting the program under a debugger.
 }
 
