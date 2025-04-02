@@ -457,6 +457,10 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		providers.SetProviderName(inputs, req.Name())
 		providers.SetProviderReplacementParameterization(inputs, req.Replacement())
 	}
+	if req.Extension() != nil {
+		providers.SetProviderName(inputs, req.Name())
+		providers.SetProviderExtensionParameterization(inputs, req.Extension())
+	}
 
 	// Create the result channel and the event.
 	done := make(chan *RegisterResult)
@@ -2251,6 +2255,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if providerReq.Replacement() != nil {
 				providers.SetProviderName(props, providerReq.Name())
 				providers.SetProviderReplacementParameterization(props, providerReq.Replacement())
+			}
+			if providerReq.Extension() != nil {
+				providers.SetProviderName(props, providerReq.Name())
+				providers.SetProviderExtensionParameterization(props, providerReq.Extension())
 			}
 		}
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,16 +42,21 @@ const (
 	// should not clash with existing provider keys. They're all nested under "__internal" to avoid this.
 	internalKey resource.PropertyKey = "__internal"
 
-	parameterizationKey resource.PropertyKey = "parameterization"
-	nameKey             resource.PropertyKey = "name"
-	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
-	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
+	nameKey resource.PropertyKey = "name"
+
+	pluginDownloadKey  resource.PropertyKey = "pluginDownloadURL"
+	pluginChecksumsKey resource.PropertyKey = "pluginChecksums"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
 	// put in the root of the property map is the package version, not the plugin version. This means for parameterized
 	// providers we also need the plugin version saved in "__internal".
 	versionKey resource.PropertyKey = "version"
+
+	replacementParameterizationKey resource.PropertyKey = "parameterization"
+	extensionParameterizationsKey  resource.PropertyKey = "extensions"
+
+	parameterizationValueKey resource.PropertyKey = "value"
 )
 
 func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
@@ -161,7 +166,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 
 	// If this is a parameterized provider, the version is stored in the internal section.
 	// Else it's on the base properties.
-	if _, has := internalInputs[parameterizationKey]; has {
+	if _, has := internalInputs[replacementParameterizationKey]; has {
 		inputs = internalInputs
 	}
 
@@ -220,9 +225,37 @@ func SetProviderReplacementParameterization(inputs resource.PropertyMap, value *
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
 	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
-	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewStringProperty(
+	// We don't write name here because we can reconstruct that from the provider's type token
+	internalInputs[replacementParameterizationKey] = resource.NewStringProperty(
 		base64.StdEncoding.EncodeToString(value.Value))
+}
+
+func SetProviderExtensionParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
+	internalInputs := addOrGetInternal(inputs)
+
+	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
+	// it, and replace it with our package version.
+	internalInputs[versionKey] = inputs[versionKey]
+	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+
+	extensionsValue, ok := internalInputs[extensionParameterizationsKey]
+
+	var extensions resource.PropertyMap
+	if ok {
+		contract.Assertf(extensionsValue.IsObject(),
+			"a provider's internal extensions input must be an object; found %v", extensionsValue)
+
+		extensions = extensionsValue.ObjectValue()
+	} else {
+		extensions = resource.PropertyMap{}
+		internalInputs[extensionParameterizationsKey] = resource.NewObjectProperty(extensions)
+	}
+
+	extensions[resource.PropertyKey(value.Name)] = resource.NewObjectProperty(
+		map[resource.PropertyKey]resource.PropertyValue{
+			parameterizationValueKey: resource.NewStringProperty(base64.StdEncoding.EncodeToString(value.Value)),
+		},
+	)
 }
 
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
@@ -235,13 +268,13 @@ func GetProviderParameterization(
 		return nil, err
 	}
 
-	parameter, ok := internalInputs[parameterizationKey]
+	parameter, ok := internalInputs[replacementParameterizationKey]
 	if !ok {
 		return nil, nil
 	}
 
 	if !parameter.IsString() {
-		return nil, fmt.Errorf("'%s' must be of type string", parameterizationKey)
+		return nil, fmt.Errorf("'%s' must be of type string", replacementParameterizationKey)
 	}
 	bytes, err := base64.StdEncoding.DecodeString(parameter.StringValue())
 	if err != nil {

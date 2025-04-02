@@ -314,9 +314,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
 		}
-		if parameterization := req.Replacement(); parameterization != nil {
+		if replacement := req.Replacement(); replacement != nil {
 			providers.SetProviderName(inputs, req.Name())
-			providers.SetProviderReplacementParameterization(inputs, parameterization)
+			providers.SetProviderReplacementParameterization(inputs, replacement)
+		}
+		if extension := req.Extension(); extension != nil {
+			providers.SetProviderName(inputs, req.Name())
+			providers.SetProviderExtensionParameterization(inputs, extension)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:  urn,
