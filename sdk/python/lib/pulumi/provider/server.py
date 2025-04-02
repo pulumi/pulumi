@@ -20,6 +20,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 from typing import Dict, List, Set, Optional, TypeVar, Any, cast
 import argparse
 import asyncio
+import os
 import sys
 import traceback
 
@@ -454,7 +455,13 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
         servicer = ProviderServicer(provider, args, engine_address=engine_address)
         provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
-        port = server.add_insecure_port(address="127.0.0.1:0")
+        address = "127.0.0.1:0"
+        # Hackety hack: we need to bind to all interfaces so that we can port forward
+        # out of the docker container. We also use a hardcoded 4242 port instead of
+        # letting the system pick one for us, so that we know what to port forward.
+        if os.environ.get("PULUMI_DOCKER"):
+            address = "0.0.0.0:4242"
+        port = server.add_insecure_port(address=address)
         await server.start()
         sys.stdout.buffer.write(f"{port}\n".encode())
         sys.stdout.buffer.flush()
