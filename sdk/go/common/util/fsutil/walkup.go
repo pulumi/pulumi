@@ -67,6 +67,44 @@ func WalkUp(path string, walkFn func(string) bool, visitParentFn func(string) bo
 	return "", nil
 }
 
+// WalkUpDirs visits each parent directory of path.
+//
+// For example, /a/b/c/foo.txt would visit in this order:
+//
+//	/a/b/c
+//	/a/b
+//	/a
+//	/
+//
+// If checkDir returns true the search terminates early and the matching dir is returned.
+func WalkUpDirs(path string, checkDir func(dir string) bool) (string, error) {
+	// This needs to be an absolute path otherwise we will get stuck in an infinite loop of the parent
+	// directory of "." being ".".
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("abs: %w", err)
+	}
+
+	curr := pathDir(path)
+
+	for {
+		// Terminate early if a match is found.
+		if checkDir(curr) {
+			return curr, nil
+		}
+
+		// If we are at the root, stop walking
+		if isTop(curr) {
+			break
+		}
+
+		// visit the parent
+		curr = filepath.Dir(curr)
+	}
+
+	return "", nil
+}
+
 // pathDir returns the nearest directory to the given path (identity if a directory; parent otherwise).
 func pathDir(path string) string {
 	// If the path is a file, we want the directory it is in

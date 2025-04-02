@@ -205,3 +205,40 @@ func TestDetectPolicyPackPathAt(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "", path)
 }
+
+func TestDetectProjectPathFrom(t *testing.T) {
+	t.Parallel()
+	tmpDir := mkTempDir(t)
+
+	d1, err := filepath.Abs(tmpDir)
+	assert.NoError(t, err)
+	d2 := filepath.Join(d1, "a")
+	d3 := filepath.Join(d2, "b")
+	d4 := filepath.Join(d3, "c")
+
+	err = os.MkdirAll(d4, 0o700)
+	require.NoError(t, err)
+
+	indexTs := filepath.Join(d4, "index.ts")
+	err = os.WriteFile(indexTs, []byte("..."), 0o600)
+	assert.NoError(t, err)
+
+	f1 := filepath.Join(d2, "Pulumi.yaml")
+	err = os.WriteFile(f1, []byte("..."), 0o600)
+	assert.NoError(t, err)
+
+	for _, path := range []string{
+		filepath.Join(d4, "index.ts"),
+		d4,
+		d3,
+		d2,
+	} {
+		pulumiYamlPath, err := DetectProjectPathFrom(path)
+		assert.NoError(t, err)
+		assert.Equal(t, f1, pulumiYamlPath)
+	}
+
+	negative, err := DetectProjectPathFrom(d1)
+	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
+	assert.Equal(t, "", negative)
+}
