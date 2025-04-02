@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
 
 // Calling == does not implement desirable behavior, so we ensure that it is invalid.
@@ -68,13 +67,24 @@ func TestNil(t *testing.T) {
 	// []T based type, zero value is Array(nil)
 	t.Run("array", func(t *testing.T) {
 		t.Parallel()
-		nilArray := New[Array](nil)
+		nilArray := New[[]Value](nil)
 
 		assert.False(t, nilArray.IsArray())
 		assert.True(t, nilArray.IsNull())
 		assert.True(t, nilArray.Equals(nullValue))
 
 		assert.True(t, New(Array{}).IsArray())
+	})
+
+	t.Run("map", func(t *testing.T) {
+		t.Parallel()
+		nilMap := New[map[string]Value](nil)
+
+		assert.False(t, nilMap.IsMap())
+		assert.True(t, nilMap.IsNull())
+		assert.True(t, nilMap.Equals(nullValue))
+
+		assert.True(t, New(Map{}).IsMap())
 	})
 
 	// *T based type, zero value is *resource.Asset(nil)
@@ -100,97 +110,4 @@ func TestNil(t *testing.T) {
 		assert.False(t, emptyString.IsNull())
 		assert.False(t, emptyString.Equals(nullValue))
 	})
-}
-
-func TestCopy(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		value    func() Value
-		mutation func(Value)
-	}{
-		{
-			name: "map-value",
-			value: func() Value {
-				return New(Map{
-					"k": New("value"),
-				})
-			},
-			mutation: func(v Value) {
-				v.AsMap()["k"] = New("changed")
-			},
-		},
-		{
-			name: "map-deleted-key",
-			value: func() Value {
-				return New(Map{
-					"k": New("value"),
-				})
-			},
-			mutation: func(v Value) {
-				delete(v.AsMap(), "k")
-			},
-		},
-		{
-			name: "map-added-key",
-			value: func() Value {
-				return New(Map{
-					"k": New("value"),
-				})
-			},
-			mutation: func(v Value) {
-				v.AsMap()["k2"] = New("added")
-			},
-		},
-		{
-			name: "array-value",
-			value: func() Value {
-				return New(Array{
-					New(true),
-				})
-			},
-			mutation: func(v Value) {
-				v.AsArray()[0] = New(0.0)
-			},
-		},
-		{
-			name: "dependencies",
-			value: func() Value {
-				return New("hi").WithDependencies([]urn.URN{"urn1"})
-			},
-			mutation: func(v Value) {
-				v.Dependencies()[0] = "urn2"
-			},
-		},
-		{
-			name: "nested-value",
-			value: func() Value {
-				return New(Map{
-					"k": New(Array{
-						New(Map{
-							"v": New("nested"),
-						}),
-					}),
-				})
-			},
-			mutation: func(v Value) {
-				v.AsMap()["k"].AsArray()[0].AsMap()["new"] = New(true)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			v := tt.value()
-			cp := v.Copy()
-			tt.mutation(cp)
-
-			assert.Equal(t, v, tt.value())
-			assert.NotEqual(t, v, cp)
-		})
-	}
 }

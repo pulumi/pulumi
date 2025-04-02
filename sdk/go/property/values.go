@@ -17,7 +17,6 @@ package property
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -25,8 +24,6 @@ import (
 )
 
 type (
-	Array   = []Value
-	Map     = map[string]Value
 	Asset   = *asset.Asset
 	Archive = *archive.Archive
 )
@@ -55,7 +52,8 @@ type Value struct {
 // Value can also be a null value.
 type GoValue interface {
 	bool | float64 | string | // Primitive types
-		Array | Map | // Collection types
+		Map | map[string]Value | // Map types
+		Array | []Value | // Array types
 		Asset | Archive | // Pulumi types
 		ResourceReference | // Resource references
 		computed | null // marker singletons
@@ -68,22 +66,26 @@ func New[T GoValue](goValue T) Value {
 
 func normalize(goValue any) any {
 	switch goValue := goValue.(type) {
-	case Array:
+	case map[string]Value:
 		if goValue == nil {
 			return nil
 		}
-	case Map:
+		return NewMap(goValue)
+	case []Value:
 		if goValue == nil {
 			return nil
 		}
-	case Asset:
-		if goValue == nil {
-			return nil
-		}
+		return NewArray(goValue)
 	case Archive:
 		if goValue == nil {
 			return nil
 		}
+		return copyArchive(goValue)
+	case Asset:
+		if goValue == nil {
+			return nil
+		}
+		return copyAsset(goValue)
 	case null:
 		return nil
 	}
@@ -102,7 +104,11 @@ func Any(goValue any) (Value, error) {
 		return New(goValue), nil
 	case Array:
 		return New(goValue), nil
+	case []Value:
+		return New(goValue), nil
 	case Map:
+		return New(goValue), nil
+	case map[string]Value:
 		return New(goValue), nil
 	case Asset:
 		return New(goValue), nil
@@ -163,33 +169,28 @@ func (v Value) AsBool() bool                           { return asMut[bool](v) }
 func (v Value) AsNumber() float64                      { return asMut[float64](v) }
 func (v Value) AsString() string                       { return asMut[string](v) }
 func (v Value) AsResourceReference() ResourceReference { return asMut[ResourceReference](v) }
+func (v Value) AsAsset() Asset                         { return copyAsset(asMut[Asset](v)) }
+func (v Value) AsArchive() Archive                     { return copyArchive(asMut[Archive](v)) }
+func (v Value) AsArray() Array                         { return asMut[Array](v) }
+func (v Value) AsMap() Map                             { return asMut[Map](v) }
 
-// Copy by reference types need to be shallowly copied. They don't need a deep copy
-// because *all* operations make their own shallow copy.
-
-func (v Value) AsArray() Array {
-	// Perform a shallow copy on v.
-	arr := asMut[Array](v)
-	cp := make(Array, len(arr))
-	copy(cp, arr)
-	return cp
-}
-func (v Value) AsMap() Map {
-	m := asMut[Map](v)
-	cp := make(Map, len(m))
-	for k, v := range m {
-		cp[k] = v
+// copyAsset peforms a deep copy of an asset.
+func copyAsset(a Asset) Asset {
+	return &asset.Asset{
+		Sig:  a.Sig,
+		Hash: a.Hash,
+		Text: a.Text,
+		Path: a.Path,
+		URI:  a.URI,
 	}
-	return cp
 }
 
-func (v Value) AsAsset() Asset {
-	return &*v.AsAsset() // Copy a, [asset.Asset] is copy by value.
-}
-func (v Value) AsArchive() Archive {
-	a := v.AsArchive()
+func copyArchive(a Archive) Archive {
 	assets := make(map[string]any, len(a.Assets))
 	for k, v := range a.Assets {
+		// TODO: These values are not actually of any type, and need to be copied
+		// correctly.
+		//
 		// values are of the any type, and thus cannot be reliably deep
 		// copied.
 		assets[k] = v
@@ -205,8 +206,6 @@ func (v Value) AsArchive() Archive {
 
 // as*Mut act as interior escapes
 
-func (v Value) asArrayMut() Array     { return asMut[Array](v) }
-func (v Value) asMapMut() Map         { return asMut[Map](v) }
 func (v Value) asAssetMut() Asset     { return asMut[Asset](v) }
 func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
 

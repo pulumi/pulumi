@@ -77,23 +77,23 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 	case v.IsString() && other.IsString():
 		return v.AsString() == other.AsString()
 	case v.IsArray() && other.IsArray():
-		a1, a2 := v.asArrayMut(), other.asArrayMut()
-		if len(a1) != len(a2) {
+		a1, a2 := v.AsArray(), other.AsArray()
+		if a1.Len() != a2.Len() {
 			return false
 		}
-		for i := range a1 {
-			if !a1[i].equals(a2[i], opts) {
+		for i := range a1.arr {
+			if !a1.arr[i].equals(a2.arr[i], opts) {
 				return false
 			}
 		}
 		return true
 	case v.IsMap() && other.IsMap():
-		m1, m2 := v.asMapMut(), other.asMapMut()
-		if len(m1) != len(m2) {
+		m1, m2 := v.AsMap(), other.AsMap()
+		if m1.Len() != m2.Len() {
 			return false
 		}
-		for k, v1 := range m1 {
-			v2, ok := m2[k]
+		for k, v1 := range m1.m {
+			v2, ok := m2.m[k]
 			if !ok || !v1.equals(v2, opts) {
 				return false
 			}

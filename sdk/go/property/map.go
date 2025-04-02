@@ -14,27 +14,44 @@
 
 package property
 
-// Visit each Value in the within v.
-//
-// Parents are visited before their children.
-func (v Value) visit(f func(Value) (continueWalking bool)) bool {
-	cont := f(v)
-	if !cont {
-		return false
-	}
-	switch {
-	case v.IsArray():
-		for _, v := range v.AsArray() {
-			if !v.visit(f) {
-				return false
-			}
-		}
-	case v.IsMap():
-		for _, v := range v.AsArray() {
-			if !v.visit(f) {
-				return false
-			}
+// An immutable Map of [Value]s.
+type Map struct{ m map[string]Value }
+
+func (m Map) AsMap() map[string]Value { return copyMap(m.m) }
+
+func (m Map) All(yield func(string, Value) bool) {
+	for k, v := range m.m {
+		if !yield(k, v) {
+			continue
 		}
 	}
-	return true
+}
+
+func (m Map) Get(key string) Value {
+	return m.m[key]
+}
+
+func (m Map) GetOk(key string) (Value, bool) {
+	v, ok := m.m[key]
+	return v, ok
+}
+
+func (m Map) Len() int {
+	return len(m.m)
+}
+
+func (m Map) Set(key string, value Value) Map {
+	cp := copyMap(m.m)
+	cp[key] = value
+	return Map{cp}
+}
+
+func NewMap(m map[string]Value) Map { return Map{copyMap(m)} }
+
+func copyMap(m map[string]Value) map[string]Value {
+	cp := make(map[string]Value, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
 }

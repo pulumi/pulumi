@@ -55,20 +55,19 @@ func (p Path) Set(src, to Value) (Value, PathApplyFailure) {
 		if !ok {
 			return Value{}, pathErrorf(v, "expected an IndexSegment, found %T", last)
 		}
-		arr := v.AsArray()
-		if i.int < 0 || i.int > len(arr) {
-			return Value{}, pathApplyIndexOutOfBounds{found: arr, idx: i.int}
+		slice := v.AsArray().AsSlice()
+		if i.int < 0 || i.int > len(slice) {
+			return Value{}, pathApplyIndexOutOfBoundsError{found: v.AsArray(), idx: i.int}
 		}
-		arr[i.int] = to
-		return butLast.Set(src, New(arr))
+		slice[i.int] = to
+		return butLast.Set(src, New(slice))
 	case v.IsMap():
 		k, ok := last.(KeySegment)
 		if !ok {
 			return Value{}, pathErrorf(v, "expected a KeySegment, found %T", last)
 		}
-		m := v.AsMap()
-		m[k.string] = to
-		return butLast.Set(src, New(m))
+
+		return butLast.Set(src, New(v.AsMap().Set(k.string, to)))
 	default:
 		return Value{}, pathErrorf(v, "expected a map or array, found %s", typeString(v))
 	}
@@ -121,7 +120,7 @@ type KeySegment struct{ string }
 func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsMap() {
 		m := v.AsMap()
-		r, ok := m[k.string]
+		r, ok := m.GetOk(k.string)
 		if ok {
 			return r, nil
 		}
@@ -135,10 +134,10 @@ type IndexSegment struct{ int }
 func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsArray() {
 		a := v.AsArray()
-		if k.int < 0 || k.int >= len(a) {
+		if k.int < 0 || k.int >= a.Len() {
 			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: k.int}
 		}
-		return a[k.int], nil
+		return a.Get(k.int), nil
 	}
 	return Value{}, pathApplyIndexExpectedArrayError{found: v}
 }
@@ -191,7 +190,7 @@ func (err pathApplyIndexOutOfBoundsError) Found() Value {
 
 func (err pathApplyIndexOutOfBoundsError) Error() string {
 	return fmt.Sprintf("index %d out of bounds of an array of length %d",
-		err.idx, len(err.found))
+		err.idx, err.found.Len())
 }
 
 func pathErrorf(v Value, msg string, a ...any) PathApplyFailure {

@@ -44,7 +44,7 @@ func TestGet(t *testing.T) {
 			path: property.Path{
 				property.NewSegment("k"),
 			},
-			from: property.New(property.Map{
+			from: property.New(map[string]property.Value{
 				"k": property.New("v"),
 			}),
 			expected: property.New("v"),
@@ -54,11 +54,11 @@ func TestGet(t *testing.T) {
 			path: property.Path{
 				property.NewSegment("missing"),
 			},
-			from: property.New(property.Map{
+			from: property.New(map[string]property.Value{
 				"k": property.New("v"),
 			}),
 			failure: &pathFailure{
-				found: property.New(property.Map{
+				found: property.New(map[string]property.Value{
 					"k": property.New("v"),
 				}),
 				msg: `missing key "missing" in map`,
@@ -69,11 +69,11 @@ func TestGet(t *testing.T) {
 			path: property.Path{
 				property.NewSegment("missing"),
 			},
-			from: property.New(property.Array{
+			from: property.New([]property.Value{
 				property.New("v"),
 			}),
 			failure: &pathFailure{
-				found: property.New(property.Array{
+				found: property.New([]property.Value{
 					property.New("v"),
 				}),
 				msg: `expected a map, found a array`,
@@ -84,7 +84,7 @@ func TestGet(t *testing.T) {
 			path: property.Path{
 				property.NewSegment(1),
 			},
-			from: property.New(property.Array{
+			from: property.New([]property.Value{
 				property.New("0"),
 				property.New("1"),
 			}),
@@ -106,11 +106,11 @@ func TestGet(t *testing.T) {
 			path: property.Path{
 				property.NewSegment(1),
 			},
-			from: property.New(property.Array{
+			from: property.New([]property.Value{
 				property.New("0"),
 			}),
 			failure: &pathFailure{
-				found: property.New(property.Array{
+				found: property.New([]property.Value{
 					property.New("0"),
 				}),
 				msg: "index 1 out of bounds of an array of length 1",
@@ -121,11 +121,11 @@ func TestGet(t *testing.T) {
 			path: property.Path{
 				property.NewSegment(-1),
 			},
-			from: property.New(property.Array{
+			from: property.New([]property.Value{
 				property.New("0"),
 			}),
 			failure: &pathFailure{
-				found: property.New(property.Array{
+				found: property.New([]property.Value{
 					property.New("0"),
 				}),
 				msg: "index -1 out of bounds of an array of length 1",
@@ -134,14 +134,14 @@ func TestGet(t *testing.T) {
 		{
 			name:     "empty-path-map",
 			path:     property.Path{},
-			from:     property.New(property.Map{"k": property.New(true)}),
-			expected: property.New(property.Map{"k": property.New(true)}),
+			from:     property.New(map[string]property.Value{"k": property.New(true)}),
+			expected: property.New(map[string]property.Value{"k": property.New(true)}),
 		},
 		{
 			name:     "empty-path-array",
 			path:     property.Path{},
-			from:     property.New(property.Array{property.New(true)}),
-			expected: property.New(property.Array{property.New(true)}),
+			from:     property.New([]property.Value{property.New(true)}),
+			expected: property.New([]property.Value{property.New(true)}),
 		},
 		{
 			name:     "empty-path-primitive",
@@ -156,10 +156,10 @@ func TestGet(t *testing.T) {
 				property.NewSegment(0),
 				property.NewSegment("n1"),
 			},
-			from: property.New(property.Map{
+			from: property.New(map[string]property.Value{
 				"l0": property.New("l0-value"),
-				"l1": property.New(property.Array{
-					property.New(property.Map{
+				"l1": property.New([]property.Value{
+					property.New(map[string]property.Value{
 						"n1": property.New("found"),
 					}),
 				}),
@@ -199,11 +199,11 @@ func TestSet(t *testing.T) {
 		{
 			name: "inside map",
 			path: property.Path{property.NewSegment("k2")},
-			src: property.New(property.Map{
+			src: property.New(map[string]property.Value{
 				"k1": property.New("v1"),
 			}),
 			to: property.New("v2"),
-			expected: property.New(property.Map{
+			expected: property.New(map[string]property.Value{
 				"k1": property.New("v1"),
 				"k2": property.New("v2"),
 			}),
@@ -211,12 +211,12 @@ func TestSet(t *testing.T) {
 		{
 			name: "inside array",
 			path: property.Path{property.NewSegment(1)},
-			src: property.New(property.Array{
+			src: property.New([]property.Value{
 				property.New("o1"),
 				property.New("o2"),
 			}),
 			to: property.New("v2"),
-			expected: property.New(property.Array{
+			expected: property.New([]property.Value{
 				property.New("o1"),
 				property.New("v2"),
 			}),
@@ -235,19 +235,19 @@ func TestSet(t *testing.T) {
 				property.NewSegment(0),
 				property.NewSegment("n1"),
 			},
-			src: property.New(property.Map{
+			src: property.New(map[string]property.Value{
 				"l0": property.New("l0-value"),
-				"l1": property.New(property.Array{
-					property.New(property.Map{
+				"l1": property.New([]property.Value{
+					property.New(map[string]property.Value{
 						"n1": property.New("old-value"),
 					}),
 				}),
 			}),
 			to: property.New(property.Null),
-			expected: property.New(property.Map{
+			expected: property.New(map[string]property.Value{
 				"l0": property.New("l0-value"),
-				"l1": property.New(property.Array{
-					property.New(property.Map{
+				"l1": property.New([]property.Value{
+					property.New(map[string]property.Value{
 						"n1": property.New(property.Null),
 					}),
 				}),
@@ -260,11 +260,8 @@ func TestSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cp := tt.src.Copy()
 			result, err := tt.path.Set(tt.src, tt.to)
 			require.NoError(t, err)
-
-			assert.Equal(t, cp, tt.src, ".Set should not mutate what it's called on")
 
 			assert.Equal(t, tt.expected, result)
 		})
@@ -292,11 +289,11 @@ func TestAlter(t *testing.T) {
 				}
 				return property.WithGoValue(v, "yes")
 			},
-			v: property.New(property.Map{
+			v: property.New(map[string]property.Value{
 				"k": property.New(true),
 			}),
 			path: property.Path{property.NewSegment("k")},
-			expected: property.New(property.Map{
+			expected: property.New(map[string]property.Value{
 				"k": property.New("yes"),
 			}),
 		},
@@ -305,7 +302,7 @@ func TestAlter(t *testing.T) {
 			f: func(v property.Value) property.Value {
 				panic("v")
 			},
-			v: property.New(property.Map{
+			v: property.New(map[string]property.Value{
 				"k": property.New(true),
 			}),
 			path:      property.Path{property.NewSegment("invalid")},
