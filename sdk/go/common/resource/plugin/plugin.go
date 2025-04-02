@@ -260,7 +260,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
+	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -409,7 +409,7 @@ func parsePort(portString string) (int, error) {
 
 // execPlugin starts the plugin executable.
 func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string,
+	pluginArgs []string, pwd string, env []string, attachDebugger bool,
 ) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
@@ -460,6 +460,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
 			Env:              env,
+			AttachDebugger:   attachDebugger,
 		})
 		if err != nil {
 			return nil, err

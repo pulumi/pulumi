@@ -4735,7 +4735,8 @@ proto.pulumirpc.RunPluginRequest.toObject = function(includeInstance, msg) {
     program: jspb.Message.getFieldWithDefault(msg, 2, ""),
     argsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
     envList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
-    info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f)
+    info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
+    attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -4792,6 +4793,10 @@ proto.pulumirpc.RunPluginRequest.deserializeBinaryFromReader = function(msg, rea
       var value = new proto.pulumirpc.ProgramInfo;
       reader.readMessage(value,proto.pulumirpc.ProgramInfo.deserializeBinaryFromReader);
       msg.setInfo(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAttachDebugger(value);
       break;
     default:
       reader.skipField();
@@ -4856,6 +4861,13 @@ proto.pulumirpc.RunPluginRequest.serializeBinaryToWriter = function(message, wri
       5,
       f,
       proto.pulumirpc.ProgramInfo.serializeBinaryToWriter
+    );
+  }
+  f = message.getAttachDebugger();
+  if (f) {
+    writer.writeBool(
+      6,
+      f
     );
   }
 };
@@ -5005,6 +5017,24 @@ proto.pulumirpc.RunPluginRequest.prototype.clearInfo = function() {
  */
 proto.pulumirpc.RunPluginRequest.prototype.hasInfo = function() {
   return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * optional bool attach_debugger = 6;
+ * @return {boolean}
+ */
+proto.pulumirpc.RunPluginRequest.prototype.getAttachDebugger = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RunPluginRequest} returns this
+ */
+proto.pulumirpc.RunPluginRequest.prototype.setAttachDebugger = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 

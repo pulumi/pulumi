@@ -568,6 +568,8 @@ export class RunPluginRequest extends jspb.Message {
     clearInfo(): void;
     getInfo(): ProgramInfo | undefined;
     setInfo(value?: ProgramInfo): RunPluginRequest;
+    getAttachDebugger(): boolean;
+    setAttachDebugger(value: boolean): RunPluginRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunPluginRequest.AsObject;
@@ -586,6 +588,7 @@ export namespace RunPluginRequest {
         argsList: Array<string>,
         envList: Array<string>,
         info?: ProgramInfo.AsObject,
+        attachDebugger: boolean,
     }
 }
 
