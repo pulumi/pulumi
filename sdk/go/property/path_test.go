@@ -178,7 +178,7 @@ func TestGet(t *testing.T) {
 				assert.Equal(t, tt.expected, got)
 				assert.Nil(t, err)
 			} else {
-				assert.Equal(t, tt.failure.found, err.Found())
+				assert.Equal(t, tt.failure.found, err.(property.PathApplyFailure).Found())
 				assert.Equal(t, tt.failure.msg, err.Error())
 			}
 		})
