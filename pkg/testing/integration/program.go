@@ -2184,10 +2184,11 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 			return "", "", err
 		}
 		if pt.opts.GetUseNPM() {
-			if err := pt.runNPMCommand("npm-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+			if err = pt.runNPMCommand("npm-install", []string{"install"}, projdir); err != nil {
 				return "", "", err
 			}
-			if err = pt.runNPMCommand("npm-install", []string{"install"}, projdir); err != nil {
+			// `npm link` must be called after `npm install` to override any dependencies from `npm install`.
+			if err := pt.runNPMCommand("npm-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
 				return "", "", err
 			}
 		} else {

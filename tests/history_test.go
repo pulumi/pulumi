@@ -79,8 +79,8 @@ func TestHistoryCommand(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs")
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
 		e.RunCommand("pulumi", "stack", "init", "history-test")
-		e.RunCommand("npm", "link", "@pulumi/pulumi")
 		e.RunCommand("npm", "install")
+		e.RunCommand("npm", "link", "@pulumi/pulumi")
 		// Update the history-test stack.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.

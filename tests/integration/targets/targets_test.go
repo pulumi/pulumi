@@ -80,8 +80,8 @@ func TestDeleteManyTargets(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.ImportDirectory(projName)
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("npm", "install")
+	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 
 	// Create a handy mkURN func to create URNs for dynamic resources in this project/stack.

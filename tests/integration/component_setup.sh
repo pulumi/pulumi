@@ -33,8 +33,8 @@ setup_nodejs() (
   set -euo pipefail
   if [ -d "testcomponent" ]; then
     cd testcomponent
-    npm link @pulumi/pulumi
     npm install
+    npm link @pulumi/pulumi
     npx tsc
   fi
 )

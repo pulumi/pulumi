@@ -1731,8 +1731,8 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("npm", "install")
+	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
 	e.RunCommand("pulumi", "stack", "select", "negative-timings")
@@ -1754,8 +1754,8 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("npm", "install")
+	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
@@ -1780,8 +1780,8 @@ func TestTSConfigOption(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("npm", "install")
+	e.RunCommand("npm", "link", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
