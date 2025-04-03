@@ -1360,7 +1360,8 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.toObject = function(opt
 proto.pulumirpc.testing.RunLanguageTestRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    test: jspb.Message.getFieldWithDefault(msg, 2, "")
+    test: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    tempDir: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -1405,6 +1406,10 @@ proto.pulumirpc.testing.RunLanguageTestRequest.deserializeBinaryFromReader = fun
       var value = /** @type {string} */ (reader.readString());
       msg.setTest(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTempDir(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1448,6 +1453,13 @@ proto.pulumirpc.testing.RunLanguageTestRequest.serializeBinaryToWriter = functio
       f
     );
   }
+  f = message.getTempDir();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -1484,6 +1496,24 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.getTest = function() {
  */
 proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setTest = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string temp_dir = 3;
+ * @return {string}
+ */
+proto.pulumirpc.testing.RunLanguageTestRequest.prototype.getTempDir = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.RunLanguageTestRequest} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setTempDir = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

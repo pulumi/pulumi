@@ -194,7 +194,7 @@ func TestLanguage(t *testing.T) {
 	// test that explicitly setting the input types works as expected, as well as the default. This shouldn't interact
 	// with the project type so we vary both at once. We also want to test that the typechecker works, that doesn't vary
 	// by project type but it will vary over classes-vs-dicts. We could run all combinations but we take some time/risk
-	// tradeoff here only testing the old classes style with pyright.
+	// tradeoff here only testing the old classes style with pyrigh.t
 	configs := []struct {
 		name        string
 		snapshotDir string
@@ -233,7 +233,7 @@ func TestLanguage(t *testing.T) {
 		config := config
 
 		t.Run(config.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			cancel := make(chan bool)
 
@@ -298,13 +298,16 @@ func TestLanguage(t *testing.T) {
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
+					tmpDir := t.TempDir()
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-						Token: prepare.Token,
-						Test:  tt,
+						Token:   prepare.Token,
+						Test:    tt,
+						TempDir: tmpDir,
 					})
 
 					require.NoError(t, err)
