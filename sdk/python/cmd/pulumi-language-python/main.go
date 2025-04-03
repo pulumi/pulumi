@@ -996,8 +996,11 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			if err != nil {
 				return nil, err
 			}
-			typecheckerArgs = append(typecheckerArgs, "--exclude",
-				strings.TrimPrefix(virtualenvPath, req.Info.ProgramDirectory+"/"))
+			relPath, err := filepath.Rel(req.Info.ProgramDirectory, virtualenvPath)
+			if err != nil {
+				return nil, err
+			}
+			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
 		}
 		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
 		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
