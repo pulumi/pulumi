@@ -233,7 +233,7 @@ func TestLanguage(t *testing.T) {
 		config := config
 
 		t.Run(config.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 
 			cancel := make(chan bool)
 
