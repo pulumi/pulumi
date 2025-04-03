@@ -2,5 +2,6 @@ name: l2-large-string
 runtime:
   name: python
   options:
+    toolchain: uv
     typechecker: pyright
     virtualenv: venv
