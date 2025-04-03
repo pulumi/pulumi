@@ -1506,6 +1506,8 @@ func (host *nodeLanguageHost) RunPlugin(
 			return err
 		}
 		if req.GetAttachDebugger() {
+			// ref: https://code.visualstudio.com/docs/nodejs/nodejs-debugging
+			// ref: https://nodejs.org/en/learn/getting-started/debugging
 			debugConfig, err := structpb.NewStruct(map[string]interface{}{
 				"name":             req.Prefix,
 				"type":             "node",
