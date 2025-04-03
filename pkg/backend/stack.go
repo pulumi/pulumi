@@ -35,6 +35,9 @@ import (
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
+	GetStackFilename(ctx context.Context) (string, bool)
+	Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	Save(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// Backend returns the backend this stack belongs to.
