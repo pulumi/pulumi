@@ -168,7 +168,7 @@ func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPac
 }
 
 func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
-	virtualenvPath, err := p.virtualenvPath(ctx)
+	virtualenvPath, err := p.VirtualEnvPath(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (p *poetry) About(ctx context.Context) (Info, error) {
 }
 
 func (p *poetry) ValidateVenv(ctx context.Context) error {
-	virtualenvPath, err := p.virtualenvPath(ctx)
+	virtualenvPath, err := p.VirtualEnvPath(ctx)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (p *poetry) ValidateVenv(ctx context.Context) error {
 func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
 	showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
-	_, err := p.virtualenvPath(ctx)
+	_, err := p.VirtualEnvPath(ctx)
 	if err != nil {
 		// Couldn't get the virtualenv path, this means it does not exist. Let's create it.
 		return p.InstallDependencies(ctx, cwd, useLanguageVersionTools, showOutput, infoWriter, errorWriter)
@@ -235,7 +235,7 @@ func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionT
 	return nil
 }
 
-func (p *poetry) virtualenvPath(ctx context.Context) (string, error) {
+func (p *poetry) VirtualEnvPath(ctx context.Context) (string, error) {
 	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path") //nolint:gosec
 	pathCmd.Dir = p.directory
 	out, err := pathCmd.Output()
