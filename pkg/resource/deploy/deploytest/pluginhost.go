@@ -439,6 +439,10 @@ func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg strin
 	}
 }
 
+func (host *pluginHost) ShouldDebugPlugin(workspace.PluginSpec) bool {
+	return false
+}
+
 func (host *pluginHost) StartDebugging(plugin.DebuggingInfo) error {
 	return nil
 }

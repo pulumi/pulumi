@@ -1427,6 +1427,12 @@ func (host *nodeLanguageHost) RunPlugin(
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
 	ctx := context.Background()
 
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(closer)
+
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
 	if err != nil {
 		return err
@@ -1473,7 +1479,11 @@ func (host *nodeLanguageHost) RunPlugin(
 	if err != nil {
 		return err
 	}
-
+	if req.GetAttachDebugger() {
+		nodeargs = append(nodeargs, "--inspect-brk")
+		// suppress the console output "Debugger listening on..."
+		nodeargs = append(nodeargs, "--inspect-publish-uid=http")
+	}
 	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
 
 	args = append(args, nodeargs...)
@@ -1484,7 +1494,35 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
-	if err := cmd.Run(); err != nil {
+
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			debugConfig, err := structpb.NewStruct(map[string]interface{}{
+				"name":             req.Prefix,
+				"type":             "node",
+				"request":          "attach",
+				"processId":        cmd.Process.Pid,
+				"continueOnAttach": true,
+				"skipFiles":        []interface{}{"<node_internals>/**"},
+			})
+			if err != nil {
+				return err
+			}
+			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+				Config:  debugConfig,
+				Message: fmt.Sprintf("on process id %d", cmd.Process.Pid),
+			})
+			if err != nil {
+				return fmt.Errorf("unable to start debugging: %w", err)
+			}
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.

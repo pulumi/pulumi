@@ -58,13 +58,15 @@ var _ Analyzer = (*analyzer)(nil)
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
+	spec := workspace.PluginSpec{
+		Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
+		Kind: apitype.AnalyzerPlugin,
+	}
+
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
 		ctx.Diag,
-		workspace.PluginSpec{
-			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
-			Kind: apitype.AnalyzerPlugin,
-		},
+		spec,
 		host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
@@ -73,9 +75,11 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
+	attachDebugger := ctx.Host.ShouldDebugPlugin(spec)
+
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
-		testConnection, dialOpts)
+		testConnection, dialOpts, attachDebugger)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +146,7 @@ func NewPolicyAnalyzer(
 
 	plug, _, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, args, env, testConnection,
-		analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
+		analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)), false)
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.

@@ -214,6 +214,10 @@ func (h *testHost) Close() error {
 	return nil
 }
 
+func (h *testHost) ShouldDebugPlugin(workspace.PluginSpec) bool {
+	panic("not implemented")
+}
+
 func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
 	panic("not implemented")
 }

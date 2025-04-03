@@ -235,6 +235,7 @@ func newPlugin[T any](
 	env []string,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
+	attachDebugger bool,
 ) (*plugin, *T, error) {
 	if logging.V(9) {
 		var argstr string
@@ -260,7 +261,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env, true)
+	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
