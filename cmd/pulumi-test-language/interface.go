@@ -74,8 +74,10 @@ type LanguageTestServer interface {
 func Start(ctx context.Context) (LanguageTestServer, error) {
 	// New up an engine RPC server.
 	server := &languageTestServer{
-		ctx:    ctx,
-		cancel: make(chan bool),
+		ctx:         ctx,
+		cancel:      make(chan bool),
+		sdkLock:     make(map[string]*sync.Mutex),
+		artifactMap: make(map[string]string),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -104,7 +106,9 @@ type languageTestServer struct {
 	done   chan error
 	addr   string
 
-	sdkLock sync.Mutex
+	mutexMapLock sync.Mutex
+	sdkLock      map[string]*sync.Mutex
+	artifactMap  map[string]string
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
@@ -599,24 +603,23 @@ func (eng *languageTestServer) RunLanguageTest(
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. There's two
-		// ways to do that. 1 is to generate to a temporary directory and then atomic rename it but Go say it doesn't
-		// support that, so option 2 we just lock around this section.
-		//
-		// TODO[pulumi/issues/16079]: This could probably be a per-sdk lock to be more fine grained and allow more
-		// parallelism.
+		// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
+		// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
+		// reused.
 		response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
-			eng.sdkLock.Lock()
-			defer eng.sdkLock.Unlock()
+			eng.mutexMapLock.Lock()
+			if eng.sdkLock[sdkTempDir] == nil {
+				eng.sdkLock[sdkTempDir] = &sync.Mutex{}
+			}
+			eng.mutexMapLock.Unlock()
+			eng.sdkLock[sdkTempDir].Lock()
+			defer eng.sdkLock[sdkTempDir].Unlock()
 
 			_, err = os.Stat(sdkTempDir)
 			if err == nil {
-				// If the directory already exists then we don't need to regenerate the SDK
-				sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
-				if err != nil {
-					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
-				}
-				localDependencies[pkg.Name] = sdkArtifact
+				// If the directory already exists then we know we already created the artifact.
+				// Just use it
+				localDependencies[pkg.Name] = eng.artifactMap[sdkTempDir]
 				return nil, nil
 			}
 
@@ -669,6 +672,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 			}
 			localDependencies[pkg.Name] = sdkArtifact
+			eng.artifactMap[sdkTempDir] = sdkArtifact
 
 			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
 			// Again we need to make a snapshot edit for this.
