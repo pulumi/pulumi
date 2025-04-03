@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 
 class PropertyType(Enum):
@@ -24,6 +25,13 @@ class PropertyType(Enum):
     BOOLEAN = "boolean"
     OBJECT = "object"
     ARRAY = "array"
+
+
+@dataclass
+class EnumValueDefinition:
+    name: str
+    value: Union[str, float, int, bool]
+    description: Optional[str] = None
 
 
 @dataclass
@@ -40,13 +48,16 @@ class PropertyDefinition:
 @dataclass
 class TypeDefinition:
     name: str
-    type: str
+    type: PropertyType
     properties: dict[str, PropertyDefinition]
     properties_mapping: dict[str, str]
     """Mapping from the schema name to the Python name."""
     module: str
     """The Python module where this type is defined."""
+    python_type: builtins.type
+    """The Python type from which we derived this type definition."""
     description: Optional[str] = None
+    enum: Optional[list[EnumValueDefinition]] = None
 
 
 @dataclass
