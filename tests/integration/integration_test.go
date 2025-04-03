@@ -126,8 +126,10 @@ func TestStackInitValidation(t *testing.T) {
 }
 
 // TestConfigPaths ensures that config commands with paths work as expected.
+//
+//nolint:paralleltest // miaow?
 func TestConfigPaths(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
