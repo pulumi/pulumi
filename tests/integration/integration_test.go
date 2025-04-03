@@ -140,7 +140,8 @@ func TestConfigPaths(t *testing.T) {
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "testing")
+	stackName := "testing"
+	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	namespaces := []string{"", "my:"}
 
@@ -443,7 +444,7 @@ func TestConfigPaths(t *testing.T) {
 	}
 
 	validateConfigGet := func(key string, value string, path bool) {
-		args := []string{"config", "get", key}
+		args := []string{"config", "get", key, "--stack", stackName}
 		if path {
 			args = append(args, "--path")
 		}
@@ -458,7 +459,7 @@ func TestConfigPaths(t *testing.T) {
 			topLevelKey := fmt.Sprintf("%s%s", ns, test.TopLevelKey)
 
 			// Set the value.
-			args := []string{"config", "set"}
+			args := []string{"config", "set", "--stack", stackName}
 			if test.Secret {
 				args = append(args, "--secret")
 			}
@@ -508,13 +509,14 @@ func TestConfigPaths(t *testing.T) {
 	for _, ns := range namespaces {
 		for _, badKey := range badKeys {
 			key := fmt.Sprintf("%s%s", ns, badKey)
-			stdout, stderr := e.RunCommandExpectError("pulumi", "config", "set", "--path", key, "value")
+			stdout, stderr := e.RunCommandExpectError("pulumi", "config",
+				"set", "--path", key, "value", "--stack", stackName)
 			assert.Equal(t, "", stdout)
 			assert.NotEqual(t, "", stderr)
 		}
 	}
 
-	e.RunCommand("pulumi", "stack", "rm", "--yes")
+	e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
 }
 
 func testDestroyStackRef(e *ptesting.Environment, organization string) {
