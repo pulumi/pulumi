@@ -131,8 +131,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet

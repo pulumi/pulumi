@@ -33,9 +33,9 @@ setup_nodejs() (
   set -euo pipefail
   if [ -d "testcomponent" ]; then
     cd testcomponent
-    yarn link @pulumi/pulumi
-    yarn install
-    yarn run tsc
+    npm install
+    npm link @pulumi/pulumi
+    npx tsc
   fi
 )
 

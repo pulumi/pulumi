@@ -34,7 +34,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -148,6 +147,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
+				UseNPM:                 true,
 				LocalProviders:         localProviders,
 				SkipRefresh:            true,
 				SkipPreview:            false,
@@ -187,6 +187,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
+				UseNPM:                 true,
 				LocalProviders:         localProviders,
 				SkipRefresh:            true,
 				SkipPreview:            false,
@@ -200,9 +201,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 }
 
 func runComponentSetup(t *testing.T, testDir string) {
-	ptesting.YarnInstallMutex.Lock()
-	defer ptesting.YarnInstallMutex.Unlock()
-
 	setupFilename, err := filepath.Abs("component_setup.sh")
 	require.NoError(t, err, "could not determine absolute path")
 	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
@@ -333,6 +331,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
+				UseNPM:         true,
 				LocalProviders: localProviders,
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -386,6 +385,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
+				UseNPM:         true,
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				Stderr:         stderr,
@@ -429,6 +429,7 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
+				UseNPM:         true,
 				LocalProviders: []integration.LocalDependency{localProvider, testProvider},
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -466,6 +467,7 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
+				UseNPM:         true,
 				LocalProviders: localProviders,
 				Quick:          true,
 			})
@@ -513,6 +515,7 @@ func testConstructProviderExplicit(t *testing.T, lang string, dependencies []str
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:            filepath.Join(testDir, lang),
 		Dependencies:   dependencies,
+		UseNPM:         true,
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		NoParallel:     true, // already called by tests
@@ -533,6 +536,7 @@ func testConstructComponentConfigureProviderCommonOptions() integration.ProgramT
 		Config: map[string]string{
 			"proxy": "FromEnv",
 		},
+		UseNPM:                   true,
 		LocalProviders:           []integration.LocalDependency{localProvider},
 		Quick:                    false, // intentional, need to test preview here
 		AllowEmptyPreviewChanges: true,  // Pulumi will warn that provider has unknowns in its config
@@ -613,6 +617,7 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
+				UseNPM:         true,
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				Stderr:         stderr,
@@ -657,6 +662,7 @@ func testCallFailures(t *testing.T, lang string, dependencies ...string) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
+				UseNPM:         true,
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
 				Stderr:         stderr,

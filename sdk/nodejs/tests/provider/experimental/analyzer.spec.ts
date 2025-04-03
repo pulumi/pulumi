@@ -25,14 +25,11 @@ describe("Analyzer", function () {
         // We need to link in the pulumi package to the testdata directories so
         // that the analyzer can find it and determine pulumi types like
         // ComponentResource or Output.
-        // We have a .yarnrc at the repo root that sets a mutex to prevent
-        // concurrent yarn installs. This avoids issues in integration tests.
-        // However, for these tests we want to run inside yarn, which causes a
-        // deadlock. Passing --no-default-rc makes yarn ignore the .yarnrc.
-        // There are no issues here with concurrent yarn runs.
         const dir = path.join(__dirname, "testdata");
-        execa.sync("yarn", ["install", "--no-default-rc", "--non-interactive"], { cwd: dir });
-        execa.sync("yarn", ["link", "@pulumi/pulumi", "--no-default-rc", "--non-interactive"], { cwd: dir });
+        execa.sync("npm", ["install"], { cwd: dir });
+        // --no-bin-links prevents npm from prompting about binary links, which helps
+        // make it non-interactive.
+        execa.sync("npm", ["link", "@pulumi/pulumi", "--no-bin-links"], { cwd: dir });
     });
 
     it("infers simple types", async function () {

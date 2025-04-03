@@ -62,6 +62,7 @@ func TestPropertyNameDiffs(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          "step1",
 				Dependencies: []string{"@pulumi/pulumi"},
+				UseNPM:       true,
 				Config: map[string]string{
 					"propertyName": propName,
 				},

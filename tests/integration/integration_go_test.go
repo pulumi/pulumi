@@ -613,6 +613,7 @@ func TestConstructSlowGo(t *testing.T) {
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
+		UseNPM:         true,
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		NoParallel:     true,
@@ -684,6 +685,7 @@ func optsForConstructPlainGo(
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
+		UseNPM:         true,
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {

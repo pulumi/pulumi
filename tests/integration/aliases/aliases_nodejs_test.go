@@ -48,6 +48,7 @@ func TestNodejsAliases(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:          filepath.Join(d, "step1"),
 				Dependencies: []string{"@pulumi/pulumi"},
+				UseNPM:       true,
 				Quick:        true,
 				EditDirs: []integration.EditDir{
 					{

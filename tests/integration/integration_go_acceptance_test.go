@@ -113,6 +113,7 @@ func optsForConstructGo(
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
+		UseNPM:         true,
 		LocalProviders: localProviders,
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",

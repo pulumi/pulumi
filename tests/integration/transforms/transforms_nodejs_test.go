@@ -29,6 +29,7 @@ func TestNodejsSimpleTransforms(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseNPM:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 		},
@@ -43,6 +44,7 @@ func TestNodejsSingleTransforms(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          d,
 		Dependencies: []string{"@pulumi/pulumi"},
+		UseNPM:       true,
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
 		},
