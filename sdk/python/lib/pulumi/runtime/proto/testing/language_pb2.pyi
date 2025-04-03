@@ -188,15 +188,18 @@ class RunLanguageTestRequest(google.protobuf.message.Message):
 
     TOKEN_FIELD_NUMBER: builtins.int
     TEST_FIELD_NUMBER: builtins.int
+    TEMP_DIR_FIELD_NUMBER: builtins.int
     token: builtins.str
     test: builtins.str
+    temp_dir: builtins.str
     def __init__(
         self,
         *,
         token: builtins.str = ...,
         test: builtins.str = ...,
+        temp_dir: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["test", b"test", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["temp_dir", b"temp_dir", "test", b"test", "token", b"token"]) -> None: ...
 
 global___RunLanguageTestRequest = RunLanguageTestRequest
 

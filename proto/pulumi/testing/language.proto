@@ -86,6 +86,7 @@ message PrepareLanguageTestsResponse {
 message RunLanguageTestRequest {
     string token = 1;
     string test = 2;
+    string temp_dir = 3;
 }
 
 message RunLanguageTestResponse {

@@ -168,6 +168,8 @@ export class RunLanguageTestRequest extends jspb.Message {
     setToken(value: string): RunLanguageTestRequest;
     getTest(): string;
     setTest(value: string): RunLanguageTestRequest;
+    getTempDir(): string;
+    setTempDir(value: string): RunLanguageTestRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunLanguageTestRequest.AsObject;
@@ -183,6 +185,7 @@ export namespace RunLanguageTestRequest {
     export type AsObject = {
         token: string,
         test: string,
+        tempDir: string,
     }
 }
 

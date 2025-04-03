@@ -104,8 +104,6 @@ type languageTestServer struct {
 	done   chan error
 	addr   string
 
-	sdkLock sync.Mutex
-
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
 }
@@ -480,7 +478,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	// Start up a plugin context
 	pctx, err := plugin.NewContextWithContext(
-		ctx, snk, snk, nil, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil, nil)
+		ctx, snk, snk, nil, req.TempDir, req.TempDir, nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -537,7 +535,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	packages := []*schema.Package{}
 	for i, run := range test.Runs {
 		// Create a source directory for the test
-		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
+		sourceDir := filepath.Join(req.TempDir, "source", req.Test)
 		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
@@ -598,17 +596,8 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
-		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
-		// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. There's two
-		// ways to do that. 1 is to generate to a temporary directory and then atomic rename it but Go say it doesn't
-		// support that, so option 2 we just lock around this section.
-		//
-		// TODO[pulumi/issues/16079]: This could probably be a per-sdk lock to be more fine grained and allow more
-		// parallelism.
+		sdkTempDir := filepath.Join(req.TempDir, "sdks", sdkName)
 		response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
-			eng.sdkLock.Lock()
-			defer eng.sdkLock.Unlock()
-
 			_, err = os.Stat(sdkTempDir)
 			if err == nil {
 				// If the directory already exists then we don't need to regenerate the SDK
@@ -705,7 +694,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	dec := sm.Decrypter()
 
 	// Create a temp dir for the a diy backend to run in for the test
-	backendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test)
+	backendDir := filepath.Join(req.TempDir, "backends", req.Test)
 	err = os.MkdirAll(backendDir, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("create temp backend dir: %w", err)
@@ -767,7 +756,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	var result tests.LResult
 	for i, run := range test.Runs {
 		// Create a source directory for the test
-		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
+		sourceDir := filepath.Join(req.TempDir, "source", req.Test)
 		if len(test.Runs) > 1 {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
@@ -787,7 +776,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		// Create a directory for the project
-		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
+		projectDir := filepath.Join(req.TempDir, "projects", req.Test)
 		if len(test.Runs) > 1 {
 			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 		}

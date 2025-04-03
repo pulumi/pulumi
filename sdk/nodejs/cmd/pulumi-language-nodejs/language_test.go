@@ -244,13 +244,16 @@ func TestLanguage(t *testing.T) {
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
+					tempDir := t.TempDir()
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
-						Token: prepare.Token,
-						Test:  tt,
+						Token:   prepare.Token,
+						Test:    tt,
+						TempDir: tempDir,
 					})
 
 					require.NoError(t, err)
