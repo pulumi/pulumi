@@ -815,7 +815,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		}
 		if req.GetAttachDebugger() {
 			debugConfig, err := structpb.NewStruct(map[string]interface{}{
-				"name":             "Pulumi: Program (Node.js)",
+				"name":             fmt.Sprintf("%s (program)", req.Project),
 				"type":             "node",
 				"request":          "attach",
 				"processId":        cmd.Process.Pid,
