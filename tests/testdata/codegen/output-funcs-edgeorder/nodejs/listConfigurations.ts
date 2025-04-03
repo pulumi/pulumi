@@ -69,9 +69,9 @@ export interface ListConfigurationsOutputArgs {
     /**
      * Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
      */
-    customerSubscriptionDetails?: pulumi.Input<inputs.CustomerSubscriptionDetailsArgs>;
+    customerSubscriptionDetails?: pulumi.Input<inputs.CustomerSubscriptionDetailsArgs | undefined | null>;
     /**
      * $skipToken is supported on list of configurations, which provides the next page in the list of configurations.
      */
-    skipToken?: pulumi.Input<string>;
+    skipToken?: pulumi.Input<string | undefined | null>;
 }

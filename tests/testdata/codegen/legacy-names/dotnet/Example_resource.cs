@@ -67,15 +67,15 @@ namespace Pulumi.Legacy_names
     public sealed class Example_resourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("map_enum")]
-        private InputList<ImmutableDictionary<string, Pulumi.Legacy_names.Enum_XYZ>>? _map_enum;
-        public InputList<ImmutableDictionary<string, Pulumi.Legacy_names.Enum_XYZ>> Map_enum
+        private Input<ImmutableArray<InputMap<Pulumi.Legacy_names.Enum_XYZ>>>? _map_enum;
+        public Input<ImmutableArray<InputMap<Pulumi.Legacy_names.Enum_XYZ>>> Map_enum
         {
-            get => _map_enum ?? (_map_enum = new InputList<ImmutableDictionary<string, Pulumi.Legacy_names.Enum_XYZ>>());
+            get => _map_enum ?? (_map_enum = new Input<ImmutableArray<InputMap<Pulumi.Legacy_names.Enum_XYZ>>>());
             set => _map_enum = value;
         }
 
         [Input("request_HTTP")]
-        public Input<Pulumi.Legacy_names.HTTP_module.Inputs.RequestArgs>? Request_HTTP { get; set; }
+        public Input<Pulumi.Legacy_names.HTTP_module.Inputs.RequestArgs?>? Request_HTTP { get; set; }
 
         public Example_resourceArgs()
         {

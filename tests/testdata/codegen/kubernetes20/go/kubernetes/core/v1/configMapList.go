@@ -37,8 +37,8 @@ func NewConfigMapList(ctx *pulumi.Context,
 	if args.Items == nil {
 		return nil, errors.New("invalid value for required argument 'Items'")
 	}
-	args.ApiVersion = pulumi.StringPtr("v1")
-	args.Kind = pulumi.StringPtr("ConfigMapList")
+	args.ApiVersion = *string("v1")
+	args.Kind = *string("ConfigMapList")
 	opts = utilities.PkgResourceDefaultOpts(opts)
 	var resource ConfigMapList
 	err := ctx.RegisterResource("kubernetes:core/v1:ConfigMapList", name, args, &resource, opts...)

@@ -59,8 +59,8 @@ export namespace Foo {
      * The set of arguments for the Foo.getKubeconfig method.
      */
     export interface GetKubeconfigArgs {
-        profileName?: pulumi.Input<string>;
-        roleArn?: pulumi.Input<string>;
+        profileName?: pulumi.Input<string | undefined | null>;
+        roleArn?: pulumi.Input<string | undefined | null>;
     }
 
     /**

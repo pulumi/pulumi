@@ -10,31 +10,31 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := appsv1.NewDeployment(ctx, "argocd_serverDeployment", &appsv1.DeploymentArgs{
-			ApiVersion: pulumi.String("apps/v1"),
-			Kind:       pulumi.String("Deployment"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Name: pulumi.String("argocd-server"),
+			ApiVersion: "apps/v1",
+			Kind:       "Deployment",
+			Metadata: &*metav1.ObjectMetaArgs{
+				Name: "argocd-server",
 			},
-			Spec: &appsv1.DeploymentSpecArgs{
+			Spec: &*appsv1.DeploymentSpecArgs{
 				Selector: &metav1.LabelSelectorArgs{
-					MatchLabels: pulumi.StringMap{
+					MatchLabels: map[string]pulumi.String{
 						"app": pulumi.String("server"),
 					},
 				},
-				Replicas: pulumi.Int(1),
+				Replicas: 1,
 				Template: &corev1.PodTemplateSpecArgs{
-					Metadata: &metav1.ObjectMetaArgs{
-						Labels: pulumi.StringMap{
+					Metadata: &*metav1.ObjectMetaArgs{
+						Labels: map[string]pulumi.String{
 							"app": pulumi.String("server"),
 						},
 					},
-					Spec: &corev1.PodSpecArgs{
+					Spec: &*corev1.PodSpecArgs{
 						Containers: corev1.ContainerArray{
 							&corev1.ContainerArgs{
 								Name:  pulumi.String("nginx"),
-								Image: pulumi.String("nginx"),
-								ReadinessProbe: &corev1.ProbeArgs{
-									HttpGet: &corev1.HTTPGetActionArgs{
+								Image: "nginx",
+								ReadinessProbe: &*corev1.ProbeArgs{
+									HttpGet: &*corev1.HTTPGetActionArgs{
 										Port: pulumi.Any(8080),
 									},
 								},

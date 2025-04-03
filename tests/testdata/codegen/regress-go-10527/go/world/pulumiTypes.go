@@ -29,7 +29,7 @@ type WorldInput interface {
 }
 
 type WorldArgs struct {
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 }
 
 func (WorldArgs) ElementType() reflect.Type {

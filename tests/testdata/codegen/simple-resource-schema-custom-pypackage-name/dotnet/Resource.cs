@@ -61,7 +61,7 @@ namespace Pulumi.Example
     public sealed class ResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<string>? Bar { get; set; }
+        public Input<string?>? Bar { get; set; }
 
         public ResourceArgs()
         {

@@ -52,7 +52,7 @@ namespace Pulumi.Mypkg
         public Input<string> A { get; set; } = null!;
 
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public Input<string?>? B { get; set; }
 
         public FuncWithDefaultValueInvokeArgs()
         {

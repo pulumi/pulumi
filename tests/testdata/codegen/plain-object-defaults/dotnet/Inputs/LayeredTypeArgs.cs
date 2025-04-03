@@ -19,7 +19,7 @@ namespace Pulumi.Example.Inputs
         /// The answer to the question
         /// </summary>
         [Input("answer")]
-        public Input<double>? Answer { get; set; }
+        public Input<double?>? Answer { get; set; }
 
         [Input("other", required: true)]
         public Input<Inputs.HelmReleaseSettingsArgs> Other { get; set; } = null!;
@@ -34,10 +34,10 @@ namespace Pulumi.Example.Inputs
         /// The question already answered
         /// </summary>
         [Input("question")]
-        public Input<string>? Question { get; set; }
+        public Input<string?>? Question { get; set; }
 
         [Input("recursive")]
-        public Input<Inputs.LayeredTypeArgs>? Recursive { get; set; }
+        public Input<Inputs.LayeredTypeArgs?>? Recursive { get; set; }
 
         /// <summary>
         /// To ask and answer

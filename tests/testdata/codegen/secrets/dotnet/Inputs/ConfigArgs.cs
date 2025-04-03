@@ -13,7 +13,7 @@ namespace Pulumi.Mypkg.Inputs
     public sealed class ConfigArgs : global::Pulumi.ResourceArgs
     {
         [Input("foo")]
-        public Input<string>? Foo { get; set; }
+        public Input<string?>? Foo { get; set; }
 
         public ConfigArgs()
         {

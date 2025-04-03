@@ -83,7 +83,7 @@ func main() {
 			Bucket:      bucket.ID(),
 			Source:      pulumi.NewStringAsset(filebase64OrPanic("./base64.txt")),
 			ContentType: pulumi.String(fileMimeType),
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"stack":   pulumi.String(currentStack),
 				"project": pulumi.String(currentProject),
 				"cwd":     pulumi.String(workingDirectory),

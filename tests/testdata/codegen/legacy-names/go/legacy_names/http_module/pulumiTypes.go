@@ -30,8 +30,8 @@ type RequestInput interface {
 }
 
 type RequestArgs struct {
-	URL          pulumi.StringPtrInput `pulumi:"URL"`
-	Content_body pulumi.StringPtrInput `pulumi:"content_body"`
+	URL          *string `pulumi:"URL"`
+	Content_body *string `pulumi:"content_body"`
 }
 
 func (RequestArgs) ElementType() reflect.Type {

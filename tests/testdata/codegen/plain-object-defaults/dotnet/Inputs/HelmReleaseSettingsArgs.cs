@@ -19,13 +19,13 @@ namespace Pulumi.Example.Inputs
         /// The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         /// </summary>
         [Input("driver")]
-        public Input<string>? Driver { get; set; }
+        public Input<string?>? Driver { get; set; }
 
         /// <summary>
         /// The path to the helm plugins directory.
         /// </summary>
         [Input("pluginsPath")]
-        public Input<string>? PluginsPath { get; set; }
+        public Input<string?>? PluginsPath { get; set; }
 
         /// <summary>
         /// to test required args

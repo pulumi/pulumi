@@ -21,13 +21,13 @@ __all__ = ['ReleaseArgs', 'Release']
 class ReleaseArgs:
     def __init__(__self__, *,
                  chart: pulumi.Input[builtins.str],
-                 value_yaml_files: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]] = None,
-                 values: Optional[pulumi.Input[Mapping[str, Any]]] = None):
+                 value_yaml_files: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]] = None,
+                 values: Optional[pulumi.Input[Optional[Mapping[str, Any]]]] = None):
         """
         The set of arguments for constructing a Release resource.
         :param pulumi.Input[builtins.str] chart: Chart name to be installed. A path may be used.
-        :param pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]] value_yaml_files: List of assets (raw yaml files). Content is read and merged with values.
-        :param pulumi.Input[Mapping[str, Any]] values: Custom values set for the release.
+        :param pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]] value_yaml_files: List of assets (raw yaml files). Content is read and merged with values.
+        :param pulumi.Input[Optional[Mapping[str, Any]]] values: Custom values set for the release.
         """
         pulumi.set(__self__, "chart", chart)
         if value_yaml_files is not None:
@@ -49,26 +49,26 @@ class ReleaseArgs:
 
     @property
     @pulumi.getter(name="valueYamlFiles")
-    def value_yaml_files(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]:
+    def value_yaml_files(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]]:
         """
         List of assets (raw yaml files). Content is read and merged with values.
         """
         return pulumi.get(self, "value_yaml_files")
 
     @value_yaml_files.setter
-    def value_yaml_files(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]):
+    def value_yaml_files(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]]):
         pulumi.set(self, "value_yaml_files", value)
 
     @property
     @pulumi.getter
-    def values(self) -> Optional[pulumi.Input[Mapping[str, Any]]]:
+    def values(self) -> Optional[pulumi.Input[Optional[Mapping[str, Any]]]]:
         """
         Custom values set for the release.
         """
         return pulumi.get(self, "values")
 
     @values.setter
-    def values(self, value: Optional[pulumi.Input[Mapping[str, Any]]]):
+    def values(self, value: Optional[pulumi.Input[Optional[Mapping[str, Any]]]]):
         pulumi.set(self, "values", value)
 
 
@@ -78,8 +78,8 @@ class Release(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  chart: Optional[pulumi.Input[builtins.str]] = None,
-                 value_yaml_files: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]] = None,
-                 values: Optional[pulumi.Input[Mapping[str, Any]]] = None,
+                 value_yaml_files: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]] = None,
+                 values: Optional[pulumi.Input[Optional[Mapping[str, Any]]]] = None,
                  __props__=None):
         """
         A non-overlay, non-component, non-Kubernetes resource.
@@ -87,8 +87,8 @@ class Release(pulumi.CustomResource):
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[builtins.str] chart: Chart name to be installed. A path may be used.
-        :param pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]] value_yaml_files: List of assets (raw yaml files). Content is read and merged with values.
-        :param pulumi.Input[Mapping[str, Any]] values: Custom values set for the release.
+        :param pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]] value_yaml_files: List of assets (raw yaml files). Content is read and merged with values.
+        :param pulumi.Input[Optional[Mapping[str, Any]]] values: Custom values set for the release.
         """
         ...
     @overload
@@ -115,8 +115,8 @@ class Release(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  chart: Optional[pulumi.Input[builtins.str]] = None,
-                 value_yaml_files: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]] = None,
-                 values: Optional[pulumi.Input[Mapping[str, Any]]] = None,
+                 value_yaml_files: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]]]] = None,
+                 values: Optional[pulumi.Input[Optional[Mapping[str, Any]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

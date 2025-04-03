@@ -42,8 +42,8 @@ func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputAr
 }
 
 type FuncWithListParamOutputArgs struct {
-	A pulumi.StringArrayInput `pulumi:"a"`
-	B pulumi.StringPtrInput   `pulumi:"b"`
+	A []pulumi.StringInput `pulumi:"a"`
+	B *string              `pulumi:"b"`
 }
 
 func (FuncWithListParamOutputArgs) ElementType() reflect.Type {

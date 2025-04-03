@@ -19,7 +19,7 @@ namespace Pulumi.Kubernetes.Types.Inputs.Provider
         /// Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.
         /// </summary>
         [Input("timeout")]
-        public Input<int>? Timeout { get; set; }
+        public Input<int?>? Timeout { get; set; }
 
         public KubeClientSettingsArgs()
         {

@@ -65,7 +65,7 @@ export interface NurseryArgs {
     /**
      * The sizes of trees available
      */
-    sizes?: pulumi.Input<{[key: string]: pulumi.Input<enums.tree.v1.TreeSize>}>;
+    sizes?: pulumi.Input<{[key: string]: pulumi.Input<enums.tree.v1.TreeSize>} | undefined | null>;
     /**
      * The varieties available
      */

@@ -59,6 +59,6 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    local?: pulumi.Input<Component2>;
-    main?: pulumi.Input<MainComponent>;
+    local?: pulumi.Input<Component2 | undefined | null>;
+    main?: pulumi.Input<MainComponent | undefined | null>;
 }

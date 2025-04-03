@@ -55,8 +55,8 @@ func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOu
 }
 
 type FuncWithDefaultValueOutputArgs struct {
-	A pulumi.StringInput    `pulumi:"a"`
-	B pulumi.StringPtrInput `pulumi:"b"`
+	A pulumi.StringInput `pulumi:"a"`
+	B *string            `pulumi:"b"`
 }
 
 func (FuncWithDefaultValueOutputArgs) ElementType() reflect.Type {

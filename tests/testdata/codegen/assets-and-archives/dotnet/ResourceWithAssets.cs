@@ -67,10 +67,10 @@ namespace Pulumi.Example
     public sealed class ResourceWithAssetsArgs : global::Pulumi.ResourceArgs
     {
         [Input("archive")]
-        public Input<Archive>? Archive { get; set; }
+        public Input<Archive?>? Archive { get; set; }
 
         [Input("nested")]
-        public Input<Inputs.TypeWithAssetsArgs>? Nested { get; set; }
+        public Input<Inputs.TypeWithAssetsArgs?>? Nested { get; set; }
 
         [Input("source", required: true)]
         public Input<AssetOrArchive> Source { get; set; } = null!;

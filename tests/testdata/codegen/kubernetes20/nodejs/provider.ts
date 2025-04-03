@@ -52,11 +52,11 @@ export interface ProviderArgs {
     /**
      * Options for tuning the Kubernetes client used by a Provider.
      */
-    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettings>;
+    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettings | undefined | null>;
     /**
      * The contents of a kubeconfig file or the path to a kubeconfig file.
      */
-    kubeconfig?: pulumi.Input<string>;
+    kubeconfig?: pulumi.Input<string | undefined | null>;
     /**
      * If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
      *
@@ -65,5 +65,5 @@ export interface ProviderArgs {
      * 2. This `namespace` parameter.
      * 3. `namespace` set for the active context in the kubeconfig.
      */
-    namespace?: pulumi.Input<string>;
+    namespace?: pulumi.Input<string | undefined | null>;
 }

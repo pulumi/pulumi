@@ -27,14 +27,14 @@ if not MYPY:
         """
         A test for namespaces (mod 1)
         """
-        val: NotRequired[pulumi.Input[builtins.str]]
+        val: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     TypArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class TypArgs:
     def __init__(__self__, *,
-                 val: Optional[pulumi.Input[builtins.str]] = None):
+                 val: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         """
         A test for namespaces (mod 1)
         """
@@ -45,11 +45,11 @@ class TypArgs:
 
     @property
     @pulumi.getter
-    def val(self) -> Optional[pulumi.Input[builtins.str]]:
+    def val(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "val")
 
     @val.setter
-    def val(self, value: Optional[pulumi.Input[builtins.str]]):
+    def val(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "val", value)
 
 

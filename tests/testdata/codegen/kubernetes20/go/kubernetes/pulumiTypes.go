@@ -48,7 +48,7 @@ type KubeClientSettingsInput interface {
 // Options for tuning the Kubernetes client used by a Provider.
 type KubeClientSettingsArgs struct {
 	// Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.
-	Timeout pulumi.IntPtrInput `pulumi:"timeout"`
+	Timeout *int `pulumi:"timeout"`
 }
 
 // Defaults sets the appropriate defaults for KubeClientSettingsArgs
@@ -59,7 +59,7 @@ func (val *KubeClientSettingsArgs) Defaults() *KubeClientSettingsArgs {
 	tmp := *val
 	if tmp.Timeout == nil {
 		if d := utilities.GetEnvOrDefault(nil, utilities.ParseEnvInt, "PULUMI_K8S_CLIENT_TIMEOUT"); d != nil {
-			tmp.Timeout = pulumi.IntPtr(d.(int))
+			tmp.Timeout = *int(d.(int))
 		}
 	}
 	return &tmp

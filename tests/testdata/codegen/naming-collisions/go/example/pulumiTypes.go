@@ -29,7 +29,7 @@ type ObjectInput interface {
 }
 
 type ObjectArgs struct {
-	Bar pulumi.StringPtrInput `pulumi:"bar"`
+	Bar *string `pulumi:"bar"`
 }
 
 func (ObjectArgs) ElementType() reflect.Type {
@@ -78,7 +78,7 @@ type ObjectInputTypeInput interface {
 }
 
 type ObjectInputTypeArgs struct {
-	Bar pulumi.StringPtrInput `pulumi:"bar"`
+	Bar *string `pulumi:"bar"`
 }
 
 func (ObjectInputTypeArgs) ElementType() reflect.Type {
@@ -127,7 +127,7 @@ type ResourceTypeInput interface {
 }
 
 type ResourceTypeArgs struct {
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 }
 
 func (ResourceTypeArgs) ElementType() reflect.Type {

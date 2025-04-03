@@ -8,7 +8,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := iam.NewRole(ctx, "role", &iam.RoleArgs{
-			RoleName: pulumi.String("ScriptIAMRole"),
+			RoleName: "ScriptIAMRole",
 			AssumeRolePolicyDocument: pulumi.Any(map[string]interface{}{
 				"Version": "2012-10-17",
 				"Statement": []map[string]interface{}{

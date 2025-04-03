@@ -1,0 +1,6 @@
+name: l2-resource-optional
+runtime:
+  name: python
+  options:
+    typechecker: pyright
+    virtualenv: venv

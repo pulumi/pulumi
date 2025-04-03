@@ -27,17 +27,17 @@ func NewModuleResource(ctx *pulumi.Context,
 	}
 
 	if args.OptionalBool == nil {
-		args.OptionalBool = pulumi.BoolPtr(true)
+		args.OptionalBool = *bool(true)
 	}
-	args.OptionalConst = pulumi.StringPtr("val")
+	args.OptionalConst = *string("val")
 	if args.OptionalEnum == nil {
 		args.OptionalEnum = EnumThing(8)
 	}
 	if args.OptionalNumber == nil {
-		args.OptionalNumber = pulumi.Float64Ptr(42.0)
+		args.OptionalNumber = *float64(42.0)
 	}
 	if args.OptionalString == nil {
-		args.OptionalString = pulumi.StringPtr("buzzer")
+		args.OptionalString = *string("buzzer")
 	}
 	if args.PlainOptionalBool == nil {
 		plainOptionalBool_ := true

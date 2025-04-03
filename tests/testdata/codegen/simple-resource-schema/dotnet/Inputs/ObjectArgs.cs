@@ -13,40 +13,40 @@ namespace Pulumi.Example.Inputs
     public sealed class ObjectArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<string>? Bar { get; set; }
+        public Input<string?>? Bar { get; set; }
 
         [Input("configs")]
-        private InputList<Inputs.ConfigMapArgs>? _configs;
-        public InputList<Inputs.ConfigMapArgs> Configs
+        private Input<ImmutableArray<Input<Inputs.ConfigMapArgs>>>? _configs;
+        public Input<ImmutableArray<Input<Inputs.ConfigMapArgs>>> Configs
         {
-            get => _configs ?? (_configs = new InputList<Inputs.ConfigMapArgs>());
+            get => _configs ?? (_configs = new Input<ImmutableArray<Input<Inputs.ConfigMapArgs>>>());
             set => _configs = value;
         }
 
         [Input("foo")]
-        public Input<Pulumi.Example.Resource>? Foo { get; set; }
+        public Input<Pulumi.Example.Resource?>? Foo { get; set; }
 
         [Input("others")]
-        private InputList<ImmutableArray<Inputs.SomeOtherObjectArgs>>? _others;
+        private Input<ImmutableArray<InputList<Inputs.SomeOtherObjectArgs>>>? _others;
 
         /// <summary>
         /// List of lists of other objects
         /// </summary>
-        public InputList<ImmutableArray<Inputs.SomeOtherObjectArgs>> Others
+        public Input<ImmutableArray<InputList<Inputs.SomeOtherObjectArgs>>> Others
         {
-            get => _others ?? (_others = new InputList<ImmutableArray<Inputs.SomeOtherObjectArgs>>());
+            get => _others ?? (_others = new Input<ImmutableArray<InputList<Inputs.SomeOtherObjectArgs>>>());
             set => _others = value;
         }
 
         [Input("stillOthers")]
-        private InputMap<ImmutableArray<Inputs.SomeOtherObjectArgs>>? _stillOthers;
+        private Input<ImmutableDictionary<string, InputList<Inputs.SomeOtherObjectArgs>>?>? _stillOthers;
 
         /// <summary>
         /// Mapping from string to list of some other object
         /// </summary>
-        public InputMap<ImmutableArray<Inputs.SomeOtherObjectArgs>> StillOthers
+        public Input<ImmutableDictionary<string, InputList<Inputs.SomeOtherObjectArgs>>?> StillOthers
         {
-            get => _stillOthers ?? (_stillOthers = new InputMap<ImmutableArray<Inputs.SomeOtherObjectArgs>>());
+            get => _stillOthers ?? (_stillOthers = new Input<ImmutableDictionary<string, InputList<Inputs.SomeOtherObjectArgs>>?>());
             set => _stillOthers = value;
         }
 

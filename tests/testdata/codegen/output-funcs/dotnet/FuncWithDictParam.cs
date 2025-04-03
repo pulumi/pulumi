@@ -53,15 +53,15 @@ namespace Pulumi.Mypkg
     public sealed class FuncWithDictParamInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
-        private InputMap<string>? _a;
-        public InputMap<string> A
+        private Input<ImmutableDictionary<string, Input<string>>?>? _a;
+        public Input<ImmutableDictionary<string, Input<string>>?> A
         {
-            get => _a ?? (_a = new InputMap<string>());
+            get => _a ?? (_a = new Input<ImmutableDictionary<string, Input<string>>?>());
             set => _a = value;
         }
 
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public Input<string?>? B { get; set; }
 
         public FuncWithDictParamInvokeArgs()
         {

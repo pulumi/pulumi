@@ -296,6 +296,14 @@ func tokenToFunctionName(tok string) string {
 func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// If we're inside an input type and we're optional then we also allow explicit null
+		if input {
+			return tstypes.Union(
+				mod.typeAst(t.ElementType, input, constValue),
+				tstypes.Identifier("undefined"),
+				tstypes.Identifier("null"),
+			)
+		}
 		return tstypes.Union(
 			mod.typeAst(t.ElementType, input, constValue),
 			tstypes.Identifier("undefined"),

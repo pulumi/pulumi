@@ -30,8 +30,8 @@ type TaskDefinitionContainerDefinitionInput interface {
 }
 
 type TaskDefinitionContainerDefinitionArgs struct {
-	Command pulumi.StringArrayInput `pulumi:"command"`
-	Cpu     pulumi.IntPtrInput      `pulumi:"cpu"`
+	Command []pulumi.StringInput `pulumi:"command"`
+	Cpu     *int                 `pulumi:"cpu"`
 }
 
 func (TaskDefinitionContainerDefinitionArgs) ElementType() reflect.Type {

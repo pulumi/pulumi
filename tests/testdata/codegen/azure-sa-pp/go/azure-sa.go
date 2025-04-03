@@ -34,7 +34,7 @@ func main() {
 		}
 		storageAccountResource, err := storage.NewAccount(ctx, "storageAccountResource", &storage.AccountArgs{
 			Name:                   pulumi.String(storageAccountNameParam),
-			AccountKind:            pulumi.String("StorageV2"),
+			AccountKind:            "StorageV2",
 			Location:               pulumi.String(locationParam),
 			ResourceGroupName:      pulumi.String(resourceGroupNameParam),
 			AccountTier:            pulumi.String(storageAccountTierParam),

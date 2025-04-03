@@ -10,7 +10,7 @@ export function getAsset(a?: number, opts?: pulumi.InvokeOptions): Promise<pulum
         "a": a,
     }, opts);
 }
-export function getAssetOutput(a?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive> {
+export function getAssetOutput(a?: pulumi.Input<number | undefined | null>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<pulumi.asset.Asset | pulumi.asset.Archive> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeSingleOutput("std:index:GetAsset", {
         "a": a,

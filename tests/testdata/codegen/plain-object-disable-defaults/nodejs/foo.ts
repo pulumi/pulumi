@@ -80,9 +80,9 @@ export interface FooArgs {
     /**
      * Options for tuning the Kubernetes client used by a Provider.
      */
-    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettingsArgs>;
+    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettingsArgs | undefined | null>;
     /**
      * describing things
      */
-    settings?: pulumi.Input<inputs.LayeredTypeArgs>;
+    settings?: pulumi.Input<inputs.LayeredTypeArgs | undefined | null>;
 }

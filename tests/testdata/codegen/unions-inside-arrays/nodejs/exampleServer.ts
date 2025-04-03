@@ -60,5 +60,5 @@ export class ExampleServer extends pulumi.CustomResource {
  * The set of arguments for constructing a ExampleServer resource.
  */
 export interface ExampleServerArgs {
-    propertiesCollection?: pulumi.Input<pulumi.Input<inputs.ServerPropertiesForReplicaArgs | inputs.ServerPropertiesForRestoreArgs>[]>;
+    propertiesCollection?: pulumi.Input<pulumi.Input<inputs.ServerPropertiesForReplicaArgs | inputs.ServerPropertiesForRestoreArgs>[] | undefined | null>;
 }

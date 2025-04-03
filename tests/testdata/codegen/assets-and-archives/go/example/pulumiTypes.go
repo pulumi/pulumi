@@ -32,7 +32,7 @@ type TypeWithAssetsInput interface {
 }
 
 type TypeWithAssetsArgs struct {
-	Archive      pulumi.ArchiveInput        `pulumi:"archive"`
+	Archive      pulumi.Archive             `pulumi:"archive"`
 	Asset        pulumi.AssetOrArchiveInput `pulumi:"asset"`
 	PlainArchive pulumi.Archive             `pulumi:"plainArchive"`
 	PlainAsset   pulumi.AssetOrArchive      `pulumi:"plainAsset"`

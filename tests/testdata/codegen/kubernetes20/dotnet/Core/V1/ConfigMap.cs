@@ -115,29 +115,29 @@ namespace Pulumi.Kubernetes.Types.Inputs.Core.V1
         /// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
         /// </summary>
         [Input("apiVersion")]
-        public Input<string>? ApiVersion { get; set; }
+        public Input<string?>? ApiVersion { get; set; }
 
         [Input("binaryData")]
-        private InputMap<string>? _binaryData;
+        private Input<ImmutableDictionary<string, Input<string>>?>? _binaryData;
 
         /// <summary>
         /// BinaryData contains the binary data. Each key must consist of alphanumeric characters, '-', '_' or '.'. BinaryData can contain byte sequences that are not in the UTF-8 range. The keys stored in BinaryData must not overlap with the ones in the Data field, this is enforced during validation process. Using this field will require 1.10+ apiserver and kubelet.
         /// </summary>
-        public InputMap<string> BinaryData
+        public Input<ImmutableDictionary<string, Input<string>>?> BinaryData
         {
-            get => _binaryData ?? (_binaryData = new InputMap<string>());
+            get => _binaryData ?? (_binaryData = new Input<ImmutableDictionary<string, Input<string>>?>());
             set => _binaryData = value;
         }
 
         [Input("data")]
-        private InputMap<string>? _data;
+        private Input<ImmutableDictionary<string, Input<string>>?>? _data;
 
         /// <summary>
         /// Data contains the configuration data. Each key must consist of alphanumeric characters, '-', '_' or '.'. Values with non-UTF-8 byte sequences must use the BinaryData field. The keys stored in Data must not overlap with the keys in the BinaryData field, this is enforced during validation process.
         /// </summary>
-        public InputMap<string> Data
+        public Input<ImmutableDictionary<string, Input<string>>?> Data
         {
-            get => _data ?? (_data = new InputMap<string>());
+            get => _data ?? (_data = new Input<ImmutableDictionary<string, Input<string>>?>());
             set => _data = value;
         }
 
@@ -145,19 +145,19 @@ namespace Pulumi.Kubernetes.Types.Inputs.Core.V1
         /// Immutable, if set to true, ensures that data stored in the ConfigMap cannot be updated (only object metadata can be modified). If not set to true, the field can be modified at any time. Defaulted to nil.
         /// </summary>
         [Input("immutable")]
-        public Input<bool>? Immutable { get; set; }
+        public Input<bool?>? Immutable { get; set; }
 
         /// <summary>
         /// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
         /// </summary>
         [Input("kind")]
-        public Input<string>? Kind { get; set; }
+        public Input<string?>? Kind { get; set; }
 
         /// <summary>
         /// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         /// </summary>
         [Input("metadata")]
-        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? Metadata { get; set; }
+        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs?>? Metadata { get; set; }
 
         public ConfigMapArgs()
         {

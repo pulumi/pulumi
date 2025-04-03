@@ -27,14 +27,14 @@ func NewSimpleComponent(
 	}
 	_, err = random.NewRandomPassword(ctx, fmt.Sprintf("%s-firstPassword", name), &random.RandomPasswordArgs{
 		Length:  pulumi.Int(16),
-		Special: pulumi.Bool(true),
+		Special: true,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
 		return nil, err
 	}
 	_, err = random.NewRandomPassword(ctx, fmt.Sprintf("%s-secondPassword", name), &random.RandomPasswordArgs{
 		Length:  pulumi.Int(16),
-		Special: pulumi.Bool(true),
+		Special: true,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
 		return nil, err

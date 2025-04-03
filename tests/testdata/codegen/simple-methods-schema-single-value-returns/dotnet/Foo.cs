@@ -54,10 +54,10 @@ namespace Pulumi.Example
     public sealed class FooGetKubeconfigArgs : global::Pulumi.CallArgs
     {
         [Input("profileName")]
-        public Input<string>? ProfileName { get; set; }
+        public Input<string?>? ProfileName { get; set; }
 
         [Input("roleArn")]
-        public Input<string>? RoleArn { get; set; }
+        public Input<string?>? RoleArn { get; set; }
 
         public FooGetKubeconfigArgs()
         {

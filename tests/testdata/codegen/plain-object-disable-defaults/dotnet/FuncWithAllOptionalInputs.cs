@@ -59,13 +59,13 @@ namespace Pulumi.Mypkg
         /// Property A
         /// </summary>
         [Input("a")]
-        public Input<Pulumi.Example.Inputs.HelmReleaseSettingsArgs>? A { get; set; }
+        public Input<Pulumi.Example.Inputs.HelmReleaseSettingsArgs?>? A { get; set; }
 
         /// <summary>
         /// Property B
         /// </summary>
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public Input<string?>? B { get; set; }
 
         public FuncWithAllOptionalInputsInvokeArgs()
         {

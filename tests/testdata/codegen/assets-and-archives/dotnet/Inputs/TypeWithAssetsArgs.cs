@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     public sealed class TypeWithAssetsArgs : global::Pulumi.ResourceArgs
     {
         [Input("archive")]
-        public Input<Archive>? Archive { get; set; }
+        public Input<Archive?>? Archive { get; set; }
 
         [Input("asset", required: true)]
         public Input<AssetOrArchive> Asset { get; set; } = null!;

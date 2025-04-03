@@ -58,9 +58,9 @@ type WorldInput interface {
 }
 
 type WorldArgs struct {
-	Name      pulumi.StringPtrInput  `pulumi:"name"`
-	Populated pulumi.BoolPtrInput    `pulumi:"populated"`
-	RadiusKm  pulumi.Float64PtrInput `pulumi:"radiusKm"`
+	Name      *string  `pulumi:"name"`
+	Populated *bool    `pulumi:"populated"`
+	RadiusKm  *float64 `pulumi:"radiusKm"`
 }
 
 // Defaults sets the appropriate defaults for WorldArgs
@@ -71,17 +71,17 @@ func (val *WorldArgs) Defaults() *WorldArgs {
 	tmp := *val
 	if tmp.Name == nil {
 		if d := internal.GetEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
-			tmp.Name = pulumi.StringPtr(d.(string))
+			tmp.Name = *string(d.(string))
 		}
 	}
 	if tmp.Populated == nil {
 		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvBool, "WORLD_POPULATED"); d != nil {
-			tmp.Populated = pulumi.BoolPtr(d.(bool))
+			tmp.Populated = *bool(d.(bool))
 		}
 	}
 	if tmp.RadiusKm == nil {
 		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
-			tmp.RadiusKm = pulumi.Float64Ptr(d.(float64))
+			tmp.RadiusKm = *float64(d.(float64))
 		}
 	}
 	return &tmp

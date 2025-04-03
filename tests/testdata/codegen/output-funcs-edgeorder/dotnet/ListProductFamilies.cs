@@ -78,13 +78,13 @@ namespace Pulumi.Myedgeorder
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
         /// </summary>
         [Input("customerSubscriptionDetails")]
-        public Input<Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
+        public Input<Inputs.CustomerSubscriptionDetailsArgs?>? CustomerSubscriptionDetails { get; set; }
 
         /// <summary>
         /// $expand is supported on configurations parameter for product, which provides details on the configurations for the product.
         /// </summary>
         [Input("expand")]
-        public Input<string>? Expand { get; set; }
+        public Input<string?>? Expand { get; set; }
 
         [Input("filterableProperties", required: true)]
         private InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>>? _filterableProperties;
@@ -102,7 +102,7 @@ namespace Pulumi.Myedgeorder
         /// $skipToken is supported on list of product families, which provides the next page in the list of product families.
         /// </summary>
         [Input("skipToken")]
-        public Input<string>? SkipToken { get; set; }
+        public Input<string?>? SkipToken { get; set; }
 
         public ListProductFamiliesInvokeArgs()
         {

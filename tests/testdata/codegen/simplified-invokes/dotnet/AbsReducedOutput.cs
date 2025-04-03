@@ -54,7 +54,7 @@ namespace Pulumi.Std
         public Input<double> A { get; set; } = null!;
 
         [Input("b")]
-        public Input<double>? B { get; set; }
+        public Input<double?>? B { get; set; }
 
         public AbsReducedOutputInvokeArgs()
         {

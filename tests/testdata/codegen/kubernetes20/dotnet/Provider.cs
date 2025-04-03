@@ -50,13 +50,13 @@ namespace Pulumi.Kubernetes
         /// Options for tuning the Kubernetes client used by a Provider.
         /// </summary>
         [Input("kubeClientSettings", json: true)]
-        public Input<Pulumi.Kubernetes.Types.Inputs.Provider.KubeClientSettingsArgs>? KubeClientSettings { get; set; }
+        public Input<Pulumi.Kubernetes.Types.Inputs.Provider.KubeClientSettingsArgs?>? KubeClientSettings { get; set; }
 
         /// <summary>
         /// The contents of a kubeconfig file or the path to a kubeconfig file.
         /// </summary>
         [Input("kubeconfig")]
-        public Input<string>? KubeConfig { get; set; }
+        public Input<string?>? KubeConfig { get; set; }
 
         /// <summary>
         /// If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
@@ -67,7 +67,7 @@ namespace Pulumi.Kubernetes
         /// 3. `namespace` set for the active context in the kubeconfig.
         /// </summary>
         [Input("namespace")]
-        public Input<string>? Namespace { get; set; }
+        public Input<string?>? Namespace { get; set; }
 
         public ProviderArgs()
         {

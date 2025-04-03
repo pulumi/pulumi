@@ -46,7 +46,7 @@ namespace Other.Example
     public sealed class FooResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("foo")]
-        public Input<Other.Example.Resource>? Foo { get; set; }
+        public Input<Other.Example.Resource?>? Foo { get; set; }
 
         public FooResourceArgs()
         {

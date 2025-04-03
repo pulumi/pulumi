@@ -6,5 +6,5 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 export interface ConfigArgs {
-    foo?: pulumi.Input<string>;
+    foo?: pulumi.Input<string | undefined | null>;
 }

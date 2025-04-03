@@ -17,7 +17,7 @@ __all__ = ['ComponentArgs', 'Component']
 @pulumi.input_type
 class ComponentArgs:
     def __init__(__self__, *,
-                 my_type: Optional[pulumi.Input['MyTypeArgs']] = None):
+                 my_type: Optional[pulumi.Input[Optional['MyTypeArgs']]] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -26,11 +26,11 @@ class ComponentArgs:
 
     @property
     @pulumi.getter(name="myType")
-    def my_type(self) -> Optional[pulumi.Input['MyTypeArgs']]:
+    def my_type(self) -> Optional[pulumi.Input[Optional['MyTypeArgs']]]:
         return pulumi.get(self, "my_type")
 
     @my_type.setter
-    def my_type(self, value: Optional[pulumi.Input['MyTypeArgs']]):
+    def my_type(self, value: Optional[pulumi.Input[Optional['MyTypeArgs']]]):
         pulumi.set(self, "my_type", value)
 
 
@@ -39,7 +39,7 @@ class Component(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 my_type: Optional[pulumi.Input[pulumi.InputType['MyTypeArgs']]] = None,
+                 my_type: Optional[pulumi.Input[Optional[pulumi.InputType['MyTypeArgs']]]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -69,7 +69,7 @@ class Component(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 my_type: Optional[pulumi.Input[pulumi.InputType['MyTypeArgs']]] = None,
+                 my_type: Optional[pulumi.Input[Optional[pulumi.InputType['MyTypeArgs']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

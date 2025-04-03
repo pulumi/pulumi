@@ -61,7 +61,7 @@ namespace Pulumi.Example
     public sealed class ExampleServerArgs : global::Pulumi.ResourceArgs
     {
         [Input("properties")]
-        public InputUnion<Inputs.ServerPropertiesForReplicaArgs, Inputs.ServerPropertiesForRestoreArgs>? Properties { get; set; }
+        public Input<Union<Input<Inputs.ServerPropertiesForReplicaArgs>, Input<Inputs.ServerPropertiesForRestoreArgs>>?>? Properties { get; set; }
 
         public ExampleServerArgs()
         {

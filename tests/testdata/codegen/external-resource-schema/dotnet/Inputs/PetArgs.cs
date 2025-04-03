@@ -13,24 +13,24 @@ namespace Pulumi.Example.Inputs
     public sealed class PetArgs : global::Pulumi.ResourceArgs
     {
         [Input("age")]
-        public Input<int>? Age { get; set; }
+        public Input<int?>? Age { get; set; }
 
         [Input("name")]
-        public Input<Pulumi.Random.RandomPet>? Name { get; set; }
+        public Input<Pulumi.Random.RandomPet?>? Name { get; set; }
 
         [Input("nameArray")]
-        private InputList<Pulumi.Random.RandomPet>? _nameArray;
-        public InputList<Pulumi.Random.RandomPet> NameArray
+        private Input<ImmutableArray<Input<Pulumi.Random.RandomPet>>>? _nameArray;
+        public Input<ImmutableArray<Input<Pulumi.Random.RandomPet>>> NameArray
         {
-            get => _nameArray ?? (_nameArray = new InputList<Pulumi.Random.RandomPet>());
+            get => _nameArray ?? (_nameArray = new Input<ImmutableArray<Input<Pulumi.Random.RandomPet>>>());
             set => _nameArray = value;
         }
 
         [Input("nameMap")]
-        private InputMap<Pulumi.Random.RandomPet>? _nameMap;
-        public InputMap<Pulumi.Random.RandomPet> NameMap
+        private Input<ImmutableDictionary<string, Input<Pulumi.Random.RandomPet>>?>? _nameMap;
+        public Input<ImmutableDictionary<string, Input<Pulumi.Random.RandomPet>>?> NameMap
         {
-            get => _nameMap ?? (_nameMap = new InputMap<Pulumi.Random.RandomPet>());
+            get => _nameMap ?? (_nameMap = new Input<ImmutableDictionary<string, Input<Pulumi.Random.RandomPet>>?>());
             set => _nameMap = value;
         }
 

@@ -8,7 +8,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := random.NewRandomPet(ctx, "random-pet", &random.RandomPetArgs{
-			Prefix: pulumi.String("doggo"),
+			Prefix: "doggo",
 		})
 		if err != nil {
 			return err

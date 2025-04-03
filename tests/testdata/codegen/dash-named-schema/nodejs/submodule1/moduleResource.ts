@@ -59,5 +59,5 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
-    thing?: pulumi.Input<inputs.TopLevelArgs>;
+    thing?: pulumi.Input<inputs.TopLevelArgs | undefined | null>;
 }

@@ -100,11 +100,11 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
-    optionalBool?: pulumi.Input<boolean>;
-    optionalConst?: pulumi.Input<"val">;
-    optionalEnum?: pulumi.Input<enums.EnumThing>;
-    optionalNumber?: pulumi.Input<number>;
-    optionalString?: pulumi.Input<string>;
+    optionalBool?: pulumi.Input<boolean | undefined | null>;
+    optionalConst?: pulumi.Input<"val" | undefined | null>;
+    optionalEnum?: pulumi.Input<enums.EnumThing | undefined | null>;
+    optionalNumber?: pulumi.Input<number | undefined | null>;
+    optionalString?: pulumi.Input<string | undefined | null>;
     plainOptionalBool?: boolean;
     plainOptionalConst?: "val";
     plainOptionalNumber?: number;

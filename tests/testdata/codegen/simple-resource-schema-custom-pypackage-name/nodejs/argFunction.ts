@@ -30,5 +30,5 @@ export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.In
 }
 
 export interface ArgFunctionOutputArgs {
-    arg1?: pulumi.Input<Resource>;
+    arg1?: pulumi.Input<Resource | undefined | null>;
 }

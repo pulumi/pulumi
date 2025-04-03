@@ -37,6 +37,6 @@ export function funcWithListParamOutput(args?: FuncWithListParamOutputArgs, opts
 }
 
 export interface FuncWithListParamOutputArgs {
-    a?: pulumi.Input<pulumi.Input<string>[]>;
-    b?: pulumi.Input<string>;
+    a?: pulumi.Input<pulumi.Input<string>[] | undefined | null>;
+    b?: pulumi.Input<string | undefined | null>;
 }

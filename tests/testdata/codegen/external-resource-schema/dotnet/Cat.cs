@@ -61,10 +61,10 @@ namespace Pulumi.Example
     public sealed class CatArgs : global::Pulumi.ResourceArgs
     {
         [Input("age")]
-        public Input<int>? Age { get; set; }
+        public Input<int?>? Age { get; set; }
 
         [Input("pet")]
-        public Input<Inputs.PetArgs>? Pet { get; set; }
+        public Input<Inputs.PetArgs?>? Pet { get; set; }
 
         public CatArgs()
         {
