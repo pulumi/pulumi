@@ -2,5 +2,6 @@ name: l2-invoke-options-depends-on
 runtime:
   name: python
   options:
+    toolchain: uv
     typechecker: mypy
     virtualenv: venv

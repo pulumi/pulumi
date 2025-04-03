@@ -2,5 +2,6 @@ name: l2-resource-option-deleted-with
 runtime:
   name: python
   options:
+    toolchain: uv
     typechecker: pyright
     virtualenv: venv

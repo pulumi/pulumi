@@ -2,5 +2,6 @@ name: l2-component-component-resource-ref
 runtime:
   name: python
   options:
+    toolchain: uv
     typechecker: mypy
     virtualenv: venv

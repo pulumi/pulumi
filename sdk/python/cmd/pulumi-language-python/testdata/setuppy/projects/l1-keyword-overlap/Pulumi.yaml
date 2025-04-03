@@ -2,5 +2,6 @@ name: l1-keyword-overlap
 runtime:
   name: python
   options:
+    toolchain: uv
     typechecker: mypy
     virtualenv: venv
