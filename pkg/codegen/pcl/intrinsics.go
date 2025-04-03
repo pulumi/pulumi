@@ -77,6 +77,20 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 	}
 }
 
+func NewToOutputCall(arg model.Expression) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: "toOutput",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "arg",
+				Type: arg.Type(),
+			}},
+			ReturnType: model.NewOutputType(arg.Type()),
+		},
+		Args: []model.Expression{arg},
+	}
+}
+
 // ParseApplyCall extracts the apply arguments and the continuation from a call to the apply intrinsic.
 func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expression,
 	then *model.AnonymousFunctionExpression,

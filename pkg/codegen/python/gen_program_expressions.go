@@ -150,29 +150,48 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
+	var collectionPlaceholder any = expr.Collection
+	cond, temps := g.lowerExpression(expr.Condition, expr.Condition.Type())
+	g.genTemps(w, temps)
+
+	var isCollectionOutput bool
+	if _, isCollectionOutput = expr.Collection.Type().(*model.OutputType); isCollectionOutput {
+		// When the collection is an Output, rather than generating directly
+		// against it we should generate against the anonymous variable passed in to `apply`.
+		collectionPlaceholder = "col__"
+	}
+
 	closedelim := "]"
+
+	buffer := &bytes.Buffer{}
 	if expr.Key != nil {
 		// Dictionary comprehension
 		//
 		// TODO(pdg): grouping
-		g.Fgenf(w, "{%.v: %.v", expr.Key, expr.Value)
+		g.Fgenf(buffer, "{%.v: %.v", expr.Key, expr.Value)
 		closedelim = "}"
 	} else {
 		// List comprehension
-		g.Fgenf(w, "[%.v", expr.Value)
+		g.Fgenf(buffer, "[%.v", expr.Value)
 	}
 
 	if expr.KeyVariable == nil {
-		g.Fgenf(w, " for %v in %.v", expr.ValueVariable.Name, expr.Collection)
+		g.Fgenf(buffer, " for %v in %.v", expr.ValueVariable.Name, collectionPlaceholder)
 	} else {
-		g.Fgenf(w, " for %v, %v in %.v", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+		g.Fgenf(buffer, " for %v, %v in %.v", expr.KeyVariable.Name, expr.ValueVariable.Name, collectionPlaceholder)
 	}
 
 	if expr.Condition != nil {
-		g.Fgenf(w, " if %.v", expr.Condition)
+		g.Fgenf(buffer, " if %.v", cond)
 	}
 
-	g.Fprint(w, closedelim)
+	g.Fprint(buffer, closedelim)
+
+	if isCollectionOutput {
+		g.Fgenf(w, "%.s%.v.apply(lambda %.v: %.v)", g.Indent, expr.Collection, collectionPlaceholder, buffer.String())
+	} else {
+		g.Fgenf(w, "%s%s", g.Indent, buffer.String())
+	}
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
@@ -518,6 +537,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v.pulumi_resource_name", expr.Args[0])
 	case "pulumiResourceType":
 		g.Fgenf(w, "%v.pulumi_resource_type", expr.Args[0])
+	case "toOutput":
+		g.Fgenf(w, "pulumi.Output.from_input(%v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
