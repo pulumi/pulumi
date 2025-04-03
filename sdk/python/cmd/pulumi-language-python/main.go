@@ -336,7 +336,12 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
-	defer os.RemoveAll(tmp)
+	defer func() {
+		err := os.RemoveAll(tmp)
+		if err != nil {
+			logging.V(5).Infof("failed to remove temporary directory: %s", err)
+		}
+	}()
 	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
 	// pack the Python SDK. We install this in an isolated virtual environment
 	// to avoid conflicts with the user's environment.
