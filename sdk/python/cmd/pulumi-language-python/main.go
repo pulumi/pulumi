@@ -344,7 +344,8 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		Toolchain:  toolchain.Uv,
 		Virtualenv: venv,
 	})
-	if err == nil {
+	useUv := err == nil
+	if useUv {
 		// `uv` is available, use it to create our virtual environment.
 		logging.V(5).Infof("Creating virtual environment using uv at %s", venv)
 		cmd := exec.CommandContext(ctx, "uv", "venv", venv)
@@ -382,7 +383,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	}
 
 	args := []string{"--wheel", "--outdir", tmp}
-	if err == nil {
+	if useUv {
 		args = append(args, "--installer", "uv")
 	}
 
