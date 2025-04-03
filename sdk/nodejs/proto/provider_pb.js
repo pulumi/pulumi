@@ -1484,7 +1484,8 @@ proto.pulumirpc.ParameterizeRequest.prototype.toObject = function(opt_includeIns
 proto.pulumirpc.ParameterizeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     args: (f = msg.getArgs()) && proto.pulumirpc.ParameterizeRequest.ParametersArgs.toObject(includeInstance, f),
-    value: (f = msg.getValue()) && proto.pulumirpc.ParameterizeRequest.ParametersValue.toObject(includeInstance, f)
+    value: (f = msg.getValue()) && proto.pulumirpc.ParameterizeRequest.ParametersValue.toObject(includeInstance, f),
+    extension: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -1531,6 +1532,10 @@ proto.pulumirpc.ParameterizeRequest.deserializeBinaryFromReader = function(msg, 
       reader.readMessage(value,proto.pulumirpc.ParameterizeRequest.ParametersValue.deserializeBinaryFromReader);
       msg.setValue(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setExtension$(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1574,6 +1579,13 @@ proto.pulumirpc.ParameterizeRequest.serializeBinaryToWriter = function(message, 
       2,
       f,
       proto.pulumirpc.ParameterizeRequest.ParametersValue.serializeBinaryToWriter
+    );
+  }
+  f = message.getExtension$();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
     );
   }
 };
@@ -2020,6 +2032,24 @@ proto.pulumirpc.ParameterizeRequest.prototype.clearValue = function() {
  */
 proto.pulumirpc.ParameterizeRequest.prototype.hasValue = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional bool extension = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.ParameterizeRequest.prototype.getExtension$ = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ParameterizeRequest} returns this
+ */
+proto.pulumirpc.ParameterizeRequest.prototype.setExtension$ = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

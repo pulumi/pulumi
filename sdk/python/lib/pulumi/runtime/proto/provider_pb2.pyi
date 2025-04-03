@@ -180,20 +180,23 @@ class ParameterizeRequest(google.protobuf.message.Message):
 
     ARGS_FIELD_NUMBER: builtins.int
     VALUE_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
     @property
     def args(self) -> global___ParameterizeRequest.ParametersArgs:
         """Arguments from the command line."""
     @property
     def value(self) -> global___ParameterizeRequest.ParametersValue:
         """Values from a generated SDK."""
+    extension: builtins.bool
     def __init__(
         self,
         *,
         args: global___ParameterizeRequest.ParametersArgs | None = ...,
         value: global___ParameterizeRequest.ParametersValue | None = ...,
+        extension: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "parameters", b"parameters", "value", b"value"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "extension", b"extension", "parameters", b"parameters", "value", b"value"]) -> None: ...
     def WhichOneof(self, oneof_group: typing_extensions.Literal["parameters", b"parameters"]) -> typing_extensions.Literal["args", "value"] | None: ...
 
 global___ParameterizeRequest = ParameterizeRequest

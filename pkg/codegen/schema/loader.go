@@ -48,10 +48,14 @@ type PackageDescriptor struct {
 	Version     *semver.Version             // the plugin's semantic version, if present.
 	DownloadURL string                      // an optional server to use when downloading this plugin.
 	Replacement *ParameterizationDescriptor // the optional replacement parameterization of the package.
+	Extension   *ParameterizationDescriptor // the optional extension parameterization of the package.
 }
 
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
+	if pd.Extension != nil {
+		return pd.Extension.Name
+	}
 	if pd.Replacement != nil {
 		return pd.Replacement.Name
 	}
@@ -60,6 +64,9 @@ func (pd PackageDescriptor) PackageName() string {
 
 // PackageVersion returns the version of the package.
 func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	if pd.Extension != nil {
+		return &pd.Extension.Version
+	}
 	if pd.Replacement != nil {
 		return &pd.Replacement.Version
 	}
@@ -72,11 +79,15 @@ func (pd *PackageDescriptor) String() string {
 		version = pd.Version.String()
 	}
 
-	// If the package descriptor has a parameterization, write that information out first.
+	s := fmt.Sprintf("%s@%s", pd.Name, version)
 	if pd.Replacement != nil {
-		return fmt.Sprintf("%s@%s (%s@%s)", pd.Replacement.Name, pd.Replacement.Version, pd.Name, version)
+		s = fmt.Sprintf("%s@%s (replaces %s)", pd.Replacement.Name, pd.Replacement.Version, s)
 	}
-	return fmt.Sprintf("%s@%s", pd.Name, version)
+	if pd.Extension != nil {
+		s = fmt.Sprintf("%s@%s (extends %s)", pd.Extension.Name, pd.Extension.Version, s)
+	}
+
+	return s
 }
 
 type Loader interface {
@@ -483,24 +494,50 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 
 	// If this is a parameterized package, we need to pass the parameter value to the provider.
 	if descriptor.Replacement != nil {
-		parameterization := plugin.ParameterizeRequest{
+		replacement := plugin.ParameterizeRequest{
 			Parameters: &plugin.ParameterizeValue{
 				Name:    descriptor.Replacement.Name,
 				Version: descriptor.Replacement.Version,
 				Value:   descriptor.Replacement.Value,
 			},
 		}
-		resp, err := provider.Parameterize(ctx, parameterization)
+		resp, err := provider.Parameterize(ctx, replacement)
 		if err != nil {
 			return nil, nil, err
 		}
 		if resp.Name != descriptor.Replacement.Name {
 			return nil, nil, fmt.Errorf(
-				"unexpected parameterization response: %s != %s", resp.Name, descriptor.Replacement.Name)
+				"unexpected replacement parameterization response: %s != %s", resp.Name, descriptor.Replacement.Name)
 		}
 		if !resp.Version.EQ(descriptor.Replacement.Version) {
 			return nil, nil, fmt.Errorf(
-				"unexpected parameterization response: %s != %s", resp.Version, descriptor.Replacement.Version)
+				"unexpected replacement parameterization response: %s != %s", resp.Version, descriptor.Replacement.Version)
+		}
+
+		getSchemaRequest.SubpackageName = resp.Name
+		getSchemaRequest.SubpackageVersion = &resp.Version
+	}
+
+	if descriptor.Extension != nil {
+		extension := plugin.ParameterizeRequest{
+			Extension: true,
+			Parameters: &plugin.ParameterizeValue{
+				Name:    descriptor.Replacement.Name,
+				Version: descriptor.Replacement.Version,
+				Value:   descriptor.Replacement.Value,
+			},
+		}
+		resp, err := provider.Parameterize(ctx, extension)
+		if err != nil {
+			return nil, nil, err
+		}
+		if resp.Name != descriptor.Extension.Name {
+			return nil, nil, fmt.Errorf(
+				"unexpected extension parameterization response: %s != %s", resp.Name, descriptor.Extension.Name)
+		}
+		if !resp.Version.EQ(descriptor.Extension.Version) {
+			return nil, nil, fmt.Errorf(
+				"unexpected extension parameterization response: %s != %s", resp.Version, descriptor.Extension.Version)
 		}
 
 		getSchemaRequest.SubpackageName = resp.Name

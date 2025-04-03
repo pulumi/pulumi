@@ -281,7 +281,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 		if !apitype.IsPluginKind(info.Kind) {
 			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
-		var parameterization *workspace.Parameterization
+		var replacement *workspace.Parameterization
 		if info.Parameterization != nil {
 			sv, err := semver.ParseTolerant(info.Parameterization.Version)
 			if err != nil {
@@ -290,7 +290,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 					info.GetName(), info.Parameterization.Version, err)
 			}
 
-			parameterization = &workspace.Parameterization{
+			replacement = &workspace.Parameterization{
 				Name:    info.Parameterization.Name,
 				Version: sv,
 				Value:   info.Parameterization.Value,
@@ -305,7 +305,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 				PluginDownloadURL: info.Server,
 				Checksums:         info.Checksums,
 			},
-			Replacement: parameterization,
+			Replacement: replacement,
 		})
 	}
 

@@ -85,12 +85,21 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 		versionString = descriptor.Version.String()
 	}
 
-	var parameterization *codegenrpc.Parameterization
+	var replacement *codegenrpc.Parameterization
 	if descriptor.Replacement != nil {
-		parameterization = &codegenrpc.Parameterization{
+		replacement = &codegenrpc.Parameterization{
 			Name:    descriptor.Replacement.Name,
 			Version: descriptor.Replacement.Version.String(),
 			Value:   descriptor.Replacement.Value,
+		}
+	}
+
+	var extension *codegenrpc.Parameterization
+	if descriptor.Extension != nil {
+		extension = &codegenrpc.Parameterization{
+			Name:    descriptor.Extension.Name,
+			Version: descriptor.Extension.Version.String(),
+			Value:   descriptor.Extension.Value,
 		}
 	}
 
@@ -98,7 +107,8 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 		Package:          descriptor.Name,
 		Version:          versionString,
 		DownloadUrl:      descriptor.DownloadURL,
-		Parameterization: parameterization,
+		Parameterization: replacement,
+		Extension:        extension,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

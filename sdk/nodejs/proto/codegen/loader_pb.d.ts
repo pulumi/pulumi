@@ -47,6 +47,11 @@ export class GetSchemaRequest extends jspb.Message {
     getParameterization(): Parameterization | undefined;
     setParameterization(value?: Parameterization): GetSchemaRequest;
 
+    hasExtension$(): boolean;
+    clearExtension$(): void;
+    getExtension$(): Parameterization | undefined;
+    setExtension$(value?: Parameterization): GetSchemaRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetSchemaRequest.AsObject;
     static toObject(includeInstance: boolean, msg: GetSchemaRequest): GetSchemaRequest.AsObject;
@@ -63,6 +68,7 @@ export namespace GetSchemaRequest {
         version: string,
         downloadUrl: string,
         parameterization?: Parameterization.AsObject,
+        extension?: Parameterization.AsObject,
     }
 }
 

@@ -493,7 +493,8 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
-	var params pulumirpc.ParameterizeRequest
+	params := pulumirpc.ParameterizeRequest{Extension: request.Extension}
+
 	switch p := request.Parameters.(type) {
 	case *ParameterizeArgs:
 		params.Parameters = &pulumirpc.ParameterizeRequest_Args{

@@ -683,7 +683,7 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 				}
 				for _, block := range node.Body.Blocks {
 					switch block.Type {
-					case "parameterization":
+					case "extension", "parameterization", "replacement":
 						attributes := map[string]hclsyntax.Expression{}
 						for _, item := range block.Body.Attributes {
 							attributes[item.Name] = item.Expr
@@ -693,7 +693,11 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 							diagnostics = append(diagnostics, diag)
 							continue
 						}
-						packageDescriptor.Replacement = descriptor
+						if block.Type == "extension" {
+							packageDescriptor.Extension = descriptor
+						} else {
+							packageDescriptor.Replacement = descriptor
+						}
 					}
 				}
 			}

@@ -913,6 +913,9 @@ type PackageDescriptor struct {
 
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
+	if pd.Extension != nil {
+		return pd.Extension.Name
+	}
 	if pd.Replacement != nil {
 		return pd.Replacement.Name
 	}
@@ -921,6 +924,9 @@ func (pd PackageDescriptor) PackageName() string {
 
 // PackageVersion returns the version of the package.
 func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	if pd.Extension != nil {
+		return &pd.Extension.Version
+	}
 	if pd.Replacement != nil {
 		return &pd.Replacement.Version
 	}
@@ -928,12 +934,8 @@ func (pd PackageDescriptor) PackageVersion() *semver.Version {
 }
 
 func (pd PackageDescriptor) String() string {
-	name := pd.PluginSpec.Name
-	version := pd.PluginSpec.Version
-	if pd.Replacement != nil {
-		name = pd.Replacement.Name
-		version = &pd.Replacement.Version
-	}
+	name := pd.PackageName()
+	version := pd.PackageVersion()
 
 	var v string
 	if version != nil {

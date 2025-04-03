@@ -112,6 +112,8 @@ func (*ParameterizeValue) isParameterizeParameters() {}
 type ParameterizeRequest struct {
 	// The parameters to use when parameterizing the provider instance.
 	Parameters ParameterizeParameters
+
+	Extension bool
 }
 
 // The type of responses sent as part of a Parameterize call.
