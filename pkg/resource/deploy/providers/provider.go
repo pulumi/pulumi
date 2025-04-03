@@ -155,7 +155,12 @@ func (p ProviderRequest) DefaultName() string {
 
 // String returns a string representation of this request. This string is suitable for use as a hash key.
 func (p ProviderRequest) String() string {
-	version := "-" + p.PackageVersion().String()
+	v := p.PackageVersion()
+
+	var version string
+	if v != nil {
+		version = "-" + v.String()
+	}
 
 	var url string
 	if p.pluginDownloadURL != "" {
