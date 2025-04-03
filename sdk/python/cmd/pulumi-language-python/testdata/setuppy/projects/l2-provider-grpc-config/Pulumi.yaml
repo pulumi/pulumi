@@ -2,5 +2,6 @@ name: l2-provider-grpc-config
 runtime:
   name: python
   options:
+    toolchain: uv
     typechecker: mypy
     virtualenv: venv
