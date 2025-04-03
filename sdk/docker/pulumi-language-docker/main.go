@@ -181,7 +181,8 @@ func (host *dockerLanguageHost) About(ctx context.Context,
 func (host *dockerLanguageHost) Handshake(ctx context.Context,
 	req *pulumirpc.LanguageHandshakeRequest,
 ) (*pulumirpc.LanguageHandshakeResponse, error) {
-	host.engineAddress = req.EngineAddress
+	host.engineAddress = strings.ReplaceAll(req.EngineAddress, "127.0.0.1", "host.docker.internal")
+	// host.engineAddress = req.EngineAddress
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
