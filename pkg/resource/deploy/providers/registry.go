@@ -258,9 +258,9 @@ func SetProviderExtensionParameterization(inputs resource.PropertyMap, value *wo
 	)
 }
 
-// GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
-// parameterization property is not present, this function returns nil.
-func GetProviderParameterization(
+// GetProviderReplacementParameterization fetches and parses a provider replacement parameterization from the given
+// property map. If the parameterization property is not present, this function returns nil.
+func GetProviderReplacementParameterization(
 	name tokens.Package, inputs resource.PropertyMap,
 ) (*workspace.Parameterization, error) {
 	internalInputs, err := getInternal(inputs)
@@ -268,17 +268,17 @@ func GetProviderParameterization(
 		return nil, err
 	}
 
-	parameter, ok := internalInputs[replacementParameterizationKey]
+	replacement, ok := internalInputs[replacementParameterizationKey]
 	if !ok {
 		return nil, nil
 	}
 
-	if !parameter.IsString() {
+	if !replacement.IsString() {
 		return nil, fmt.Errorf("'%s' must be of type string", replacementParameterizationKey)
 	}
-	bytes, err := base64.StdEncoding.DecodeString(parameter.StringValue())
+	bytes, err := base64.StdEncoding.DecodeString(replacement.StringValue())
 	if err != nil {
-		return nil, fmt.Errorf("could not decode base64 parameter value: %w", err)
+		return nil, fmt.Errorf("could not decode base64 replacement parameter value: %w", err)
 	}
 
 	version, ok := inputs["version"]
@@ -563,7 +563,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			Property: "pluginDownloadURL", Reason: err.Error(),
 		}}}, nil
 	}
-	parameter, err := GetProviderParameterization(providerPkg, req.News)
+	replacement, err := GetProviderReplacementParameterization(providerPkg, req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "parameter", Reason: err.Error(),
@@ -571,7 +571,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	}
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, replacement, r.host, r.builtins)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -714,12 +714,12 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
+		replacement, err := GetProviderReplacementParameterization(providerPkg, res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
+			return fmt.Errorf("parse replacement parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, replacement, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -784,13 +784,13 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, req.Properties)
+		replacement, err := GetProviderReplacementParameterization(providerPkg, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
-				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
+				fmt.Errorf("parse replacement parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, replacement, r.host, r.builtins)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)

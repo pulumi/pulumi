@@ -702,19 +702,68 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
+			return &deploytest.Provider{
+				ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+					return plugin.ParameterizeResponse{
+						Name:    value.Name,
+						Version: value.Version,
+					}, nil
+				},
+			}, nil
 		}),
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterPackage(deploytest.RegisterPackageRequest{
-			Name:    "pkgExt",
+		ref1, err := monitor.RegisterPackage(deploytest.RegisterPackageRequest{
+			Name:    "pkgA",
 			Version: "1.0.0",
 			Extension: &pulumirpc.Parameterization{
-				Name:    "pkgExt",
-				Version: "2.0.0",
+				Name:    "pkgExt1",
+				Version: "1.1.0",
 				Value:   []byte("extension"),
 			},
+		})
+		require.NoError(t, err)
+
+		ref2, err := monitor.RegisterPackage(deploytest.RegisterPackageRequest{
+			Name:    "pkgA",
+			Version: "1.0.0",
+			Extension: &pulumirpc.Parameterization{
+				Name:    "pkgExt2",
+				Version: "1.2.0",
+				Value:   []byte("extension"),
+			},
+		})
+		require.NoError(t, err)
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt1:index:Custom", "custom11", true, deploytest.ResourceOptions{
+			PackageRef: ref1,
+			Provider:   provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt2:index:Custom", "custom21", true, deploytest.ResourceOptions{
+			PackageRef: ref2,
+			Provider:   provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt1:index:Custom", "custom12", true, deploytest.ResourceOptions{
+			PackageRef: ref1,
+			Provider:   provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgExt2:index:Custom", "custom22", true, deploytest.ResourceOptions{
+			PackageRef: ref2,
+			Provider:   provRef.String(),
 		})
 		require.NoError(t, err)
 

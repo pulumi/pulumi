@@ -1535,7 +1535,7 @@ func TestStreamInvoke(t *testing.T) {
 					return plugin.StreamInvokeResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1598,7 +1598,7 @@ func TestStreamInvoke(t *testing.T) {
 					return plugin.StreamInvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1667,7 +1667,7 @@ func TestStreamInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -1729,7 +1729,7 @@ func TestStreamInvoke(t *testing.T) {
 				},
 			},
 			plugctx: plugctx,
-		}, reg, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, reg, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2315,7 +2315,7 @@ func TestInvoke(t *testing.T) {
 					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2378,7 +2378,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2450,7 +2450,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2552,7 +2552,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2635,7 +2635,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2716,7 +2716,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{

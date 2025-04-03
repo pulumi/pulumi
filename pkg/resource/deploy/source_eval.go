@@ -150,9 +150,13 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
+	regProvExChan := make(chan *registerProviderExtensionEvent)
 
 	mon, err := newResourceMonitor(
-		src, providers, regChan, regOutChan, regReadChan, config, configSecretKeys, tracingSpan)
+		src, providers,
+		regChan, regOutChan, regReadChan, regProvExChan,
+		config, configSecretKeys, tracingSpan,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
@@ -167,13 +171,14 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		loaderServer: loaderServer,
-		mon:          mon,
-		src:          src,
-		regChan:      regChan,
-		regOutChan:   regOutChan,
-		regReadChan:  regReadChan,
-		finChan:      make(chan error),
+		loaderServer:  loaderServer,
+		mon:           mon,
+		src:           src,
+		regChan:       regChan,
+		regOutChan:    regOutChan,
+		regReadChan:   regReadChan,
+		regProvExChan: regProvExChan,
+		finChan:       make(chan error),
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -185,15 +190,16 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 }
 
 type evalSourceIterator struct {
-	loaderServer *plugin.GrpcServer                 // the grpc server for the schema loader.
-	mon          SourceResourceMonitor              // the resource monitor, per iterator.
-	src          *evalSource                        // the owning eval source object.
-	regChan      chan *registerResourceEvent        // the channel that contains resource registrations.
-	regOutChan   chan *registerResourceOutputsEvent // the channel that contains resource completions.
-	regReadChan  chan *readResourceEvent            // the channel that contains read resource requests.
-	finChan      chan error                         // the channel that communicates completion.
-	done         bool                               // set to true when the evaluation is done.
-	aborted      bool                               // set to true when the iterator is aborted.
+	loaderServer  *plugin.GrpcServer                   // the grpc server for the schema loader.
+	mon           SourceResourceMonitor                // the resource monitor, per iterator.
+	src           *evalSource                          // the owning eval source object.
+	regChan       chan *registerResourceEvent          // the channel that contains resource registrations.
+	regOutChan    chan *registerResourceOutputsEvent   // the channel that contains resource completions.
+	regReadChan   chan *readResourceEvent              // the channel that contains read resource requests.
+	regProvExChan chan *registerProviderExtensionEvent // the channel that contains provider extension registrations.
+	finChan       chan error                           // the channel that communicates completion.
+	done          bool                                 // set to true when the evaluation is done.
+	aborted       bool                                 // set to true when the iterator is aborted.
 }
 
 func (iter *evalSourceIterator) Close() error {
@@ -235,6 +241,10 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		contract.Assertf(read != nil, "received a nil readResourceEvent")
 		logging.V(5).Infoln("EvalSourceIterator produced a read")
 		return read, nil
+	case regProvEx := <-iter.regProvExChan:
+		contract.Assertf(regProvEx != nil, "received a nil registerProviderExtensionEvent")
+		logging.V(5).Infof("EvalSourceIterator produced a provider extension registration: %v", regProvEx)
+		return regProvEx, nil
 	case err := <-iter.finChan:
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
@@ -458,7 +468,6 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		providers.SetProviderReplacementParameterization(inputs, req.Replacement())
 	}
 	if req.Extension() != nil {
-		providers.SetProviderName(inputs, req.Name())
 		providers.SetProviderExtensionParameterization(inputs, req.Extension())
 	}
 
@@ -655,22 +664,23 @@ type resmon struct {
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
 
-	resGoals               map[resource.URN]resource.Goal     // map of seen URNs and their goals.
-	resGoalsLock           sync.Mutex                         // locks the resGoals map.
-	diagnostics            diag.Sink                          // logger for user-facing messages
-	providers              ProviderSource                     // the provider source itself.
-	componentProviders     map[resource.URN]map[string]string // which providers component resources used
-	componentProvidersLock sync.Mutex                         // which locks the componentProviders map
-	defaultProviders       *defaultProviders                  // the default provider manager.
-	sourcePositions        *sourcePositions                   // source position manager.
-	constructInfo          plugin.ConstructInfo               // information for construct and call calls.
-	regChan                chan *registerResourceEvent        // the channel to send resource registrations to.
-	regOutChan             chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
-	regReadChan            chan *readResourceEvent            // the channel to send resource reads to.
-	abortChan              chan bool                          // a channel that can abort iteration of resources.
-	cancel                 chan bool                          // a channel that can cancel the server.
-	done                   <-chan error                       // a channel that resolves when the server completes.
-	opts                   EvalSourceOptions                  // options for the resource monitor.
+	resGoals               map[resource.URN]resource.Goal       // map of seen URNs and their goals.
+	resGoalsLock           sync.Mutex                           // locks the resGoals map.
+	diagnostics            diag.Sink                            // logger for user-facing messages
+	providers              ProviderSource                       // the provider source itself.
+	componentProviders     map[resource.URN]map[string]string   // which providers component resources used
+	componentProvidersLock sync.Mutex                           // which locks the componentProviders map
+	defaultProviders       *defaultProviders                    // the default provider manager.
+	sourcePositions        *sourcePositions                     // source position manager.
+	constructInfo          plugin.ConstructInfo                 // information for construct and call calls.
+	regChan                chan *registerResourceEvent          // the channel to send resource registrations to.
+	regOutChan             chan *registerResourceOutputsEvent   // the channel to send resource output registrations to.
+	regReadChan            chan *readResourceEvent              // the channel to send resource reads to.
+	regProvExChan          chan *registerProviderExtensionEvent // the channel to send provider extension registrations to.
+	abortChan              chan bool                            // a channel that can abort iteration of resources.
+	cancel                 chan bool                            // a channel that can cancel the server.
+	done                   <-chan error                         // a channel that resolves when the server completes.
+	opts                   EvalSourceOptions                    // options for the resource monitor.
 
 	// the working directory for the resources sent to this monitor.
 	workingDirectory string
@@ -698,6 +708,7 @@ func newResourceMonitor(
 	regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
+	regProvExChan chan *registerProviderExtensionEvent,
 	config map[config.Key]string,
 	configSecretKeys []config.Key,
 	tracingSpan opentracing.Span,
@@ -731,6 +742,7 @@ func newResourceMonitor(
 		regChan:            regChan,
 		regOutChan:         regOutChan,
 		regReadChan:        regReadChan,
+		regProvExChan:      regProvExChan,
 		abortChan:          abortChan,
 		cancel:             cancel,
 		opts:               src.opts,
@@ -895,6 +907,50 @@ func parseProviderRequest(
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
 	return providers.NewProviderRequest(pkg, &parsedVersion, url, pluginChecksums, replacement, extension), nil
+}
+
+func (rm *resmon) preparePackageProvider(providerRef providers.Reference, packageRef string) error {
+	if packageRef == "" {
+		return nil
+	}
+
+	provReq, ok := rm.packageRefMap[packageRef]
+	if !ok {
+		return nil
+	}
+
+	extension := provReq.Extension()
+	if extension == nil {
+		return nil
+	}
+
+	logging.V(5).Infof(
+		"ResourceMonitor preparing provider %s: extension to %s@%s via package reference %s",
+		providerRef.String(), extension.Name, extension.Version, packageRef,
+	)
+
+	regProvEx := &registerProviderExtensionEvent{
+		providerReference: providerRef,
+		extension:         extension,
+		done:              make(chan bool),
+	}
+
+	select {
+	case rm.regProvExChan <- regProvEx:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor canceled ahead of provider preparation, provider=%s", providerRef.String())
+		return rpcerror.New(codes.Unavailable, "resource monitor shut down while preparing provider")
+	}
+
+	select {
+	case <-regProvEx.done:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor canceled awaiting provider preparation, provider=%s", providerRef.String())
+		return rpcerror.New(codes.Unavailable, "resource monitor shut down while awaiting provider preparation")
+	}
+
+	logging.V(5).Infof("ResourceMonitor prepared provider %s", providerRef.String())
+	return nil
 }
 
 func (rm *resmon) RegisterPackage(ctx context.Context,
@@ -2256,10 +2312,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				providers.SetProviderName(props, providerReq.Name())
 				providers.SetProviderReplacementParameterization(props, providerReq.Replacement())
 			}
-			if providerReq.Extension() != nil {
-				providers.SetProviderName(props, providerReq.Name())
-				providers.SetProviderExtensionParameterization(props, providerReq.Extension())
-			}
 		}
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
@@ -2278,6 +2330,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if defaultProvider.Replacement != nil {
 				providers.SetProviderReplacementParameterization(props, defaultProvider.Replacement)
 			}
+		}
+	} else {
+		err := rm.preparePackageProvider(providerRef, req.GetPackageRef())
+		if err != nil {
+			return nil, fmt.Errorf("preparing package provider %s: %w", providerRef, err)
 		}
 	}
 

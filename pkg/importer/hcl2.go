@@ -114,7 +114,7 @@ func GenerateHCL2Definition(
 		return nil, nil, fmt.Errorf("get provider version: %w", err)
 	}
 	var parameterization *schema.ParameterizationDescriptor
-	parameters, err := providers.GetProviderParameterization(packageName, provider.Inputs)
+	parameters, err := providers.GetProviderReplacementParameterization(packageName, provider.Inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider parameterization: %w", err)
 	}

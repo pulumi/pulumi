@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -127,6 +129,10 @@ type stepExecutor struct {
 	// deployment succeeded. If there were errors, we update any stack outputs that were updated, but don't delete
 	// any old outputs.
 	stackOutputsEvent RegisterResourceOutputsEvent
+
+	providerExtensionsMapLock          sync.RWMutex
+	providerExtensionsParameterizeLock sync.Mutex
+	providerExtensions                 map[string]string
 }
 
 //
@@ -294,6 +300,86 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	if !finalizingStackOutputs {
 		e.Done()
 	}
+	return nil
+}
+
+func (se *stepExecutor) ExecuteRegisterProviderExtension(e RegisterProviderExtensionEvent) error {
+	provRef := e.ProviderReference()
+
+	ext := e.Extension()
+	contract.Assertf(ext != nil, "expected a non-nil extension during step execution")
+
+	prov, ok := se.deployment.providers.GetProvider(provRef)
+	if !ok {
+		return fmt.Errorf("provider %s requiring extension to %s@%s not found", provRef, ext.Name, ext.Version)
+	}
+
+	reg, has := se.pendingNews.Load(provRef.URN())
+	if !has {
+		return fmt.Errorf("cannot extend a provider %s whose registration isn't pending", provRef)
+	}
+
+	// Only support extending to a package name once, even if different versions
+	// TODO better comment
+	key := fmt.Sprintf("%s::%s", provRef.String(), ext.Name)
+
+	se.providerExtensionsMapLock.RLock()
+	existingVersion, alreadyExtended := se.providerExtensions[key]
+	se.providerExtensionsMapLock.RUnlock()
+
+	newVersion := ext.Version.String()
+	if alreadyExtended {
+		if existingVersion != newVersion {
+			return fmt.Errorf(
+				"provider %s requiring extension to %s@%s already extended to %s@%s",
+				provRef, ext.Name, ext.Version, ext.Name, existingVersion,
+			)
+		}
+
+		// TODO comment, job done return
+		e.Done()
+		return nil
+	}
+
+	se.providerExtensionsParameterizeLock.Lock()
+	res, err := prov.Parameterize(se.ctx, plugin.ParameterizeRequest{
+		Parameters: &plugin.ParameterizeValue{
+			Name:    ext.Name,
+			Version: ext.Version,
+			Value:   ext.Value,
+		},
+	})
+	se.providerExtensionsParameterizeLock.Unlock()
+	if err != nil {
+		return fmt.Errorf(
+			"failed to parameterize provider %s for extension to %s@%s: %w",
+			provRef, ext.Name, ext.Version, err,
+		)
+	}
+
+	if res.Name != ext.Name {
+		return fmt.Errorf(
+			"failed to parameterize provider %s for extension to %s@%s: expected %s, got %s",
+			provRef, ext.Name, ext.Version, ext.Name, res.Name,
+		)
+	}
+
+	if !res.Version.EQ(ext.Version) {
+		return fmt.Errorf(
+			"failed to parameterize provider %s for extension to %s@%s: expected %s, got %s",
+			provRef, ext.Name, ext.Version, ext.Version, res.Version,
+		)
+	}
+
+	se.providerExtensionsMapLock.Lock()
+	se.providerExtensions[key] = newVersion
+	se.providerExtensionsMapLock.Unlock()
+
+	reg.New().Lock.Lock()
+	providers.SetProviderExtensionParameterization(reg.New().Inputs, ext)
+	reg.New().Lock.Unlock()
+
+	e.Done()
 	return nil
 }
 
@@ -606,11 +692,12 @@ func newStepExecutor(
 	ignoreErrors bool,
 ) *stepExecutor {
 	exec := &stepExecutor{
-		deployment:     deployment,
-		ignoreErrors:   ignoreErrors,
-		incomingChains: make(chan incomingChain),
-		ctx:            ctx,
-		cancel:         cancel,
+		deployment:         deployment,
+		ignoreErrors:       ignoreErrors,
+		incomingChains:     make(chan incomingChain),
+		ctx:                ctx,
+		cancel:             cancel,
+		providerExtensions: make(map[string]string),
 	}
 
 	// If we're being asked to run as parallel as possible, spawn a single worker that launches chain executions

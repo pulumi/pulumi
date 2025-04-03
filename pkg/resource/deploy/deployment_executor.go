@@ -546,6 +546,9 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
+	case RegisterProviderExtensionEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterProviderExtensionEvent")
+		return ex.stepExec.ExecuteRegisterProviderExtension(e)
 	}
 
 	if err != nil {

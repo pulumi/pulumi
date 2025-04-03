@@ -1,7 +1,19 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA prov <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA prov <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgExt1:index:Custom custom11 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgExt1:index:Custom custom11 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgExt2:index:Custom custom21 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgExt2:index:Custom custom21 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgExt1:index:Custom custom12 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgExt1:index:Custom custom12 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgExt2:index:Custom custom22 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgExt2:index:Custom custom22 <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 5 created<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

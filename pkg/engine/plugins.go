@@ -302,7 +302,7 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		if err != nil {
 			return set, err
 		}
-		parameterization, err := providers.GetProviderParameterization(pkg, res.Inputs)
+		parameterization, err := providers.GetProviderReplacementParameterization(pkg, res.Inputs)
 		if err != nil {
 			return set, err
 		}
