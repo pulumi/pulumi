@@ -342,3 +342,7 @@ func (u *uv) pythonExecutable() (string, string) {
 	}
 	return name, filepath.Join(u.virtualenvPath, virtualEnvBinDirName(), name)
 }
+
+func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
+	return u.virtualenvPath, nil
+}
