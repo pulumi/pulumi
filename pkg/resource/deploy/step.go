@@ -1599,14 +1599,18 @@ func ColorProgress(op display.StepOp) string {
 }
 
 // Prefix returns a suggested prefix for lines of this op type.
-func Prefix(op display.StepOp, done bool) string {
+func Prefix(conditional bool, op display.StepOp, done bool) string {
 	var color string
 	if done {
 		color = Color(op)
 	} else {
 		color = ColorProgress(op)
 	}
-	return color + RawPrefix(op)
+	prefix := " "
+	if conditional {
+		prefix = "?"
+	}
+	return color + prefix + RawPrefix(op)
 }
 
 // RawPrefix returns the uncolorized prefix text.

@@ -1,6 +1,6 @@
 // Copyright 2025, Pulumi Corporation.  All rights reserved.
 
-import { cond } from "@pulumi/pulumi";
+import { boundedFor, cond } from "@pulumi/pulumi";
 import { Resource } from "./resource";
 
 let a = new Resource("res", { arg: "hello" });
@@ -15,4 +15,11 @@ let b = cond(check, () => {
     return c.state;
 });
 
+let cs = b.apply(v => v.split("").slice(0, 5));
+let d = boundedFor(cs, 10, (v, i) => {
+    var res = new Resource(`res4-${i}`, { arg: v });
+    return res.state;
+});
+
 export let o = b;
+export let os = d;

@@ -1489,68 +1489,82 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 }
 
 func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) string {
-	switch step.Op {
-	case deploy.OpSame:
-		return ""
-	case deploy.OpCreate:
-		return "create"
-	case deploy.OpUpdate:
-		return "update"
-	case deploy.OpDelete:
-		return "delete"
-	case deploy.OpReplace:
-		return "replace"
-	case deploy.OpCreateReplacement:
-		return "create replacement"
-	case deploy.OpDeleteReplaced:
-		return "delete original"
-	case deploy.OpRead:
-		return "read"
-	case deploy.OpReadReplacement:
-		return "read for replacement"
-	case deploy.OpRefresh:
-		return "refreshing"
-	case deploy.OpReadDiscard:
-		return "discard"
-	case deploy.OpDiscardReplaced:
-		return "discard original"
-	case deploy.OpImport:
-		return "import"
-	case deploy.OpImportReplacement:
-		return "import replacement"
-	}
+	main := func() string {
+		switch step.Op {
+		case deploy.OpSame:
+			return ""
+		case deploy.OpCreate:
+			return "create"
+		case deploy.OpUpdate:
+			return "update"
+		case deploy.OpDelete:
+			return "delete"
+		case deploy.OpReplace:
+			return "replace"
+		case deploy.OpCreateReplacement:
+			return "create replacement"
+		case deploy.OpDeleteReplaced:
+			return "delete original"
+		case deploy.OpRead:
+			return "read"
+		case deploy.OpReadReplacement:
+			return "read for replacement"
+		case deploy.OpRefresh:
+			return "refreshing"
+		case deploy.OpReadDiscard:
+			return "discard"
+		case deploy.OpDiscardReplaced:
+			return "discard original"
+		case deploy.OpImport:
+			return "import"
+		case deploy.OpImportReplacement:
+			return "import replacement"
+		}
 
-	contract.Failf("Unrecognized resource step op: %v", step.Op)
-	return ""
+		contract.Failf("Unrecognized resource step op: %v", step.Op)
+		return ""
+	}
+	prefix := ""
+	if step.Conditional {
+		prefix = "maybe "
+	}
+	return prefix + main()
 }
 
 // getPreviewDoneText returns a textual representation for this step, suitable for display during a preview once the
 // preview has completed.
 func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata) string {
-	switch step.Op {
-	case deploy.OpSame:
-		return ""
-	case deploy.OpCreate:
-		return "create"
-	case deploy.OpUpdate:
-		return "update"
-	case deploy.OpDelete:
-		return "delete"
-	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement,
-		deploy.OpDiscardReplaced:
-		return "replace"
-	case deploy.OpRead:
-		return "read"
-	case deploy.OpRefresh:
-		return "refresh"
-	case deploy.OpReadDiscard:
-		return "discard"
-	case deploy.OpImport, deploy.OpImportReplacement:
-		return "import"
-	}
+	main := func() string {
+		switch step.Op {
+		case deploy.OpSame:
+			return ""
+		case deploy.OpCreate:
+			return "create"
+		case deploy.OpUpdate:
+			return "update"
+		case deploy.OpDelete:
+			return "delete"
+		case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement,
+			deploy.OpDiscardReplaced:
+			return "replace"
+		case deploy.OpRead:
+			return "read"
+		case deploy.OpRefresh:
+			return "refresh"
+		case deploy.OpReadDiscard:
+			return "discard"
+		case deploy.OpImport, deploy.OpImportReplacement:
+			return "import"
+		}
 
-	contract.Failf("Unrecognized resource step op: %v", step.Op)
-	return ""
+		contract.Failf("Unrecognized resource step op: %v", step.Op)
+		return ""
+	}
+	prefix := ""
+	if step.Conditional {
+		prefix = "maybe "
+	}
+	return prefix + main()
 }
 
 // getStepOp returns the operation to display for the given step. Generally this
@@ -1605,7 +1619,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display
 }
 
 func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
-	return deploy.Prefix(display.getStepOp(step), done) + colors.Reset
+	return deploy.Prefix(step.Conditional, display.getStepOp(step), done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {

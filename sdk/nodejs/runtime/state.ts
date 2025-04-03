@@ -322,11 +322,13 @@ declare global {
  */
 export function runConditional<R>(callback: () => R): R {
     const store = getStore();
-    const newStore ={
-                ...store,
+    const newStore = {
+        ...store,
         conditional: true,
     };
-    return asyncLocalStorage.run(newStore, () => { return callback(); });
+    return asyncLocalStorage.run(newStore, () => {
+        return callback();
+    });
 }
 
 /**
@@ -335,7 +337,6 @@ export function runConditional<R>(callback: () => R): R {
 export function getLocalStore(): Store | undefined {
     return asyncLocalStorage.getStore();
 }
-
 
 /**
  * @internal

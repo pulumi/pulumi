@@ -455,13 +455,17 @@ function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     return copy;
 }
 
-async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown: boolean, isSecret: boolean): Promise<{
+async function liftInnerOutput(
+    allResources: Set<Resource>,
+    value: any,
+    isKnown: boolean,
+    isSecret: boolean,
+): Promise<{
     allResources: Set<Resource>;
     value: any;
     isKnown: boolean;
     isSecret: boolean;
-}>
-{
+}> {
     if (!Output.isInstance(value)) {
         // 'value' itself wasn't an output, no need to transform any of the data we got.
         return { allResources, value, isKnown, isSecret };
@@ -1304,34 +1308,32 @@ export function jsonParse(text: Input<string>, reviver?: (this: any, key: string
  * created inside will be marked as conditional.
  */
 export function cond<T>(condition: Input<boolean>, ifTrue: () => Output<T>, ifFalse: () => Output<T>): Output<T> {
-    let o = output(condition);
+    const o = output(condition);
 
-    const applied = Promise.all([
-        o.allResources!(),
-        o.promise(/*withUnknowns*/ true),
-        o.isKnown,
-        o.isSecret,
-    ]).then<{
+    const applied = Promise.all([o.allResources!(), o.promise(/*withUnknowns*/ true), o.isKnown, o.isSecret]).then<{
         allResources: Set<Resource>;
         value: any;
         isKnown: boolean;
         isSecret: boolean;
     }>(([allResources, value, isKnown, isSecret]) => {
-
         if (isKnown) {
             // Simple case we just run the branch that is true
-            let x: void = undefined
+            const v: void = undefined;
             if (value) {
-                return applyHelperAsync<void, T>(allResources, x, isKnown, isSecret, ifTrue, false);
+                return applyHelperAsync<void, T>(allResources, v, isKnown, isSecret, ifTrue, false);
             } else {
-                return applyHelperAsync<void, T>(allResources, x, isKnown, isSecret, ifFalse, false);
+                return applyHelperAsync<void, T>(allResources, v, isKnown, isSecret, ifFalse, false);
             }
         }
 
         // Else if condition is unknown we need to run _both_ branches but within a conditional context so
         // that the resources created inside are marked as conditional.
-        const ifTruePromise = state.runConditional(() => applyHelperAsync<void, T>(allResources, undefined, true, isSecret, ifTrue, false));
-        const ifFalsePromise = state.runConditional(() => applyHelperAsync<void, T>(allResources, undefined, true, isSecret, ifFalse, false));
+        const ifTruePromise = state.runConditional(() =>
+            applyHelperAsync<void, T>(allResources, undefined, true, isSecret, ifTrue, false),
+        );
+        const ifFalsePromise = state.runConditional(() =>
+            applyHelperAsync<void, T>(allResources, undefined, true, isSecret, ifFalse, false),
+        );
 
         // We can't combine the value from two branches, so we always return an unknown value here.
         return Promise.all([ifTruePromise, ifFalsePromise]).then(([ifTrueValue, ifFalseValue]) => {
@@ -1340,7 +1342,7 @@ export function cond<T>(condition: Input<boolean>, ifTrue: () => Output<T>, ifFa
                 value: undefined,
                 isKnown: false,
                 isSecret: ifTrueValue.isSecret || ifFalseValue.isSecret,
-            }
+            };
         });
     });
 
@@ -1352,4 +1354,28 @@ export function cond<T>(condition: Input<boolean>, ifTrue: () => Output<T>, ifFa
         applied.then((a) => a.allResources),
     );
     return <Output<T>>(<any>result);
+}
+
+export function boundedFor<T, U>(
+    array: Output<T[]>,
+    limit: number,
+    func: (item: Output<T>, index: number) => Output<U>,
+): Output<U[]> {
+    const results = [] as Output<U | undefined>[];
+
+    for (let i = 0; i < limit; ++i) {
+        results[i] = cond(
+            array.apply((a) => a.length > i),
+            () => func(array.apply((a) => a[i]), i),
+            () => output(undefined),
+        );
+    }
+
+    return all([array, results]).apply(([a, r]) => {
+        const result = [];
+        for (let i = 0; i < Math.min(a.length, limit); ++i) {
+            result[i] = r[i] as U;
+        }
+        return result;
+    });
 }

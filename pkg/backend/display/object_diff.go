@@ -61,11 +61,6 @@ func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepE
 
 func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 	var extra string
-	// If this step was conditional add a question mark
-	if step.Conditional {
-		extra += "❓"
-	}
-
 	old := step.Old
 	new := step.New
 	if new != nil && !new.Protect && old != nil && old.Protect {
@@ -80,7 +75,12 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 		extra = " " + extra
 	}
 
-	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
+	maybe := ""
+	if step.Conditional {
+		maybe = "maybe "
+	}
+
+	writeString(b, fmt.Sprintf("%s: (%s%s)%s\n", string(step.Type), maybe, step.Op, extra))
 }
 
 func getIndentationString(indent int, op display.StepOp, prefix bool) string {
@@ -136,7 +136,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	writeString(&b, getIndentationString(indent, op, false))
 
 	// First, print out the operation's prefix.
-	writeString(&b, deploy.Prefix(op, true /*done*/))
+	writeString(&b, deploy.Prefix(step.Conditional, op, true /*done*/))
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	printStepHeader(&b, step)
