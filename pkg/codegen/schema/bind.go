@@ -187,8 +187,11 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(typeDiags)
 
-	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
-	diags = diags.Extend(parameterizationDiags)
+	replacementParam, replacementParamDiags := bindParameterization(spec.Parameterization)
+	diags = diags.Extend(replacementParamDiags)
+
+	extensionParam, extensionParamDiags := bindParameterization(spec.Extension)
+	diags = diags.Extend(extensionParamDiags)
 
 	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
 
@@ -198,7 +201,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
-	pkg.Parameterization = parameterization
+	pkg.Parameterization = replacementParam
+	pkg.Extension = extensionParam
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs

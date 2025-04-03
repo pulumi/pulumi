@@ -867,11 +867,22 @@ func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req p
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
 func (rm *resmon) getProviderFromSource(
-	providerSource ProviderSource, defaultProviders *defaultProviders,
-	req providers.ProviderRequest, rawProviderRef string,
+	packageRef string,
+	req providers.ProviderRequest,
+	rawProviderRef string,
 	token tokens.ModuleMember,
 ) (plugin.Provider, error) {
-	providerRef, err := rm.getProviderReference(defaultProviders, req, rawProviderRef)
+	// If we've got a package reference, this takes precedence over any provider
+	// request we were given
+	if packageRef != "" {
+		var has bool
+		req, has = rm.packageRefMap[packageRef]
+		if !has {
+			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+		}
+	}
+
+	providerRef, err := rm.getProviderReference(rm.defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
 	} else if providers.IsDenyDefaultsProvider(providerRef) {
@@ -879,10 +890,17 @@ func (rm *resmon) getProviderFromSource(
 		return nil, fmt.Errorf(msg, req.PackageName(), token)
 	}
 
-	provider, ok := providerSource.GetProvider(providerRef)
+	// TODO WILL extensions pls comment
+	err = rm.preparePackageProvider(providerRef, packageRef)
+	if err != nil {
+		return nil, fmt.Errorf("preparePackageProvider: %w", err)
+	}
+
+	provider, ok := rm.providers.GetProvider(providerRef)
 	if !ok {
 		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
 	}
+
 	return provider, nil
 }
 
@@ -1125,16 +1143,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, err
 	}
 
-	packageRef := req.GetPackageRef()
-	if packageRef != "" {
-		var has bool
-		providerReq, has = rm.packageRefMap[packageRef]
-		if !has {
-			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
-		}
-	}
-
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, opts.Provider, tok)
+	prov, err := rm.getProviderFromSource(req.GetPackageRef(), providerReq, opts.Provider, tok)
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -1235,17 +1244,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		return nil, err
 	}
 
-	// If we've got a package reference, this takes precedence over any provider request we'd compute.
-	packageRef := req.GetPackageRef()
-	if packageRef != "" {
-		var has bool
-		providerReq, has = rm.packageRefMap[packageRef]
-		if !has {
-			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
-		}
-	}
-
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, rawProviderRef, tok)
+	prov, err := rm.getProviderFromSource(req.GetPackageRef(), providerReq, rawProviderRef, tok)
 	if err != nil {
 		return nil, err
 	}
@@ -1369,7 +1368,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := rm.getProviderFromSource(req.GetPackageRef(), providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
