@@ -32,7 +32,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/single_resource")
+		e.ImportDirectory("../integration/single_resource")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "install")
 		e.SetBackend(e.LocalURL())
@@ -72,7 +72,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 		defer e.DeleteIfNotFailed()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/single_resource")
+		e.ImportDirectory("../integration/single_resource")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "install")
 		e.SetBackend(e.LocalURL())
