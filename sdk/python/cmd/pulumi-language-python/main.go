@@ -769,7 +769,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to allocate tmp dir: %w", err)
 	}
-	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
+	port, err := netutil.FindNextAvailablePort(50000 + rand.Intn(1000))
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
@@ -828,7 +828,12 @@ func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	}
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+type programInfo struct {
+	Name string
+	Cwd  string
+}
+
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger, info programInfo) error {
 	// wait for the debugger to be ready
 	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	defer cancel()
@@ -839,7 +844,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cm
 
 	// emit a debug configuration
 	debugConfig, err := structpb.NewStruct(map[string]interface{}{
-		"name":    "Pulumi: Program (Python)",
+		"name":    info.Name,
 		"type":    "python",
 		"request": "attach",
 		"connect": map[string]interface{}{
@@ -847,6 +852,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cm
 			"port": dbg.Port,
 		},
 		"justMyCode": true,
+		"cwd":        info.Cwd,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to serialize debug configuration: %w", err)
@@ -1026,7 +1032,11 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
-				err := startDebugging(ctx, engineClient, cmd, dbg)
+				info := programInfo{
+					Name: fmt.Sprintf("%s (program)", req.Project),
+					Cwd:  req.GetPwd(),
+				}
+				err := startDebugging(ctx, engineClient, cmd, dbg, info)
 				if err != nil {
 					// kill the program if we can't start debugging.
 					logging.Errorf("Unable to start debugging: %v", err)
@@ -1325,12 +1335,31 @@ func (host *pythonLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s", req.Info.ProgramDirectory)
 
+	ctx := server.Context()
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		contract.IgnoreClose(closer)
+	}()
+
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
 	}
 
-	args := []string{req.Info.ProgramDirectory}
+	args := []string{}
+	var dbg *debugger
+	if req.GetAttachDebugger() {
+		args, dbg, err = debugCommand(ctx, opts)
+		if err != nil {
+			return err
+		}
+		defer dbg.Cleanup()
+	}
+
+	args = append(args, req.Info.ProgramDirectory)
 	args = append(args, req.Args...)
 
 	// Default the `virtualenv` option to `venv` if not provided. We don't support running
@@ -1358,7 +1387,31 @@ func (host *pythonLanguageHost) RunPlugin(
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
-	if err = cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			// create a sub-context to cancel the startDebugging operation when the process exits.
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				info := programInfo{
+					Name: req.Prefix,
+					Cwd:  req.Pwd,
+				}
+				err := startDebugging(ctx, engineClient, cmd, dbg, info)
+				if err != nil {
+					// kill the program if we can't start debugging.
+					logging.Errorf("Unable to start debugging: %v", err)
+					contract.IgnoreError(cmd.Process.Kill())
+				}
+			}()
+		}
+		return cmd.Wait()
+	}
+	if err = run(); err != nil {
 		var exiterr *exec.ExitError
 		if errors.As(err, &exiterr) {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
