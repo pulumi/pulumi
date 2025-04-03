@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -1473,16 +1474,20 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	args := []string{runPath}
+	var attachPort int
+	args := []string{}
+	if req.GetAttachDebugger() {
+		attachPort = 50000 + rand.Intn(1000)
+		args = append(args, fmt.Sprintf("--inspect-brk=%d", attachPort))
+		// suppress the console output "Debugger listening on..."
+		args = append(args, "--inspect-publish-uid=http")
+	}
+
+	args = append(args, runPath)
 
 	nodeargs, err := shlex.Split(opts.nodeargs)
 	if err != nil {
 		return err
-	}
-	if req.GetAttachDebugger() {
-		nodeargs = append(nodeargs, "--inspect-brk")
-		// suppress the console output "Debugger listening on..."
-		nodeargs = append(nodeargs, "--inspect-publish-uid=http")
 	}
 	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
 
@@ -1505,9 +1510,11 @@ func (host *nodeLanguageHost) RunPlugin(
 				"name":             req.Prefix,
 				"type":             "node",
 				"request":          "attach",
-				"processId":        cmd.Process.Pid,
+				"port":             attachPort,
 				"continueOnAttach": true,
 				"skipFiles":        []interface{}{"<node_internals>/**"},
+				"cwd":              req.Pwd,
+				"trace":            false, // for troubleshooting purposes
 			})
 			if err != nil {
 				return err
