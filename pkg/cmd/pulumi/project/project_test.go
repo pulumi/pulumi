@@ -21,6 +21,7 @@ import (
 )
 
 func TestGetOrgFromStackName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		stackRef string
@@ -50,6 +51,7 @@ func TestGetOrgFromStackName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := getOrgFromStackName(tt.stackRef)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -57,6 +59,7 @@ func TestGetOrgFromStackName(t *testing.T) {
 }
 
 func TestNewProjectCmd(t *testing.T) {
+	t.Parallel()
 	cmd := NewProjectCmd()
 	assert.Equal(t, "project", cmd.Use)
 	assert.Equal(t, "Manage Pulumi projects", cmd.Short)
