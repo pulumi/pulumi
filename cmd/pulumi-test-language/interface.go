@@ -144,21 +144,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 
 	// Defer to the host to find the provider for the given package descriptor.
-	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Kind:              apitype.ResourcePlugin,
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-		},
-	}
-	if descriptor.Replacement != nil {
-		workspaceDescriptor.Replacement = &workspace.Parameterization{
-			Name:    descriptor.Replacement.Name,
-			Version: descriptor.Replacement.Version,
-			Value:   descriptor.Replacement.Value,
-		}
-	}
+	workspaceDescriptor := descriptor.WorkspaceDescriptor()
 
 	provider, err := l.host.Provider(workspaceDescriptor)
 	if err != nil {
@@ -181,11 +167,30 @@ func (l *providerLoader) LoadPackageReferenceV2(
 			Parameters: parameter,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("parameterize package '%s' failed: %w", descriptor.Name, err)
+			return nil, fmt.Errorf("replacement parameterize package '%s' failed: %w", descriptor.Name, err)
 		}
 
 		getSchemaRequest.SubpackageName = descriptor.Replacement.Name
 		getSchemaRequest.SubpackageVersion = &descriptor.Replacement.Version
+	}
+
+	if descriptor.Extension != nil {
+		parameter := &plugin.ParameterizeValue{
+			Name:    descriptor.Extension.Name,
+			Version: descriptor.Extension.Version,
+			Value:   descriptor.Extension.Value,
+		}
+
+		_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+			Extension:  true,
+			Parameters: parameter,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("extension parameterize package '%s' failed: %w", descriptor.Name, err)
+		}
+
+		getSchemaRequest.SubpackageName = descriptor.Extension.Name
+		getSchemaRequest.SubpackageVersion = &descriptor.Extension.Version
 	}
 
 	jsonSchema, err := provider.GetSchema(context.TODO(), getSchemaRequest)
@@ -1043,10 +1048,13 @@ func (eng *languageTestServer) RunLanguageTest(
 				return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
 			}
 
+			// TODO EXTENSION + GETPACKAGES
+
 			var desc workspace.PackageDescriptor
 			if pkgDef.Parameterization == nil {
 				desc = workspace.PackageDescriptor{
 					PluginSpec: workspace.PluginSpec{
+						Kind:    apitype.ResourcePlugin,
 						Name:    pkgDef.Name,
 						Version: pkgDef.Version,
 					},

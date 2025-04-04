@@ -343,6 +343,7 @@ func (se *stepExecutor) ExecuteRegisterProviderExtension(e RegisterProviderExten
 
 	se.providerExtensionsParameterizeLock.Lock()
 	res, err := prov.Parameterize(se.ctx, plugin.ParameterizeRequest{
+		Extension: true,
 		Parameters: &plugin.ParameterizeValue{
 			Name:    ext.Name,
 			Version: ext.Version,

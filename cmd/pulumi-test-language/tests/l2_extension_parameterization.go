@@ -40,7 +40,7 @@ func init() {
 					d, err := stack.SerializeDeployment(context.TODO(), snap, false /*showSecrets*/)
 					require.NoError(l, err, "failed to serialize deployment")
 
-					jsonBytes, err := json.Marshal(d)
+					jsonBytes, err := json.MarshalIndent(d, "", "  ")
 					require.NoError(l, err, "failed to marshal deployment")
 
 					l.Logf("%s", string(jsonBytes))

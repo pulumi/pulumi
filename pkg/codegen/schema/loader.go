@@ -90,6 +90,37 @@ func (pd *PackageDescriptor) String() string {
 	return s
 }
 
+func (pd *PackageDescriptor) WorkspaceDescriptor() workspace.PackageDescriptor {
+	var replacement *workspace.Parameterization
+	if pd.Replacement != nil {
+		replacement = &workspace.Parameterization{
+			Name:    pd.Replacement.Name,
+			Version: pd.Replacement.Version,
+			Value:   pd.Replacement.Value,
+		}
+	}
+
+	var extension *workspace.Parameterization
+	if pd.Extension != nil {
+		extension = &workspace.Parameterization{
+			Name:    pd.Extension.Name,
+			Version: pd.Extension.Version,
+			Value:   pd.Extension.Value,
+		}
+	}
+
+	return workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind:              apitype.ResourcePlugin,
+			Name:              pd.Name,
+			Version:           pd.Version,
+			PluginDownloadURL: pd.DownloadURL,
+		},
+		Replacement: replacement,
+		Extension:   extension,
+	}
+}
+
 type Loader interface {
 	// deprecated: use LoadPackageV2
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
@@ -261,14 +292,8 @@ func LoadPackageReferenceV2(
 		return nil, err
 	}
 
-	name := descriptor.Name
-	if descriptor.Replacement != nil {
-		name = descriptor.Replacement.Name
-	}
-	version := descriptor.Version
-	if descriptor.Replacement != nil {
-		version = &descriptor.Replacement.Version
-	}
+	name := descriptor.PackageName()
+	version := descriptor.PackageVersion()
 
 	if name != ref.Name() {
 		return ref, &PackageReferenceNameMismatchError{
@@ -465,21 +490,7 @@ func (l *pluginLoader) loadSchemaBytes(
 func (l *pluginLoader) loadPluginSchemaBytes(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) ([]byte, plugin.Provider, error) {
-	wsDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-			Kind:              apitype.ResourcePlugin,
-		},
-	}
-	if descriptor.Replacement != nil {
-		wsDescriptor.Replacement = &workspace.Parameterization{
-			Name:    descriptor.Replacement.Name,
-			Version: descriptor.Replacement.Version,
-			Value:   descriptor.Replacement.Value,
-		}
-	}
+	wsDescriptor := descriptor.WorkspaceDescriptor()
 
 	provider, err := l.host.Provider(wsDescriptor)
 	if err != nil {
@@ -522,9 +533,9 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		extension := plugin.ParameterizeRequest{
 			Extension: true,
 			Parameters: &plugin.ParameterizeValue{
-				Name:    descriptor.Replacement.Name,
-				Version: descriptor.Replacement.Version,
-				Value:   descriptor.Replacement.Value,
+				Name:    descriptor.Extension.Name,
+				Version: descriptor.Extension.Version,
+				Value:   descriptor.Extension.Value,
 			},
 		}
 		resp, err := provider.Parameterize(ctx, extension)

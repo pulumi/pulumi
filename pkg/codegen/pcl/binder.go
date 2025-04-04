@@ -587,6 +587,8 @@ func readParameterizationDescriptor(
 			}
 
 			descriptor.Value = decoded
+		default:
+			return nil, errorf(value.Range(), "unknown attribute %q in parameterization of %q", key, packageName)
 		}
 	}
 
@@ -679,6 +681,9 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 							continue
 						}
 						packageDescriptor.DownloadURL = downloadURLValue
+					default:
+						diagnostics = append(diagnostics,
+							errorf(attribute.Range(), "unknown attribute %q in package %q", attribute.Name, packageName))
 					}
 				}
 				for _, block := range node.Body.Blocks {
@@ -698,6 +703,9 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 						} else {
 							packageDescriptor.Replacement = descriptor
 						}
+					default:
+						diagnostics = append(diagnostics,
+							errorf(block.Range(), "unknown block type %q in package %q", block.Type, packageName))
 					}
 				}
 			}

@@ -46,6 +46,8 @@ func ProviderFactoryFromHost(ctx context.Context, host plugin.Host) ProviderFact
 			return nil, fmt.Errorf("load plugin %v: %w", desc, err)
 		}
 
+		// TODO -- Extensions here?
+
 		if descriptor.Replacement != nil {
 			_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
 				Parameters: &plugin.ParameterizeValue{

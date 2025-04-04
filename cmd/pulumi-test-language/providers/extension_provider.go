@@ -94,15 +94,27 @@ func (p *extensionProvider) Parameterize(
 		existing, exists := p.extensions[param.Name]
 		if exists && !existing.Version.EQ(param.Version) {
 			return plugin.ParameterizeResponse{}, fmt.Errorf(
-				"extension parameterization requested for the same package name at different versions: have %s, want %s",
-				existing.Version, param.Version,
+				"extension parameterization requested for the same package name at different versions: have %s@%s, want %s@%s",
+				existing.Name, param.Name, existing.Version, param.Version,
 			)
 		}
 
 		p.extensions[param.Name] = param
 	} else {
 		if p.replacement != nil {
-			return plugin.ParameterizeResponse{}, errors.New("expected to be replacement parameterized only once")
+			if p.replacement.Name != param.Name {
+				return plugin.ParameterizeResponse{}, fmt.Errorf(
+					"expected to be replacement parameterized only once: have %s@%s, want %s@%s",
+					p.replacement.Name, p.replacement.Version, param.Name, param.Version,
+				)
+			}
+
+			if !p.replacement.Version.EQ(param.Version) {
+				return plugin.ParameterizeResponse{}, fmt.Errorf(
+					"expected to be replacement parameterized only once: have %s@%s, want %s@%s",
+					p.replacement.Name, p.replacement.Version, param.Name, param.Version,
+				)
+			}
 		}
 
 		p.replacement = param
@@ -169,7 +181,8 @@ func (p *extensionProvider) getSchemaPackageSpec(req plugin.GetSchemaRequest) (s
 
 	if req.SubpackageName == "" {
 		pkg := schema.PackageSpec{
-			Name: extensionProviderBaseName,
+			Name:    extensionProviderBaseName,
+			Version: extensionProviderBaseVersion,
 			Provider: customResource(
 				fmt.Sprintf("The `%s` package's provider resource", extensionProviderBaseName),
 				map[string]schema.PropertySpec{
