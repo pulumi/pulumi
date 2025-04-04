@@ -108,7 +108,9 @@ type languageTestServer struct {
 
 	mutexMapLock sync.Mutex
 	sdkLock      map[string]*sync.Mutex
-	artifactMap  map[string]string
+
+	artifactMapLock sync.RWMutex
+	artifactMap     map[string]string
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
@@ -615,11 +617,13 @@ func (eng *languageTestServer) RunLanguageTest(
 			eng.sdkLock[sdkTempDir].Lock()
 			defer eng.sdkLock[sdkTempDir].Unlock()
 
-			_, err = os.Stat(sdkTempDir)
-			if err == nil {
+			eng.artifactMapLock.RLock()
+			sdkArtifact, ok := eng.artifactMap[sdkTempDir]
+			eng.artifactMapLock.RUnlock()
+			if ok {
 				// If the directory already exists then we know we already created the artifact.
 				// Just use it
-				localDependencies[pkg.Name] = eng.artifactMap[sdkTempDir]
+				localDependencies[pkg.Name] = sdkArtifact
 				return nil, nil
 			}
 
@@ -667,12 +671,14 @@ func (eng *languageTestServer) RunLanguageTest(
 
 			// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 			// any intermediate build files don't end up getting captured in the snapshot folder.
-			sdkArtifact, err := languageClient.Pack(sdkTempDir, artifactsDir)
+			sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
 			if err != nil {
 				return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 			}
 			localDependencies[pkg.Name] = sdkArtifact
+			eng.artifactMapLock.Lock()
 			eng.artifactMap[sdkTempDir] = sdkArtifact
+			eng.artifactMapLock.Unlock()
 
 			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
 			// Again we need to make a snapshot edit for this.
