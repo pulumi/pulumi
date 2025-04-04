@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi/tests/construct_nested_component
 
-go 1.23
+go 1.23.0
+
+toolchain go1.24.1
 
 require github.com/pulumi/pulumi/sdk/v3 v3.156.0
 
