@@ -103,7 +103,7 @@ if not dryrun:
         sp.check_call(args, shell=False)
         print("Completed: " + ' '.join(args))
     except sp.CalledProcessError as e:
-        print("Failed: " + ' '.join(args))
+        print("Failed: " + ' '.join(args) + '\nstdout: ', + e.stdout.decode() + '\nstderr: ' + e.stderr.decode())
         raise e
 else:
     print("Would have run: " + ' '.join(args))
