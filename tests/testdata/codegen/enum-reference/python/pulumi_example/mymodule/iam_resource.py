@@ -21,7 +21,7 @@ __all__ = ['IamResourceArgs', 'IamResource']
 @pulumi.input_type
 class IamResourceArgs:
     def __init__(__self__, *,
-                 config: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']] = None):
+                 config: Optional[pulumi.Input[Optional['pulumi_google_native.iam.v1.AuditConfigArgs']]] = None):
         """
         The set of arguments for constructing a IamResource resource.
         """
@@ -30,11 +30,11 @@ class IamResourceArgs:
 
     @property
     @pulumi.getter
-    def config(self) -> Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']]:
+    def config(self) -> Optional[pulumi.Input[Optional['pulumi_google_native.iam.v1.AuditConfigArgs']]]:
         return pulumi.get(self, "config")
 
     @config.setter
-    def config(self, value: Optional[pulumi.Input['pulumi_google_native.iam.v1.AuditConfigArgs']]):
+    def config(self, value: Optional[pulumi.Input[Optional['pulumi_google_native.iam.v1.AuditConfigArgs']]]):
         pulumi.set(self, "config", value)
 
 
@@ -43,7 +43,7 @@ class IamResource(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 config: Optional[pulumi.Input[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArgs']]] = None,
+                 config: Optional[pulumi.Input[Optional[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArgs']]]] = None,
                  __props__=None):
         """
         Create a IamResource resource with the given unique name, props, and options.
@@ -73,7 +73,7 @@ class IamResource(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 config: Optional[pulumi.Input[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArgs']]] = None,
+                 config: Optional[pulumi.Input[Optional[pulumi.InputType['pulumi_google_native.iam.v1.AuditConfigArgs']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -8,16 +8,16 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := storage.NewStorageAccount(ctx, "storageAccounts", &storage.StorageAccountArgs{
-			AccountName:       pulumi.String("sto4445"),
+			AccountName:       "sto4445",
 			Kind:              pulumi.String(storage.KindBlockBlobStorage),
-			Location:          pulumi.String("eastus"),
+			Location:          "eastus",
 			ResourceGroupName: pulumi.String("res9101"),
 			Sku: &storage.SkuArgs{
 				Name: pulumi.String(storage.SkuName_Premium_LRS),
 			},
-			NetworkRuleSet: &storage.NetworkRuleSetArgs{
+			NetworkRuleSet: &*storage.NetworkRuleSetArgs{
 				DefaultAction: storage.DefaultActionAllow,
-				IpRules:       storage.IPRuleArray{},
+				IpRules:       []storage.IPRuleArgs{},
 			},
 		})
 		if err != nil {

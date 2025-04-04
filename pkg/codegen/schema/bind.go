@@ -1151,7 +1151,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		p := &Property{
 			Name:                 name,
 			Comment:              spec.Description,
-			Type:                 t.newOptionalType(typ),
+			Type:                 typ,
 			ConstValue:           cv,
 			DefaultValue:         dv,
 			DeprecationMessage:   spec.DeprecationMessage,
@@ -1167,13 +1167,21 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	// Compute required properties.
 	for i, name := range required {
-		p, ok := propertyMap[name]
+		_, ok := propertyMap[name]
 		if !ok {
 			diags = diags.Append(errorf(fmt.Sprintf("%s/%v", requiredPath, i), "unknown required property %q", name))
 			continue
 		}
-		if typ, ok := p.Type.(*OptionalType); ok {
-			p.Type = typ.ElementType
+	}
+	for k, prop := range propertyMap {
+		required := slices.Contains(required, k)
+		if !required {
+			// Make the property optional if it is not required. If it's an input type push the optionality down into the input as well.
+			typ := prop.Type
+			if in, ok := typ.(*InputType); ok {
+				typ = t.newInputType(t.newOptionalType(in.ElementType))
+			}
+			prop.Type = t.newOptionalType(typ)
 		}
 	}
 

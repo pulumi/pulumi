@@ -26,7 +26,7 @@ if not MYPY:
     class TypeWithAssetsArgsDict(TypedDict):
         asset: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]
         plain_archive: pulumi.Archive
-        archive: NotRequired[pulumi.Input[pulumi.Archive]]
+        archive: NotRequired[pulumi.Input[NotRequired[pulumi.Archive]]]
         plain_asset: NotRequired[Union[pulumi.Asset, pulumi.Archive]]
 elif False:
     TypeWithAssetsArgsDict: TypeAlias = Mapping[str, Any]
@@ -36,7 +36,7 @@ class TypeWithAssetsArgs:
     def __init__(__self__, *,
                  asset: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]],
                  plain_archive: pulumi.Archive,
-                 archive: Optional[pulumi.Input[pulumi.Archive]] = None,
+                 archive: Optional[pulumi.Input[Optional[pulumi.Archive]]] = None,
                  plain_asset: Optional[Union[pulumi.Asset, pulumi.Archive]] = None):
         pulumi.set(__self__, "asset", asset)
         pulumi.set(__self__, "plain_archive", plain_archive)
@@ -65,11 +65,11 @@ class TypeWithAssetsArgs:
 
     @property
     @pulumi.getter
-    def archive(self) -> Optional[pulumi.Input[pulumi.Archive]]:
+    def archive(self) -> Optional[pulumi.Input[Optional[pulumi.Archive]]]:
         return pulumi.get(self, "archive")
 
     @archive.setter
-    def archive(self, value: Optional[pulumi.Input[pulumi.Archive]]):
+    def archive(self, value: Optional[pulumi.Input[Optional[pulumi.Archive]]]):
         pulumi.set(self, "archive", value)
 
     @property

@@ -29,7 +29,7 @@ type MyObjInput interface {
 }
 
 type MyObjArgs struct {
-	A pulumi.StringPtrInput `pulumi:"a"`
+	A *string `pulumi:"a"`
 }
 
 func (MyObjArgs) ElementType() reflect.Type {

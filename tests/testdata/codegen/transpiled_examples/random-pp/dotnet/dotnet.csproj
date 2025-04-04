@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.76.1" />
+    <PackageReference Include="Pulumi" Version="3.77.0" />
     <PackageReference Include="Pulumi.Random" Version="4.11.2" />
   </ItemGroup>
 

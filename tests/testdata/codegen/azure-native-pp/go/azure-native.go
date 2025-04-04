@@ -10,11 +10,11 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := network.NewFrontDoor(ctx, "frontDoor", &network.FrontDoorArgs{
 			ResourceGroupName: pulumi.String("someGroupName"),
-			RoutingRules: network.RoutingRuleArray{
-				&network.RoutingRuleArgs{
-					RouteConfiguration: network.ForwardingConfiguration{
+			RoutingRules: []network.RoutingRuleArgs{
+				{
+					RouteConfiguration: {
 						OdataType: "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
-						BackendPool: network.SubResource{
+						BackendPool: {
 							Id: "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
 						},
 					},
@@ -26,7 +26,7 @@ func main() {
 		}
 		_, err = cdn.NewEndpoint(ctx, "endpoint", &cdn.EndpointArgs{
 			Origins: cdn.DeepCreatedOriginArray{},
-			DeliveryPolicy: &cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs{
+			DeliveryPolicy: &*cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs{
 				Rules: cdn.DeliveryRuleArray{
 					&cdn.DeliveryRuleArgs{
 						Actions: pulumi.Array{
@@ -58,10 +58,10 @@ func main() {
 								},
 							},
 						},
-						Conditions: pulumi.Array{
-							cdn.DeliveryRuleRemoteAddressCondition{
+						Conditions: []pulumi.Any{
+							{
 								Name: "RemoteAddress",
-								Parameters: cdn.RemoteAddressMatchConditionParameters{
+								Parameters: {
 									MatchValues: []string{
 										"192.168.1.0/24",
 										"10.0.0.0/24",
@@ -72,16 +72,16 @@ func main() {
 								},
 							},
 						},
-						Name:  pulumi.String("rule1"),
+						Name:  "rule1",
 						Order: pulumi.Int(1),
 					},
 				},
 			},
-			EndpointName:         pulumi.String("endpoint1"),
-			IsCompressionEnabled: pulumi.Bool(true),
-			IsHttpAllowed:        pulumi.Bool(true),
-			IsHttpsAllowed:       pulumi.Bool(true),
-			Location:             pulumi.String("WestUs"),
+			EndpointName:         "endpoint1",
+			IsCompressionEnabled: true,
+			IsHttpAllowed:        true,
+			IsHttpsAllowed:       true,
+			Location:             "WestUs",
 			ProfileName:          pulumi.String("profileName"),
 			ResourceGroupName:    pulumi.String("resourceGroupName"),
 		})
