@@ -1,4 +1,4 @@
 changes:
-- type: chore
+- type: feat
   scope: sdk/go
-  description: Update to go 1.23
+  description: Update to Go 1.23
