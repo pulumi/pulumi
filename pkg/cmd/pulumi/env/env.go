@@ -21,15 +21,16 @@ import (
 	escWorkspace "github.com/pulumi/esc/cmd/esc/cli/workspace"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func NewEnvCmd() *cobra.Command {
+func NewEnvCmd(ws pkgWorkspace.Context) *cobra.Command {
 	escCLI := cli.New(&cli.Options{
 		ParentPath:      "pulumi",
 		Colors:          cmdutil.GetGlobalColorization(),
 		Login:           httpstate.NewLoginManager(),
-		PulumiWorkspace: escWorkspace.DefaultPulumiWorkspace(),
+		PulumiWorkspace: escWorkspace.DefaultPulumiWorkspace( /*ws*/ ),
 		UserAgent:       client.UserAgent(),
 	})
 

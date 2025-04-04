@@ -64,11 +64,11 @@ func (f *lm) Current(
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
-	_, err := lm.Current(ctx, url, insecure, setCurrent)
+	_, err := lm.CurrentWithWs(ctx, ws, url, insecure, setCurrent)
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, ws, sink, url, project, insecure)
 }
 
 func (f *lm) Login(
@@ -77,7 +77,7 @@ func (f *lm) Login(
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
-			return diy.Login(ctx, sink, url, project)
+			return diy.Login(ctx, ws, sink, url, project)
 		}
 		return diy.New(ctx, sink, url, project)
 	}
@@ -89,11 +89,11 @@ func (f *lm) Login(
 	opts := display.Options{
 		Color: color,
 	}
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
+	_, err := lm.LoginWithWs(ctx, ws, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, ws, sink, url, project, insecure)
 }
 
 type MockLoginManager struct {

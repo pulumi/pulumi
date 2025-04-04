@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"net/http"
 	"net/url"
 	"sync"
@@ -74,7 +75,8 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
 	templatePulumiCloudHost := "https://" + u.Host
 
-	account, err := workspace.GetAccount(templatePulumiCloudHost)
+	// TODO: Pass Keystore or Workspace. Do not use the Singleton.
+	account, err := workspace.GetAccountWithKeyStore(pkgWorkspace.Instance.GetKeyStore(), templatePulumiCloudHost)
 	if err != nil {
 		return workspace.TemplateRepository{}, fmt.Errorf(
 			"looking up pulumi cloud backend %s: %w",

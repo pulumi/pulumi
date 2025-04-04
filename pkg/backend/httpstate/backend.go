@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/keystore"
 	"io"
 	"net"
 	"net/http"
@@ -196,17 +197,19 @@ type cloudBackend struct {
 
 	// The current project, if any.
 	currentProject *workspace.Project
+
+	ks keystore.KeyStore
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(ctx context.Context, d diag.Sink,
+func New(ctx context.Context, ws pkgWorkspace.Context, d diag.Sink,
 	cloudURL string, project *workspace.Project, insecure bool,
 ) (Backend, error) {
-	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := workspace.GetAccount(cloudURL)
+	cloudURL = ValueOrDefaultURL(ws, cloudURL)
+	account, err := workspace.GetAccountWithKeyStore(ws.GetKeyStore(), cloudURL)
 	if err != nil {
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
@@ -222,12 +225,14 @@ func New(ctx context.Context, d diag.Sink,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(d, apiClient),
 		currentProject: project,
+		ks:             ws.GetKeyStore(),
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
 func loginWithBrowser(
 	ctx context.Context,
+	ws pkgWorkspace.Context,
 	cloudURL string,
 	insecure bool,
 	command string,
@@ -319,7 +324,7 @@ func loginWithBrowser(
 		Insecure:         insecure,
 		TokenInformation: tokenInfo,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
+	if err = workspace.StoreAccountWithKeyStore(ws.GetKeyStore(), cloudURL, account, current); err != nil {
 		return nil, err
 	}
 
@@ -334,9 +339,25 @@ func loginWithBrowser(
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// Current returns the current cloud backend if one is already logged in.
+	CurrentWithWs(ctx context.Context, ws pkgWorkspace.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
+
+	// Hack for ESC CLI dependency
 	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
 
 	// Login logs into the target cloud URL and returns the cloud backend for it.
+	LoginWithWs(
+		ctx context.Context,
+		ws pkgWorkspace.Context,
+		cloudURL string,
+		insecure bool,
+		command string,
+		message string,
+		welcome func(display.Options),
+		current bool,
+		opts display.Options,
+	) (*workspace.Account, error)
+
+	// Hack for ESC CLI dependency
 	Login(
 		ctx context.Context,
 		cloudURL string,
@@ -362,14 +383,25 @@ var newLoginManager = func() LoginManager {
 
 type defaultLoginManager struct{}
 
+func (m defaultLoginManager) Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error) {
+	// Hack for ESC CLI dependency
+	return nil, nil
+}
+
+func (m defaultLoginManager) Login(ctx context.Context, cloudURL string, insecure bool, command string, message string, welcome func(display.Options), current bool, opts display.Options) (*workspace.Account, error) {
+	// Hack for ESC CLI dependency
+	return nil, nil
+}
+
 // Current returns the current cloud backend if one is already logged in.
-func (m defaultLoginManager) Current(
+func (m defaultLoginManager) CurrentWithWs(
 	ctx context.Context,
+	ws pkgWorkspace.Context,
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
 ) (*workspace.Account, error) {
-	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
+	cloudURL = ValueOrDefaultURL(ws, cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
@@ -379,7 +411,7 @@ func (m defaultLoginManager) Current(
 	// either matches PULUMI_ACCESS_TOKEN or PULUMI_ACCESS_TOKEN
 	// is not set use it.  If PULUMI_ACCESS_TOKEN does not match,
 	// we prefer that.
-	existingAccount, err := workspace.GetAccount(cloudURL)
+	existingAccount, err := workspace.GetAccountWithKeyStore(ws.GetKeyStore(), cloudURL)
 	if err == nil && existingAccount.AccessToken != "" &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
 		// If the account was last verified less than an hour ago, assume the token is valid.
@@ -402,7 +434,7 @@ func (m defaultLoginManager) Current(
 			existingAccount.Organizations = organizations
 			existingAccount.TokenInformation = tokenInfo
 			existingAccount.Insecure = insecure
-			if err = workspace.StoreAccount(cloudURL, existingAccount, setCurrent); err != nil {
+			if err = workspace.StoreAccountWithKeyStore(ws.GetKeyStore(), cloudURL, existingAccount, setCurrent); err != nil {
 				return nil, err
 			}
 
@@ -439,7 +471,7 @@ func (m defaultLoginManager) Current(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
+	if err = workspace.StoreAccountWithKeyStore(ws.GetKeyStore(), cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 
@@ -447,8 +479,9 @@ func (m defaultLoginManager) Current(
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func (m defaultLoginManager) Login(
+func (m defaultLoginManager) LoginWithWs(
 	ctx context.Context,
+	ws pkgWorkspace.Context,
 	cloudURL string,
 	insecure bool,
 	command string,
@@ -457,7 +490,7 @@ func (m defaultLoginManager) Login(
 	setCurrent bool,
 	opts display.Options,
 ) (*workspace.Account, error) {
-	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
+	current, err := m.CurrentWithWs(ctx, ws, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +498,7 @@ func (m defaultLoginManager) Login(
 		return current, nil
 	}
 
-	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
+	cloudURL = ValueOrDefaultURL(ws, cloudURL)
 	var accessToken string
 	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
 
@@ -523,7 +556,7 @@ func (m defaultLoginManager) Login(
 		}
 
 		if accessToken == "" {
-			return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
+			return loginWithBrowser(ctx, ws, cloudURL, insecure, command, welcome, setCurrent, opts)
 		}
 
 		// Welcome the user since this was an interactive login.
@@ -549,7 +582,7 @@ func (m defaultLoginManager) Login(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
+	if err = workspace.StoreAccountWithKeyStore(ws.GetKeyStore(), cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 
@@ -617,7 +650,7 @@ func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformat
 }
 
 func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
-	account, err := workspace.GetAccount(b.CloudURL())
+	account, err := workspace.GetAccountWithKeyStore(b.ks, b.CloudURL())
 	if err != nil {
 		return "", nil, nil, err
 	}

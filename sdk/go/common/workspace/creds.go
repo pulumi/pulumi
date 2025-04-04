@@ -16,13 +16,17 @@ package workspace
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	cryptorand "crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/keystore"
+	"github.com/rogpeppe/go-internal/lockedfile"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
-
-	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -40,8 +44,8 @@ const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 //
 // Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
 // the caller to fill in the username and last validation time.
-func GetAccount(key string) (Account, error) {
-	creds, err := GetStoredCredentials()
+func GetAccountWithKeyStore(ks keystore.KeyStore, key string) (Account, error) {
+	creds, err := GetStoredCredentialsWithKeyStore(ks)
 	if err != nil && !os.IsNotExist(err) {
 		return Account{}, err
 	}
@@ -57,9 +61,14 @@ func GetAccount(key string) (Account, error) {
 	return Account{AccessToken: token}, nil
 }
 
-// DeleteAccount deletes an account underneath the given key.
-func DeleteAccount(key string) error {
-	creds, err := GetStoredCredentials()
+func GetAccount(key string) (Account, error) {
+	// Hack for ESC CLI dependency
+	return Account{}, nil
+}
+
+// DeleteAccountWithKeyStore deletes an account underneath the given key.
+func DeleteAccountWithKeyStore(ks keystore.KeyStore, key string) error {
+	creds, err := GetStoredCredentialsWithKeyStore(ks)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -72,11 +81,16 @@ func DeleteAccount(key string) error {
 	if creds.Current == key {
 		creds.Current = ""
 	}
-	return StoreCredentials(creds)
+	return storeCredentials(ks, creds)
 }
 
-func DeleteAllAccounts() error {
-	credsFile, err := getCredsFilePath()
+func DeleteAccount(key string) error {
+	// Hack for ESC CLI dependency
+	return nil
+}
+
+func DeleteAllAccountsWithKeyStore(ks keystore.KeyStore) error {
+	credsFile, err := getCredsFilePath(ks)
 	if err != nil {
 		return err
 	}
@@ -87,9 +101,14 @@ func DeleteAllAccounts() error {
 	return nil
 }
 
-// StoreAccount saves the given account underneath the given key.
-func StoreAccount(key string, account Account, current bool) error {
-	creds, err := GetStoredCredentials()
+func DeleteAllAccounts() error {
+	// Hack for ESC CLI dependency
+	return nil
+}
+
+// StoreAccountWithKeyStore saves the given account underneath the given key.
+func StoreAccountWithKeyStore(ks keystore.KeyStore, key string, account Account, current bool) error {
+	creds, err := GetStoredCredentialsWithKeyStore(ks)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -103,7 +122,12 @@ func StoreAccount(key string, account Account, current bool) error {
 	if current {
 		creds.Current = key
 	}
-	return StoreCredentials(creds)
+	return storeCredentials(ks, creds)
+}
+
+func StoreAccount(key string, account Account, current bool) error {
+	// Hack for ESC CLI dependency
+	return nil
 }
 
 // Account holds the information associated with a Pulumi account.
@@ -138,9 +162,7 @@ type Credentials struct {
 	Accounts     map[string]Account `json:"accounts,omitempty"`     // a map of arbitrary keys to account info.
 }
 
-// getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
-// whether it exists or not.
-func getCredsFilePath() (string, error) {
+func getCredsFolderPath() (string, error) {
 	// Allow the folder we use to store credentials to be overridden by tests
 	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
 	if pulumiFolder == "" {
@@ -156,12 +178,28 @@ func getCredsFilePath() (string, error) {
 		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}
 
-	return filepath.Join(pulumiFolder, "credentials.json"), nil
+	return pulumiFolder, nil
 }
 
-// GetStoredCredentials returns any credentials stored on the local machine.
-func GetStoredCredentials() (Credentials, error) {
-	credsFile, err := getCredsFilePath()
+// getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
+// whether it exists or not.
+func getCredsFilePath(ks keystore.KeyStore) (string, error) {
+	pulumiFolder, err := getCredsFolderPath()
+	if err != nil {
+		return "", err
+	}
+	fileName := fmt.Sprintf("credentials.%s.json", ks.Name)
+	return filepath.Join(pulumiFolder, fileName), nil
+}
+
+// GetStoredCredentialsWithKeyStore returns any credentials stored on the local machine.
+func GetStoredCredentialsWithKeyStore(ks keystore.KeyStore) (Credentials, error) {
+	err := migrateCredentials(ks)
+	if err != nil {
+		return Credentials{}, fmt.Errorf("migrating credentials: %w", err)
+	}
+
+	credsFile, err := getCredsFilePath(ks)
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -182,10 +220,13 @@ func GetStoredCredentials() (Credentials, error) {
 		return Credentials{}, nil
 	}
 
-	var creds Credentials
-	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please fix "+
-			"or delete invalid credentials file: '%s': %w", credsFile, err)
+	key, err := ks.GetOrCreateKey()
+	if err != nil {
+		return Credentials{}, fmt.Errorf("getting key: %w", err)
+	}
+	creds, err := decryptCredentials(key, c)
+	if err != nil {
+		return Credentials{}, fmt.Errorf("decrypting credentials: %w", err)
 	}
 
 	secrets := slice.Prealloc[string](len(creds.AccessTokens))
@@ -198,28 +239,102 @@ func GetStoredCredentials() (Credentials, error) {
 	return creds, nil
 }
 
-// StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
-// are empty, the auth file will be deleted rather than just serializing an empty map.
-func StoreCredentials(creds Credentials) error {
-	credsFile, err := getCredsFilePath()
+// TODO: If pulumi CLI migrates credentials it deletes for example ESC CLI credentials. How to handle this?
+//  1. Use the static key keystore if a legacy file exists?
+//  2. Don't care and let user login again
+func migrateCredentials(ks keystore.KeyStore) error {
+	credsFolder, err := getCredsFolderPath()
 	if err != nil {
 		return err
 	}
+	credsFile := filepath.Join(credsFolder, "credentials.json")
 
-	if len(creds.AccessTokens) == 0 {
-		err = os.Remove(credsFile)
-		if err != nil && !os.IsNotExist(err) {
+	c, err := os.ReadFile(credsFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading '%s': %w", credsFile, err)
+	}
+
+	var legacyCreds Credentials
+	if err = json.Unmarshal(c, &legacyCreds); err == nil {
+		err = storeCredentials(ks, legacyCreds)
+		if err != nil {
 			return err
 		}
-		return nil
+		if err = os.Remove(credsFile); err != nil {
+			return err
+		}
 	}
 
-	raw, err := json.MarshalIndent(creds, "", "    ")
+	return nil
+}
+
+func GetStoredCredentials() (Credentials, error) {
+	// Hack for ESC CLI dependency
+	return Credentials{}, nil
+}
+
+// storeCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
+// are empty, the auth file will be deleted rather than just serializing an empty map.
+func storeCredentials(ks keystore.KeyStore, creds Credentials) error {
+	key, err := ks.GetOrCreateKey()
 	if err != nil {
-		return fmt.Errorf("marshalling credentials object: %w", err)
+		return fmt.Errorf("getting key: %w", err)
+	}
+	raw, err := encryptCredentials(key, creds)
+	if err != nil {
+		return fmt.Errorf("encrypting credentials: %w", err)
+	}
+	credsFile, err := getCredsFilePath(ks)
+	return lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600)
+}
+
+func encryptCredentials(key []byte, creds Credentials) ([]byte, error) {
+	plaintext, err := json.Marshal(creds)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling credentials: %w", err)
 	}
 
-	return lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600)
+	nonce := make([]byte, 12)
+	_, err = cryptorand.Read(nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
+
+	return slices.Concat(nonce, ciphertext), nil
+}
+
+func decryptCredentials(key []byte, nonceCiphertext []byte) (Credentials, error) {
+	nonce := nonceCiphertext[:12]
+	ciphertext := nonceCiphertext[12:]
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return Credentials{}, err
+	}
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return Credentials{}, err
+	}
+	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+
+	var creds Credentials
+	if err = json.Unmarshal(plaintext, &creds); err != nil {
+		return Credentials{}, err
+	}
+	return creds, nil
 }
 
 type BackendConfig struct {

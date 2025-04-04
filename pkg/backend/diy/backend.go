@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"net/url"
 	"os"
 	"os/user"
@@ -587,12 +588,12 @@ func massageBlobPath(path string) (string, error) {
 	return FilePathPrefix + path + queryString, nil
 }
 
-func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
+func Login(ctx context.Context, ws pkgWorkspace.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
 	be, err := New(ctx, d, url, project)
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccount(be.URL(), workspace.Account{}, true)
+	return be, workspace.StoreAccountWithKeyStore(ws.GetKeyStore(), be.URL(), workspace.Account{}, true)
 }
 
 func (b *diyBackend) getReference(ref backend.StackReference) (*diyBackendReference, error) {
