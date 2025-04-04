@@ -917,12 +917,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterized() {
 			fmt.Fprintf(w, ", false /*dependency*/")
 		}
 	}
 
-	if pkg.Parameterization != nil {
+	if pkg.Parameterized() {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
 
@@ -1043,7 +1043,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterized() {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -1302,7 +1302,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	if err != nil {
 		return info, err
 	}
-	if pkg.Parameterization != nil {
+	if pkg.Parameterized() {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
 
@@ -2423,17 +2423,41 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	}
 
 	var pulumiPlugin plugin.PulumiPluginJSON
-	if pkg.Parameterization != nil {
-		pulumiPlugin = plugin.PulumiPluginJSON{
-			Resource: true,
-			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Parameterization.BaseProvider.Name,
-			Version:  pkg.Parameterization.BaseProvider.Version.String(),
-			Parameterization: &plugin.PulumiParameterizationJSON{
-				Name:    pkg.Name,
-				Version: pkg.Version.String(),
+	if pkg.Parameterized() {
+		packageName := pkg.Name
+		packageVersion := pkg.Version
+
+		var extension *plugin.PulumiParameterizationJSON
+		if pkg.Extension != nil {
+			extension = &plugin.PulumiParameterizationJSON{
+				Name:    packageName,
+				Version: packageVersion.String(),
+				Value:   pkg.Extension.Parameter,
+			}
+
+			packageName = pkg.Extension.BaseProvider.Name
+			packageVersion = &pkg.Extension.BaseProvider.Version
+		}
+
+		var replacement *plugin.PulumiParameterizationJSON
+		if pkg.Parameterization != nil {
+			replacement = &plugin.PulumiParameterizationJSON{
+				Name:    packageName,
+				Version: packageVersion.String(),
 				Value:   pkg.Parameterization.Parameter,
-			},
+			}
+
+			packageName = pkg.Parameterization.BaseProvider.Name
+			packageVersion = &pkg.Parameterization.BaseProvider.Version
+		}
+
+		pulumiPlugin = plugin.PulumiPluginJSON{
+			Resource:         true,
+			Server:           pkg.PluginDownloadURL,
+			Name:             packageName,
+			Version:          packageVersion.String(),
+			Parameterization: replacement,
+			Extension:        extension,
 		}
 	} else {
 		pulumiPlugin = plugin.PulumiPluginJSON{
@@ -2445,7 +2469,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo, localDepen
 	}
 
 	dependencies := map[string]string{}
-	if pkg.Parameterization != nil {
+	if pkg.Parameterized() {
 		dependencies["async-mutex"] = "^0.5.0"
 	}
 
@@ -2841,7 +2865,7 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		return err
 	}
 
-	if def.Parameterization != nil {
+	if def.Parameterized() {
 		fmt.Fprintf(w, `import * as resproto from "@pulumi/pulumi/proto/resource_pb";
 import * as mutex from "async-mutex";
 `)
@@ -2861,8 +2885,53 @@ import * as mutex from "async-mutex";
 		return err
 	}
 
-	if def.Parameterization != nil {
-		parameterValue := fmt.Sprintf("Uint8Array.from(atob(%q), c => c.charCodeAt(0))", base64.StdEncoding.EncodeToString(def.Parameterization.Parameter))
+	if def.Parameterized() {
+		packageName := def.Name
+		packageVersion := def.Version
+
+		var extension string
+		if def.Extension != nil {
+			parameterValue := fmt.Sprintf(
+				"Uint8Array.from(atob(%q), c => c.charCodeAt(0))",
+				base64.StdEncoding.EncodeToString(def.Extension.Parameter),
+			)
+
+			extension = fmt.Sprintf(`
+			const extension = new resproto.Parameterization();
+			extension.setName("%s");
+			extension.setVersion("%s");
+			extension.setValue(%s);
+
+			req.setExtension$(extension);
+`,
+				packageName, packageVersion, parameterValue,
+			)
+
+			packageName = def.Extension.BaseProvider.Name
+			packageVersion = &def.Extension.BaseProvider.Version
+		}
+
+		var replacement string
+		if def.Parameterization != nil {
+			parameterValue := fmt.Sprintf(
+				"Uint8Array.from(atob(%q), c => c.charCodeAt(0))",
+				base64.StdEncoding.EncodeToString(def.Parameterization.Parameter),
+			)
+
+			replacement = fmt.Sprintf(`
+			const replacement = new resproto.Parameterization();
+			replacement.setName("%s");
+			replacement.setVersion("%s");
+			replacement.setValue(%s);
+
+			req.setParameterization(replacement);
+`,
+				packageName, packageVersion, parameterValue,
+			)
+
+			packageName = def.Parameterization.BaseProvider.Name
+			packageVersion = &def.Parameterization.BaseProvider.Version
+		}
 
 		_, err = fmt.Fprintf(w, `
 const _packageLock = new mutex.Mutex();
@@ -2876,16 +2945,12 @@ export async function getPackage() : Promise<string | undefined> {
 		await _packageLock.acquire();
 		if (_packageRef === undefined) {
 			const monitor = runtime.getMonitor();
-			const params = new resproto.Parameterization();
-			params.setName("%s");
-			params.setVersion("%s");
-			params.setValue(%s);
 
 			const req = new resproto.RegisterPackageRequest();
 			req.setName("%s");
 			req.setVersion("%s");
 			req.setDownloadUrl("%s");
-			req.setParameterization(params);
+%s%s
 			const resp : any = await new Promise((resolve, reject) => {
 				monitor!.registerPackage(req, (err: any, resp: any) => {
 					if (err) {
@@ -2902,8 +2967,8 @@ export async function getPackage() : Promise<string | undefined> {
 	return _packageRef as string;
 }
 `,
-			def.Name, def.Version, parameterValue,
-			def.Parameterization.BaseProvider.Name, def.Parameterization.BaseProvider.Version.String(), def.PluginDownloadURL)
+			packageName, packageVersion, def.PluginDownloadURL, extension, replacement,
+		)
 	}
 
 	return err

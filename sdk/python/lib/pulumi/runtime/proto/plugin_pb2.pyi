@@ -175,6 +175,7 @@ class PackageDependency(google.protobuf.message.Message):
     SERVER_FIELD_NUMBER: builtins.int
     CHECKSUMS_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
     name: builtins.str
     """the name of the plugin."""
     kind: builtins.str
@@ -190,7 +191,10 @@ class PackageDependency(google.protobuf.message.Message):
         """
     @property
     def parameterization(self) -> global___PackageParameterization:
-        """The optional parameterization for this package."""
+        """The optional replacement parameterization for this package."""
+    @property
+    def extension(self) -> global___PackageParameterization:
+        """The optional extension parameterization for this package."""
     def __init__(
         self,
         *,
@@ -200,8 +204,9 @@ class PackageDependency(google.protobuf.message.Message):
         server: builtins.str = ...,
         checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         parameterization: global___PackageParameterization | None = ...,
+        extension: global___PackageParameterization | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "parameterization", b"parameterization", "server", b"server", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "extension", b"extension", "kind", b"kind", "name", b"name", "parameterization", b"parameterization", "server", b"server", "version", b"version"]) -> None: ...
 
 global___PackageDependency = PackageDependency

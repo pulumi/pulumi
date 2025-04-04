@@ -587,6 +587,8 @@ func readParameterizationDescriptor(
 			}
 
 			descriptor.Value = decoded
+		default:
+			return nil, errorf(value.Range(), "unknown attribute %q in parameterization of %q", key, packageName)
 		}
 	}
 
@@ -679,11 +681,14 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 							continue
 						}
 						packageDescriptor.DownloadURL = downloadURLValue
+					default:
+						diagnostics = append(diagnostics,
+							errorf(attribute.Range(), "unknown attribute %q in package %q", attribute.Name, packageName))
 					}
 				}
 				for _, block := range node.Body.Blocks {
 					switch block.Type {
-					case "parameterization":
+					case "extension", "parameterization", "replacement":
 						attributes := map[string]hclsyntax.Expression{}
 						for _, item := range block.Body.Attributes {
 							attributes[item.Name] = item.Expr
@@ -693,7 +698,14 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 							diagnostics = append(diagnostics, diag)
 							continue
 						}
-						packageDescriptor.Parameterization = descriptor
+						if block.Type == "extension" {
+							packageDescriptor.Extension = descriptor
+						} else {
+							packageDescriptor.Replacement = descriptor
+						}
+					default:
+						diagnostics = append(diagnostics,
+							errorf(block.Range(), "unknown block type %q in package %q", block.Type, packageName))
 					}
 				}
 			}

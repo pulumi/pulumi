@@ -495,9 +495,9 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
 		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
 
-		assert.Equal(t, descriptor.Parameterization.Name, "gcp")
-		assert.Equal(t, descriptor.Parameterization.Version, semver.MustParse("2.0.0"))
-		assert.Equal(t, descriptor.Parameterization.Value, []byte("value"))
+		assert.Equal(t, descriptor.Replacement.Name, "gcp")
+		assert.Equal(t, descriptor.Replacement.Version, semver.MustParse("2.0.0"))
+		assert.Equal(t, descriptor.Replacement.Value, []byte("value"))
 
 		return testProvider, nil
 	}
@@ -561,7 +561,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
 		assert.Equal(t, descriptor.Name, testProvider.pkg, "unexpected package")
 		assert.Equal(t, descriptor.Kind, apitype.ResourcePlugin, "unexpected kind")
-		assert.Nil(t, descriptor.Parameterization)
+		assert.Nil(t, descriptor.Replacement)
 
 		return testProvider, nil
 	}

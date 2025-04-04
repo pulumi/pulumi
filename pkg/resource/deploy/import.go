@@ -260,13 +260,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		pkg, version, replacement, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
 		if err != nil {
 			return nil, false, err
 		}
 		req := providers.NewProviderRequest(
-			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, replacement, nil)
+		typ, name := providers.MakeProviderType(req.PackageName()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
@@ -291,15 +291,15 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		return defaultProviderRequests[i].String() < defaultProviderRequests[j].String()
 	})
 	for idx, req := range defaultProviderRequests {
-		if req.Package() == "" {
+		if req.PackageName() == "" {
 			return nil, false, errors.New("incorrect package type specified")
 		}
 
-		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+		typ, name := providers.MakeProviderType(req.PackageName()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
+		inputs, err := i.deployment.target.GetPackageConfig(req.PackageName())
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
@@ -314,9 +314,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if checksums := req.PluginChecksums(); checksums != nil {
 			providers.SetProviderChecksums(inputs, checksums)
 		}
-		if parameterization := req.Parameterization(); parameterization != nil {
+		if replacement := req.Replacement(); replacement != nil {
 			providers.SetProviderName(inputs, req.Name())
-			providers.SetProviderParameterization(inputs, parameterization)
+			providers.SetProviderReplacementParameterization(inputs, replacement)
+		}
+		if extension := req.Extension(); extension != nil {
+			providers.SetProviderExtensionParameterization(inputs, extension)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:  urn,
@@ -408,13 +411,13 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+			pkg, version, replacement, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
 			if err != nil {
 				return err
 			}
 			req := providers.NewProviderRequest(
-				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
-			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
+				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, replacement, nil)
+			typ, name := providers.MakeProviderType(req.PackageName()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
 

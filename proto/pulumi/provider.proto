@@ -321,6 +321,8 @@ message ParameterizeRequest {
         // Values from a generated SDK.
         ParametersValue value = 2;
     }
+
+    bool extension = 3;
 }
 
 // `ParameterizeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Parameterize) call. It

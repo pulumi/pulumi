@@ -330,7 +330,8 @@ proto.codegen.GetSchemaRequest.toObject = function(includeInstance, msg) {
     pb_package: jspb.Message.getFieldWithDefault(msg, 1, ""),
     version: jspb.Message.getFieldWithDefault(msg, 2, ""),
     downloadUrl: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    parameterization: (f = msg.getParameterization()) && proto.codegen.Parameterization.toObject(includeInstance, f)
+    parameterization: (f = msg.getParameterization()) && proto.codegen.Parameterization.toObject(includeInstance, f),
+    extension: (f = msg.getExtension$()) && proto.codegen.Parameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -383,6 +384,11 @@ proto.codegen.GetSchemaRequest.deserializeBinaryFromReader = function(msg, reade
       var value = new proto.codegen.Parameterization;
       reader.readMessage(value,proto.codegen.Parameterization.deserializeBinaryFromReader);
       msg.setParameterization(value);
+      break;
+    case 5:
+      var value = new proto.codegen.Parameterization;
+      reader.readMessage(value,proto.codegen.Parameterization.deserializeBinaryFromReader);
+      msg.setExtension$(value);
       break;
     default:
       reader.skipField();
@@ -438,6 +444,14 @@ proto.codegen.GetSchemaRequest.serializeBinaryToWriter = function(message, write
   if (f != null) {
     writer.writeMessage(
       4,
+      f,
+      proto.codegen.Parameterization.serializeBinaryToWriter
+    );
+  }
+  f = message.getExtension$();
+  if (f != null) {
+    writer.writeMessage(
+      5,
       f,
       proto.codegen.Parameterization.serializeBinaryToWriter
     );
@@ -533,6 +547,43 @@ proto.codegen.GetSchemaRequest.prototype.clearParameterization = function() {
  */
 proto.codegen.GetSchemaRequest.prototype.hasParameterization = function() {
   return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * optional Parameterization extension = 5;
+ * @return {?proto.codegen.Parameterization}
+ */
+proto.codegen.GetSchemaRequest.prototype.getExtension$ = function() {
+  return /** @type{?proto.codegen.Parameterization} */ (
+    jspb.Message.getWrapperField(this, proto.codegen.Parameterization, 5));
+};
+
+
+/**
+ * @param {?proto.codegen.Parameterization|undefined} value
+ * @return {!proto.codegen.GetSchemaRequest} returns this
+*/
+proto.codegen.GetSchemaRequest.prototype.setExtension$ = function(value) {
+  return jspb.Message.setWrapperField(this, 5, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.codegen.GetSchemaRequest} returns this
+ */
+proto.codegen.GetSchemaRequest.prototype.clearExtension$ = function() {
+  return this.setExtension$(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.codegen.GetSchemaRequest.prototype.hasExtension$ = function() {
+  return jspb.Message.getField(this, 5) != null;
 };
 
 

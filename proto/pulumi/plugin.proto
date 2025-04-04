@@ -61,6 +61,9 @@ message PackageDependency {
     // the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
     map<string, bytes> checksums = 5;
 
-    // The optional parameterization for this package.
+    // The optional replacement parameterization for this package.
     PackageParameterization parameterization = 6;
+
+    // The optional extension parameterization for this package.
+    PackageParameterization extension = 7;
 }

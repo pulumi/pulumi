@@ -42,6 +42,8 @@ message GetSchemaRequest {
     string download_url = 3;
     // the parameterization for the schema being requested, can be empty.
     Parameterization parameterization = 4;
+
+    Parameterization extension = 5;
 }
 
 // GetSchemaResponse returns the schema data for the requested package.

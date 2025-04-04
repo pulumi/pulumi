@@ -44,7 +44,8 @@ type ProviderRequest struct {
 	name              tokens.Package
 	pluginDownloadURL string
 	pluginChecksums   map[string][]byte
-	parameterization  *workspace.Parameterization
+	replacement       *workspace.Parameterization
+	extension         *workspace.Parameterization
 }
 
 // NewProviderRequest constructs a new provider request from an optional version, optional
@@ -52,21 +53,17 @@ type ProviderRequest struct {
 func NewProviderRequest(
 	name tokens.Package, version *semver.Version,
 	pluginDownloadURL string, checksums map[string][]byte,
-	parameterization *workspace.Parameterization,
+	replacement *workspace.Parameterization,
+	extension *workspace.Parameterization,
 ) ProviderRequest {
 	return ProviderRequest{
 		version:           version,
 		name:              name,
 		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 		pluginChecksums:   checksums,
-		parameterization:  parameterization,
+		replacement:       replacement,
+		extension:         extension,
 	}
-}
-
-// Parameterization returns the parameterization of this provider request. May be nil if no parameterization was
-// provided.
-func (p ProviderRequest) Parameterization() *workspace.Parameterization {
-	return p.parameterization
 }
 
 // Name returns the this provider plugin name.
@@ -79,12 +76,33 @@ func (p ProviderRequest) Version() *semver.Version {
 	return p.version
 }
 
-// Package returns this provider request's package.
-func (p ProviderRequest) Package() tokens.Package {
-	if p.parameterization != nil {
-		return tokens.Package(p.parameterization.Name)
+// PackageName returns this provider request's package name.
+// TODO Docs on why this and version ignore extensions
+func (p ProviderRequest) PackageName() tokens.Package {
+	if p.replacement != nil {
+		return tokens.Package(p.replacement.Name)
 	}
 	return p.name
+}
+
+// PackageVersion returns this provider request's package version. May be nil if no version was provided.
+func (p ProviderRequest) PackageVersion() *semver.Version {
+	if p.replacement != nil {
+		return &p.replacement.Version
+	}
+	return p.version
+}
+
+// Replacement returns the replacement parameterization of this provider request. May be nil if no parameterization was
+// provided.
+func (p ProviderRequest) Replacement() *workspace.Parameterization {
+	return p.replacement
+}
+
+// Extension returns the extension parameterization of this provider request. May be nil if no parameterization was
+// provided.
+func (p ProviderRequest) Extension() *workspace.Parameterization {
+	return p.extension
 }
 
 // PluginDownloadURL returns this providers server url. May be "" if no pluginDownloadURL was
@@ -107,13 +125,7 @@ func (p ProviderRequest) PluginChecksums() map[string][]byte {
 func (p ProviderRequest) DefaultName() string {
 	base := "default"
 
-	var v *semver.Version
-	if p.parameterization != nil {
-		v = &p.parameterization.Version
-	} else {
-		v = p.version
-	}
-
+	v := p.PackageVersion()
 	if v != nil {
 		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
 		// version's component parts.
@@ -138,15 +150,16 @@ func (p ProviderRequest) DefaultName() string {
 
 // String returns a string representation of this request. This string is suitable for use as a hash key.
 func (p ProviderRequest) String() string {
+	v := p.PackageVersion()
+
 	var version string
-	if p.parameterization != nil {
-		version = "-" + p.parameterization.Version.String()
-	} else if p.version != nil {
-		version = "-" + p.version.String()
+	if v != nil {
+		version = "-" + v.String()
 	}
+
 	var url string
 	if p.pluginDownloadURL != "" {
 		url = "-" + p.pluginDownloadURL
 	}
-	return p.Package().String() + version + url
+	return p.PackageName().String() + version + url
 }

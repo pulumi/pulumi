@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\x7f\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bpulumi/codegen/loader.proto\x12\x07\x63odegen\"@\n\x10Parameterization\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x0c\"\xad\x01\n\x10GetSchemaRequest\x12\x0f\n\x07package\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\x12\x33\n\x10parameterization\x18\x04 \x01(\x0b\x32\x19.codegen.Parameterization\x12,\n\textension\x18\x05 \x01(\x0b\x32\x19.codegen.Parameterization\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\x0c\x32N\n\x06Loader\x12\x44\n\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.loader_pb2', globals())
@@ -23,10 +23,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
   _PARAMETERIZATION._serialized_start=40
   _PARAMETERIZATION._serialized_end=104
-  _GETSCHEMAREQUEST._serialized_start=106
-  _GETSCHEMAREQUEST._serialized_end=233
-  _GETSCHEMARESPONSE._serialized_start=235
-  _GETSCHEMARESPONSE._serialized_end=270
-  _LOADER._serialized_start=272
-  _LOADER._serialized_end=350
+  _GETSCHEMAREQUEST._serialized_start=107
+  _GETSCHEMAREQUEST._serialized_end=280
+  _GETSCHEMARESPONSE._serialized_start=282
+  _GETSCHEMARESPONSE._serialized_end=317
+  _LOADER._serialized_start=319
+  _LOADER._serialized_end=397
 # @@protoc_insertion_point(module_scope)

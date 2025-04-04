@@ -493,7 +493,8 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
-	var params pulumirpc.ParameterizeRequest
+	params := &pulumirpc.ParameterizeRequest{Extension: request.Extension}
+
 	switch p := request.Parameters.(type) {
 	case *ParameterizeArgs:
 		params.Parameters = &pulumirpc.ParameterizeRequest_Args{
@@ -514,7 +515,7 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 	default:
 		panic(fmt.Sprintf("Impossible - type is constrained to ParameterizeArgs or ParameterizeValue, found %T", p))
 	}
-	resp, err := p.clientRaw.Parameterize(p.requestContext(), &params)
+	resp, err := p.clientRaw.Parameterize(p.requestContext(), params)
 	if err != nil {
 		return ParameterizeResponse{}, err
 	}

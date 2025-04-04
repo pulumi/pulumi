@@ -175,7 +175,10 @@ func (p *providerServer) Parameterize(
 			Value:   p.Value.Value,
 		}
 	}
-	resp, err := p.provider.Parameterize(ctx, ParameterizeRequest{Parameters: params})
+	resp, err := p.provider.Parameterize(ctx, ParameterizeRequest{
+		Parameters: params,
+		Extension:  req.Extension,
+	})
 	if err != nil {
 		return nil, err
 	}

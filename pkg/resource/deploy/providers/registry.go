@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,16 +42,21 @@ const (
 	// should not clash with existing provider keys. They're all nested under "__internal" to avoid this.
 	internalKey resource.PropertyKey = "__internal"
 
-	parameterizationKey resource.PropertyKey = "parameterization"
-	nameKey             resource.PropertyKey = "name"
-	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
-	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
+	nameKey resource.PropertyKey = "name"
+
+	pluginDownloadKey  resource.PropertyKey = "pluginDownloadURL"
+	pluginChecksumsKey resource.PropertyKey = "pluginChecksums"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
 	// put in the root of the property map is the package version, not the plugin version. This means for parameterized
 	// providers we also need the plugin version saved in "__internal".
 	versionKey resource.PropertyKey = "version"
+
+	replacementParameterizationKey resource.PropertyKey = "parameterization"
+	extensionParameterizationsKey  resource.PropertyKey = "extensions"
+
+	parameterizationValueKey resource.PropertyKey = "value"
 )
 
 func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
@@ -161,7 +166,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 
 	// If this is a parameterized provider, the version is stored in the internal section.
 	// Else it's on the base properties.
-	if _, has := internalInputs[parameterizationKey]; has {
+	if _, has := internalInputs[replacementParameterizationKey]; has {
 		inputs = internalInputs
 	}
 
@@ -213,21 +218,48 @@ func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.P
 }
 
 // Sets the provider parameterization in the given property map, this should be called _after_ SetVersion.
-func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
+func SetProviderReplacementParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
 	internalInputs := addOrGetInternal(inputs)
 
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
 	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
-	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewStringProperty(
+	// We don't write name here because we can reconstruct that from the provider's type token
+	internalInputs[replacementParameterizationKey] = resource.NewStringProperty(
 		base64.StdEncoding.EncodeToString(value.Value))
 }
 
-// GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
-// parameterization property is not present, this function returns nil.
-func GetProviderParameterization(
+func SetProviderExtensionParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
+	internalInputs := addOrGetInternal(inputs)
+
+	// TODO WILL comment if it's extension we don't want to move versions -- when
+	// we load providers, we want to load the base for an extension at its
+	// own version
+
+	extensionsValue, ok := internalInputs[extensionParameterizationsKey]
+
+	var extensions resource.PropertyMap
+	if ok {
+		contract.Assertf(extensionsValue.IsObject(),
+			"a provider's internal extensions input must be an object; found %v", extensionsValue)
+
+		extensions = extensionsValue.ObjectValue()
+	} else {
+		extensions = resource.PropertyMap{}
+		internalInputs[extensionParameterizationsKey] = resource.NewObjectProperty(extensions)
+	}
+
+	extensions[resource.PropertyKey(value.Name)] = resource.NewObjectProperty(
+		map[resource.PropertyKey]resource.PropertyValue{
+			parameterizationValueKey: resource.NewStringProperty(base64.StdEncoding.EncodeToString(value.Value)),
+		},
+	)
+}
+
+// GetProviderReplacementParameterization fetches and parses a provider replacement parameterization from the given
+// property map. If the parameterization property is not present, this function returns nil.
+func GetProviderReplacementParameterization(
 	name tokens.Package, inputs resource.PropertyMap,
 ) (*workspace.Parameterization, error) {
 	internalInputs, err := getInternal(inputs)
@@ -235,17 +267,17 @@ func GetProviderParameterization(
 		return nil, err
 	}
 
-	parameter, ok := internalInputs[parameterizationKey]
+	replacement, ok := internalInputs[replacementParameterizationKey]
 	if !ok {
 		return nil, nil
 	}
 
-	if !parameter.IsString() {
-		return nil, fmt.Errorf("'%s' must be of type string", parameterizationKey)
+	if !replacement.IsString() {
+		return nil, fmt.Errorf("'%s' must be of type string", replacementParameterizationKey)
 	}
-	bytes, err := base64.StdEncoding.DecodeString(parameter.StringValue())
+	bytes, err := base64.StdEncoding.DecodeString(replacement.StringValue())
 	if err != nil {
-		return nil, fmt.Errorf("could not decode base64 parameter value: %w", err)
+		return nil, fmt.Errorf("could not decode base64 replacement parameter value: %w", err)
 	}
 
 	version, ok := inputs["version"]
@@ -530,7 +562,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			Property: "pluginDownloadURL", Reason: err.Error(),
 		}}}, nil
 	}
-	parameter, err := GetProviderParameterization(providerPkg, req.News)
+	replacement, err := GetProviderReplacementParameterization(providerPkg, req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "parameter", Reason: err.Error(),
@@ -538,7 +570,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	}
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, replacement, r.host, r.builtins)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -681,12 +713,12 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
+		replacement, err := GetProviderReplacementParameterization(providerPkg, res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
+			return fmt.Errorf("parse replacement parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, replacement, r.host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -751,13 +783,13 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, req.Properties)
+		replacement, err := GetProviderReplacementParameterization(providerPkg, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
-				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
+				fmt.Errorf("parse replacement parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, replacement, r.host, r.builtins)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)

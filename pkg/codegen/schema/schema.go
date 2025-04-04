@@ -650,12 +650,18 @@ type Package struct {
 	// Parameterization is the optional parameterization for the package, if any.
 	Parameterization *Parameterization
 
+	Extension *Parameterization
+
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType
 	functionTable     map[string]*Function
 	typeTable         map[string]Type
 
 	importedLanguages map[string]struct{}
+}
+
+func (pkg *Package) Parameterized() bool {
+	return pkg.Parameterization != nil || pkg.Extension != nil
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -976,14 +982,25 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		}
 	}
 
-	var parameterization *ParameterizationSpec
+	var replacement *ParameterizationSpec
 	if pkg.Parameterization != nil {
-		parameterization = &ParameterizationSpec{
+		replacement = &ParameterizationSpec{
 			BaseProvider: BaseProviderSpec{
 				Name:    pkg.Parameterization.BaseProvider.Name,
 				Version: pkg.Parameterization.BaseProvider.Version.String(),
 			},
 			Parameter: pkg.Parameterization.Parameter,
+		}
+	}
+
+	var extension *ParameterizationSpec
+	if pkg.Extension != nil {
+		extension = &ParameterizationSpec{
+			BaseProvider: BaseProviderSpec{
+				Name:    pkg.Extension.BaseProvider.Name,
+				Version: pkg.Extension.BaseProvider.Version.String(),
+			},
+			Parameter: pkg.Extension.Parameter,
 		}
 	}
 
@@ -1006,7 +1023,8 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Resources:           map[string]ResourceSpec{},
 		Functions:           map[string]FunctionSpec{},
 		AllowedPackageNames: pkg.AllowedPackageNames,
-		Parameterization:    parameterization,
+		Parameterization:    replacement,
+		Extension:           extension,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -2056,6 +2074,8 @@ type PackageInfoSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	Extension *ParameterizationSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2132,6 +2152,8 @@ type PackageSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	Extension *ParameterizationSpec `json:"extension,omitempty" yaml:"extension,omitempty"`
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {
@@ -2153,6 +2175,7 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,
 		Parameterization:    p.Parameterization,
+		Extension:           p.Extension,
 	}
 }
 

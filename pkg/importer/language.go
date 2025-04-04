@@ -188,8 +188,8 @@ func GenerateLanguageDefinitions(
 			}
 
 			pkgName := pkgDesc.Name
-			if pkgDesc.Parameterization != nil {
-				pkgName = pkgDesc.Parameterization.Name
+			if pkgDesc.Replacement != nil {
+				pkgName = pkgDesc.Replacement.Name
 			}
 			if !seenPkgs.Contains(pkgName) {
 				seenPkgs.Add(pkgName)
@@ -217,8 +217,8 @@ func GenerateLanguageDefinitions(
 						},
 					})
 				}
-				if pkgDesc.Parameterization != nil {
-					base64Value := base64.StdEncoding.EncodeToString(pkgDesc.Parameterization.Value)
+				if pkgDesc.Replacement != nil {
+					base64Value := base64.StdEncoding.EncodeToString(pkgDesc.Replacement.Value)
 
 					items = append(items, &model.Block{
 						Tokens: syntax.NewBlockTokens("parameterization"),
@@ -228,13 +228,13 @@ func GenerateLanguageDefinitions(
 								&model.Attribute{
 									Name: "name",
 									Value: &model.LiteralValueExpression{
-										Value: cty.StringVal("\"" + pkgDesc.Parameterization.Name + "\""),
+										Value: cty.StringVal("\"" + pkgDesc.Replacement.Name + "\""),
 									},
 								},
 								&model.Attribute{
 									Name: "version",
 									Value: &model.LiteralValueExpression{
-										Value: cty.StringVal("\"" + pkgDesc.Parameterization.Version.String() + "\""),
+										Value: cty.StringVal("\"" + pkgDesc.Replacement.Version.String() + "\""),
 									},
 								},
 								&model.Attribute{

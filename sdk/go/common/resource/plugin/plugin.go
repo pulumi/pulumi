@@ -73,6 +73,8 @@ type PulumiPluginJSON struct {
 	Server string `json:"server,omitempty"`
 	// Parameterization information for the package.
 	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
+
+	Extension *PulumiParameterizationJSON `json:"extension,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {

@@ -63,6 +63,7 @@ class GetSchemaRequest(google.protobuf.message.Message):
     VERSION_FIELD_NUMBER: builtins.int
     DOWNLOAD_URL_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    EXTENSION_FIELD_NUMBER: builtins.int
     package: builtins.str
     """the package name for the schema being requested."""
     version: builtins.str
@@ -72,6 +73,8 @@ class GetSchemaRequest(google.protobuf.message.Message):
     @property
     def parameterization(self) -> global___Parameterization:
         """the parameterization for the schema being requested, can be empty."""
+    @property
+    def extension(self) -> global___Parameterization: ...
     def __init__(
         self,
         *,
@@ -79,9 +82,10 @@ class GetSchemaRequest(google.protobuf.message.Message):
         version: builtins.str = ...,
         download_url: builtins.str = ...,
         parameterization: global___Parameterization | None = ...,
+        extension: global___Parameterization | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["download_url", b"download_url", "package", b"package", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["download_url", b"download_url", "extension", b"extension", "package", b"package", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
 
 global___GetSchemaRequest = GetSchemaRequest
 

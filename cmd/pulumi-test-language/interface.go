@@ -144,21 +144,7 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 
 	// Defer to the host to find the provider for the given package descriptor.
-	workspaceDescriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Kind:              apitype.ResourcePlugin,
-			Name:              descriptor.Name,
-			Version:           descriptor.Version,
-			PluginDownloadURL: descriptor.DownloadURL,
-		},
-	}
-	if descriptor.Parameterization != nil {
-		workspaceDescriptor.Parameterization = &workspace.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
-		}
-	}
+	workspaceDescriptor := descriptor.WorkspaceDescriptor()
 
 	provider, err := l.host.Provider(workspaceDescriptor)
 	if err != nil {
@@ -170,22 +156,41 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 
 	getSchemaRequest := plugin.GetSchemaRequest{}
-	if descriptor.Parameterization != nil {
+	if descriptor.Replacement != nil {
 		parameter := &plugin.ParameterizeValue{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version,
-			Value:   descriptor.Parameterization.Value,
+			Name:    descriptor.Replacement.Name,
+			Version: descriptor.Replacement.Version,
+			Value:   descriptor.Replacement.Value,
 		}
 
 		_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
 			Parameters: parameter,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("parameterize package '%s' failed: %w", descriptor.Name, err)
+			return nil, fmt.Errorf("replacement parameterize package '%s' failed: %w", descriptor.Name, err)
 		}
 
-		getSchemaRequest.SubpackageName = descriptor.Parameterization.Name
-		getSchemaRequest.SubpackageVersion = &descriptor.Parameterization.Version
+		getSchemaRequest.SubpackageName = descriptor.Replacement.Name
+		getSchemaRequest.SubpackageVersion = &descriptor.Replacement.Version
+	}
+
+	if descriptor.Extension != nil {
+		parameter := &plugin.ParameterizeValue{
+			Name:    descriptor.Extension.Name,
+			Version: descriptor.Extension.Version,
+			Value:   descriptor.Extension.Value,
+		}
+
+		_, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+			Extension:  true,
+			Parameters: parameter,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("extension parameterize package '%s' failed: %w", descriptor.Name, err)
+		}
+
+		getSchemaRequest.SubpackageName = descriptor.Extension.Name
+		getSchemaRequest.SubpackageVersion = &descriptor.Extension.Version
 	}
 
 	jsonSchema, err := provider.GetSchema(context.TODO(), getSchemaRequest)
@@ -1043,29 +1048,45 @@ func (eng *languageTestServer) RunLanguageTest(
 				return makeTestResponse(fmt.Sprintf("get package definition: %v", err)), nil
 			}
 
-			var desc workspace.PackageDescriptor
-			if pkgDef.Parameterization == nil {
-				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
-						Name:    pkgDef.Name,
-						Version: pkgDef.Version,
-					},
+			// TODO EXTENSION + GETPACKAGES
+
+			packageName := pkgDef.Name
+			packageVersion := pkgDef.Version
+
+			// This walking down logic should be in a method on pkgDef I reckon. Use
+			// it also in e.g. codegen for register package requests, etc.
+
+			desc := &workspace.PackageDescriptor{}
+
+			if pkgDef.Extension != nil {
+				desc.Extension = &workspace.Parameterization{
+					Name:    packageName,
+					Version: *packageVersion,
+					Value:   pkgDef.Extension.Parameter,
 				}
-			} else {
-				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
-						Name:    pkgDef.Parameterization.BaseProvider.Name,
-						Version: &pkgDef.Parameterization.BaseProvider.Version,
-					},
-					Parameterization: &workspace.Parameterization{
-						Name:    pkgDef.Name,
-						Version: *pkgDef.Version,
-						Value:   pkgDef.Parameterization.Parameter,
-					},
-				}
+
+				packageName = pkgDef.Extension.BaseProvider.Name
+				packageVersion = &pkgDef.Extension.BaseProvider.Version
 			}
 
-			expectedPackages = append(expectedPackages, desc)
+			if pkgDef.Parameterization != nil {
+				desc.Replacement = &workspace.Parameterization{
+					Name:    packageName,
+					Version: *packageVersion,
+					Value:   pkgDef.Parameterization.Parameter,
+				}
+
+				packageName = pkgDef.Parameterization.BaseProvider.Name
+				packageVersion = &pkgDef.Parameterization.BaseProvider.Version
+			}
+
+			desc.PluginSpec = workspace.PluginSpec{
+				Kind:    apitype.ResourcePlugin,
+				Name:    packageName,
+				Version: packageVersion,
+			}
+
+			expectedPackages = append(expectedPackages, *desc)
 		}
 
 		versionsMatch := func(expected, actual *semver.Version) bool {
@@ -1093,7 +1114,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			for _, actual := range packages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) &&
+					parameterizationsMatch(expectedPackage.Extension, actual.Extension) {
 					found = true
 					break
 				}
@@ -1109,7 +1131,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			for _, expectedPackage := range expectedPackages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Parameterization, actual.Parameterization) {
+					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) &&
+					parameterizationsMatch(expectedPackage.Extension, actual.Extension) {
 					found = true
 					break
 				}

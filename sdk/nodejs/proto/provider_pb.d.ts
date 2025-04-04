@@ -84,6 +84,8 @@ export class ParameterizeRequest extends jspb.Message {
     clearValue(): void;
     getValue(): ParameterizeRequest.ParametersValue | undefined;
     setValue(value?: ParameterizeRequest.ParametersValue): ParameterizeRequest;
+    getExtension$(): boolean;
+    setExtension$(value: boolean): ParameterizeRequest;
 
     getParametersCase(): ParameterizeRequest.ParametersCase;
 
@@ -101,6 +103,7 @@ export namespace ParameterizeRequest {
     export type AsObject = {
         args?: ParameterizeRequest.ParametersArgs.AsObject,
         value?: ParameterizeRequest.ParametersValue.AsObject,
+        extension: boolean,
     }
 
 
