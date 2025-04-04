@@ -32,7 +32,7 @@ func TestInvalidSchema(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	// We can just reuse the L1Empty host for this, it's not actually going to be used apart from prepare.
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{

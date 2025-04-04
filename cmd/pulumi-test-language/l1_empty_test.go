@@ -179,7 +179,7 @@ func TestL1Empty(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -217,7 +217,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L1EmptyLanguageHost{
 		tempDir:  tempDir,
 		failPack: true,
@@ -303,7 +303,8 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{DisableSnapshotWriting: true}
+	engine := newLanguageTestServer()
+	engine.DisableSnapshotWriting = true
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -343,7 +344,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L1EmptyLanguageHost{
 		tempDir:   tempDir,
 		skipStack: true,
@@ -386,7 +387,7 @@ func TestL1Empty_NoCoreSDK(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L1EmptyLanguageHost{
 		tempDir:     tempDir,
 		skipStack:   true,
