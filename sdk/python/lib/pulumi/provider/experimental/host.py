@@ -16,7 +16,7 @@ import sys
 from typing import Optional
 
 from ...resource import ComponentResource
-from ...provider import main
+from .server import main
 from .provider import ComponentProvider
 
 is_hosting = False
@@ -51,4 +51,4 @@ def component_provider_host(
     # Default the version to "0.0.0" for now, otherwise SDK codegen gets
     # confused without a version.
     version = "0.0.0"
-    main(ComponentProvider(components, name, namespace, version), args)
+    main(args, version, ComponentProvider(components, name, namespace, version))
