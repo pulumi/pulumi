@@ -2311,6 +2311,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				providers.SetProviderName(props, providerReq.Name())
 				providers.SetProviderReplacementParameterization(props, providerReq.Replacement())
 			}
+			if providerReq.Extension() != nil {
+				providers.SetProviderExtensionParameterization(props, providerReq.Extension())
+			}
 		}
 
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
@@ -2328,6 +2331,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			if defaultProvider.Replacement != nil {
 				providers.SetProviderReplacementParameterization(props, defaultProvider.Replacement)
+			}
+			if defaultProvider.Extension != nil {
+				providers.SetProviderExtensionParameterization(props, defaultProvider.Extension)
 			}
 		}
 	} else {

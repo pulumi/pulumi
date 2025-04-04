@@ -889,7 +889,8 @@ proto.pulumirpc.PackageDependency.toObject = function(includeInstance, msg) {
     version: jspb.Message.getFieldWithDefault(msg, 3, ""),
     server: jspb.Message.getFieldWithDefault(msg, 4, ""),
     checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    parameterization: (f = msg.getParameterization()) && proto.pulumirpc.PackageParameterization.toObject(includeInstance, f)
+    parameterization: (f = msg.getParameterization()) && proto.pulumirpc.PackageParameterization.toObject(includeInstance, f),
+    extension: (f = msg.getExtension$()) && proto.pulumirpc.PackageParameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -952,6 +953,11 @@ proto.pulumirpc.PackageDependency.deserializeBinaryFromReader = function(msg, re
       var value = new proto.pulumirpc.PackageParameterization;
       reader.readMessage(value,proto.pulumirpc.PackageParameterization.deserializeBinaryFromReader);
       msg.setParameterization(value);
+      break;
+    case 7:
+      var value = new proto.pulumirpc.PackageParameterization;
+      reader.readMessage(value,proto.pulumirpc.PackageParameterization.deserializeBinaryFromReader);
+      msg.setExtension$(value);
       break;
     default:
       reader.skipField();
@@ -1018,6 +1024,14 @@ proto.pulumirpc.PackageDependency.serializeBinaryToWriter = function(message, wr
   if (f != null) {
     writer.writeMessage(
       6,
+      f,
+      proto.pulumirpc.PackageParameterization.serializeBinaryToWriter
+    );
+  }
+  f = message.getExtension$();
+  if (f != null) {
+    writer.writeMessage(
+      7,
       f,
       proto.pulumirpc.PackageParameterization.serializeBinaryToWriter
     );
@@ -1153,6 +1167,43 @@ proto.pulumirpc.PackageDependency.prototype.clearParameterization = function() {
  */
 proto.pulumirpc.PackageDependency.prototype.hasParameterization = function() {
   return jspb.Message.getField(this, 6) != null;
+};
+
+
+/**
+ * optional PackageParameterization extension = 7;
+ * @return {?proto.pulumirpc.PackageParameterization}
+ */
+proto.pulumirpc.PackageDependency.prototype.getExtension$ = function() {
+  return /** @type{?proto.pulumirpc.PackageParameterization} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.PackageParameterization, 7));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.PackageParameterization|undefined} value
+ * @return {!proto.pulumirpc.PackageDependency} returns this
+*/
+proto.pulumirpc.PackageDependency.prototype.setExtension$ = function(value) {
+  return jspb.Message.setWrapperField(this, 7, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.PackageDependency} returns this
+ */
+proto.pulumirpc.PackageDependency.prototype.clearExtension$ = function() {
+  return this.setExtension$(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.PackageDependency.prototype.hasExtension$ = function() {
+  return jspb.Message.getField(this, 7) != null;
 };
 
 

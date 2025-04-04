@@ -296,6 +296,21 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 				Value:   info.Parameterization.Value,
 			}
 		}
+		var extension *workspace.Parameterization
+		if info.Extension != nil {
+			sv, err := semver.ParseTolerant(info.Extension.Version)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"illegal semver returned by language host: %s@%s: %w",
+					info.GetName(), info.Extension.Version, err)
+			}
+
+			extension = &workspace.Parameterization{
+				Name:    info.Extension.Name,
+				Version: sv,
+				Value:   info.Extension.Value,
+			}
+		}
 
 		results = append(results, workspace.PackageDescriptor{
 			PluginSpec: workspace.PluginSpec{
@@ -306,6 +321,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 				Checksums:         info.Checksums,
 			},
 			Replacement: replacement,
+			Extension:   extension,
 		})
 	}
 

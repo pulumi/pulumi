@@ -560,6 +560,15 @@ func (p *PartialPackage) Definition() (*Package, error) {
 			Parameter: p.spec.Parameterization.Parameter,
 		}
 	}
+	if p.spec.Extension != nil {
+		pkg.Extension = &Parameterization{
+			BaseProvider: BaseProvider{
+				Name:    p.spec.Extension.BaseProvider.Name,
+				Version: semver.MustParse(p.spec.Extension.BaseProvider.Version),
+			},
+			Parameter: p.spec.Extension.Parameter,
+		}
+	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
 		return nil, err
 	}

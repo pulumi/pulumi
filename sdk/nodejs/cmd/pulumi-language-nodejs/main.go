@@ -500,7 +500,7 @@ func getPackagesFromDir(
 				pulumiPackagePathToVersionMap[curr] = version
 			}
 
-			ok, name, version, server, parameterization, err := getPackageInfo(info)
+			ok, name, version, server, replacement, extension, err := getPackageInfo(info)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
@@ -509,7 +509,8 @@ func getPackagesFromDir(
 					Kind:             "resource",
 					Version:          version,
 					Server:           server,
-					Parameterization: parameterization,
+					Parameterization: replacement,
+					Extension:        extension,
 				})
 			}
 		}
@@ -531,29 +532,45 @@ type packageJSON struct {
 // resource provider plugin.  If it does, three strings are returned, the plugin name, and its semantic version and
 // an optional server that can be used to download the plugin (this may be empty, in which case the "default" location
 // should be used).
-func getPackageInfo(info packageJSON) (bool, string, string, string, *pulumirpc.PackageParameterization, error) {
+func getPackageInfo(info packageJSON) (
+	bool,
+	string,
+	string,
+	string,
+	*pulumirpc.PackageParameterization,
+	*pulumirpc.PackageParameterization,
+	error,
+) {
 	if info.Pulumi.Resource {
 		name, err := getPluginName(info)
 		if err != nil {
-			return false, "", "", "", nil, err
+			return false, "", "", "", nil, nil, err
 		}
 		version, err := getPluginVersion(info)
 		if err != nil {
-			return false, "", "", "", nil, err
+			return false, "", "", "", nil, nil, err
 		}
-		var parameterization *pulumirpc.PackageParameterization
+		var replacement *pulumirpc.PackageParameterization
 		if info.Pulumi.Parameterization != nil {
-			parameterization = &pulumirpc.PackageParameterization{
+			replacement = &pulumirpc.PackageParameterization{
 				Name:    info.Pulumi.Parameterization.Name,
 				Version: info.Pulumi.Parameterization.Version,
 				Value:   info.Pulumi.Parameterization.Value,
 			}
 		}
+		var extension *pulumirpc.PackageParameterization
+		if info.Pulumi.Extension != nil {
+			extension = &pulumirpc.PackageParameterization{
+				Name:    info.Pulumi.Extension.Name,
+				Version: info.Pulumi.Extension.Version,
+				Value:   info.Pulumi.Extension.Value,
+			}
+		}
 
-		return true, name, version, info.Pulumi.Server, parameterization, nil
+		return true, name, version, info.Pulumi.Server, replacement, extension, nil
 	}
 
-	return false, "", "", "", nil, nil
+	return false, "", "", "", nil, nil, nil
 }
 
 // getPluginName takes a parsed package.json file and returns the corresponding Pulumi plugin name.

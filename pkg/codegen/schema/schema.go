@@ -660,6 +660,10 @@ type Package struct {
 	importedLanguages map[string]struct{}
 }
 
+func (pkg *Package) Parameterized() bool {
+	return pkg.Parameterization != nil || pkg.Extension != nil
+}
+
 // Language provides hooks for importing language-specific metadata in a package.
 type Language interface {
 	// ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.

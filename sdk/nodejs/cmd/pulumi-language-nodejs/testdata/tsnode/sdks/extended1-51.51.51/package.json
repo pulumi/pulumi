@@ -1,0 +1,25 @@
+{
+    "name": "@pulumi/extended1",
+    "version": "51.51.51",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+        "async-mutex": "^0.5.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "extension",
+        "version": "17.17.17",
+        "extension": {
+            "name": "extended1",
+            "version": "51.51.51",
+            "value": "ZXh0ZW5kZWQxLXBhcmFtZXRlcgo="
+        }
+    }
+}

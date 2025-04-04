@@ -77,10 +77,8 @@ func (p ProviderRequest) Version() *semver.Version {
 }
 
 // PackageName returns this provider request's package name.
+// TODO Docs on why this and version ignore extensions
 func (p ProviderRequest) PackageName() tokens.Package {
-	if p.extension != nil {
-		return tokens.Package(p.extension.Name)
-	}
 	if p.replacement != nil {
 		return tokens.Package(p.replacement.Name)
 	}
@@ -89,9 +87,6 @@ func (p ProviderRequest) PackageName() tokens.Package {
 
 // PackageVersion returns this provider request's package version. May be nil if no version was provided.
 func (p ProviderRequest) PackageVersion() *semver.Version {
-	if p.extension != nil {
-		return &p.extension.Version
-	}
 	if p.replacement != nil {
 		return &p.replacement.Version
 	}

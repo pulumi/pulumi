@@ -1050,30 +1050,43 @@ func (eng *languageTestServer) RunLanguageTest(
 
 			// TODO EXTENSION + GETPACKAGES
 
-			var desc workspace.PackageDescriptor
-			if pkgDef.Parameterization == nil {
-				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
-						Kind:    apitype.ResourcePlugin,
-						Name:    pkgDef.Name,
-						Version: pkgDef.Version,
-					},
+			packageName := pkgDef.Name
+			packageVersion := pkgDef.Version
+
+			// This walking down logic should be in a method on pkgDef I reckon. Use
+			// it also in e.g. codegen for register package requests, etc.
+
+			desc := &workspace.PackageDescriptor{}
+
+			if pkgDef.Extension != nil {
+				desc.Extension = &workspace.Parameterization{
+					Name:    packageName,
+					Version: *packageVersion,
+					Value:   pkgDef.Extension.Parameter,
 				}
-			} else {
-				desc = workspace.PackageDescriptor{
-					PluginSpec: workspace.PluginSpec{
-						Name:    pkgDef.Parameterization.BaseProvider.Name,
-						Version: &pkgDef.Parameterization.BaseProvider.Version,
-					},
-					Replacement: &workspace.Parameterization{
-						Name:    pkgDef.Name,
-						Version: *pkgDef.Version,
-						Value:   pkgDef.Parameterization.Parameter,
-					},
-				}
+
+				packageName = pkgDef.Extension.BaseProvider.Name
+				packageVersion = &pkgDef.Extension.BaseProvider.Version
 			}
 
-			expectedPackages = append(expectedPackages, desc)
+			if pkgDef.Parameterization != nil {
+				desc.Replacement = &workspace.Parameterization{
+					Name:    packageName,
+					Version: *packageVersion,
+					Value:   pkgDef.Parameterization.Parameter,
+				}
+
+				packageName = pkgDef.Parameterization.BaseProvider.Name
+				packageVersion = &pkgDef.Parameterization.BaseProvider.Version
+			}
+
+			desc.PluginSpec = workspace.PluginSpec{
+				Kind:    apitype.ResourcePlugin,
+				Name:    packageName,
+				Version: packageVersion,
+			}
+
+			expectedPackages = append(expectedPackages, *desc)
 		}
 
 		versionsMatch := func(expected, actual *semver.Version) bool {
@@ -1101,7 +1114,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			for _, actual := range packages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) {
+					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) &&
+					parameterizationsMatch(expectedPackage.Extension, actual.Extension) {
 					found = true
 					break
 				}
@@ -1117,7 +1131,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			for _, expectedPackage := range expectedPackages {
 				if actual.Name == expectedPackage.Name &&
 					versionsMatch(expectedPackage.Version, actual.Version) &&
-					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) {
+					parameterizationsMatch(expectedPackage.Replacement, actual.Replacement) &&
+					parameterizationsMatch(expectedPackage.Extension, actual.Extension) {
 					found = true
 					break
 				}

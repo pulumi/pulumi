@@ -1,0 +1,13 @@
+{
+	"name": "l2-extension-parameterization",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/extended1": "ROOT/artifacts/pulumi-extended1-51.51.51.tgz",
+		"@pulumi/extended2": "ROOT/artifacts/pulumi-extended2-68.68.68.tgz",
+		"@pulumi/extension": "ROOT/artifacts/pulumi-extension-17.17.17.tgz"
+	}
+}

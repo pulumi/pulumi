@@ -268,11 +268,21 @@ func (p *extensionProvider) getSchemaPackageSpec(req plugin.GetSchemaRequest) (s
 			Version: extensionProviderBaseVersion,
 		}
 
+		extension := &schema.ParameterizationSpec{
+			BaseProvider: baseProviderSpec,
+			Parameter:    ext.Value,
+		}
+
 		var replacement *schema.ParameterizationSpec
 		if p.replacement != nil {
 			replacement = &schema.ParameterizationSpec{
 				BaseProvider: baseProviderSpec,
 				Parameter:    p.replacement.Value,
+			}
+
+			extension.BaseProvider = schema.BaseProviderSpec{
+				Name:    p.replacement.Name,
+				Version: p.replacement.Version.String(),
 			}
 		}
 
@@ -291,10 +301,7 @@ func (p *extensionProvider) getSchemaPackageSpec(req plugin.GetSchemaRequest) (s
 				),
 			},
 			Parameterization: replacement,
-			Extension: &schema.ParameterizationSpec{
-				BaseProvider: baseProviderSpec,
-				Parameter:    ext.Value,
-			},
+			Extension:        extension,
 		}
 
 		return pkg, nil

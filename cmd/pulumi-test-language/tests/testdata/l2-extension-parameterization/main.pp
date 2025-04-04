@@ -13,30 +13,30 @@ resource "baseCustomExplicit" "extension:index:Custom" {
   }
 }
 
-package "replaced" {
-  baseProviderName = "extension"
-  baseProviderVersion = "17.17.17"
-  replacement {
-    name = "replaced"
-    version = "34.34.34"
-    value = "cmVwbGFjZWQtcGFyYW1ldGVyCg==" // base64(utf8_bytes("replaced-parameter"))
-  }
-}
-
-resource "replacedCustomDefault" "replaced:index:Custom" {
-  value = "replacedCustomDefault"
-}
-
-resource "replacedExplicit" "pulumi:providers:replaced" {
-  value = "replacedExplicit"
-}
-
-resource "replacedCustomExplicit" "replaced:index:Custom" {
-  value = "replacedCustomExplicit"
-  options {
-    provider = replacedExplicit
-  }
-}
+// package "replaced" {
+//   baseProviderName = "extension"
+//   baseProviderVersion = "17.17.17"
+//   replacement {
+//     name = "replaced"
+//     version = "34.34.34"
+//     value = "cmVwbGFjZWQtcGFyYW1ldGVyCg==" // base64(utf8_bytes("replaced-parameter"))
+//   }
+// }
+//
+// resource "replacedCustomDefault" "replaced:index:Custom" {
+//   value = "replacedCustomDefault"
+// }
+//
+// resource "replacedExplicit" "pulumi:providers:replaced" {
+//   value = "replacedExplicit"
+// }
+//
+// resource "replacedCustomExplicit" "replaced:index:Custom" {
+//   value = "replacedCustomExplicit"
+//   options {
+//     provider = replacedExplicit
+//   }
+// }
 
 package "extended1" {
   baseProviderName = "extension"

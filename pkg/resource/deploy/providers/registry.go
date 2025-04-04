@@ -233,10 +233,9 @@ func SetProviderReplacementParameterization(inputs resource.PropertyMap, value *
 func SetProviderExtensionParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
 	internalInputs := addOrGetInternal(inputs)
 
-	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
-	// it, and replace it with our package version.
-	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+	// TODO WILL comment if it's extension we don't want to move versions -- when
+	// we load providers, we want to load the base for an extension at its
+	// own version
 
 	extensionsValue, ok := internalInputs[extensionParameterizationsKey]
 
