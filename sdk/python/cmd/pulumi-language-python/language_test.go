@@ -179,6 +179,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l1-builtin-try":      "Temporarily disabled until pr #18915 is submitted",
 	"l1-builtin-can":      "Temporarily disabled until pr #18916 is submitted",
+	"l2-resource-for-range": "Temporarily disabled until pr #19076 is submitted",
 	"l3-component-simple": " https://github.com/pulumi/pulumi/issues/19067",
 }
 
