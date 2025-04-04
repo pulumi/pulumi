@@ -267,7 +267,7 @@ func TestL2ResourceSimple(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -305,7 +305,8 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{DisableSnapshotWriting: true}
+	engine := newLanguageTestServer()
+	engine.DisableSnapshotWriting = true
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -345,7 +346,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:      tempDir,
 		skipResource: true,
@@ -388,7 +389,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:             tempDir,
 		skipRequiredPlugins: true,
@@ -431,7 +432,7 @@ func TestL2ResourceSnapshotEdit(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -475,7 +476,7 @@ func TestL2ResourceLanguageInfo(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := &languageTestServer{}
+	engine := newLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:            tempDir,
 		expectLanguageInfo: true,

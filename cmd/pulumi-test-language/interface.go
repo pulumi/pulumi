@@ -71,6 +71,13 @@ type LanguageTestServer interface {
 	Done() error
 }
 
+func newLanguageTestServer() *languageTestServer {
+	return &languageTestServer{
+		sdkLock:     make(map[string]*sync.Mutex),
+		artifactMap: make(map[string]string),
+	}
+}
+
 func Start(ctx context.Context) (LanguageTestServer, error) {
 	// New up an engine RPC server.
 	server := &languageTestServer{
