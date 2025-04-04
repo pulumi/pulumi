@@ -34,14 +34,14 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	case v.IsString():
 		r = NewStringProperty(v.AsString())
 	case v.IsArray():
-		vArr := v.AsArray()
+		vArr := v.AsArray().AsSlice()
 		arr := make([]PropertyValue, len(vArr))
 		for i, vElem := range vArr {
 			arr[i] = ToResourcePropertyValue(vElem)
 		}
 		r = NewArrayProperty(arr)
 	case v.IsMap():
-		vMap := v.AsMap()
+		vMap := v.AsMap().AsMap()
 		rMap := make(PropertyMap, len(vMap))
 		for k, vElem := range vMap {
 			rMap[PropertyKey(k)] = ToResourcePropertyValue(vElem)
@@ -96,14 +96,14 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		return property.New(v.StringValue())
 	case v.IsArray():
 		vArr := v.ArrayValue()
-		arr := make(property.Array, len(vArr))
+		arr := make([]property.Value, len(vArr))
 		for i, v := range vArr {
 			arr[i] = FromResourcePropertyValue(v)
 		}
 		return property.New(arr)
 	case v.IsObject():
 		vMap := v.ObjectValue()
-		rMap := make(property.Map, len(vMap))
+		rMap := make(map[string]property.Value, len(vMap))
 		for k, v := range vMap {
 			rMap[string(k)] = FromResourcePropertyValue(v)
 		}

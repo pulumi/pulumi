@@ -67,13 +67,24 @@ func TestNil(t *testing.T) {
 	// []T based type, zero value is Array(nil)
 	t.Run("array", func(t *testing.T) {
 		t.Parallel()
-		nilArray := New[Array](nil)
+		nilArray := New[[]Value](nil)
 
 		assert.False(t, nilArray.IsArray())
 		assert.True(t, nilArray.IsNull())
 		assert.True(t, nilArray.Equals(nullValue))
 
 		assert.True(t, New(Array{}).IsArray())
+	})
+
+	t.Run("map", func(t *testing.T) {
+		t.Parallel()
+		nilMap := New[map[string]Value](nil)
+
+		assert.False(t, nilMap.IsMap())
+		assert.True(t, nilMap.IsNull())
+		assert.True(t, nilMap.Equals(nullValue))
+
+		assert.True(t, New(Map{}).IsMap())
 	})
 
 	// *T based type, zero value is *resource.Asset(nil)
