@@ -134,6 +134,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			nil, /*env*/
 			testConnection,
 			langRuntimePluginDialOptions(ctx, runtime),
+			false,
 		)
 		if err != nil {
 			return nil, err
@@ -657,8 +658,8 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 }
 
 func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
-	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
-		h.runtime, info.Info.String())
+	logging.V(7).Infof("langhost[%v].RunPlugin(prefix=%v,%s) executing",
+		h.runtime, info.Prefix, info.Info.String())
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
@@ -668,10 +669,12 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 	ctx, kill := context.WithCancel(h.ctx.Request())
 
 	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
-		Pwd:  info.WorkingDirectory,
-		Args: info.Args,
-		Env:  info.Env,
-		Info: minfo,
+		Pwd:            info.WorkingDirectory,
+		Args:           info.Args,
+		Env:            info.Env,
+		Info:           minfo,
+		Prefix:         info.Prefix,
+		AttachDebugger: info.AttachDebugger,
 	})
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering

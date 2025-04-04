@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -815,7 +816,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 		}
 		if req.GetAttachDebugger() {
 			debugConfig, err := structpb.NewStruct(map[string]interface{}{
-				"name":             "Pulumi: Program (Node.js)",
+				"name":             fmt.Sprintf("%s (program)", req.Project),
 				"type":             "node",
 				"request":          "attach",
 				"processId":        cmd.Process.Pid,
@@ -1427,6 +1428,12 @@ func (host *nodeLanguageHost) RunPlugin(
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
 	ctx := context.Background()
 
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(closer)
+
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
 	if err != nil {
 		return err
@@ -1467,13 +1474,21 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	args := []string{runPath}
+	var attachPort int
+	args := []string{}
+	if req.GetAttachDebugger() {
+		attachPort = 50000 + rand.Intn(1000)
+		args = append(args, fmt.Sprintf("--inspect-brk=%d", attachPort))
+		// suppress the console output "Debugger listening on..."
+		args = append(args, "--inspect-publish-uid=http")
+	}
+
+	args = append(args, runPath)
 
 	nodeargs, err := shlex.Split(opts.nodeargs)
 	if err != nil {
 		return err
 	}
-
 	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
 
 	args = append(args, nodeargs...)
@@ -1484,7 +1499,39 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
-	if err := cmd.Run(); err != nil {
+
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			// ref: https://code.visualstudio.com/docs/nodejs/nodejs-debugging
+			// ref: https://nodejs.org/en/learn/getting-started/debugging
+			debugConfig, err := structpb.NewStruct(map[string]interface{}{
+				"name":             req.Prefix,
+				"type":             "node",
+				"request":          "attach",
+				"port":             attachPort,
+				"continueOnAttach": true,
+				"skipFiles":        []interface{}{"<node_internals>/**"},
+				"cwd":              req.Pwd,
+				"trace":            false, // for troubleshooting purposes
+			})
+			if err != nil {
+				return err
+			}
+			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+				Config:  debugConfig,
+				Message: fmt.Sprintf("on process id %d", cmd.Process.Pid),
+			})
+			if err != nil {
+				return fmt.Errorf("unable to start debugging: %w", err)
+			}
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.

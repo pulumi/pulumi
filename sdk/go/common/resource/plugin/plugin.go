@@ -235,6 +235,7 @@ func newPlugin[T any](
 	env []string,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
+	attachDebugger bool,
 ) (*plugin, *T, error) {
 	if logging.V(9) {
 		var argstr string
@@ -260,7 +261,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
+	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -409,7 +410,7 @@ func parsePort(portString string) (int, error) {
 
 // execPlugin starts the plugin executable.
 func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string,
+	pluginArgs []string, pwd string, env []string, attachDebugger bool,
 ) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
@@ -460,6 +461,8 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
 			Env:              env,
+			Prefix:           prefix,
+			AttachDebugger:   attachDebugger,
 		})
 		if err != nil {
 			return nil, err

@@ -189,6 +189,8 @@ type RunPluginInfo struct {
 	WorkingDirectory string
 	Args             []string
 	Env              []string
+	Prefix           string
+	AttachDebugger   bool // true if we are starting the program under a debugger.
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.

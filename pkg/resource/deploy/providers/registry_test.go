@@ -108,6 +108,10 @@ func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.Progr
 	return nil, nil
 }
 
+func (h *testPluginHost) ShouldDebugPlugin(workspace.PluginSpec) bool {
+	return false
+}
+
 func (host *testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
 	return nil
 }

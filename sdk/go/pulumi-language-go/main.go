@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -832,7 +833,7 @@ func (c *debugger) Cleanup() {
 	contract.IgnoreError(os.Remove(c.LogDest))
 }
 
-func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
+func debugCommand(bin string, binArgs ...string) (*exec.Cmd, *debugger, error) {
 	godlv, err := executable.FindExecutable("dlv")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to find 'dlv' executable: %w", err)
@@ -844,16 +845,26 @@ func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
 	contract.IgnoreClose(logFile)
 	args := []string{"--headless=true", "--api-version=2"}
 	args = append(args, "--log", "--log-dest", logFile.Name())
-	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
+	// args = append(args, "--log-output", "dap,debugger,rpc")
+	port, err := netutil.FindNextAvailablePort(50000 + rand.Intn(1000))
 	if err == nil {
 		args = append(args, "--listen=127.0.0.1:"+strconv.Itoa(port))
 	}
 	args = append(args, "exec", bin)
+	if len(binArgs) > 0 {
+		args = append(args, "--")
+		args = append(args, binArgs...)
+	}
 	dlvCmd := exec.Command(godlv, args...)
 	return dlvCmd, &debugger{Host: "127.0.0.1", LogDest: logFile.Name()}, nil
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger) error {
+type programInfo struct {
+	Name string
+	Cwd  string
+}
+
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger, info programInfo) error {
 	// wait for the debugger to be ready
 	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	defer cancel()
@@ -862,13 +873,20 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, db
 		return err
 	}
 
-	debugConfig, err := structpb.NewStruct(map[string]interface{}{
-		"name":    "Pulumi: Program (Go)",
+	debugConfig, err := structpb.NewStruct(map[string]any{
+		"name":    info.Name,
 		"type":    "go",
 		"request": "attach",
 		"mode":    "remote",
-		"host":    dbg.Host,
-		"port":    dbg.Port,
+		"substitutePath": []any{
+			map[string]any{
+				"from": info.Cwd,
+				"to":   info.Cwd,
+			},
+		},
+		"host": dbg.Host,
+		"port": dbg.Port,
+		"cwd":  info.Cwd,
 	})
 	if err != nil {
 		return err
@@ -906,7 +924,11 @@ func runProgram(
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		go func() {
-			err := startDebugging(ctx, engineClient, dbg)
+			info := programInfo{
+				Name: fmt.Sprintf("%s (program)", req.Project),
+				Cwd:  pwd,
+			}
+			err := startDebugging(ctx, engineClient, dbg, info)
 			if err != nil {
 				// kill the program if we can't start debugging.
 				logging.Errorf("Unable to start debugging: %v", err)
@@ -1209,7 +1231,17 @@ func (host *goLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run go plugin in %s", req.Info.ProgramDirectory)
 
-	program, err := compileProgram(req.Info.ProgramDirectory, "", false)
+	if host.engineAddress == "" {
+		return errors.New("when debugging or running explicitly, must call Handshake before RunPlugin")
+	}
+
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(closer)
+
+	program, err := compileProgram(req.Info.ProgramDirectory, "", req.GetAttachDebugger())
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1222,7 +1254,32 @@ func (host *goLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	cmd := exec.Command(program, req.Args...)
+	var dbg *debugger
+	var cmd *exec.Cmd
+	if req.GetAttachDebugger() {
+		cmd, dbg, err = debugCommand(program, req.Args...)
+		if err != nil {
+			return err
+		}
+		defer dbg.Cleanup()
+		// create a sub-context to cancel the startDebugging operation when the process exits.
+		ctx, cancel := context.WithCancel(server.Context())
+		defer cancel()
+		go func() {
+			info := programInfo{
+				Name: req.Prefix,
+				Cwd:  req.Pwd,
+			}
+			err := startDebugging(ctx, engineClient, dbg, info)
+			if err != nil {
+				// kill the plugin if we can't start debugging.
+				logging.Errorf("Unable to start debugging: %v", err)
+				contract.IgnoreError(cmd.Process.Kill())
+			}
+		}()
+	} else {
+		cmd = exec.Command(program, req.Args...)
+	}
 	cmd.Dir = req.Pwd
 	cmd.Env = req.Env
 	cmd.Stdout, cmd.Stderr = stdout, stderr

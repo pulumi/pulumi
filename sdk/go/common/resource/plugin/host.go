@@ -90,6 +90,9 @@ type Host interface {
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
 
+	// Indicates whether debugging is enabled for the given plugin.
+	ShouldDebugPlugin(workspace.PluginSpec) bool
+
 	// StartDebugging asks the host to start a debugging session with the given configuration.
 	StartDebugging(DebuggingInfo) error
 
@@ -336,6 +339,11 @@ func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, st
 
 func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+}
+
+func (host *defaultHost) ShouldDebugPlugin(spec workspace.PluginSpec) bool {
+	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
+	return host.debugging.ShouldDebugPlugin(spec)
 }
 
 func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
