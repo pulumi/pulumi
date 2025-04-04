@@ -1128,36 +1128,38 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	var events chan engine.Event
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b.explainer)
+}
 
-	if op.Opts.Display.ShowCopilotSummary {
-		events = make(chan engine.Event)
-		renderDone := make(chan bool)
-		renderer := display.NewCaptureProgressEvents(
-			stack.Ref().Name(),
-			op.Proj.Name,
-			display.Options{
-				ShowResourceChanges: true,
-			},
-		)
+func (b *cloudBackend) explainer(stack backend.Stack, op backend.UpdateOperation, events []engine.Event, opts display.Options) (string, error) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
 
-		go renderer.ProcessEvents(events, renderDone)
+	renderer := display.NewCaptureProgressEvents(
+		stack.Ref().Name(),
+		op.Proj.Name,
+		display.Options{
+			ShowResourceChanges: true,
+		},
+		true,
+		apitype.UpdateUpdate,
+	)
 
-		defer func() {
-			close(events)
-			<-renderDone
-			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled so we
-			// check it again here.
-			if op.Opts.Display.ShowCopilotSummary && renderer.OutputIncludesFailure() {
-				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
-				// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update if we
-				// can't generate a summary.
-				display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
-			}
-		}()
+	go renderer.ProcessEvents(eventsChan, renderDone)
+
+	for _, event := range events {
+		eventsChan <- event
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, events)
+	close(eventsChan)
+	<-renderDone
+
+	summary, err := b.summarizeErrorWithCopilot(context.Background(), renderer.Output(), stack.Ref(), op.Opts.Display)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("\n%s\n", summary.Summary), nil
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1178,7 +1180,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b.explainer)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1196,7 +1198,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b.explainer)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1214,7 +1216,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b.explainer)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1396,6 +1398,26 @@ func (b *cloudBackend) createAndStartUpdate(
 	}, nil
 }
 
+func withTap(wrappedSink chan<- engine.Event) (chan<- engine.Event, <-chan engine.Event) {
+	input := make(chan engine.Event)
+	tapped := make(chan engine.Event)
+
+	go func() {
+		defer close(tapped)
+		for ev := range input {
+			// Always send to tapped
+			tapped <- ev
+
+			// Conditionally forward to wrappedSink if it's not nil
+			if wrappedSink != nil {
+				wrappedSink <- ev
+			}
+		}
+	}()
+
+	return input, tapped
+}
+
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -1417,6 +1439,35 @@ func (b *cloudBackend) apply(
 	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
+	if op.Opts.Display.ShowCopilotSummary {
+		var eventsChan <-chan engine.Event
+		events, eventsChan = withTap(events)
+
+		renderDone := make(chan bool)
+		renderer := display.NewCaptureProgressEvents(
+			stack.Ref().Name(),
+			op.Proj.Name,
+			display.Options{
+				ShowResourceChanges: true,
+			},
+			opts.DryRun,
+			kind,
+		)
+
+		go renderer.ProcessEvents(eventsChan, renderDone)
+
+		defer func() {
+			<-renderDone
+			if renderer.OutputIncludesFailure() {
+				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+				// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+				// if we can't generate a summary.
+				display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
+			}
+		}()
 	}
 
 	// Display messages from the backend if present.

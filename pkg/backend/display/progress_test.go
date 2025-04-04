@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -181,7 +183,8 @@ func TestProgressEvents(t *testing.T) {
 func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	t.Parallel()
 
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
 	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
 	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
 
@@ -218,9 +221,37 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 
 	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
 
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
 	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
 	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
+
+	for _, event := range failureEvents {
+		eventChannel <- event
+	}
+
+	close(eventChannel)
+	<-doneChannel
+
+	assert.True(t, captureRenderer.OutputIncludesFailure())
+	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
+}
+
+func TestCaptureProgressEventsDetectsAndCapturesFailurePreview(t *testing.T) {
+	t.Parallel()
+
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, true, apitype.PreviewUpdate)
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
+
+	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
+		URN:      "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message:  "Failed to update",
+		Severity: diag.Error,
+	})
+
+	failureEvents := []engine.Event{diagEventWithErrors}
 
 	for _, event := range failureEvents {
 		eventChannel <- event
