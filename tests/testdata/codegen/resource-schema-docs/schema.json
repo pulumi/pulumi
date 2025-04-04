@@ -1,0 +1,210 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example:myMod:Resource": {
+      "properties": {
+        "bar": {
+          "type": "string",
+          "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "string",
+          "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+        }
+      },
+      "type": "object",
+      "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+    },
+    "example:myMod:OtherResource": {
+      "isComponent": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example:myMod:Resource"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/resources/example:myMod:Resource"
+        }
+      },
+      "type": "object"
+    },
+    "example:otherMod:ResC": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ResD": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "functions": {
+    "example:myMod:getFunction": {
+      "inputs": {
+        "properties": {
+          "foo": {
+            "$ref": "#/resources/example:myMod:Resource",
+            "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example:myMod:Resource",
+            "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+          }
+        }
+      },
+      "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+    },
+    "example:myMod:getOtherFunction": {
+      "inputs": {
+        "properties": {
+          "fooBar": {
+            "$ref": "#/resources/example:myMod:Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example:myMod:Resource"
+          }
+        }
+      }
+    },
+    "example:otherMod:getFunction": {
+      "inputs": {
+        "properties": {
+          "fooBar": {
+            "$ref": "#/resources/example:myMod:Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example:myMod:Resource"
+          }
+        }
+      }
+    },
+    "example::getFunction": {
+      "inputs": {
+        "properties": {
+          "fooBar": {
+            "$ref": "#/resources/example:myMod:Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example:myMod:Resource"
+          }
+        }
+      }
+    }
+  },
+  "types": {
+    "example:myMod:A": {
+      "properties": {
+        "foo": {
+          "type": "string",
+          "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+        },
+        "fooBar": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/example:myMod:B"
+            },
+            "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+          },
+          "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+        }
+      },
+      "type": "object",
+      "description": "/resources/example:myMod:Resource <pulumi ref=\"#/resources/example:myMod:Resource\" />\n/resources/example:myMod:Resource/properties/bar <pulumi ref=\"#/resources/example:myMod:Resource/properties/bar\" />\n/resources/example:myMod:Resource/inputProperties/bar <pulumi ref=\"#/resources/example:myMod:Resource/inputProperties/bar\" />\n/resources/example:myMod:OtherResource <pulumi ref=\"#/resources/example:myMod:OtherResource\" />\n/resources/example:myMod:OtherResource/properties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/properties/foo\" />\n/resources/example:myMod:OtherResource/inputProperties/foo <pulumi ref=\"#/resources/example:myMod:OtherResource/inputProperties/foo\" />\n/resources/example:otherMod:ResC <pulumi ref=\"#/resources/example:otherMod:ResC\" />\n/resources/example:otherMod:ResC/properties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/properties/foo\" />\n/resources/example:otherMod:ResC/inputProperties/foo <pulumi ref=\"#/resources/example:otherMod:ResC/inputProperties/foo\" />\n/resources/example::ResD <pulumi ref=\"#/resources/example::ResD\" />\n/resources/example::ResD/properties/foo <pulumi ref=\"#/resources/example::ResD/properties/foo\" />\n/resources/example::ResD/inputProperties/foo <pulumi ref=\"#/resources/example::ResD/inputProperties/foo\" />\n/functions/example:myMod:getFunction <pulumi ref=\"#/functions/example:myMod:getFunction\" />\n/functions/example:myMod:getFunction/inputs/properties/foo <pulumi ref=\"#/functions/example:myMod:getFunction/inputs/properties/foo\" />\n/functions/example:myMod:getFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getFunction/outputs/properties/result\" />\n/functions/example:myMod:getOtherFunction <pulumi ref=\"#/functions/example:myMod:getOtherFunction\" />\n/functions/example:myMod:getOtherFunction/inputs/properties/fooBar <pulumi ref=\"#/functions/example:myMod:getOtherFunction/inputs/properties/fooBar\" />\n/functions/example:myMod:getOtherFunction/outputs/properties/result <pulumi ref=\"#/functions/example:myMod:getOtherFunction/outputs/properties/result\" />\n/types/example:myMod:A <pulumi ref=\"#/types/example:myMod:A\" />\n/types/example:myMod:A/properties/foo <pulumi ref=\"#/types/example:myMod:A/properties/foo\" />\n/types/example:myMod:A/properties/fooBar <pulumi ref=\"#/types/example:myMod:A/properties/fooBar\" />\n/types/example:myMod:B <pulumi ref=\"#/types/example:myMod:B\" />\n/types/example:myMod:B/properties/baz <pulumi ref=\"#/types/example:myMod:B/properties/baz\" />"
+    },
+    "example:myMod:B": {
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example:otherMod:C": {
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::D": {
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.71"
+      },
+      "namespaces": {
+        "myMod": "MyMod"
+      }
+    },
+    "go": {
+      "importBasePath": "simple-resource-schema-custom-pypackage-name/example/v2",
+      "generateExtraInputTypes": true,
+      "packageImportAliases": {
+        "simple-resource-schema-custom-pypackage-name/myMod/v2": "mymod"
+      }
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {
+      "packageName": "custom_py_package",
+      "moduleNameOverrides": {
+        "myMod": "my_mod"
+      }
+    }
+  }
+}
