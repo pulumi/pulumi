@@ -166,7 +166,18 @@ class ComponentProvider(Provider):
                     continue
 
                 if type_def.enum:
-                    mapped_value[py_name] = type_def.python_type(input_val)
+                    try:
+                        mapped_value[py_name] = type_def.python_type(input_val)
+                    except ValueError as e:
+                        full_path = (
+                            schema_name
+                            if not property_path
+                            else f"{property_path}.{schema_name}"
+                        )
+                        raise InputPropertyError(
+                            full_path,
+                            f"Invalid value {input_val} of type {type(input_val)} for enum '{type_def.name}'",
+                        ) from e
                     continue
 
                 # Recursively map the complex type
