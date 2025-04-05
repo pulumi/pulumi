@@ -303,7 +303,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 func GenerateProject(
 	directory string, project workspace.Project,
 	program *pcl.Program, localDependencies map[string]string,
-	typechecker string,
+	typechecker, toolchain string,
 ) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -336,6 +336,13 @@ func GenerateProject(
 			options = map[string]interface{}{}
 		}
 		options["typechecker"] = typechecker
+	}
+
+	if toolchain != "" {
+		if options == nil {
+			options = map[string]interface{}{}
+		}
+		options["toolchain"] = toolchain
 	}
 
 	// Set the runtime to "python" then marshal to Pulumi.yaml
