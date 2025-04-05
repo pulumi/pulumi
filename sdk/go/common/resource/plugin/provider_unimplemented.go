@@ -106,10 +106,6 @@ func (p *UnimplementedProvider) Invoke(context.Context, InvokeRequest) (InvokeRe
 	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
-func (p *UnimplementedProvider) StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error) {
-	return StreamInvokeResponse{}, status.Error(codes.Unimplemented, "StreamInvoke is not yet implemented")
-}
-
 func (p *UnimplementedProvider) Call(context.Context, CallRequest) (CallResponse, error) {
 	return CallResponse{}, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }

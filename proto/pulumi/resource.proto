@@ -29,7 +29,6 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
-    rpc StreamInvoke(ResourceInvokeRequest) returns (stream InvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}

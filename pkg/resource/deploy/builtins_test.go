@@ -308,12 +308,6 @@ func TestBuiltinProvider(t *testing.T) {
 			})
 		})
 	})
-	t.Run("StreamInvoke (unimplemented)", func(t *testing.T) {
-		t.Parallel()
-		p := &builtinProvider{}
-		_, err := p.StreamInvoke(context.Background(), plugin.StreamInvokeRequest{})
-		assert.ErrorContains(t, err, "the builtin provider does not implement streaming invokes")
-	})
 	t.Run("Call (unimplemented)", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}

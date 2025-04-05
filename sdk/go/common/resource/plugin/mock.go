@@ -168,7 +168,6 @@ type MockProvider struct {
 	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
-	StreamInvokeF       func(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error)
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
 	GetPluginInfoF      func(context.Context) (workspace.PluginInfo, error)
 	SignalCancellationF func(context.Context) error
@@ -290,13 +289,6 @@ func (m *MockProvider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRes
 		return m.InvokeF(ctx, req)
 	}
 	return InvokeResponse{}, errors.New("Invoke not implemented")
-}
-
-func (m *MockProvider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (StreamInvokeResponse, error) {
-	if m.StreamInvokeF != nil {
-		return m.StreamInvokeF(ctx, req)
-	}
-	return StreamInvokeResponse{}, errors.New("StreamInvoke not implemented")
 }
 
 func (m *MockProvider) Call(ctx context.Context, req CallRequest) (CallResponse, error) {

@@ -119,9 +119,6 @@ type ResourceProviderClient interface {
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
-	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-	// of responses.
-	StreamInvoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (ResourceProvider_StreamInvokeClient, error)
 	// Call dynamically executes a method in the provider associated with a component resource.
 	Call(ctx context.Context, in *CallRequest, opts ...grpc.CallOption) (*CallResponse, error)
 	// `Check` validates a set of input properties against a given resource type. A `Check` call returns either a set of
@@ -286,38 +283,6 @@ func (c *resourceProviderClient) Invoke(ctx context.Context, in *InvokeRequest, 
 		return nil, err
 	}
 	return out, nil
-}
-
-func (c *resourceProviderClient) StreamInvoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (ResourceProvider_StreamInvokeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ResourceProvider_ServiceDesc.Streams[0], "/pulumirpc.ResourceProvider/StreamInvoke", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &resourceProviderStreamInvokeClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type ResourceProvider_StreamInvokeClient interface {
-	Recv() (*InvokeResponse, error)
-	grpc.ClientStream
-}
-
-type resourceProviderStreamInvokeClient struct {
-	grpc.ClientStream
-}
-
-func (x *resourceProviderStreamInvokeClient) Recv() (*InvokeResponse, error) {
-	m := new(InvokeResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 func (c *resourceProviderClient) Call(ctx context.Context, in *CallRequest, opts ...grpc.CallOption) (*CallResponse, error) {
@@ -537,9 +502,6 @@ type ResourceProviderServer interface {
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
-	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-	// of responses.
-	StreamInvoke(*InvokeRequest, ResourceProvider_StreamInvokeServer) error
 	// Call dynamically executes a method in the provider associated with a component resource.
 	Call(context.Context, *CallRequest) (*CallResponse, error)
 	// `Check` validates a set of input properties against a given resource type. A `Check` call returns either a set of
@@ -660,9 +622,6 @@ func (UnimplementedResourceProviderServer) Configure(context.Context, *Configure
 }
 func (UnimplementedResourceProviderServer) Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
-}
-func (UnimplementedResourceProviderServer) StreamInvoke(*InvokeRequest, ResourceProvider_StreamInvokeServer) error {
-	return status.Errorf(codes.Unimplemented, "method StreamInvoke not implemented")
 }
 func (UnimplementedResourceProviderServer) Call(context.Context, *CallRequest) (*CallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
@@ -840,27 +799,6 @@ func _ResourceProvider_Invoke_Handler(srv interface{}, ctx context.Context, dec 
 		return srv.(ResourceProviderServer).Invoke(ctx, req.(*InvokeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
-}
-
-func _ResourceProvider_StreamInvoke_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(InvokeRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ResourceProviderServer).StreamInvoke(m, &resourceProviderStreamInvokeServer{stream})
-}
-
-type ResourceProvider_StreamInvokeServer interface {
-	Send(*InvokeResponse) error
-	grpc.ServerStream
-}
-
-type resourceProviderStreamInvokeServer struct {
-	grpc.ServerStream
-}
-
-func (x *resourceProviderStreamInvokeServer) Send(m *InvokeResponse) error {
-	return x.ServerStream.SendMsg(m)
 }
 
 func _ResourceProvider_Call_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1185,12 +1123,6 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceProvider_GetMappings_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "StreamInvoke",
-			Handler:       _ResourceProvider_StreamInvoke_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "pulumi/provider.proto",
 }

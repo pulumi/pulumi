@@ -261,12 +261,6 @@ func (p *builtinProvider) Invoke(_ context.Context, req plugin.InvokeRequest) (p
 	return plugin.InvokeResponse{Properties: outs}, nil
 }
 
-func (p *builtinProvider) StreamInvoke(
-	context.Context, plugin.StreamInvokeRequest,
-) (plugin.StreamInvokeResponse, error) {
-	return plugin.StreamInvokeResponse{}, errors.New("the builtin provider does not implement streaming invokes")
-}
-
 func (p *builtinProvider) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	return plugin.CallResult{}, errors.New("the builtin provider does not implement call")
 }
