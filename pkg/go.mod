@@ -31,14 +31,14 @@ require (
 	github.com/iancoleman/strcase v0.2.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/mitchellh/copystructure v1.2.0
-	github.com/moby/moby v26.1.0+incompatible
+	github.com/moby/moby v26.1.5+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.159.0
+	github.com/pulumi/pulumi/sdk/v3 v3.160.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/spf13/cobra v1.8.0
@@ -176,7 +176,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/wire v0.6.0 // indirect

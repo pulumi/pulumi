@@ -336,6 +336,12 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
+	defer func() {
+		err := os.RemoveAll(tmp)
+		if err != nil {
+			logging.V(5).Infof("failed to remove temporary directory: %s", err)
+		}
+	}()
 	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
 	// pack the Python SDK. We install this in an isolated virtual environment
 	// to avoid conflicts with the user's environment.
@@ -344,7 +350,8 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		Toolchain:  toolchain.Uv,
 		Virtualenv: venv,
 	})
-	if err == nil {
+	useUv := err == nil
+	if useUv {
 		// `uv` is available, use it to create our virtual environment.
 		logging.V(5).Infof("Creating virtual environment using uv at %s", venv)
 		cmd := exec.CommandContext(ctx, "uv", "venv", venv)
@@ -381,7 +388,12 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		}
 	}
 
-	buildCmd, err := tc.ModuleCommand(ctx, "build", "--outdir", tmp)
+	args := []string{"--wheel", "--outdir", tmp}
+	if useUv {
+		args = append(args, "--installer", "uv")
+	}
+
+	buildCmd, err := tc.ModuleCommand(ctx, "build", args...)
 	if err != nil {
 		return nil, err
 	}
@@ -943,21 +955,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	mkCmd := func(args []string) (*exec.Cmd, error) {
-		tc, err := toolchain.ResolveToolchain(opts)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := tc.ValidateVenv(ctx); err != nil {
-			return nil, err
-		}
-
-		return tc.Command(ctx, args...)
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
 	}
 
-	cmd, err := mkCmd(args)
+	if err := tc.ValidateVenv(ctx); err != nil {
+		return nil, err
+	}
+	cmd, err := tc.Command(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -990,7 +996,20 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	if typechecker != "" {
-		typecheckerCmd, err := mkCmd([]string{"-m", typechecker, req.Info.ProgramDirectory})
+		typecheckerArgs := []string{"-m", typechecker}
+		if typechecker == "mypy" {
+			virtualenvPath, err := tc.VirtualEnvPath(ctx)
+			if err != nil {
+				return nil, err
+			}
+			relPath, err := filepath.Rel(req.Info.ProgramDirectory, virtualenvPath)
+			if err != nil {
+				return nil, err
+			}
+			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+		}
+		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
+		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
 		if err != nil {
 			return nil, err
 		}

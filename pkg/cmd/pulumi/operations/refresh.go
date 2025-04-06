@@ -46,6 +46,7 @@ import (
 )
 
 func NewRefreshCmd() *cobra.Command {
+	var runProgram bool
 	var debug bool
 	var expectNop bool
 	var message string
@@ -151,7 +152,7 @@ func NewRefreshCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
 					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					false, "", cmdStack.ConfigFile, false)
+					false, "", cmdStack.ConfigFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -292,6 +293,7 @@ func NewRefreshCmd() *cobra.Command {
 				ExcludeDependents:         excludeDependents,
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
+				RefreshProgram:            runProgram,
 			}
 
 			changes, err := s.Refresh(ctx, backend.UpdateOperation{
@@ -317,6 +319,10 @@ func NewRefreshCmd() *cobra.Command {
 			}
 		},
 	}
+
+	cmd.PersistentFlags().BoolVar(
+		&runProgram, "run-program", false,
+		"Run the program to determine up-to-date state for providers to refresh resources")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

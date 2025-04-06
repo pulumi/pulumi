@@ -1906,6 +1906,7 @@ func TestPythonComponentProviderRun(t *testing.T) {
 						"b": float64(4),
 						"c": float64(6),
 					}, stack.Outputs["dictOutput"])
+					require.Equal(t, "b", stack.Outputs["enumOutput"])
 					// TODO: YAML is not properly exporting assets https://github.com/pulumi/pulumi-yaml/issues/714
 					if runtime != "yaml" {
 						// We're expecting assetOutput = map[text:HELLO, WORLD!]
@@ -1962,6 +1963,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 	expectedJSON := `{
 		"isComponent": true,
 		"type": "object",
+		"description": "MyComponent is the best",
 		"properties": {
 			"optionalIntOutput": { "type": "integer" },
 			"strOutput": {
@@ -1982,9 +1984,10 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 				}
 			},
 			"assetOutput": { "$ref": "pulumi.json#/Asset" },
-			"archiveOutput": { "$ref": "pulumi.json#/Archive" }
+			"archiveOutput": { "$ref": "pulumi.json#/Archive" },
+			"enumOutput": { "$ref": "#/types/provider:index:Emu" }
 		},
-		"required": ["archiveOutput", "assetOutput", "dictOutput", "listOutput", "strOutput"],
+		"required": ["archiveOutput", "assetOutput", "dictOutput", "enumOutput", "listOutput", "strOutput"],
 		"inputProperties": {
 			"strInput": {
 				"type": "string",
@@ -2007,9 +2010,10 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 				}
 			},
 			"assetInput": { "$ref": "pulumi.json#/Asset" },
-			"archiveInput": { "$ref": "pulumi.json#/Archive" }
+			"archiveInput": { "$ref": "pulumi.json#/Archive" },
+			"enumInput": { "$ref": "#/types/provider:index:Emu" }
 		},
-		"requiredInputs": ["archiveInput", "assetInput", "dictInput", "listInput", "strInput"]
+		"requiredInputs": ["archiveInput", "assetInput", "dictInput", "enumInput", "listInput", "strInput"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -2049,6 +2053,14 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 			},
 			"type": "object",
 			"required": ["strPlain"]
+		},
+		"provider:index:Emu": {
+			"description": "A or B",
+			"type": "string",
+			"enum": [
+				{ "name": "A", "value": "a" },
+				{ "name": "B", "value": "b" }
+			]
 		}
 	}`
 	expectedTypes := make(map[string]interface{})

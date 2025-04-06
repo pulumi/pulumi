@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: Fix slowness of workspace.DetectProjectFromPath affecting pulumi convert timings

@@ -17,6 +17,7 @@ comp = provider.MyComponent(
     archive_input=pulumi.AssetArchive(
         {"asset1": pulumi.StringAsset("im inside an archive")}
     ),
+    enum_input=provider.Emu.A,
 )
 
 pulumi.export("urn", comp.urn)
@@ -27,3 +28,4 @@ pulumi.export("listOutput", comp.list_output)
 pulumi.export("complexOutput", comp.complex_output)
 pulumi.export("assetOutput", comp.asset_output)
 pulumi.export("archiveOutput", comp.archive_output)
+pulumi.export("enumOutput", comp.enum_output)

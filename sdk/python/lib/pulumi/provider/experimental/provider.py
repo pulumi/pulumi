@@ -165,6 +165,10 @@ class ComponentProvider(Provider):
                     mapped_value[py_name] = input_val
                     continue
 
+                if type_def.enum:
+                    mapped_value[py_name] = type_def.python_type(input_val)
+                    continue
+
                 # Recursively map the complex type
                 next_path = (
                     f"{property_path}.{schema_name}" if property_path else schema_name
@@ -251,6 +255,9 @@ class ComponentProvider(Provider):
                 type_def = self.get_type_definition(prop)
                 if type_def is None:
                     state[k] = instance_val
+                    continue
+                if type_def.enum:
+                    state[k] = instance_val.value
                     continue
 
                 # It's a complex type, map it

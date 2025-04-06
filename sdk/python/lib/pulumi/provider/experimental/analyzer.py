@@ -39,6 +39,7 @@ from ...output import Output
 from ...resource import ComponentResource, Resource
 from .component import (
     ComponentDefinition,
+    EnumValueDefinition,
     PropertyDefinition,
     PropertyType,
     TypeDefinition,
@@ -194,6 +195,7 @@ class Analyzer:
                         )
                         type_def.properties = properties
                         type_def.properties_mapping = properties_mapping
+                        type_def.python_type = typ
                         del self.unresolved_forward_refs[name]
                         break
 
@@ -377,11 +379,12 @@ class Analyzer:
                 # analysis is done.
                 type_def = TypeDefinition(
                     name=ref_name,
-                    type="object",
+                    type=PropertyType.OBJECT,
                     properties={},
                     properties_mapping={},
                     module=module,
                     description=self.get_docstring(typ, name),
+                    python_type=arg,
                 )
                 self.unresolved_forward_refs[ref_name] = type_def
                 self.type_definitions[type_def.name] = type_def
@@ -414,8 +417,30 @@ class Analyzer:
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
             )
         elif is_enum(arg):
-            raise Exception(
-                f"Enum types are not supported: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
+            type_name = arg.__name__
+            type_def = self.type_definitions.get(type_name)
+            if not type_def:
+                type_def = TypeDefinition(
+                    name=type_name,
+                    module=arg.__module__,
+                    type=enum_value_type(arg),
+                    properties={},
+                    properties_mapping={},
+                    description=arg.__doc__,
+                    enum=enum_members(arg),
+                    python_type=arg,
+                )
+                for member in type_def.enum or []:
+                    member.description = self.get_docstring(arg, member.name)
+                self.type_definitions[type_def.name] = type_def
+            elif type_def.module and type_def.module != arg.__module__:
+                raise DuplicateTypeError(arg.__module__, type_def)
+            ref = f"#/types/{self.name}:index:{type_def.name}"
+            return PropertyDefinition(
+                ref=ref,
+                optional=optional,
+                plain=plain,
+                description=self.get_docstring(typ, name),
             )
         elif not is_builtin(arg):
             # We have a custom type, analyze it recursively. Immediately add the
@@ -426,11 +451,12 @@ class Analyzer:
             if not type_def:
                 type_def = TypeDefinition(
                     name=type_name,
-                    type="object",
+                    type=PropertyType.OBJECT,
                     properties={},
                     properties_mapping={},
                     description=arg.__doc__,
                     module=arg.__module__,
+                    python_type=arg,
                 )
                 self.type_definitions[type_def.name] = type_def
             else:
@@ -479,10 +505,33 @@ class Analyzer:
                     while True:
                         try:
                             node = next(it)
-                            # Look for an assignment with a type annotation
-                            if isinstance(node, ast.AnnAssign):
-                                if isinstance(node.target, ast.Name):
-                                    target = node.target.id
+                            # For argument types or complex types, we'll have
+                            # assignments with type annotations (ast.AnnAssign):
+                            #
+                            #   class SomeArgs(TypedDict):
+                            #     abc: str                  # <- ast.AnnAssign
+                            #
+                            # Here we have an `ast.AnnAssign` with the target `abc`.
+                            # For Enums, we instead have assignments without annotations:
+                            #
+                            #   class SomeEnum(Enum):
+                            #     abc = "abc"               # <- ast.Assign
+                            #
+                            # In this case we have an `ast.Assign`. Since Python supports
+                            # multiple assignement, this node type has a list of targets.
+                            # We are only interested in cases with exactly one.
+                            if isinstance(node, ast.AnnAssign) or isinstance(
+                                node, ast.Assign
+                            ):
+                                if isinstance(node, ast.AnnAssign):
+                                    target_node: ast.expr = node.target
+                                else:
+                                    # We have an ast.Assign
+                                    if len(node.targets) != 1:
+                                        continue
+                                    target_node = node.targets[0]
+                                if isinstance(target_node, ast.Name):
+                                    target = target_node.id
                                     # Look for a docstring right after the assignment
                                     node = next(it)
                                     if (
@@ -678,3 +727,30 @@ def is_archive(typ: type) -> bool:
         return issubclass(typ, Archive)
     except TypeError:
         return False
+
+
+def enum_value_type(enu: type) -> PropertyType:
+    if not issubclass(enu, Enum):
+        raise Exception(f"Invalid enum type {enu}.")
+    member = next(iter(enu.__members__.values()))
+    if isinstance(member.value, bool):
+        return PropertyType.BOOLEAN
+    elif isinstance(member.value, int):
+        return PropertyType.INTEGER
+    elif isinstance(member.value, float):
+        return PropertyType.NUMBER
+    elif isinstance(member.value, str):
+        return PropertyType.STRING
+    raise Exception(
+        f"Invalid type for enum value '{enu.__name__}.{member.name}': '{type(member.value)}'. "
+        + "Supported enum value types are bool, str, float and int."
+    )
+
+
+def enum_members(enu: type) -> list[EnumValueDefinition]:
+    if not issubclass(enu, Enum):
+        raise Exception(f"Invalid enum type {enu}.")
+    return [
+        EnumValueDefinition(name=name, value=enum_value.value)
+        for (name, enum_value) in enu.__members__.items()
+    ]

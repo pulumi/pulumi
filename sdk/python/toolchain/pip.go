@@ -178,6 +178,10 @@ func (p *pip) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTool
 	return nil
 }
 
+func (p *pip) VirtualEnvPath(_ context.Context) (string, error) {
+	return p.virtualenvPath, nil
+}
+
 // IsVirtualEnv returns true if the specified directory contains a python binary.
 func IsVirtualEnv(dir string) bool {
 	pyBin := filepath.Join(dir, virtualEnvBinDirName(), "python")

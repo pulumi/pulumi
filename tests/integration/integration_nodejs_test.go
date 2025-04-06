@@ -2706,4 +2706,11 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stdout), &packageSpec))
 	require.Equal(t, "namespaced-component", packageSpec.Name)
 	require.Equal(t, "my-namespace", packageSpec.Namespace)
+
+	res, ok := packageSpec.Resources["namespaced-component:index:MyComponent"]
+	require.True(t, ok, fmt.Sprintf("missing expected resource in %v", packageSpec.Resources))
+
+	input, ok := res.InputProperties["anInput"]
+	require.True(t, ok, fmt.Sprintf("missing expected input property in %v", res.InputProperties))
+	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }

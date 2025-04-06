@@ -247,10 +247,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 
 	var renderer progressRenderer
 	if isInteractive {
-		printPermalinkInteractive(term, opts, permalink)
+		printPermalinkInteractive(term, opts, permalink, "")
 		renderer = newInteractiveRenderer(term, permalink, opts)
 	} else {
-		printPermalinkNonInteractive(stdout, opts, permalink)
+		printPermalinkNonInteractive(stdout, opts, permalink, "")
 		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 
@@ -315,7 +315,7 @@ func RenderProgressEvents(
 	o.RenderOnDirty = false
 	o.IsInteractive = true
 
-	printPermalinkInteractive(o.term, o, permalink)
+	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
 		action:                action,
@@ -374,7 +374,7 @@ func NewCaptureProgressEvents(
 	action := apitype.UpdateUpdate
 	permalink := ""
 
-	printPermalinkInteractive(o.term, o, permalink)
+	printPermalinkInteractive(o.term, o, permalink, "")
 	renderer := newInteractiveRenderer(o.term, permalink, o)
 	display := &ProgressDisplay{
 		action:                action,

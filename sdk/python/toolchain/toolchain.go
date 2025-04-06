@@ -92,6 +92,8 @@ type Toolchain interface {
 	ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error)
 	// About returns information about the python executable of the toolchain.
 	About(ctx context.Context) (Info, error)
+	// VirtualEnvPath returns the path of the virtual env used by the toolchain.
+	VirtualEnvPath(ctx context.Context) (string, error)
 }
 
 func Name(tc toolchain) string {
