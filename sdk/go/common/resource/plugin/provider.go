@@ -308,16 +308,6 @@ type InvokeResponse struct {
 	Failures   []CheckFailure
 }
 
-type StreamInvokeRequest struct {
-	Tok    tokens.ModuleMember
-	Args   resource.PropertyMap
-	OnNext func(resource.PropertyMap) error
-}
-
-type StreamInvokeResponse struct {
-	Failures []CheckFailure
-}
-
 type CallRequest struct {
 	Tok     tokens.ModuleMember
 	Args    resource.PropertyMap
@@ -411,9 +401,6 @@ type Provider interface {
 
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, InvokeRequest) (InvokeResponse, error)
-	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-	// of responses.
-	StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error)
 	// Call dynamically executes a method in the provider associated with a component resource.
 	Call(context.Context, CallRequest) (CallResponse, error)
 

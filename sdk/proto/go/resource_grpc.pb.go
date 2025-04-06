@@ -25,7 +25,6 @@ const _ = grpc.SupportPackageIsVersion7
 type ResourceMonitorClient interface {
 	SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error)
 	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
-	StreamInvoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (ResourceMonitor_StreamInvokeClient, error)
 	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
@@ -63,38 +62,6 @@ func (c *resourceMonitorClient) Invoke(ctx context.Context, in *ResourceInvokeRe
 		return nil, err
 	}
 	return out, nil
-}
-
-func (c *resourceMonitorClient) StreamInvoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (ResourceMonitor_StreamInvokeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ResourceMonitor_ServiceDesc.Streams[0], "/pulumirpc.ResourceMonitor/StreamInvoke", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &resourceMonitorStreamInvokeClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type ResourceMonitor_StreamInvokeClient interface {
-	Recv() (*InvokeResponse, error)
-	grpc.ClientStream
-}
-
-type resourceMonitorStreamInvokeClient struct {
-	grpc.ClientStream
-}
-
-func (x *resourceMonitorStreamInvokeClient) Recv() (*InvokeResponse, error) {
-	m := new(InvokeResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 func (c *resourceMonitorClient) Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error) {
@@ -166,7 +133,6 @@ func (c *resourceMonitorClient) RegisterPackage(ctx context.Context, in *Registe
 type ResourceMonitorServer interface {
 	SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error)
 	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
-	StreamInvoke(*ResourceInvokeRequest, ResourceMonitor_StreamInvokeServer) error
 	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
@@ -190,9 +156,6 @@ func (UnimplementedResourceMonitorServer) SupportsFeature(context.Context, *Supp
 }
 func (UnimplementedResourceMonitorServer) Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
-}
-func (UnimplementedResourceMonitorServer) StreamInvoke(*ResourceInvokeRequest, ResourceMonitor_StreamInvokeServer) error {
-	return status.Errorf(codes.Unimplemented, "method StreamInvoke not implemented")
 }
 func (UnimplementedResourceMonitorServer) Call(context.Context, *ResourceCallRequest) (*CallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
@@ -262,27 +225,6 @@ func _ResourceMonitor_Invoke_Handler(srv interface{}, ctx context.Context, dec f
 		return srv.(ResourceMonitorServer).Invoke(ctx, req.(*ResourceInvokeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
-}
-
-func _ResourceMonitor_StreamInvoke_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ResourceInvokeRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ResourceMonitorServer).StreamInvoke(m, &resourceMonitorStreamInvokeServer{stream})
-}
-
-type ResourceMonitor_StreamInvokeServer interface {
-	Send(*InvokeResponse) error
-	grpc.ServerStream
-}
-
-type resourceMonitorStreamInvokeServer struct {
-	grpc.ServerStream
-}
-
-func (x *resourceMonitorStreamInvokeServer) Send(m *InvokeResponse) error {
-	return x.ServerStream.SendMsg(m)
 }
 
 func _ResourceMonitor_Call_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -455,12 +397,6 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceMonitor_RegisterPackage_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "StreamInvoke",
-			Handler:       _ResourceMonitor_StreamInvoke_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "pulumi/resource.proto",
 }

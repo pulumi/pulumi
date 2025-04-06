@@ -16,7 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import abc
-import collections.abc
 import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
@@ -34,10 +33,6 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.SupportsFeatureResponse,
     ]
     Invoke: grpc.UnaryUnaryMultiCallable[
-        pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
-    ]
-    StreamInvoke: grpc.UnaryStreamMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
         pulumi.provider_pb2.InvokeResponse,
     ]
@@ -90,12 +85,6 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.ResourceInvokeRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.InvokeResponse: ...
-    
-    def StreamInvoke(
-        self,
-        request: pulumi.resource_pb2.ResourceInvokeRequest,
-        context: grpc.ServicerContext,
-    ) -> collections.abc.Iterator[pulumi.provider_pb2.InvokeResponse]: ...
     
     def Call(
         self,
