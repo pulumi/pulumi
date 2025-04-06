@@ -969,12 +969,6 @@ func TestRegistry(t *testing.T) {
 			_, _ = r.Invoke(context.Background(), plugin.InvokeRequest{})
 		})
 	})
-	t.Run("StreamInvoke", func(t *testing.T) {
-		t.Parallel()
-		r := &Registry{}
-		_, err := r.StreamInvoke(context.Background(), plugin.StreamInvokeRequest{})
-		assert.ErrorContains(t, err, "the provider registry does not implement streaming invokes")
-	})
 	t.Run("Call", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}

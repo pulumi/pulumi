@@ -130,10 +130,6 @@ service ResourceProvider {
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
 
-    // StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-    // of responses.
-    rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
-
     // Call dynamically executes a method in the provider associated with a component resource.
     rpc Call(CallRequest) returns (CallResponse) {}
 

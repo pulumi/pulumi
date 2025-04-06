@@ -184,15 +184,6 @@ func (p *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest)
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", tok)
 }
 
-// StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
-// back as a series of messages.
-func (p *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
-	server rpc.ResourceProvider_StreamInvokeServer,
-) error {
-	tok := req.GetTok()
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", tok)
-}
-
 func (p *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
 	tok := req.GetTok()
 
