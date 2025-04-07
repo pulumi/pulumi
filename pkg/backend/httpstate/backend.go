@@ -1391,9 +1391,23 @@ func (b *cloudBackend) apply(
 	}
 
 	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
+	// This code is here so we can capture errors from previews-of-updates as well as updates.
 	if op.Opts.Display.ShowCopilotSummary {
-		var eventsCopy <-chan engine.Event
-		events, eventsCopy = teeEvents(events)
+		eventsChannel := make(chan engine.Event)
+		eventsCopy := make(chan engine.Event)
+
+		originalEvents := events
+		events = eventsChannel
+
+		go func() {
+			defer close(eventsCopy)
+			for event := range eventsChannel {
+				eventsCopy <- event
+				if originalEvents != nil {
+					originalEvents <- event
+				}
+			}
+		}()
 
 		renderDone := make(chan bool)
 		renderer := display.NewCaptureProgressEvents(
@@ -1409,7 +1423,7 @@ func (b *cloudBackend) apply(
 		go renderer.ProcessEvents(eventsCopy, renderDone)
 
 		defer func() {
-			close(events)
+			close(eventsChannel)
 			<-renderDone
 			if renderer.OutputIncludesFailure() {
 				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
@@ -2227,24 +2241,4 @@ func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Ma
 
 func (b *cloudBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
 	return newCloudPackageRegistry(b.client), nil
-}
-
-func teeEvents(destinationChannel chan<- engine.Event) (chan<- engine.Event, <-chan engine.Event) {
-	sourceChannel := make(chan engine.Event)
-	tapChannel := make(chan engine.Event)
-
-	go func() {
-		defer close(tapChannel)
-		for event := range sourceChannel {
-			// Always send to tapChannel
-			tapChannel <- event
-
-			// Conditionally forward to destinationChannel if it's not nil
-			if destinationChannel != nil {
-				destinationChannel <- event
-			}
-		}
-	}()
-
-	return sourceChannel, tapChannel
 }
