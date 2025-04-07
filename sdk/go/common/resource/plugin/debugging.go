@@ -14,7 +14,12 @@
 
 package plugin
 
+import "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
 type DebugEventEmitter interface {
+	// Indicates whether debugging is enabled for the given plugin.
+	ShouldDebugPlugin(workspace.PluginSpec) bool
+
 	// StartDebugging asks the host to start a debug session for the given configuration.
 	StartDebugging(info DebuggingInfo) error
 }

@@ -248,9 +248,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 			return handshake(ctx, bin, prefix, conn, req)
 		}
 
+		attachDebugger := ctx.Host.ShouldDebugPlugin(spec)
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-			handshake, providerPluginDialOptions(ctx, pkg, ""))
+			handshake, providerPluginDialOptions(ctx, pkg, ""), attachDebugger)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +373,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-		handshake, providerPluginDialOptions(ctx, "", path))
+		handshake, providerPluginDialOptions(ctx, "", path), false)
 	if err != nil {
 		return nil, err
 	}

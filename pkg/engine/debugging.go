@@ -16,19 +16,26 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newDebuggingEventEmitter(events eventEmitter) plugin.DebugEventEmitter {
+func newDebuggingEventEmitter(enableDebugging bool, events eventEmitter) plugin.DebugEventEmitter {
 	return &debuggingEventEmitter{
-		events: events,
+		enableDebugging: enableDebugging,
+		events:          events,
 	}
 }
 
 type debuggingEventEmitter struct {
-	events eventEmitter // the channel to emit events into.
+	enableDebugging bool         // whether debugging is enabled.
+	events          eventEmitter // the channel to emit events into.
 }
 
 var _ plugin.DebugEventEmitter = (*debuggingEventEmitter)(nil)
+
+func (s *debuggingEventEmitter) ShouldDebugPlugin(info workspace.PluginSpec) bool {
+	return s.enableDebugging
+}
 
 func (s *debuggingEventEmitter) StartDebugging(info plugin.DebuggingInfo) error {
 	s.events.startDebugging(info)

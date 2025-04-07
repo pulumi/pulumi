@@ -8,6 +8,9 @@ LABEL description="Pulumi Protobuf Build Container"
 
 RUN rm -f /etc/apt/apt.conf.d/docker-clean
 
+RUN echo "Acquire::http::Pipeline-Depth 0; \n Acquire::http::No-Cache true; \n Acquire::BrokenProxy    true;" > /etc/apt/apt.conf.d/99fixbadproxy
+
+
 COPY /scripts/utils.sh /build-scripts/
 
 # Install various packages
