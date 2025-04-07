@@ -14,27 +14,95 @@
 
 package property
 
-// Visit each Value in the within v.
+import (
+	"slices"
+)
+
+// An immutable Map of [Value]s.
+type Map struct{ m map[string]Value }
+
+// AsMap converts the [Map] into a native Go map from strings to [Values].
+func (m Map) AsMap() map[string]Value { return copyMap(m.m) }
+
+// All calls yield for each key value pair in the Map. All iterates in random order, just
+// like Go's native maps. For stable iteration order, use [Map.AllStable].
 //
-// Parents are visited before their children.
-func (v Value) visit(f func(Value) (continueWalking bool)) bool {
-	cont := f(v)
-	if !cont {
-		return false
-	}
-	switch {
-	case v.IsArray():
-		for _, v := range v.AsArray() {
-			if !v.visit(f) {
-				return false
-			}
+// If yield returns false, then the iteration terminates.
+//
+//	m := property.NewMap(map[]property.Value{
+//		"one": property.New(1),
+//		"two": property.New(2),
+//		"three": property.New(3),
+//	})
+//
+//	m.All(func(k string, v Value) bool {
+//		fmt.Printf("Key: %s, value: %s\n", k, v)
+//		return true
+//	})
+//
+// With Go 1.23, you can use iterator syntax to access each element:
+//
+//	for k, v := range arr.All {
+//		fmt.Printf("Index: %s, value: %s\n", k, v)
+//	}
+func (m Map) All(yield func(string, Value) bool) {
+	for k, v := range m.m {
+		if !yield(k, v) {
+			return
 		}
-	case v.IsMap():
-		for _, v := range v.AsArray() {
-			if !v.visit(f) {
-				return false
-			}
+	}
+}
+
+// AllStable calls yield for each key value pair in the Map in sorted key order.
+//
+// For usage, see [Map.All].
+func (m Map) AllStable(yield func(string, Value) bool) {
+	keys := make([]string, 0, len(m.m))
+	for k := range m.m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		if !yield(k, m.m[k]) {
+			return
 		}
 	}
-	return true
+}
+
+// Get retrieves the [Value] associated with key in the [Map]. If key is not in [Map],
+// then a [Null] value is returned.
+//
+// To distinguish between a zero value and no value, use [Map.GetOk].
+func (m Map) Get(key string) Value {
+	return m.m[key]
+}
+
+func (m Map) GetOk(key string) (Value, bool) {
+	v, ok := m.m[key]
+	return v, ok
+}
+
+// The number of elements in the [Map].
+func (m Map) Len() int {
+	return len(m.m)
+}
+
+// Set produces a new map identical to the receiver with key mapped to value.
+//
+// Set does not mutate it's receiver.
+func (m Map) Set(key string, value Value) Map {
+	cp := copyMap(m.m)
+	cp[key] = value
+	return Map{cp}
+}
+
+// NewMap creates a new map from m.
+func NewMap(m map[string]Value) Map { return Map{copyMap(m)} }
+
+func copyMap(m map[string]Value) map[string]Value {
+	cp := make(map[string]Value, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
 }
