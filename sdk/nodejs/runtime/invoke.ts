@@ -14,8 +14,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 
-import { AsyncIterable } from "@pulumi/query/interfaces";
-
 import { InvokeOptions, InvokeOutputOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";

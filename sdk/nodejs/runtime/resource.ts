@@ -13,12 +13,10 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
-import * as query from "@pulumi/query";
 import * as log from "../log";
 import * as utils from "../utils";
 
 import { Input, Inputs, Output, output } from "../output";
-import { ResolvedResource } from "../queryable";
 import {
     Alias,
     allAliases,
@@ -1101,45 +1099,6 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
         },
         false,
     );
-}
-
-function isAny(o: any): o is any {
-    return true;
-}
-
-/**
- * Returns the resource outputs (if any) for a stack, or an error if the stack
- * cannot be found. Resources are retrieved from the latest stack snapshot,
- * which may include ongoing updates. For example:
- *
- * ```typescript
- * const buckets = pulumi.runtime.listResourceOutput(aws.s3.Bucket.isInstance);
- * ```
- *
- * @param stackName
- *  Name of stack to retrieve resource outputs for. Defaults to the current stack.
- * @param typeFilter
- *  A [type guard](https://www.typescriptlang.org/docs/handbook/advanced-types.html#user-defined-type-guards)
- *  that specifies which resource types to list outputs of.
- */
-export function listResourceOutputs<U extends Resource>(
-    typeFilter?: (o: any) => o is U,
-    stackName?: string,
-): query.AsyncQueryable<ResolvedResource<U>> {
-    if (typeFilter === undefined) {
-        typeFilter = isAny;
-    }
-
-    return query
-        .from(
-            invoke("pulumi:pulumi:readStackResourceOutputs", {
-                stackName: stackName || getStack(),
-            }).then<any[]>(({ outputs }) => utils.values(outputs)),
-        )
-        .map<ResolvedResource<U>>(({ type: typ, outputs }) => {
-            return { ...outputs, __pulumiType: typ };
-        })
-        .filter(typeFilter);
 }
 
 /**

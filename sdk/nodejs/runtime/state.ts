@@ -26,7 +26,6 @@ const nodeEnvKeys = {
     rootDirectory: "PULUMI_NODEJS_ROOT_DIRECTORY",
     stack: "PULUMI_NODEJS_STACK",
     dryRun: "PULUMI_NODEJS_DRY_RUN",
-    queryMode: "PULUMI_NODEJS_QUERY_MODE",
     parallel: "PULUMI_NODEJS_PARALLEL",
     monitorAddr: "PULUMI_NODEJS_MONITOR",
     engineAddr: "PULUMI_NODEJS_ENGINE",
@@ -86,11 +85,6 @@ export interface WriteableOptions {
      * True if we're in testing mode (allows execution without the CLI).
      */
     testModeEnabled?: boolean;
-
-    /**
-     * True if we're in query mode (does not allow resource registration).
-     */
-    queryMode?: boolean;
 
     /**
      * True if we will resolve missing outputs to inputs during preview.
@@ -219,7 +213,6 @@ export class LocalStore implements Store {
             rootDirectory: process.env[nodeEnvKeys.rootDirectory] || "rootDirectory",
             stack: process.env[nodeEnvKeys.stack] || "stack",
             dryRun: process.env[nodeEnvKeys.dryRun] === "true",
-            queryMode: process.env[nodeEnvKeys.queryMode] === "true",
             monitorAddr: process.env[nodeEnvKeys.monitorAddr],
             engineAddr: process.env[nodeEnvKeys.engineAddr],
             syncDir: process.env[nodeEnvKeys.syncDir],

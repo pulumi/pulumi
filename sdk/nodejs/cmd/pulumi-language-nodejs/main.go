@@ -907,7 +907,6 @@ func (host *nodeLanguageHost) constructArguments(
 		args = append(args, "--dry-run")
 	}
 
-	maybeAppendArg("query-mode", strconv.FormatBool(req.GetQueryMode()))
 	maybeAppendArg("parallel", strconv.Itoa(int(req.GetParallel())))
 	maybeAppendArg("tracing", host.tracing)
 
