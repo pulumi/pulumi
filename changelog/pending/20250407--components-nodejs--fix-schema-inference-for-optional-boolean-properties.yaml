@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: components/nodejs
+  description: Fix schema inference for optional boolean properties
