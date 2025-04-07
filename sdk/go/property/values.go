@@ -207,12 +207,17 @@ func copyAsset(a Asset) Asset {
 func copyArchive(a Archive) Archive {
 	assets := make(map[string]any, len(a.Assets))
 	for k, v := range a.Assets {
-		// TODO: These values are not actually of any type, and need to be copied
-		// correctly.
-		//
-		// values are of the any type, and thus cannot be reliably deep
-		// copied.
-		assets[k] = v
+		switch v := v.(type) {
+		case Asset:
+			assets[k] = copyAsset(v)
+		case Archive:
+			assets[k] = copyArchive(v)
+		case nil:
+			assets[k] = v
+		default:
+			msg := "Unknown type within property.Archive, expected either property.Asset or property.Archive, found %T"
+			panic(fmt.Sprintf(msg, v))
+		}
 	}
 	return &archive.Archive{
 		Sig:    a.Sig,

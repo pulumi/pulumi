@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,5 +147,72 @@ func TestArrayIndex(t *testing.T) {
 			New(2.0),
 		})
 		assert.Panics(t, func() { arr.Get(2) })
+	})
+}
+
+func TestArrayAll(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+		arr := NewArray(nil)
+		arr.All(func(int, Value) bool {
+			assert.Fail(t, "An empty array should never call it's iterator")
+			return true
+		})
+	})
+
+	t.Run("single element", func(t *testing.T) {
+		t.Parallel()
+		arr := NewArray([]Value{New("e1")})
+		var wasCalled bool
+		arr.All(func(i int, v Value) bool {
+			if wasCalled {
+				assert.Fail(t, "An array with only 1 element should only be called once")
+			}
+			wasCalled = true
+			assert.Equal(t, 0, i)
+			assert.Equal(t, New("e1"), v)
+			return true
+		})
+	})
+
+	t.Run("multiple elements", func(t *testing.T) {
+		t.Parallel()
+		arr := NewArray([]Value{New("e1"), New("e2"), New("e3")})
+		var callCount int
+		arr.All(func(i int, v Value) bool {
+			callCount++
+			switch callCount {
+			case 1:
+				assert.Equal(t, 0, i)
+				assert.Equal(t, New("e1"), v)
+			case 2:
+				assert.Equal(t, 1, i)
+				assert.Equal(t, New("e2"), v)
+			case 3:
+				assert.Equal(t, 2, i)
+				assert.Equal(t, New("e3"), v)
+			default:
+				assert.Fail(t, "unexpected call")
+			}
+			return true
+		})
+		assert.Equal(t, 3, callCount)
+	})
+
+	t.Run("early exit", func(t *testing.T) {
+		t.Parallel()
+		arr := NewArray([]Value{New("e1"), New("e2")})
+		var wasCalled bool
+		arr.All(func(i int, v Value) bool {
+			if wasCalled {
+				assert.Fail(t, "An array with only 1 element should only be called once")
+			}
+			wasCalled = true
+			assert.Equal(t, 0, i)
+			assert.Equal(t, New("e1"), v)
+			return false
+		})
 	})
 }
