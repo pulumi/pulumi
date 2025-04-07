@@ -602,6 +602,17 @@ Please ensure these components are properly imported to your package's entry poi
                 false,
             );
             return prop;
+        } else if (isBooleanOptionalType(type, this.checker)) {
+            // This is the special case for true | false | undefined
+            const prop: PropertyDefinition = { type: "boolean" };
+            prop.optional = true;
+            if (context.inputOutput === InputOutput.Neither) {
+                prop.plain = true;
+            }
+            if (docString) {
+                prop.description = docString;
+            }
+            return prop;
         } else if (isOptionalType(type, this.checker)) {
             const unionType = type as typescript.UnionType;
             const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
@@ -815,6 +826,39 @@ function isOptionalType(type: typescript.Type, checker: typescript.TypeChecker):
     return unionType.types.some(
         (t) => t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void, // Also check for void in some cases
     );
+}
+
+// Checks if a type is a union of true | false | undefined, which represents an optional boolean.
+function isBooleanOptionalType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    if (!(type.flags & ts.TypeFlags.Union)) {
+        return false;
+    }
+
+    const unionType = type as typescript.UnionType;
+    // We need exactly 3 types in the union
+    if (!unionType.types || unionType.types.length !== 3) {
+        return false;
+    }
+
+    // Check if types are true, false, and undefined
+    let hasTrue = false;
+    let hasFalse = false;
+    let hasUndefined = false;
+
+    for (const t of unionType.types) {
+        if (t.flags & ts.TypeFlags.Undefined) {
+            hasUndefined = true;
+        } else if (t.flags & ts.TypeFlags.BooleanLiteral) {
+            // Check if this is true or false literal
+            if (checker.typeToString(t) === "true") {
+                hasTrue = true;
+            } else if (checker.typeToString(t) === "false") {
+                hasFalse = true;
+            }
+        }
+    }
+
+    return hasTrue && hasFalse && hasUndefined;
 }
 
 function isInterface(symbol: typescript.Symbol): boolean {

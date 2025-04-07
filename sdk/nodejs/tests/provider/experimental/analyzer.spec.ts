@@ -66,10 +66,14 @@ describe("Analyzer", function () {
                 inputs: {
                     optionalNumber: { type: "number", optional: true, plain: true },
                     optionalNumberType: { type: "number", optional: true, plain: true },
+                    optionalBoolean: { type: "boolean", optional: true, plain: true },
+                    optionalBooleanType: { type: "boolean", optional: true, plain: true },
                 },
                 outputs: {
                     optionalOutputNumber: { type: "number", optional: true },
                     optionalOutputType: { type: "number", optional: true },
+                    optionalOutputBoolean: { type: "boolean", optional: true },
+                    optionalOutputBooleanType: { type: "boolean", optional: true },
                 },
             },
         });
