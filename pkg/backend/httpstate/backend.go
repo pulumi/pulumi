@@ -1234,6 +1234,37 @@ func (b *cloudBackend) PromptAI(
 	return res, nil
 }
 
+func (b *cloudBackend) renderAndSummarizeOuput(
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation, events []engine.Event,
+) {
+	renderer := display.NewCaptureProgressEvents(
+		stack.Ref().Name(),
+		op.Proj.Name,
+		display.Options{
+			ShowResourceChanges: true,
+		},
+		true,
+		kind,
+	)
+
+	eventsChannel := make(chan engine.Event)
+	doneChannel := make(chan bool)
+
+	go renderer.ProcessEvents(eventsChannel, doneChannel)
+	for _, event := range events {
+		eventsChannel <- event
+	}
+	close(eventsChannel)
+	<-doneChannel
+
+	if renderer.OutputIncludesFailure() {
+		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+		// if we can't generate a summary.
+		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
+	}
+}
+
 func (b *cloudBackend) summarizeErrorWithCopilot(
 	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
 ) (*display.CopilotErrorSummaryMetadata, error) {
@@ -1394,43 +1425,26 @@ func (b *cloudBackend) apply(
 	// This code is here so we can capture errors from previews-of-updates as well as updates.
 	// The createAndStartUpdate call above can also disable ShowCopilotSummary if its not enabled in the user's org.
 	if op.Opts.Display.ShowCopilotSummary {
-		// Set up an optional tee channel in case the caller wants to capture events too.
 		eventsChannel := make(chan engine.Event)
-		renderEventsChannel := make(chan engine.Event)
 		originalEvents := events
 		events = eventsChannel
+
+		var renderEvents []engine.Event
 		go func() {
-			defer close(renderEventsChannel)
-			for event := range eventsChannel {
-				renderEventsChannel <- event
+			for e := range eventsChannel {
 				if originalEvents != nil {
-					originalEvents <- event
+					originalEvents <- e
 				}
+				if e.Internal() {
+					continue
+				}
+				renderEvents = append(renderEvents, e)
 			}
 		}()
 
-		renderDone := make(chan bool)
-		renderer := display.NewCaptureProgressEvents(
-			stack.Ref().Name(),
-			op.Proj.Name,
-			display.Options{
-				ShowResourceChanges: true,
-			},
-			opts.DryRun,
-			kind,
-		)
-
-		go renderer.ProcessEvents(renderEventsChannel, renderDone)
-
 		defer func() {
 			close(eventsChannel)
-			<-renderDone
-			if renderer.OutputIncludesFailure() {
-				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
-				// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
-				// if we can't generate a summary.
-				display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
-			}
+			b.renderAndSummarizeOuput(ctx, kind, stack, op, renderEvents)
 		}()
 	}
 
