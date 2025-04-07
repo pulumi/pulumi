@@ -361,14 +361,14 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Environment Commands",
 			Commands: []*cobra.Command{
-				cmdEnv.NewEnvCmd(),
+				cmdEnv.NewEnvCmd(pkgWorkspace.Instance),
 			},
 		},
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(),
-				auth.NewLogoutCmd(),
+				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
 				deployment.NewDeploymentCmd(),

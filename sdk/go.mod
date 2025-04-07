@@ -6,6 +6,8 @@ replace golang.org/x/text => golang.org/x/text v0.3.8
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
+replace github.com/keybase/go-keychain => github.com/alexw23/go-keychain v0.0.0-20240507145345-41efe171240e
+
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible
@@ -41,10 +43,13 @@ require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.7.1
+	github.com/danieljoos/wincred v1.2.2
 	github.com/go-git/go-git/v5 v5.13.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/iwdgo/sigintwindows v0.2.2
+	github.com/keybase/dbus v0.0.0-20220506165403-5aa21ea2c23a
+	github.com/keybase/go-keychain v0.0.1
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231

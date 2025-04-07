@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -206,7 +207,8 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	account, err := workspace.GetAccount(s.URL)
+	// TODO: Pass Keystore or Workspace. Do not use the Singleton.
+	account, err := workspace.GetAccountWithKeyStore(pkgWorkspace.Instance.GetKeyStore(), s.URL)
 	if err != nil {
 		return nil, fmt.Errorf("getting access token: %w", err)
 	}
