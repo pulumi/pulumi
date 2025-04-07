@@ -295,7 +295,7 @@ func TestPackageGetSchema(t *testing.T) {
 	bindSchema("random", schemaJSON)
 
 	// Now try and get the parameterized schema from the test-provider
-	providerDir, err := filepath.Abs("testprovider")
+	providerDir, err := filepath.Abs("../testprovider")
 	require.NoError(t, err)
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", providerDir, "parameter")
 	schema := bindSchema("testprovider", schemaJSON)
