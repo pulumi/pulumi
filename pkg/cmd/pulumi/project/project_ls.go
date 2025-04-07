@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ type projectListResult struct {
 	Name         string `json:"name"`
 	Organization string `json:"organization,omitempty"`
 	StackCount   int    `json:"stackCount,omitempty"`
-	Backend      string `json:"backend,omitempty"` // Added to show backend type
 }
 
 func newProjectLsCmd() *cobra.Command {
@@ -100,7 +99,6 @@ func newProjectLsCmd() *cobra.Command {
 					// Skip stacks without a project
 					continue
 				}
-
 				// Use the string representation of projectName
 				projectNameStr := string(projectName)
 
@@ -123,7 +121,6 @@ func newProjectLsCmd() *cobra.Command {
 						Name:         projectNameStr,
 						Organization: org,
 						StackCount:   0,
-						Backend:      b.Name(),
 					}
 				}
 				project.StackCount++
@@ -136,8 +133,13 @@ func newProjectLsCmd() *cobra.Command {
 				results = append(results, project)
 			}
 
-			// If no projects, display a message
+			// If no projects, return empty array for JSON output
 			if len(results) == 0 {
+				if jsonOut {
+					fmt.Println("[]")
+					return nil
+				}
+
 				if orgName != "" {
 					fmt.Println("No projects found in organization", orgName)
 				} else {
@@ -154,26 +156,18 @@ func newProjectLsCmd() *cobra.Command {
 				}
 				fmt.Println(string(out))
 			} else {
-				// Display header based on backend type
-				if b.SupportsOrganizations() {
-					if orgName != "" {
-						fmt.Printf("PROJECTS IN ORGANIZATION %s:\n", orgName)
-					} else {
-						fmt.Println("PROJECTS:")
-					}
-
-					for _, result := range results {
-						if orgName == "" {
-							fmt.Printf("  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
-						} else {
-							fmt.Printf("  %s (stacks: %d)\n", result.Name, result.StackCount)
-						}
-					}
+				// Display header
+				if orgName != "" {
+					fmt.Printf("PROJECTS IN ORGANIZATION %s:\n", orgName)
 				} else {
-					// Display backend type for DIY backends
-					backendType := getDIYBackendType(b.URL())
-					fmt.Printf("PROJECTS (%s):\n", backendType)
-					for _, result := range results {
+					fmt.Println("PROJECTS:")
+				}
+
+				// Display all projects consistently with organization if available
+				for _, result := range results {
+					if result.Organization != "" {
+						fmt.Printf("  %s (org: %s, stacks: %d)\n", result.Name, result.Organization, result.StackCount)
+					} else {
 						fmt.Printf("  %s (stacks: %d)\n", result.Name, result.StackCount)
 					}
 				}
@@ -199,18 +193,4 @@ func getOrgFromStackName(stackName string) string {
 		return "" // No organization in the stack name
 	}
 	return parts[0]
-}
-
-// getDIYBackendType returns a user-friendly name for the DIY backend type
-func getDIYBackendType(url string) string {
-	if strings.HasPrefix(url, "file://") {
-		return "local"
-	} else if strings.HasPrefix(url, "s3://") {
-		return "aws-s3"
-	} else if strings.HasPrefix(url, "azblob://") {
-		return "azure-blob"
-	} else if strings.HasPrefix(url, "gs://") {
-		return "google-cloud"
-	}
-	return "diy" // Generic fallback
 }
