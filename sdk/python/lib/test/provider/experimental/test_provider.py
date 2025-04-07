@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 from typing import Any, Optional, TypedDict
 from pulumi.errors import InputPropertyError
 from pulumi.output import Input
@@ -157,3 +158,27 @@ def test_map_complex_inputs():
             },
         },
     }
+
+
+def test_invalid_enum_value():
+    class MyEnumStr(Enum):
+        A = "a"
+        B = "b"
+
+    class Args(TypedDict):
+        enu: MyEnumStr
+
+    class Component(ComponentResource):
+        def __init__(self, args: Args): ...
+
+    provider = ComponentProvider([Component], "my-provider")
+    component_def = provider._component_defs["Component"]  # type: ignore
+    inputs = {
+        "enu": 7,
+    }
+    try:
+        provider.map_inputs(inputs, component_def)
+        assert False, "Expected an error"
+    except InputPropertyError as e:
+        assert e.reason == "Invalid value 7 of type <class 'int'> for enum 'MyEnumStr'"
+        assert e.property_path == "enu"
