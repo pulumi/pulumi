@@ -1392,17 +1392,17 @@ func (b *cloudBackend) apply(
 
 	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
 	// This code is here so we can capture errors from previews-of-updates as well as updates.
+	// The createAndStartUpdate call above can also disable ShowCopilotSummary if its not enabled in the user's org.
 	if op.Opts.Display.ShowCopilotSummary {
+		// Set up an optional tee channel in case the caller wants to capture events too.
 		eventsChannel := make(chan engine.Event)
-		eventsCopy := make(chan engine.Event)
-
+		renderEventsChannel := make(chan engine.Event)
 		originalEvents := events
 		events = eventsChannel
-
 		go func() {
-			defer close(eventsCopy)
+			defer close(renderEventsChannel)
 			for event := range eventsChannel {
-				eventsCopy <- event
+				renderEventsChannel <- event
 				if originalEvents != nil {
 					originalEvents <- event
 				}
@@ -1420,7 +1420,7 @@ func (b *cloudBackend) apply(
 			kind,
 		)
 
-		go renderer.ProcessEvents(eventsCopy, renderDone)
+		go renderer.ProcessEvents(renderEventsChannel, renderDone)
 
 		defer func() {
 			close(eventsChannel)
