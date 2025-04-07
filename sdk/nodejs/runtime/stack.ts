@@ -18,7 +18,7 @@ import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransform, ResourceTransformation } from "../resource";
 import { InvokeTransform } from "../invoke";
-import { getCallbacks, isDryRun, isQueryMode, setRootResource } from "./settings";
+import { getCallbacks, isDryRun, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 
 /**
@@ -34,12 +34,8 @@ export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
  * this resulting Stack object.
  */
 export function runInPulumiStack(init: () => Promise<any>): Promise<Inputs | undefined> {
-    if (!isQueryMode()) {
-        const stack = new Stack(init);
-        return stack.outputs.promise();
-    } else {
-        return init();
-    }
+    const stack = new Stack(init);
+    return stack.outputs.promise();
 }
 
 /**

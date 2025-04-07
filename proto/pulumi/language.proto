@@ -300,8 +300,8 @@ message RunRequest {
     // registrations](resource-registration) and other calls to.
     string monitor_address = 9;
 
-    // True if and only if we are only performing a query.
-    bool queryMode = 10;
+    // This is deprecated, query mode is no longer a supported feature. 
+    bool queryMode = 10 [deprecated = true];
 
     // A list of configuration keys whose values should be treated as secrets.
     repeated string configSecretKeys = 11;

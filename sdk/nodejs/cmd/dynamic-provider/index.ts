@@ -139,18 +139,6 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         callback(new Error(`unknown function ${req.getTok()}`), undefined);
     }
 
-    async streamInvoke(
-        call: grpc.ServerWritableStream<provproto.InvokeRequest, provproto.InvokeResponse>,
-    ): Promise<void> {
-        const req: any = call.request;
-
-        // TODO[pulumi/pulumi#406]: implement this.
-        call.emit("error", {
-            code: grpc.status.UNIMPLEMENTED,
-            details: `unknown function ${req.getTok()}`,
-        });
-    }
-
     async check(call: any, callback: any): Promise<void> {
         try {
             const req: any = call.request;

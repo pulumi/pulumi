@@ -545,16 +545,6 @@ class Server implements grpc.UntypedServiceImplementation {
             callback(e, undefined);
         }
     }
-
-    public async streamInvoke(call: any, callback: any): Promise<void> {
-        callback(
-            {
-                code: grpc.status.UNIMPLEMENTED,
-                details: "Not yet implemented: StreamInvoke",
-            },
-            undefined,
-        );
-    }
 }
 
 async function configureRuntime(req: any, engineAddr: string | undefined) {

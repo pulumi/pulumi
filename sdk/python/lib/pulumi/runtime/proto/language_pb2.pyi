@@ -437,7 +437,7 @@ class RunRequest(google.protobuf.message.Message):
     registrations](resource-registration) and other calls to.
     """
     queryMode: builtins.bool
-    """True if and only if we are only performing a query."""
+    """This is deprecated, query mode is no longer a supported feature."""
     @property
     def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """A list of configuration keys whose values should be treated as secrets."""

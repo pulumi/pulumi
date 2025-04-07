@@ -14,8 +14,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 
-import { AsyncIterable } from "@pulumi/query/interfaces";
-
 import { InvokeOptions, InvokeOutputOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -172,53 +170,6 @@ export function invokeSingleOutput<T>(
     return output;
 }
 
-export async function streamInvoke(
-    tok: string,
-    props: Inputs,
-    opts: InvokeOptions = {},
-): Promise<StreamInvokeResponse<any>> {
-    const label = `StreamInvoking function: tok=${tok} asynchronously`;
-    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
-
-    // Wait for all values to be available, and then perform the RPC.
-    const done = rpcKeepAlive();
-    try {
-        const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
-        log.debug(
-            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
-        );
-
-        // Fetch the monitor and make an RPC request.
-        const monitor: any = getMonitor();
-
-        const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = await createInvokeRequest(tok, serialized, provider, opts);
-
-        // Call `streamInvoke`.
-        const result = monitor.streamInvoke(req, {});
-
-        const queue = new PushableAsyncIterable();
-        result.on("data", function (thing: any) {
-            const live = deserializeResponse(tok, thing);
-            queue.push(live);
-        });
-        result.on("error", (err: any) => {
-            if (err.code === 1) {
-                return;
-            }
-            throw err;
-        });
-        result.on("end", () => {
-            queue.complete();
-        });
-
-        // Return a cancellable handle to the stream.
-        return new StreamInvokeResponse(queue, () => result.cancel());
-    } finally {
-        done();
-    }
-}
-
 async function invokeAsync(
     tok: string,
     props: Inputs,
@@ -346,27 +297,6 @@ async function invokeAsync(
         };
     } finally {
         done();
-    }
-}
-
-/**
- * {@link StreamInvokeResponse} represents a (potentially infinite) streaming
- * response to `streamInvoke`, with facilities to gracefully cancel and clean up
- * the stream.
- */
-export class StreamInvokeResponse<T> implements AsyncIterable<T> {
-    constructor(
-        private source: AsyncIterable<T>,
-        private cancelSource: () => void,
-    ) {}
-
-    // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
-    public cancel() {
-        this.cancelSource();
-    }
-
-    [Symbol.asyncIterator]() {
-        return this.source[Symbol.asyncIterator]();
     }
 }
 
