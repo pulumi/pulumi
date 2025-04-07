@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -96,10 +97,7 @@ func csharpIdentifier(s string) string {
 	}
 }
 
-func isImmutableArrayType(
-	t schema.Type,
-	wrapInput bool,
-) bool {
+func isImmutableArrayType(t schema.Type, wrapInput bool) bool {
 	_, isArray := t.(*schema.ArrayType)
 	return isArray && !wrapInput
 }
@@ -120,10 +118,7 @@ func isValueType(t schema.Type) bool {
 	}
 }
 
-func namespaceName(
-	namespaces map[string]string,
-	name string,
-) string {
+func namespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
 	}
@@ -152,7 +147,6 @@ type modContext struct {
 	children               []*modContext
 	tool                   string
 	namespaceName          string
-	namespaceNameForPolicy string
 	namespaces             map[string]string
 	compatibility          string
 	dictionaryConstructors bool
@@ -226,18 +220,11 @@ func (mod *modContext) isTFCompatMode() bool {
 	return mod.compatibility == "tfbridge20"
 }
 
-func (mod *modContext) tokenToNamespace(
-	tok string,
-	prefix string,
-	qualifier string,
-) string {
+func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	if prefix != "" {
-		prefix += "."
-	}
-	pkg := mod.RootNamespace() + "." + prefix + namespaceName(mod.namespaces, components[0])
+	pkg := mod.RootNamespace() + "." + namespaceName(mod.namespaces, components[0])
 	nsName := mod.pkg.TokenToModule(tok)
 
 	if mod.isK8sCompatMode() {
@@ -256,10 +243,7 @@ func (mod *modContext) tokenToNamespace(
 	return typ
 }
 
-func (mod *modContext) typeName(
-	t *schema.ObjectType,
-	state, input, args bool,
-) string {
+func (mod *modContext) typeName(t *schema.ObjectType, state, input, args bool) string {
 	name := tokenToName(t.Token)
 	if state {
 		return name + "GetArgs"
@@ -290,10 +274,7 @@ func isInputType(t schema.Type) bool {
 	return isInputType
 }
 
-func ignoreOptional(
-	t *schema.OptionalType,
-	requireInitializers bool,
-) bool {
+func ignoreOptional(t *schema.OptionalType, requireInitializers bool) bool {
 	switch t := t.ElementType.(type) {
 	case *schema.InputType:
 		switch t.ElementType.(type) {
@@ -369,11 +350,7 @@ func (mod *modContext) unionTypeString(
 	}
 }
 
-func (mod *modContext) typeString(
-	t schema.Type,
-	qualifier string,
-	input, state, requireInitializers bool,
-) string {
+func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, requireInitializers bool) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		elem := mod.typeString(t.ElementType, qualifier, input, state, requireInitializers)
@@ -404,7 +381,7 @@ func (mod *modContext) typeString(
 		}
 		return fmt.Sprintf("%s<%s>", inputType, mod.typeString(elem, qualifier, input, state, requireInitializers))
 	case *schema.EnumType:
-		return fmt.Sprintf("%s.%s", mod.tokenToNamespace(t.Token, "", ""), tokenToName(t.Token))
+		return fmt.Sprintf("%s.%s", mod.tokenToNamespace(t.Token, ""), tokenToName(t.Token))
 	case *schema.ArrayType:
 		listType := "ImmutableArray"
 		if requireInitializers {
@@ -438,7 +415,7 @@ func (mod *modContext) typeString(
 				compatibility: info.Compatibility,
 			}
 		}
-		typ := namingCtx.tokenToNamespace(t.Token, "", qualifier)
+		typ := namingCtx.tokenToNamespace(t.Token, qualifier)
 		if (typ == namingCtx.namespaceName && qualifier == "") || typ == namingCtx.namespaceName+"."+qualifier {
 			typ = qualifier
 		}
@@ -475,7 +452,7 @@ func (mod *modContext) typeString(
 				compatibility: info.Compatibility,
 			}
 		}
-		typ := namingCtx.tokenToNamespace(t.Token, "", "")
+		typ := namingCtx.tokenToNamespace(t.Token, "")
 		if typ != "" {
 			typ += "."
 		}
@@ -487,7 +464,7 @@ func (mod *modContext) typeString(
 		}
 
 		typ := tokenToName(t.Token)
-		if ns := mod.tokenToNamespace(t.Token, "", qualifier); ns != mod.namespaceName {
+		if ns := mod.tokenToNamespace(t.Token, qualifier); ns != mod.namespaceName {
 			typ = ns + "." + typ
 		}
 		return typ
@@ -575,10 +552,7 @@ func (b *BufferWithIndent) Fprint(text string) {
 	}
 }
 
-func (b *BufferWithIndent) Fprintf(
-	format string,
-	a ...any,
-) {
+func (b *BufferWithIndent) Fprintf(format string, a ...any) {
 	b.Fprint(fmt.Sprintf(format, a...))
 }
 
@@ -624,18 +598,11 @@ var docCommentEscaper = strings.NewReplacer(
 	`>`, "&gt;",
 )
 
-func printComment(
-	w WriterWithIndent,
-	comment string,
-) {
+func printComment(w WriterWithIndent, comment string) {
 	printCommentWithOptions(w, comment, true)
 }
 
-func printCommentWithOptions(
-	w WriterWithIndent,
-	comment string,
-	escape bool,
-) {
+func printCommentWithOptions(w WriterWithIndent, comment string, escape bool) {
 	if escape {
 		comment = docCommentEscaper.Replace(comment)
 	}
@@ -727,10 +694,7 @@ type plainType struct {
 	internal              bool
 }
 
-func (pt *plainType) genInputPropertyAttribute(
-	w WriterWithIndent,
-	prop *schema.Property,
-) {
+func (pt *plainType) genInputPropertyAttribute(w WriterWithIndent, prop *schema.Property) {
 	wireName := prop.Name
 	attributeArgs := ""
 	if prop.IsRequired() {
@@ -751,11 +715,7 @@ func (pt *plainType) genInputPropertyAttribute(
 	w.Fprintf("[Input(\"%s\"%s)]\n", wireName, attributeArgs)
 }
 
-func (pt *plainType) genInputProperty(
-	w WriterWithIndent,
-	prop *schema.Property,
-	generateInputAttribute bool,
-) {
+func (pt *plainType) genInputProperty(w WriterWithIndent, prop *schema.Property, generateInputAttribute bool) {
 	propertyName := pt.mod.propertyName(prop)
 	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, false)
 
@@ -849,10 +809,7 @@ func (pt *plainType) genInputType(w WriterWithIndent) error {
 	return pt.genInputTypeWithFlags(w, true)
 }
 
-func (pt *plainType) genInputTypeWithFlags(
-	w WriterWithIndent,
-	generateInputAttributes bool,
-) error {
+func (pt *plainType) genInputTypeWithFlags(w WriterWithIndent, generateInputAttributes bool) error {
 	// The way the legacy codegen for kubernetes is structured, inputs for a resource args type and resource args
 	// subtype could become a single class because of the name + namespace clash. We use a set of generated types
 	// to prevent generating classes with equal full names in multiple files. The check should be removed if we
@@ -989,11 +946,7 @@ func (pt *plainType) genOutputType(w WriterWithIndent) {
 	w.CloseCurlyBrace()
 }
 
-func (pt *plainType) genPolicyType(
-	w WriterWithIndent,
-	token *string,
-	pending map[*schema.ObjectType]bool,
-) error {
+func (pt *plainType) genPolicyType(w WriterWithIndent, token *string, pending map[*schema.ObjectType]bool) error {
 	// Determine property types
 
 	type PropAndShape struct {
@@ -1033,7 +986,10 @@ func (pt *plainType) genPolicyType(
 
 	// Declare each input property.
 	first := true
-	for propName, propAndShape := range propTypes {
+
+	for _, propName := range slices.Sorted(maps.Keys(propTypes)) {
+		propAndShape := propTypes[propName]
+
 		if !first {
 			w.Fprintf("\n")
 		} else {
@@ -1058,10 +1014,7 @@ func (pt *plainType) genPolicyType(
 	return nil
 }
 
-func (pt *plainType) flattenPolicyProperty(
-	t schema.Type,
-	pending map[*schema.ObjectType]bool,
-) schema.Type {
+func (pt *plainType) flattenPolicyProperty(t schema.Type, pending map[*schema.ObjectType]bool) schema.Type {
 	switch t := t.(type) {
 	case *schema.InputType:
 		return pt.flattenPolicyProperty(t.ElementType, pending)
@@ -1117,10 +1070,7 @@ func primitiveValue(value interface{}) (string, error) {
 	}
 }
 
-func (mod *modContext) getDefaultValue(
-	dv *schema.DefaultValue,
-	t schema.Type,
-) (string, error) {
+func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	t = codegen.UnwrapType(t)
 
 	var val string
@@ -1183,10 +1133,7 @@ func (mod *modContext) getDefaultValue(
 	return val, nil
 }
 
-func (mod *modContext) genResource(
-	w WriterWithIndent,
-	r *schema.Resource,
-) error {
+func (mod *modContext) genResource(w WriterWithIndent, r *schema.Resource) error {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
@@ -1258,7 +1205,7 @@ func (mod *modContext) genResource(
 	// Emit the class constructor.
 	argsClassName := className + "Args"
 	if mod.isK8sCompatMode() && !r.IsProvider {
-		argsClassName = fmt.Sprintf("%s.%sArgs", mod.tokenToNamespace(r.Token, "", "Inputs"), className)
+		argsClassName = fmt.Sprintf("%s.%sArgs", mod.tokenToNamespace(r.Token, "Inputs"), className)
 	}
 	argsType := argsClassName
 
@@ -1532,7 +1479,7 @@ func (mod *modContext) genResource(
 		w.CloseCurlyBrace()
 
 		// Open the namespace.
-		w.Fprintf("namespace %s\n", mod.tokenToNamespace(r.Token, "", "Inputs"))
+		w.Fprintf("namespace %s\n", mod.tokenToNamespace(r.Token, "Inputs"))
 		w.OpenCurlyBrace()
 	}
 
@@ -1652,7 +1599,7 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	importStrings := mod.pulumiImports()
 
 	// True if the function has a non-standard namespace.
-	nonStandardNamespace := mod.namespaceName != mod.tokenToNamespace(f.Token, "", "")
+	nonStandardNamespace := mod.namespaceName != mod.tokenToNamespace(f.Token, "")
 	// If so, we need to import our project defined types.
 	if nonStandardNamespace {
 		importStrings = append(importStrings, mod.namespaceName)
@@ -1732,13 +1679,10 @@ func runtimeInvokeFunction(fun *schema.Function) string {
 	}
 }
 
-func (mod *modContext) genFunction(
-	w WriterWithIndent,
-	fun *schema.Function,
-) error {
+func (mod *modContext) genFunction(w WriterWithIndent, fun *schema.Function) error {
 	className := tokenToFunctionName(fun.Token)
 
-	w.Fprintf("namespace %s\n", mod.tokenToNamespace(fun.Token, "", ""))
+	w.Fprintf("namespace %s\n", mod.tokenToNamespace(fun.Token, ""))
 	w.OpenCurlyBrace()
 
 	typeParameter := mod.functionReturnType(fun)
@@ -1895,11 +1839,7 @@ func functionOutputVersionArgsTypeName(fun *schema.Function) string {
 
 // Generates `${fn}Output(..)` version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(
-	w WriterWithIndent,
-	fun *schema.Function,
-	outputOptions bool,
-) error {
+func (mod *modContext) genFunctionOutputVersion(w WriterWithIndent, fun *schema.Function, outputOptions bool) error {
 	if fun.ReturnType == nil {
 		// no need to generate an output version if the function doesn't return anything
 		return nil
@@ -1979,10 +1919,7 @@ func (mod *modContext) genFunctionOutputVersion(
 }
 
 // Generate helper type definitions referred to in `genFunctionOutputVersion`.
-func (mod *modContext) genFunctionOutputVersionTypes(
-	w WriterWithIndent,
-	fun *schema.Function,
-) error {
+func (mod *modContext) genFunctionOutputVersionTypes(w WriterWithIndent, fun *schema.Function) error {
 	if fun.Inputs == nil || fun.ReturnType == nil || len(fun.Inputs.Properties) == 0 {
 		return nil
 	}
@@ -2005,10 +1942,7 @@ func (mod *modContext) genFunctionOutputVersionTypes(
 	return nil
 }
 
-func (mod *modContext) genEnums(
-	w WriterWithIndent,
-	enums []*schema.EnumType,
-) error {
+func (mod *modContext) genEnums(w WriterWithIndent, enums []*schema.EnumType) error {
 	// Open the namespace.
 	w.Fprintf("namespace %s\n", mod.namespaceName)
 	w.OpenCurlyBrace()
@@ -2029,19 +1963,13 @@ func (mod *modContext) genEnums(
 	return nil
 }
 
-func printObsoleteAttribute(
-	w WriterWithIndent,
-	deprecationMessage string,
-) {
+func printObsoleteAttribute(w WriterWithIndent, deprecationMessage string) {
 	if deprecationMessage != "" {
 		w.Fprintf("[Obsolete(@\"%s\")]\n", strings.ReplaceAll(deprecationMessage, `"`, `""`))
 	}
 }
 
-func (mod *modContext) genEnum(
-	w WriterWithIndent,
-	enum *schema.EnumType,
-) error {
+func (mod *modContext) genEnum(w WriterWithIndent, enum *schema.EnumType) error {
 	enumName := tokenToName(enum.Token)
 
 	// Fix up identifiers for each enum value.
@@ -2153,10 +2081,7 @@ func (mod *modContext) genEnum(
 	return nil
 }
 
-func visitObjectTypes(
-	properties []*schema.Property,
-	visitor func(*schema.ObjectType),
-) {
+func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
 	codegen.VisitTypeClosure(properties, func(t schema.Type) {
 		if o, ok := t.(*schema.ObjectType); ok {
 			visitor(o)
@@ -2210,10 +2135,7 @@ func (mod *modContext) pulumiImports() []string {
 	return pulumiImports
 }
 
-func (mod *modContext) genHeader(
-	w WriterWithIndent,
-	using []string,
-) {
+func (mod *modContext) genHeader(w WriterWithIndent, using []string) {
 	w.Fprintf("// *** WARNING: this file was generated by %v. ***\n", mod.tool)
 	w.Fprintf("// *** Do not edit by hand unless you're certain you know what you are doing! ***\n")
 	w.Fprintf("\n")
@@ -2413,11 +2335,16 @@ func (mod *modContext) genUtilities() (string, error) {
 	return w.String(), nil
 }
 
-func (mod *modContext) gen(fs codegen.Fs) error {
+func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 	nsComponents := strings.Split(mod.namespaceName, ".")
 	if len(nsComponents) > 0 {
-		// Trim off "Pulumi.Pkg"
-		nsComponents = nsComponents[2:]
+		if generatePolicyPack {
+			// Trim off "Pulumi.PolicyPack.<Pkg>"
+			nsComponents = nsComponents[3:]
+		} else {
+			// Trim off "Pulumi.<Pkg>"
+			nsComponents = nsComponents[2:]
+		}
 	}
 
 	dir := path.Join(nsComponents...)
@@ -2437,13 +2364,21 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	}
 
 	addFile := func(name, contents string) {
+		if generatePolicyPack {
+			return
+		}
+
 		p := path.Join(dir, name)
 		files = append(files, p)
 		fs.Add(p, []byte(contents))
 	}
 
 	addPolicyFile := func(name, contents string) {
-		p := path.Join("Policies", dir, name)
+		if !generatePolicyPack {
+			return
+		}
+
+		p := path.Join(dir, name)
 		files = append(files, p)
 		fs.Add(p, []byte(contents))
 	}
@@ -2516,17 +2451,16 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			props = slices.Concat(props, r.StateInputs.Properties)
 		}
 
-		buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(r.Token, "Policies", ""))
+		buffer.Fprintf("namespace %s\n", mod.namespaceName)
 		buffer.OpenCurlyBrace()
 
 		name := resourceName(r)
 
 		args := &plainType{
-			mod:                   mod,
-			name:                  name,
-			baseClass:             "global::Pulumi.PolicyResource",
-			propertyTypeQualifier: "Policies",
-			properties:            props,
+			mod:        mod,
+			name:       name,
+			baseClass:  "global::Pulumi.PolicyResource",
+			properties: props,
 		}
 		if err := args.genPolicyType(buffer, &r.Token, pending); err != nil {
 			return err
@@ -2553,15 +2487,14 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 				importStrings := mod.pulumiImports()
 				mod.genHeader(buffer, importStrings)
 
-				buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "Policies", ""))
+				buffer.Fprintf("namespace %s\n", mod.namespaceName)
 				buffer.OpenCurlyBrace()
 
 				// Generate the extra ResourcePolicy class
 				args := &plainType{
-					mod:                   mod,
-					name:                  name,
-					propertyTypeQualifier: "Policies",
-					properties:            t.Properties,
+					mod:        mod,
+					name:       name,
+					properties: t.Properties,
 				}
 				if err := args.genPolicyType(buffer, &t.Token, pending); err != nil {
 					return err
@@ -2603,7 +2536,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			buffer := &BufferWithIndent{}
 			mod.genHeader(buffer, mod.pulumiImports())
 
-			buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "", "Inputs"))
+			buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			buffer.OpenCurlyBrace()
 			if err := mod.genType(buffer, t, "Inputs", true, false); err != nil {
 				return err
@@ -2620,7 +2553,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			buffer := &BufferWithIndent{}
 			mod.genHeader(buffer, mod.pulumiImports())
 
-			buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "", "Inputs"))
+			buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			buffer.OpenCurlyBrace()
 			if err := mod.genType(buffer, t, "Inputs", true, true); err != nil {
 				return err
@@ -2632,7 +2565,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			buffer := &BufferWithIndent{}
 			mod.genHeader(buffer, mod.pulumiImports())
 
-			buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "", "Outputs"))
+			buffer.Fprintf("namespace %s\n", mod.tokenToNamespace(t.Token, "Outputs"))
 			buffer.OpenCurlyBrace()
 			if err := mod.genType(buffer, t, "Outputs", false, false); err != nil {
 				return err
@@ -2823,10 +2756,7 @@ func getLogo(pkg *schema.Package) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func computePropertyNames(
-	props []*schema.Property,
-	names map[*schema.Property]string,
-) {
+func computePropertyNames(props []*schema.Property, names map[*schema.Property]string) {
 	for _, p := range props {
 		if info, ok := p.Language["csharp"].(CSharpPropertyInfo); ok && info.Name != "" {
 			names[p] = info.Name
@@ -2845,6 +2775,7 @@ type LanguageResource struct {
 func generateModuleContextMap(
 	tool string,
 	pkg *schema.Package,
+	generatePolicyPack bool,
 ) (map[string]*modContext, *CSharpPackageInfo, error) {
 	// Decode .NET-specific info for each package as we discover them.
 	infos := map[*schema.Package]*CSharpPackageInfo{}
@@ -2857,11 +2788,17 @@ func generateModuleContextMap(
 			contract.AssertNoErrorf(err, "error importing csharp language info for package %q", p.Name())
 			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 			info = &csharpInfo
+
+			if info.RootNamespace == "" && pkg.Namespace != "" {
+				info.RootNamespace = namespaceName(nil, pkg.Namespace)
+			}
+			if generatePolicyPack {
+				info.RootNamespace = info.GetRootNamespace() + ".PolicyPacks"
+			}
+
 			infos[def] = info
 		}
-		if info.RootNamespace == "" && pkg.Namespace != "" {
-			info.RootNamespace = namespaceName(nil, pkg.Namespace)
-		}
+
 		return info
 	}
 	infos[pkg] = getPackageInfo(pkg.Reference())
@@ -2907,14 +2844,8 @@ func generateModuleContextMap(
 	modules := map[string]*modContext{}
 	details := map[*schema.ObjectType]*typeDetails{}
 
-	var getMod func(
-		modName string,
-		p schema.PackageReference,
-	) *modContext
-	getMod = func(
-		modName string,
-		p schema.PackageReference,
-	) *modContext {
+	var getMod func(modName string, p schema.PackageReference) *modContext
+	getMod = func(modName string, p schema.PackageReference) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			info := getPackageInfo(p)
@@ -2927,7 +2858,6 @@ func generateModuleContextMap(
 				mod:                          modName,
 				tool:                         "the Pulumi Terraform Bridge (tfgen) Tool",
 				namespaceName:                info.GetRootNamespace() + "." + ns,
-				namespaceNameForPolicy:       info.GetRootNamespace() + ".Policy." + ns,
 				namespaces:                   info.Namespaces,
 				rootNamespace:                info.GetRootNamespace(),
 				typeDetails:                  details,
@@ -2956,10 +2886,7 @@ func generateModuleContextMap(
 		return mod
 	}
 
-	getModFromToken := func(
-		token string,
-		p schema.PackageReference,
-	) *modContext {
+	getModFromToken := func(token string, p schema.PackageReference) *modContext {
 		return getMod(p.TokenToModule(token), p)
 	}
 
@@ -2967,7 +2894,6 @@ func generateModuleContextMap(
 	if len(pkg.Config) > 0 {
 		cfg := getMod("config", pkg.Reference())
 		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.RootNamespace(), namespaceName(infos[pkg].Namespaces, pkg.Name))
-		cfg.namespaceNameForPolicy = fmt.Sprintf("%s.Policies.%s", cfg.RootNamespace(), namespaceName(infos[pkg].Namespaces, pkg.Name))
 	}
 
 	// Find input and output types referenced by resources.
@@ -3060,11 +2986,8 @@ func generateModuleContextMap(
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
 // key is the resource schema token.
-func LanguageResources(
-	tool string,
-	pkg *schema.Package,
-) (map[string]LanguageResource, error) {
-	modules, info, err := generateModuleContextMap(tool, pkg)
+func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
+	modules, info, err := generateModuleContextMap(tool, pkg, false)
 	if err != nil {
 		return nil, err
 	}
@@ -3097,8 +3020,9 @@ func GeneratePackage(
 	pkg *schema.Package,
 	extraFiles map[string][]byte,
 	localDependencies map[string]string,
+	generatePolicyPack bool,
 ) (map[string][]byte, error) {
-	modules, info, err := generateModuleContextMap(tool, pkg)
+	modules, info, err := generateModuleContextMap(tool, pkg, generatePolicyPack)
 	if err != nil {
 		return nil, err
 	}
@@ -3111,7 +3035,7 @@ func GeneratePackage(
 		files.Add(p, f)
 	}
 	for _, mod := range modules {
-		if err := mod.gen(files); err != nil {
+		if err := mod.gen(files, generatePolicyPack); err != nil {
 			return nil, err
 		}
 	}
