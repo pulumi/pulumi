@@ -2057,8 +2057,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"provider:index:ComplexOutput": {
 			"properties": {
 				"strValue": {
-					"type": "string",
-					"plain": true
+					"type": "string"
 				},
 				"nestedValue": {
 					"$ref": "#/types/provider:index:NestedOutput"
@@ -2070,8 +2069,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 		"provider:index:NestedOutput": {
 			"properties": {
 				"value": {
-					"type": "string",
-					"plain": true
+					"type": "string"
 				}
 			},
 			"type": "object",

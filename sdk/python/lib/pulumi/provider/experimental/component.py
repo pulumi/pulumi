@@ -15,7 +15,7 @@
 import builtins
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 
 class PropertyType(Enum):
@@ -42,7 +42,7 @@ class PropertyDefinition:
     description: Optional[str] = None
     items: Optional["PropertyDefinition"] = None
     additional_properties: Optional["PropertyDefinition"] = None
-    plain: bool = False
+    plain: Optional[Literal[True]] = None
 
 
 @dataclass

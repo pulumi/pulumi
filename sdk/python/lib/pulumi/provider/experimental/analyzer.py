@@ -25,6 +25,7 @@ from types import GenericAlias
 from typing import (  # type: ignore
     Any,
     ForwardRef,
+    Literal,
     Optional,
     Union,
     _GenericAlias,  # type: ignore
@@ -152,7 +153,15 @@ class Analyzer:
     def __init__(self, name: str):
         self.name = name
         self.type_definitions: dict[str, TypeDefinition] = {}
-        self.unresolved_forward_refs: dict[str, TypeDefinition] = {}
+        # For unresolved types, we need to keep track of wether we saw them in a
+        # component output or an input.
+        self.unresolved_forward_refs: dict[
+            str,
+            tuple[
+                bool,  # is_component_output
+                TypeDefinition,
+            ],
+        ] = {}
         self.docstrings: dict[str, dict[str, str]] = {}
 
     def analyze(
@@ -180,7 +189,9 @@ class Analyzer:
         # With https://peps.python.org/pep-0649/ we might be able to let
         # Python handle this for us.
         checked_modules: set[str] = set()
-        for name, type_def in [*self.unresolved_forward_refs.items()]:
+        for name, (is_component_output, type_def) in [
+            *self.unresolved_forward_refs.items()
+        ]:
             for component in components:
                 if component.__module__ in checked_modules:
                     continue
@@ -191,7 +202,8 @@ class Analyzer:
                     typ = getattr(module, type_def.name, None)
                     if typ:
                         (properties, properties_mapping) = self.analyze_type(
-                            typ, can_be_plain=False
+                            typ,
+                            is_component_output=is_component_output,
                         )
                         type_def.properties = properties
                         type_def.properties_mapping = properties_mapping
@@ -232,8 +244,10 @@ class Analyzer:
                 f"ComponentResource '{component.__name__}' requires an argument named 'args' with a type annotation in its __init__ method"
             )
 
-        (inputs, inputs_mapping) = self.analyze_type(args, can_be_plain=True)
-        (outputs, outputs_mapping) = self.analyze_type(component, can_be_plain=False)
+        (inputs, inputs_mapping) = self.analyze_type(args, is_component_output=False)
+        (outputs, outputs_mapping) = self.analyze_type(
+            component, is_component_output=True
+        )
         return ComponentDefinition(
             name=component.__name__,
             description=component.__doc__.strip() if component.__doc__ else None,
@@ -245,12 +259,17 @@ class Analyzer:
         )
 
     def analyze_type(
-        self, typ: type, can_be_plain: bool
+        self, typ: type, *, is_component_output: bool
     ) -> tuple[dict[str, PropertyDefinition], dict[str, str]]:
         """
         analyze_type returns a dictionary of the properties of a type based on
         its annotations, as well as a mapping from the schema property name
         (camel cased) to the Python property name.
+
+        :param typ: the type to analyze
+        :param is_component_output: whether the type is a used as a component
+        output. Types used in component outputs can never have the plain
+        property, including nested complex types or in list/dictionaries.
 
         For example for the class
 
@@ -274,7 +293,13 @@ class Analyzer:
         ann = self.get_annotations(typ)
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
-            camel_case(k): self.analyze_property(v, typ, k, can_be_plain)
+            camel_case(k): self.analyze_property(
+                v,
+                typ,
+                k,
+                can_be_plain=not is_component_output,
+                is_component_output=is_component_output,
+            )
             for k, v in ann.items()
         }, mapping
 
@@ -283,7 +308,9 @@ class Analyzer:
         arg: type,
         typ: type,
         name: str,
-        plain: bool,
+        *,
+        can_be_plain: bool,
+        is_component_output: bool,
         optional: Optional[bool] = None,
     ) -> PropertyDefinition:
         """
@@ -292,36 +319,57 @@ class Analyzer:
         :param arg: the type of the property we are analyzing
         :param typ: the type this property belongs to
         :param name: the name of the property
+        :param can_be_plain: wether the property can be plain
+        :param is_component_output: wether the property is in a component output
         :param optional: whether the property is optional or not
+
+        For properties of a type that's used as a component output, can_be_plain
+        is always false. For properties used in an input, can_be_plain is true,
+        indicating that they can potentially be plain.
         """
         optional = optional if optional is not None else is_optional(arg)
-        if is_plain(arg):
+        if is_simple(arg):
             return PropertyDefinition(
                 type=py_type_to_property_type(arg),
                 optional=optional,
                 # We are currently looking at a plain type, but it might be
                 # wrapped in a pulumi.Input or pulumi.Output, in which case this
                 # isn't plain.
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
         elif is_input(arg):
             return self.analyze_property(
-                unwrap_input(arg), typ, name, plain=False, optional=optional
+                unwrap_input(arg),
+                typ,
+                name,
+                can_be_plain=False,  # Property is inside an input -> it can't be plain
+                is_component_output=is_component_output,
+                optional=optional,
             )
         elif is_output(arg):
             return self.analyze_property(
-                unwrap_output(arg), typ, name, plain=False, optional=optional
+                unwrap_output(arg),
+                typ,
+                name,
+                can_be_plain=False,  # Property is inside an output -> it can't be plain
+                is_component_output=is_component_output,
+                optional=optional,
             )
         elif is_optional(arg):
             return self.analyze_property(
-                unwrap_optional(arg), typ, name, plain=True, optional=True
+                unwrap_optional(arg),
+                typ,
+                name,
+                can_be_plain=can_be_plain,
+                is_component_output=is_component_output,
+                optional=True,
             )
         elif is_any(arg):
             return PropertyDefinition(
                 ref="pulumi.json#/Any",
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
 
@@ -329,11 +377,19 @@ class Analyzer:
             args = get_args(arg)
             if len(args) != 1:
                 raise InvalidListTypeError(arg, typ, name)
-            items = self.analyze_property(args[0], typ, name, plain=True)
+            items = self.analyze_property(
+                args[0],
+                typ,
+                name,
+                # The type of the list's items can potentially be plain, unless
+                # we're in a type that's used as a component output.
+                can_be_plain=not is_component_output,
+                is_component_output=is_component_output,
+            )
             return PropertyDefinition(
                 type=PropertyType.ARRAY,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 items=items,
                 description=self.get_docstring(typ, name),
             )
@@ -346,12 +402,16 @@ class Analyzer:
             return PropertyDefinition(
                 type=PropertyType.OBJECT,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 additional_properties=self.analyze_property(
                     args[1],
                     typ,
                     name,
-                    plain=True,
+                    # The type of the dictionary's values can potentially be
+                    # plain, unless we're in a type that's used as a component
+                    # output.
+                    can_be_plain=not is_component_output,
+                    is_component_output=is_component_output,
                 ),
                 description=self.get_docstring(typ, name),
             )
@@ -368,7 +428,7 @@ class Analyzer:
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
-                    plain=plain,
+                    plain=true_or_none(can_be_plain),
                     description=self.get_docstring(typ, name),
                 )
             else:
@@ -386,13 +446,13 @@ class Analyzer:
                     description=self.get_docstring(typ, name),
                     python_type=arg,
                 )
-                self.unresolved_forward_refs[ref_name] = type_def
+                self.unresolved_forward_refs[ref_name] = (is_component_output, type_def)
                 self.type_definitions[type_def.name] = type_def
                 ref = f"#/types/{self.name}:index:{type_def.name}"
                 return PropertyDefinition(
                     ref=ref,
                     optional=optional,
-                    plain=plain,
+                    plain=true_or_none(can_be_plain),
                     description=self.get_docstring(typ, name),
                 )
         elif is_asset(arg):
@@ -439,7 +499,7 @@ class Analyzer:
             return PropertyDefinition(
                 ref=ref,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
         elif not is_builtin(arg):
@@ -462,7 +522,9 @@ class Analyzer:
             else:
                 if type_def.module and type_def.module != arg.__module__:
                     raise DuplicateTypeError(arg.__module__, type_def)
-            (properties, properties_mapping) = self.analyze_type(arg, can_be_plain=True)
+            (properties, properties_mapping) = self.analyze_type(
+                arg, is_component_output=is_component_output
+            )
             type_def.properties = properties
             type_def.properties_mapping = properties_mapping
             if type_def.name in self.unresolved_forward_refs:
@@ -471,7 +533,7 @@ class Analyzer:
             return PropertyDefinition(
                 ref=ref,
                 optional=optional,
-                plain=plain,
+                plain=true_or_none(can_be_plain),
                 description=self.get_docstring(typ, name),
             )
         else:
@@ -579,7 +641,7 @@ def is_enum(typ: type):
     return issubclass(typ, Enum)
 
 
-def is_plain(typ: type) -> bool:
+def is_simple(typ: type) -> bool:
     return typ in (str, int, float, bool)
 
 
@@ -754,3 +816,8 @@ def enum_members(enu: type) -> list[EnumValueDefinition]:
         EnumValueDefinition(name=name, value=enum_value.value)
         for (name, enum_value) in enu.__members__.items()
     ]
+
+
+def true_or_none(plain: bool) -> Union[Literal[True], None]:
+    """Helper to set PropertyDefinition.plain. We want to omit this property if plain is false."""
+    return True if plain else None

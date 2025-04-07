@@ -180,17 +180,15 @@ def test_analyze_component_plain_types():
             "aInputList": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(type=PropertyType.STRING, plain=True),
-                plain=False,
             ),
             "aListInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=False),
+                items=PropertyDefinition(type=PropertyType.STRING),
                 plain=True,
             ),
             "aInputListInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=False),
-                plain=False,
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
             "aDict": PropertyDefinition(
                 type=PropertyType.OBJECT,
@@ -201,9 +199,7 @@ def test_analyze_component_plain_types():
             ),
             "aDictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=False
-                ),
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
                 plain=True,
             ),
             "aInputDict": PropertyDefinition(
@@ -211,14 +207,10 @@ def test_analyze_component_plain_types():
                 additional_properties=PropertyDefinition(
                     type=PropertyType.INTEGER, plain=True
                 ),
-                plain=False,
             ),
             "aInputDictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=False
-                ),
-                plain=False,
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
             ),
             "aComplexType": PropertyDefinition(
                 ref="#/types/plain-types:index:ComplexTypeInput",
@@ -246,25 +238,20 @@ def test_analyze_component_plain_types():
             "aInputComplexType": "a_input_complex_type",
         },
         outputs={
-            "aInt": PropertyDefinition(type=PropertyType.INTEGER, plain=False),
-            "aStr": PropertyDefinition(type=PropertyType.STRING, plain=False),
-            "aFloat": PropertyDefinition(type=PropertyType.NUMBER, plain=False),
-            "aBool": PropertyDefinition(type=PropertyType.BOOLEAN, plain=False),
-            "aOptional": PropertyDefinition(
-                type=PropertyType.STRING, plain=True, optional=True
-            ),
+            "aInt": PropertyDefinition(type=PropertyType.INTEGER),
+            "aStr": PropertyDefinition(type=PropertyType.STRING),
+            "aFloat": PropertyDefinition(type=PropertyType.NUMBER),
+            "aBool": PropertyDefinition(type=PropertyType.BOOLEAN),
+            "aOptional": PropertyDefinition(type=PropertyType.STRING, optional=True),
             "aOutputList": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
-                plain=False,
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
             "aOutputComplex": PropertyDefinition(
                 ref="#/types/plain-types:index:ComplexTypeOutput",
             ),
             "aOptionalOutputComplex": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexTypeOutput",
-                plain=False,
-                optional=True,
+                ref="#/types/plain-types:index:ComplexTypeOutput", optional=True
             ),
         },
         outputs_mapping={
@@ -301,11 +288,10 @@ def test_analyze_component_plain_types():
             properties={
                 "aOutputListStr": PropertyDefinition(
                     type=PropertyType.ARRAY,
-                    items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                    items=PropertyDefinition(type=PropertyType.STRING),
                     optional=True,
-                    plain=False,
                 ),
-                "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
+                "aStr": PropertyDefinition(type=PropertyType.STRING),
             },
             properties_mapping={"aOutputListStr": "a_output_list_str", "aStr": "a_str"},
             python_type=ComplexTypeOutput,
@@ -353,18 +339,16 @@ def test_analyze_list_simple():
         outputs={
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(
-                    type=PropertyType.STRING, optional=True, plain=True
-                ),
+                items=PropertyDefinition(type=PropertyType.STRING, optional=True),
                 optional=True,
             ),
             "typingListOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
             "abcSequenceOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
-                items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                items=PropertyDefinition(type=PropertyType.STRING),
             ),
         },
         outputs_mapping={
@@ -408,7 +392,7 @@ def test_analyze_list_complex():
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/list-complex:index:ComplexTypeOutput", plain=True
+                    ref="#/types/list-complex:index:ComplexTypeOutput"
                 ),
             )
         },
@@ -438,7 +422,7 @@ def test_analyze_list_complex():
             properties={
                 "name": PropertyDefinition(
                     type=PropertyType.ARRAY,
-                    items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                    items=PropertyDefinition(type=PropertyType.STRING),
                     optional=True,
                 ),
             },
@@ -545,21 +529,17 @@ def test_analyze_dict_simple():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, optional=True, plain=True
+                    type=PropertyType.INTEGER, optional=True
                 ),
                 optional=True,
             ),
             "typingDictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=True
-                ),
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
             ),
             "abcMappingOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
-                additional_properties=PropertyDefinition(
-                    type=PropertyType.INTEGER, plain=True
-                ),
+                additional_properties=PropertyDefinition(type=PropertyType.INTEGER),
             ),
         },
         outputs_mapping={
@@ -605,7 +585,6 @@ def test_analyze_dict_complex():
                 additional_properties=PropertyDefinition(
                     ref="#/types/dict-complex:index:ComplexTypeOutput",
                     optional=True,
-                    plain=True,
                 ),
                 optional=True,
             ),
@@ -641,7 +620,6 @@ def test_analyze_dict_complex():
                     type=PropertyType.OBJECT,
                     additional_properties=PropertyDefinition(
                         type=PropertyType.INTEGER,
-                        plain=True,
                     ),
                     optional=True,
                 ),
@@ -838,7 +816,6 @@ def test_analyze_descriptions():
                 "value": PropertyDefinition(
                     description="value doc string",
                     type=PropertyType.STRING,
-                    plain=True,
                 ),
             },
             properties_mapping={"value": "value"},
@@ -1160,7 +1137,7 @@ def test_analyze_component_self_recursive_complex_type():
                     optional=True,
                     ref="#/types/recursive:index:RecursiveTypeOutput",
                 ),
-                "value": PropertyDefinition(type=PropertyType.STRING, plain=True),
+                "value": PropertyDefinition(type=PropertyType.STRING),
             },
             properties_mapping={"rec": "rec", "value": "value"},
             python_type=RecursiveTypeOutput,
