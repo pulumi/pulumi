@@ -1367,26 +1367,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	}, nil
 }
 
-func withTap(wrappedSink chan<- engine.Event) (chan<- engine.Event, <-chan engine.Event) {
-	input := make(chan engine.Event)
-	tapped := make(chan engine.Event)
-
-	go func() {
-		defer close(tapped)
-		for ev := range input {
-			// Always send to tapped
-			tapped <- ev
-
-			// Conditionally forward to wrappedSink if it's not nil
-			if wrappedSink != nil {
-				wrappedSink <- ev
-			}
-		}
-	}()
-
-	return input, tapped
-}
-
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -1411,13 +1391,9 @@ func (b *cloudBackend) apply(
 	}
 
 	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
-	// This also overwrites the events channel passed in from the caller. The only caller that does this is:
-	// `pulumi preview --import-file`. We don't support Copilot summary + that use case yet.
-	// However we still defensively check for something else using the events channel.
-	// In the future we could support multiplexing the events channel if we wanted to.
 	if op.Opts.Display.ShowCopilotSummary {
-		var eventsChan <-chan engine.Event
-		events, eventsChan = withTap(events)
+		var eventsCopy <-chan engine.Event
+		events, eventsCopy = teeEvents(events)
 
 		renderDone := make(chan bool)
 		renderer := display.NewCaptureProgressEvents(
@@ -1430,9 +1406,10 @@ func (b *cloudBackend) apply(
 			kind,
 		)
 
-		go renderer.ProcessEvents(eventsChan, renderDone)
+		go renderer.ProcessEvents(eventsCopy, renderDone)
 
 		defer func() {
+			close(events)
 			<-renderDone
 			if renderer.OutputIncludesFailure() {
 				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
@@ -2250,4 +2227,24 @@ func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Ma
 
 func (b *cloudBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
 	return newCloudPackageRegistry(b.client), nil
+}
+
+func teeEvents(destinationChannel chan<- engine.Event) (chan<- engine.Event, <-chan engine.Event) {
+	sourceChannel := make(chan engine.Event)
+	tapChannel := make(chan engine.Event)
+
+	go func() {
+		defer close(tapChannel)
+		for event := range sourceChannel {
+			// Always send to tapChannel
+			tapChannel <- event
+
+			// Conditionally forward to destinationChannel if it's not nil
+			if destinationChannel != nil {
+				destinationChannel <- event
+			}
+		}
+	}()
+
+	return sourceChannel, tapChannel
 }
