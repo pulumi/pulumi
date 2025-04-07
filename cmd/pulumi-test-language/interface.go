@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -73,8 +74,8 @@ type LanguageTestServer interface {
 
 func newLanguageTestServer() *languageTestServer {
 	return &languageTestServer{
-		sdkLock:     make(map[string]*sync.Mutex),
-		artifactMap: make(map[string]string),
+		sdkLocks:    gsync.Map[string, *sync.Mutex]{},
+		artifactMap: gsync.Map[string, string]{},
 	}
 }
 
@@ -83,8 +84,8 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 	server := &languageTestServer{
 		ctx:         ctx,
 		cancel:      make(chan bool),
-		sdkLock:     make(map[string]*sync.Mutex),
-		artifactMap: make(map[string]string),
+		sdkLocks:    gsync.Map[string, *sync.Mutex]{},
+		artifactMap: gsync.Map[string, string]{},
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -113,11 +114,10 @@ type languageTestServer struct {
 	done   chan error
 	addr   string
 
-	mutexMapLock sync.Mutex
-	sdkLock      map[string]*sync.Mutex
+	sdkLocks gsync.Map[string, *sync.Mutex]
 
-	artifactMapLock sync.RWMutex
-	artifactMap     map[string]string
+	// A map storing the paths to the generated package artifacts
+	artifactMap gsync.Map[string, string]
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
@@ -616,17 +616,11 @@ func (eng *languageTestServer) RunLanguageTest(
 		// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
 		// reused.
 		response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
-			eng.mutexMapLock.Lock()
-			if eng.sdkLock[sdkTempDir] == nil {
-				eng.sdkLock[sdkTempDir] = &sync.Mutex{}
-			}
-			eng.mutexMapLock.Unlock()
-			eng.sdkLock[sdkTempDir].Lock()
-			defer eng.sdkLock[sdkTempDir].Unlock()
+			lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
+			lock.Lock()
+			defer lock.Unlock()
 
-			eng.artifactMapLock.RLock()
-			sdkArtifact, ok := eng.artifactMap[sdkTempDir]
-			eng.artifactMapLock.RUnlock()
+			sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
 			if ok {
 				// If the directory already exists then we know we already created the artifact.
 				// Just use it
@@ -683,9 +677,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
 			}
 			localDependencies[pkg.Name] = sdkArtifact
-			eng.artifactMapLock.Lock()
-			eng.artifactMap[sdkTempDir] = sdkArtifact
-			eng.artifactMapLock.Unlock()
+			eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
 			// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
 			// Again we need to make a snapshot edit for this.
