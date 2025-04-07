@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -105,8 +104,12 @@ func newProjectLsCmd() *cobra.Command {
 				// For backends that support organizations, get the org from the stack name
 				var org string
 				if b.SupportsOrganizations() {
-					stackFullName := stack.Name().String()
-					org = getOrgFromStackName(stackFullName)
+					// Try to get the organization from the stack reference
+					if stackRef, ok := stack.Name().(interface{ Organization() (string, bool) }); ok {
+						if organization, hasOrg := stackRef.Organization(); hasOrg {
+							org = organization
+						}
+					}
 
 					// Skip if we're filtering by organization and this stack doesn't match
 					if orgName != "" && org != orgName {
@@ -183,14 +186,4 @@ func newProjectLsCmd() *cobra.Command {
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 
 	return cmd
-}
-
-// getOrgFromStackName extracts the organization name from a fully qualified stack name.
-// Stack names are typically in the format "org/project/stack" or just "project/stack".
-func getOrgFromStackName(stackName string) string {
-	parts := strings.Split(stackName, "/")
-	if len(parts) < 3 {
-		return "" // No organization in the stack name
-	}
-	return parts[0]
 }

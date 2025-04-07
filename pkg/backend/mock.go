@@ -182,15 +182,15 @@ func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
 
 	// default implementation
 	split := strings.Split(s, "/")
-	var project, name string
+	var orgName, project, name string
 	switch len(split) {
 	case 1:
 		name = split[0]
 	case 2:
-		project = split[0]
+		orgName = split[0]
 		name = split[1]
 	case 3:
-		// org is unused
+		orgName = split[0]
 		project = split[1]
 		name = split[2]
 	}
@@ -204,6 +204,7 @@ func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
 		StringV:             s,
 		NameV:               parsedName,
 		ProjectV:            tokens.Name(project),
+		OrganizationV:       orgName,
 		FullyQualifiedNameV: tokens.QName(s),
 	}, nil
 }
@@ -711,6 +712,7 @@ type MockStackReference struct {
 	StringV             string
 	NameV               tokens.StackName
 	ProjectV            tokens.Name
+	OrganizationV       string
 	FullyQualifiedNameV tokens.QName
 }
 
@@ -733,6 +735,13 @@ func (r *MockStackReference) Name() tokens.StackName {
 func (r *MockStackReference) Project() (tokens.Name, bool) {
 	if r.ProjectV != "" {
 		return r.ProjectV, true
+	}
+	return "", false
+}
+
+func (r *MockStackReference) Organization() (string, bool) {
+	if r.OrganizationV != "" {
+		return r.OrganizationV, true
 	}
 	return "", false
 }
