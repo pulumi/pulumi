@@ -15,9 +15,13 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
 	cryptorand "crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,7 +29,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/user"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -33,6 +39,8 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/browser"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -223,6 +231,189 @@ func New(ctx context.Context, d diag.Sink,
 		capabilities:   detectCapabilities(d, apiClient),
 		currentProject: project,
 	}, nil
+}
+
+type agentSigner struct {
+	publicKey ssh.PublicKey
+	client    agent.Agent
+}
+
+func (s *agentSigner) PublicKey() ssh.PublicKey {
+	return s.publicKey
+}
+
+func (s *agentSigner) Sign(_ io.Reader, data []byte) (*ssh.Signature, error) {
+	return s.client.Sign(s.publicKey, data)
+}
+
+func getPublicKeyAgentSigner(key ssh.PublicKey) (ssh.Signer, error) {
+	// Try to connect to ssh-agent.
+	socket := os.Getenv("SSH_AUTH_SOCK")
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		return nil, nil
+	}
+	agentClient := agent.NewClient(conn)
+
+	return &agentSigner{publicKey: key, client: agentClient}, nil
+}
+
+func findPrivateKeyPathForPublicKey(key ssh.PublicKey) (string, error) {
+	user, err := user.Current()
+	if err != nil || user.HomeDir == "" {
+		return "", fmt.Errorf("unable to determine home directory")
+	}
+	sshDir := filepath.Join(user.HomeDir, ".ssh")
+
+	keyBytes := key.Marshal()
+
+	dirEntries, err := os.ReadDir(sshDir)
+	if err != nil {
+		return "", err
+	}
+	for _, entry := range dirEntries {
+		if path.Ext(entry.Name()) != ".pub" || entry.IsDir() {
+			continue
+		}
+
+		// Ignore files over 1M.
+		info, err := entry.Info()
+		if info.Size() > 1<<20 {
+			continue
+		}
+
+		entryBytes, err := os.ReadFile(filepath.Join(sshDir, entry.Name()))
+		if err != nil {
+			continue
+		}
+		entryKey, _, _, _, err := ssh.ParseAuthorizedKey(entryBytes)
+		if err != nil {
+			continue
+		}
+		entryBytes = entryKey.Marshal()
+		if bytes.Equal(keyBytes, entryBytes) {
+			return filepath.Join(sshDir, strings.TrimSuffix(entry.Name(), ".pub")), nil
+		}
+	}
+	return "", fmt.Errorf("public key not found in %v", sshDir)
+}
+
+func getPublicKeySigner(key ssh.PublicKey) (ssh.Signer, error) {
+	signer, err := getPublicKeyAgentSigner(key)
+	if err != nil || signer != nil {
+		return signer, err
+	}
+
+	// Find the appropriate public key in ~/.ssh
+	privateKeyPath, err := findPrivateKeyPathForPublicKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find private key: %w", err)
+	}
+
+	// Read the key pair.
+	privateKeyBytes, err := os.ReadFile(privateKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading private key: %w", err)
+	}
+
+	signer, err = ssh.ParsePrivateKey(privateKeyBytes)
+	if err != nil {
+		var pme *ssh.PassphraseMissingError
+		if !errors.As(err, &pme) {
+			return nil, fmt.Errorf("parsing private key: %w", err)
+		}
+
+		passphrase, err := cmdutil.ReadConsoleNoEcho("Please enter the passphrase for your private key")
+		if err != nil {
+			return nil, fmt.Errorf("reading passphrase: %w", err)
+		}
+		fmt.Println()
+
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKeyBytes, []byte(passphrase))
+		if err != nil {
+			return nil, fmt.Errorf("parsing private key: %w", err)
+		}
+	}
+
+	return signer, nil
+}
+
+func exchangePublicKey(
+	ctx context.Context,
+	cloudURL string,
+	publicKey ssh.PublicKey,
+) (string, error) {
+	signer, err := getPublicKeySigner(publicKey)
+	if err != nil {
+		return "", err
+	}
+
+	publicKeyBytes := []byte(strings.TrimSpace(string(ssh.MarshalAuthorizedKey(publicKey))))
+
+	sessionResp, err := func() (*apitype.CreatePubkeyExchangeSessionResponse, error) {
+		reqBody, err := json.Marshal(apitype.CreatePubkeyExchangeSessionRequest{PublicKey: publicKeyBytes})
+		if err != nil {
+			return nil, err
+		}
+		httpResp, err := http.DefaultClient.Post(cloudURL+"/api/user/public-keys/session", "application/json", bytes.NewReader(reqBody))
+		if err != nil {
+			return nil, err
+		}
+		defer contract.IgnoreClose(httpResp.Body)
+
+		if httpResp.StatusCode != http.StatusOK {
+			return nil, errors.New(httpResp.Status)
+		}
+		var resp apitype.CreatePubkeyExchangeSessionResponse
+		if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	}()
+	if err != nil {
+		return "", fmt.Errorf("authenticating: %w", err)
+	}
+
+	b64 := base64.StdEncoding.EncodeToString
+
+	data := fmt.Sprintf("%v.%v", b64([]byte(sessionResp.SessionToken)), b64(publicKeyBytes))
+	signature, err := signer.Sign(rand.Reader, []byte(data))
+	if err != nil {
+		return "", fmt.Errorf("authenticating: signing response: %w", err)
+	}
+
+	// Create the challenge response.
+	subjectToken := fmt.Sprintf("%v.%v.%v", b64([]byte(sessionResp.SessionToken)), b64([]byte(signature.Format)), b64(signature.Blob))
+
+	// Call the token exchange endpoint.
+	tokenResp, err := func() (*apitype.OAuth2TokenExchangeResponse, error) {
+		httpResp, err := http.DefaultClient.PostForm(cloudURL+"/api/oauth/token", url.Values{
+			"grant_type":           []string{"urn:ietf:params:oauth:grant-type:token-exchange"},
+			"subject_token_type":   []string{"urn:ietf:params:oauth:token-type:pubkey_signature"},
+			"requested_token_type": []string{"urn:pulumi:token-type:access_token:personal"},
+			"scope":                []string{"user:"},
+			"subject_token":        []string{subjectToken},
+		})
+		if err != nil {
+			return nil, err
+		}
+		defer contract.IgnoreClose(httpResp.Body)
+
+		if httpResp.StatusCode != http.StatusOK {
+			return nil, errors.New(httpResp.Status)
+		}
+
+		var resp apitype.OAuth2TokenExchangeResponse
+		if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
+			return nil, err
+		}
+		return &resp, nil
+	}()
+	if err != nil {
+		return "", fmt.Errorf("authenticating: %w", err)
+	}
+
+	return tokenResp.AccessToken, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
@@ -532,6 +723,17 @@ func (m defaultLoginManager) Login(
 		}
 	}
 
+	// Check for an SSH public key.
+	var publicKeyInfo *workspace.PublicKey
+	publicKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(accessToken))
+	if err == nil {
+		accessToken, err = exchangePublicKey(ctx, cloudURL, publicKey)
+		if err != nil {
+			return nil, err
+		}
+		publicKeyInfo = &workspace.PublicKey{Blob: []byte(accessToken)}
+	}
+
 	// Try and use the credentials to see if they are valid.
 	valid, username, organizations, tokenInfo, err := IsValidAccessToken(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
@@ -548,6 +750,7 @@ func (m defaultLoginManager) Login(
 		TokenInformation: tokenInfo,
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
+		PublicKey:        publicKeyInfo,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err

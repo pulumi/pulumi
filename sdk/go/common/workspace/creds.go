@@ -116,10 +116,19 @@ type Account struct {
 	Organizations []string `json:"organizations,omitempty"`
 	// The last time this token was validated.
 	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"`
+	// The time this token expires, if known.
+	Expiration time.Time `json:"expiration,omitempty"`
 	// Allow insecure server connections when using SSL.
 	Insecure bool `json:"insecure,omitempty"`
 	// Information about the token used to authenticate.
 	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+	// Public key information, if presetn.
+	PublicKey *PublicKey `json:"publicKey,omitempty"`
+}
+
+// PublicKey records the public key used to authenticate with Pulumi Cloud, if any.
+type PublicKey struct {
+	Blob []byte `json:"blob,omitempty"`
 }
 
 // Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
