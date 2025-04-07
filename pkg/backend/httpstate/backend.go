@@ -1517,7 +1517,11 @@ func (b *cloudBackend) runEngineAction(
 	case apitype.ResourceImportUpdate:
 		_, changes, updateErr = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
-		_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		if op.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(u, engineCtx, op.Opts.Engine, dryRun)
+		} else {
+			_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		}
 	case apitype.DestroyUpdate:
 		if op.Opts.Engine.DestroyProgram {
 			_, changes, updateErr = engine.DestroyV2(u, engineCtx, op.Opts.Engine, dryRun)
