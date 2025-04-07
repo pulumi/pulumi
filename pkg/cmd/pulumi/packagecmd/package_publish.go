@@ -40,10 +40,11 @@ import (
 )
 
 const (
-	// The default package source is "pulumi" for packages published to the Pulumi Registry.
-	// This is the source that will be used if none is specified on the command line.
-	// Examples of other sources include "opentofu" for packages published to the OpenTofu Registry.
-	defaultPackageSource = "pulumi"
+	// The default package source is "private" for packages published to the Pulumi Registry. This corresponds to the
+	// private registry of an organization.
+	// Examples of other sources include "pulumi" for the public registry and "opentofu" for packages published to the
+	// OpenTofu Registry.
+	defaultPackageSource = "private"
 )
 
 type publishPackageArgs struct {
@@ -95,7 +96,7 @@ func newPackagePublishCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,
-		"The origin of the package (e.g., 'pulumi', 'opentofu'). Defaults to the current registry.")
+		"The origin of the package (e.g., 'pulumi', 'private', 'opentofu'). Defaults to the private registry.")
 
 	cmd.Flags().StringVar(
 		&args.publisher, "publisher", "",
