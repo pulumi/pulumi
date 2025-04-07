@@ -519,15 +519,6 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 		return "", err
 	}
 
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-
-	if !strings.HasPrefix(exe, filepath.Join(homeDir, "bin")) {
-		return "", err
-	}
-
 	v, err := checkForExistingTempFile()
 	if err != nil {
 		return "", err
@@ -549,7 +540,7 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 	tgzFile := fmt.Sprintf("pulumi-v%s-%s-%s.tar.gz", version, runtime.GOOS, arch)
 
 	downloadURL := fmt.Sprintf("https://github.com/pulumi/pulumi/releases/download/v%s/", version)
-	if isDevVersion(version) || isLocalVersion(version) {
+	if isDevVersion(version) {
 		downloadURL = fmt.Sprintf("https://get.pulumi.com/releases/sdk/")
 	}
 
@@ -594,7 +585,27 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 	return tmpFile, nil
 }
 
-// install a new version of the CLI into `$PULUMI_HOME/bin`. Only works if the currently
+func isUpgradeable() bool {
+	if runtime.GOOS == "windows" {
+		return false
+	}
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return false
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+
+	if !strings.HasPrefix(exe, filepath.Join(homeDir, "bin")) {
+		return false
+	}
+	return true
+}
+
+// Install a new version of the CLI into `$PULUMI_HOME/bin`. Only works if the currently
 // running binary is installed in `$PULUMI_HOME/bin`.
 //
 // We download the new version piece by piece, stopping when the CLI would normally exit,
@@ -627,6 +638,7 @@ func installNewCLI(ctx context.Context, version semver.Version) *semver.Version 
 		logging.V(3).Infof("error creating temporary directory: %s", err)
 		return nil
 	}
+	defer os.RemoveAll(tmpDir)
 
 	// Extract the tarball into the temporary directory.
 	err = archive.ExtractTGZ(f, tmpDir)
@@ -635,25 +647,6 @@ func installNewCLI(ctx context.Context, version semver.Version) *semver.Version 
 		logging.V(3).Infof("error extracting new CLI: %s", err)
 		return nil
 	}
-	if runtime.GOOS == "windows" {
-		err = os.WriteFile(filepath.Join(homeDir, "tmp", "updater.ps1"), []byte(windowsScript), 0o755)
-		if err != nil {
-			logging.V(3).Infof("error writing updater script: %s", err)
-			return nil
-		}
-		//nolint:gosec
-		cmd := exec.Command("pwsh", "-File", filepath.Join(homeDir, "tmp", "updater.ps1"),
-			strconv.Itoa(os.Getpid()), filepath.Join(tmpDir, "pulumi"), filepath.Join(homeDir, "bin"))
-		fmt.Println(tmpDir)
-		cmdutil.RegisterProcessGroup(cmd)
-		err = cmd.Start()
-		if err != nil {
-			logging.V(3).Infof("error running updater script: %s", err)
-			return nil
-		}
-		return &version
-	}
-	defer os.RemoveAll(tmpDir)
 
 	entries, err := os.ReadDir(filepath.Join(tmpDir, "pulumi"))
 	if err != nil {
@@ -682,7 +675,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	}
 
 	// We don't care about warning for you to update if you have installed a locally complied version
-	isDevVersion := isDevVersion(curVer) || isLocalVersion(curVer)
+	isDevVersion := isDevVersion(curVer)
 
 	var skipUpdateCheck bool
 	_, _, _, err = getCachedVersionInfo(isDevVersion)
@@ -703,7 +696,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	}
 
 	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
-		if os.Getenv("PULUMI_AUTO_UPDATE_CLI") == "true" {
+		if os.Getenv("PULUMI_AUTO_UPDATE_CLI") == "true" && isUpgradeable() {
 			version := devVer
 			if !isDevVersion {
 				version = latestVer
@@ -847,7 +840,9 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 		msg += "run \n   " + cmd + "\nor "
 	}
 
-	msg += "set PULUMI_AUTO_UPDATE_CLI=true in your environment to auto-update the CLI, \nor "
+	if isUpgradeable() {
+		msg += "set PULUMI_AUTO_UPDATE_CLI=true in your environment to auto-update the CLI, \nor "
+	}
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
 }

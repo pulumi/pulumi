@@ -1674,6 +1674,9 @@ func TestGetSchemaUsesCorrectVersion(t *testing.T) {
 
 //nolint:paralleltest // modifies the environment
 func TestCLIInstallation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("There's no auto update path for the CLI on windows")
+	}
 	tmpDir := t.TempDir()
 	t.Setenv("PULUMI_HOME", filepath.Join(tmpDir, ".pulumi"))
 
