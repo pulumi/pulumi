@@ -1892,13 +1892,13 @@ func TestPythonComponentProviderRun(t *testing.T) {
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
-						require.Equal(t, "complex_str_input_value", complexOutput["str_input"].(string))
-						nested := complexOutput["nested_input"].(map[string]interface{})
-						require.Equal(t, "nested_str_plain_value", nested["str_plain"].(string))
+						require.Equal(t, "complex_str_output_value", complexOutput["str_value"].(string))
+						nested := complexOutput["nested_value"].(map[string]interface{})
+						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
 					} else {
-						require.Equal(t, "complex_str_input_value", complexOutput["strInput"].(string))
-						nested := complexOutput["nestedInput"].(map[string]interface{})
-						require.Equal(t, "nested_str_plain_value", nested["strPlain"].(string))
+						require.Equal(t, "complex_str_output_value", complexOutput["strValue"].(string))
+						nested := complexOutput["nestedValue"].(map[string]interface{})
+						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
 					}
 					require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
 					require.Equal(t, map[string]interface{}{
@@ -1970,7 +1970,7 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 				"type": "string",
 				"description": "This is a string output"
 			},
-			"complexOutput": { "$ref": "#/types/provider:index:Complex" },
+			"complexOutput": { "$ref": "#/types/provider:index:ComplexOutput" },
 			"listOutput": {
 				"type": "array",
 				"items": {
@@ -2053,6 +2053,29 @@ func TestPythonComponentProviderGetSchema(t *testing.T) {
 			},
 			"type": "object",
 			"required": ["strPlain"]
+		},
+		"provider:index:ComplexOutput": {
+			"properties": {
+				"strValue": {
+					"type": "string",
+					"plain": true
+				},
+				"nestedValue": {
+					"$ref": "#/types/provider:index:NestedOutput"
+				}
+			},
+			"type": "object",
+			"required": ["nestedValue", "strValue"]
+		},
+		"provider:index:NestedOutput": {
+			"properties": {
+				"value": {
+					"type": "string",
+					"plain": true
+				}
+			},
+			"type": "object",
+			"required": ["value"]
 		},
 		"provider:index:Emu": {
 			"description": "A or B",

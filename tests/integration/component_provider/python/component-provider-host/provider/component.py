@@ -39,6 +39,15 @@ class Complex(TypedDict):
     nested_input: pulumi.Input[Nested]
 
 
+class NestedOutput(TypedDict):
+    value: str
+
+
+class ComplexOutput(TypedDict):
+    str_value: str
+    nested_value: pulumi.Output[NestedOutput]
+
+
 class Args(TypedDict):
     str_input: pulumi.Input[str]
     """This is a string input"""
@@ -57,7 +66,7 @@ class MyComponent(pulumi.ComponentResource):
     str_output: pulumi.Output[str]
     """This is a string output"""
     optional_int_output: Optional[pulumi.Output[int]]
-    complex_output: Optional[pulumi.Output[Complex]]
+    complex_output: Optional[pulumi.Output[ComplexOutput]]
     list_output: pulumi.Output[list[str]]
     dict_output: pulumi.Output[dict[str, int]]
     asset_output: pulumi.Output[pulumi.Asset]
@@ -74,10 +83,10 @@ class MyComponent(pulumi.ComponentResource):
         ).apply(lambda x: x * 2 if x else 7)
         self.complex_output = pulumi.Output.from_input(
             {
-                "str_input": "complex_str_input_value",
-                "nested_input": pulumi.Output.from_input(
+                "str_value": "complex_str_output_value",
+                "nested_value": pulumi.Output.from_input(
                     {
-                        "str_plain": "nested_str_plain_value",
+                        "value": "nested_str_plain_value",
                     }
                 ),
             }

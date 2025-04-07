@@ -122,8 +122,12 @@ def test_analyze_component_empty():
 
 
 def test_analyze_component_plain_types():
-    class ComplexType(TypedDict):
+    class ComplexTypeInput(TypedDict):
         a_input_list_str: Optional[pulumi.Input[list[str]]]
+        a_str: str
+
+    class ComplexTypeOutput(TypedDict):
+        a_output_list_str: Optional[pulumi.Output[list[str]]]
         a_str: str
 
     class Args(TypedDict):
@@ -140,8 +144,8 @@ def test_analyze_component_plain_types():
         a_dict_input: dict[str, pulumi.Input[int]]
         a_input_dict: pulumi.Input[dict[str, int]]
         a_input_dict_input: pulumi.Input[dict[str, pulumi.Input[int]]]
-        a_complex_type: ComplexType
-        a_input_complex_type: pulumi.Input[ComplexType]
+        a_complex_type: ComplexTypeInput
+        a_input_complex_type: pulumi.Input[ComplexTypeInput]
 
     class Component(pulumi.ComponentResource):
         a_int: int
@@ -150,8 +154,8 @@ def test_analyze_component_plain_types():
         a_bool: bool
         a_optional: Optional[str]
         a_output_list: pulumi.Output[list[str]]
-        a_output_complex: pulumi.Output[ComplexType]
-        a_optional_output_complex: Optional[pulumi.Output[ComplexType]]
+        a_output_complex: pulumi.Output[ComplexTypeOutput]
+        a_optional_output_complex: Optional[pulumi.Output[ComplexTypeOutput]]
 
         def __init__(self, args: Args): ...
 
@@ -217,12 +221,11 @@ def test_analyze_component_plain_types():
                 plain=False,
             ),
             "aComplexType": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType",
+                ref="#/types/plain-types:index:ComplexTypeInput",
                 plain=True,
             ),
             "aInputComplexType": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType",
-                plain=False,
+                ref="#/types/plain-types:index:ComplexTypeInput"
             ),
         },
         inputs_mapping={
@@ -256,10 +259,12 @@ def test_analyze_component_plain_types():
                 plain=False,
             ),
             "aOutputComplex": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType", plain=False
+                ref="#/types/plain-types:index:ComplexTypeOutput",
             ),
             "aOptionalOutputComplex": PropertyDefinition(
-                ref="#/types/plain-types:index:ComplexType", plain=False, optional=True
+                ref="#/types/plain-types:index:ComplexTypeOutput",
+                plain=False,
+                optional=True,
             ),
         },
         outputs_mapping={
@@ -274,8 +279,8 @@ def test_analyze_component_plain_types():
         },
     )
     assert analyzer.type_definitions == {
-        "ComplexType": TypeDefinition(
-            name="ComplexType",
+        "ComplexTypeInput": TypeDefinition(
+            name="ComplexTypeInput",
             module="test_analyzer",
             type=PropertyType.OBJECT,
             properties={
@@ -287,8 +292,24 @@ def test_analyze_component_plain_types():
                 "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
             },
             properties_mapping={"aInputListStr": "a_input_list_str", "aStr": "a_str"},
-            python_type=ComplexType,
-        )
+            python_type=ComplexTypeInput,
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            name="ComplexTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "aOutputListStr": PropertyDefinition(
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                    optional=True,
+                    plain=False,
+                ),
+                "aStr": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            },
+            properties_mapping={"aOutputListStr": "a_output_list_str", "aStr": "a_str"},
+            python_type=ComplexTypeOutput,
+        ),
     }
 
 
@@ -355,14 +376,17 @@ def test_analyze_list_simple():
 
 
 def test_analyze_list_complex():
-    class ComplexType(TypedDict):
+    class ComplexTypeInput(TypedDict):
         name: Optional[pulumi.Input[list[str]]]
 
+    class ComplexTypeOutput(TypedDict):
+        name: Optional[pulumi.Output[list[str]]]
+
     class Args(TypedDict):
-        list_input: pulumi.Input[list[ComplexType]]
+        list_input: pulumi.Input[list[ComplexTypeInput]]
 
     class Component(pulumi.ComponentResource):
-        list_output: pulumi.Output[list[ComplexType]]
+        list_output: pulumi.Output[list[ComplexTypeOutput]]
 
         def __init__(self, args: Args): ...
 
@@ -375,7 +399,7 @@ def test_analyze_list_complex():
             "listInput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/list-complex:index:ComplexType", plain=True
+                    ref="#/types/list-complex:index:ComplexTypeInput", plain=True
                 ),
             )
         },
@@ -384,15 +408,15 @@ def test_analyze_list_complex():
             "listOutput": PropertyDefinition(
                 type=PropertyType.ARRAY,
                 items=PropertyDefinition(
-                    ref="#/types/list-complex:index:ComplexType", plain=True
+                    ref="#/types/list-complex:index:ComplexTypeOutput", plain=True
                 ),
             )
         },
         outputs_mapping={"listOutput": "list_output"},
     )
     assert analyzer.type_definitions == {
-        "ComplexType": TypeDefinition(
-            name="ComplexType",
+        "ComplexTypeInput": TypeDefinition(
+            name="ComplexTypeInput",
             module="test_analyzer",
             type=PropertyType.OBJECT,
             properties={
@@ -405,8 +429,24 @@ def test_analyze_list_complex():
             properties_mapping={
                 "name": "name",
             },
-            python_type=ComplexType,
-        )
+            python_type=ComplexTypeInput,
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            name="ComplexTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "name": PropertyDefinition(
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(type=PropertyType.STRING, plain=True),
+                    optional=True,
+                ),
+            },
+            properties_mapping={
+                "name": "name",
+            },
+            python_type=ComplexTypeOutput,
+        ),
     }
 
 
@@ -531,14 +571,17 @@ def test_analyze_dict_simple():
 
 
 def test_analyze_dict_complex():
-    class ComplexType(TypedDict):
+    class ComplexTypeInput(TypedDict):
         name: Optional[pulumi.Input[dict[str, int]]]
 
+    class ComplexTypeOutput(TypedDict):
+        name: Optional[pulumi.Output[dict[str, int]]]
+
     class Args(TypedDict):
-        dict_input: pulumi.Input[dict[str, ComplexType]]
+        dict_input: pulumi.Input[dict[str, ComplexTypeInput]]
 
     class Component(pulumi.ComponentResource):
-        dict_output: Optional[pulumi.Output[dict[str, Optional[ComplexType]]]]
+        dict_output: Optional[pulumi.Output[dict[str, Optional[ComplexTypeOutput]]]]
 
         def __init__(self, args: Args): ...
 
@@ -551,7 +594,7 @@ def test_analyze_dict_complex():
             "dictInput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/dict-complex:index:ComplexType", plain=True
+                    ref="#/types/dict-complex:index:ComplexTypeInput", plain=True
                 ),
             )
         },
@@ -560,7 +603,7 @@ def test_analyze_dict_complex():
             "dictOutput": PropertyDefinition(
                 type=PropertyType.OBJECT,
                 additional_properties=PropertyDefinition(
-                    ref="#/types/dict-complex:index:ComplexType",
+                    ref="#/types/dict-complex:index:ComplexTypeOutput",
                     optional=True,
                     plain=True,
                 ),
@@ -570,8 +613,8 @@ def test_analyze_dict_complex():
         outputs_mapping={"dictOutput": "dict_output"},
     )
     assert analyzer.type_definitions == {
-        "ComplexType": TypeDefinition(
-            name="ComplexType",
+        "ComplexTypeInput": TypeDefinition(
+            name="ComplexTypeInput",
             module="test_analyzer",
             type=PropertyType.OBJECT,
             properties={
@@ -587,8 +630,27 @@ def test_analyze_dict_complex():
             properties_mapping={
                 "name": "name",
             },
-            python_type=ComplexType,
-        )
+            python_type=ComplexTypeInput,
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            name="ComplexTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "name": PropertyDefinition(
+                    type=PropertyType.OBJECT,
+                    additional_properties=PropertyDefinition(
+                        type=PropertyType.INTEGER,
+                        plain=True,
+                    ),
+                    optional=True,
+                ),
+            },
+            properties_mapping={
+                "name": "name",
+            },
+            python_type=ComplexTypeOutput,
+        ),
     }
 
 
@@ -741,7 +803,7 @@ def test_analyze_descriptions():
             outputs={
                 "complexOutput": PropertyDefinition(
                     description="complex_output doc string",
-                    ref="#/types/descriptions:index:ComplexType",
+                    ref="#/types/descriptions:index:ComplexTypeOutput",
                 )
             },
             outputs_mapping={"complexOutput": "complex_output"},
@@ -766,6 +828,21 @@ def test_analyze_descriptions():
             },
             properties_mapping={"value": "value", "anotherValue": "another_value"},
             python_type=load_type(Path("testdata", "docstrings"), "ComplexType"),
+        ),
+        "ComplexTypeOutput": TypeDefinition(
+            description="ComplexTypeOutput doc string",
+            name="ComplexTypeOutput",
+            module="docstrings",
+            type=PropertyType.OBJECT,
+            properties={
+                "value": PropertyDefinition(
+                    description="value doc string",
+                    type=PropertyType.STRING,
+                    plain=True,
+                ),
+            },
+            properties_mapping={"value": "value"},
+            python_type=load_type(Path("testdata", "docstrings"), "ComplexTypeOutput"),
         ),
         "NestedComplexType": TypeDefinition(
             description="NestedComplexType doc string",
@@ -1043,12 +1120,17 @@ def test_analyze_no_components():
 def test_analyze_component_self_recursive_complex_type():
     class RecursiveType(TypedDict):
         rec: Optional[pulumi.Input["RecursiveType"]]
+        value: str
+
+    class RecursiveTypeOutput(TypedDict):
+        rec: Optional[pulumi.Output["RecursiveTypeOutput"]]
+        value: str
 
     class Args(TypedDict):
         rec: pulumi.Input[RecursiveType]
 
     class Component(pulumi.ComponentResource):
-        rec: pulumi.Output[RecursiveType]
+        rec: pulumi.Output[RecursiveTypeOutput]
 
         def __init__(self, args: Args): ...
 
@@ -1063,10 +1145,25 @@ def test_analyze_component_self_recursive_complex_type():
                 "rec": PropertyDefinition(
                     optional=True,
                     ref="#/types/recursive:index:RecursiveType",
-                )
+                ),
+                "value": PropertyDefinition(type=PropertyType.STRING, plain=True),
             },
-            properties_mapping={"rec": "rec"},
+            properties_mapping={"rec": "rec", "value": "value"},
             python_type=RecursiveType,
+        ),
+        "RecursiveTypeOutput": TypeDefinition(
+            name="RecursiveTypeOutput",
+            module="test_analyzer",
+            type=PropertyType.OBJECT,
+            properties={
+                "rec": PropertyDefinition(
+                    optional=True,
+                    ref="#/types/recursive:index:RecursiveTypeOutput",
+                ),
+                "value": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            },
+            properties_mapping={"rec": "rec", "value": "value"},
+            python_type=RecursiveTypeOutput,
         ),
     }
     assert component == ComponentDefinition(
@@ -1075,7 +1172,7 @@ def test_analyze_component_self_recursive_complex_type():
         inputs={"rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")},
         inputs_mapping={"rec": "rec"},
         outputs={
-            "rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveType")
+            "rec": PropertyDefinition(ref="#/types/recursive:index:RecursiveTypeOutput")
         },
         outputs_mapping={"rec": "rec"},
     )
