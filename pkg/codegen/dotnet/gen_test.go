@@ -33,7 +33,7 @@ func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language: "dotnet",
 		GenPackage: func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
-			return GeneratePackage(t, p, e, nil)
+			return GeneratePackage(t, p, e, nil, false)
 		},
 		Checks: map[string]test.CodegenCheck{
 			"dotnet/compile": typeCheckGeneratedPackage,
@@ -123,7 +123,7 @@ func TestGenerateTypeNames(t *testing.T) {
 	t.Parallel()
 
 	test.TestTypeNameCodegen(t, "dotnet", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
-		modules, _, err := generateModuleContextMap("test", pkg)
+		modules, _, err := generateModuleContextMap("test", pkg, false)
 		require.NoError(t, err)
 
 		root, ok := modules[""]
