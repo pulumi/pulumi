@@ -16,7 +16,9 @@ from enum import Enum
 from typing import Any, Optional, TypedDict
 from pulumi.errors import InputPropertyError
 from pulumi.output import Input
-from pulumi.provider.experimental.provider import ComponentProvider
+from pulumi.provider.experimental.provider import (
+    ComponentProvider,
+)
 from pulumi.resource import ComponentResource, ResourceOptions
 
 
