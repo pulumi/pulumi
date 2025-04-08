@@ -589,7 +589,11 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
 					packagePaths[p.Name] = info.ModulePath
-					err = gomod.AddRequire(info.ModulePath, p.Version.String())
+
+					// build metadata seems to cause issues for mod tidy so we strip it here
+					cleanVersion := *p.Version
+					cleanVersion.Build = nil
+					err = gomod.AddRequire(info.ModulePath, cleanVersion.String())
 					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
@@ -615,7 +619,10 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 		version := ""
 		if p.Version != nil {
-			version = "v" + p.Version.String()
+			// build metadata seems to cause issues for mod tidy so we strip it here
+			cleanVersion := *p.Version
+			cleanVersion.Build = nil
+			version = "v" + cleanVersion.String()
 		}
 		if packageName != "" {
 			packagePaths[p.Name] = packageName

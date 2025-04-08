@@ -2441,7 +2441,6 @@ func SelectCompatiblePlugin(
 	plugins []PluginInfo, spec PluginSpec,
 ) *PluginInfo {
 	name, _ := spec.LocalName()
-	requested := semver.MustParseRange(spec.Version.String())
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
 	var bestMatch PluginInfo
 	var hasMatch bool
@@ -2469,7 +2468,7 @@ func SelectCompatiblePlugin(
 			// This is a rare case - we've already seen a version-less plugin and we're seeing another here. Ignore this
 			// one and defer to the one we previously selected.
 			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): skipping plugin %s: no version", name, plugin.String())
-		case requested(*plugin.Version):
+		case spec.Version.EQ(*plugin.Version):
 			// This plugin is compatible with the requested semver range. Save it as the best match and continue.
 			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): best plugin %s: semver match", name, plugin.String())
 			hasMatch = true

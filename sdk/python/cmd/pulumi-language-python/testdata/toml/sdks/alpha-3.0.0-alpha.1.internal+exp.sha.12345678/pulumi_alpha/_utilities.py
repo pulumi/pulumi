@@ -328,4 +328,4 @@ def get_plugin_download_url():
 	return None
 
 def get_version():
-    return "3.0.0-alpha.1.internal"
+    return "3.0.0-alpha.1.internal+exp.sha.12345678"
