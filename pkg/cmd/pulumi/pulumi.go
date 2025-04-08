@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -75,6 +76,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -183,6 +185,7 @@ func NewPulumiCmd() *cobra.Command {
 	var memProfileRate int
 
 	updateCheckResult := make(chan *diag.Diag)
+	var updateCancel context.CancelFunc
 
 	cmd := &cobra.Command{
 		Use:           "pulumi",
@@ -213,6 +216,8 @@ func NewPulumiCmd() *cobra.Command {
 			// If we fail before we start the async update check, go ahead and close the
 			// channel since we know it will never receive a value.
 			var waitForUpdateCheck bool
+			var updateCtx context.Context
+			updateCtx, updateCancel = context.WithCancel(cmd.Context())
 			defer func() {
 				if !waitForUpdateCheck {
 					close(updateCheckResult)
@@ -274,17 +279,13 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if env.SkipUpdateCheck.Value() {
-				logging.V(5).Infof("skipping update check")
-			} else {
-				// Run the version check in parallel so that it doesn't block executing the command.
-				// If there is a new version to report, we will do so after the command has finished.
-				waitForUpdateCheck = true
-				go func() {
-					updateCheckResult <- checkForUpdate(ctx)
-					close(updateCheckResult)
-				}()
-			}
+			// Run the version check in parallel so that it doesn't block executing the command.
+			// If there is a new version to report, we will do so after the command has finished.
+			waitForUpdateCheck = true
+			go func() {
+				updateCheckResult <- checkForUpdate(updateCtx)
+				close(updateCheckResult)
+			}()
 
 			return nil
 		},
@@ -293,6 +294,7 @@ func NewPulumiCmd() *cobra.Command {
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
 
+			updateCancel()
 			checkVersionMsg, ok := <-updateCheckResult
 			if ok && checkVersionMsg != nil && !isJSON {
 				cmdutil.Diag().Warningf(checkVersionMsg)
@@ -489,6 +491,179 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	return devCommits > curCommits
 }
 
+func checkForExistingTempFile() (*semver.Version, error) {
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(filepath.Join(homeDir, "tmp"))
+	if err != nil {
+		return nil, err
+	}
+	tgzRegex := regexp.MustCompile(`pulumi-v(.+)-.+-.+.tar.gz`)
+	for _, entry := range entries {
+		submatches := tgzRegex.FindStringSubmatch(entry.Name())
+		if len(submatches) == 2 && submatches[1] != "" {
+			v := semver.MustParse(submatches[1])
+			return &v, nil
+		}
+	}
+	return nil, nil
+}
+
+func doDownload(ctx context.Context, version semver.Version) (string, error) {
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	v, err := checkForExistingTempFile()
+	if err != nil {
+		return "", err
+	}
+	if v != nil {
+		version = *v
+	}
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = "x64"
+	case "arm64":
+		arch = "arm64"
+	case "aarch64":
+		arch = "arm64"
+	default:
+		panic(fmt.Sprintf("unsupported architecture: %s", runtime.GOARCH))
+	}
+	tgzFile := fmt.Sprintf("pulumi-v%s-%s-%s.tar.gz", version, runtime.GOOS, arch)
+
+	downloadURL := fmt.Sprintf("https://github.com/pulumi/pulumi/releases/download/v%s/", version)
+	if isDevVersion(version) {
+		downloadURL = fmt.Sprintf("https://get.pulumi.com/releases/sdk/")
+	}
+
+	downloadURL = fmt.Sprintf("%s/%s", downloadURL, tgzFile)
+
+	os.MkdirAll(filepath.Join(homeDir, "tmp"), 0o700)
+	tmpFile := filepath.Join(homeDir, "tmp", tgzFile)
+	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(tmpFile)
+	var rangeStart int64
+	if err == nil && info != nil {
+		rangeStart = info.Size()
+	}
+
+	client := client.NewClient(httpstate.DefaultURL(pkgWorkspace.Instance), "", false, cmdutil.Diag())
+	resp, err := client.DownloadCLI(ctx, downloadURL, rangeStart)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		// Something went wrong.  Let's remove the tmp file and try again
+		os.Remove(tmpFile)
+		return "", err
+	}
+
+	_, err = io.Copy(f, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if ctx.Err() != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		return "", err
+	}
+	return tmpFile, nil
+}
+
+func isUpgradeable() bool {
+	if runtime.GOOS == "windows" {
+		return false
+	}
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return false
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+
+	if !strings.HasPrefix(exe, filepath.Join(homeDir, "bin")) {
+		return false
+	}
+	return true
+}
+
+// Install a new version of the CLI into `$PULUMI_HOME/bin`. Only works if the currently
+// running binary is installed in `$PULUMI_HOME/bin`.
+//
+// We download the new version piece by piece, stopping when the CLI would normally exit,
+// so people on slower internet connections won't have a huge performance impact.
+// When a download isn't finished, but there is a new version available, we still continue
+// with the download that's currently in progress, so we don't have to start over, and
+// never update the CLI. Once the current download is finished, we then check the latest
+// version again, potentially skipping a few releases, depending on how long it took.
+func installNewCLI(ctx context.Context, version semver.Version) *semver.Version {
+	logging.V(3).Infof("installing new CLI version %s", version)
+	tmpFile, err := doDownload(ctx, version)
+	if err != nil {
+		logging.V(3).Infof("error downloading new CLI: %s", err)
+		return nil
+	}
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return nil
+	}
+
+	f, err := os.Open(tmpFile)
+	if err != nil {
+		logging.V(3).Infof("error opening temporary file: %s, %s", tmpFile, err)
+		return nil
+	}
+	defer os.Remove(tmpFile)
+
+	tmpDir, err := os.MkdirTemp(homeDir, "pulumi-update")
+	if err != nil {
+		logging.V(3).Infof("error creating temporary directory: %s", err)
+		return nil
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Extract the tarball into the temporary directory.
+	err = archive.ExtractTGZ(f, tmpDir)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		logging.V(3).Infof("error extracting new CLI: %s", err)
+		return nil
+	}
+
+	entries, err := os.ReadDir(filepath.Join(tmpDir, "pulumi"))
+	if err != nil {
+		logging.V(3).Infof("error reading temporary directory: %s", err)
+		return nil
+	}
+	for _, file := range entries {
+		if strings.HasPrefix(file.Name(), "pulumi") {
+			// Move the new CLI into the current directory.
+			err := os.Rename(filepath.Join(tmpDir, "pulumi", file.Name()), filepath.Join(homeDir, "bin", file.Name()))
+			if err != nil {
+				logging.V(3).Infof("error moving new CLI into place: %s", err)
+				return nil
+			}
+		}
+	}
+	return &version
+}
+
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
 func checkForUpdate(ctx context.Context) *diag.Diag {
@@ -498,28 +673,39 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	}
 
 	// We don't care about warning for you to update if you have installed a locally complied version
-	if isLocalVersion(curVer) {
-		return nil
-	}
-
 	isDevVersion := isDevVersion(curVer)
 
 	var skipUpdateCheck bool
-	latestVer, oldestAllowedVer, devVer, err := getCachedVersionInfo(isDevVersion)
+	_, _, _, err = getCachedVersionInfo(isDevVersion)
 	if err == nil {
 		// If we have a cached version, we already warned the user once
 		// in the last 24 hours--the cache is considered stale after that.
 		// So we don't need to warn again.
 		skipUpdateCheck = true
-	} else {
-		latestVer, oldestAllowedVer, devVer, err = getCLIVersionInfo(ctx)
-		if err != nil {
-			logging.V(3).Infof("error fetching latest version information "+
-				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
-		}
+	}
+	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx)
+	if err != nil {
+		logging.V(3).Infof("error fetching latest version information "+
+			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+	}
+	if ctx.Err() != nil {
+		logging.V(3).Infof("context cancelled, fetched latest version information")
+		return nil
 	}
 
 	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
+		if os.Getenv("PULUMI_AUTO_UPDATE_CLI") == "true" && isUpgradeable() {
+			version := devVer
+			if !isDevVersion {
+				version = latestVer
+			}
+			newVersion := installNewCLI(ctx, version)
+			if newVersion != nil {
+				return diag.RawMessage("", "Pulumi CLI has been updated to the version: "+newVersion.String())
+			}
+			return nil
+		}
+
 		if isDevVersion {
 			latestVer = devVer
 		}
@@ -647,10 +833,14 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 	cmd := getUpgradeCommand(isDevVersion)
 
 	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
+
 	if cmd != "" {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
+	if isUpgradeable() {
+		msg += "set PULUMI_AUTO_UPDATE_CLI=true in your environment to auto-update the CLI, \nor "
+	}
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
 }
@@ -805,3 +995,89 @@ func isDevVersion(s semver.Version) bool {
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
 }
+
+const windowsScript = `
+param(
+    [Parameter(Mandatory=$true)]
+    [int]$ProcessId,
+
+    [Parameter(Mandatory=$true)]
+    [string]$SourceFolder,
+
+    [Parameter(Mandatory=$true)]
+    [string]$DestinationFolder
+)
+
+# Display script information
+Write-Host "Process Monitor and File Mover"
+Write-Host "Monitoring process ID: $ProcessId"
+Write-Host "Will move files from: $SourceFolder"
+Write-Host "To: $DestinationFolder"
+Write-Host "Waiting for process to exit..."
+
+# Check if source and destination folders exist
+if (-not (Test-Path -Path $SourceFolder)) {
+    Write-Error "Source folder does not exist: $SourceFolder"
+    exit 1
+}
+
+if (-not (Test-Path -Path $DestinationFolder)) {
+    Write-Host "Destination folder does not exist. Creating it now."
+    New-Item -ItemType Directory -Path $DestinationFolder | Out-Null
+}
+
+# Function to check if process is running
+function Test-ProcessRunningById {
+    param (
+        [int]$Id
+    )
+
+    $process = Get-Process -Id $Id -ErrorAction SilentlyContinue
+    return $null -ne $process
+}
+
+# Wait for the process to exit if it's running
+try {
+    if (Test-ProcessRunningById -Id $ProcessId) {
+        $processInfo = Get-Process -Id $ProcessId
+        Write-Host "Process ID $ProcessId ($($processInfo.ProcessName)) is running. Waiting for it to exit..."
+
+        do {
+            Start-Sleep -Seconds 1
+        } while (Test-ProcessRunningById -Id $ProcessId)
+
+        Write-Host "Process ID $ProcessId has exited."
+    } else {
+        Write-Host "Process ID $ProcessId is not currently running or doesn't exist."
+        exit 1
+    }
+} catch {
+    Write-Error "Error checking process status: $_"
+    exit 1
+}
+
+# Move files from source to destination
+Write-Host "Moving files from $SourceFolder to $DestinationFolder"
+
+$files = Get-ChildItem -Path $SourceFolder -File
+
+if ($files.Count -eq 0) {
+    Write-Host "No files found in source folder."
+} else {
+    foreach ($file in $files) {
+        $destinationPath = Join-Path -Path $DestinationFolder -ChildPath $file.Name
+
+        # Move the file
+        try {
+            Move-Item -Path $file.FullName -Destination $destinationPath -Force
+            Write-Host "Moved: $($file.Name)"
+        } catch {
+            Write-Error "Failed to move file $($file.Name): $_"
+        }
+    }
+
+    Write-Host "File moving complete. Moved $($files.Count) files."
+}
+
+Write-Host "Script execution complete."
+`

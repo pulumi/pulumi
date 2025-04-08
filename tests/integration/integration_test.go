@@ -22,9 +22,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -1525,4 +1529,97 @@ func TestTaggedComponent(t *testing.T) {
 
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomString")
 	require.Len(t, strings.TrimSuffix(stdout, "\n"), 8, fmt.Sprintf("expected %s to have 8 characters", stdout))
+}
+
+//nolint:paralleltest // modifies the environment
+func TestCLIInstallation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("There's no auto update path for the CLI on windows")
+	}
+	tmpDir := t.TempDir()
+	t.Setenv("PULUMI_HOME", filepath.Join(tmpDir, ".pulumi"))
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	pulumiName := "pulumi"
+	if runtime.GOOS == "windows" {
+		pulumiName = "pulumi.exe"
+	}
+
+	e.RunCommand(pulumiName, "login", "--cloud-url", e.LocalURL())
+
+	// Find the pulumi binary
+	pulumiBin, err := exec.LookPath(pulumiName)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(filepath.Join(e.HomePath, "bin"), 0o755)
+	require.NoError(t, err)
+
+	err = fsutil.CopyFile(filepath.Join(e.HomePath, "bin", pulumiName), pulumiBin, nil)
+	require.NoError(t, err)
+
+	os.WriteFile(filepath.Join(e.RootPath, "Pulumi.yaml"), []byte(`name: pulumi-test-yaml
+description: A minimal Pulumi YAML program
+runtime: yaml
+`), 0o755)
+
+	e.RunCommand(pulumiName, "stack", "init", "organization/pulumi-test-yaml/test")
+
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = "x64"
+	case "arm64":
+		arch = "arm64"
+	case "aarch64":
+		arch = "arm64"
+	default:
+		panic(fmt.Sprintf("unsupported architecture: %s", runtime.GOARCH))
+	}
+
+	err = os.MkdirAll(filepath.Join(e.HomePath, "tmp"), 0o755)
+	require.NoError(t, err)
+
+	// Fake having started a download, so we can test with a known version.
+	_, err = os.Create(filepath.Join(e.HomePath, "tmp", fmt.Sprintf("pulumi-v3.160.0-alpha.x35ab291-%s-%s.tar.gz", runtime.GOOS, arch)))
+	require.NoError(t, err)
+
+	// Run pulumi watch in a separate goroutine, so it runs in the background and installs the CLI.
+	go func() {
+		e.Env = append(e.Env, "PULUMI_AUTO_UPDATE_CLI=true")
+		for {
+			t.Log("running watch")
+			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+			cmd := exec.CommandContext(ctx, filepath.Join(e.HomePath, "bin", pulumiName), "watch", "--logtostderr", "-v3")
+			cmd.Dir = e.RootPath
+			cmdutil.RegisterProcessGroup(cmd)
+			cmd.Cancel = func() error {
+				cmdutil.KillChildren(cmd.Process.Pid)
+				return nil
+			}
+			cmd.WaitDelay = 5 * time.Second
+			env := os.Environ()
+			env = append(env, "PULUMI_AUTO_UPDATE_CLI=true")
+			cmd.Env = append(append(append(env, "PULUMI_HOME="+e.HomePath), "PULUMI_CREDENTIALS_PATH="+e.RootPath), "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+
+			out, err := cmd.CombinedOutput()
+			t.Log("ran watch" + string(out) + err.Error())
+		}
+	}()
+	// Wait for the new CLI to be installed, give it two minutes at most
+	endTime := time.Now().Add(time.Minute)
+	for {
+		if time.Now().After(endTime) {
+			t.Fatal("timed out waiting for new CLI to be installed")
+		}
+		stdout, _ := e.RunCommand(filepath.Join(e.HomePath, "bin", pulumiName), "version")
+		t.Logf("Got version: %s", stdout)
+		// We found the right version, pulumi has been updated.
+		// break out of the loop and end the test
+		if strings.Contains(stdout, "v3.160.0-alpha.x35ab291") {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
