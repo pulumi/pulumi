@@ -872,7 +872,31 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
-		rangeType := r.Options.Range.Type()
+		if g.isComponent {
+			// In the case of a component, the range expression must treat Inputs as
+			// Outputs so code generation succeeds. This is because the component
+			// inputs may be outputs or promises, so we must explicitly cast them so
+			// code generation and apply lowering succeeds.
+			rangeExpr, diagnostics = model.VisitExpression(
+				rangeExpr,
+				model.IdentityVisitor, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+					switch n := n.(type) {
+					case *model.ForExpression:
+						cvars := g.program.ConfigVariables()
+						cvarNames := make([]string, len(cvars))
+						for _, cvar := range cvars {
+							cvarNames = append(cvarNames, cvar.Name())
+						}
+						forExpr, diags := pcl.ConvertVariablesToOutputs(n, cvarNames)
+						return forExpr, diags
+					default:
+						return n, nil
+					}
+				})
+
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+		}
+		rangeType := rangeExpr.Type()
 
 		if model.ContainsOutputs(rangeType) {
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
