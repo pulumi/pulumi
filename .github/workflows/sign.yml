@@ -27,7 +27,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Install b3sum
-        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
+        uses: baptiste0928/cargo-install@v3
         with:
           crate: b3sum
           version: 1.3.0
