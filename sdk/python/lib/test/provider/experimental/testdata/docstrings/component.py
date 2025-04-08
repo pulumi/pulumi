@@ -28,6 +28,13 @@ class ComplexType(TypedDict):
     another_value: pulumi.Input[NestedComplexType]
 
 
+class ComplexTypeOutput(TypedDict):
+    """ComplexTypeOutput doc string"""
+
+    value: str
+    """value doc string"""
+
+
 class Args(TypedDict):
     """Args doc string"""
 
@@ -47,7 +54,7 @@ class Args(TypedDict):
 class Component(pulumi.ComponentResource):
     """Component doc string"""
 
-    complex_output: pulumi.Output[ComplexType]
+    complex_output: pulumi.Output[ComplexTypeOutput]
     """complex_output doc string"""
 
     def __init__(self, args: Args): ...
