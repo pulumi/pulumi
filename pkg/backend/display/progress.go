@@ -428,10 +428,7 @@ func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
 	// If its a preview we need to check the resource rows for any failures
 	for _, row := range r.display.resourceRows {
 		diagInfo := row.DiagInfo()
-		if diagInfo == nil {
-			continue
-		}
-		if diagInfo.ErrorCount > 0 {
+		if diagInfo != nil && diagInfo.ErrorCount > 0 {
 			return true
 		}
 	}

@@ -1431,6 +1431,7 @@ func (b *cloudBackend) apply(
 		events = eventsChannel
 
 		var renderEvents []engine.Event
+		done := make(chan bool)
 		go func() {
 			for e := range eventsChannel {
 				// Forward all events from the engine to the original channel
@@ -1445,9 +1446,11 @@ func (b *cloudBackend) apply(
 				}
 				renderEvents = append(renderEvents, e)
 			}
+			done <- true
 		}()
 		defer func() {
 			close(eventsChannel)
+			<-done
 			b.renderAndSummarizeOuput(ctx, kind, stack, op, renderEvents)
 		}()
 	}
