@@ -289,6 +289,7 @@ func TestRunCanceled(t *testing.T) {
 		path := filepath.Join(e.RootPath, "ready")
 		for range 60 {
 			if _, err := os.Stat(path); err == nil {
+				t.Logf("Found %s", path)
 				break
 			}
 			time.Sleep(1 * time.Second)
