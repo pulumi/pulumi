@@ -125,8 +125,6 @@ if __name__ == "__main__":
     if args.pwd is not None:
         os.chdir(args.pwd)
 
-    successful = False
-
     try:
         # The docs for get_running_loop are somewhat misleading because they state:
         # This function can only be called from a coroutine or a callback. However, if the function is
