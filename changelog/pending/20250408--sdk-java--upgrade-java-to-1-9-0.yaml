@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/java
+  description: Upgrade Java to 1.9.0
