@@ -13,12 +13,6 @@
         "forceConsistentCasingInFileNames": true
     },
     "files": [
-        "lib/schema.ts",
-        "lib/provider.ts",
-        "lib/analyzer.ts",
-        "lib/instantiator.ts",
-        "lib/schemaSpec.ts",
-        "index.ts",
-        "selfSignedCert.ts"
+        "index.ts"
     ]
 }
