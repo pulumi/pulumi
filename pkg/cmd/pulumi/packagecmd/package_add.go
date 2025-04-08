@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -32,19 +35,19 @@ import (
 // It returns the path to the installed package.
 func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
 	schemaSource string, parameters []string,
-) error {
+) (*schema.Package, error) {
 	pkg, err := SchemaFromSchemaSource(pctx, schemaSource, parameters)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
-			return fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
+			return nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
-		return fmt.Errorf("failed to get schema: %w", err)
+		return nil, fmt.Errorf("failed to get schema: %w", err)
 	}
 
 	tempOut, err := os.MkdirTemp("", "pulumi-package-")
 	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
+		return nil, fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tempOut)
 
@@ -58,13 +61,13 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 		local, /*local*/
 	)
 	if err != nil {
-		return fmt.Errorf("failed to generate SDK: %w", err)
+		return nil, fmt.Errorf("failed to generate SDK: %w", err)
 	}
 
 	out := filepath.Join(root, "sdks")
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
-		return fmt.Errorf("failed to create directory for SDK: %w", err)
+		return nil, fmt.Errorf("failed to create directory for SDK: %w", err)
 	}
 
 	outName := pkg.Name
@@ -76,17 +79,21 @@ func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, roo
 	// If directory already exists, remove it completely before copying new files
 	if _, err := os.Stat(out); err == nil {
 		if err := os.RemoveAll(out); err != nil {
-			return fmt.Errorf("failed to clean existing SDK directory: %w", err)
+			return nil, fmt.Errorf("failed to clean existing SDK directory: %w", err)
 		}
 	}
 
 	err = CopyAll(out, filepath.Join(tempOut, language))
 	if err != nil {
-		return fmt.Errorf("failed to move SDK to project: %w", err)
+		return nil, fmt.Errorf("failed to move SDK to project: %w", err)
 	}
 
 	// Link the package to the project
-	return LinkPackage(ws, language, root, pkg, out)
+	if err := LinkPackage(ws, language, root, pkg, out); err != nil {
+		return nil, err
+	}
+
+	return pkg, nil
 }
 
 // Constructs the `pulumi package add` command.
@@ -161,7 +168,31 @@ from the parameters, as in:
 			plugin := args[0]
 			parameters := args[1:]
 
-			return InstallPackage(ws, pctx, language, root, plugin, parameters)
+			pkg, err := InstallPackage(ws, pctx, language, root, plugin, parameters)
+			if err != nil {
+				return err
+			}
+
+			// Build and add the package spec to the project
+			source := strings.Split(plugin, "@")[0]
+			version := pkg.Version.String()
+			if pkg.Parameterization != nil {
+				source = pkg.Parameterization.BaseProvider.Name
+				version = pkg.Parameterization.BaseProvider.Version.String()
+			}
+			proj.AddPackage(pkg.Name, workspace.PackageSpec{
+				Source:     source,
+				Version:    version,
+				Parameters: parameters,
+			})
+
+			// Save the updated project
+			if err := workspace.SaveProject(proj); err != nil {
+				return fmt.Errorf("failed to update Pulumi.yaml: %w", err)
+			}
+
+			fmt.Printf("Added package %q to Pulumi.yaml\n", pkg.Name)
+			return nil
 		},
 	}
 
