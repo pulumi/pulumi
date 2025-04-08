@@ -1434,7 +1434,7 @@ func (b *cloudBackend) apply(
 		done := make(chan bool)
 		go func() {
 			for e := range eventsChannel {
-				// Forward all events from the engine to the original channel
+				// Forward all events from the engine to the original channel.
 				// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
 				if originalEvents != nil {
 					originalEvents <- e
