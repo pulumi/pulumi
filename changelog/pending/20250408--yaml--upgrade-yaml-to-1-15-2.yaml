@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: yaml
+  description: Upgrade yaml to 1.15.2
