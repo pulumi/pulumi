@@ -1425,23 +1425,27 @@ func (b *cloudBackend) apply(
 	// This code is here so we can capture errors from previews-of-updates as well as updates.
 	// The createAndStartUpdate call above can also disable ShowCopilotSummary if its not enabled in the user's org.
 	if op.Opts.Display.ShowCopilotSummary {
-		eventsChannel := make(chan engine.Event)
 		originalEvents := events
+		// New var as we need a bidirectional channel type to be able to read from it.
+		eventsChannel := make(chan engine.Event)
 		events = eventsChannel
 
 		var renderEvents []engine.Event
 		go func() {
 			for e := range eventsChannel {
+				// Forward all events from the engine to the original channel
+				// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
 				if originalEvents != nil {
 					originalEvents <- e
 				}
-				if e.Internal() {
+				// Do not send internal events to the copilot summary as they are not displayed to the user either.
+				// We can skip Ephemeral events as well as we want to display the "final" output.
+				if e.Internal() || e.Ephemeral() {
 					continue
 				}
 				renderEvents = append(renderEvents, e)
 			}
 		}()
-
 		defer func() {
 			close(eventsChannel)
 			b.renderAndSummarizeOuput(ctx, kind, stack, op, renderEvents)
