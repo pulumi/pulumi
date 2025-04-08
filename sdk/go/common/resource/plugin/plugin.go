@@ -159,7 +159,7 @@ var errPluginNotFound = errors.New("plugin not found")
 func dialPlugin[T any](
 	portNum int,
 	bin string,
-	prefix string,
+	name string,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 ) (*grpc.ClientConn, *T, error) {
@@ -187,7 +187,7 @@ func dialPlugin[T any](
 			// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
 			// method invocation to the server.  Until it responds successfully, we can't safely proceed.
 			for {
-				handshakeRes, err = handshake(timeout, bin, prefix, conn)
+				handshakeRes, err = handshake(timeout, bin, name, conn)
 				if err == nil {
 					break // successful connect
 				}
@@ -201,13 +201,13 @@ func dialPlugin[T any](
 				}
 
 				// Unexpected error; get outta dodge.
-				return nil, nil, fmt.Errorf("%v plugin [%v] did not come alive: %w", prefix, bin, err)
+				return nil, nil, fmt.Errorf("%v plugin [%v] did not come alive: %w", name, bin, err)
 			}
 			break
 		}
 		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
 		if !conn.WaitForStateChange(timeout, s) {
-			return nil, nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
+			return nil, nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", name, bin)
 		}
 	}
 
@@ -229,7 +229,7 @@ func newPlugin[T any](
 	ctx *Context,
 	pwd string,
 	bin string,
-	prefix string,
+	name string,
 	kind apitype.PluginKind,
 	args []string,
 	env []string,
@@ -245,14 +245,14 @@ func newPlugin[T any](
 			}
 			argstr += arg
 		}
-		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
+		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", name, bin, argstr)
 	}
 
 	// Create a span for the plugin initialization
 	opts := []opentracing.StartSpanOption{
-		opentracing.Tag{Key: "prefix", Value: prefix},
+		opentracing.Tag{Key: "name", Value: name},
 		opentracing.Tag{Key: "bin", Value: bin},
-		opentracing.Tag{Key: "pulumi-decorator", Value: prefix + ":" + bin},
+		opentracing.Tag{Key: "pulumi-decorator", Value: name + ":" + bin},
 	}
 	if ctx != nil && ctx.tracingSpan != nil {
 		opts = append(opts, opentracing.ChildOf(ctx.tracingSpan.Context()))
@@ -261,7 +261,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
+	plug, err := execPlugin(ctx, bin, name, kind, args, pwd, env, attachDebugger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -281,7 +281,7 @@ func newPlugin[T any](
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	var sawPolicyModuleNotFoundErr bool
 	if kind == apitype.ResourcePlugin && !isDynamicPluginBinary(bin) {
-		logging.Infof("Hiding logs from %q:%q", prefix, bin)
+		logging.Infof("Hiding logs from %q:%q", name, bin)
 		plug.unstructuredOutput = &unstructuredOutput{diag: ctx.Diag}
 	}
 	runtrace := func(t io.Reader, streamID streamID, done chan<- bool) {
@@ -364,7 +364,7 @@ func newPlugin[T any](
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, nil, fmt.Errorf(
-			"%v plugin [%v] wrote an invalid port to stdout: %w", prefix, bin, err)
+			"%v plugin [%v] wrote an invalid port to stdout: %w", name, bin, err)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
@@ -372,7 +372,7 @@ func newPlugin[T any](
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, outStreamID, stdoutDone)
 
-	conn, handshakeRes, err := dialPlugin(port, bin, prefix, handshake, dialOptions)
+	conn, handshakeRes, err := dialPlugin(port, bin, name, handshake, dialOptions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -409,7 +409,7 @@ func parsePort(portString string) (int, error) {
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
+func execPlugin(ctx *Context, bin, name string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, env []string, attachDebugger bool,
 ) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
@@ -442,7 +442,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, errors.New("language plugins must be executable binaries")
 		}
 
-		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
+		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", name, pluginDir, runtimeInfo.Name())
 
 		// ProgramInfo needs pluginDir to be an absolute path
 		pluginDir, err = filepath.Abs(pluginDir)
@@ -457,11 +457,12 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 
 		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+			Name:             name,
+			Kind:             string(kind),
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
 			Env:              env,
-			Prefix:           prefix,
 			AttachDebugger:   attachDebugger,
 		})
 		if err != nil {

@@ -174,7 +174,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		return nil, err
 	}
 
-	prefix := fmt.Sprintf("%v (resource)", pkg)
+	pluginName := fmt.Sprintf("%v (resource)", pkg)
 
 	if attachPort != nil {
 		port := *attachPort
@@ -193,7 +193,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		}
 
 		var conn *grpc.ClientConn
-		conn, handshakeRes, err = dialPlugin(port, pkg.String(), prefix,
+		conn, handshakeRes, err = dialPlugin(port, pkg.String(), pluginName,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
@@ -234,7 +234,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		}
 
 		handshake := func(
-			ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+			ctx context.Context, bin string, name string, conn *grpc.ClientConn,
 		) (*ProviderHandshakeResponse, error) {
 			dir := filepath.Dir(bin)
 			req := &ProviderHandshakeRequest{
@@ -243,11 +243,11 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				ProgramDirectory: &dir,
 				ConfigureWithUrn: true,
 			}
-			return handshake(ctx, bin, prefix, conn, req)
+			return handshake(ctx, bin, name, conn, req)
 		}
 
 		attachDebugger := ctx.Host.ShouldDebugPlugin(spec)
-		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, pluginName,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 			handshake, providerPluginDialOptions(ctx, pkg, ""), attachDebugger)
 		if err != nil {
@@ -293,7 +293,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 func handshake(
 	ctx context.Context,
 	bin string,
-	prefix string,
+	_ string,
 	conn *grpc.ClientConn,
 	req *ProviderHandshakeRequest,
 ) (*ProviderHandshakeResponse, error) {

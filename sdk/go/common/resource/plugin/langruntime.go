@@ -185,11 +185,12 @@ type AboutInfo struct {
 }
 
 type RunPluginInfo struct {
+	Name             string
+	Kind             string
 	Info             ProgramInfo
 	WorkingDirectory string
 	Args             []string
 	Env              []string
-	Prefix           string
 	AttachDebugger   bool // true if we are starting the program under a debugger.
 }
 
