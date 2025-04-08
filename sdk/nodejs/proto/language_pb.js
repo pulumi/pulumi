@@ -4736,8 +4736,9 @@ proto.pulumirpc.RunPluginRequest.toObject = function(includeInstance, msg) {
     argsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
     envList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
     info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
-    prefix: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
+    name: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    kind: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    attachDebugger: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -4797,9 +4798,13 @@ proto.pulumirpc.RunPluginRequest.deserializeBinaryFromReader = function(msg, rea
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPrefix(value);
+      msg.setName(value);
       break;
     case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setKind(value);
+      break;
+    case 8:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAttachDebugger(value);
       break;
@@ -4868,17 +4873,24 @@ proto.pulumirpc.RunPluginRequest.serializeBinaryToWriter = function(message, wri
       proto.pulumirpc.ProgramInfo.serializeBinaryToWriter
     );
   }
-  f = message.getPrefix();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       6,
       f
     );
   }
+  f = message.getKind();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
+      f
+    );
+  }
   f = message.getAttachDebugger();
   if (f) {
     writer.writeBool(
-      7,
+      8,
       f
     );
   }
@@ -5033,10 +5045,10 @@ proto.pulumirpc.RunPluginRequest.prototype.hasInfo = function() {
 
 
 /**
- * optional string prefix = 6;
+ * optional string name = 6;
  * @return {string}
  */
-proto.pulumirpc.RunPluginRequest.prototype.getPrefix = function() {
+proto.pulumirpc.RunPluginRequest.prototype.getName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
 };
 
@@ -5045,17 +5057,35 @@ proto.pulumirpc.RunPluginRequest.prototype.getPrefix = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RunPluginRequest} returns this
  */
-proto.pulumirpc.RunPluginRequest.prototype.setPrefix = function(value) {
+proto.pulumirpc.RunPluginRequest.prototype.setName = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
 /**
- * optional bool attach_debugger = 7;
+ * optional string kind = 7;
+ * @return {string}
+ */
+proto.pulumirpc.RunPluginRequest.prototype.getKind = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RunPluginRequest} returns this
+ */
+proto.pulumirpc.RunPluginRequest.prototype.setKind = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional bool attach_debugger = 8;
  * @return {boolean}
  */
 proto.pulumirpc.RunPluginRequest.prototype.getAttachDebugger = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 7, false));
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
 };
 
 
@@ -5064,7 +5094,7 @@ proto.pulumirpc.RunPluginRequest.prototype.getAttachDebugger = function() {
  * @return {!proto.pulumirpc.RunPluginRequest} returns this
  */
 proto.pulumirpc.RunPluginRequest.prototype.setAttachDebugger = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 7, value);
+  return jspb.Message.setProto3BooleanField(this, 8, value);
 };
 
 
