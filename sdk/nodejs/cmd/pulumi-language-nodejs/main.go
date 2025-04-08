@@ -1508,7 +1508,7 @@ func (host *nodeLanguageHost) RunPlugin(
 			// ref: https://code.visualstudio.com/docs/nodejs/nodejs-debugging
 			// ref: https://nodejs.org/en/learn/getting-started/debugging
 			debugConfig, err := structpb.NewStruct(map[string]interface{}{
-				"name":             req.Prefix,
+				"name":             req.Name,
 				"type":             "node",
 				"request":          "attach",
 				"port":             attachPort,

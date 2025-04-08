@@ -828,12 +828,12 @@ func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	}
 }
 
-type programInfo struct {
+type sessionInfo struct {
 	Name string
 	Cwd  string
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger, info programInfo) error {
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger, info sessionInfo) error {
 	// wait for the debugger to be ready
 	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	defer cancel()
@@ -1032,7 +1032,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
-				info := programInfo{
+				info := sessionInfo{
 					Name: fmt.Sprintf("%s (program)", req.Project),
 					Cwd:  req.GetPwd(),
 				}
@@ -1397,8 +1397,8 @@ func (host *pythonLanguageHost) RunPlugin(
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
-				info := programInfo{
-					Name: req.Prefix,
+				info := sessionInfo{
+					Name: req.Name,
 					Cwd:  req.Pwd,
 				}
 				err := startDebugging(ctx, engineClient, cmd, dbg, info)

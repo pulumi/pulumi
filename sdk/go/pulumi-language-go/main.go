@@ -845,7 +845,6 @@ func debugCommand(bin string, binArgs ...string) (*exec.Cmd, *debugger, error) {
 	contract.IgnoreClose(logFile)
 	args := []string{"--headless=true", "--api-version=2"}
 	args = append(args, "--log", "--log-dest", logFile.Name())
-	// args = append(args, "--log-output", "dap,debugger,rpc")
 	port, err := netutil.FindNextAvailablePort(50000 + rand.Intn(1000))
 	if err == nil {
 		args = append(args, "--listen=127.0.0.1:"+strconv.Itoa(port))
@@ -859,12 +858,12 @@ func debugCommand(bin string, binArgs ...string) (*exec.Cmd, *debugger, error) {
 	return dlvCmd, &debugger{Host: "127.0.0.1", LogDest: logFile.Name()}, nil
 }
 
-type programInfo struct {
+type sessionInfo struct {
 	Name string
 	Cwd  string
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger, info programInfo) error {
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger, info sessionInfo) error {
 	// wait for the debugger to be ready
 	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	defer cancel()
@@ -878,6 +877,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, db
 		"type":    "go",
 		"request": "attach",
 		"mode":    "remote",
+		// substitutePath: a workaround for vscode breakpoint resolution, otherwise breakpoints are not hit
 		"substitutePath": []any{
 			map[string]any{
 				"from": info.Cwd,
@@ -924,7 +924,7 @@ func runProgram(
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		go func() {
-			info := programInfo{
+			info := sessionInfo{
 				Name: fmt.Sprintf("%s (program)", req.Project),
 				Cwd:  pwd,
 			}
@@ -1266,8 +1266,8 @@ func (host *goLanguageHost) RunPlugin(
 		ctx, cancel := context.WithCancel(server.Context())
 		defer cancel()
 		go func() {
-			info := programInfo{
-				Name: req.Prefix,
+			info := sessionInfo{
+				Name: req.Name,
 				Cwd:  req.Pwd,
 			}
 			err := startDebugging(ctx, engineClient, dbg, info)
