@@ -233,7 +233,7 @@ if __name__ == "__main__":
         exit_code = 0
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
-    except Exception:
+    except Exception:  # noqa -- we really want to catch any exception here
         error_msg = (
             "Program failed with an unhandled exception:\n"
             + _get_user_stacktrace(user_program_abspath)
