@@ -1501,8 +1501,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	run := func() error {
-		err := cmd.Start()
-		if err != nil {
+		if err := cmd.Start(); err != nil {
 			return err
 		}
 		if req.GetAttachDebugger() {
