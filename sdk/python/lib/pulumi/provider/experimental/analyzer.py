@@ -153,7 +153,7 @@ class Analyzer:
     def __init__(self, name: str):
         self.name = name
         self.type_definitions: dict[str, TypeDefinition] = {}
-        # For unresolved types, we need to keep track of wether we saw them in a
+        # For unresolved types, we need to keep track of whether we saw them in a
         # component output or an input.
         self.unresolved_forward_refs: dict[
             str,
@@ -319,8 +319,8 @@ class Analyzer:
         :param arg: the type of the property we are analyzing
         :param typ: the type this property belongs to
         :param name: the name of the property
-        :param can_be_plain: wether the property can be plain
-        :param is_component_output: wether the property is in a component output
+        :param can_be_plain: whether the property can be plain
+        :param is_component_output: whether the property is in a component output
         :param optional: whether the property is optional or not
 
         For properties of a type that's used as a component output, can_be_plain
