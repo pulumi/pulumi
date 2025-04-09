@@ -357,6 +357,8 @@ func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
 	opts Options,
+	isPreview bool,
+	action apitype.UpdateKind,
 ) *CaptureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
 	width, height := 200, 80
@@ -370,8 +372,6 @@ func NewCaptureProgressEvents(
 	o.Stderr = io.Discard
 	o.term = terminal.NewSimpleTerminal(buffer, width, height)
 
-	isPreview := false
-	action := apitype.UpdateUpdate
 	permalink := ""
 
 	printPermalinkInteractive(o.term, o, permalink, "")
@@ -420,7 +420,20 @@ func (r *CaptureProgressEvents) Output() []string {
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
-	return r.display.failed
+	// If its an actual update we can use the failed flag
+	if !r.display.isPreview {
+		return r.display.failed
+	}
+
+	// If its a preview we need to check the resource rows for any failures
+	for _, row := range r.display.resourceRows {
+		diagInfo := row.DiagInfo()
+		if diagInfo != nil && diagInfo.ErrorCount > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (display *ProgressDisplay) println(line string) {
