@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Fix schema versioning when explicit package version is given

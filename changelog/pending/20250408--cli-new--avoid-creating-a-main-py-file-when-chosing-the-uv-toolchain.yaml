@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Avoid creating a main.py file when chosing the uv toolchain

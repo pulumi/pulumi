@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Add enum support for Python component schema inference
