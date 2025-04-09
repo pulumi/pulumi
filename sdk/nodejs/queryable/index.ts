@@ -15,6 +15,8 @@
 import { OutputInstance } from "../index";
 import { Resource } from "../resource";
 
+// Note: The @pulumi/policy npm package depends on ResolvedResource.
+
 /**
  * {@link ResolvedResource} is a {@link Resource} with all fields containing
  * {@link Output} values fully resolved.
