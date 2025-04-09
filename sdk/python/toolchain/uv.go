@@ -88,12 +88,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	}
 
 	// Validate the version
-	cmd := u.uvCommand(context.Background(), "", false, nil, nil, "--version")
-	versionString, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get uv version: %w", err)
-	}
-	version, err := u.uvVersion(string(versionString))
+	version, err := u.uvVersion()
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +135,23 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 				return fmt.Errorf("error while looking for requirements.txt in %s: %w", cwd, err)
 			}
 
-			initCmd := u.uvCommand(ctx, pyprojectTomlDir, showOutput, infoWriter, errorWriter,
-				"init", "--no-readme", "--no-package", "--no-pin-python")
+			args := []string{"init", "--bare", "--no-package", "--no-pin-python"}
+			deleteHello := false
+			uvVersion, err := u.uvVersion()
+			if err != nil {
+				return fmt.Errorf("error getting uv version: %s", err)
+			}
+			if uvVersion.LT(semver.MustParse("0.6.0")) {
+				// The `--bare` option prevents `uv init` from creating a
+				// `main.py` file, but this is only available in uv 0.6. Prior
+				// to 0.6, uv always creates a `hello.py` file, which we
+				// manually delete below.
+				// https://github.com/astral-sh/uv/blob/main/CHANGELOG.md#060
+				args = []string{"init", "--no-readme", "--no-package", "--no-pin-python"}
+				deleteHello = true
+			}
+
+			initCmd := u.uvCommand(ctx, pyprojectTomlDir, showOutput, infoWriter, errorWriter, args...)
 			if err := initCmd.Run(); err != nil {
 				return errutil.ErrorWithStderr(err, "error initializing python project")
 			}
@@ -165,8 +175,10 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 				}
 			}
 
-			// `uv init` creates a `hello.py` file, delete it.
-			contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
+			// `uv init` prior to 0.6 creates a `hello.py` file, delete it.
+			if deleteHello {
+				contract.IgnoreError(os.Remove(filepath.Join(cwd, "hello.py")))
+			}
 		}
 	}
 
@@ -315,7 +327,16 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 	return cmd
 }
 
-func (u *uv) uvVersion(versionString string) (semver.Version, error) {
+func (u *uv) uvVersion() (semver.Version, error) {
+	cmd := u.uvCommand(context.Background(), "", false, nil, nil, "--version")
+	versionString, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to get uv version: %w", err)
+	}
+	return u.parseUvVersion(string(versionString))
+}
+
+func (u *uv) parseUvVersion(versionString string) (semver.Version, error) {
 	versionString = strings.TrimSpace(versionString)
 	re := regexp.MustCompile(`uv (?P<version>\d+\.\d+(.\d+)?).*`)
 	matches := re.FindStringSubmatch(versionString)
