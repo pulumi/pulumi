@@ -180,23 +180,31 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
+func sliceToBufferedChan[T any](slice []T) <-chan T {
+	ch := make(chan T, len(slice))
+	for _, v := range slice {
+		ch <- v
+	}
+	close(ch)
+	return ch
+}
+
 func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	t.Parallel()
 
+	// Push some example events
+	events := []engine.Event{
+		engine.NewEvent(engine.StdoutEventPayload{
+			Message: "Hello, world!",
+			// Note: System events need their own Color instance
+			Color: colors.Never,
+		}),
+	}
+	eventsChannel := sliceToBufferedChan(events)
+
 	captureRenderer := NewCaptureProgressEvents(
 		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
-	// Push some example events
-	eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
-		Message: "Hello, world!",
-		// Note: System events need their own Color instance
-		Color: colors.Never,
-	})
-
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.False(t, captureRenderer.OutputIncludesFailure())
 	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Hello, world!")
@@ -212,26 +220,17 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 			Op:  deploy.OpUpdate,
 		},
 	})
-
 	// Some diagnostics which is what we're usually interested in.
 	diagEvent := engine.NewEvent(engine.DiagEventPayload{
 		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
 		Message: "Failed to update",
 	})
-
 	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
+	eventsChannel := sliceToBufferedChan(failureEvents)
 
 	captureRenderer := NewCaptureProgressEvents(
 		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
-	for _, event := range failureEvents {
-		eventChannel <- event
-	}
-
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
 	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
@@ -240,25 +239,17 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 func TestCaptureProgressEventsDetectsAndCapturesFailurePreview(t *testing.T) {
 	t.Parallel()
 
-	captureRenderer := NewCaptureProgressEvents(
-		tokens.MustParseStackName("stack"), "project", Options{}, true, apitype.PreviewUpdate)
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
 	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
 		URN:      "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
 		Message:  "Failed to update",
 		Severity: diag.Error,
 	})
-
 	failureEvents := []engine.Event{diagEventWithErrors}
+	eventsChannel := sliceToBufferedChan(failureEvents)
 
-	for _, event := range failureEvents {
-		eventChannel <- event
-	}
-
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, true, apitype.PreviewUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
 	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
