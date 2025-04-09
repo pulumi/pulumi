@@ -60,7 +60,7 @@ func newPluginRmCmd() *cobra.Command {
 			// Parse the filters.
 			var kind apitype.PluginKind
 			var name string
-			var version *semver.Version
+			var version *semver.Range
 			if len(args) > 0 {
 				if !apitype.IsPluginKind(args[0]) {
 					return fmt.Errorf("unrecognized plugin kind: %s\n\n%v", args[0], cmd.UsageString())
@@ -73,7 +73,7 @@ func newPluginRmCmd() *cobra.Command {
 				name = args[1]
 			}
 			if len(args) > 2 {
-				r, err := semver.Parse(args[2])
+				r, err := semver.ParseRange(args[2])
 				if err != nil {
 					return fmt.Errorf("invalid plugin semver: %w", err)
 				}
@@ -89,7 +89,7 @@ func newPluginRmCmd() *cobra.Command {
 			for _, plugin := range plugins {
 				if (kind == "" || plugin.Kind == kind) &&
 					(name == "" || plugin.Name == name) &&
-					(version == nil || (plugin.Version != nil && version.EQ(*plugin.Version))) {
+					(version == nil || (plugin.Version != nil && (*version)(*plugin.Version))) {
 					deletes = append(deletes, plugin)
 				}
 			}
