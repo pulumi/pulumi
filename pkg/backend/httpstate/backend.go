@@ -1234,7 +1234,7 @@ func (b *cloudBackend) PromptAI(
 	return res, nil
 }
 
-func (b *cloudBackend) renderAndSummarizeOuput(
+func (b *cloudBackend) renderAndSummarizeOutput(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation, events []engine.Event,
 ) {
 	renderer := display.NewCaptureProgressEvents(
@@ -1451,7 +1451,7 @@ func (b *cloudBackend) apply(
 		defer func() {
 			close(eventsChannel)
 			<-done
-			b.renderAndSummarizeOuput(ctx, kind, stack, op, renderEvents)
+			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents)
 		}()
 	}
 
