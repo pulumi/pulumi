@@ -442,30 +442,24 @@ type Stack struct {
 	ActiveUpdate     string                  `json:"activeUpdate"`
 	Tags             map[StackTagName]string `json:"tags,omitempty"`
 
-	// Optional reference to ESC environment to use as stack configuration.
-	Environment string `json:"environment"`
-	// SecretsProvider is this stack's secrets provider. Only settable if environment is set.
-	SecretsProvider string `json:"secretsprovider,omitempty"`
-	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
-	// Only used for cloud-based secrets providers. Only settable if environment is set.
-	EncryptedKey string `json:"encryptedkey,omitempty"`
-	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
-	// passphrase-based secrets providers. Only settable if environment is set.
-	EncryptionSalt string `json:"encryptionsalt,omitempty"`
+	// Optional cloud-persisted stack configuration.
+	// If set, then the stack's configuration is loaded from the cloud and not a file on disk.
+	Config *StackConfig `json:"config,omitempty"`
 
 	Version int `json:"version"`
 }
 
+// StackConfig describes the configuration of a stack from Pulumi Cloud.
 type StackConfig struct {
-	// Optional reference to ESC environment to use as stack configuration.
+	// Reference to ESC environment to use as stack configuration.
 	Environment string `json:"environment"`
-	// SecretsProvider is this stack's secrets provider. Only settable if environment is set.
+	// SecretsProvider is this stack's secrets provider.
 	SecretsProvider string `json:"secretsprovider,omitempty"`
 	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
-	// Only used for cloud-based secrets providers. Only settable if environment is set.
+	// Only used for cloud-based secrets providers.
 	EncryptedKey string `json:"encryptedkey,omitempty"`
-	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
-	// passphrase-based secrets providers. Only settable if environment is set.
+	// EncryptionSalt is this stack's base64 encoded encryption salt. Only used for
+	// passphrase-based secrets providers.
 	EncryptionSalt string `json:"encryptionsalt,omitempty"`
 }
 
