@@ -1,5 +1,58 @@
 # Changelog
 
+## 3.161.0 (2025-04-09)
+
+
+### Features
+
+- [yaml] Upgrade yaml to 1.16.0
+  [#19148](https://github.com/pulumi/pulumi/pull/19148)
+  [#19143](https://github.com/pulumi/pulumi/pull/19143)
+
+- [sdk/dotnet] Upgrade dotnet to v3.78.0
+  [#19148](https://github.com/pulumi/pulumi/pull/19148)
+
+- [sdk/go] Add `property.Path` and associated functions.
+  [#17500](https://github.com/pulumi/pulumi/pull/17500)
+
+- [sdk/go] Make `property.Value` immutable
+  [#17500](https://github.com/pulumi/pulumi/pull/17500)
+
+- [sdk/java] Upgrade Java to 1.9.0
+  [#19148](https://github.com/pulumi/pulumi/pull/19148)
+
+- [sdk/python] Add enum support for Python component schema inference
+  [#19072](https://github.com/pulumi/pulumi/pull/19072)
+
+
+### Bug Fixes
+
+- [cli/new] Avoid creating a main.py file when chosing the uv toolchain
+  [#19154](https://github.com/pulumi/pulumi/pull/19154)
+
+- [cli/package] Fix schema versioning when explicit package version is given
+
+- [components/nodejs] Fix schema inference for optional boolean properties
+  [#19133](https://github.com/pulumi/pulumi/pull/19133)
+
+- [cli/plugin] Fix slowness of workspace.DetectProjectFromPath affecting pulumi convert timings
+  [#19082](https://github.com/pulumi/pulumi/pull/19082)
+
+- [sdk/python] Serialize component description to the JSON schema
+  [#19093](https://github.com/pulumi/pulumi/pull/19093)
+
+- [sdk/python] Return an InputPropertyError for invalid enum values
+  [#19116](https://github.com/pulumi/pulumi/pull/19116)
+
+- [sdk/python] Properties used in component outputs are never plain
+  [#19135](https://github.com/pulumi/pulumi/pull/19135)
+
+
+### Miscellaneous
+
+- [protobuf] Remove StreamInvoke from the Provider service
+  [#19129](https://github.com/pulumi/pulumi/pull/19129)
+
 ## 3.160.0 (2025-04-01)
 
 
