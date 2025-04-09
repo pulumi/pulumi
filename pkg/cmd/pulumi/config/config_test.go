@@ -75,7 +75,7 @@ func TestConfigSet(t *testing.T) {
 
 	for _, c := range cases {
 		c := c
-		t.Run("", func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			project := workspace.Project{
 				Name: "testProject",
 			}
@@ -86,8 +86,14 @@ func TestConfigSet(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
+				GetStackFilenameF: func(context.Context) (string, bool) {
+					return "Pulumi.stack.yaml", true
+				},
 				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
+					return workspace.LoadProjectStack(project, "Pulumi.stack.yaml")
+				},
+				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
+					return project.Save(stack.ConfigFile)
 				},
 			}
 
@@ -193,6 +199,9 @@ func TestConfigSetTypes(t *testing.T) {
 				},
 				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
+				},
+				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
+					return project.Save(stack.ConfigFile)
 				},
 			}
 
