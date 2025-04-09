@@ -20,6 +20,7 @@ package python
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/base64"
 	"errors"
@@ -3221,7 +3222,9 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func GeneratePackage(
+	tool string, pkg *schema.Package, extraFiles map[string][]byte, loader schema.ReferenceLoader,
+) (map[string][]byte, error) {
 	// Decode python-specific info
 	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 		return nil, err
@@ -3269,7 +3272,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// this file and emit it as well.
 	if info.PyProject.Enabled {
 		project, err := genPyprojectTOML(
-			tool, pkg, pkgName,
+			tool, pkg, pkgName, loader,
 		)
 		if err != nil {
 			return nil, err
@@ -3283,6 +3286,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 func genPyprojectTOML(tool string,
 	pkg *schema.Package,
 	pyPkgName string,
+	loader schema.ReferenceLoader,
 ) (string, error) {
 	// First, create a Writer for everything in pyproject.toml
 	w := &bytes.Buffer{}
@@ -3295,7 +3299,7 @@ func genPyprojectTOML(tool string,
 
 	// Setting dependencies fails if the deps we provide specify
 	// an invalid Pulumi package version as a dep.
-	err := setDependencies(schema, pkg)
+	err := setDependencies(schema, pkg, loader)
 	if err != nil {
 		return "", err
 	}
@@ -3398,7 +3402,7 @@ func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
 
 // setDependencies mutates the pyproject schema adding the dependencies to the
 // list in lexical order.
-func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
+func setDependencies(schema *PyprojectSchema, pkg *schema.Package, loader schema.ReferenceLoader) error {
 	requires := map[string]string{}
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if ok {
@@ -3406,6 +3410,18 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 			requires[k] = v
 		}
 	}
+	for _, dep := range pkg.Dependencies {
+		ref, err := loader.LoadPackageReferenceV2(context.TODO(), &dep)
+		if err != nil {
+			return err
+		}
+		namespace := "pulumi"
+		if ref.Namespace() != "" {
+			namespace = PyName(ref.Namespace())
+		}
+		requires[namespace+"_"+ref.Name()] = ">=" + dep.Version.String()
+	}
+
 	if !ok || typedDictEnabled(info.InputTypes) {
 		requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
 	}

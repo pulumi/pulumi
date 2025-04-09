@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"errors"
+	"example.com/pulumi-simple/sdk/go/v2/simple"
 	"github.com/a-namespace/pulumi-namespaced/sdk/go/v16/namespaced/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -15,7 +16,8 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Value pulumi.BoolOutput `pulumi:"value"`
+	ResourceRef simple.ResourceOutput `pulumi:"resourceRef"`
+	Value       pulumi.BoolOutput     `pulumi:"value"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -61,12 +63,14 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Value bool `pulumi:"value"`
+	ResourceRef *simple.Resource `pulumi:"resourceRef"`
+	Value       bool             `pulumi:"value"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Value pulumi.BoolInput
+	ResourceRef simple.ResourceInput
+	Value       pulumi.BoolInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {
@@ -104,6 +108,10 @@ func (o ResourceOutput) ToResourceOutput() ResourceOutput {
 
 func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
 	return o
+}
+
+func (o ResourceOutput) ResourceRef() simple.ResourceOutput {
+	return o.ApplyT(func(v *Resource) simple.ResourceOutput { return v.ResourceRef }).(simple.ResourceOutput)
 }
 
 func (o ResourceOutput) Value() pulumi.BoolOutput {

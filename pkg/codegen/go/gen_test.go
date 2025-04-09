@@ -82,7 +82,9 @@ func TestGoPackageName(t *testing.T) {
 func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
-	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+	generatePackage := func(
+		tool string, pkg *schema.Package, files map[string][]byte, _ schema.ReferenceLoader,
+	) (map[string][]byte, error) {
 		for f := range files {
 			t.Logf("Ignoring extraFile %s", f)
 		}

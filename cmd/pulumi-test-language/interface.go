@@ -619,7 +619,6 @@ func (eng *languageTestServer) RunLanguageTest(
 	if token.CoreArtifact != "" {
 		localDependencies["pulumi"] = token.CoreArtifact
 	}
-
 	packageSet := make(map[string]struct{}, len(packages))
 	for _, pkg := range packages {
 		packageSet[pkg.Name] = struct{}{}
@@ -634,10 +633,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 	// Sort the packages, so dependent packages are generated first
 	sort.Slice(packages, func(i, j int) bool {
-		if hasDependency(packages[j], packages[i].Name) {
-			return true
-		}
-		return false
+		return hasDependency(packages[j], packages[i].Name)
 	})
 
 	for _, pkg := range packages {

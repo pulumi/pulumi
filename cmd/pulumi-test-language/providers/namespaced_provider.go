@@ -57,9 +57,15 @@ func (p *NamespacedProvider) GetSchema(
 				Type: "boolean",
 			},
 		},
+		"resourceRef": {
+			TypeSpec: schema.TypeSpec{
+				Ref: "/simple/v2.0.0/schema.json#/resources/simple:index:Resource",
+			},
+		},
 	}
 	resourceRequired := []string{"value"}
 
+	simpleVersion := semver.MustParse("2.0.0")
 	pkg := schema.PackageSpec{
 		Name:      "namespaced",
 		Version:   "16.0.0",
@@ -75,6 +81,10 @@ func (p *NamespacedProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
+		Dependencies: []schema.PackageDescriptor{{
+			Name:    "simple",
+			Version: &simpleVersion,
+		}},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)

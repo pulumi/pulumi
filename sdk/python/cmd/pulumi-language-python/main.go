@@ -1532,7 +1532,7 @@ func (host *pythonLanguageHost) GeneratePackage(
 		}, nil
 	}
 
-	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)
+	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}
