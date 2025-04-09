@@ -73,7 +73,12 @@ strict = ["lib/test_types"]
 [tool.ruff]
 target-version = "py39"
 
-include = ["lib/pulumi/**.py", "lib/pulumi/**.pyi", "lib/test/**.py"]
+include = [
+    "lib/pulumi/**.py",
+    "lib/pulumi/**.pyi",
+    "lib/test/**.py",
+    "cmd/pulumi-language-python-exec",
+]
 extend-exclude = [
     "*_pb2.py",
     "*_pb2.pyi",
