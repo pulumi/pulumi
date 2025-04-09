@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.162.0 (2025-04-09)
+
+
+### Bug Fixes
+
+- [sdk/nodejs] Add back the @pulumi/pulumi/queryable module used by @pulumi/policy
+  [#19172](https://github.com/pulumi/pulumi/pull/19172)
+
 ## 3.161.0 (2025-04-09)
 
 
