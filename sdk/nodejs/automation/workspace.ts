@@ -335,6 +335,18 @@ export interface Workspace {
     installPluginFromServer(name: string, version: string, server: string): Promise<void>;
 
     /**
+     * Installs a plugin in the workspace, for example to use file path "/usr/bin/pulumi-resource-kubernetes".
+     *
+     * @param name
+     *  The name of the plugin.
+     * @param version
+     *  The version of the plugin e.g. "v1.0.0".
+     * @param file
+     *  The file to install the plugin from e.g. "/usr/bin/pulumi-resource-kubernetes"
+     */
+    installPluginFromFile(name: string, version: string, file: string): Promise<void>;
+
+    /**
      * Installs a plugin in the workspace from a remote server, for example a
      * third-party plugin.
      *
