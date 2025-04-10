@@ -189,6 +189,7 @@ type RunPluginInfo struct {
 	WorkingDirectory string
 	Args             []string
 	Env              []string
+	Kind             string
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.

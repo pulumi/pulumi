@@ -300,7 +300,7 @@ message RunRequest {
     // registrations](resource-registration) and other calls to.
     string monitor_address = 9;
 
-    // This is deprecated, query mode is no longer a supported feature. 
+    // This is deprecated, query mode is no longer a supported feature.
     bool queryMode = 10 [deprecated = true];
 
     // A list of configuration keys whose values should be treated as secrets.
@@ -444,6 +444,9 @@ message RunPluginRequest{
 
     // The [plugin program](pulumirpc.ProgramInfo) to use.
     ProgramInfo info = 5;
+
+    // The kind of plugin to run (resource/analyzer/etc).
+    string kind = 6;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
