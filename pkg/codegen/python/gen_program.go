@@ -778,6 +778,7 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
@@ -798,6 +799,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 	if opts.DeletedWith != nil {
 		appendOption("deleted_with", opts.DeletedWith)
+	}
+	if opts.ImportID != nil {
+		appendOption("import_", opts.ImportID)
 	}
 
 	return block, temps

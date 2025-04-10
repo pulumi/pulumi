@@ -210,3 +210,24 @@ func (p *SimpleProvider) Delete(
 ) (plugin.DeleteResponse, error) {
 	return plugin.DeleteResponse{}, nil
 }
+
+func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.ReadResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.ReadResponse{
+		ReadResult: plugin.ReadResult{
+			ID: req.ID,
+			Inputs: resource.PropertyMap{
+				"value": resource.NewBoolProperty(true),
+			},
+			Outputs: resource.PropertyMap{
+				"value": resource.NewBoolProperty(true),
+			},
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
