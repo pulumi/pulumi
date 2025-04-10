@@ -169,6 +169,8 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 ) (*deploy.Plan, error) {
 	for {
 		var response string
+		// explain is down here instead of with the other choices so we can optionally emit an emoji
+		explain := "explain " + cmdutil.EmojiOr("✨", "")
 
 		surveycore.DisableColor = true
 		surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
@@ -178,12 +180,9 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		choices := []string{string(yes), string(no)}
 
-		// sparkles emoji:
-		explain := fmt.Sprintf("explain %s", cmdutil.EmojiOr("✨", ""))
-
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
-			choices = append(choices, string(details), string(explain))
+			choices = append(choices, string(details), explain)
 		}
 
 		var previewWarning string
@@ -233,7 +232,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			continue
 		}
 
-		if response == string(explain) {
+		if response == explain {
 			explain, err := explainer(stack, op, events, opts.Display)
 			if err != nil {
 				return nil, err

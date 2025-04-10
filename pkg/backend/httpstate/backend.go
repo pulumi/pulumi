@@ -1153,7 +1153,14 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b.explainer)
 }
 
-func (b *cloudBackend) explainer(stack backend.Stack, op backend.UpdateOperation, events []engine.Event, opts display.Options) (string, error) {
+// explainer takes engine events, renders them out to a buffer as something similar to what the user sees
+// in the CLI, and then explains the output with Copilot.
+func (b *cloudBackend) explainer(
+	stack backend.Stack,
+	op backend.UpdateOperation,
+	events []engine.Event,
+	opts display.Options,
+) (string, error) {
 	eventsChan := make(chan engine.Event)
 	renderDone := make(chan bool)
 

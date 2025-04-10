@@ -1428,6 +1428,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// TODO: uncomment and remove the local url below
 	// url := pc.apiURL + "/api/ai/chat/preview"
 	url := "http://localhost:3004/pulumi-ai/atlas/api/ai/chat/preview"
 
@@ -1439,6 +1440,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+	// TODO: remove
 	req.Header.Set("X-Pulumi-Origin", "api.pulumi.com")
 
 	resp, err := pc.do(ctx, req)
