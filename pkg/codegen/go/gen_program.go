@@ -29,6 +29,7 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/iancoleman/strcase"
 	"golang.org/x/mod/modfile"
@@ -545,6 +546,16 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
 	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
+	// build metadata seems to cause issues for mod tidy so we strip it when converting to a Go string
+	cleanVersion := func(version *semver.Version) string {
+		if version == nil {
+			return ""
+		}
+		cleanVersion := *version
+		cleanVersion.Build = nil
+		return "v" + cleanVersion.String()
+	}
+
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
 	if err != nil {
@@ -590,10 +601,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
 					packagePaths[p.Name] = info.ModulePath
 
-					// build metadata seems to cause issues for mod tidy so we strip it here
-					cleanVersion := *p.Version
-					cleanVersion.Build = nil
-					err = gomod.AddRequire(info.ModulePath, cleanVersion.String())
+					err = gomod.AddRequire(info.ModulePath, cleanVersion(p.Version))
 					contract.AssertNoErrorf(err, "could not add require statement for %s to go.mod", info.ModulePath)
 				}
 			}
@@ -617,13 +625,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 			}
 		}
 
-		version := ""
-		if p.Version != nil {
-			// build metadata seems to cause issues for mod tidy so we strip it here
-			cleanVersion := *p.Version
-			cleanVersion.Build = nil
-			version = "v" + cleanVersion.String()
-		}
+		version := cleanVersion(p.Version)
 		if packageName != "" {
 			packagePaths[p.Name] = packageName
 			err = gomod.AddRequire(packageName, version)
