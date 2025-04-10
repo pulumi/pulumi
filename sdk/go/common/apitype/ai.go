@@ -16,13 +16,45 @@ package apitype
 
 import "encoding/json"
 
-// Requests
+// SummarizeUpdateRequest
 
 type CopilotSummarizeUpdateRequest struct {
 	Query           string                 `json:"query"`
 	State           CopilotState           `json:"state"`
-	DirectSkillCall CopilotDirectSkillCall `json:"directSkillCall"`
+	DirectSkillCall CopilotSummarizeUpdate `json:"directSkillCall"`
 }
+
+type CopilotSummarizeUpdate struct {
+	Skill  string                       `json:"skill"` // The skill to call. e.g. "summarizeUpdate"
+	Params CopilotSummarizeUpdateParams `json:"params"`
+}
+
+type CopilotSummarizeUpdateParams struct {
+	PulumiUpdateOutput string `json:"pulumiUpdateOutput"` // The Pulumi update output to summarize.
+	Model              string `json:"model,omitempty"`    // The model to use for the summary. e.g. "gpt-4o-mini"
+	MaxLen             int    `json:"maxLen,omitempty"`   // The maximum length of the returned summary.
+}
+
+// SummarizePreviewRequest
+
+type CopilotSummarizePreviewRequest struct {
+	Query           string                  `json:"query"`
+	State           CopilotState            `json:"state"`
+	DirectSkillCall CopilotSummarizePreview `json:"directSkillCall"`
+}
+
+type CopilotSummarizePreview struct {
+	Skill  string                        `json:"skill"` // The skill to call. e.g. "summarizeUpdate"
+	Params CopilotSummarizePreviewParams `json:"params"`
+}
+
+type CopilotSummarizePreviewParams struct {
+	PulumiPreviewOutput string `json:"pulumiPreviewOutput"` // The Pulumi preview output to summarize.
+	Model               string `json:"model,omitempty"`     // The model to use for the summary. e.g. "gpt-4o-mini"
+	MaxLen              int    `json:"maxLen,omitempty"`    // The maximum length of the returned summary.
+}
+
+// Request params
 
 type CopilotState struct {
 	Client CopilotClientState `json:"client"`
@@ -37,20 +69,9 @@ type CopilotCloudContext struct {
 	URL   string `json:"url"`   // The URL the user is viewing. Mock value often used.
 }
 
-type CopilotDirectSkillCall struct {
-	Skill  string             `json:"skill"` // The skill to call. e.g. "summarizeUpdate"
-	Params CopilotSkillParams `json:"params"`
-}
-
-type CopilotSkillParams struct {
-	PulumiUpdateOutput string `json:"pulumiUpdateOutput"` // The Pulumi update output to summarize.
-	Model              string `json:"model,omitempty"`    // The model to use for the summary. e.g. "gpt-4o-mini"
-	MaxLen             int    `json:"maxLen,omitempty"`   // The maximum length of the returned summary.
-}
-
 // Responses
 
-type CopilotSummarizeUpdateResponse struct {
+type CopilotResponse struct {
 	ThreadMessages []CopilotThreadMessage `json:"messages"`
 	Error          string                 `json:"error"`
 	Details        string                 `json:"details"` // The details of the error.
