@@ -2439,6 +2439,14 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	// Verify that the Pulumi.yaml file contains the tls-self-signed-cert package with the correct GitHub URL
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString, "tls-self-signed-cert: "+
+		"github.com/pulumi/component-test-providers/test-provider@0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
 }
 
 func TestPackagesInstall(t *testing.T) {
@@ -2484,6 +2492,15 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 
 	e.RunCommand("pulumi", "package", "add",
 		"github.com/pulumi/component-test-providers/test-provider")
+
+	// Verify that the Pulumi.yaml file contains the random package with correct settings
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString,
+		"tls-self-signed-cert: github.com/pulumi/component-test-providers/test-provider@"+
+			"0.0.0-xb39e20e4e33600e33073ccb2df0ddb46388641dc")
 
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"}
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
