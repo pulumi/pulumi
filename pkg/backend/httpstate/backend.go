@@ -1161,9 +1161,6 @@ func (b *cloudBackend) explainer(
 	events []engine.Event,
 	opts display.Options,
 ) (string, error) {
-	eventsChan := make(chan engine.Event)
-	renderDone := make(chan bool)
-
 	renderer := display.NewCaptureProgressEvents(
 		stack.Ref().Name(),
 		op.Proj.Name,
@@ -1173,22 +1170,37 @@ func (b *cloudBackend) explainer(
 		true,
 		apitype.UpdateUpdate,
 	)
+	renderer.ProcessEventSlice(events)
 
-	go renderer.ProcessEvents(eventsChan, renderDone)
-
-	for _, event := range events {
-		eventsChan <- event
+	if len(renderer.Output()) == 0 {
+		return "", nil
 	}
 
-	close(eventsChan)
-	<-renderDone
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return "", err
+	}
+	orgName := stackID.Owner
 
-	summary, err := b.summarizePreviewWithCopilot(context.Background(), renderer.Output(), stack.Ref(), op.Opts.Display)
+	model := opts.CopilotSummaryModel
+	maxSummaryLen := opts.CopilotSummaryMaxLen
+
+	summary, err := b.client.SummarizePreviewWithCopilot(
+		context.Background(),
+		orgName,
+		renderer.Output(),
+		model,
+		maxSummaryLen,
+	)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("\n%s\n", summary.Summary), nil
+	if summary == "" {
+		summary = "No summary available"
+	}
+
+	return fmt.Sprintf("\n%s\n", summary), nil
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1308,90 +1320,35 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		dryRun,
 		kind,
 	)
+	renderer.ProcessEventSlice(events)
+	output := renderer.Output()
 
-	eventsChannel := make(chan engine.Event)
-	doneChannel := make(chan bool)
-
-	go renderer.ProcessEvents(eventsChannel, doneChannel)
-	for _, event := range events {
-		eventsChannel <- event
-	}
-	close(eventsChannel)
-	<-doneChannel
-
-	permalink := b.getPermalink(update, updateMeta.version, dryRun)
-	if renderer.OutputIncludesFailure() {
-		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
-		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
-		// if we can't generate a summary.
-		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
-	}
-}
-
-func (b *cloudBackend) summarizePreviewWithCopilot(
-	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
-) (*display.CopilotErrorSummaryMetadata, error) {
-	if len(pulumiOutput) == 0 {
-		return nil, nil
+	// No output, bit strange.
+	if !renderer.OutputIncludesFailure() || len(output) == 0 {
+		err := fmt.Errorf("no output from preview")
+		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display)
+		return
 	}
 
-	stackID, err := b.getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		return nil, err
+		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display)
+		return
 	}
+
 	orgName := stackID.Owner
 
 	model := opts.CopilotSummaryModel
 	maxSummaryLen := opts.CopilotSummaryMaxLen
 
-	startTime := time.Now()
-	summary, err := b.client.SummarizePreviewWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
-	if err != nil {
-		return nil, err
-	}
-
-	if summary == "" {
-		// Summarization did not return output, this is not an error.
-		return nil, nil
-	}
-
+	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, output, model, maxSummaryLen)
 	elapsedMs := time.Since(startTime).Milliseconds()
 
-	return &display.CopilotErrorSummaryMetadata{
+	// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+	// if we can't generate a summary.
+	display.RenderCopilotErrorSummary(&display.CopilotErrorSummaryMetadata{
 		Summary:   summary,
-		ElapsedMs: elapsedMs,
-	}, nil
-}
-
-func (b *cloudBackend) summarizeErrorWithCopilot(
-	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
-) (*display.CopilotErrorSummaryMetadata, error) {
-	if len(pulumiOutput) == 0 {
-		return nil, nil
-	}
-
-	stackID, err := b.getCloudStackIdentifier(stackRef)
-	if err != nil {
-		return nil, err
-	}
-	orgName := stackID.Owner
-
-	model := opts.CopilotSummaryModel
-	maxSummaryLen := opts.CopilotSummaryMaxLen
-
-	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
-	if err != nil {
-		return nil, err
-	}
-
-	if summary == "" {
-		// Summarization did not return output, this is not an error.
-		return nil, nil
-	}
-
-	return &display.CopilotErrorSummaryMetadata{
-		Summary: summary,
-	}, nil
+	}, err, op.Opts.Display)
 }
 
 type updateMetadata struct {
