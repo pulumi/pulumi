@@ -43,9 +43,9 @@ func createSummarizeUpdateRequest(
 				},
 			},
 		},
-		DirectSkillCall: apitype.CopilotDirectSkillCall{
+		DirectSkillCall: apitype.CopilotSummarizeUpdate{
 			Skill: "summarizeUpdate",
-			Params: apitype.CopilotSkillParams{
+			Params: apitype.CopilotSummarizeUpdateParams{
 				PulumiUpdateOutput: content,
 				Model:              model,
 				MaxLen:             maxSummaryLen,
@@ -54,8 +54,39 @@ func createSummarizeUpdateRequest(
 	}
 }
 
-// extractSummaryFromResponse parses the Copilot API response and extracts the summary content
-func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateResponse) (string, error) {
+// createSummarizePreviewRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
+func createSummarizePreviewRequest(
+	lines []string,
+	orgID string,
+	model string,
+	maxSummaryLen int,
+	maxUpdateOutputLen int,
+) apitype.CopilotSummarizePreviewRequest {
+	content := strings.Join(lines, "\n")
+	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
+
+	return apitype.CopilotSummarizePreviewRequest{
+		State: apitype.CopilotState{
+			Client: apitype.CopilotClientState{
+				CloudContext: apitype.CopilotCloudContext{
+					OrgID: orgID,
+					URL:   "https://app.pulumi.com",
+				},
+			},
+		},
+		DirectSkillCall: apitype.CopilotSummarizePreview{
+			Skill: "summarizePreview",
+			Params: apitype.CopilotSummarizePreviewParams{
+				PulumiPreviewOutput: content,
+				Model:               model,
+				MaxLen:              maxSummaryLen,
+			},
+		},
+	}
+}
+
+// extractCopilotResponse parses the Copilot API response and extracts the summary content
+func extractCopilotResponse(copilotResp apitype.CopilotResponse) (string, error) {
 	for _, msg := range copilotResp.ThreadMessages {
 		if msg.Role != "assistant" {
 			continue
