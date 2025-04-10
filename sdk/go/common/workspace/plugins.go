@@ -2093,9 +2093,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 		(kind == apitype.LanguagePlugin && name == "yaml") ||
 		(kind == apitype.LanguagePlugin && name == "java") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == apitype.ResourcePlugin && name == "pulumi-python") ||
-		(kind == apitype.AnalyzerPlugin && name == "policy") ||
-		(kind == apitype.AnalyzerPlugin && name == "policy-python")
+		(kind == apitype.ResourcePlugin && name == "pulumi-python")
 }
 
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that

@@ -56,7 +56,6 @@ build:: build_package build_plugin
 
 install_package:: build
 	cp dist/pulumi-resource-pulumi-nodejs* "$(PULUMI_BIN)"
-	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
 	cd cmd/pulumi-language-nodejs && \
@@ -125,14 +124,12 @@ test_watch::
 
 dist:: build
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	cd cmd/pulumi-language-nodejs && \
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
 publish::
 	bash -c ../../scripts/publish_npm.sh
