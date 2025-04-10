@@ -1176,7 +1176,7 @@ func (b *cloudBackend) explainer(stack backend.Stack, op backend.UpdateOperation
 	close(eventsChan)
 	<-renderDone
 
-	summary, err := b.summarizeErrorWithCopilot(context.Background(), renderer.Output(), stack.Ref(), op.Opts.Display)
+	summary, err := b.summarizePreviewWithCopilot(context.Background(), renderer.Output(), stack.Ref(), op.Opts.Display)
 	if err != nil {
 		return "", err
 	}
@@ -1319,6 +1319,41 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		// if we can't generate a summary.
 		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
 	}
+}
+
+func (b *cloudBackend) summarizePreviewWithCopilot(
+	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+) (*display.CopilotErrorSummaryMetadata, error) {
+	if len(pulumiOutput) == 0 {
+		return nil, nil
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+	orgName := stackID.Owner
+
+	model := opts.CopilotSummaryModel
+	maxSummaryLen := opts.CopilotSummaryMaxLen
+
+	startTime := time.Now()
+	summary, err := b.client.SummarizePreviewWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
+	if err != nil {
+		return nil, err
+	}
+
+	if summary == "" {
+		// Summarization did not return output, this is not an error.
+		return nil, nil
+	}
+
+	elapsedMs := time.Since(startTime).Milliseconds()
+
+	return &display.CopilotErrorSummaryMetadata{
+		Summary:   summary,
+		ElapsedMs: elapsedMs,
+	}, nil
 }
 
 func (b *cloudBackend) summarizeErrorWithCopilot(

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -76,7 +77,6 @@ const (
 	yes     response = "yes"
 	no      response = "no"
 	details response = "details"
-	explain response = "explain"
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
@@ -177,6 +177,9 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		})
 
 		choices := []string{string(yes), string(no)}
+
+		// sparkles emoji:
+		explain := fmt.Sprintf("explain %s", cmdutil.EmojiOr("✨", ""))
 
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
