@@ -460,6 +460,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
 			Env:              env,
+			Kind:             string(kind),
 		})
 		if err != nil {
 			return nil, err
