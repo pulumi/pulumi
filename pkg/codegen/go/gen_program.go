@@ -1092,6 +1092,7 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
 	}
@@ -1113,6 +1114,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.DeletedWith != nil {
 		appendOption("DeletedWith", opts.DeletedWith, model.DynamicType)
 	}
+	if opts.ImportID != nil {
+		appendOption("Import", opts.ImportID, model.StringType)
+	}
 
 	return block, temps
 }
@@ -1124,7 +1128,17 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 	for _, item := range block.Body.Items {
 		attr := item.(*model.Attribute)
-		g.Fgenf(w, ", pulumi.%s(%v)", attr.Name, attr.Value)
+
+		// Some resource options have syntactic/type transformations.
+		valBuffer := &bytes.Buffer{}
+		switch attr.Name {
+		case "Import":
+			g.Fgenf(valBuffer, "pulumi.ID(%v)", attr.Value)
+		default:
+			g.Fgenf(valBuffer, "%v", attr.Value)
+		}
+
+		g.Fgenf(w, ", pulumi.%s(%s)", attr.Name, valBuffer)
 	}
 }
 
