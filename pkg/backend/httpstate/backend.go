@@ -1149,9 +1149,10 @@ func (b *cloudBackend) explainer(
 		apitype.UpdateUpdate,
 	)
 	renderer.ProcessEventSlice(events)
+	output := renderer.Output()
 
-	if len(renderer.Output()) == 0 {
-		return "", nil
+	if len(output) == 0 {
+		return "", errors.New("no output from preview")
 	}
 
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
@@ -1166,7 +1167,7 @@ func (b *cloudBackend) explainer(
 	summary, err := b.client.SummarizePreviewWithCopilot(
 		context.Background(),
 		orgName,
-		renderer.Output(),
+		output,
 		model,
 		maxSummaryLen,
 	)
