@@ -1459,9 +1459,6 @@ func TestPulumiInstallInstallsPackagesIntoTheCorrectDirectory(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 
-	t.Log(os.Environ())
-	t.FailNow()
-
 	e.ImportDirectory("packageadd-remote")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")

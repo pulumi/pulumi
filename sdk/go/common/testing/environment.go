@@ -241,6 +241,9 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 	cmd.Env = append(cmd.Env, "PULUMI_HOME="+e.HomePath)
+	if coverdir := os.Getenv("PULUMI_GOCOVERDIR"); coverdir != "" {
+		cmd.Env = append(cmd.Env, "GOCOVERDIR="+coverdir)
+	}
 	if !e.NoPassphrase {
 		cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE="+passphrase)
 	}
