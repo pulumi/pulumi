@@ -489,10 +489,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
 		// it upstream
-		//
-		// In the case of PAC, note that the plugin usually _does_ exist.
-		// It is a shell script like "pulumi-analyzer-policy". But during
-		// the execution of that script, it fails with the ENOENT error.
 		if pathErr, ok := err.(*os.PathError); ok {
 			syscallErr, ok := pathErr.Err.(syscall.Errno)
 			if ok && syscallErr == syscall.ENOENT {
