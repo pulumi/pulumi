@@ -1878,6 +1878,69 @@ func (spec PluginSpec) InstallDependencies(ctx context.Context) error {
 				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
+			// We support two types of Python based plugins: bare directories or
+			// buildable packages.
+			//
+			// If the plugin directory is a bare directory (that is not a Python
+			// package), we expect it to have a `__main__.py` file that's the
+			// entrypoint to the plugin. Dependencies must be specified in
+			// `requirements.txt`.
+			//
+			// Plugins can also be Python packages, with a pyproject.toml. The
+			// package needs to be buildable [1]. We expect the package to
+			// include a module with the name of the project.
+			//
+			// See also sdk/python/cmd/pulumi-language-python/main.go#RunPlugin.
+			//
+			// 1: https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend
+			mainPy := filepath.Join(subdir, "__main__.py")
+			_, err := os.Stat(mainPy)
+			if os.IsNotExist(err) {
+				// There is no `__main__.py` file. Check for pyproject.toml and if it's a buildable package.
+				buildable, err := toolchain.IsBuildablePackage(subdir)
+				if err != nil {
+					return fmt.Errorf("checking if plugin is a buildable package: %w", err)
+				}
+				if !buildable {
+					return errors.New("plugin is not runnable, it provides neither __main__.py nor a buildable pyproject.toml")
+				}
+
+				logging.V(6).Infof("Plugin at %s is a buildable Python package, installing it in package mode.", subdir)
+
+				// We have a pyproject.toml and it's a buildable package. We'll create a virtualenv
+				// and install the package into it.
+				ambientTc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{})
+				if err != nil {
+					return fmt.Errorf("getting ambient toolchain: %w", err)
+				}
+				cmd, err := ambientTc.ModuleCommand(ctx, "venv", "venv")
+				cmd.Dir = subdir
+				if err != nil {
+					return fmt.Errorf("preparing venv command: %w", err)
+				}
+				if out, err := cmd.CombinedOutput(); err != nil {
+					return fmt.Errorf("creating venv: %w; output %s", err, out)
+				}
+
+				tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+					Toolchain:  toolchain.Pip,
+					Root:       subdir,
+					Virtualenv: "venv",
+				})
+				if err != nil {
+					return fmt.Errorf("getting python toolchain: %w", err)
+				}
+				cmd, err = tc.ModuleCommand(ctx, "pip", "install", ".")
+				cmd.Dir = subdir
+				if err != nil {
+					return fmt.Errorf("preparing pip install command: %w", err)
+				}
+				if out, err := cmd.CombinedOutput(); err != nil {
+					return fmt.Errorf("installing package: %w; output %s", err, out)
+				}
+				return nil
+			}
+
 			// TODO[pulumi/pulumi/issues/16287]: Support toolchain options for installing plugins.
 			tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 				Toolchain:  toolchain.Pip,

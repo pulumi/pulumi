@@ -1,0 +1,14 @@
+name: python-component-provider-yaml
+description: Using a component provider written in Python bootstrap-less mode from YAML
+runtime: yaml
+plugins:
+  providers:
+    - name: provider
+      path: ../provider
+resources:
+  comp:
+    type: provider:index:MyComponent
+    properties:
+      strInput: hello
+outputs:
+  urn: ${comp.urn}
