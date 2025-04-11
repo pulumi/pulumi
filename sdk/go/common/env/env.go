@@ -99,7 +99,7 @@ var BackendURL = env.String("BACKEND_URL",
 var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
 
-var CopilotSummary = env.Bool("COPILOT_SUMMARY",
+var SuppressCopilotSummary = env.Bool("SUPPRESS_COPILOT_SUMMARY",
 	"Enable showing the Copilot summary in the CLI output.")
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
