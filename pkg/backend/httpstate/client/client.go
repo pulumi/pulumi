@@ -1410,10 +1410,8 @@ func (pc *Client) SummarizePreviewWithCopilot(
 	ctx context.Context,
 	orgID string,
 	lines []string,
-	model string,
-	maxSummaryLen int,
 ) (string, error) {
-	request := createSummarizePreviewRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
+	request := createSummarizePreviewRequest(lines, orgID, maxCopilotContentLength)
 	return pc.callCopilot(ctx, request)
 }
 

@@ -1183,16 +1183,7 @@ func (b *cloudBackend) explainer(
 	}
 	orgName := stackID.Owner
 
-	model := opts.CopilotSummaryModel
-	maxSummaryLen := opts.CopilotSummaryMaxLen
-
-	summary, err := b.client.SummarizePreviewWithCopilot(
-		context.Background(),
-		orgName,
-		output,
-		model,
-		maxSummaryLen,
-	)
+	summary, err := b.client.SummarizePreviewWithCopilot(context.Background(), orgName, output)
 	if err != nil {
 		return "", err
 	}
