@@ -14,8 +14,8 @@ PULUMI_TEST_COVERAGE_PATH=${PULUMI_TEST_COVERAGE_PATH:-}
 PULUMI_BUILD_MODE=${PULUMI_BUILD_MODE:-}
 
 COVER_PACKAGES=( \
-    "./..." \
-    "../sdk/..." \
+    "github.com/pulumi/pulumi/pkg/v3/..." \
+    "github.com/pulumi/pulumi/sdk/v3/..." \
     "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/..." \
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/..." \
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/..." \
@@ -23,7 +23,6 @@ COVER_PACKAGES=( \
 
 # Join COVER_PACKAGES with commas.
 COVERPKG=$(IFS=,; echo "${COVER_PACKAGES[*]}")
-
 
 case "$1" in
     build)
@@ -56,7 +55,7 @@ case "$1" in
                 ;;
             coverage)
                 shift
-                go build ${RACE} -cover -coverpkg "${COVERPKG}" "$@"
+                go build ${RACE} -cover -coverpkg "$COVERPKG" "$@"
                 ;;
             *)
                 echo "unknown build mode: $MODE"

@@ -486,13 +486,6 @@ jobs:
           curl -Os https://cli.codecov.io/latest/linux/codecov
           sudo chmod +x codecov
           ./codecov pr-base-picking --base-sha "$(git merge-base origin/master HEAD)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ secrets.CODECOV_TOKEN }} --service github
-      - name: check coverage results
-        run: |
-          cd coverage
-          for file in $(ls); do
-            echo $file
-            grep package_add $file || true
-          done
       - name: Upload code coverage
         uses: codecov/codecov-action@v4
         with:
