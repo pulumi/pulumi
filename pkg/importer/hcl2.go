@@ -150,7 +150,19 @@ func GenerateHCL2Definition(
 
 	// With the package loaded, we can get the full resource schema and use that to generate an appropriate HCL2
 	// definition.
-	r, ok, err := pkg.Resources().Get(string(state.Type))
+	var r *schema.Resource
+	ok := true
+	if providers.IsProviderType(state.Type) {
+		r, err = pkg.Provider()
+		for k := range state.Inputs {
+			r.InputProperties = append(r.InputProperties, &schema.Property{
+				Name: string(k),
+			})
+		}
+	} else {
+		r, ok, err = pkg.Resources().Get(string(state.Type))
+	}
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
 	}
