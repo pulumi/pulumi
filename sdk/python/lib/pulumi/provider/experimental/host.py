@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from inspect import isclass
 import sys
+from types import ModuleType
 from typing import Optional
 
 from ...resource import ComponentResource
@@ -52,3 +54,11 @@ def component_provider_host(
     # confused without a version.
     version = "0.0.0"
     main(ComponentProvider(components, name, namespace, version), args)
+
+
+def components_from_module(mod: ModuleType) -> list[type[ComponentResource]]:
+    components: list[type[ComponentResource]] = []
+    for _, v in mod.__dict__.items():
+        if isclass(v) and issubclass(v, ComponentResource):
+            components.append(v)
+    return components
