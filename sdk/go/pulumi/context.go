@@ -2571,6 +2571,13 @@ func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(&ctx.state.join)
 }
 
+// ToOutput creates a new output associated with this context and resolves it to the given value.
+func (ctx *Context) ToOutput(in any) Output {
+	o, r, _ := ctx.NewOutput()
+	r(in)
+	return o
+}
+
 // Returns the source position of the Nth stack frame, where N is skip+1.
 //
 // This is used to compute the source position of the user code that instantiated a resource. The number of frames to
