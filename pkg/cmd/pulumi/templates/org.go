@@ -48,6 +48,11 @@ func (s *Source) getOrgTemplates(
 		return
 	}
 
+	creds, err := ws.GetStoredCredentials()
+	if creds.Current == "" {
+		return // We're not logged in, don't proceed
+	}
+
 	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: interactive,
