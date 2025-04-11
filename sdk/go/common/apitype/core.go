@@ -355,6 +355,8 @@ type ResourceV3 struct {
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
+	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

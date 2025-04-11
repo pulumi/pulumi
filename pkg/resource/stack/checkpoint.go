@@ -162,6 +162,6 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, name)
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil)
+		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil)
 	return state
 }

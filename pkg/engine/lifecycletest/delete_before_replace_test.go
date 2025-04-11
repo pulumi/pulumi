@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -689,6 +690,105 @@ func TestDBRProtect(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].Protect, true)
 	snap.Resources[2].Protect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19056. If a resource has "replaceOnChanges" set and a
+// DBR changes that property we should trigger a replace.
+func TestDBRReplaceOnChanges(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.Name == "resA" {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"value"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputsA := resource.PropertyMap{
+		"value": resource.NewStringProperty("foo"),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:index:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		assert.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"value": {respA.URN}}
+		_, err = monitor.RegisterResource("pkgA:index:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"value": respA.Outputs["value"],
+			},
+			Dependencies:     []resource.URN{respA.URN},
+			PropertyDeps:     inputDepsB,
+			ReplaceOnChanges: []string{"value"},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	p := &lt.TestPlan{}
+
+	project := p.GetProject()
+
+	// First update just create the two resources.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+
+	// Update value to trigger a replace this should also replace resB because of the replaceOnChanges.
+	inputsA["value"] = resource.NewStringProperty("bar")
+	validate := func(
+		project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+		events []engine.Event, err error,
+	) error {
+		// resB should have replaced before resA was created. The ReplaceOnChanges kicks in (even before the
+		// fixes for #19056) so we will see a replace op, the
+		resADeleted := false
+		resBDeleted := false
+		for _, entry := range entries {
+			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resA" {
+				switch entry.Step.Op() {
+				case deploy.OpDeleteReplaced:
+					resADeleted = true
+				}
+			}
+
+			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resB" {
+				switch entry.Step.Op() {
+				case deploy.OpDeleteReplaced:
+					assert.False(t, resADeleted, "resA should not have been deleted yet")
+					resBDeleted = true
+				}
+			}
+		}
+		assert.True(t, resADeleted, "resA should have been deleted")
+		assert.True(t, resBDeleted, "resB should have been deleted")
+
+		return err
+	}
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, validate, "1")
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 }

@@ -275,6 +275,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		nil,   /* modified */
 		event.SourcePosition(),
 		nil, /* ignoreChanges */
+		nil, /* replaceOnChanges */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -730,7 +731,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges)
+		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges)
 
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
@@ -2623,17 +2624,16 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(context.TODO(), plugin.DiffRequest{
-			URN:           r.URN,
-			ID:            r.ID,
-			OldInputs:     r.Inputs,
-			OldOutputs:    r.Outputs,
-			NewInputs:     inputsForDiff,
-			AllowUnknowns: true,
-		})
+		diff, err := diffResource(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges)
 		if err != nil {
 			return false, nil, err
 		}
+
+		diff, err = applyReplaceOnChanges(diff, r.ReplaceOnChanges, false)
+		if err != nil {
+			return false, nil, err
+		}
+
 		return diff.Replace(), diff.ReplaceKeys, nil
 	}
 

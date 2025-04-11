@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix ReplaceOnChanges being respected during deleteBeforeReplace checks
