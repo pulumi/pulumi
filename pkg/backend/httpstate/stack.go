@@ -90,6 +90,10 @@ func (c cloudBackendReference) Project() (tokens.Name, bool) {
 	return c.project, true
 }
 
+func (c cloudBackendReference) Organization() (string, bool) {
+	return c.owner, true
+}
+
 func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
 	return tokens.IntoQName(fmt.Sprintf("%v/%v/%v", c.owner, c.project, c.name.String()))
 }
