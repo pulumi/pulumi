@@ -28,10 +28,10 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -48,19 +48,8 @@ func (s *Source) getOrgTemplates(
 		return
 	}
 
-	creds, err := ws.GetStoredCredentials()
-	if err != nil {
-		s.addError(fmt.Errorf("could not read credentials: %w", err))
-		return
-	}
-	if creds.Current == "" {
-		return // We're not logged in, don't proceed
-	}
-
-	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, display.Options{
-		Color:         cmdutil.GetGlobalColorization(),
-		IsInteractive: interactive,
-	})
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
 	if err != nil {
 		if !errors.Is(err, backend.MissingEnvVarForNonInteractiveError{}) {
 			s.addError(fmt.Errorf("could not get the current backend: %w", err))
@@ -68,6 +57,13 @@ func (s *Source) getOrgTemplates(
 		logging.Infof("could not get a backend for org templates")
 		return
 	}
+
+	// Attempt to retrieve the current user
+	if _, _, _, err := b.CurrentUser(); err != nil {
+		logging.Infof("could not get the current user for %s: %s", url, err)
+		return // No current user - so don't proceed
+	}
+
 	if !b.SupportsTemplates() {
 		logging.Infof("%s does not support Org Templates", b.Name())
 		return
