@@ -9,7 +9,7 @@ from setuptools.command.install import install
 from subprocess import check_call
 
 
-VERSION = "3.0.0a1+internal"
+VERSION = "3.0.0a1+internal.exp.sha.12345678"
 def readme():
     try:
         with open('README.md', encoding='utf-8') as f:
@@ -33,7 +33,6 @@ setup(name='pulumi_alpha',
       install_requires=[
           'parver>=0.2.1',
           'pulumi>=3.142.0,<4.0.0',
-          'semver>=2.8.1',
-          'typing-extensions>=4.11,<5; python_version < "3.11"'
+          'semver>=2.8.1'
       ],
       zip_safe=False)

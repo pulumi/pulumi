@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/alpha",
-    "version": "3.0.0-alpha.1.internal",
+    "version": "3.0.0-alpha.1.internal+exp.sha.12345678",
     "scripts": {
         "build": "tsc"
     },
@@ -14,6 +14,6 @@
     "pulumi": {
         "resource": true,
         "name": "alpha",
-        "version": "3.0.0-alpha.1.internal"
+        "version": "3.0.0-alpha.1.internal+exp.sha.12345678"
     }
 }
