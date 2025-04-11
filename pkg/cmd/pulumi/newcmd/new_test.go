@@ -998,7 +998,7 @@ Available Templates:
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1"}, nil, nil
@@ -1047,6 +1047,20 @@ resources:
     type: aws:s3:BucketV2
 `},
 			}, nil
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
