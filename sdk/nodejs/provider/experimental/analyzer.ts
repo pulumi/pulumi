@@ -404,8 +404,9 @@ Please ensure these components are properly imported to your package's entry poi
         optional: boolean = false,
         docString: string | undefined = undefined,
     ): PropertyDefinition {
-        if (isSimpleType(type)) {
-            const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
+        const propType = getSimplePropertyType(type);
+        if (propType) {
+            const prop: PropertyDefinition = { type: propType };
             if (optional) {
                 prop.optional = true;
             }
@@ -418,20 +419,9 @@ Please ensure these components are properly imported to your package's entry poi
             return prop;
         }
         
-        if (isInput(type)) {
-            // Grab the promise type from the `T | Promise<T> | OutputInstance<T>`
-            // union, and get the type reference `T` from there. With that we
-            // can recursively analyze the type, passing through the optional
-            // flag. The type can now not be plain anymore, since it's in an
-            // input.
-            const base = (type as typescript.UnionType)?.types?.find(isPromise);
-            if (!base) {
-                // unreachable due to the isInput check
-                throw new Error(
-                    `Input type union must include a Promise: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
-                );
-            }
-            const innerType = this.unwrapTypeReference(context, base);
+        const innerInputType = getInputInnerType(type);
+        if (innerInputType) {
+            const innerType = this.unwrapTypeReference(context, innerInputType);
             return this.analyzeType(
                 { ...context, inputOutput: InputOutput.Input },
                 innerType,
@@ -557,7 +547,10 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isArrayType(type)) {
+        }
+        
+        const arrayItemType = getArrayType(type);
+        if (arrayItemType) {
             const prop: PropertyDefinition = { type: "array" };
             if (optional) {
                 prop.optional = true;
@@ -566,21 +559,13 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.plain = true;
             }
 
-            const typeArguments = (type as typescript.TypeReference).typeArguments;
-            if (!typeArguments || typeArguments.length !== 1) {
-                throw new Error(
-                    `Expected exactly one type argument in '${this.checker.typeToString(type)}': ${this.formatErrorContext(context)} has ${typeArguments?.length || 0} type arguments`,
-                );
-            }
-
-            const innerType = typeArguments[0];
             prop.items = this.analyzeType(
                 {
                     ...context,
                     property: `${context.property}[]`,
                     inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
                 },
-                innerType,
+                arrayItemType,
                 location,
                 false /* optional */,
             );
@@ -588,7 +573,10 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isMapType(type, this.checker)) {
+        }
+        
+        const mapType = getMapType(type, this.checker);
+        if (mapType) {
             const prop: PropertyDefinition = { type: "object" };
             if (optional) {
                 prop.optional = true;
@@ -597,12 +585,6 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.plain = true;
             }
 
-            // We got { [key: string]: <indexInfo.type> }
-            const indexInfo = this.checker.getIndexInfoOfType(type, ts.IndexKind.String);
-            if (!indexInfo) {
-                // We can't actually get here because isMapType checks for indexInfo
-                throw new Error(`Map type has no index info`);
-            }
             if (docString) {
                 prop.description = docString;
             }
@@ -611,12 +593,14 @@ Please ensure these components are properly imported to your package's entry poi
                     ...context,
                     property: `${context.property} values`,
                 },
-                indexInfo.type,
+                mapType,
                 location,
                 false,
             );
             return prop;
-        } else if (isBooleanOptionalType(type, this.checker)) {
+        }
+        
+        if (isBooleanOptionalType(type, this.checker)) {
             // This is the special case for true | false | undefined
             const prop: PropertyDefinition = { type: "boolean" };
             prop.optional = true;
@@ -627,20 +611,20 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isOptionalType(type, this.checker)) {
-            const unionType = type as typescript.UnionType;
-            const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
-            if (!nonUndefinedType) {
-                throw new Error(
-                    `Expected exactly one type to not be undefined: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
-                );
-            }
-            return this.analyzeType(context, nonUndefinedType, location, true, docString);
-        } else if (type.isUnion()) {
+        }
+        
+        const optionalType = getOptionalType(type);
+        if (optionalType) {
+            return this.analyzeType(context, optionalType, location, true, docString);
+        }
+        
+        if (type.isUnion()) {
             throw new Error(
                 `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
-        } else if (type.isIntersection()) {
+        }
+        
+        if (type.isIntersection()) {
             throw new Error(
                 `Intersection types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
@@ -825,21 +809,25 @@ function isOptional(symbol: typescript.Symbol): boolean {
     return (symbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional;
 }
 
-function isOptionalType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+function getOptionalType(type: typescript.Type): typescript.Type | undefined {
     if (!(type.flags & ts.TypeFlags.Union)) {
-        return false;
+        return undefined;
     }
 
     const unionType = type as typescript.UnionType;
     // We only support union types with two types, one of which must be undefined
     if (!unionType.types || unionType.types.length !== 2) {
-        return false;
+        return undefined;
     }
 
     // Check if one of the types in the union is undefined
-    return unionType.types.some(
-        (t) => t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void, // Also check for void in some cases
-    );
+    const undefinedType = unionType.types.find((t) => t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void); // Also check for void in some cases
+    if (!undefinedType) {
+        return undefined;
+    }
+
+    const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void));
+    return nonUndefinedType;
 }
 
 // Checks if a type is a union of true | false | undefined, which represents an optional boolean.
@@ -899,17 +887,36 @@ function isAny(type: typescript.Type): boolean {
     return (type.flags & ts.TypeFlags.Any) === ts.TypeFlags.Any;
 }
 
-function isSimpleType(type: typescript.Type): boolean {
-    return isNumber(type) || isString(type) || isBoolean(type);
+function getSimplePropertyType(type: typescript.Type): PropertyType | undefined {
+    if (isNumber(type)) {
+        return "number";
+    } else if (isString(type)) {
+        return "string";
+    } else if (isBoolean(type)) {
+        return "boolean";
+    }
+    return undefined;
 }
 
-function isMapType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+function getMapType(type: typescript.Type, checker: typescript.TypeChecker): typescript.Type | undefined {
     const indexInfo = checker.getIndexInfoOfType(type, ts.IndexKind.String);
-    return indexInfo !== undefined;
+    if (!indexInfo) {
+        return undefined;
+    }
+    return indexInfo.type;
 }
 
-function isArrayType(type: typescript.Type): boolean {
-    return (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
+function getArrayType(type: typescript.Type): typescript.Type | undefined {
+    const isArray = (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
+    if (!isArray) {
+        return undefined;
+    }
+    const typeArguments = (type as typescript.TypeReference).typeArguments;
+    if (!typeArguments || typeArguments.length !== 1) {
+        return undefined;
+    }
+
+    return typeArguments[0];
 }
 
 function isPromise(type: typescript.Type): boolean {
@@ -986,23 +993,25 @@ function unwrapOutputIntersection(type: typescript.Type): typescript.Type {
 /**
  * An input type is a union of Output<T>, Promise<T>, and T.
  */
-function isInput(type: typescript.Type): boolean {
+function getInputInnerType(type: typescript.Type): typescript.Type | undefined {
     if (!type.isUnion()) {
-        return false;
+        return undefined;
     }
     let hasOutput = false;
     let hasPromise = false;
     let hasOther = false;
+    let promiseType : typescript.Type | undefined;
     for (const t of type.types) {
         if (isOutput(t)) {
             hasOutput = true;
         } else if (isPromise(t)) {
             hasPromise = true;
+            promiseType = t;
         } else {
             hasOther = true;
         }
     }
-    return hasOutput && hasPromise && hasOther;
+    return hasOutput && hasPromise && hasOther ? promiseType : undefined;
 }
 
 function isResourceReference(type: typescript.Type, checker: typescript.TypeChecker): boolean {
@@ -1021,18 +1030,6 @@ function isResourceReference(type: typescript.Type, checker: typescript.TypeChec
             sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
         return (matchesName && matchesSourceFile) || isResourceReference(baseType, checker);
     });
-}
-
-function tsTypeToPropertyType(type: typescript.Type): PropertyType {
-    if (isNumber(type)) {
-        return "number";
-    } else if (isString(type)) {
-        return "string";
-    } else if (isBoolean(type)) {
-        return "boolean";
-    }
-
-    throw new Error(`Unsupported type '${type.symbol?.name}'`);
 }
 
 function symbolTableToSymbols(table: typescript.SymbolTable): typescript.Symbol[] {
