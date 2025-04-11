@@ -57,6 +57,15 @@ func TestBuildablePackage(t *testing.T) {
 			isBuildablePackage: false,
 		},
 		{
+			name: "no name",
+			content: `
+				[project]
+				[build-system]
+				requires = ["setuptools"]
+				build-backend = "setuptools.build_meta"`,
+			isBuildablePackage: false,
+		},
+		{
 			name:               "missing pyproject.toml",
 			isBuildablePackage: false,
 		},

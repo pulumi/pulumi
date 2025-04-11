@@ -1342,6 +1342,17 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
+// RunPlugin runs a Python based plugin.
+//
+// We support two ways of running Python based plugins: bare directories or
+// buildable packages.
+//
+//   - If the plugin directory is a bare directory (that is not a Python
+//     package), we run the plugin's `__main__.py` directly.
+//
+//   - Otherwise, we check if the plugin directory is a buildable Python
+//     package. In that case we run the plugin via the `pulumi.run.plugin`
+//     entrypoint.
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
@@ -1362,19 +1373,31 @@ func (host *pythonLanguageHost) RunPlugin(
 		return err
 	}
 
-	// We support two ways of running Python based plugins: bare directories or
-	// buildable packages.
-	//
-	// If the plugin directory is a bare directory (that is not a Python
-	// package), we run the plugin's `__main__.py` directlry.
-	//
-	// Otherwise, we check if the plugin directory is a buildable Python
-	// package. In that case we run the plugin via `pulumu.run.plugin`
-	// entrypoint.
-	mainPy := filepath.Join(opts.Root, "__main__.py")
-	_, err = os.Stat(mainPy)
 	var cmd *exec.Cmd
-	if os.IsNotExist(err) {
+
+	hasMainPy := false
+	mainPy := filepath.Join(opts.Root, "__main__.py")
+	if _, err = os.Stat(mainPy); err == nil {
+		if os.IsNotExist(err) {
+			hasMainPy = true
+		}
+	}
+
+	// Check if the `pulumi.run.plugin` module exists in the plugin's
+	// Pulumi package. A plugin might ship with an old version, in which case we
+	// fallback to the bare directory mode.
+	hasPluginRunModule := true
+	checkModuleCmd, err := tc.Command(server.Context(), "-c", "import pulumi.run.plugin")
+	if err != nil {
+		return err
+	}
+	if out, err := checkModuleCmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), "ModuleNotFoundError") {
+			hasPluginRunModule = false
+		}
+	}
+
+	if hasPluginRunModule && !hasMainPy {
 		// Run `python -m pulumi.run <project name> req.Args...
 		buildable, err := toolchain.IsBuildablePackage(opts.Root)
 		if err != nil {
@@ -1391,10 +1414,6 @@ func (host *pythonLanguageHost) RunPlugin(
 
 		args := []string{pyproject.Project.Name}
 		args = append(args, req.Args...)
-
-		// TODO: fallback if python pulumi version is too old?
-		// feature check for the presence of `pulumi.run.plugin`
-
 		cmd, err = tc.ModuleCommand(server.Context(), "pulumi.run.plugin", args...)
 		if err != nil {
 			return err
