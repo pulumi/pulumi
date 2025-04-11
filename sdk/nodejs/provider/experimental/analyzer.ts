@@ -404,9 +404,8 @@ Please ensure these components are properly imported to your package's entry poi
         optional: boolean = false,
         docString: string | undefined = undefined,
     ): PropertyDefinition {
-        const propType = getSimplePropertyType(type);
-        if (propType) {
-            const prop: PropertyDefinition = { type: propType };
+
+        const makeProp = (prop: PropertyDefinition) => {
             if (optional) {
                 prop.optional = true;
             }
@@ -417,6 +416,11 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
+        };
+
+        const propType = getSimplePropertyType(type);
+        if (propType) {
+            return makeProp({ type: propType });
         }
         
         const innerInputType = getInputInnerType(type);
@@ -447,63 +451,24 @@ Please ensure these components are properly imported to your package's entry poi
         }
         
         if (isAny(type)) {
-            const $ref = "pulumi.json#/Any";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
+            const prop = makeProp({$ref: "pulumi.json#/Any" });
+            // Any is never plain, since it can be anything, including an Input<T>.
+            delete prop.plain;
             return prop;
         }
         
         if (isAsset(type)) {
-            const $ref = "pulumi.json#/Asset";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: "pulumi.json#/Asset" });
         }
         
         if (isArchive(type)) {
-            const $ref = "pulumi.json#/Archive";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: "pulumi.json#/Archive" });
         }
         
         if (isResourceReference(type, this.checker)) {
             const { packageName, packageVersion, pulumiType } = this.getResourceType(context, type);
-            const $ref = `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`;
             this.packageReferences[packageName] = packageVersion;
-
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}` });
         }
         
         if (type.isClassOrInterface()) {
@@ -518,13 +483,7 @@ Please ensure these components are properly imported to your package's entry poi
             if (this.typeDefinitions[name]) {
                 // Type already exists, just reference it and we're done.
                 const refProp: PropertyDefinition = { $ref: `#/types/${this.providerName}:index:${name}` };
-                if (optional) {
-                    refProp.optional = true;
-                }
-                if (context.inputOutput === InputOutput.Neither) {
-                    refProp.plain = true;
-                }
-                return refProp;
+                return makeProp(refProp);
             }
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
@@ -535,82 +494,45 @@ Please ensure these components are properly imported to your package's entry poi
             const typeContext = { ...context, typeName: name };
             const properties = this.analyzeSymbols(typeContext, type.getProperties(), location);
             this.typeDefinitions[name].properties = properties;
-            const $ref = `#/types/${this.providerName}:index:${name}`;
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
         }
         
         const arrayItemType = getArrayType(type);
         if (arrayItemType) {
-            const prop: PropertyDefinition = { type: "array" };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-
-            prop.items = this.analyzeType(
-                {
-                    ...context,
-                    property: `${context.property}[]`,
-                    inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
-                },
-                arrayItemType,
-                location,
-                false /* optional */,
-            );
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({
+                type: "array",
+                items: this.analyzeType(
+                    {
+                        ...context,
+                        property: `${context.property}[]`,
+                        inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
+                    },
+                    arrayItemType,
+                    location,
+                    false /* optional */,
+                ),
+            });
         }
         
         const mapType = getMapType(type, this.checker);
         if (mapType) {
-            const prop: PropertyDefinition = { type: "object" };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-
-            if (docString) {
-                prop.description = docString;
-            }
-            prop.additionalProperties = this.analyzeType(
-                {
-                    ...context,
-                    property: `${context.property} values`,
-                },
-                mapType,
-                location,
-                false,
-            );
-            return prop;
+            return makeProp({
+                type: "object",
+                additionalProperties: this.analyzeType(
+                    {
+                        ...context,
+                        property: `${context.property} values`,
+                    },
+                    mapType,
+                    location,
+                    false,
+                ),
+            });
         }
-        
+
         if (isBooleanOptionalType(type, this.checker)) {
             // This is the special case for true | false | undefined
-            const prop: PropertyDefinition = { type: "boolean" };
-            prop.optional = true;
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ type: "boolean", optional: true });
         }
         
         const optionalType = getOptionalType(type);
