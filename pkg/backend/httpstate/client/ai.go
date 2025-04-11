@@ -58,8 +58,6 @@ func createSummarizeUpdateRequest(
 func createSummarizePreviewRequest(
 	lines []string,
 	orgID string,
-	model string,
-	maxSummaryLen int,
 	maxUpdateOutputLen int,
 ) apitype.CopilotSummarizePreviewRequest {
 	content := strings.Join(lines, "\n")
@@ -78,8 +76,6 @@ func createSummarizePreviewRequest(
 			Skill: "summarizePreview",
 			Params: apitype.CopilotSummarizePreviewParams{
 				PulumiPreviewOutput: content,
-				Model:               model,
-				MaxLen:              maxSummaryLen,
 			},
 		},
 	}
