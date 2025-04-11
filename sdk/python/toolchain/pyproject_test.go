@@ -23,6 +23,7 @@ import (
 )
 
 func TestBuildablePackage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name               string
 		content            string
@@ -82,7 +83,7 @@ func TestBuildablePackage(t *testing.T) {
 			content: "something",
 			setupFunc: func(dir string) error {
 				// Make the file unreadable
-				return os.Chmod(filepath.Join(dir, "pyproject.toml"), 0000)
+				return os.Chmod(filepath.Join(dir, "pyproject.toml"), 0o000) // gosec
 			},
 			isBuildablePackage: false,
 			errContains:        "permission denied",
@@ -91,11 +92,12 @@ func TestBuildablePackage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			pyprojectToml := filepath.Join(dir, "pyproject.toml")
 
 			if tt.content != "" {
-				err := os.WriteFile(pyprojectToml, []byte(tt.content), 0644)
+				err := os.WriteFile(pyprojectToml, []byte(tt.content), 0o600)
 				require.NoError(t, err)
 			}
 
