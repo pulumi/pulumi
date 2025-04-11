@@ -35,6 +35,12 @@ import (
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
+	// GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
+	GetStackFilename(ctx context.Context) (string, bool)
+	// Load the stack's configuration from the backend.
+	Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	// Save the stack's configuration to the backend.
+	Save(ctx context.Context, projectStack *workspace.ProjectStack, configFile string) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// Backend returns the backend this stack belongs to.

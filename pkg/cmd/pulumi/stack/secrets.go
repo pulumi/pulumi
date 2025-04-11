@@ -36,7 +36,7 @@ import (
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.
 func CreateSecretsManagerForExistingStack(
-	_ context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.

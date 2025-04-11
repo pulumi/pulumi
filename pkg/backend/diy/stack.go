@@ -54,6 +54,22 @@ func newStack(ref *diyBackendReference, b *diyBackend) backend.Stack {
 }
 
 func (s *diyStack) Ref() backend.StackReference { return s.ref }
+func (s *diyStack) GetStackFilename(ctx context.Context) (string, bool) {
+	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
+	return path, err == nil
+}
+
+func (s *diyStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	return workspace.DetectProjectStack(s.Ref().Name().Q())
+}
+
+func (s *diyStack) Save(ctx context.Context, projectStack *workspace.ProjectStack, configFile string) error {
+	if configFile == "" {
+		return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
+	}
+	return projectStack.Save(configFile)
+}
+
 func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if v := s.snapshot.Load(); v != nil {
 		return *v, nil

@@ -15,6 +15,7 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -27,7 +28,9 @@ import (
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArray []string, path bool) error {
+func parseAndSaveConfigArray(ctx context.Context, ws pkgWorkspace.Context, s backend.Stack,
+	configArray []string, path bool,
+) error {
 	if len(configArray) == 0 {
 		return nil
 	}
@@ -36,7 +39,7 @@ func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArr
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ctx, ws, s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

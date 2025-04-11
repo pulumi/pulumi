@@ -97,7 +97,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(ws, s, c); err != nil {
+		if err = SaveConfig(ctx, ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -322,7 +322,7 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func SaveConfig(ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
