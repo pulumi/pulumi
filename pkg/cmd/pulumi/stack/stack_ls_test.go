@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -139,7 +140,7 @@ func TestListStacksPagination(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -193,7 +194,7 @@ func TestListStacksPagination(t *testing.T) {
 func TestListStacksJsonProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {
@@ -258,7 +259,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 func TestListStacksJsonNoProgress(t *testing.T) {
 	mockTime := time.Unix(1, 0)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error,
 		) {

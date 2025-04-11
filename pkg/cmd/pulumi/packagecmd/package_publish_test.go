@@ -26,8 +26,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -406,7 +406,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				},
 			}
 
-			mockBackendInstance(t, &backend.MockBackend{
+			testutil.MockBackendInstance(t, &backend.MockBackend{
 				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
 					return mockPackageRegistry, nil
 				},
@@ -501,7 +501,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			}
 
 			// Mock the backend
-			mockBackendInstance(t, &backend.MockBackend{
+			testutil.MockBackendInstance(t, &backend.MockBackend{
 				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
 					return &backend.MockPackageRegistry{
 						PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
@@ -545,7 +545,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 		{
 			name: "error getting package registry",
 			setupBackend: func(t *testing.T) {
-				mockBackendInstance(t, &backend.MockBackend{
+				testutil.MockBackendInstance(t, &backend.MockBackend{
 					GetPackageRegistryF: func() (backend.PackageRegistry, error) {
 						return nil, errors.New("failed to get package registry")
 					},
@@ -632,14 +632,6 @@ func unmarshalSchema(schemaBytes []byte) (*schema.PackageSpec, error) {
 
 	err := json.Unmarshal(schemaBytes, &spec)
 	return &spec, err
-}
-
-// mockBackendInstance sets the backend instance for the test and cleans it up after.
-func mockBackendInstance(t *testing.T, b backend.Backend) {
-	t.Cleanup(func() {
-		cmdBackend.BackendInstance = nil
-	})
-	cmdBackend.BackendInstance = b
 }
 
 func TestFindReadme(t *testing.T) {

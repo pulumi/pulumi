@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -129,7 +130,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
@@ -233,7 +234,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 			return mockStack, nil
 		},
