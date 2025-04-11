@@ -16,6 +16,7 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -109,11 +110,17 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
+	// usesCloudConfig indicates whether this stack's config exists in ESC instead of a local file.
+	configSource backend.StackConfigSource
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
+	configSource := backend.StackConfigSourceFile
+	if apistack.Config != nil {
+		configSource = backend.StackConfigSourceRemote
+	}
 
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
@@ -128,9 +135,64 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		tags:             apistack.Tags,
 		b:                b,
 		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
+		configSource: configSource,
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+
+func (s *cloudStack) ConfigSource() backend.StackConfigSource {
+	return s.configSource
+}
+
+func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	if s.configSource != backend.StackConfigSourceRemote {
+		return nil, errors.New("stack config source is not cloud")
+	}
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return nil, err
+	}
+	stack, err := s.b.client.GetStack(ctx, stackID)
+	if err != nil {
+		return nil, err
+	}
+	if stack.Config == nil {
+		return nil, errors.New("stack config is no longer available from the cloud")
+	}
+	projectStack := &workspace.ProjectStack{
+		Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
+		SecretsProvider: stack.Config.SecretsProvider,
+		EncryptedKey:    stack.Config.EncryptedKey,
+		EncryptionSalt:  stack.Config.EncryptionSalt,
+	}
+	return projectStack, nil
+}
+
+func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	if s.configSource != backend.StackConfigSourceRemote {
+		return errors.New("stack config source is not remote")
+	}
+
+	if len(projectStack.Config) != 0 {
+		return errors.New("cannot set config for a stack with cloud config")
+	}
+	imports := projectStack.Environment.Imports()
+	if len(imports) != 1 {
+		return errors.New("cloud stacks must have exactly 1 environment import from which they will load their configuration")
+	}
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return err
+	}
+	err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
+		Environment:     imports[0],
+		SecretsProvider: projectStack.SecretsProvider,
+		EncryptedKey:    projectStack.EncryptedKey,
+		EncryptionSalt:  projectStack.EncryptionSalt,
+	})
+	return err
+}
+
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }

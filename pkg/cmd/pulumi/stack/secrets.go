@@ -36,7 +36,7 @@ import (
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.
 func CreateSecretsManagerForExistingStack(
-	_ context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -59,7 +59,7 @@ func CreateSecretsManagerForExistingStack(
 	if err != nil {
 		return err
 	}
-	ps, err := LoadProjectStack(project, stack)
+	ps, err := LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return err
 	}
@@ -92,6 +92,7 @@ func CreateSecretsManagerForExistingStack(
 // Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
 // fall back to a default defined by the backend that will manage the stack.
 func createSecretsManagerForNewStack(
+	ctx context.Context,
 	ws pkgWorkspace.Context,
 	b backend.Backend,
 	stackRef backend.StackReference,
@@ -107,7 +108,11 @@ func createSecretsManagerForNewStack(
 	if err != nil {
 		ps = &workspace.ProjectStack{}
 	} else {
-		ps, err = loadProjectStackByReference(project, stackRef)
+		stack, err := b.GetStack(ctx, stackRef)
+		if err != nil {
+			return nil, false, nil, err
+		}
+		ps, err = loadProjectStackByReference(ctx, project, stackRef, stack)
 		if err != nil {
 			ps = &workspace.ProjectStack{}
 		}
