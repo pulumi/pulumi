@@ -1378,9 +1378,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	hasMainPy := false
 	mainPy := filepath.Join(opts.Root, "__main__.py")
 	if _, err = os.Stat(mainPy); err == nil {
-		if os.IsNotExist(err) {
-			hasMainPy = true
-		}
+		hasMainPy = true
 	}
 
 	// Check if the `pulumi.run.plugin` module exists in the plugin's
