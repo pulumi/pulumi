@@ -93,29 +93,21 @@ func PrintCopilotLink(out io.Writer, opts Options, permalink string) {
 	fmt.Fprintln(out)
 }
 
-// RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
-// for rendering the progress of an update.
-//
-// A "simple" terminal is used which does not render control sequences. The simple terminal's output
-// is written to opts.Stdout.
-//
-// For consistent output, these settings are enforced:
+// setupProgressDisplay creates and initializes a ProgressDisplay with the given parameters.
+// It enforces consistent display settings:
 //
 //	opts.Color = colors.Never
 //	opts.RenderOnDirty = false
 //	opts.IsInteractive = true
-func RenderProgressEvents(
-	op string,
+func setupProgressDisplay(
 	action apitype.UpdateKind,
 	stack tokens.StackName,
 	proj tokens.PackageName,
 	permalink string,
-	events <-chan engine.Event,
-	done chan<- bool,
 	opts Options,
 	isPreview bool,
 	width, height int,
-) {
+) (*ProgressDisplay, Options) {
 	o := opts
 	if o.term == nil {
 		o.term = terminal.NewSimpleTerminal(o.Stdout, width, height)
@@ -143,6 +135,34 @@ func RenderProgressEvents(
 		permalink:             permalink,
 	}
 	renderer.initializeDisplay(display)
+	
+	return display, o
+}
+
+// RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
+// for rendering the progress of an update.
+//
+// A "simple" terminal is used which does not render control sequences. The simple terminal's output
+// is written to opts.Stdout.
+//
+// For consistent output, these settings are enforced:
+//
+//	opts.Color = colors.Never
+//	opts.RenderOnDirty = false
+//	opts.IsInteractive = true
+func RenderProgressEvents(
+	op string,
+	action apitype.UpdateKind,
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	permalink string,
+	events <-chan engine.Event,
+	done chan<- bool,
+	opts Options,
+	isPreview bool,
+	width, height int,
+) {
+	display, _ := setupProgressDisplay(action, stack, proj, permalink, opts, isPreview, width, height)
 
 	display.processEvents(&time.Ticker{}, events)
 	contract.IgnoreClose(display.renderer)
@@ -173,35 +193,11 @@ func NewCaptureProgressEvents(
 	width, height := 200, 80
 
 	o := opts
-	o.Color = colors.Never
-	o.RenderOnDirty = false
-	o.IsInteractive = true
-
 	o.Stdout = buffer
 	o.Stderr = io.Discard
-	o.term = terminal.NewSimpleTerminal(buffer, width, height)
-
+	
 	permalink := ""
-
-	printPermalinkInteractive(o.term, o, permalink, "")
-	renderer := newInteractiveRenderer(o.term, permalink, o)
-	display := &ProgressDisplay{
-		action:                action,
-		isPreview:             isPreview,
-		isTerminal:            true,
-		opts:                  o,
-		renderer:              renderer,
-		stack:                 stack,
-		proj:                  proj,
-		sames:                 make(map[resource.URN]bool),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
-		displayOrderCounter:   1,
-		opStopwatch:           newOpStopwatch(),
-		permalink:             permalink,
-	}
-	renderer.initializeDisplay(display)
+	display, _ := setupProgressDisplay(action, stack, proj, permalink, o, isPreview, width, height)
 
 	return &CaptureProgressEvents{
 		Buffer:  buffer,
