@@ -170,15 +170,15 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*wor
 
 func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
 	if s.configSource != backend.StackConfigSourceRemote {
-		return errors.New("stack config source is not cloud")
+		return errors.New("stack config source is not remote")
 	}
 
-	if projectStack.Config != nil {
+	if len(projectStack.Config) != 0 {
 		return errors.New("cannot set config for a stack with cloud config")
 	}
 	imports := projectStack.Environment.Imports()
 	if len(imports) != 1 {
-		return errors.New("cloud stacks must have exactly 1 import")
+		return errors.New("cloud stacks must have exactly 1 environment import from which they will load their configuration")
 	}
 	stackID, err := s.b.getCloudStackIdentifier(s.ref)
 	if err != nil {

@@ -38,9 +38,9 @@ type Stack interface {
 	// ConfigSource returns where this stack persists its configuration.
 	// Currently this is either a file or the cloud.
 	ConfigSource() StackConfigSource
-	// Load the stack's configuration from the backend.
+	// Load the stack's configuration remotely from the backend.
 	Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	// Save the stack's configuration to the backend.
+	// Save the stack's configuration remotely to the backend.
 	Save(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
