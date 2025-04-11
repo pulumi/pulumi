@@ -112,7 +112,7 @@ func createSecretsManagerForNewStack(
 		if err != nil {
 			return nil, false, nil, err
 		}
-		ps, err = loadProjectStackByReference(ctx, project, stack)
+		ps, err = loadProjectStackByReference(ctx, project, stackRef, stack)
 		if err != nil {
 			ps = &workspace.ProjectStack{}
 		}
