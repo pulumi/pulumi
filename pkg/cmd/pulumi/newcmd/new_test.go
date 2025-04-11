@@ -31,7 +31,11 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -39,14 +43,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// mockBackendInstance sets the backend instance for the test and cleans it up after.
-func mockBackendInstance(t *testing.T, b backend.Backend) {
-	t.Cleanup(func() {
-		cmdBackend.BackendInstance = nil
-	})
-	cmdBackend.BackendInstance = b
-}
 
 //nolint:paralleltest // changes directory for process
 func TestFailInInteractiveWithoutYes(t *testing.T) {
@@ -224,7 +220,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -250,7 +246,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -276,7 +272,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -309,7 +305,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -379,7 +375,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -407,7 +403,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
@@ -831,7 +827,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 
 //nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
-	mockBackendInstance(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1", "personal"}, nil, nil
@@ -869,6 +865,19 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 			default:
 				return apitype.ListOrgTemplatesResponse{}, fmt.Errorf("unknown org %q", orgName)
 			}
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -941,7 +950,7 @@ Available Templates:
 
 //nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return false },
 		NameF:              func() string { return "mock" },
 	})
@@ -989,7 +998,7 @@ Available Templates:
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "fred", []string{"org1"}, nil, nil

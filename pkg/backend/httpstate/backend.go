@@ -626,7 +626,15 @@ func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *work
 		return account.Username, account.Organizations, account.TokenInformation, nil
 	}
 	logging.V(1).Infof("no username for access token")
-	return b.client.GetPulumiAccountDetails(ctx)
+	user, org, token, err := b.client.GetPulumiAccountDetails(ctx)
+	if err != nil {
+		if errors.Is(err, client.ErrLoginRequired) {
+			logging.V(1).Infof("not logged in to %s", b.CloudURL())
+			return "", nil, nil, backend.ErrLoginRequired
+		}
+		return "", nil, nil, err
+	}
+	return user, org, token, err
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }

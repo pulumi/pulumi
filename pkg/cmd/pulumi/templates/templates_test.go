@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -67,9 +68,9 @@ func TestFilterOnName(t *testing.T) {
 			}, nil
 		},
 	}
-	setBackend(t, mockBackend)
+	testutil.MockBackendInstance(t, mockBackend)
 
-	setLoginManager(t, &cmdBackend.MockLoginManager{
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
 		) (backend.Backend, error) {
@@ -129,9 +130,9 @@ func TestMultipleTemplateSources(t *testing.T) {
 			}, nil
 		},
 	}
-	setBackend(t, mockBackend)
+	testutil.MockBackendInstance(t, mockBackend)
 
-	setLoginManager(t, &cmdBackend.MockLoginManager{
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
 		) (backend.Backend, error) {
@@ -193,9 +194,9 @@ func TestSurfaceListTemplateErrors(t *testing.T) {
 			return apitype.ListOrgTemplatesResponse{}, somethingWentWrong
 		},
 	}
-	setBackend(t, mockBackend)
+	testutil.MockBackendInstance(t, mockBackend)
 
-	setLoginManager(t, &cmdBackend.MockLoginManager{
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
 		) (backend.Backend, error) {
@@ -231,9 +232,9 @@ func TestSurfaceOnEmptyError(t *testing.T) {
 			return apitype.ListOrgTemplatesResponse{}, nil
 		},
 	}
-	setBackend(t, mockBackend)
+	testutil.MockBackendInstance(t, mockBackend)
 
-	setLoginManager(t, &cmdBackend.MockLoginManager{
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
 		) (backend.Backend, error) {
@@ -298,9 +299,9 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 			}, nil
 		},
 	}
-	setBackend(t, mockBackend)
+	testutil.MockBackendInstance(t, mockBackend)
 
-	setLoginManager(t, &cmdBackend.MockLoginManager{
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
 		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
 		) (backend.Backend, error) {
@@ -348,18 +349,6 @@ func templateRepository(repo workspace.TemplateRepository, err error) getWorkspa
 	) (workspace.TemplateRepository, error) {
 		return repo, err
 	}
-}
-
-func setBackend(t *testing.T, backend backend.Backend) {
-	oldBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = backend
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBackend })
-}
-
-func setLoginManager(t *testing.T, lm cmdBackend.LoginManager) {
-	oldLM := cmdBackend.DefaultLoginManager
-	cmdBackend.DefaultLoginManager = lm
-	t.Cleanup(func() { cmdBackend.DefaultLoginManager = oldLM })
 }
 
 func testContext(t *testing.T) context.Context {

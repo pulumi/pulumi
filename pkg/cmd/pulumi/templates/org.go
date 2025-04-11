@@ -60,8 +60,12 @@ func (s *Source) getOrgTemplates(
 
 	// Attempt to retrieve the current user
 	if _, _, _, err := b.CurrentUser(); err != nil {
-		logging.Infof("could not get the current user for %s: %s", url, err)
-		return // No current user - so don't proceed
+		if errors.Is(err, backend.ErrLoginRequired) {
+			logging.Infof("user is not logged in")
+			return // No current user - so don't proceed
+		}
+		s.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
+		return
 	}
 
 	if !b.SupportsTemplates() {

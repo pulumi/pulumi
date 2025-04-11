@@ -43,6 +43,9 @@ import (
 // ErrNoPreviousDeployment is returned when there isn't a previous deployment.
 var ErrNoPreviousDeployment = errors.New("no previous deployment")
 
+// ErrLoginRequired is returned when a command requires logging in.
+var ErrLoginRequired = errors.New("this command requires logging in; try running `pulumi login` first")
+
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
 type StackAlreadyExistsError struct {
 	StackName string
