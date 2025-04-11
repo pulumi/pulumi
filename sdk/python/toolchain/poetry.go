@@ -292,16 +292,6 @@ func (p *poetry) convertRequirementsTxt(requirementsTxt, pyprojectToml string, s
 }
 
 func (p *poetry) generatePyProjectTOML(dependencies map[string]string) (string, error) {
-	type BuildSystem struct {
-		Requires     []string `toml:"requires,omitempty" json:"requires,omitempty"`
-		BuildBackend string   `toml:"build-backend,omitempty" json:"build-backend,omitempty"`
-	}
-
-	type Pyproject struct {
-		BuildSystem *BuildSystem           `toml:"build-system,omitempty" json:"build-system,omitempty"`
-		Tool        map[string]interface{} `toml:"tool,omitempty" json:"tool,omitempty"`
-	}
-
 	pp := Pyproject{
 		BuildSystem: &BuildSystem{
 			Requires:     []string{"poetry-core"},
