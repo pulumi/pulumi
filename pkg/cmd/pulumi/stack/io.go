@@ -66,6 +66,14 @@ func loadProjectStackByReference(
 	project *workspace.Project,
 	stack backend.Stack,
 ) (*workspace.ProjectStack, error) {
+	if stack == nil {
+		// Nil stack indicates this doesn't yet exist, but a file might be present locally.
+		// TODO: When we allow creating remote stacks on the CLI, this shouldn't be an implicit fallback.
+		if ConfigFile == "" {
+			return workspace.DetectProjectStack(stack.Ref().Name().Q())
+		}
+		return workspace.LoadProjectStack(project, ConfigFile)
+	}
 	switch source := stack.ConfigSource(); source {
 	case backend.StackConfigSourceRemote:
 		return stack.Load(ctx, project)
