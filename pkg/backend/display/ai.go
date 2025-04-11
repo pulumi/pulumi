@@ -135,8 +135,18 @@ func setupProgressDisplay(
 		permalink:             permalink,
 	}
 	renderer.initializeDisplay(display)
-	
+
 	return display, o
+}
+
+// processProgressEvents processes a stream of engine events using the given ProgressDisplay.
+// This is the core processing logic shared by all progress event rendering functions.
+func processProgressEvents(display *ProgressDisplay, events <-chan engine.Event, done chan<- bool) {
+	display.processEvents(&time.Ticker{}, events)
+	contract.IgnoreClose(display.renderer)
+
+	// let our caller know we're done.
+	close(done)
 }
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
@@ -163,12 +173,7 @@ func RenderProgressEvents(
 	width, height int,
 ) {
 	display, _ := setupProgressDisplay(action, stack, proj, permalink, opts, isPreview, width, height)
-
-	display.processEvents(&time.Ticker{}, events)
-	contract.IgnoreClose(display.renderer)
-
-	// let our caller know we're done.
-	close(done)
+	processProgressEvents(display, events, done)
 }
 
 type CaptureProgressEvents struct {
@@ -178,10 +183,11 @@ type CaptureProgressEvents struct {
 	display *ProgressDisplay
 }
 
-// NewCaptureProgressEvents renders the provided engine events channel to an internal buffer. It returns a
-// CaptureProgressEvents instance that can be used to access both the output and the display instance after processing
-// the events. This is useful for detecting whether a failure was detected in the display layer, e.g. used to send the
-// output to Copilot if a failure was detected.
+// NewCaptureProgressEvents creates a buffer-backed progress display for event rendering.
+// It returns a CaptureProgressEvents instance that can be used to access both the output and
+// the display instance after processing the events. This is useful for detecting whether a
+// failure was detected in the display layer, e.g. used to send the output to Copilot if a
+// failure was detected.
 func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
@@ -190,19 +196,20 @@ func NewCaptureProgressEvents(
 	action apitype.UpdateKind,
 ) *CaptureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
-	width, height := 200, 80
 
+	// Create a copy of the options and redirect output to our buffer
 	o := opts
 	o.Stdout = buffer
 	o.Stderr = io.Discard
-	
-	permalink := ""
-	display, _ := setupProgressDisplay(action, stack, proj, permalink, o, isPreview, width, height)
+
+	// Use standard dimensions for the captured output
+	width, height := 200, 80
+
+	// Setup with empty permalink
+	display, _ := setupProgressDisplay(action, stack, proj, "", o, isPreview, width, height)
 
 	return &CaptureProgressEvents{
 		Buffer:  buffer,
-		Stack:   stack,
-		Proj:    proj,
 		display: display,
 	}
 }
@@ -211,9 +218,8 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	renderChan <-chan engine.Event,
 	renderDone chan<- bool,
 ) {
-	r.display.processEvents(&time.Ticker{}, renderChan)
-	contract.IgnoreClose(r.display.renderer)
-	close(renderDone)
+	// Reuse the shared processing logic
+	processProgressEvents(r.display, renderChan, renderDone)
 }
 
 func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
