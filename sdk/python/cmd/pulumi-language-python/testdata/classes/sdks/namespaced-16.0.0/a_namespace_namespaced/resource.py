@@ -9,17 +9,21 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+import pulumi_simple
 
 __all__ = ['ResourceArgs', 'Resource']
 
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 value: pulumi.Input[builtins.bool]):
+                 value: pulumi.Input[builtins.bool],
+                 resource_ref: Optional[pulumi.Input['pulumi_simple.Resource']] = None):
         """
         The set of arguments for constructing a Resource resource.
         """
         pulumi.set(__self__, "value", value)
+        if resource_ref is not None:
+            pulumi.set(__self__, "resource_ref", resource_ref)
 
     @property
     @pulumi.getter
@@ -30,12 +34,22 @@ class ResourceArgs:
     def value(self, value: pulumi.Input[builtins.bool]):
         pulumi.set(self, "value", value)
 
+    @property
+    @pulumi.getter(name="resourceRef")
+    def resource_ref(self) -> Optional[pulumi.Input['pulumi_simple.Resource']]:
+        return pulumi.get(self, "resource_ref")
+
+    @resource_ref.setter
+    def resource_ref(self, value: Optional[pulumi.Input['pulumi_simple.Resource']]):
+        pulumi.set(self, "resource_ref", value)
+
 
 class Resource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 resource_ref: Optional[pulumi.Input['pulumi_simple.Resource']] = None,
                  value: Optional[pulumi.Input[builtins.bool]] = None,
                  __props__=None):
         """
@@ -66,6 +80,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 resource_ref: Optional[pulumi.Input['pulumi_simple.Resource']] = None,
                  value: Optional[pulumi.Input[builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -76,6 +91,7 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
+            __props__.__dict__["resource_ref"] = resource_ref
             if value is None and not opts.urn:
                 raise TypeError("Missing required property 'value'")
             __props__.__dict__["value"] = value
@@ -101,8 +117,14 @@ class Resource(pulumi.CustomResource):
 
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
+        __props__.__dict__["resource_ref"] = None
         __props__.__dict__["value"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
+
+    @property
+    @pulumi.getter(name="resourceRef")
+    def resource_ref(self) -> pulumi.Output[Optional['pulumi_simple.Resource']]:
+        return pulumi.get(self, "resource_ref")
 
     @property
     @pulumi.getter

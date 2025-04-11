@@ -110,6 +110,35 @@
                 "$ref": "#/$defs/token"
             }
         },
+	"dependencies": {
+	    "description": "A list of package descriptors that describes the set of dependencies for this package.",
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"properties": {
+		    "name": {
+                        "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
+                        "type": "string",
+                        "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
+		    },
+		    "version": {
+			"description": "The version of the package. The version must be valid semver.",
+			"type": "string",
+			"pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+		    },
+		    "pluginDownloadURL": {
+			"description": "The URL to use when downloading the provider plugin binary.",
+			"type": "string"
+		    },
+		    "parameterization": {
+			"type": "object",
+			"allOf": [
+			    { "$ref": "#/$defs/parameterization" }
+			]
+		    }
+		}
+	    }
+	},
         "provider": {
             "description": "The provider type for this package.",
             "$ref": "#/$defs/resourceSpec"
@@ -141,31 +170,11 @@
         "parameterization": {
             "description": "An optional object to define parameterization for the package.",
             "type": "object",
-            "properties": {
-                "baseProvider": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
-                            "type": "string",
-                            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
-                        },
-                        "version": {
-                            "description": "The version of the package. The version must be valid semver.",
-                            "type": "string",
-                            "pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
-                        }
-                    },
-                    "required": ["name", "version"],
-                    "additionalProperties": false
-                },
-                "parameter": {
-                    "description": "The parameter for the provider.",
-                    "type": "string",
-                    "contentEncoding": "base64"
-                }
-            },
-            "additionalProperties": false
+	    "allOf": [
+		{
+		    "$ref": "#/$defs/parameterization"
+		}
+	    ]
         },
         "allowedPackageNames": {
             "description": "A list of allowed package names in addition to the name property.",
@@ -191,6 +200,33 @@
             "additionalProperties": {
                 "type": "string"
             }
+        },
+	"parameterization": {
+	    "type": "object",
+	    "properties": {
+		"baseProvider": {
+                    "type": "object",
+                    "properties": {
+			"name": {
+                            "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
+                            "type": "string",
+                            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
+			},
+			"version": {
+                            "description": "The version of the package. The version must be valid semver.",
+                            "type": "string",
+                            "pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+			}
+                    },
+                    "required": ["name", "version"],
+                    "additionalProperties": false
+		},
+		"parameter": {
+                    "description": "The parameter for the provider.",
+                    "type": "string",
+                    "contentEncoding": "base64"
+		}
+	    }
         },
         "typeSpec": {
             "title": "Type Reference",

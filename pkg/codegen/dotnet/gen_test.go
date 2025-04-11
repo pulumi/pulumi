@@ -32,7 +32,9 @@ func TestGeneratePackage(t *testing.T) {
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language: "dotnet",
-		GenPackage: func(t string, p *schema.Package, e map[string][]byte) (map[string][]byte, error) {
+		GenPackage: func(
+			t string, p *schema.Package, e map[string][]byte, l schema.ReferenceLoader,
+		) (map[string][]byte, error) {
 			return GeneratePackage(t, p, e, nil)
 		},
 		Checks: map[string]test.CodegenCheck{

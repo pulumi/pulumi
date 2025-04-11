@@ -646,6 +646,8 @@ type Package struct {
 	Functions []*Function
 	// Language specifies additional language-specific data about the package.
 	Language map[string]interface{}
+	// Dependencies specifies the dependencies of the package
+	Dependencies []PackageDescriptor
 
 	// Parameterization is the optional parameterization for the package, if any.
 	Parameterization *Parameterization
@@ -1002,6 +1004,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		LogoURL:             pkg.LogoURL,
 		PluginDownloadURL:   pkg.PluginDownloadURL,
 		Meta:                metadata,
+		Dependencies:        pkg.Dependencies,
 		Types:               map[string]ComplexTypeSpec{},
 		Resources:           map[string]ResourceSpec{},
 		Functions:           map[string]FunctionSpec{},
@@ -2045,6 +2048,9 @@ type PackageInfoSpec struct {
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
 	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
 
+	// Dependencies is the list of dependencies of the package.
+	Dependencies []PackageDescriptor `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
 
@@ -2129,6 +2135,8 @@ type PackageSpec struct {
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]FunctionSpec `json:"functions,omitempty" yaml:"functions,omitempty"`
+	// Dependencies is a list of dependencies of this packaeg
+	Dependencies []PackageDescriptor `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
@@ -2149,6 +2157,7 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		PluginDownloadURL:   p.PluginDownloadURL,
 		Publisher:           p.Publisher,
 		Namespace:           p.Namespace,
+		Dependencies:        p.Dependencies,
 		Meta:                p.Meta,
 		AllowedPackageNames: p.AllowedPackageNames,
 		Language:            p.Language,
