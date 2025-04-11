@@ -55,25 +55,40 @@ func GetProjectStackPath(stack backend.Stack) (string, error) {
 	return ConfigFile, nil
 }
 
-func LoadProjectStack(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
-	return loadProjectStackByReference(project, stack.Ref())
+func LoadProjectStack(ctx context.Context, project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
+	return loadProjectStackByReference(ctx, project, stack)
 }
 
 func loadProjectStackByReference(
+	ctx context.Context,
 	project *workspace.Project,
-	stackRef backend.StackReference,
+	stack backend.Stack,
 ) (*workspace.ProjectStack, error) {
-	if ConfigFile == "" {
-		return workspace.DetectProjectStack(stackRef.Name().Q())
+	switch source := stack.ConfigSource(); source {
+	case backend.StackConfigSourceRemote:
+		return stack.Load(ctx, project)
+	case backend.StackConfigSourceFile:
+		if ConfigFile == "" {
+			return workspace.DetectProjectStack(stack.Ref().Name().Q())
+		}
+		return workspace.LoadProjectStack(project, ConfigFile)
+	default:
+		return nil, fmt.Errorf("unknown stack config source: %s", source)
 	}
-	return workspace.LoadProjectStack(project, ConfigFile)
 }
 
-func SaveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
-	if ConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error {
+	switch source := stack.ConfigSource(); source {
+	case backend.StackConfigSourceRemote:
+		return stack.Save(ctx, ps)
+	case backend.StackConfigSourceFile:
+		if ConfigFile == "" {
+			return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+		}
+		return ps.Save(ConfigFile)
+	default:
+		return fmt.Errorf("unknown stack config source: %s", source)
 	}
-	return ps.Save(ConfigFile)
 }
 
 type LoadOption int
@@ -332,7 +347,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	root string, opts *backend.CreateStackOptions, setCurrent bool,
 	secretsProvider string,
 ) (backend.Stack, error) {
-	ps, needsSave, sm, err := createSecretsManagerForNewStack(ws, b, stackRef, secretsProvider)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, ws, b, stackRef, secretsProvider)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}

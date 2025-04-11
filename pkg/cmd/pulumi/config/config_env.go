@@ -80,9 +80,9 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
-	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
+	loadProjectStack func(ctx context.Context, project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
 
-	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
+	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error
 
 	stackRef *string
 }
@@ -120,7 +120,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := cmd.loadProjectStack(project, stack)
+	projectStack, err := cmd.loadProjectStack(ctx, project, stack)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -212,7 +212,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		}
 	}
 
-	if err = cmd.saveProjectStack(*stack, projectStack); err != nil {
+	if err = cmd.saveProjectStack(ctx, *stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

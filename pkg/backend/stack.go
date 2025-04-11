@@ -35,6 +35,13 @@ import (
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
+	// ConfigSource returns where this stack persists its configuration.
+	// Currently this is either a file or the cloud.
+	ConfigSource() StackConfigSource
+	// Load the stack's configuration from the backend.
+	Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	// Save the stack's configuration to the backend.
+	Save(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// Backend returns the backend this stack belongs to.
@@ -71,6 +78,13 @@ type Stack interface {
 	// Backend.DefaultSecretManager.
 	DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error)
 }
+
+type StackConfigSource string
+
+const (
+	StackConfigSourceFile   StackConfigSource = "file"
+	StackConfigSourceRemote StackConfigSource = "remote"
+)
 
 // RemoveStack returns the stack, or returns an error if it cannot.
 func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {

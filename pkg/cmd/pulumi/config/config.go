@@ -84,7 +84,7 @@ func NewConfigCmd() *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
+			currentProjectStack, err := cmdStack.LoadProjectStack(ctx, project, currentStack)
 			if err != nil {
 				return err
 			}
@@ -198,7 +198,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := cmdStack.LoadProjectStack(project, destinationStack)
+			destinationProjectStack, err := cmdStack.LoadProjectStack(ctx, project, destinationStack)
 			if err != nil {
 				return err
 			}
@@ -235,7 +235,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// The use of `requiresSaving` here ensures that there was actually some config
 			// that needed saved, otherwise it's an unnecessary save call
 			if requiresSaving {
-				err := cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
+				err := cmdStack.SaveProjectStack(ctx, destinationStack, destinationProjectStack)
 				if err != nil {
 					return err
 				}
@@ -353,7 +353,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
@@ -363,7 +363,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return cmdStack.SaveProjectStack(stack, ps)
+			return cmdStack.SaveProjectStack(ctx, stack, ps)
 		},
 	}
 	rmCmd.PersistentFlags().BoolVar(
@@ -410,7 +410,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
@@ -427,7 +427,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return cmdStack.SaveProjectStack(stack, ps)
+			return cmdStack.SaveProjectStack(ctx, stack, ps)
 		},
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
@@ -553,7 +553,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 
 type configSetCmd struct {
 	Stdin            *os.File
-	LoadProjectStack func(*workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
+	LoadProjectStack func(context.Context, *workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
 
 	Plaintext bool
 	Secret    bool
@@ -665,7 +665,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := loadProjectStack(project, s)
+	ps, err := loadProjectStack(ctx, project, s)
 	if err != nil {
 		return err
 	}
@@ -717,7 +717,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		return fmt.Errorf("could not set config: %w", err)
 	}
 
-	return cmdStack.SaveProjectStack(s, ps)
+	return cmdStack.SaveProjectStack(ctx, s, ps)
 }
 
 func newConfigSetAllCmd(stack *string) *cobra.Command {
@@ -765,7 +765,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
@@ -808,7 +808,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return cmdStack.SaveProjectStack(stack, ps)
+			return cmdStack.SaveProjectStack(ctx, stack, ps)
 		},
 	}
 
@@ -869,7 +869,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -899,7 +899,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1018,7 +1018,7 @@ func getConfig(
 	if err != nil {
 		return err
 	}
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return err
 	}
@@ -1045,7 +1045,7 @@ func getConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1079,7 +1079,7 @@ func getConfig(
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
 			if state != cmdStack.SecretsManagerUnchanged {
-				if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+				if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 					return fmt.Errorf("save stack config: %w", err)
 				}
 			}

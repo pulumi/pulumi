@@ -16,6 +16,7 @@ package diy
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -54,6 +55,18 @@ func newStack(ref *diyBackendReference, b *diyBackend) backend.Stack {
 }
 
 func (s *diyStack) Ref() backend.StackReference { return s.ref }
+func (s *diyStack) ConfigSource() backend.StackConfigSource {
+	return backend.StackConfigSourceFile
+}
+
+func (s *diyStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	return nil, errors.New("remote stack configurations are not supported for the diy backend")
+}
+
+func (s *diyStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	return errors.New("remote stack configurations are not supported for the diy backend")
+}
+
 func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if v := s.snapshot.Load(); v != nil {
 		return *v, nil
