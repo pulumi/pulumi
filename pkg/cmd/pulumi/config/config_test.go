@@ -99,9 +99,6 @@ func TestConfigSet(t *testing.T) {
 
 			configSetCmd := &configSetCmd{
 				Path: c.path,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
-				},
 			}
 
 			tmpdir := t.TempDir()
@@ -211,9 +208,6 @@ func TestConfigSetTypes(t *testing.T) {
 			configSetCmd := &configSetCmd{
 				Path: c.path,
 				Type: c.typ,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
-				},
 			}
 
 			tmpdir := t.TempDir()

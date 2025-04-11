@@ -47,18 +47,6 @@ import (
 
 var ConfigFile string
 
-func GetProjectStackPath(stack backend.Stack) (string, error) {
-	if ConfigFile == "" {
-		_, path, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
-		return path, err
-	}
-	return ConfigFile, nil
-}
-
-func LoadProjectStack(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
-	return loadProjectStackByReference(project, stack.Ref())
-}
-
 func loadProjectStackByReference(
 	project *workspace.Project,
 	stackRef backend.StackReference,
@@ -67,13 +55,6 @@ func loadProjectStackByReference(
 		return workspace.DetectProjectStack(stackRef.Name().Q())
 	}
 	return workspace.LoadProjectStack(project, ConfigFile)
-}
-
-func SaveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
-	if ConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
-	}
-	return ps.Save(ConfigFile)
 }
 
 type LoadOption int

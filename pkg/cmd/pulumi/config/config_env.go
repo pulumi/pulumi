@@ -36,13 +36,11 @@ import (
 
 func newConfigEnvCmd(stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
-		stdin:            os.Stdin,
-		stdout:           os.Stdout,
-		ws:               pkgWorkspace.Instance,
-		requireStack:     cmdStack.RequireStack,
-		loadProjectStack: cmdStack.LoadProjectStack,
-		saveProjectStack: cmdStack.SaveProjectStack,
-		stackRef:         stackRef,
+		stdin:        os.Stdin,
+		stdout:       os.Stdout,
+		ws:           pkgWorkspace.Instance,
+		requireStack: cmdStack.RequireStack,
+		stackRef:     stackRef,
 	}
 
 	cmd := &cobra.Command{
@@ -80,10 +78,6 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
-	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
-
-	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
-
 	stackRef *string
 }
 
@@ -120,7 +114,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := cmd.loadProjectStack(project, stack)
+	projectStack, err := stack.Load(ctx, project)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -212,7 +206,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		}
 	}
 
-	if err = cmd.saveProjectStack(*stack, projectStack); err != nil {
+	if err = (*stack).Save(ctx, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

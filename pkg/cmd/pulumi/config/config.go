@@ -84,7 +84,7 @@ func NewConfigCmd() *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := stack.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
+			currentProjectStack, err := currentStack.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -198,7 +198,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := cmdStack.LoadProjectStack(project, destinationStack)
+			destinationProjectStack, err := destinationStack.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -235,7 +235,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// The use of `requiresSaving` here ensures that there was actually some config
 			// that needed saved, otherwise it's an unnecessary save call
 			if requiresSaving {
-				err := cmdStack.SaveProjectStack(destinationStack, destinationProjectStack)
+				err := destinationStack.Save(ctx, destinationProjectStack)
 				if err != nil {
 					return err
 				}
@@ -353,7 +353,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := stack.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -363,7 +363,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return cmdStack.SaveProjectStack(stack, ps)
+			return stack.Save(ctx, ps)
 		},
 	}
 	rmCmd.PersistentFlags().BoolVar(
@@ -410,7 +410,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := stack.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -427,7 +427,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return cmdStack.SaveProjectStack(stack, ps)
+			return stack.Save(ctx, ps)
 		},
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
@@ -468,17 +468,17 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
+			configPath, isFile := s.GetStackFilename(ctx)
+			if !isFile {
+				return errors.New("config refresh not supported for cloud-managed stacks")
+			}
+
 			c, err := backend.GetLatestConfiguration(ctx, s)
 			if err != nil {
 				return err
 			}
 
-			configPath, err := cmdStack.GetProjectStackPath(s)
-			if err != nil {
-				return err
-			}
-
-			ps, err := workspace.LoadProjectStack(project, configPath)
+			ps, err := s.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -552,8 +552,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 }
 
 type configSetCmd struct {
-	Stdin            *os.File
-	LoadProjectStack func(*workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
+	Stdin *os.File
 
 	Plaintext bool
 	Secret    bool
@@ -631,10 +630,6 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 	if stdin == nil {
 		stdin = os.Stdin
 	}
-	loadProjectStack := c.LoadProjectStack
-	if loadProjectStack == nil {
-		loadProjectStack = cmdStack.LoadProjectStack
-	}
 	key, err := ParseConfigKey(pkgWorkspace.Instance, args[0], c.Path)
 	if err != nil {
 		return fmt.Errorf("invalid configuration key: %w", err)
@@ -665,7 +660,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := loadProjectStack(project, s)
+	ps, err := s.Load(ctx, project)
 	if err != nil {
 		return err
 	}
@@ -717,7 +712,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		return fmt.Errorf("could not set config: %w", err)
 	}
 
-	return cmdStack.SaveProjectStack(s, ps)
+	return s.Save(ctx, ps)
 }
 
 func newConfigSetAllCmd(stack *string) *cobra.Command {
@@ -765,7 +760,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := stack.Load(ctx, project)
 			if err != nil {
 				return err
 			}
@@ -808,7 +803,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return cmdStack.SaveProjectStack(stack, ps)
+			return stack.Save(ctx, ps)
 		},
 	}
 
@@ -869,7 +864,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = stack.Save(ctx, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -899,7 +894,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = stack.Save(ctx, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1018,7 +1013,7 @@ func getConfig(
 	if err != nil {
 		return err
 	}
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := stack.Load(ctx, project)
 	if err != nil {
 		return err
 	}
@@ -1045,7 +1040,7 @@ func getConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+			if err = stack.Save(ctx, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1079,7 +1074,7 @@ func getConfig(
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
 			if state != cmdStack.SecretsManagerUnchanged {
-				if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+				if err = stack.Save(ctx, ps); err != nil {
 					return fmt.Errorf("save stack config: %w", err)
 				}
 			}

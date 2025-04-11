@@ -59,7 +59,7 @@ func CreateSecretsManagerForExistingStack(
 	if err != nil {
 		return err
 	}
-	ps, err := LoadProjectStack(project, stack)
+	ps, err := stack.Load(ctx, project)
 	if err != nil {
 		return err
 	}
