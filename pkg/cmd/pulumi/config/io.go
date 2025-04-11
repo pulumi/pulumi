@@ -177,7 +177,8 @@ func getAndSaveSecretsManager(
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmdStack.SaveProjectStack(ctx, stack, workspaceStack); err != nil && state == cmdStack.SecretsManagerMustSave {
+		err = cmdStack.SaveProjectStack(ctx, stack, workspaceStack)
+		if err != nil && state == cmdStack.SecretsManagerMustSave {
 			return nil, fmt.Errorf("save stack config: %w", err)
 		}
 	}

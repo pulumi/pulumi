@@ -55,7 +55,9 @@ func GetProjectStackPath(stack backend.Stack) (string, error) {
 	return ConfigFile, nil
 }
 
-func LoadProjectStack(ctx context.Context, project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
+func LoadProjectStack(
+	ctx context.Context, project *workspace.Project, stack backend.Stack,
+) (*workspace.ProjectStack, error) {
 	return loadProjectStackByReference(ctx, project, stack)
 }
 
