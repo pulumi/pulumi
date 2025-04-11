@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional, TypedDict, cast
 from pulumi.errors import InputPropertyError
 from pulumi.output import Input
 from pulumi.provider.experimental.provider import ComponentProvider
@@ -69,6 +69,38 @@ def test_map_inputs():
         assert False, "expected an error"
     except InputPropertyError as e:
         assert e.reason == "Missing required input 'a.b.c' on 'MyComponent'"
+
+
+def test_map_complex_outputs():
+    class Leaf(TypedDict):
+        plain_arg: str
+
+    class Intermediate(TypedDict):
+        leaf_arg: Leaf
+
+    class Complex(TypedDict):
+        intermediate_arg: Intermediate
+
+    class ComponentArgs: ...
+
+    class Component(ComponentResource):
+        complex_arg: Complex
+
+        def __init__(
+            self, name: str, args: ComponentArgs, opts: Optional[ResourceOptions] = None
+        ):
+            self.complex_arg = {
+                "intermediate_arg": {"leaf_arg": {"plain_arg": "hello"}}
+            }
+
+    provider = ComponentProvider([Component], "provider")
+    component_def = provider._component_defs["Component"]
+    constructor = provider._components["Component"]
+    comp_instance = cast(Component, constructor("instance", {}, None))  # type: ignore
+    state = provider.get_state(comp_instance, component_def)
+    assert state == {
+        "complexArg": {"intermediateArg": {"leafArg": {"plainArg": "hello"}}}
+    }
 
 
 def test_map_complex_inputs():

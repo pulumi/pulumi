@@ -240,6 +240,11 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 	return block
 }
 
+// makeResourceOptions reads in the resource state and generates an hcl2 block for serializing into
+// the Resource API. Serialization/Deserialization of the resource is handled by apitype package.
+//
+// The corresponding binding pcl function to read these is bindResourceOptions
+// which reads out these options.
 func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
 	var resourceOptions *model.Block
 	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
@@ -288,6 +293,47 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 			Value:  cty.True,
 		})
 	}
+	if state.RetainOnDelete {
+		resourceOptions = appendResourceOption(resourceOptions, "retainOnDelete", &model.LiteralValueExpression{
+			Tokens: syntax.NewLiteralValueTokens(cty.True),
+			Value:  cty.True,
+		})
+	}
+	if len(state.IgnoreChanges) > 0 {
+		ignoreChanges := make([]model.Expression, len(state.IgnoreChanges))
+		for i, prop := range state.IgnoreChanges {
+			v := cty.StringVal(prop)
+			ignoreChanges[i] = &model.LiteralValueExpression{
+				Tokens: syntax.NewLiteralValueTokens(v),
+				Value:  v,
+			}
+		}
+		resourceOptions = appendResourceOption(resourceOptions, "ignoreChanges", &model.TupleConsExpression{
+			Tokens:      syntax.NewTupleConsTokens(len(ignoreChanges)),
+			Expressions: ignoreChanges,
+		})
+	}
+	if state.DeletedWith != "" {
+		name, ok := names[state.DeletedWith]
+		if !ok {
+			return nil, fmt.Errorf("no name for deletedWith %v", state.DeletedWith)
+		}
+		resourceOptions = appendResourceOption(resourceOptions, "deletedWith", newVariableReference(name))
+	}
+	if state.ImportID != "" {
+		// Using the name import to match the name used in the SDKs,
+		// see https://www.pulumi.com/docs/iac/concepts/options/import/
+		v := cty.StringVal(state.ImportID.String())
+		resourceOptions = appendResourceOption(
+			resourceOptions,
+			"import",
+			&model.LiteralValueExpression{
+				Value:  v,
+				Tokens: syntax.NewLiteralValueTokens(v),
+			},
+		)
+	}
+
 	return resourceOptions, nil
 }
 

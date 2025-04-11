@@ -1987,3 +1987,266 @@ func TestGetPackageSpecs(t *testing.T) {
 	assert.Equal(t, "1.2.3", specs["obj"].Version)
 	assert.Equal(t, []string{"--arg1", "--arg2"}, specs["obj"].Parameters)
 }
+
+func TestAddPackage(t *testing.T) {
+	t.Parallel()
+
+	// Test adding the first package with only source
+	t.Run("AddFirstPackage", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+		}
+
+		proj.AddPackage("simple-package", PackageSpec{
+			Source: "github.com/org/simple-package",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "simple-package")
+		require.Equal(t, "github.com/org/simple-package", specs["simple-package"].Source)
+		require.Empty(t, specs["simple-package"].Version)
+		require.Empty(t, specs["simple-package"].Parameters)
+
+		// The internal representation should be a string for the new package
+		_, ok := proj.Packages["simple-package"].value.(string)
+		require.True(t, ok, "Simple package should be stored as string")
+	})
+
+	// Test adding a package with source and version
+	t.Run("AddFirstPackageWithVersion", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+		}
+
+		proj.AddPackage("versioned-package", PackageSpec{
+			Source:  "github.com/org/versioned-package",
+			Version: "v1.2.3",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "versioned-package")
+		require.Equal(t, "github.com/org/versioned-package", specs["versioned-package"].Source)
+		require.Equal(t, "v1.2.3", specs["versioned-package"].Version)
+		require.Empty(t, specs["versioned-package"].Parameters)
+
+		// The internal representation should be a string for the new package
+		_, ok := proj.Packages["versioned-package"].value.(string)
+		require.True(t, ok, "Simple package should be stored as string")
+	})
+
+	// Test adding a package with parameters (should use PackageSpec format)
+	t.Run("AddPackageWithParameters", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+		}
+
+		proj.AddPackage("param-package", PackageSpec{
+			Source:     "github.com/org/param-package",
+			Parameters: []string{"param1", "param2"},
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "param-package")
+		require.Equal(t, "github.com/org/param-package", specs["param-package"].Source)
+		require.Empty(t, specs["param-package"].Version)
+		require.Equal(t, []string{"param1", "param2"}, specs["param-package"].Parameters)
+
+		// The internal representation should be a PackageSpec for the new package
+		_, ok := proj.Packages["param-package"].value.(PackageSpec)
+		require.True(t, ok, "Parameterized package should be stored as PackageSpec")
+	})
+
+	// Test maintaining the format consistency when adding multiple packages
+	t.Run("MaintainFormatConsistency", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]packageValue{
+				"existing-package": {value: PackageSpec{
+					Source:  "github.com/org/existing-package",
+					Version: "v1.0.0",
+				}},
+			},
+		}
+
+		// Adding a new package should use the same format as existing packages
+		proj.AddPackage("new-package", PackageSpec{
+			Source: "github.com/org/new-package",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "existing-package")
+		require.Contains(t, specs, "new-package")
+		require.Equal(t, "github.com/org/existing-package", specs["existing-package"].Source)
+		require.Equal(t, "v1.0.0", specs["existing-package"].Version)
+
+		// The internal representation should be a PackageSpec for the new package
+		val, ok := proj.Packages["new-package"].value.(PackageSpec)
+		require.True(t, ok, "Parameterized package should be stored as PackageSpec")
+		require.Equal(t, "github.com/org/new-package", val.Source)
+		require.Empty(t, val.Version)
+		require.Empty(t, val.Parameters)
+	})
+
+	// Test replacing an existing package
+	t.Run("ReplaceExistingPackage", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]packageValue{
+				"existing-package": {value: "github.com/org/existing-package@v1.0.0"},
+			},
+		}
+
+		// Replace the existing package with a new version
+		proj.AddPackage("existing-package", PackageSpec{
+			Source:  "github.com/org/existing-package",
+			Version: "v2.0.0",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "existing-package")
+		require.Equal(t, "github.com/org/existing-package", specs["existing-package"].Source)
+		require.Equal(t, "v2.0.0", specs["existing-package"].Version)
+
+		// The internal representation should be a string for the new package
+		_, ok := proj.Packages["existing-package"].value.(string)
+		require.True(t, ok, "Existing package should be stored as string")
+	})
+
+	// One existing package as string, one as spec - new one should be added as string
+	t.Run("MixedFormatDefaultsToString", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]packageValue{
+				"string-package": {value: "github.com/org/string-package@v1.0.0"},
+				"spec-package": {value: PackageSpec{
+					Source:     "github.com/org/spec-package",
+					Version:    "v1.0.0",
+					Parameters: []string{"--param"},
+				}},
+			},
+		}
+
+		// Adding a new simple package should default to string format when there's a mix
+		proj.AddPackage("new-package", PackageSpec{
+			Source:  "github.com/org/new-package",
+			Version: "v1.2.3",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "new-package")
+		require.Equal(t, "github.com/org/new-package", specs["new-package"].Source)
+		require.Equal(t, "v1.2.3", specs["new-package"].Version)
+
+		// The internal representation should be a string for the new package
+		_, ok := proj.Packages["new-package"].value.(string)
+		require.True(t, ok, "With mixed formats, new simple package should be stored as string")
+	})
+
+	// Existing package format is preserved when replacing
+	t.Run("PreserveFormatWhenReplacing", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]packageValue{
+				"string-package": {value: "github.com/org/string-package@v1.0.0"},
+				"spec-package": {value: PackageSpec{
+					Source:  "github.com/org/spec-package",
+					Version: "v1.0.0",
+				}},
+			},
+		}
+
+		// Replace the string package with a new version (should stay as string)
+		proj.AddPackage("string-package", PackageSpec{
+			Source:  "github.com/org/string-package",
+			Version: "v2.0.0",
+		})
+
+		// Replace the spec package with a new version (should stay as spec)
+		proj.AddPackage("spec-package", PackageSpec{
+			Source:  "github.com/org/spec-package",
+			Version: "v2.0.0",
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "string-package")
+		require.Contains(t, specs, "spec-package")
+		require.Equal(t, "github.com/org/string-package", specs["string-package"].Source)
+		require.Equal(t, "v2.0.0", specs["string-package"].Version)
+		require.Equal(t, "github.com/org/spec-package", specs["spec-package"].Source)
+		require.Equal(t, "v2.0.0", specs["spec-package"].Version)
+
+		// Verify the internal representation is maintained
+		_, isString := proj.Packages["string-package"].value.(string)
+		require.True(t, isString, "String package format should be preserved")
+
+		_, isSpec := proj.Packages["spec-package"].value.(PackageSpec)
+		require.True(t, isSpec, "PackageSpec format should be preserved")
+	})
+
+	// Format conversion when parameters added to existing string package
+	t.Run("FormatConversionWhenParametersAdded", func(t *testing.T) {
+		t.Parallel()
+
+		proj := &Project{
+			Name: "test-project",
+			Runtime: ProjectRuntimeInfo{
+				name: "nodejs",
+			},
+			Packages: map[string]packageValue{
+				"string-package": {value: "github.com/org/string-package@v1.0.0"},
+			},
+		}
+
+		// Add parameters to an existing string package - should convert to PackageSpec
+		proj.AddPackage("string-package", PackageSpec{
+			Source:     "github.com/org/string-package",
+			Version:    "v1.0.0",
+			Parameters: []string{"--new-param"},
+		})
+
+		specs := proj.GetPackageSpecs()
+		require.Contains(t, specs, "string-package")
+		require.Equal(t, "github.com/org/string-package", specs["string-package"].Source)
+		require.Equal(t, "v1.0.0", specs["string-package"].Version)
+		require.Equal(t, []string{"--new-param"}, specs["string-package"].Parameters)
+
+		// Verify the internal representation was converted to PackageSpec
+		_, isSpec := proj.Packages["string-package"].value.(PackageSpec)
+		require.True(t, isSpec, "Package should be converted to PackageSpec when parameters are added")
+	})
+}

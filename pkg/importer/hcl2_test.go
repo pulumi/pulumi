@@ -263,17 +263,36 @@ func TestGenerateHCL2Definition(t *testing.T) {
 
 			snapshot := []*resource.State{
 				{
-					ID:     "123",
-					Custom: true,
-					Type:   "pulumi:providers:aws",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+					ID:             "123",
+					ImportID:       "abc",
+					Custom:         true,
+					Type:           "pulumi:providers:aws",
+					RetainOnDelete: true,
+					IgnoreChanges:  []string{"fooIgnore"},
+					DeletedWith:    "123",
+					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
 				{
-					ID:     "123",
-					Custom: true,
-					Type:   "pulumi:providers:random",
-					URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+					ID:             "123",
+					ImportID:       "abc",
+					Custom:         true,
+					Type:           "pulumi:providers:random",
+					RetainOnDelete: true,
+					IgnoreChanges:  []string{"fooIgnore"},
+					DeletedWith:    "123",
+					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
+				{
+					ID:             "id",
+					ImportID:       "abc",
+					Custom:         true,
+					Type:           "pulumi:providers:pkg",
+					RetainOnDelete: true,
+					IgnoreChanges:  []string{"fooIgnore"},
+					DeletedWith:    "123",
+					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
+				},
+				// One test that ensures unset values still pass.
 				{
 					ID:     "id",
 					Custom: true,
@@ -318,6 +337,10 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			assert.Equal(t, state.Type, actualState.Type)
 			assert.Equal(t, state.URN, actualState.URN)
 			assert.Equal(t, state.Parent, actualState.Parent)
+			assert.Equal(t, state.ImportID, actualState.ImportID)
+			assert.Equal(t, state.RetainOnDelete, actualState.RetainOnDelete)
+			assert.Equal(t, state.IgnoreChanges, actualState.IgnoreChanges)
+			assert.Equal(t, state.DeletedWith, actualState.DeletedWith)
 			if !strings.Contains(state.Provider, "::default_") {
 				assert.Equal(t, state.Provider, actualState.Provider)
 			}

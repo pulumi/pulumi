@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -178,22 +180,31 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
+func sliceToBufferedChan[T any](slice []T) <-chan T {
+	ch := make(chan T, len(slice))
+	for _, v := range slice {
+		ch <- v
+	}
+	close(ch)
+	return ch
+}
+
 func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	t.Parallel()
 
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
 	// Push some example events
-	eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
-		Message: "Hello, world!",
-		// Note: System events need their own Color instance
-		Color: colors.Never,
-	})
+	events := []engine.Event{
+		engine.NewEvent(engine.StdoutEventPayload{
+			Message: "Hello, world!",
+			// Note: System events need their own Color instance
+			Color: colors.Never,
+		}),
+	}
+	eventsChannel := sliceToBufferedChan(events)
 
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.False(t, captureRenderer.OutputIncludesFailure())
 	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Hello, world!")
@@ -209,25 +220,36 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 			Op:  deploy.OpUpdate,
 		},
 	})
-
 	// Some diagnostics which is what we're usually interested in.
 	diagEvent := engine.NewEvent(engine.DiagEventPayload{
 		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
 		Message: "Failed to update",
 	})
-
 	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
+	eventsChannel := sliceToBufferedChan(failureEvents)
 
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
-	for _, event := range failureEvents {
-		eventChannel <- event
-	}
+	assert.True(t, captureRenderer.OutputIncludesFailure())
+	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
+}
 
-	close(eventChannel)
-	<-doneChannel
+func TestCaptureProgressEventsDetectsAndCapturesFailurePreview(t *testing.T) {
+	t.Parallel()
+
+	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
+		URN:      "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message:  "Failed to update",
+		Severity: diag.Error,
+	})
+	failureEvents := []engine.Event{diagEventWithErrors}
+	eventsChannel := sliceToBufferedChan(failureEvents)
+
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, true, apitype.PreviewUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
 	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")

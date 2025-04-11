@@ -696,9 +696,6 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
-	if pluginSpec.Version != nil {
-		spec.Version = pluginSpec.Version.String()
-	}
 	setSpecNamespace(&spec, pluginSpec)
 	return bind(spec)
 }

@@ -44,6 +44,7 @@
         "provider/experimental/analyzer.ts",
         "provider/experimental/provider.ts",
         "provider/experimental/schema.ts",
+        "queryable/index.ts",
         "runtime/index.ts",
         "runtime/closure/codePaths.ts",
         "runtime/closure/createClosure.ts",

@@ -684,6 +684,9 @@ func TestNewPythonChooseUv(t *testing.T) {
 	require.True(t, e.PathExists("uv.lock"))
 	require.True(t, e.PathExists("pyproject.toml"))
 	require.False(t, e.PathExists("requirements.txt"))
+	// By default uv creates a `main.py` file, or a `hello.py` when running uv < 0.6.0.
+	require.False(t, e.PathExists("hello.py"))
+	require.False(t, e.PathExists("main.py"))
 }
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
