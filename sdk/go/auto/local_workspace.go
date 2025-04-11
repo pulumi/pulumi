@@ -679,6 +679,21 @@ func (l *LocalWorkspace) InstallPluginFromServer(
 	return nil
 }
 
+// InstallPluginFromFile acquires the plugin matching the specified name and version from a file.
+func (l *LocalWorkspace) InstallPluginFromFile(
+	ctx context.Context,
+	name string,
+	version string,
+	file string,
+) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(
+		ctx, "plugin", "install", "resource", name, version, "--file", file)
+	if err != nil {
+		return newAutoError(fmt.Errorf("failed to install plugin: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 // RemovePlugin deletes the plugin matching the specified name and verision.
 func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "rm", "resource", name, version, "--yes")
