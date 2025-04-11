@@ -202,11 +202,33 @@ func (p *SimpleProvider) DiffConfig(
 func (p *SimpleProvider) Diff(
 	context.Context, plugin.DiffRequest,
 ) (plugin.DiffResponse, error) {
-	return plugin.DiffResult{}, nil
+	return plugin.DiffResult{
+		// Always return no changes for import testing.
+		Changes: plugin.DiffNone,
+	}, nil
 }
 
 func (p *SimpleProvider) Delete(
 	context.Context, plugin.DeleteRequest,
 ) (plugin.DeleteResponse, error) {
 	return plugin.DeleteResponse{}, nil
+}
+
+func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+	// URN should be of the form "simple:index:Resource"
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.ReadResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.ReadResponse{
+		ReadResult: plugin.ReadResult{
+			ID: req.ID,
+			Outputs: resource.PropertyMap{
+				"value": resource.NewBoolProperty(true),
+			},
+		},
+		Status: resource.StatusOK,
+	}, nil
 }
