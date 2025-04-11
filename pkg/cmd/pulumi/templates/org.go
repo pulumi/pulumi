@@ -49,6 +49,10 @@ func (s *Source) getOrgTemplates(
 	}
 
 	creds, err := ws.GetStoredCredentials()
+	if err != nil {
+		s.addError(fmt.Errorf("could not read credentials: %w", err))
+		return
+	}
 	if creds.Current == "" {
 		return // We're not logged in, don't proceed
 	}
