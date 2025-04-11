@@ -2525,8 +2525,14 @@ func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
 	require.Contains(t, stdout,
 		"You can then import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"")
 
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString, "mypkg: ../provider")
+
 	// Make sure the SDK was generated in the expected directory
-	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
+	_, err = os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "index.ts"))
 	require.NoError(t, err)
 }
 

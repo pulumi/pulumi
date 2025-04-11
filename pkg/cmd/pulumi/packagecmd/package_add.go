@@ -174,8 +174,14 @@ from the parameters, as in:
 			}
 
 			// Build and add the package spec to the project
-			source := strings.Split(plugin, "@")[0]
-			version := pkg.Version.String()
+			pluginSplit := strings.Split(plugin, "@")
+			source := pluginSplit[0]
+			version := ""
+			if pkg.Version != nil {
+				version = pkg.Version.String()
+			} else if len(pluginSplit) == 2 {
+				version = pluginSplit[1]
+			}
 			if pkg.Parameterization != nil {
 				source = pkg.Parameterization.BaseProvider.Name
 				version = pkg.Parameterization.BaseProvider.Version.String()
