@@ -45,6 +45,9 @@ const (
 	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
 )
 
+// ErrLoginRequired is returned when a command requires logging in.
+var ErrLoginRequired = errors.New("this command requires logging in; try running `pulumi login` first")
+
 func UserAgent() string {
 	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 }
@@ -335,7 +338,7 @@ func pulumiAPICall(ctx context.Context,
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
-		return "", nil, errors.New("this command requires logging in; try running `pulumi login` first")
+		return "", nil, ErrLoginRequired
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)

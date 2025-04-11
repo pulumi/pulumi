@@ -23,7 +23,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +44,7 @@ func TestFilterOnName(t *testing.T) {
 		TemplateURL:     "example.com/source1/name1",
 	}
 
-	setBackend(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
@@ -62,6 +66,20 @@ func TestFilterOnName(t *testing.T) {
 				},
 				OrgHasTemplates: true,
 			}, nil
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -95,7 +113,7 @@ func TestMultipleTemplateSources(t *testing.T) {
 		TemplateURL:     "example.com/source2/name1",
 	}
 
-	setBackend(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
@@ -110,6 +128,20 @@ func TestMultipleTemplateSources(t *testing.T) {
 				},
 				OrgHasTemplates: true,
 			}, nil
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -152,7 +184,7 @@ func TestSurfaceListTemplateErrors(t *testing.T) {
 
 	somethingWentWrong := errors.New("something went wrong")
 
-	setBackend(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
@@ -160,6 +192,20 @@ func TestSurfaceListTemplateErrors(t *testing.T) {
 		ListTemplatesF: func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
 			assert.Equal(t, "org1", orgName)
 			return apitype.ListOrgTemplatesResponse{}, somethingWentWrong
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -176,7 +222,7 @@ func TestSurfaceListTemplateErrors(t *testing.T) {
 func TestSurfaceOnEmptyError(t *testing.T) {
 	ctx := testContext(t)
 
-	setBackend(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
@@ -184,6 +230,20 @@ func TestSurfaceOnEmptyError(t *testing.T) {
 		ListTemplatesF: func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error) {
 			assert.Equal(t, "org1", orgName)
 			return apitype.ListOrgTemplatesResponse{}, nil
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -214,7 +274,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 `
 	anotherFile := `This is another file`
 
-	setBackend(t, &backend.MockBackend{
+	mockBackend := &backend.MockBackend{
 		SupportsTemplatesF: func() bool { return true },
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "doe", []string{"org1"}, &workspace.TokenInformation{}, nil
@@ -237,6 +297,20 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 				"Pulumi.yaml": backend.MockTarFile{Content: pulumiYAML},
 				"other.txt":   backend.MockTarFile{Content: anotherFile},
 			}, nil
+		},
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -275,12 +349,6 @@ func templateRepository(repo workspace.TemplateRepository, err error) getWorkspa
 	) (workspace.TemplateRepository, error) {
 		return repo, err
 	}
-}
-
-func setBackend(t *testing.T, backend backend.Backend) {
-	oldBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = backend
-	t.Cleanup(func() { cmdBackend.BackendInstance = oldBackend })
 }
 
 func testContext(t *testing.T) context.Context {
