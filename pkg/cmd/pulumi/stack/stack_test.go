@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
@@ -121,12 +120,4 @@ func TestStringifyOutput(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-}
-
-// mockBackendInstance sets the backend instance for the test and cleans it up after.
-func mockBackendInstance(t *testing.T, b backend.Backend) {
-	t.Cleanup(func() {
-		cmdBackend.BackendInstance = nil
-	})
-	cmdBackend.BackendInstance = b
 }
