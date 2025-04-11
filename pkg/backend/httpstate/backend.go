@@ -1326,7 +1326,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 
 	// No output, bit strange.
 	if !renderer.OutputIncludesFailure() || len(output) == 0 {
-		err := fmt.Errorf("no output from preview")
+		err := errors.New("no output from preview")
 		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display)
 		return
 	}
