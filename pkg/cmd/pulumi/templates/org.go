@@ -49,6 +49,11 @@ func (s *Source) getOrgTemplates(
 	}
 
 	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	if err != nil {
+		s.addError(fmt.Errorf("could not get current cloud url: %w", err))
+		return
+	}
+
 	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
 	if err != nil {
 		if !errors.Is(err, backend.MissingEnvVarForNonInteractiveError{}) {
