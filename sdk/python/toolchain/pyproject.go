@@ -28,11 +28,11 @@ type BuildSystem struct {
 }
 
 type Project struct {
-	Name string
+	Name string `toml:"name" json:"name"`
 }
 
 type Pyproject struct {
-	Project     Project        `toml:"project" json:"project"`
+	Project     *Project       `toml:"project" json:"project"`
 	BuildSystem *BuildSystem   `toml:"build-system,omitempty" json:"build-system,omitempty"`
 	Tool        map[string]any `toml:"tool,omitempty" json:"tool,omitempty"`
 }
@@ -45,7 +45,8 @@ func IsBuildablePackage(dir string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("parsing pyproject.toml: %w", err)
 	}
-	return pyproject.BuildSystem != nil && pyproject.BuildSystem.BuildBackend != "", nil
+	return pyproject.Project != nil && pyproject.Project.Name != "" &&
+		pyproject.BuildSystem != nil && pyproject.BuildSystem.BuildBackend != "", nil
 }
 
 func LoadPyproject(dir string) (Pyproject, error) {
