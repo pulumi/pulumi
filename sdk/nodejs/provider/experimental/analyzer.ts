@@ -404,9 +404,7 @@ Please ensure these components are properly imported to your package's entry poi
         optional: boolean = false,
         docString: string | undefined = undefined,
     ): PropertyDefinition {
-        const propType = getSimplePropertyType(type);
-        if (propType) {
-            const prop: PropertyDefinition = { type: propType };
+        const makeProp = (prop: PropertyDefinition) => {
             if (optional) {
                 prop.optional = true;
             }
@@ -417,8 +415,13 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
+        };
+
+        const propType = getSimplePropertyType(type);
+        if (propType) {
+            return makeProp({ type: propType });
         }
-        
+
         const innerInputType = getInputInnerType(type);
         if (innerInputType) {
             const innerType = this.unwrapTypeReference(context, innerInputType);
@@ -430,7 +433,7 @@ Please ensure these components are properly imported to your package's entry poi
                 docString,
             );
         }
-        
+
         if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
@@ -445,67 +448,31 @@ Please ensure these components are properly imported to your package's entry poi
                 docString,
             );
         }
-        
+
         if (isAny(type)) {
-            const $ref = "pulumi.json#/Any";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
+            const prop = makeProp({ $ref: "pulumi.json#/Any" });
+            // Any is never plain, since it can be anything, including an Input<T>.
+            // biome-ignore lint/performance/noDelete: Completely remove the property to not include it in the schema.
+            delete prop.plain;
             return prop;
         }
-        
+
         if (isAsset(type)) {
-            const $ref = "pulumi.json#/Asset";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: "pulumi.json#/Asset" });
         }
-        
+
         if (isArchive(type)) {
-            const $ref = "pulumi.json#/Archive";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: "pulumi.json#/Archive" });
         }
-        
+
         if (isResourceReference(type, this.checker)) {
             const { packageName, packageVersion, pulumiType } = this.getResourceType(context, type);
-            const $ref = `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`;
             this.packageReferences[packageName] = packageVersion;
-
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({
+                $ref: `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`,
+            });
         }
-        
+
         if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
@@ -518,13 +485,7 @@ Please ensure these components are properly imported to your package's entry poi
             if (this.typeDefinitions[name]) {
                 // Type already exists, just reference it and we're done.
                 const refProp: PropertyDefinition = { $ref: `#/types/${this.providerName}:index:${name}` };
-                if (optional) {
-                    refProp.optional = true;
-                }
-                if (context.inputOutput === InputOutput.Neither) {
-                    refProp.plain = true;
-                }
-                return refProp;
+                return makeProp(refProp);
             }
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
@@ -535,95 +496,59 @@ Please ensure these components are properly imported to your package's entry poi
             const typeContext = { ...context, typeName: name };
             const properties = this.analyzeSymbols(typeContext, type.getProperties(), location);
             this.typeDefinitions[name].properties = properties;
-            const $ref = `#/types/${this.providerName}:index:${name}`;
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
         }
-        
+
         const arrayItemType = getArrayType(type);
         if (arrayItemType) {
-            const prop: PropertyDefinition = { type: "array" };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-
-            prop.items = this.analyzeType(
-                {
-                    ...context,
-                    property: `${context.property}[]`,
-                    inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
-                },
-                arrayItemType,
-                location,
-                false /* optional */,
-            );
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({
+                type: "array",
+                items: this.analyzeType(
+                    {
+                        ...context,
+                        property: `${context.property}[]`,
+                        inputOutput:
+                            context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
+                    },
+                    arrayItemType,
+                    location,
+                    false /* optional */,
+                ),
+            });
         }
-        
+
         const mapType = getMapType(type, this.checker);
         if (mapType) {
-            const prop: PropertyDefinition = { type: "object" };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-
-            if (docString) {
-                prop.description = docString;
-            }
-            prop.additionalProperties = this.analyzeType(
-                {
-                    ...context,
-                    property: `${context.property} values`,
-                },
-                mapType,
-                location,
-                false,
-            );
-            return prop;
+            return makeProp({
+                type: "object",
+                additionalProperties: this.analyzeType(
+                    {
+                        ...context,
+                        property: `${context.property} values`,
+                    },
+                    mapType,
+                    location,
+                    false,
+                ),
+            });
         }
-        
+
         if (isBooleanOptionalType(type, this.checker)) {
             // This is the special case for true | false | undefined
-            const prop: PropertyDefinition = { type: "boolean" };
-            prop.optional = true;
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
+            return makeProp({ type: "boolean", optional: true });
         }
-        
+
         const optionalType = getOptionalType(type);
         if (optionalType) {
             return this.analyzeType(context, optionalType, location, true, docString);
         }
-        
+
         if (type.isUnion()) {
             throw new Error(
                 `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
         }
-        
+
         if (type.isIntersection()) {
             throw new Error(
                 `Intersection types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
@@ -826,7 +751,9 @@ function getOptionalType(type: typescript.Type): typescript.Type | undefined {
         return undefined;
     }
 
-    const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void));
+    const nonUndefinedType = unionType.types.find(
+        (t) => !(t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void),
+    );
     return nonUndefinedType;
 }
 
@@ -907,7 +834,8 @@ function getMapType(type: typescript.Type, checker: typescript.TypeChecker): typ
 }
 
 function getArrayType(type: typescript.Type): typescript.Type | undefined {
-    const isArray = (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
+    const isArray =
+        (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
     if (!isArray) {
         return undefined;
     }
@@ -1000,7 +928,7 @@ function getInputInnerType(type: typescript.Type): typescript.Type | undefined {
     let hasOutput = false;
     let hasPromise = false;
     let hasOther = false;
-    let promiseType : typescript.Type | undefined;
+    let promiseType: typescript.Type | undefined;
     for (const t of type.types) {
         if (isOutput(t)) {
             hasOutput = true;
