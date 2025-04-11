@@ -21,7 +21,7 @@ __all__ = ['ExampleServerArgs', 'ExampleServer']
 @pulumi.input_type
 class ExampleServerArgs:
     def __init__(__self__, *,
-                 properties_collection: Optional[pulumi.Input[Sequence[pulumi.Input[Union['ServerPropertiesForReplicaArgs', 'ServerPropertiesForRestoreArgs']]]]] = None):
+                 properties_collection: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union['ServerPropertiesForReplicaArgs', 'ServerPropertiesForRestoreArgs']]]]]] = None):
         """
         The set of arguments for constructing a ExampleServer resource.
         """
@@ -30,11 +30,11 @@ class ExampleServerArgs:
 
     @property
     @pulumi.getter(name="propertiesCollection")
-    def properties_collection(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Union['ServerPropertiesForReplicaArgs', 'ServerPropertiesForRestoreArgs']]]]]:
+    def properties_collection(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union['ServerPropertiesForReplicaArgs', 'ServerPropertiesForRestoreArgs']]]]]]:
         return pulumi.get(self, "properties_collection")
 
     @properties_collection.setter
-    def properties_collection(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Union['ServerPropertiesForReplicaArgs', 'ServerPropertiesForRestoreArgs']]]]]):
+    def properties_collection(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union['ServerPropertiesForReplicaArgs', 'ServerPropertiesForRestoreArgs']]]]]]):
         pulumi.set(self, "properties_collection", value)
 
 
@@ -43,7 +43,7 @@ class ExampleServer(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 properties_collection: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.InputType['ServerPropertiesForReplicaArgs'], pulumi.InputType['ServerPropertiesForRestoreArgs']]]]]] = None,
+                 properties_collection: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.InputType['ServerPropertiesForReplicaArgs'], pulumi.InputType['ServerPropertiesForRestoreArgs']]]]]]] = None,
                  __props__=None):
         """
         Create a ExampleServer resource with the given unique name, props, and options.
@@ -73,7 +73,7 @@ class ExampleServer(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 properties_collection: Optional[pulumi.Input[Sequence[pulumi.Input[Union[pulumi.InputType['ServerPropertiesForReplicaArgs'], pulumi.InputType['ServerPropertiesForRestoreArgs']]]]]] = None,
+                 properties_collection: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.InputType['ServerPropertiesForReplicaArgs'], pulumi.InputType['ServerPropertiesForRestoreArgs']]]]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

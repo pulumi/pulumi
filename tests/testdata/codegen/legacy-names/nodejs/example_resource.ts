@@ -67,6 +67,6 @@ export class Example_resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Example_resource resource.
  */
 export interface Example_resourceArgs {
-    map_enum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.Enum_XYZ>}>[]>;
-    request_HTTP?: pulumi.Input<inputs.HTTP_module.RequestArgs>;
+    map_enum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.Enum_XYZ>}>[] | undefined | null>;
+    request_HTTP?: pulumi.Input<inputs.HTTP_module.RequestArgs | undefined | null>;
 }

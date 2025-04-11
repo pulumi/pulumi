@@ -49,9 +49,9 @@ export interface ProviderArgs {
     /**
      * this is a relaxed string enum which can also be set via env var
      */
-    favoriteColor?: pulumi.Input<string | enums.Color>;
+    favoriteColor?: pulumi.Input<pulumi.Input<string> | pulumi.Input<enums.Color> | undefined | null>;
     /**
      * Super duper secret sandwiches.
      */
-    secretSandwiches?: pulumi.Input<pulumi.Input<inputs.config.SandwichArgs>[]>;
+    secretSandwiches?: pulumi.Input<pulumi.Input<inputs.config.SandwichArgs>[] | undefined | null>;
 }

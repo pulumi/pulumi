@@ -25,12 +25,12 @@ class ProviderArgs:
                  hash: pulumi.Input['HashKind'],
                  shared: pulumi.Input['SharedArgs'],
                  user: pulumi.Input[builtins.str],
-                 password: Optional[pulumi.Input[builtins.str]] = None):
+                 password: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         """
         The set of arguments for constructing a Provider resource.
         :param pulumi.Input['HashKind'] hash: The (entirely uncryptographic) hash function used to encode the "password".
         :param pulumi.Input[builtins.str] user: The username. Its important but not secret.
-        :param pulumi.Input[builtins.str] password: The password. It is very secret.
+        :param pulumi.Input[Optional[builtins.str]] password: The password. It is very secret.
         """
         pulumi.set(__self__, "hash", hash)
         pulumi.set(__self__, "shared", shared)
@@ -75,14 +75,14 @@ class ProviderArgs:
 
     @property
     @pulumi.getter
-    def password(self) -> Optional[pulumi.Input[builtins.str]]:
+    def password(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         """
         The password. It is very secret.
         """
         return pulumi.get(self, "password")
 
     @password.setter
-    def password(self, value: Optional[pulumi.Input[builtins.str]]):
+    def password(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "password", value)
 
 
@@ -92,7 +92,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  hash: Optional[pulumi.Input['HashKind']] = None,
-                 password: Optional[pulumi.Input[builtins.str]] = None,
+                 password: Optional[pulumi.Input[Optional[builtins.str]]] = None,
                  shared: Optional[pulumi.Input[pulumi.InputType['SharedArgs']]] = None,
                  user: Optional[pulumi.Input[builtins.str]] = None,
                  __props__=None):
@@ -101,7 +101,7 @@ class Provider(pulumi.ProviderResource):
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input['HashKind'] hash: The (entirely uncryptographic) hash function used to encode the "password".
-        :param pulumi.Input[builtins.str] password: The password. It is very secret.
+        :param pulumi.Input[Optional[builtins.str]] password: The password. It is very secret.
         :param pulumi.Input[builtins.str] user: The username. Its important but not secret.
         """
         ...
@@ -128,7 +128,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  hash: Optional[pulumi.Input['HashKind']] = None,
-                 password: Optional[pulumi.Input[builtins.str]] = None,
+                 password: Optional[pulumi.Input[Optional[builtins.str]]] = None,
                  shared: Optional[pulumi.Input[pulumi.InputType['SharedArgs']]] = None,
                  user: Optional[pulumi.Input[builtins.str]] = None,
                  __props__=None):

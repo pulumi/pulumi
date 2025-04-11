@@ -39,7 +39,7 @@ func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...
 }
 
 type ArgFunctionOutputArgs struct {
-	Arg1 ResourceInput `pulumi:"arg1"`
+	Arg1 *Resource `pulumi:"arg1"`
 }
 
 func (ArgFunctionOutputArgs) ElementType() reflect.Type {

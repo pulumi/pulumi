@@ -30,8 +30,8 @@ type ChildInput interface {
 }
 
 type ChildArgs struct {
-	Age  pulumi.IntPtrInput    `pulumi:"age"`
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Age  *int    `pulumi:"age"`
+	Name *string `pulumi:"name"`
 }
 
 func (ChildArgs) ElementType() reflect.Type {

@@ -56,25 +56,25 @@ namespace Pulumi.Kubernetes.Types.Inputs.Yaml.V2
         /// Set of paths or a URLs that uniquely identify files.
         /// </summary>
         [Input("files")]
-        public InputUnion<string, ImmutableArray<string>>? Files { get; set; }
+        public Input<Union<Input<string>, InputList<string>>?>? Files { get; set; }
 
         /// <summary>
         /// Objects representing Kubernetes resources.
         /// </summary>
         [Input("objs")]
-        public InputUnion<object, ImmutableArray<object>>? Objs { get; set; }
+        public Input<Union<Input<object>, InputList<object>>?>? Objs { get; set; }
 
         /// <summary>
         /// An optional prefix for the auto-generated resource names. Example: A resource created with resourcePrefix="foo" would produce a resource named "foo-resourceName".
         /// </summary>
         [Input("resourcePrefix")]
-        public Input<string>? ResourcePrefix { get; set; }
+        public Input<string?>? ResourcePrefix { get; set; }
 
         /// <summary>
         /// YAML text containing Kubernetes resource definitions.
         /// </summary>
         [Input("yaml")]
-        public InputUnion<string, ImmutableArray<string>>? Yaml { get; set; }
+        public Input<Union<Input<string>, InputList<string>>?>? Yaml { get; set; }
 
         public ConfigGroupArgs()
         {

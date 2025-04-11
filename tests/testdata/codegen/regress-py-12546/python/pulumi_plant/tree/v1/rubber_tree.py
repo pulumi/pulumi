@@ -26,9 +26,9 @@ class RubberTreeArgs:
     def __init__(__self__, *,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
                  type: Optional[pulumi.Input['RubberTreeVariety']] = None,
-                 container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
-                 farm: Optional[pulumi.Input[Union['Farm', builtins.str]]] = None,
-                 size: Optional[pulumi.Input['TreeSize']] = None):
+                 container: Optional[pulumi.Input[Optional['_root_inputs.ContainerArgs']]] = None,
+                 farm: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]] = None,
+                 size: Optional[pulumi.Input[Optional['TreeSize']]] = None):
         """
         The set of arguments for constructing a RubberTree resource.
         """
@@ -83,38 +83,38 @@ class RubberTreeArgs:
 
     @property
     @pulumi.getter
-    def container(self) -> Optional[pulumi.Input['_root_inputs.ContainerArgs']]:
+    def container(self) -> Optional[pulumi.Input[Optional['_root_inputs.ContainerArgs']]]:
         return pulumi.get(self, "container")
 
     @container.setter
-    def container(self, value: Optional[pulumi.Input['_root_inputs.ContainerArgs']]):
+    def container(self, value: Optional[pulumi.Input[Optional['_root_inputs.ContainerArgs']]]):
         pulumi.set(self, "container", value)
 
     @property
     @pulumi.getter
     @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-    def farm(self) -> Optional[pulumi.Input[Union['Farm', builtins.str]]]:
+    def farm(self) -> Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]]:
         return pulumi.get(self, "farm")
 
     @farm.setter
-    def farm(self, value: Optional[pulumi.Input[Union['Farm', builtins.str]]]):
+    def farm(self, value: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]]):
         pulumi.set(self, "farm", value)
 
     @property
     @pulumi.getter
     @_utilities.deprecated("""Dear future maintainer, if there are changes here, make sure that this is printed before the value is set to the default or else this will always print.""")
-    def size(self) -> Optional[pulumi.Input['TreeSize']]:
+    def size(self) -> Optional[pulumi.Input[Optional['TreeSize']]]:
         return pulumi.get(self, "size")
 
     @size.setter
-    def size(self, value: Optional[pulumi.Input['TreeSize']]):
+    def size(self, value: Optional[pulumi.Input[Optional['TreeSize']]]):
         pulumi.set(self, "size", value)
 
 
 @pulumi.input_type
 class _RubberTreeState:
     def __init__(__self__, *,
-                 farm: Optional[pulumi.Input[Union['Farm', builtins.str]]] = None):
+                 farm: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]] = None):
         """
         Input properties used for looking up and filtering RubberTree resources.
         """
@@ -125,11 +125,11 @@ class _RubberTreeState:
 
     @property
     @pulumi.getter
-    def farm(self) -> Optional[pulumi.Input[Union['Farm', builtins.str]]]:
+    def farm(self) -> Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]]:
         return pulumi.get(self, "farm")
 
     @farm.setter
-    def farm(self, value: Optional[pulumi.Input[Union['Farm', builtins.str]]]):
+    def farm(self, value: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]]):
         pulumi.set(self, "farm", value)
 
 
@@ -138,10 +138,10 @@ class RubberTree(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 container: Optional[pulumi.Input[Union['_root_inputs.ContainerArgs', '_root_inputs.ContainerArgsDict']]] = None,
+                 container: Optional[pulumi.Input[Optional[Union['_root_inputs.ContainerArgs', '_root_inputs.ContainerArgsDict']]]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
-                 farm: Optional[pulumi.Input[Union['Farm', builtins.str]]] = None,
-                 size: Optional[pulumi.Input['TreeSize']] = None,
+                 farm: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]] = None,
+                 size: Optional[pulumi.Input[Optional['TreeSize']]] = None,
                  type: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  __props__=None):
         """
@@ -172,10 +172,10 @@ class RubberTree(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 container: Optional[pulumi.Input[Union['_root_inputs.ContainerArgs', '_root_inputs.ContainerArgsDict']]] = None,
+                 container: Optional[pulumi.Input[Optional[Union['_root_inputs.ContainerArgs', '_root_inputs.ContainerArgsDict']]]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
-                 farm: Optional[pulumi.Input[Union['Farm', builtins.str]]] = None,
-                 size: Optional[pulumi.Input['TreeSize']] = None,
+                 farm: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]] = None,
+                 size: Optional[pulumi.Input[Optional['TreeSize']]] = None,
                  type: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -213,7 +213,7 @@ class RubberTree(pulumi.CustomResource):
     def get(resource_name: str,
             id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None,
-            farm: Optional[pulumi.Input[Union['Farm', builtins.str]]] = None) -> 'RubberTree':
+            farm: Optional[pulumi.Input[Optional[Union[pulumi.Input['Farm'], pulumi.Input[builtins.str]]]]] = None) -> 'RubberTree':
         """
         Get an existing RubberTree resource's state with the given name, id, and optional extra
         properties used to qualify the lookup.

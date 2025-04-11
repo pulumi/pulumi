@@ -2436,6 +2436,20 @@ func (pkg *pkgContext) genResource(
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range r.InputProperties {
 		typ := p.Type
+
+		// If type is optional, the inner Input will be optional as well. We don't need that for Go codegen so clean it up.
+		if opt, ok := typ.(*schema.OptionalType); ok {
+			if in, ok := opt.ElementType.(*schema.InputType); ok {
+				if opt, ok := in.ElementType.(*schema.OptionalType); ok {
+					typ = &schema.OptionalType{
+						ElementType: &schema.InputType{
+							ElementType: opt.ElementType,
+						},
+					}
+				}
+			}
+		}
+
 		if p.Plain {
 			typ = codegen.MapOptionalType(typ, func(typ schema.Type) schema.Type {
 				if input, ok := typ.(*schema.InputType); ok {

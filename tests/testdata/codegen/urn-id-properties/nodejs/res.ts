@@ -64,6 +64,6 @@ export class Res extends pulumi.CustomResource {
  * The set of arguments for constructing a Res resource.
  */
 export interface ResArgs {
-    id?: pulumi.Input<string>;
-    urn?: pulumi.Input<string>;
+    id?: pulumi.Input<string | undefined | null>;
+    urn?: pulumi.Input<string | undefined | null>;
 }

@@ -57,8 +57,8 @@ type fooGetKubeconfigArgs struct {
 
 // The set of arguments for the GetKubeconfig method of the Foo resource.
 type FooGetKubeconfigArgs struct {
-	ProfileName pulumi.StringPtrInput
-	RoleArn     pulumi.StringPtrInput
+	ProfileName *string
+	RoleArn     *string
 }
 
 func (FooGetKubeconfigArgs) ElementType() reflect.Type {
