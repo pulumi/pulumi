@@ -109,18 +109,18 @@ func TestTruncateWithMiddleOut(t *testing.T) {
 	}
 }
 
-func TestExtractSummaryFromResponse(t *testing.T) {
+func TestExtractCopilotResponse(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name     string
-		response apitype.CopilotSummarizeUpdateResponse
+		response apitype.CopilotResponse
 		want     string
 		wantErr  bool
 	}{
 		{
 			name: "new format - direct string response",
-			response: apitype.CopilotSummarizeUpdateResponse{
+			response: apitype.CopilotResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
 					{
 						Role:    "assistant",
@@ -134,7 +134,7 @@ func TestExtractSummaryFromResponse(t *testing.T) {
 		},
 		{
 			name: "no assistant message",
-			response: apitype.CopilotSummarizeUpdateResponse{
+			response: apitype.CopilotResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
 					{
 						Role:    "user",
@@ -148,7 +148,7 @@ func TestExtractSummaryFromResponse(t *testing.T) {
 		},
 		{
 			name: "empty summary in old format",
-			response: apitype.CopilotSummarizeUpdateResponse{
+			response: apitype.CopilotResponse{
 				ThreadMessages: []apitype.CopilotThreadMessage{
 					{
 						Role: "assistant",
@@ -167,7 +167,7 @@ func TestExtractSummaryFromResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := extractSummaryFromResponse(tt.response)
+			got, err := extractCopilotResponse(tt.response)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
