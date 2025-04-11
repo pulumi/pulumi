@@ -23,16 +23,18 @@ import (
 
 // MockBackendInstance sets the backend instance for the test and cleans it up after.
 func MockBackendInstance(t *testing.T, b backend.Backend) {
+	previous := cmdBackend.BackendInstance
 	t.Cleanup(func() {
-		cmdBackend.BackendInstance = nil
+		cmdBackend.BackendInstance = previous
 	})
 	cmdBackend.BackendInstance = b
 }
 
 // MockLoginManager sets the login manager for the test and cleans it up after.
 func MockLoginManager(t *testing.T, lm cmdBackend.LoginManager) {
+	previous := cmdBackend.DefaultLoginManager
 	t.Cleanup(func() {
-		cmdBackend.DefaultLoginManager = nil
+		cmdBackend.DefaultLoginManager = previous
 	})
 	cmdBackend.DefaultLoginManager = lm
 }
