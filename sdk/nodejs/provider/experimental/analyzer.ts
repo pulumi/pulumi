@@ -416,7 +416,9 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isInput(type)) {
+        }
+        
+        if (isInput(type)) {
             // Grab the promise type from the `T | Promise<T> | OutputInstance<T>`
             // union, and get the type reference `T` from there. With that we
             // can recursively analyze the type, passing through the optional
@@ -437,7 +439,9 @@ Please ensure these components are properly imported to your package's entry poi
                 optional,
                 docString,
             );
-        } else if (isOutput(type)) {
+        }
+        
+        if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
@@ -450,7 +454,9 @@ Please ensure these components are properly imported to your package's entry poi
                 optional,
                 docString,
             );
-        } else if (isAny(type)) {
+        }
+        
+        if (isAny(type)) {
             const $ref = "pulumi.json#/Any";
             const prop: PropertyDefinition = { $ref };
             if (optional) {
@@ -460,7 +466,9 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isAsset(type)) {
+        }
+        
+        if (isAsset(type)) {
             const $ref = "pulumi.json#/Asset";
             const prop: PropertyDefinition = { $ref };
             if (optional) {
@@ -473,7 +481,9 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isArchive(type)) {
+        }
+        
+        if (isArchive(type)) {
             const $ref = "pulumi.json#/Archive";
             const prop: PropertyDefinition = { $ref };
             if (optional) {
@@ -486,7 +496,9 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isResourceReference(type, this.checker)) {
+        }
+        
+        if (isResourceReference(type, this.checker)) {
             const { packageName, packageVersion, pulumiType } = this.getResourceType(context, type);
             const $ref = `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`;
             this.packageReferences[packageName] = packageVersion;
@@ -502,7 +514,9 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (type.isClassOrInterface()) {
+        }
+        
+        if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
             const name = type.getSymbol()?.escapedName as string | undefined;
