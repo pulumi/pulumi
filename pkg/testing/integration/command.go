@@ -52,6 +52,9 @@ func RunCommandPulumiHome(
 	env = append(env, "PULUMI_DEBUG_COMMANDS=true")
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	if coverdir := os.Getenv("PULUMI_GOCOVERDIR"); coverdir != "" {
+		env = append(env, "GOCOVERDIR="+coverdir)
+	}
 	if pulumiHome != "" {
 		env = append(env, "PULUMI_HOME="+pulumiHome)
 	}

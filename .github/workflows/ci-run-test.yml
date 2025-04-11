@@ -165,8 +165,13 @@ jobs:
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
           # Post integration test coverage to a temporary directory.
-          # This will be merged at a later step.
-          echo "GOCOVERDIR=$(mktemp -d)" >> "$GITHUB_ENV"
+          # This will be merged at a later step. Note that we can't
+          # use $GOCOVERDIR here, because Go overwrites that env
+          # variable when the '-cover' flag is used. Use
+          # $PULUMI_GOCOVERDIR instead, which the integration tests
+          # then turn into $GOCOVERDIR.  See also https://github.com/golang/go/issues/66225.
+          coverdir="$(mktemp -d)"
+          echo "PULUMI_GOCOVERDIR=$coverdir" >> "$GITHUB_ENV"
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
@@ -380,10 +385,10 @@ jobs:
         run: |
           # Merge coverage data from coverage-instrumented binaries
           # if available.
-          if [ -n "$(ls -A "$GOCOVERDIR")" ]; then
+          if [ -n "$(ls -A "$PULUMI_GOCOVERDIR")" ]; then
             # Cross-platform way to get milliseconds since Unix epoch.
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
-            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
+            go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
           fi
       - name: Upload code coverage
         uses: actions/upload-artifact@v4
