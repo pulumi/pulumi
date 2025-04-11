@@ -468,6 +468,12 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
+			if configSource := s.ConfigSource(); configSource != backend.StackConfigSourceFile {
+				return fmt.Errorf(
+					"refresh not possible: stack %q uses a %s configuration source and not a file",
+					s.Ref().Name(), configSource)
+			}
+
 			c, err := backend.GetLatestConfiguration(ctx, s)
 			if err != nil {
 				return err
