@@ -52,7 +52,7 @@ func TestGetOrgFromStackName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := getOrgFromStackName(tt.stackRef)
+			result := GetOrgFromStackName(tt.stackRef)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

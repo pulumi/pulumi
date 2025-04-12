@@ -15,6 +15,8 @@
 package project
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,4 +38,15 @@ func NewProjectCmd() *cobra.Command {
 	cmd.AddCommand(newProjectLsCmd())
 
 	return cmd
+}
+
+// GetOrgFromStackName extracts the organization name from a stack reference.
+// The stack reference can be in the format "org/project/stack" or "project/stack".
+// Returns an empty string if no organization is specified.
+func GetOrgFromStackName(stackRef string) string {
+	parts := strings.Split(stackRef, "/")
+	if len(parts) < 3 {
+		return ""
+	}
+	return parts[0]
 }
