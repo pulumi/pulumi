@@ -169,8 +169,6 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 ) (*deploy.Plan, error) {
 	for {
 		var response string
-		// explain is down here instead of with the other choices so we can optionally emit an emoji
-		explain := "explain " + cmdutil.EmojiOr("✨", "")
 
 		surveycore.DisableColor = true
 		surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
@@ -180,9 +178,17 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		choices := []string{string(yes), string(no)}
 
+		// explain is down here instead of with the other choices so we can optionally emit an emoji
+		explain := "explain " + cmdutil.EmojiOr("✨", "")
+
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
-			choices = append(choices, string(details), explain)
+			choices = append(choices, string(details))
+
+			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
+			if explainer != nil {
+				choices = append(choices, explain)
+			}
 		}
 
 		var previewWarning string

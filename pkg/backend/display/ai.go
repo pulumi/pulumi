@@ -178,8 +178,6 @@ func RenderProgressEvents(
 
 type CaptureProgressEvents struct {
 	Buffer  *bytes.Buffer
-	Stack   tokens.StackName
-	Proj    tokens.PackageName
 	display *ProgressDisplay
 }
 
