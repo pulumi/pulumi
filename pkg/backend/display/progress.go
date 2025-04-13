@@ -1576,3 +1576,162 @@ func sortResourceRows(rows []ResourceRow) {
 		return a.Res.URN < b.Res.URN
 	})
 }
+
+// setupProgressDisplay creates and initializes a ProgressDisplay with the given parameters.
+// It enforces consistent display settings:
+//
+//	opts.Color = colors.Never
+//	opts.RenderOnDirty = false
+//	opts.IsInteractive = true
+func setupProgressDisplay(
+	action apitype.UpdateKind,
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	permalink string,
+	opts Options,
+	isPreview bool,
+	width, height int,
+) *ProgressDisplay {
+	o := opts
+	if o.term == nil {
+		o.term = terminal.NewSimpleTerminal(o.Stdout, width, height)
+	}
+	o.Color = colors.Never
+	o.RenderOnDirty = false
+	o.IsInteractive = true
+
+	printPermalinkInteractive(o.term, o, permalink, "")
+	renderer := newInteractiveRenderer(o.term, permalink, o)
+	display := &ProgressDisplay{
+		action:                action,
+		isPreview:             isPreview,
+		isTerminal:            true,
+		opts:                  o,
+		renderer:              renderer,
+		stack:                 stack,
+		proj:                  proj,
+		sames:                 make(map[resource.URN]bool),
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+		displayOrderCounter:   1,
+		opStopwatch:           newOpStopwatch(),
+		permalink:             permalink,
+	}
+	renderer.initializeDisplay(display)
+
+	return display
+}
+
+// RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
+// for rendering the progress of an update.
+//
+// A "simple" terminal is used which does not render control sequences. The simple terminal's output
+// is written to opts.Stdout.
+//
+// For consistent output, these settings are enforced:
+//
+//	opts.Color = colors.Never
+//	opts.RenderOnDirty = false
+//	opts.IsInteractive = true
+func RenderProgressEvents(
+	op string,
+	action apitype.UpdateKind,
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	permalink string,
+	events <-chan engine.Event,
+	done chan<- bool,
+	opts Options,
+	isPreview bool,
+	width, height int,
+) {
+	display := setupProgressDisplay(action, stack, proj, permalink, opts, isPreview, width, height)
+	display.processEvents(&time.Ticker{}, events)
+	contract.IgnoreClose(display.renderer)
+	// let our caller know we're done.
+	close(done)
+}
+
+type CaptureProgressEvents struct {
+	Buffer  *bytes.Buffer
+	display *ProgressDisplay
+}
+
+// NewCaptureProgressEvents creates a buffer-backed progress display for event rendering.
+// It returns a CaptureProgressEvents instance that can be used to access both the output and
+// the display instance after processing the events. This is useful for detecting whether a
+// failure was detected in the display layer, e.g. used to send the output to Copilot if a
+// failure was detected.
+func NewCaptureProgressEvents(
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	opts Options,
+	isPreview bool,
+	action apitype.UpdateKind,
+) *CaptureProgressEvents {
+	buffer := bytes.NewBuffer([]byte{})
+
+	// Create a copy of the options and redirect output to our buffer
+	o := opts
+	o.Stdout = buffer
+	o.Stderr = io.Discard
+
+	// Use standard dimensions for the captured output
+	width, height := 200, 80
+
+	// Setup with empty permalink
+	display := setupProgressDisplay(action, stack, proj, "", o, isPreview, width, height)
+
+	return &CaptureProgressEvents{
+		Buffer:  buffer,
+		display: display,
+	}
+}
+
+func (r *CaptureProgressEvents) ProcessEvents(
+	renderChan <-chan engine.Event,
+	renderDone chan<- bool,
+) {
+	// Reuse the shared processing logic
+	r.display.processEvents(&time.Ticker{}, renderChan)
+	contract.IgnoreClose(r.display.renderer)
+	// let our caller know we're done.
+	close(renderDone)
+}
+
+func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+	go r.ProcessEvents(eventsChan, renderDone)
+	for _, event := range events {
+		eventsChan <- event
+	}
+	close(eventsChan)
+	<-renderDone
+}
+
+func (r *CaptureProgressEvents) Output() []string {
+	v := strings.TrimSpace(r.Buffer.String())
+	if v == "" {
+		return nil
+	}
+	return strings.Split(v, "\n")
+}
+
+func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
+	// If its an actual update we can use the failed flag
+	if !r.display.isPreview {
+		return r.display.failed
+	}
+
+	// If its a preview we need to check the resource rows for any failures
+	for _, row := range r.display.resourceRows {
+		diagInfo := row.DiagInfo()
+		if diagInfo != nil && diagInfo.ErrorCount > 0 {
+			return true
+		}
+	}
+
+	return false
+}

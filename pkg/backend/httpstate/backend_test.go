@@ -339,10 +339,12 @@ func TestCloudBackend_GetPackageRegistry(t *testing.T) {
 	assert.True(t, ok, "expected registry to be a cloudPackageRegistry")
 }
 
-func TestExplainer(t *testing.T) {
+// Bit of an integration test.
+// That we can render engine events, send them to the backend, and get a summary back.
+func TestCopilotExplainer(t *testing.T) {
 	t.Parallel()
 
-	copilotResponse := apitype.CopilotResponse{
+	copilotResponse, err := json.Marshal(apitype.CopilotResponse{
 		ThreadMessages: []apitype.CopilotThreadMessage{
 			{
 				Role:    "assistant",
@@ -350,60 +352,63 @@ func TestExplainer(t *testing.T) {
 				Content: json.RawMessage(`"Test summary of changes"`),
 			},
 		},
-	}
-	response, err := json.Marshal(copilotResponse)
+	})
 	assert.NoError(t, err)
 
-	// Create a mock HTTP client that simulates the Copilot API response
-	testClient := &http.Client{
-		Transport: &mockTransport{
-			response: &http.Response{
+	// Create a mock transport that
+	// 1. captures the request to assert on
+	// 2. returns our test response
+	var requestBody []byte
+	mockTransport := &mockTransport{
+		roundTrip: func(req *http.Request) (*http.Response, error) {
+			var err error
+			requestBody, err = io.ReadAll(req.Body)
+			if err != nil {
+				return nil, err
+			}
+			return &http.Response{
 				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(response)),
+				Body:       io.NopCloser(bytes.NewReader(copilotResponse)),
 				Header:     make(http.Header),
-			},
+			}, nil
 		},
 	}
 
-	// Create a mock client using our test HTTP client
-	mockClient := client.NewTestClient(PulumiCloudURL, "test-token", false, testClient)
+	// Create a backend and API client using our mock transport
+	apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+	apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 	b := &cloudBackend{
-		client: mockClient,
-		d:      diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+		client: apiClient,
+		d:      diagtest.LogSink(t),
 	}
 
-	// Create test data
+	// Call explainer
 	stackRef := cloudBackendReference{
 		name:    tokens.MustParseStackName("foo"),
 		owner:   "test-owner",
 		project: "test-project",
 	}
-
 	op := backend.UpdateOperation{
 		Proj: &workspace.Project{Name: "test-project"},
 	}
-
-	// Create a sample engine event
 	events := []engine.Event{
 		engine.NewEvent(engine.StdoutEventPayload{
 			Message: "Hello, world!",
-			// Note: System events need their own Color instance
-			Color: colors.Never,
+			Color:   colors.Never,
 		}),
 	}
-
-	// Call explainer
 	summary, err := b.explainer(stackRef, op, events, display.Options{})
 
 	// Verify results
 	require.NoError(t, err)
 	assert.Contains(t, summary, "Test summary of changes")
+	assert.Contains(t, string(requestBody), "Hello, world!")
 }
 
 type mockTransport struct {
-	response *http.Response
+	roundTrip func(*http.Request) (*http.Response, error)
 }
 
-func (t *mockTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	return t.response, nil
+func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t.roundTrip(req)
 }

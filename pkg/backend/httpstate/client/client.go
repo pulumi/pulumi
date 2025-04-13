@@ -98,6 +98,18 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 	return newClient(apiURL, apiToken, insecure, d)
 }
 
+// WithHTTPClient sets the HTTP client for the API client.
+// Useful for testing.
+func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
+	pc.httpClient = httpClient
+	pc.restClient = &defaultRESTClient{
+		client: &defaultHTTPClient{
+			client: httpClient,
+		},
+	}
+	return pc
+}
+
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
