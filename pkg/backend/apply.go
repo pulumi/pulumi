@@ -242,6 +242,9 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		if response == explain {
+			if explainer == nil {
+				continue
+			}
 			explain, err := explainer(stack.Ref(), op, events, opts.Display)
 			if err != nil {
 				return nil, err
