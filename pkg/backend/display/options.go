@@ -61,6 +61,7 @@ type Options struct {
 	// Copilot options
 	ShowLinkToCopilot  bool // true to display a 'explainFailure' link to Copilot.
 	ShowCopilotSummary bool // true to display a Copilot summary.
+	ShowCopilotExplain bool // true to display a Copilot explainer.
 	// Copilot options that are ignored if ShowCopilotSummary is false.
 	CopilotSummaryModel  string // the Copilot summary model to use (default: "gpt-4o-mini")
 	CopilotSummaryMaxLen int    // the maximum length of the Copilot summary. (default 80 characters)
