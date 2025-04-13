@@ -59,7 +59,7 @@ type Options struct {
 	ShowSecrets            bool                // true to display secrets in the output.
 
 	// Copilot options
-	ShowLinkToCopilot   bool // true to display a 'explainFailure' link to Copilot.
+	ShowLinkToCopilot  bool // true to display a 'explainFailure' link to Copilot.
 	ShowCopilotFeatures bool // true to display Copilot features like summaries and explanations.
 	// Copilot options that are ignored if ShowCopilotFeatures is false.
 	CopilotSummaryModel  string // the Copilot summary model to use (default: "gpt-4o-mini")
