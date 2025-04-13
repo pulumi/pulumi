@@ -45,7 +45,10 @@ type ApplierOptions struct {
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
-type Explainer func(stack StackReference, op UpdateOperation, events []engine.Event, opts display.Options) (string, error)
+// Explainer is a function that explains the changes that will be made to the stack.
+// For Pulumi Cloud, this is a Copilot explainer.
+type Explainer func(stackRef StackReference, op UpdateOperation, events []engine.Event,
+	opts display.Options) (string, error)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
