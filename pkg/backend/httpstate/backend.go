@@ -1156,13 +1156,13 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 // explainer takes engine events, renders them out to a buffer as something similar to what the user sees
 // in the CLI, and then explains the output with Copilot.
 func (b *cloudBackend) explainer(
-	stack backend.Stack,
+	stackRef backend.StackReference,
 	op backend.UpdateOperation,
 	events []engine.Event,
 	opts display.Options,
 ) (string, error) {
 	renderer := display.NewCaptureProgressEvents(
-		stack.Ref().Name(),
+		stackRef.Name(),
 		op.Proj.Name,
 		display.Options{
 			ShowResourceChanges: true,
@@ -1177,7 +1177,7 @@ func (b *cloudBackend) explainer(
 		return "", errors.New("no output from preview")
 	}
 
-	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return "", err
 	}

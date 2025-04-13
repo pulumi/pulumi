@@ -14,10 +14,12 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"testing"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -33,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -333,4 +337,73 @@ func TestCloudBackend_GetPackageRegistry(t *testing.T) {
 
 	_, ok := registry.(*cloudPackageRegistry)
 	assert.True(t, ok, "expected registry to be a cloudPackageRegistry")
+}
+
+func TestExplainer(t *testing.T) {
+	t.Parallel()
+
+	copilotResponse := apitype.CopilotResponse{
+		ThreadMessages: []apitype.CopilotThreadMessage{
+			{
+				Role:    "assistant",
+				Kind:    "response",
+				Content: json.RawMessage(`"Test summary of changes"`),
+			},
+		},
+	}
+	response, err := json.Marshal(copilotResponse)
+	assert.NoError(t, err)
+
+	// Create a mock HTTP client that simulates the Copilot API response
+	testClient := &http.Client{
+		Transport: &mockTransport{
+			response: &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(response)),
+				Header:     make(http.Header),
+			},
+		},
+	}
+
+	// Create a mock client using our test HTTP client
+	mockClient := client.NewTestClient(PulumiCloudURL, "test-token", false, testClient)
+	b := &cloudBackend{
+		client: mockClient,
+		d:      diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	}
+
+	// Create test data
+	stackRef := cloudBackendReference{
+		name:    tokens.MustParseStackName("foo"),
+		owner:   "test-owner",
+		project: "test-project",
+	}
+
+	op := backend.UpdateOperation{
+		Proj: &workspace.Project{Name: "test-project"},
+	}
+
+	// Create a sample engine event
+	events := []engine.Event{
+		engine.NewEvent(engine.StdoutEventPayload{
+			Message: "Hello, world!",
+			// Note: System events need their own Color instance
+			Color: colors.Never,
+		}),
+	}
+
+	// Call explainer
+	summary, err := b.explainer(stackRef, op, events, display.Options{})
+
+	// Verify results
+	require.NoError(t, err)
+	assert.Contains(t, summary, "Test summary of changes")
+}
+
+type mockTransport struct {
+	response *http.Response
+}
+
+func (t *mockTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return t.response, nil
 }

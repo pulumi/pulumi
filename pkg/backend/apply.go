@@ -45,7 +45,7 @@ type ApplierOptions struct {
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
-type Explainer func(stack Stack, op UpdateOperation, events []engine.Event, opts display.Options) (string, error)
+type Explainer func(stack StackReference, op UpdateOperation, events []engine.Event, opts display.Options) (string, error)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -239,7 +239,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		if response == explain {
-			explain, err := explainer(stack, op, events, opts.Display)
+			explain, err := explainer(stack.Ref(), op, events, opts.Display)
 			if err != nil {
 				return nil, err
 			}
