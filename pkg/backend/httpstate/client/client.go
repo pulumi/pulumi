@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
@@ -1441,6 +1442,13 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	url := pc.apiURL + "/api/ai/chat/preview"
 	apiToken := string(pc.apiToken)
 
+	// TODO: Debug helpers. Remove before merging.
+	copilotURL := os.Getenv("DEBUG_PULUMI_COPILOT_URL")
+	if copilotURL != "" {
+		url = copilotURL + "/api/ai/chat/preview"
+		apiToken = os.Getenv("DEBUG_PULUMI_COPILOT_TOKEN")
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
@@ -1449,6 +1457,9 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "token "+apiToken)
+
+	// TODO: Debug helpers. Remove before merging.
+	req.Header.Set("X-Pulumi-Origin", "api.pulumi.com")
 
 	resp, err := pc.do(ctx, req)
 	if err != nil {
