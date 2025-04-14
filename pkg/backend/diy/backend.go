@@ -41,6 +41,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -744,7 +745,7 @@ func (b *diyBackend) CreateStack(
 	}
 
 	if _, err := b.stackExists(ctx, diyStackRef); err == nil {
-		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
+		return nil, &backenderr.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
 	_, err = b.saveStack(ctx, diyStackRef, nil)
@@ -975,7 +976,7 @@ func (b *diyBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 	if len(hist) == 0 {
-		return nil, backend.ErrNoPreviousDeployment
+		return nil, backenderr.ErrNoPreviousDeployment
 	}
 
 	return hist[0].Config, nil

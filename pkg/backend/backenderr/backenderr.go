@@ -12,13 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package backenderr
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
+
+// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+var ErrNoPreviousDeployment = errors.New("no previous deployment")
+
+// ErrLoginRequired is returned when a command requires logging in.
+var ErrLoginRequired = errors.New("this command requires logging in; try running `pulumi login` first")
+
+// StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
+type StackAlreadyExistsError struct {
+	StackName string
+}
+
+func (e StackAlreadyExistsError) Error() string {
+	return fmt.Sprintf("stack '%v' already exists", e.StackName)
+}
+
+// OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
+// is over its stack limit.
+type OverStackLimitError struct {
+	Message string
+}
+
+func (e OverStackLimitError) Error() string {
+	m := e.Message
+	m = strings.ReplaceAll(m, "Conflict: ", "over stack limit: ")
+	return m
+}
 
 // ConflictingUpdateError represents an error which occurred while starting an update/destroy operation.
 // Another update of the same stack was in progress, so the operation got canceled due to this conflict.
