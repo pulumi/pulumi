@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -160,6 +159,9 @@ type modContext struct {
 	// The root namespace to use, if any.
 	rootNamespace    string
 	parameterization *schema.Parameterization
+
+	// Set to generate Policy Pack SDK
+	generatePolicyPack bool
 }
 
 func (mod *modContext) RootNamespace() string {
@@ -315,7 +317,10 @@ func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
 func (mod *modContext) unionTypeString(
 	t *schema.UnionType,
 	qualifier string,
-	input, wrapInput, state, requireInitializers bool,
+	input bool,
+	wrapInput bool,
+	state bool,
+	requireInitializers bool,
 ) string {
 	elementTypeSet := codegen.StringSet{}
 	var elementTypes []string
@@ -354,13 +359,18 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		elem := mod.typeString(t.ElementType, qualifier, input, state, requireInitializers)
-		if ignoreOptional(t, requireInitializers) {
+		if mod.generatePolicyPack || ignoreOptional(t, requireInitializers) {
 			return elem
 		}
 		return elem + "?"
 	case *schema.InputType:
-		inputType := "Input"
 		elem := t.ElementType
+
+		if mod.generatePolicyPack {
+			return mod.typeString(elem, qualifier, input, state, requireInitializers)
+		}
+
+		inputType := "Input"
 		switch e := t.ElementType.(type) {
 		case *schema.ArrayType:
 			inputType, elem = "InputList", codegen.PlainType(e.ElementType)
@@ -384,13 +394,13 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		return fmt.Sprintf("%s.%s", mod.tokenToNamespace(t.Token, ""), tokenToName(t.Token))
 	case *schema.ArrayType:
 		listType := "ImmutableArray"
-		if requireInitializers {
+		if mod.generatePolicyPack || requireInitializers {
 			listType = "List"
 		}
 		return fmt.Sprintf("%v<%v>", listType, mod.typeString(t.ElementType, qualifier, input, state, false))
 	case *schema.MapType:
 		mapType := "ImmutableDictionary"
-		if requireInitializers {
+		if mod.generatePolicyPack || requireInitializers {
 			mapType = "Dictionary"
 		}
 		return fmt.Sprintf("%v<string, %v>", mapType, mod.typeString(t.ElementType, qualifier, input, state, false))
@@ -409,10 +419,11 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 				info = v
 			}
 			namingCtx = &modContext{
-				pkg:           extPkg,
-				namespaces:    info.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
-				compatibility: info.Compatibility,
+				pkg:                extPkg,
+				namespaces:         info.Namespaces,
+				rootNamespace:      info.GetRootNamespace(),
+				compatibility:      info.Compatibility,
+				generatePolicyPack: mod.generatePolicyPack,
 			}
 		}
 		typ := namingCtx.tokenToNamespace(t.Token, qualifier)
@@ -446,10 +457,11 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 				info = v
 			}
 			namingCtx = &modContext{
-				pkg:           extPkg,
-				namespaces:    info.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
-				compatibility: info.Compatibility,
+				pkg:                extPkg,
+				namespaces:         info.Namespaces,
+				rootNamespace:      info.GetRootNamespace(),
+				compatibility:      info.Compatibility,
+				generatePolicyPack: mod.generatePolicyPack,
 			}
 		}
 		typ := namingCtx.tokenToNamespace(t.Token, "")
@@ -469,6 +481,10 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 		return typ
 	case *schema.UnionType:
+		if mod.generatePolicyPack {
+			return mod.typeString(t.DefaultType, qualifier, input, state, requireInitializers)
+		}
+
 		return mod.unionTypeString(t, qualifier, input, false, state, requireInitializers)
 	default:
 		switch t {
@@ -495,14 +511,8 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 }
 
 type WriterWithIndent interface {
-	Fprint(
-		text string,
-	)
-
-	Fprintf(
-		format string,
-		a ...any,
-	)
+	Fprint(text string)
+	Fprintf(format string, a ...any)
 	Push()
 	Pop()
 	OpenCurlyBrace()
@@ -599,7 +609,7 @@ var docCommentEscaper = strings.NewReplacer(
 )
 
 func printComment(w WriterWithIndent, comment string) {
-	printCommentWithOptions(w, comment, true)
+	printCommentWithOptions(w, comment, true /*escape*/)
 }
 
 func printCommentWithOptions(w WriterWithIndent, comment string, escape bool) {
@@ -806,7 +816,7 @@ func (pt *plainType) genInputProperty(w WriterWithIndent, prop *schema.Property,
 var generatedTypes = codegen.Set{}
 
 func (pt *plainType) genInputType(w WriterWithIndent) error {
-	return pt.genInputTypeWithFlags(w, true)
+	return pt.genInputTypeWithFlags(w, true /* generateInputAttributes */)
 }
 
 func (pt *plainType) genInputTypeWithFlags(w WriterWithIndent, generateInputAttributes bool) error {
@@ -946,28 +956,8 @@ func (pt *plainType) genOutputType(w WriterWithIndent) {
 	w.CloseCurlyBrace()
 }
 
-func (pt *plainType) genPolicyType(w WriterWithIndent, token *string, pending map[*schema.ObjectType]bool) error {
+func (pt *plainType) genPolicyType(w WriterWithIndent, input bool, token *string) error {
 	// Determine property types
-
-	type PropAndShape struct {
-		prop  *schema.Property
-		shape schema.Type
-	}
-
-	propTypes := map[string]PropAndShape{}
-
-	for _, prop := range pt.properties {
-		shape := pt.flattenPolicyProperty(prop.Type, pending)
-		if old, ok := propTypes[prop.Name]; ok {
-			if old.shape.String() != shape.String() {
-				return fmt.Errorf("Two properties for %v.%v with same name but different type: %v != %v", pt.name, prop.Name, old, shape)
-			}
-		}
-		propTypes[prop.Name] = PropAndShape{
-			prop:  prop,
-			shape: shape,
-		}
-	}
 
 	//// Open the class.
 	printCommentWithOptions(w, pt.comment, !pt.unescapeComment)
@@ -987,61 +977,38 @@ func (pt *plainType) genPolicyType(w WriterWithIndent, token *string, pending ma
 	// Declare each input property.
 	first := true
 
-	for _, propName := range slices.Sorted(maps.Keys(propTypes)) {
-		propAndShape := propTypes[propName]
-
+	for _, prop := range pt.properties {
 		if !first {
 			w.Fprintf("\n")
 		} else {
 			first = false
 		}
 
-		prop := propAndShape.prop
 		if prop.Comment != "" {
 			printComment(w, prop.Comment)
 		}
 
 		fieldName := pt.mod.propertyName(prop)
 
-		propType := pt.mod.typeString(propAndShape.shape, "", false, false, true)
-		w.Fprintf("[Input(\"%s\")]\n", propName)
-		w.Fprintf("public %s? %s;\n", propType, fieldName)
+		propType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, input, false, true)
+		w.Fprintf("[PolicyResourceProperty(\"%s\", \"_mUnknown_%s\")]\n", prop.Name, fieldName)
+		w.Fprintf("#pragma warning disable CS0649 // Field is assigned through deserializer\n")
+		w.Fprintf("private %s? _mValue_%s;\n", propType, fieldName)
+		w.Fprintf("private bool _mUnknown_%s;\n", fieldName)
+		w.Fprintf("public %s? %s\n", propType, fieldName)
+		w.OpenCurlyBrace()
+		w.Fprintf("get\n");
+		w.OpenCurlyBrace()
+		w.Fprintf("if (!_mUnknown_%s) return _mValue_%s;\n", fieldName, fieldName)
+		w.Fprintf("throw new UndeferrableValueException(\"Value '%s.%s' is not present\");\n", pt.name, fieldName)
+		w.CloseCurlyBrace()
+		w.CloseCurlyBrace()
 	}
 
 	// Close the class.
 	w.CloseCurlyBrace()
 
 	return nil
-}
-
-func (pt *plainType) flattenPolicyProperty(t schema.Type, pending map[*schema.ObjectType]bool) schema.Type {
-	switch t := t.(type) {
-	case *schema.InputType:
-		return pt.flattenPolicyProperty(t.ElementType, pending)
-
-	case *schema.ArrayType:
-		return &schema.ArrayType{ElementType: pt.flattenPolicyProperty(t.ElementType, pending)}
-
-	case *schema.MapType:
-		return &schema.MapType{ElementType: pt.flattenPolicyProperty(t.ElementType, pending)}
-
-	case *schema.OptionalType:
-		return pt.flattenPolicyProperty(t.ElementType, pending)
-
-	case *schema.ObjectType:
-		if t.IsInputShape() {
-			return pt.flattenPolicyProperty(t.PlainShape, pending)
-		}
-
-		pending[t] = true
-		return t
-
-	case *schema.UnionType:
-		return pt.flattenPolicyProperty(t.DefaultType, pending)
-
-	default:
-		return t
-	}
 }
 
 func primitiveValue(value interface{}) (string, error) {
@@ -1594,6 +1561,57 @@ func (mod *modContext) genResource(w WriterWithIndent, r *schema.Resource) error
 	return nil
 }
 
+func (mod *modContext) genResourceForPolicy(w WriterWithIndent, r *schema.Resource) error {
+	// Create a resource module file into which all of this resource's types will go.
+	name := resourceName(r)
+
+	// Open the namespace.
+	w.Fprintf("namespace %s\n", mod.namespaceName)
+	w.OpenCurlyBrace()
+
+	args := &plainType{
+		mod:        mod,
+		name:       name,
+		baseClass:  "global::Pulumi.PolicyResourceOutput",
+		propertyTypeQualifier: "Outputs",
+		properties: r.Properties,
+	}
+	if err := args.genPolicyType(w, false, &r.Token); err != nil {
+		return err
+	}
+
+	w.Fprintf("\n")
+
+	// Arguments are in a different namespace for the Kubernetes SDK.
+	if mod.isK8sCompatMode() && !r.IsProvider {
+		// Close the namespace.
+		w.CloseCurlyBrace()
+
+		// Open the namespace.
+		w.Fprintf("namespace %s\n", mod.tokenToNamespace(r.Token, "Inputs"))
+		w.OpenCurlyBrace()
+	}
+
+	// Generate the resource args type.
+	args = &plainType{
+		mod:                   mod,
+		res:                   r,
+		name:                  name + "Args",
+		baseClass:             "global::Pulumi.PolicyResourceInput",
+		propertyTypeQualifier: "Inputs",
+		properties:            r.InputProperties,
+		args:                  true,
+	}
+	if err := args.genPolicyType(w, true, &r.Token); err != nil {
+		return err
+	}
+
+	// Close the namespace.
+	w.CloseCurlyBrace()
+
+	return nil
+}
+
 func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	buffer := &BufferWithIndent{}
 	importStrings := mod.pulumiImports()
@@ -1934,7 +1952,7 @@ func (mod *modContext) genFunctionOutputVersionTypes(w WriterWithIndent, fun *sc
 			args:                  true,
 		}
 
-		if err := applyArgs.genInputTypeWithFlags(w, true); err != nil {
+		if err := applyArgs.genInputTypeWithFlags(w, true /* generateInputAttributes */); err != nil {
 			return err
 		}
 	}
@@ -2106,6 +2124,10 @@ func (mod *modContext) genType(
 		properties:            obj.Properties,
 		state:                 state,
 		args:                  args,
+	}
+
+	if mod.generatePolicyPack {
+		return pt.genPolicyType(w, input, nil)
 	}
 
 	if input {
@@ -2335,10 +2357,10 @@ func (mod *modContext) genUtilities() (string, error) {
 	return w.String(), nil
 }
 
-func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	nsComponents := strings.Split(mod.namespaceName, ".")
 	if len(nsComponents) > 0 {
-		if generatePolicyPack {
+		if mod.generatePolicyPack {
 			// Trim off "Pulumi.PolicyPack.<Pkg>"
 			nsComponents = nsComponents[3:]
 		} else {
@@ -2364,20 +2386,6 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 	}
 
 	addFile := func(name, contents string) {
-		if generatePolicyPack {
-			return
-		}
-
-		p := path.Join(dir, name)
-		files = append(files, p)
-		fs.Add(p, []byte(contents))
-	}
-
-	addPolicyFile := func(name, contents string) {
-		if !generatePolicyPack {
-			return
-		}
-
 		p := path.Join(dir, name)
 		files = append(files, p)
 		fs.Add(p, []byte(contents))
@@ -2390,26 +2398,28 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 	}
 	fs.Add(filepath.Join(dir, "README.md"), []byte(readme))
 
-	// Utilities, config
-	switch mod.mod {
-	case "":
-		utilities, err := mod.genUtilities()
-		if err != nil {
-			return err
-		}
-		fs.Add("Utilities.cs", []byte(utilities))
-	case "config":
-		config, err := mod.pkg.Config()
-		if err != nil {
-			return err
-		}
-		if len(config) > 0 {
-			config, err := mod.genConfig(config)
+	if !mod.generatePolicyPack {
+		// Utilities, config
+		switch mod.mod {
+		case "":
+			utilities, err := mod.genUtilities()
 			if err != nil {
 				return err
 			}
-			addFile("Config.cs", config)
-			return nil
+			fs.Add("Utilities.cs", []byte(utilities))
+		case "config":
+			config, err := mod.pkg.Config()
+			if err != nil {
+				return err
+			}
+			if len(config) > 0 {
+				config, err := mod.genConfig(config)
+				if err != nil {
+					return err
+				}
+				addFile("Config.cs", config)
+				return nil
+			}
 		}
 	}
 
@@ -2424,105 +2434,33 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 		importStrings := mod.pulumiImports()
 		mod.genHeader(buffer, importStrings)
 
-		if err := mod.genResource(buffer, r); err != nil {
-			return err
+		if mod.generatePolicyPack {
+			if err := mod.genResourceForPolicy(buffer, r); err != nil {
+				return err
+			}
+		} else {
+			if err := mod.genResource(buffer, r); err != nil {
+				return err
+			}
 		}
 
 		addFile(resourceName(r)+".cs", buffer.String())
 	}
 
-	pending := map[*schema.ObjectType]bool{}
-	pendingSeen := map[string]bool{}
-
-	// Policy Resources
-	for _, r := range mod.resources {
-		if r.IsOverlay {
-			// This resource code is generated by the provider, so no further action is required.
-			continue
-		}
-
-		buffer := &BufferWithIndent{}
-		importStrings := mod.pulumiImports()
-		mod.genHeader(buffer, importStrings)
-
-		props := slices.Concat(r.Properties, r.InputProperties)
-
-		if r.StateInputs != nil {
-			props = slices.Concat(props, r.StateInputs.Properties)
-		}
-
-		buffer.Fprintf("namespace %s\n", mod.namespaceName)
-		buffer.OpenCurlyBrace()
-
-		name := resourceName(r)
-
-		args := &plainType{
-			mod:        mod,
-			name:       name,
-			baseClass:  "global::Pulumi.PolicyResource",
-			properties: props,
-		}
-		if err := args.genPolicyType(buffer, &r.Token, pending); err != nil {
-			return err
-		}
-
-		buffer.CloseCurlyBrace()
-
-		addPolicyFile(name+".cs", buffer.String())
-		pendingSeen[name] = true
-	}
-
-	for {
-		pending2 := pending
-		pending = map[*schema.ObjectType]bool{}
-		madeProgress := false
-		for t, _ := range pending2 {
-			name := tokenToName(t.Token)
-
-			if _, ok := pendingSeen[name]; !ok {
-				pendingSeen[name] = true
-				madeProgress = true
-
-				buffer := &BufferWithIndent{}
-				importStrings := mod.pulumiImports()
-				mod.genHeader(buffer, importStrings)
-
-				buffer.Fprintf("namespace %s\n", mod.namespaceName)
-				buffer.OpenCurlyBrace()
-
-				// Generate the extra ResourcePolicy class
-				args := &plainType{
-					mod:        mod,
-					name:       name,
-					properties: t.Properties,
-				}
-				if err := args.genPolicyType(buffer, &t.Token, pending); err != nil {
-					return err
-				}
-
-				buffer.CloseCurlyBrace()
-
-				addPolicyFile(name+".cs", buffer.String())
+	if !mod.generatePolicyPack {
+		// Functions
+		for _, f := range mod.functions {
+			if f.IsOverlay {
+				// This function code is generated by the provider, so no further action is required.
+				continue
 			}
-		}
 
-		if !madeProgress {
-			break
+			code, err := mod.genFunctionFileCode(f)
+			if err != nil {
+				return err
+			}
+			addFile(tokenToName(f.Token)+".cs", code)
 		}
-	}
-
-	// Functions
-	for _, f := range mod.functions {
-		if f.IsOverlay {
-			// This function code is generated by the provider, so no further action is required.
-			continue
-		}
-
-		code, err := mod.genFunctionFileCode(f)
-		if err != nil {
-			return err
-		}
-		addFile(tokenToName(f.Token)+".cs", code)
 	}
 
 	// Nested types
@@ -2532,7 +2470,8 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 			continue
 		}
 
-		if mod.details(t).inputType {
+		details := mod.details(t)
+		if details.inputType {
 			buffer := &BufferWithIndent{}
 			mod.genHeader(buffer, mod.pulumiImports())
 
@@ -2549,7 +2488,7 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 			}
 			addFile(path.Join("Inputs", name+".cs"), buffer.String())
 		}
-		if mod.details(t).stateType {
+		if details.stateType && !mod.generatePolicyPack {
 			buffer := &BufferWithIndent{}
 			mod.genHeader(buffer, mod.pulumiImports())
 
@@ -2561,7 +2500,7 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 			buffer.CloseCurlyBrace()
 			addFile(path.Join("Inputs", tokenToName(t.Token)+"GetArgs.cs"), buffer.String())
 		}
-		if mod.details(t).outputType {
+		if details.outputType {
 			buffer := &BufferWithIndent{}
 			mod.genHeader(buffer, mod.pulumiImports())
 
@@ -2573,7 +2512,7 @@ func (mod *modContext) gen(fs codegen.Fs, generatePolicyPack bool) error {
 			buffer.CloseCurlyBrace()
 
 			suffix := ""
-			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && mod.details(t).plainType {
+			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && details.plainType {
 				suffix = "Result"
 			}
 			addFile(path.Join("Outputs", tokenToName(t.Token)+suffix+".cs"), buffer.String())
@@ -2866,6 +2805,7 @@ func generateModuleContextMap(
 				dictionaryConstructors:       info.DictionaryConstructors,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 				parameterization:             pkg.Parameterization,
+				generatePolicyPack:           generatePolicyPack,
 			}
 
 			if modName != "" {
@@ -3035,7 +2975,7 @@ func GeneratePackage(
 		files.Add(p, f)
 	}
 	for _, mod := range modules {
-		if err := mod.gen(files, generatePolicyPack); err != nil {
+		if err := mod.gen(files); err != nil {
 			return nil, err
 		}
 	}
