@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: components/nodejs
+  description: Support enum types in Components

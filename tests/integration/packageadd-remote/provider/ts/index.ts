@@ -75,13 +75,13 @@ export class SelfSignedCertificate extends pulumi.ComponentResource {
 
 export interface SelfSignedCertificateArgs {
     // Name of the algorithm to use when generating the private key. Currently-supported values are `RSA`, `ECDSA` and `ED25519` (default: `RSA`).
-    algorithm?: pulumi.Input<string>;
+    algorithm?: pulumi.Input<Algorithm>;
 
     // When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are `P224`, `P256`, `P384` or `P521` (default: `P224`).
-    ecdsaCurve?: pulumi.Input<string>;
+    ecdsaCurve?: pulumi.Input<EcdsaCurve>;
 
     // List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.
-    allowedUses?: pulumi.Input<string[]>;
+    allowedUses?: pulumi.Input<AllowedUses[]>;
 
     // When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).
     rsaBits?: pulumi.Input<number>;
@@ -102,15 +102,42 @@ export interface SelfSignedCertificateArgs {
     ipAddress?: pulumi.Input<string>;
 }
 
-type Algorithm = "RSA" | "ECDSA" | "ED25519";
-type EcdsaCurve =  "P224" | "P256" | "P384" | "P521";
-type AllowedUses = "any_extended" | "cert_signing" | "client_auth" | "code_signing" |
-    "content_commitment" | "crl_signing" | "data_encipherment" | "decipher_only" |
-    "digital_signature" | "email_protection" | "encipher_only" | "ipsec_end_system" |
-    "ipsec_tunnel" | "ipsec_user" | "key_agreement" | "key_encipherment" | "microsoft_commercial_code_signing" |
-    "microsoft_kernel_code_signing" | "microsoft_server_gated_crypto" | "netscape_server_gated_crypto" |
-    "ocsp_signing" | "server_auth" | "timestamping";
+enum Algorithm {
+    Rsa = "RSA",
+    Ecdsa = "ECDSA",
+    Ed25519 = "ED25519",
+}
 
+enum EcdsaCurve {
+    P224 = "P224",
+    P256 = "P256",
+    P384 = "P384",
+    P521 = "P521",
+}
+
+enum AllowedUses {
+    AnyExtended = "any_extended",
+    CertSigning = "cert_signing",
+    ClientAuth = "client_auth",
+    CodeSigning = "code_signing",
+    ContentCommitment = "content_commitment",
+    CrlSigning = "crl_signing",
+    DataEncipherment = "data_encipherment",
+    DecipherOnly = "decipher_only",
+    DigitalSignature = "digital_signature",
+    EmailProtection = "email_protection",
+    EncipherOnly = "encipher_only",
+    IpsecEndSystem = "ipsec_end_system",
+    IpsecTunnel = "ipsec_tunnel",
+    IpsecUser = "ipsec_user",
+    KeyAgreement = "key_agreement",
+    KeyEncipherment = "key_encipherment",
+    MicrosoftCommercialCodeSigning = "microsoft_commercial_code_signing",
+    MicrosoftKernelCodeSigning = "microsoft_kernel_code_signing",
+    OcspSigning = "ocsp_signing",
+    ServerAuth = "server_auth",
+    Timestamping = "timestamping",
+}
 
 export interface SelfSignedCertSubject {
     /**

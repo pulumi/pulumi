@@ -46,7 +46,19 @@ export interface ObjectType {
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#complextype
  */
 export interface ComplexType extends ObjectType {
-    enum?: string[];
+    enum?: EnumValue[];
+}
+
+/**
+ * https://www.pulumi.com/docs/iac/using-pulumi/extending-pulumi/schema/#enumvalue
+ */
+export interface EnumValue {
+    /** Name, if present, overrides the name of the enum value that would usually be derived from the value. */
+    name?: string;
+    /** Description of the enum value. */
+    description?: string;
+    /** Value is the enum value itself. */
+    value?: any;
 }
 
 /**
@@ -114,20 +126,28 @@ export function generateSchema(
         result.resources[`${providerName}:index:${name}`] = {
             type: "object",
             isComponent: true,
-            inputProperties: component.inputs,
+            inputProperties: cleanProperties(component.inputs),
             requiredInputs: required(component.inputs),
-            properties: component.outputs,
+            properties: cleanProperties(component.outputs),
             required: required(component.outputs),
             description: component.description,
         };
     }
 
     for (const [name, type] of Object.entries(typeDefinitions)) {
-        result.types[`${providerName}:index:${name}`] = {
-            type: "object",
-            properties: type.properties,
-            required: required(type.properties),
-        };
+        const typeName = `${providerName}:index:${name}`;
+        if (type.enum) {
+            result.types[typeName] = {
+                type: "string",
+                enum: type.enum,
+            };
+        } else {
+            result.types[typeName] = {
+                type: "object",
+                properties: cleanProperties(type.properties || {}),
+                required: required(type.properties || {}),
+            };
+        }
     }
 
     for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
@@ -160,4 +180,15 @@ function required(properties: Record<string, PropertyDefinition>): string[] {
         .filter(([_, def]) => !def.optional)
         .map(([propName, _]) => propName)
         .sort();
+}
+
+function cleanProperties(properties: Record<string, PropertyDefinition>): Record<string, Property> {
+    const result: Record<string, Property> = {};
+    for (const [key, prop] of Object.entries(properties)) {
+        // Remove the "optional" field from the property definition since it only exists in analyzer's
+        // type but not in the schema type.
+        const { optional, ...cleanProp } = prop;
+        result[key] = cleanProp;
+    }
+    return result;
 }

@@ -652,6 +652,139 @@ describe("Analyzer", function () {
             },
         });
     });
+
+    it("infers enum types", async function () {
+        const dir = path.join(__dirname, "testdata", "enums");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        optional: true,
+                        description: "The status of the component",
+                    },
+                    priority: {
+                        $ref: "#/types/provider:index:PriorityLevel",
+                        plain: true,
+                        description: "The priority level of the component",
+                    },
+                    notifications: {
+                        type: "array",
+                        items: { $ref: "#/types/provider:index:NotificationConfig", plain: true },
+                        optional: true,
+                        plain: true,
+                        description: "Notification configuration",
+                    },
+                },
+                outputs: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        description: "The current status of the resource",
+                    },
+                    priority: {
+                        $ref: "#/types/provider:index:PriorityLevel",
+                        optional: true,
+                        description: "The priority of the component",
+                    },
+                    statusHistory: {
+                        type: "array",
+                        items: { $ref: "#/types/provider:index:StatusHistoryEntry" },
+                        description: "History of status changes",
+                    },
+                    notifications: {
+                        type: "array",
+                        items: { $ref: "#/types/provider:index:NotificationConfig" },
+                        optional: true,
+                        description: "Notification configurations",
+                    },
+                },
+            },
+        });
+
+        assert.deepStrictEqual(typeDefinitions, {
+            ResourceStatus: {
+                name: "ResourceStatus",
+                description:
+                    "Represents the status of a resource.\nThis enum demonstrates string-based enum definition.",
+                enum: [
+                    { name: "Provisioning", value: "Provisioning", description: "Resource is being provisioned" },
+                    { name: "Active", value: "Active", description: "Resource is active and ready to use" },
+                    { name: "Deleting", value: "Deleting", description: "Resource is being deleted" },
+                    { name: "Failed", value: "Failed", description: "Resource is in a failed state" },
+                ],
+            },
+            PriorityLevel: {
+                name: "PriorityLevel",
+                description: "Represents the priority level of a component.",
+                enum: [
+                    { name: "Low", value: "low", description: "Low priority tasks" },
+                    { name: "Medium", value: "medium", description: "Normal priority tasks - the default" },
+                    { name: "High", value: "high", description: "High priority tasks requiring immediate attention" },
+                    {
+                        name: "Critical",
+                        value: "critical!",
+                        description: "Critical tasks that must be processed first",
+                    },
+                ],
+            },
+            NotificationType: {
+                name: "NotificationType",
+                description: "Represents different types of notification channels.",
+                enum: [
+                    { name: "Email", value: "email", description: "Email notifications" },
+                    { name: "SMS", value: "sms", description: "SMS notifications" },
+                    { name: "Webhook", value: "webhook", description: "Webhook notifications" },
+                    { name: "Push", value: "push", description: "Push notifications" },
+                ],
+            },
+            NotificationConfig: {
+                name: "NotificationConfig",
+                description: "Configuration for a notification",
+                properties: {
+                    type: {
+                        $ref: "#/types/provider:index:NotificationType",
+                        description: "Type of notification",
+                    },
+                    recipients: {
+                        type: "array",
+                        items: { type: "string", plain: true },
+                        plain: true,
+                        description: "Recipients of the notification",
+                    },
+                    onlyForStatuses: {
+                        type: "array",
+                        items: { $ref: "#/types/provider:index:ResourceStatus", plain: true },
+                        optional: true,
+                        plain: true,
+                        description: "Notification only sent for these status changes",
+                    },
+                },
+            },
+            StatusHistoryEntry: {
+                name: "StatusHistoryEntry",
+                description: "Status history entry",
+                properties: {
+                    status: {
+                        $ref: "#/types/provider:index:ResourceStatus",
+                        description: "The status value",
+                    },
+                    timestamp: {
+                        type: "string",
+                        description: "When the status was set",
+                    },
+                    priority: {
+                        $ref: "#/types/provider:index:PriorityLevel",
+                        optional: true,
+                        description: "Priority at the time",
+                    },
+                },
+            },
+        });
+    });
 });
 
 describe("formatErrorContext", () => {

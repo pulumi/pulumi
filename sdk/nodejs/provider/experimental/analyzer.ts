@@ -35,6 +35,12 @@ export type PropertyDefinition = ({ type: PropertyType } | { $ref: string }) & {
     items?: PropertyDefinition;
 };
 
+export interface EnumValue {
+    name?: string;
+    description?: string;
+    value?: any;
+}
+
 export type ComponentDefinition = {
     name: string;
     description?: string;
@@ -44,8 +50,9 @@ export type ComponentDefinition = {
 
 export type TypeDefinition = {
     name: string;
-    properties: Record<string, PropertyDefinition>;
+    properties?: Record<string, PropertyDefinition>;
     description?: string;
+    enum?: EnumValue[];
 };
 
 export type AnalyzeResult = {
@@ -332,9 +339,9 @@ Please ensure these components are properly imported to your package's entry poi
             outputs: outputs,
         };
 
-        const dNode = node as docNode;
-        if (dNode.jsDoc && dNode.jsDoc.length > 0) {
-            definition.description = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+        const docString = getDocString(node as docNode);
+        if (docString) {
+            definition.description = docString;
         }
 
         return definition;
@@ -383,11 +390,7 @@ Please ensure these components are properly imported to your package's entry poi
         // defined on the symbol, not the type.
         const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
         const optional = isOptional(symbol);
-        const dNode = symbol.valueDeclaration as docNode;
-        let docString: string | undefined = undefined;
-        if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
-            docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
-        }
+        const docString = getDocString(symbol.valueDeclaration as docNode);
         return this.analyzeType(
             { ...context, inputOutput: InputOutput.Neither },
             propType,
@@ -536,6 +539,17 @@ Please ensure these components are properly imported to your package's entry poi
         if (isBooleanOptionalType(type, this.checker)) {
             // This is the special case for true | false | undefined
             return makeProp({ type: "boolean", optional: true });
+        }
+
+        const enumName = this.resolveEnumType(type);
+        if (enumName) {
+            return makeProp({ $ref: `#/types/${this.providerName}:index:${enumName}` });
+        }
+
+        const optionalEnumName = this.resolveOptionalEnumType(type);
+        if (optionalEnumName) {
+            // Optional enum types are represented as a union of the enum values and undefined.
+            return makeProp({ $ref: `#/types/${this.providerName}:index:${optionalEnumName}`, optional: true });
         }
 
         const optionalType = getOptionalType(type);
@@ -727,6 +741,122 @@ Please ensure these components are properly imported to your package's entry poi
             pulumiType,
             packageVersion,
         };
+    }
+
+    private analyzeEnumDeclaration(node: typescript.EnumDeclaration): string | undefined {
+        if (!node.name) {
+            return undefined;
+        }
+
+        const enumName = node.name.text;
+
+        // Short-circuit if already processed
+        if (this.typeDefinitions[enumName]) {
+            return enumName;
+        }
+
+        const enumValues: EnumValue[] = [];
+
+        // Process each enum member
+        for (const member of node.members) {
+            // The member must have a name
+            if (!member.name) {
+                return undefined;
+            }
+
+            let key: string;
+            if (ts.isIdentifier(member.name)) {
+                key = member.name.text;
+            } else if (ts.isStringLiteral(member.name)) {
+                key = member.name.text;
+            } else {
+                // Can't handle computed names
+                return undefined;
+            }
+
+            // For string enums, we need an initializer with a string literal
+            if (!member.initializer || !ts.isStringLiteral(member.initializer)) {
+                // For numeric enums or auto-incremented values, skip for now
+                // We could support them in the future if needed
+                return undefined;
+            }
+
+            const value = member.initializer.text;
+
+            enumValues.push({
+                name: key,
+                value: value,
+                description: getDocString(member as docNode),
+            });
+        }
+
+        // Skip if no valid enum values found
+        if (enumValues.length === 0) {
+            return undefined;
+        }
+
+        // Store the parsed enum definition
+        this.typeDefinitions[enumName] = {
+            name: enumName,
+            enum: enumValues,
+            description: getDocString(node as docNode),
+        };
+
+        return enumName;
+    }
+
+    private resolveEnumType(type: typescript.Type): string | undefined {
+        const typeSymbol = type.getSymbol() ?? type.aliasSymbol;
+        if (!typeSymbol) {
+            return undefined;
+        }
+
+        if (
+            (typeSymbol.flags & ts.SymbolFlags.Enum) !== ts.SymbolFlags.Enum &&
+            (typeSymbol.flags & ts.SymbolFlags.RegularEnum) !== ts.SymbolFlags.RegularEnum
+        ) {
+            return undefined;
+        }
+
+        const decl = typeSymbol.declarations[0];
+        if (!ts.isEnumDeclaration(decl)) {
+            return undefined;
+        }
+
+        return this.analyzeEnumDeclaration(decl);
+    }
+
+    private resolveOptionalEnumType(type: typescript.Type): string | undefined {
+        if (!(type.flags & ts.TypeFlags.Union)) {
+            return undefined;
+        }
+
+        const unionType = type as typescript.UnionType;
+        if (!unionType.types || unionType.types.length <= 2) {
+            return undefined;
+        }
+
+        // Check if one of the types in the union is undefined
+        const undefinedType = unionType.types.find((t) => t.flags & ts.TypeFlags.Undefined);
+        if (!undefinedType) {
+            return undefined;
+        }
+
+        for (const t of unionType.types) {
+            // Check for enum literal types
+            const typeSymbol = t.getSymbol() ?? t.aliasSymbol;
+            if (!typeSymbol) {
+                continue;
+            }
+            if (t.isLiteral() && t.isStringLiteral() && typeSymbol.declarations && typeSymbol.declarations.length > 0) {
+                const decl = typeSymbol.declarations[0];
+                if (ts.isEnumMember(decl) && decl.parent && ts.isEnumDeclaration(decl.parent)) {
+                    return this.analyzeEnumDeclaration(decl.parent);
+                }
+            }
+        }
+
+        return undefined;
     }
 }
 
@@ -966,4 +1096,11 @@ function symbolTableToSymbols(table: typescript.SymbolTable): typescript.Symbol[
         symbols.push(symbol);
     });
     return symbols;
+}
+
+function getDocString(node: docNode): string | undefined {
+    if (node?.jsDoc && node.jsDoc.length > 0) {
+        return node.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+    }
+    return undefined;
 }
