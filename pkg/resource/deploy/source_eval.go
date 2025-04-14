@@ -2013,7 +2013,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
-	if !providers.IsProviderType(t) || remote {
+	if !providers.IsProviderType(t) && tokens.Token(t).HasModuleMember() || remote {
+
 		providerReq, err := parseProviderRequest(
 			t.Package(), opts.GetVersion(),
 			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
@@ -2021,7 +2022,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		if !custom {
+		if !custom && !remote {
 			// We have a component resource here, which don't necessarily have a
 			// provider. However for component resources that are being created
 			// outside of the program, in a separate provider, we do want to track
@@ -2032,7 +2033,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			// we already have a provider cached for its package. This will always
 			// be the case for external component resources, since they are only
 			// created after the 'Construct' request.
-			providerRef = rm.defaultProviders.cachedProviderRef(providerReq)
+			var ref string
+			if opts.GetProvider() != "" {
+				ref = opts.GetProvider()
+			} else if r, ok := opts.GetProviders()[string(t.Package())]; ok {
+				ref = r
+			}
+			if ref != "" {
+				providerRef, err = rm.getProviderReference(rm.defaultProviders, providerReq, ref)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				providerRef = rm.defaultProviders.cachedProviderRef(providerReq)
+			}
+
 		} else {
 			packageRef := req.GetPackageRef()
 			if packageRef != "" {

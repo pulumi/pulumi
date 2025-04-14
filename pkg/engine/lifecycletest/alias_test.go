@@ -1812,13 +1812,13 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
-	assert.Len(t, snap.Resources, 4)
+	assert.Len(t, snap.Resources, 5)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[0].URN)
 	assert.Equal(t, resource.URN(""), snap.Resources[0].Parent)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[2].URN)
 	// Even though we didn't register C its URN must update to take the re-parenting into account.
-	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"), snap.Resources[3].URN)
-	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[3].Parent)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typC::resC"), snap.Resources[4].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resB"), snap.Resources[4].Parent)
 
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
