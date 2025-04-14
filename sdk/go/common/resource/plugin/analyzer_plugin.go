@@ -105,13 +105,67 @@ func NewPolicyAnalyzer(
 		return nil, err
 	}
 
-	// newPlugin expects a path to a binary, not a folder so we make up a binary name here just so newPlugin will then look for PulumiPolicy.yaml in the right place.
-	policyPackPath = filepath.Join(policyPackPath, "pulumi-analyzer-policy-"+string(name.Name()))
+	// This first section is a back compatibility bit for the old way of running analyzer plugins where we
+	// would look for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with two
+	// arguments, the engine address and the policy pack path. We no longer do this for python, nodejs or any
+	// other "language" but have to leave this in to ensure things like
+	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be
+	// moved to just be language runtimes like the rest).
 
-	// Policy packs are always run in the directory of the policy pack.
-	plug, _, err := newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, []string{host.ServerAddr()}, env,
-		testConnection, analyzerPluginDialOptions(ctx, string(name)))
+	var plug *plugin
+	// Try to load the language plugin for the runtime.
+	path, err := workspace.GetPluginPath(ctx.Diag, workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin}, host.GetProjectPlugins())
+	if path == "" || err != nil {
+		// Couldn't get a language plugin, fall back to the old behaviour
+
+		policyAnalyzerName := "policy-" + proj.Runtime.Name()
+
+		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
+		var pluginPath string
+		pluginPath, err = workspace.GetPluginPath(
+			ctx.Diag, workspace.PluginSpec{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
+
+		var e *workspace.MissingError
+		if errors.As(err, &e) {
+			return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
+				"plugin that runs policy plugins is missing. This might occur when the plugin "+
+				"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
+				"does not support resource policies", string(name))
+		} else if err != nil {
+			return nil, err
+		}
+
+		// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
+		// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
+		// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
+		// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
+		// node_modules is used.
+		pwd := policyPackPath
+
+		args := []string{host.ServerAddr(), "."}
+		for k, v := range proj.Runtime.Options() {
+			if vstr := fmt.Sprintf("%v", v); vstr != "" {
+				args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
+			}
+		}
+
+		plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+			apitype.AnalyzerPlugin, args, env, testConnection,
+			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
+	} else {
+		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
+
+		// newPlugin expects a path to a binary, not a folder so we make up a binary name here just so newPlugin
+		// will then look for PulumiPolicy.yaml in the right place. TODO: There's a few places we call down to
+		// plugin code where really it could be a file or a folder, we should stop abusing made up file names for
+		// this.
+		policyPackPath = filepath.Join(policyPackPath, "pulumi-analyzer-policy-"+string(name.Name()))
+
+		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
+			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, env,
+			testConnection, analyzerPluginDialOptions(ctx, string(name)))
+	}
+
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
