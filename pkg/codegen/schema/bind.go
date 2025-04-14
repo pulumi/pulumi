@@ -877,6 +877,11 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 				tokenType.UnderlyingType = ut
 			}
 			t.tokens[ref.Token] = tokenType
+
+			typ, diags := invalidType(errorf(path, "type %v not found in package %v", ref.Token, ref.Package))
+			err := fmt.Errorf("discovered dangling type reference: %v", ref.Token)
+
+			return typ, diags, err
 		}
 		return tokenType, diags, nil
 	case resourcesRef, providerRef:

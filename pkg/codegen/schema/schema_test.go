@@ -2039,3 +2039,30 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 
 	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
 }
+
+func TestDanglingReferences(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("dangling-reference-bad.json")
+	_, diags, err := BindSpec(pkgSpec, loader)
+	assert.NotEmpty(t, diags) // TODO
+	require.Error(t, err)
+}
+
+
+func TestNoDanglingReferences(t *testing.T) {
+	t.Parallel()
+
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := readSchemaFile("dangling-reference-good.json")
+	pkg, diags, err := BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	require.NotNil(t, newSpec)
+}
+
