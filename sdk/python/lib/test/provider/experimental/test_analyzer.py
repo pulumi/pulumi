@@ -1038,12 +1038,11 @@ def test_analyze_syntax_error():
         )
         assert False, "expected an exception"
     except Exception as e:
-        print(e)
         import traceback
 
         stack = traceback.extract_tb(e.__traceback__)[:]
-        print(stack)
-        assert str(e) == "invalid syntax (component.py, line 13)"
+        # The error message can be slightly different depending on the Python version.
+        assert "invalid syntax" in str(e) and "component.py, line 13)" in str(e)
 
 
 def test_analyze_duplicate_type():
