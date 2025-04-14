@@ -1,8 +1,10 @@
 name: python-component-provider-yaml
 description: Using a component provider written as a Python package from YAML
 runtime: yaml
-packages:
-  provider: ../provider
+plugins:
+  providers:
+    - name: provider
+      path: ../provider
 resources:
   comp:
     type: provider:index:MyComponent
