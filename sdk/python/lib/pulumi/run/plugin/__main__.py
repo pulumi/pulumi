@@ -36,7 +36,7 @@ def main():
 
     # Get the distribution name (aka package name) from the args and remove it.
     distribution_name = sys.argv.pop(1)
-    module__name = distribution_name.replace("-", "_")
+    module_name = distribution_name.replace("-", "_")
     # We could provide an override here in the future, where a user can specify
     # a list of modules or components in pyproject.toml, for example
     #
@@ -45,19 +45,20 @@ def main():
     #
     # For now we always host all the components exported from the module with the same name
     # as the distribution.
-    mod = importlib.import_module(module__name)
+    mod = importlib.import_module(module_name)
     components = components_from_module(mod)
     if len(components) > 0:
         component_provider_host(name=distribution_name, components=components)
     else:
         # The module has no components, assume that the module is runnable.
         try:
-            runpy.run_module(module__name)
+            runpy.run_module(module_name, run_name="__main__")
         except ImportError as e:
             print(
-                f"{module__name} can not be executed: {e.msg}\n\n"
+                f"{module_name} can not be executed: {e.msg}\n\n"
                 + "Please ensure that your module includes a `__main__.py` file that can be run with `python -m <module>`",
                 file=sys.stderr,
+                flush=True,
             )
             sys.exit(1)
 
