@@ -30,6 +30,7 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 
+	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -44,9 +45,6 @@ const (
 	apiRequestLogLevel       = 10 // log level for logging API requests and responses
 	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
 )
-
-// ErrLoginRequired is returned when a command requires logging in.
-var ErrLoginRequired = errors.New("this command requires logging in; try running `pulumi login` first")
 
 func UserAgent() string {
 	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
@@ -338,7 +336,7 @@ func pulumiAPICall(ctx context.Context,
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
-		return "", nil, ErrLoginRequired
+		return "", nil, backendErrors.ErrLoginRequired
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)

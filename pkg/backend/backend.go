@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/pulumi/esc"
@@ -39,33 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
-var ErrNoPreviousDeployment = errors.New("no previous deployment")
-
-// ErrLoginRequired is returned when a command requires logging in.
-var ErrLoginRequired = errors.New("this command requires logging in; try running `pulumi login` first")
-
-// StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
-type StackAlreadyExistsError struct {
-	StackName string
-}
-
-func (e StackAlreadyExistsError) Error() string {
-	return fmt.Sprintf("stack '%v' already exists", e.StackName)
-}
-
-// OverStackLimitError is returned from CreateStack when the organization is billed per-stack and
-// is over its stack limit.
-type OverStackLimitError struct {
-	Message string
-}
-
-func (e OverStackLimitError) Error() string {
-	m := e.Message
-	m = strings.ReplaceAll(m, "Conflict: ", "over stack limit: ")
-	return m
-}
 
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
 // method to turn a string like "my-great-stack" or "pulumi/my-great-stack" into a stack reference that can be used to

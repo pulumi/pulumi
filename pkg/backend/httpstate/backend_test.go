@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -92,7 +93,7 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
-	var expectedErr backend.MissingEnvVarForNonInteractiveError
+	var expectedErr backendErrors.MissingEnvVarForNonInteractiveError
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
 	}

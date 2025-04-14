@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -369,10 +370,10 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	stack, err := b.CreateStack(ctx, stackRef, root, initialState, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
-		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
+		if _, ok := err.(*backendErrors.StackAlreadyExistsError); ok {
 			return nil, err
 		}
-		if _, ok := err.(*backend.OverStackLimitError); ok {
+		if _, ok := err.(*backendErrors.OverStackLimitError); ok {
 			return nil, err
 		}
 		return nil, fmt.Errorf("could not create stack: %w", err)

@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -472,7 +473,7 @@ func (m defaultLoginManager) Login(
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
-		return nil, backend.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
+		return nil, backendErrors.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
 	}
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
@@ -626,15 +627,7 @@ func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *work
 		return account.Username, account.Organizations, account.TokenInformation, nil
 	}
 	logging.V(1).Infof("no username for access token")
-	user, org, token, err := b.client.GetPulumiAccountDetails(ctx)
-	if err != nil {
-		if errors.Is(err, client.ErrLoginRequired) {
-			logging.V(1).Infof("not logged in to %s", b.CloudURL())
-			return "", nil, nil, backend.ErrLoginRequired
-		}
-		return "", nil, nil, err
-	}
-	return user, org, token, err
+	return b.client.GetPulumiAccountDetails(ctx)
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -1005,10 +998,10 @@ func (b *cloudBackend) CreateStack(
 			// A 409 error response is returned when per-stack organizations are over their limit,
 			// so we need to look at the message to differentiate.
 			if strings.Contains(errResp.Message, "already exists") {
-				return nil, &backend.StackAlreadyExistsError{StackName: stackID.String()}
+				return nil, &backendErrors.StackAlreadyExistsError{StackName: stackID.String()}
 			}
 			if strings.Contains(errResp.Message, "you are using") {
-				return nil, &backend.OverStackLimitError{Message: errResp.Message}
+				return nil, &backendErrors.OverStackLimitError{Message: errResp.Message}
 			}
 		}
 		return nil, err
@@ -1366,7 +1359,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
-			conflict := backend.ConflictingUpdateError{Err: err}
+			conflict := backendErrors.ConflictingUpdateError{Err: err}
 			return client.UpdateIdentifier{}, updateMetadata{}, conflict
 		}
 		return client.UpdateIdentifier{}, updateMetadata{}, err
@@ -1690,7 +1683,7 @@ func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
 	switch {
 	case err == client.ErrNoPreviousDeployment:
-		return nil, backend.ErrNoPreviousDeployment
+		return nil, backendErrors.ErrNoPreviousDeployment
 	case err != nil:
 		return nil, err
 	default:
