@@ -135,20 +135,10 @@ var (
 	// Mark a property as an untyped computed value.
 	//
 	//	value := property.New(property.Computed)
-	//
-	// Computed can also be used to mark a [Value] as computed without changing other
-	// markers.
-	//
-	//	value := property.WithValue(maybeSecretValue, property.Computed)
 	Computed computed
 	// Mark a property as an untyped null value.
 	//
 	//	value := property.New(property.Null)
-	//
-	// Null can also be used to mark a [Value] as null without changing other
-	// markers.
-	//
-	//	value := property.WithValue(maybeSecretValue, property.Null)
 	//
 	// [Value]s can be null, and a null value *is not* equivalent to the absence of a
 	// value.

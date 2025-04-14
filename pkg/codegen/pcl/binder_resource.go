@@ -499,6 +499,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "deletedWith":
 				t = model.DynamicType
 				resourceOptions.DeletedWith = item.Value
+			case "import":
+				t = model.StringType
+				resourceOptions.ImportID = item.Value
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue

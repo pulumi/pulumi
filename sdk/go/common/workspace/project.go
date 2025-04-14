@@ -288,6 +288,52 @@ func (proj *Project) GetPackageSpecs() map[string]PackageSpec {
 	return result
 }
 
+func (proj *Project) AddPackage(name string, spec PackageSpec) {
+	if proj.Packages == nil {
+		proj.Packages = make(map[string]packageValue)
+	}
+
+	// We default to using the simple string format, but if the package
+	// - has parameters or
+	// - if all existing packages use the PackageSpec format or
+	// - if this same package was already added using the PackageSpec format
+	// we use the PackageSpec format.
+	useStringFormat := true
+	if len(spec.Parameters) > 0 {
+		// Simple string format does not support parameters
+		useStringFormat = false
+	} else if existingSpec, ok := proj.Packages[name]; ok {
+		if _, ok := existingSpec.value.(PackageSpec); ok {
+			// If the existing spec is a PackageSpec, keep its format
+			useStringFormat = false
+		}
+	} else if len(proj.Packages) > 0 {
+		// Check if all existing packages are PackageSpec
+		// If all packages are already using the PackageSpec format, maintain consistency
+		allPackageSpecs := true
+		for _, existingPackage := range proj.Packages {
+			if _, ok := existingPackage.value.(PackageSpec); !ok {
+				allPackageSpecs = false
+				break
+			}
+		}
+		if allPackageSpecs {
+			useStringFormat = false
+		}
+	}
+
+	// Add the package to the project
+	if useStringFormat {
+		specString := spec.Source
+		if spec.Version != "" {
+			specString = fmt.Sprintf("%s@%s", spec.Source, spec.Version)
+		}
+		proj.Packages[name] = packageValue{value: specString}
+	} else {
+		proj.Packages[name] = packageValue{value: spec}
+	}
+}
+
 func isPrimitiveValue(value interface{}) bool {
 	switch value.(type) {
 	case string, int, bool:

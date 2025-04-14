@@ -257,7 +257,10 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
@@ -281,7 +284,10 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
@@ -304,7 +310,10 @@ func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
 	require.NoError(t, err)
@@ -322,7 +331,10 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
@@ -344,7 +356,10 @@ func TestRename(t *testing.T) {
 	ctx := context.Background()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)

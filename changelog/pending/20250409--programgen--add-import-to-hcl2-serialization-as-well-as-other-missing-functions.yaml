@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Add import to HCL2 serialization as well as other missing functions

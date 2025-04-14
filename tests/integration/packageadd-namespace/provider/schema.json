@@ -1,6 +1,5 @@
 {
   "name": "mypkg",
-  "version": "1.0.0",
   "namespace": "my-namespace",
   "resources": {
     "mypkg::Resource": {

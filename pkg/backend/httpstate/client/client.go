@@ -1195,6 +1195,12 @@ func (pc *Client) UpdateStackTags(
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
 }
 
+func (pc *Client) UpdateStackConfig(
+	ctx context.Context, stack StackIdentifier, config *apitype.StackConfig,
+) error {
+	return pc.restCall(ctx, "PUT", getStackPath(stack, "config"), nil, config, nil)
+}
+
 func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
 	deployment apitype.DeploymentSettings,
 ) error {

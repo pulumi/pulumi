@@ -70,6 +70,10 @@ func TestDependencyGraph(t *testing.T) {
 	e4 := &resource.State{URN: "e4", Dependencies: []resource.URN{e3.URN}}
 	e5 := &resource.State{URN: "e5", DeletedWith: e3.URN}
 
+	f1 := &resource.State{URN: "f1"}
+	f2 := &resource.State{URN: "f2", DeletedWith: f1.URN}
+	f1D := &resource.State{URN: "f1", Delete: true}
+
 	dg := NewDependencyGraph([]*resource.State{
 		providerA,
 		a1,
@@ -88,6 +92,9 @@ func TestDependencyGraph(t *testing.T) {
 		e3,
 		e4,
 		e5,
+		f1,
+		f2,
+		f1D,
 	})
 
 	t.Run("DependingOn", func(t *testing.T) {
@@ -633,6 +640,18 @@ func TestDependencyGraph(t *testing.T) {
 				expected: mapset.NewSet[*resource.State](
 					e3, // e5 is deleted with e3
 					e1, // (transitive) e3 has a property dependency on e1
+				),
+			},
+			{
+				name:     "f1",
+				res:      f1,
+				expected: mapset.NewSet[*resource.State](),
+			},
+			{
+				name: "f2",
+				res:  f2,
+				expected: mapset.NewSet[*resource.State](
+					f1, // f2 is deleted with f1
 				),
 			},
 		}

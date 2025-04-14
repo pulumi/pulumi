@@ -533,6 +533,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}
 			}
 
+			if len(funcExpr.Args) == 3 {
+				if invokeOptions, ok := funcExpr.Args[2].(*model.ObjectConsExpression); ok {
+					g.Fgen(w, ", new() {\n")
+					g.Indented(func() {
+						for _, item := range invokeOptions.Items {
+							key := pcl.LiteralValueString(item.Key)
+							switch key {
+							case "pluginDownloadUrl":
+								// in .NET SDK the field is PluginDownloadURL so we have to special-case it
+								g.Fgenf(w, "%sPluginDownloadURL = %v,\n", g.Indent, item.Value)
+							default:
+								g.Fgenf(w, "%s%s = %v,\n", g.Indent, Title(key), item.Value)
+							}
+						}
+					})
+					g.Fgenf(w, "%s}", g.Indent)
+				}
+			}
+
 			g.Fprint(w, ")")
 		} else {
 			g.Fgenf(w, "Output.Create(%.v)", expr.Args[0])

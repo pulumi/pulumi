@@ -17,6 +17,7 @@ import collections
 from enum import Enum
 import inspect
 import sys
+import types
 import typing
 from collections import abc
 from collections.abc import Awaitable
@@ -634,7 +635,13 @@ def py_type_to_property_type(typ: type) -> PropertyType:
 
 
 def is_union(typ: type):
-    return get_origin(typ) == Union
+    # Check for `Union[a, b]`
+    if get_origin(typ) == Union:
+        return True
+    if sys.version_info >= (3, 10):
+        # Check for `a | b`
+        return get_origin(typ) == types.UnionType
+    return False
 
 
 def is_enum(typ: type):

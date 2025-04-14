@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +27,7 @@ import (
 func TestErrorsOnNonHTTPBackend(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
-	mockBackendInstance(t, &backend.MockBackend{
+	testutil.MockBackendInstance(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
