@@ -340,6 +340,13 @@ type defaultProviderRequest struct {
 	response chan<- defaultProviderResponse
 }
 
+func (d *defaultProviders) cachedProviderRef(
+	req providers.ProviderRequest,
+) providers.Reference {
+	req = d.normalizeProviderRequest(req)
+	return d.providers[req.String()]
+}
+
 func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderRequest) providers.ProviderRequest {
 	// Request that the engine instantiate a specific version of this provider, if one was requested. We'll figure out
 	// what version to request by:
@@ -2006,7 +2013,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
-	if custom && !providers.IsProviderType(t) || remote {
+	if !providers.IsProviderType(t) || remote {
 		providerReq, err := parseProviderRequest(
 			t.Package(), opts.GetVersion(),
 			opts.GetPluginDownloadUrl(), opts.GetPluginChecksums(), nil)
@@ -2014,27 +2021,41 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		packageRef := req.GetPackageRef()
-		if packageRef != "" {
-			var has bool
-			providerReq, has = rm.packageRefMap[packageRef]
-			if !has {
-				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+		if !custom {
+			// We have a component resource here, which don't necessarily have a
+			// provider. However for component resources that are being created
+			// outside of the program, in a separate provider, we do want to track
+			// the provider relationship.
+			//
+			// Such components don't send us any indication that they are created
+			// differently in the register resource request. Instead we check if
+			// we already have a provider cached for its package. This will always
+			// be the case for external component resources, since they are only
+			// created after the 'Construct' request.
+			providerRef = rm.defaultProviders.cachedProviderRef(providerReq)
+		} else {
+			packageRef := req.GetPackageRef()
+			if packageRef != "" {
+				var has bool
+				providerReq, has = rm.packageRefMap[packageRef]
+				if !has {
+					return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+				}
 			}
-		}
 
-		providerRef, err = rm.getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
-		if err != nil {
-			return nil, err
-		}
-
-		providerRefs = make(map[string]string, len(opts.GetProviders()))
-		for name, provider := range opts.GetProviders() {
-			ref, err := rm.getProviderReference(rm.defaultProviders, providerReq, provider)
+			providerRef, err = rm.getProviderReference(rm.defaultProviders, providerReq, opts.GetProvider())
 			if err != nil {
 				return nil, err
 			}
-			providerRefs[name] = ref.String()
+
+			providerRefs = make(map[string]string, len(opts.GetProviders()))
+			for name, provider := range opts.GetProviders() {
+				ref, err := rm.getProviderReference(rm.defaultProviders, providerReq, provider)
+				if err != nil {
+					return nil, err
+				}
+				providerRefs[name] = ref.String()
+			}
 		}
 	}
 
