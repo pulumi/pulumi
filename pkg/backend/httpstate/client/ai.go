@@ -35,16 +35,18 @@ func createSummarizeUpdateRequest(
 	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
 	return apitype.CopilotSummarizeUpdateRequest{
-		State: apitype.CopilotState{
-			Client: apitype.CopilotClientState{
-				CloudContext: apitype.CopilotCloudContext{
-					OrgID: orgID,
-					URL:   "https://app.pulumi.com",
+		CopilotRequest: apitype.CopilotRequest{
+			State: apitype.CopilotState{
+				Client: apitype.CopilotClientState{
+					CloudContext: apitype.CopilotCloudContext{
+						OrgID: orgID,
+						URL:   "https://app.pulumi.com",
+					},
 				},
 			},
 		},
 		DirectSkillCall: apitype.CopilotSummarizeUpdate{
-			Skill: "summarizeUpdate",
+			Skill: apitype.SkillSummarizeUpdate,
 			Params: apitype.CopilotSummarizeUpdateParams{
 				PulumiUpdateOutput: content,
 				Model:              model,
@@ -64,16 +66,18 @@ func createSummarizePreviewRequest(
 	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
 	return apitype.CopilotSummarizePreviewRequest{
-		State: apitype.CopilotState{
-			Client: apitype.CopilotClientState{
-				CloudContext: apitype.CopilotCloudContext{
-					OrgID: orgID,
-					URL:   "https://app.pulumi.com",
+		CopilotRequest: apitype.CopilotRequest{
+			State: apitype.CopilotState{
+				Client: apitype.CopilotClientState{
+					CloudContext: apitype.CopilotCloudContext{
+						OrgID: orgID,
+						URL:   "https://app.pulumi.com",
+					},
 				},
 			},
 		},
 		DirectSkillCall: apitype.CopilotSummarizePreview{
-			Skill: "summarizePreview",
+			Skill: apitype.SkillSummarizePreview,
 			Params: apitype.CopilotSummarizePreviewParams{
 				PulumiPreviewOutput: content,
 			},
