@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 from enum import Enum
 from importlib.machinery import SourceFileLoader
 from collections import abc
@@ -297,6 +298,43 @@ def test_analyze_component_plain_types():
             python_type=ComplexTypeOutput,
         ),
     }
+
+
+def test_analyze_optional_3_10_syntax():
+    if sys.version_info < (3, 10):
+        pytest.skip(f"requires Python 3.10 or above, running on {sys.version_info}")
+
+    class Args(TypedDict):
+        optional_syntax: str | None
+        optional_typing: Optional[str]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("optional")
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "optionalSyntax": PropertyDefinition(
+                type=PropertyType.STRING,
+                optional=True,
+                plain=True,
+            ),
+            "optionalTyping": PropertyDefinition(
+                type=PropertyType.STRING,
+                optional=True,
+                plain=True,
+            ),
+        },
+        inputs_mapping={
+            "optionalSyntax": "optional_syntax",
+            "optionalTyping": "optional_typing",
+        },
+        outputs={},
+        outputs_mapping={},
+    )
 
 
 def test_analyze_list_simple():
@@ -900,6 +938,26 @@ def test_analyze_union_type():
         assert (
             str(e)
             == "Union types are not supported: found type 'typing.Union[str, int]' for 'Args.uni'"
+        )
+
+
+def test_analyze_union_type_3_10_syntax():
+    if sys.version_info < (3, 10):
+        pytest.skip(f"requires Python 3.10 or above, running on {sys.version_info}")
+
+    analyzer = Analyzer("union-type-3-10-syntax")
+
+    try:
+        analyzer.analyze(
+            components=load_components(
+                Path("testdata", "analyzer-errors", "union-type-3-10-syntax")
+            ),
+        )
+        assert False, "expected an exception"
+    except Exception as e:
+        assert (
+            str(e)
+            == "Union types are not supported: found type 'str | int' for 'Args.uni'"
         )
 
 
