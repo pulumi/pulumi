@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Add interactive Copilot Explain option to Previews
