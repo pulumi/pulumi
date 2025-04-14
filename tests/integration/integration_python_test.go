@@ -1928,15 +1928,15 @@ func TestPythonComponentProviderRun(t *testing.T) {
 
 // Tests that we can run a Python component provider using bootstrap-less mode.
 //
-//nolint:paralleltest // We're installing dependencies in the test data dir
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderBootstraplessRun(t *testing.T) {
-	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "bootstrap-less"))
-	require.NoError(t, err)
-	providerDir := filepath.Join(testData, "provider")
-	installPythonProviderDependencies(t, providerDir)
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join(testData, "yaml"),
+		Dir:             filepath.Join("component_provider", "python", "bootstrap-less"),
+		RelativeWorkDir: "yaml",
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 			require.NoError(t, err)
@@ -1947,15 +1947,15 @@ func TestPythonComponentProviderBootstraplessRun(t *testing.T) {
 
 // Tests that we can run a Python component provider that's a Python package
 //
-//nolint:paralleltest // We're installing dependencies in the test data dir
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderPackageRun(t *testing.T) {
-	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "package"))
-	require.NoError(t, err)
-	providerDir := filepath.Join(testData, "provider")
-	installPythonProviderDependencies(t, providerDir)
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join(testData, "yaml"),
+		Dir:             filepath.Join("component_provider", "python", "package"),
+		RelativeWorkDir: "yaml",
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 			require.NoError(t, err)
