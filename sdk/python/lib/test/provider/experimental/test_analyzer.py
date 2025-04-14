@@ -1038,7 +1038,6 @@ def test_analyze_syntax_error():
         )
         assert False, "expected an exception"
     except Exception as e:
-        print(e)
         import traceback
 
         stack = traceback.extract_tb(e.__traceback__)[:]
