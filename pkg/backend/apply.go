@@ -189,7 +189,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			choices = append(choices, string(details))
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
-			if explainer != nil && opts.Display.ShowCopilotExplain {
+			if explainer != nil && opts.Display.ShowCopilotSummary {
 				choices = append(choices, explain)
 			}
 		}

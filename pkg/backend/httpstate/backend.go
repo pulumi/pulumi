@@ -1393,7 +1393,6 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
 	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
-	op.Opts.Display.ShowCopilotExplain = isCopilotEnabled
 	copilotEnabledValueString := "is"
 	continuationString := ""
 	if isCopilotEnabled {
