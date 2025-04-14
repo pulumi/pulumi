@@ -86,4 +86,52 @@ describe("Schema", function () {
         assert.strictEqual(schema.namespace, "my-namespace");
         assert.strictEqual(schema.name, "test-provider");
     });
+
+    it("should map object and enum types correctly", function () {
+        const components: Record<string, ComponentDefinition> = {};
+        const typeDefinitions: Record<string, TypeDefinition> = {
+            MyObject: {
+                name: "MyObject",
+                properties: {
+                    name: { type: "string", optional: false },
+                    count: { type: "number", optional: true },
+                },
+            },
+            MyEnum: {
+                name: "MyEnum",
+                enum: [
+                    { name: "Option1", value: "option1" },
+                    { name: "Option2", value: "option2" },
+                ],
+            },
+        };
+
+        const schema = generateSchema(
+            "test-provider",
+            "1.0.0",
+            "Test provider with object and enum types",
+            components,
+            typeDefinitions,
+            {},
+        );
+
+        // Verify object type mapping
+        assert.deepStrictEqual(schema.types["test-provider:index:MyObject"], {
+            type: "object",
+            properties: {
+                name: { type: "string" },
+                count: { type: "number" },
+            },
+            required: ["name"],
+        });
+
+        // Verify enum type mapping
+        assert.deepStrictEqual(schema.types["test-provider:index:MyEnum"], {
+            type: "string",
+            enum: [
+                { name: "Option1", value: "option1" },
+                { name: "Option2", value: "option2" },
+            ],
+        });
+    });
 });
