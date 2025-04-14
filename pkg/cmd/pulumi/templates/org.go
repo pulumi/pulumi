@@ -28,7 +28,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -57,7 +57,7 @@ func (s *Source) getOrgTemplates(
 
 	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
 	if err != nil {
-		if !errors.Is(err, backendErrors.MissingEnvVarForNonInteractiveError{}) {
+		if !errors.Is(err, backenderr.MissingEnvVarForNonInteractiveError{}) {
 			s.addError(fmt.Errorf("could not get the current backend: %w", err))
 		}
 		logging.Infof("could not get a backend for org templates")
@@ -66,7 +66,7 @@ func (s *Source) getOrgTemplates(
 
 	// Attempt to retrieve the current user
 	if _, _, _, err := b.CurrentUser(); err != nil {
-		if errors.Is(err, backendErrors.ErrLoginRequired) {
+		if errors.Is(err, backenderr.ErrLoginRequired) {
 			logging.Infof("user is not logged in")
 			return // No current user - so don't proceed
 		}

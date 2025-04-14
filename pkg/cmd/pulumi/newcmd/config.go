@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -51,7 +51,7 @@ func HandleConfig(
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
-	if err != nil && err != backendErrors.ErrNoPreviousDeployment {
+	if err != nil && err != backenderr.ErrNoPreviousDeployment {
 		return err
 	}
 

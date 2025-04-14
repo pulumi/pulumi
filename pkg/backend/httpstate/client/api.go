@@ -30,7 +30,7 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 
-	backendErrors "github.com/pulumi/pulumi/pkg/v3/backend/errors"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -336,7 +336,7 @@ func pulumiAPICall(ctx context.Context,
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
-		return "", nil, backendErrors.ErrLoginRequired
+		return "", nil, backenderr.ErrLoginRequired
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
