@@ -1928,7 +1928,7 @@ func TestPythonComponentProviderRun(t *testing.T) {
 
 // Tests that we can run a Python component provider using bootstrap-less mode.
 //
-//nolint:paralleltest // ProgramTest calls t.Parallel()
+//nolint:paralleltest // We're installing dependencies in the test data dir
 func TestPythonComponentProviderBootstraplessRun(t *testing.T) {
 	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "bootstrap-less"))
 	require.NoError(t, err)
@@ -1947,7 +1947,7 @@ func TestPythonComponentProviderBootstraplessRun(t *testing.T) {
 
 // Tests that we can run a Python component provider that's a Python package
 //
-//nolint:paralleltest // ProgramTest calls t.Parallel()
+//nolint:paralleltest // We're installing dependencies in the test data dir
 func TestPythonComponentProviderPackageRun(t *testing.T) {
 	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "package"))
 	require.NoError(t, err)
