@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Add Copilot summaries of errors in `pulumi up` previews and updates
