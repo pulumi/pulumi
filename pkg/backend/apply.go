@@ -42,7 +42,7 @@ type ApplierOptions struct {
 }
 
 // Applier applies the changes specified by this update operation against the target stack.
-type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
+type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op *UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
 // Explainer is a function that explains the changes that will be made to the stack.
@@ -120,7 +120,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	plan, changes, err := apply(ctx, kind, stack, &op, opts, eventsChannel)
 	if err != nil {
 		close(eventsChannel)
 		return plan, changes, err
@@ -293,7 +293,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
+	_, changes, res := apply(ctx, kind, stack, &op, opts, nil /*events*/)
 	return changes, res
 }
 

@@ -1144,7 +1144,7 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 		ShowLink: true,
 	}
 	return b.apply(
-		ctx, apitype.PreviewUpdate, stack, op, opts, events)
+		ctx, apitype.PreviewUpdate, stack, &op, opts, events)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1209,7 +1209,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.ResourceImportUpdate, stack, &op, opts, nil /*events*/)
 		return changes, err
 	}
 
@@ -1228,7 +1228,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.RefreshUpdate, stack, &op, opts, nil /*events*/)
 		return changes, err
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b.explainer)
@@ -1246,7 +1246,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, stack, &op, opts, nil /*events*/)
 		return changes, err
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b.explainer)
@@ -1445,7 +1445,7 @@ func (b *cloudBackend) createAndStartUpdate(
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op backend.UpdateOperation, opts backend.ApplierOptions,
+	op *backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	resetKeepRunning := nosleep.KeepRunning()
@@ -1460,7 +1460,7 @@ func (b *cloudBackend) apply(
 	}
 
 	// Create an update object to persist results.
-	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
+	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, op, opts.DryRun)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1519,7 +1519,7 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), *op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
