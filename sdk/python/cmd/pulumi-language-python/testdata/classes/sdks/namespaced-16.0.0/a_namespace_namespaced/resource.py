@@ -9,7 +9,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-import pulumi_simple
+import pulumi_component
 
 __all__ = ['ResourceArgs', 'Resource']
 
@@ -17,7 +17,7 @@ __all__ = ['ResourceArgs', 'Resource']
 class ResourceArgs:
     def __init__(__self__, *,
                  value: pulumi.Input[builtins.bool],
-                 resource_ref: Optional[pulumi.Input['pulumi_simple.Resource']] = None):
+                 resource_ref: Optional[pulumi.Input['pulumi_component.Custom']] = None):
         """
         The set of arguments for constructing a Resource resource.
         """
@@ -36,11 +36,11 @@ class ResourceArgs:
 
     @property
     @pulumi.getter(name="resourceRef")
-    def resource_ref(self) -> Optional[pulumi.Input['pulumi_simple.Resource']]:
+    def resource_ref(self) -> Optional[pulumi.Input['pulumi_component.Custom']]:
         return pulumi.get(self, "resource_ref")
 
     @resource_ref.setter
-    def resource_ref(self, value: Optional[pulumi.Input['pulumi_simple.Resource']]):
+    def resource_ref(self, value: Optional[pulumi.Input['pulumi_component.Custom']]):
         pulumi.set(self, "resource_ref", value)
 
 
@@ -49,7 +49,7 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_ref: Optional[pulumi.Input['pulumi_simple.Resource']] = None,
+                 resource_ref: Optional[pulumi.Input['pulumi_component.Custom']] = None,
                  value: Optional[pulumi.Input[builtins.bool]] = None,
                  __props__=None):
         """
@@ -80,7 +80,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_ref: Optional[pulumi.Input['pulumi_simple.Resource']] = None,
+                 resource_ref: Optional[pulumi.Input['pulumi_component.Custom']] = None,
                  value: Optional[pulumi.Input[builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -123,7 +123,7 @@ class Resource(pulumi.CustomResource):
 
     @property
     @pulumi.getter(name="resourceRef")
-    def resource_ref(self) -> pulumi.Output[Optional['pulumi_simple.Resource']]:
+    def resource_ref(self) -> pulumi.Output[Optional['pulumi_component.Custom']]:
         return pulumi.get(self, "resource_ref")
 
     @property

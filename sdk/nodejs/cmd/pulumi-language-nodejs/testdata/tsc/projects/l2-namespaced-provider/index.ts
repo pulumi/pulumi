@@ -1,6 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
+import * as component from "@pulumi/component";
 import * as namespaced from "@a-namespace/namespaced";
-import * as simple from "@pulumi/simple";
 
-const simpleRes = new simple.Resource("simpleRes", {value: true});
-const res = new namespaced.Resource("res", {value: true});
+const componentRes = new component.ComponentCustomRefOutput("componentRes", {value: "foo-bar-baz"});
+const res = new namespaced.Resource("res", {
+    value: true,
+    resourceRef: componentRes.ref,
+});

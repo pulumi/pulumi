@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiSimple from "@pulumi/simple";
+import * as pulumiComponent from "@pulumi/component";
 
 export class Resource extends pulumi.CustomResource {
     /**
@@ -33,7 +33,7 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
-    public readonly resourceRef!: pulumi.Output<pulumiSimple.Resource | undefined>;
+    public readonly resourceRef!: pulumi.Output<pulumiComponent.Custom | undefined>;
     public readonly value!: pulumi.Output<boolean>;
 
     /**
@@ -65,6 +65,6 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    resourceRef?: pulumi.Input<pulumiSimple.Resource>;
+    resourceRef?: pulumi.Input<pulumiComponent.Custom>;
     value: pulumi.Input<boolean>;
 }
