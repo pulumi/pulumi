@@ -321,6 +321,21 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 	return latestSem, oldestSem, devSem, nil
 }
 
+// GetDefaultOrg lists the backend's opinion of which user organization to use, if default organization
+// is unset. This API should only be called if the backend supports DefaultOrg as a capability.
+func (pc *Client) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganizationResponse, error) {
+	var resp apitype.GetDefaultOrganizationResponse
+	if err := pc.restCall(ctx, "GET", "/api/user/organization/default", nil, nil, &resp); err != nil {
+		if is404(err) {
+			// The client continues to support legacy backends. They do not support GetDefaultOrg; decision
+			// for default org is left for the CLI to determine.
+			return apitype.GetDefaultOrganizationResponse{}, nil
+		}
+		return apitype.GetDefaultOrganizationResponse{}, err
+	}
+	return resp, nil
+}
+
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
 	Project      *string

@@ -2202,6 +2202,12 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	}
 }
 
+func (b *cloudBackend) GetServiceDefaultOrg(ctx context.Context, policyPack string,
+	d diag.Sink,
+) (apitype.GetDefaultOrganizationResponse, error) {
+	return b.client.GetDefaultOrg(ctx)
+}
+
 type httpstateBackendClient struct {
 	backend deploy.BackendClient
 }
