@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs,python
+  description: Add --config-file option to Automation API operations (Preview, Up, Refresh, Destroy) for NodeJS, and Python
