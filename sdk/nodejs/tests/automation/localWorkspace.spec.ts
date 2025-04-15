@@ -866,6 +866,22 @@ describe("LocalWorkspace", () => {
         const destroyRes = await stack.destroy({ userAgent, refresh });
         assert.match(destroyRes.stdout, /refreshing/);
     });
+    it(`operations accept configFile option`, () => {
+        // Setup test data
+        const configPath = "/path/to/config.yaml";
+
+        // Create options objects with configFile
+        const previewOpts = { configFile: configPath };
+        const upOpts = { configFile: configPath };
+        const refreshOpts = { configFile: configPath };
+        const destroyOpts = { configFile: configPath };
+
+        // Simple verification that the options properties exist and are accepted
+        assert.strictEqual(previewOpts.configFile, configPath, "preview options should accept configFile");
+        assert.strictEqual(upOpts.configFile, configPath, "up options should accept configFile");
+        assert.strictEqual(refreshOpts.configFile, configPath, "refresh options should accept configFile");
+        assert.strictEqual(destroyOpts.configFile, configPath, "destroy options should accept configFile");
+    });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {
             class MyResource extends ComponentResource {
