@@ -1396,7 +1396,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 
 	if hasPluginRunModule && !hasMainPy {
-		// Run `python -m pulumi.run <project name> req.Args...
+		// Run `python -m pulumi.run.plugin <project name> req.Args...
 		buildable, err := toolchain.IsBuildablePackage(opts.Root)
 		if err != nil {
 			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
