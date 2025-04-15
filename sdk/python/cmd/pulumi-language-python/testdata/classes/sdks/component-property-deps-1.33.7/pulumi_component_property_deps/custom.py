@@ -32,6 +32,9 @@ class CustomArgs:
 
 
 class Custom(pulumi.CustomResource):
+
+    pulumi_type = "component-property-deps:index:Custom"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

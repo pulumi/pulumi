@@ -32,6 +32,9 @@ class StringArgs:
 
 
 class String(pulumi.CustomResource):
+
+    pulumi_type = "large:index:String"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

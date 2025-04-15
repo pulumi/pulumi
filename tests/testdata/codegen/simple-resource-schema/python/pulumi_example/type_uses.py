@@ -65,6 +65,9 @@ class TypeUsesArgs:
 
 
 class TypeUses(pulumi.CustomResource):
+
+    pulumi_type = "example::TypeUses"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -22,6 +22,9 @@ class ProviderArgs:
 
 
 class Provider(pulumi.ProviderResource):
+
+    pulumi_type = "pulumi:providers:ref-ref"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

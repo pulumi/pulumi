@@ -35,6 +35,9 @@ class ComponentArgs:
 
 
 class Component(pulumi.ComponentResource):
+
+    pulumi_type = "typedDictDisabledExample:index:Component"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -53,6 +53,9 @@ class ModuleTestArgs:
 
 
 class ModuleTest(pulumi.CustomResource):
+
+    pulumi_type = "example:index:moduleTest"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

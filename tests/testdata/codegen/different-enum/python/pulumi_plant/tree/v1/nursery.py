@@ -58,6 +58,9 @@ class NurseryArgs:
 
 
 class Nursery(pulumi.CustomResource):
+
+    pulumi_type = "plant:tree/v1:Nursery"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

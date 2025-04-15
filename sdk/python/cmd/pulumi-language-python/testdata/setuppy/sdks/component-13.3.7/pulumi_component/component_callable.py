@@ -37,6 +37,9 @@ class ComponentCallableArgs:
 
 
 class ComponentCallable(pulumi.ComponentResource):
+
+    pulumi_type = "component:index:ComponentCallable"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

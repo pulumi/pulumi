@@ -52,6 +52,9 @@ class Example_resourceArgs:
 
 
 class Example_resource(pulumi.CustomResource):
+
+    pulumi_type = "legacy_names:index:example_resource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

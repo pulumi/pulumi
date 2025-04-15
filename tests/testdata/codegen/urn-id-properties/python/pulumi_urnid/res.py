@@ -51,6 +51,9 @@ class ResArgs:
 
 
 class Res(pulumi.CustomResource):
+
+    pulumi_type = "urnid:index:Res"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

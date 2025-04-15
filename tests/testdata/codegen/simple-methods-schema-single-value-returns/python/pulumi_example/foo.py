@@ -27,6 +27,9 @@ class FooArgs:
 
 
 class Foo(pulumi.ComponentResource):
+
+    pulumi_type = "example::Foo"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

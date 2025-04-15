@@ -40,6 +40,9 @@ class ModuleResourceArgs:
 
 
 class ModuleResource(pulumi.CustomResource):
+
+    pulumi_type = "foo-bar:submodule1:ModuleResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

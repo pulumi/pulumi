@@ -39,6 +39,9 @@ class FooResourceArgs:
 
 
 class FooResource(pulumi.ComponentResource):
+
+    pulumi_type = "foo::FooResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

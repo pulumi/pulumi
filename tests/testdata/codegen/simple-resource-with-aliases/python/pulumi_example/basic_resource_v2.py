@@ -37,6 +37,9 @@ class BasicResourceV2Args:
 
 
 class BasicResourceV2(pulumi.CustomResource):
+
+    pulumi_type = "example:index:BasicResourceV2"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

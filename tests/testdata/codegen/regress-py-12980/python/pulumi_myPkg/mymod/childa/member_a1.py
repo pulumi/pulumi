@@ -27,6 +27,9 @@ class MemberA1Args:
 
 
 class MemberA1(pulumi.ComponentResource):
+
+    pulumi_type = "myPkg:myMod/childA:MemberA1"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

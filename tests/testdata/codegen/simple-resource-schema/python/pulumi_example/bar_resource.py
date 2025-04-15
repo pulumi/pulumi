@@ -39,6 +39,9 @@ class BarResourceArgs:
 
 
 class BarResource(pulumi.ComponentResource):
+
+    pulumi_type = "bar::BarResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

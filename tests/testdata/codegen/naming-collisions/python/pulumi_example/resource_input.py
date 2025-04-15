@@ -27,6 +27,9 @@ class ResourceInputArgs:
 
 
 class ResourceInput(pulumi.CustomResource):
+
+    pulumi_type = "example::ResourceInput"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

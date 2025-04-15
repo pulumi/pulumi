@@ -27,6 +27,9 @@ class FOOEncryptedBarClassArgs:
 
 
 class FOOEncryptedBarClass(pulumi.CustomResource):
+
+    pulumi_type = "foo-bar:submodule1:FOOEncryptedBarClass"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

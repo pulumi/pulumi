@@ -39,6 +39,9 @@ class ResourceArgs:
 
 
 class Resource(pulumi.CustomResource):
+
+    pulumi_type = "ref-ref:index:Resource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,
