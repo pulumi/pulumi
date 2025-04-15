@@ -776,6 +776,13 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	if o.Diff {
 		args = append(args, "--diff")
 	}
+	if o.RunProgram != nil {
+		if *o.RunProgram {
+			args = append(args, "--run-program=true")
+		} else {
+			args = append(args, "--run-program=false")
+		}
+	}
 
 	// Apply the remote args, if needed.
 	args = append(args, s.remoteArgs()...)
@@ -1021,6 +1028,13 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 	}
 	if destroyOpts.ConfigFile != "" {
 		args = append(args, "--config-file="+destroyOpts.ConfigFile)
+	}
+	if destroyOpts.RunProgram != nil {
+		if *destroyOpts.RunProgram {
+			args = append(args, "--run-program=true")
+		} else {
+			args = append(args, "--run-program=false")
+		}
 	}
 
 	execKind := constant.ExecKindAutoLocal

@@ -466,6 +466,13 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -547,6 +554,13 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.refresh) {
                 args.push("--refresh");
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
             }
             applyGlobalOpts(opts, args);
         }
@@ -1547,6 +1561,11 @@ export interface RefreshOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
@@ -1621,6 +1640,11 @@ export interface DestroyOptions extends GlobalOpts {
      * A signal to abort an ongoing operation.
      */
     signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the destroy.
+     */
+    runProgram?: boolean;
 }
 
 /**

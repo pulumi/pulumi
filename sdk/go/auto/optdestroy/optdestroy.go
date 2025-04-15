@@ -144,6 +144,13 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the destroy.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -189,6 +196,8 @@ type Options struct {
 	Remove bool
 	// Run using the configuration values in the specified file rather than detecting the file name
 	ConfigFile string
+	// When set to true, run the program in the workspace to perform the destroy.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

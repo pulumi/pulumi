@@ -136,6 +136,13 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the refresh.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Refresh() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -178,6 +185,8 @@ type Options struct {
 	ConfigFile string
 	// When set, display operation as a rich diff showing the overall change
 	Diff bool
+	// When set to true, run the program in the workspace to perform the refresh.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

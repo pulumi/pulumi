@@ -534,6 +534,7 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
+        run_program: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -557,6 +558,7 @@ class Stack:
         :param debug: Print detailed debugging output during resource operations
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
+        :param run_program: Run the program in the workspace to refresh the stack
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -566,6 +568,12 @@ class Stack:
             args.append("--preview-only")
         else:
             args.append("--skip-preview")
+
+        if run_program is not None:
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
 
         args.extend(extra_args)
         args.extend(self._remote_args())
@@ -648,6 +656,7 @@ class Stack:
         remove: Optional[bool] = None,
         refresh: Optional[bool] = None,
         preview_only: Optional[bool] = None,
+        run_program: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -673,6 +682,7 @@ class Stack:
         :param remove: Remove the stack and its configuration after all resources in the stack have been deleted.
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :param preview_only: Only show a preview of the destroy, but don't perform the destroy itself
+        :param run_program: Run the program in the workspace to destroy the stack
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -682,6 +692,12 @@ class Stack:
             args.append("--preview-only")
         else:
             args.extend(["--skip-preview", "--yes"])
+
+        if run_program is not None:
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
 
         args.extend(extra_args)
         args.extend(self._remote_args())
