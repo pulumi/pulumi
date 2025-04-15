@@ -55,6 +55,9 @@ class StaticPageArgs:
 
 
 class StaticPage(pulumi.ComponentResource):
+
+    pulumi_type = "xyz:index:StaticPage"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

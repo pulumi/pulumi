@@ -94,6 +94,9 @@ class ResourceArgs:
 
 
 class Resource(pulumi.CustomResource):
+
+    pulumi_type = "mypkg::Resource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -87,6 +87,9 @@ class FooArgs:
 
 
 class Foo(pulumi.CustomResource):
+
+    pulumi_type = "example:index:Foo"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

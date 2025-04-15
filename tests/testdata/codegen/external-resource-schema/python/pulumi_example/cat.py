@@ -52,6 +52,9 @@ class CatArgs:
 
 
 class Cat(pulumi.CustomResource):
+
+    pulumi_type = "example::Cat"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

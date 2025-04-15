@@ -52,6 +52,9 @@ class PersonArgs:
 
 
 class Person(pulumi.CustomResource):
+
+    pulumi_type = "example::Person"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

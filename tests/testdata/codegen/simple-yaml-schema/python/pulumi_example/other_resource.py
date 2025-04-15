@@ -51,6 +51,9 @@ class OtherResourceArgs:
 
 
 class OtherResource(pulumi.ComponentResource):
+
+    pulumi_type = "example::OtherResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

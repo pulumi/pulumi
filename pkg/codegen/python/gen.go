@@ -1377,6 +1377,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "    pulumi_type = \"%s\"\n", res.Token)
+	fmt.Fprintln(w)
+
 	// Determine if all inputs are optional.
 	allOptionalInputs := true
 	for _, prop := range res.InputProperties {

@@ -42,6 +42,9 @@ class RegistryGeoReplicationArgs:
 
 
 class RegistryGeoReplication(pulumi.ComponentResource):
+
+    pulumi_type = "registrygeoreplication:index:RegistryGeoReplication"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

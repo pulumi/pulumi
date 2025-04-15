@@ -39,6 +39,9 @@ class IamResourceArgs:
 
 
 class IamResource(pulumi.ComponentResource):
+
+    pulumi_type = "example:myModule:IamResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

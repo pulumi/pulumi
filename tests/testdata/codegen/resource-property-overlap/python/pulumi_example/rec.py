@@ -27,6 +27,9 @@ class RecArgs:
 
 
 class Rec(pulumi.CustomResource):
+
+    pulumi_type = "example::Rec"
+
     @overload
     def __init__(__self__,
                  resource_name: str,
