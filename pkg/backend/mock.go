@@ -175,6 +175,10 @@ func (be *MockBackend) SupportsDeployments() bool {
 	panic("not implemented")
 }
 
+func (be *MockBackend) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganizationResponse, error) {
+	return apitype.GetDefaultOrganizationResponse{}, nil
+}
+
 func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
 	if be.ParseStackReferenceF != nil {
 		return be.ParseStackReferenceF(s)

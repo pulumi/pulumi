@@ -429,3 +429,23 @@ func TestListTemplates(t *testing.T) {
 		}, actual)
 	})
 }
+
+func TestGetDefaultOrg(t *testing.T) {
+	t.Parallel()
+	t.Run("legacy-service-404", func(t *testing.T) {
+		t.Parallel()
+		// GIVEN
+		s := newMockServer(404, "NOT FOUND")
+		defer s.Close()
+
+		// WHEN
+		c := newMockClient(s)
+		resp, err := c.GetDefaultOrg(context.Background())
+
+		// THEN
+		// We should gracefully handle the 404
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Empty(t, resp.GitHubLogin)
+	})
+}

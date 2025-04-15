@@ -661,6 +661,10 @@ func (b *diyBackend) SupportsDeployments() bool {
 	return false
 }
 
+func (b *diyBackend) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganizationResponse, error) {
+	return apitype.GetDefaultOrganizationResponse{}, nil
+}
+
 func (b *diyBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
 	return b.parseStackReference(stackRef)
 }
