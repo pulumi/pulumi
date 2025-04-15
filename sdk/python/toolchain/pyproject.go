@@ -15,6 +15,7 @@
 package toolchain
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -43,6 +44,9 @@ type Pyproject struct {
 func IsBuildablePackage(dir string) (bool, error) {
 	pyproject, err := LoadPyproject(dir)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil // No pyproject.toml present
+		}
 		return false, fmt.Errorf("parsing pyproject.toml: %w", err)
 	}
 	return pyproject.Project != nil && pyproject.Project.Name != "" &&
@@ -51,14 +55,6 @@ func IsBuildablePackage(dir string) (bool, error) {
 
 func LoadPyproject(dir string) (Pyproject, error) {
 	pyprojectToml := filepath.Join(dir, "pyproject.toml")
-	_, err := os.Stat(pyprojectToml)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Pyproject{}, nil
-		}
-		return Pyproject{}, fmt.Errorf("checking pyproject.toml: %w", err)
-	}
-
 	b, err := os.ReadFile(pyprojectToml)
 	if err != nil {
 		return Pyproject{}, fmt.Errorf("reading %s: %w", pyprojectToml, err)
