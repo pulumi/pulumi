@@ -50,6 +50,7 @@ describe("Analyzer", function () {
                 outputs: {
                     outNumber: { type: "number" },
                     outString: { type: "string" },
+                    outStringNotOutput: { type: "string" },
                     outBoolean: { type: "boolean" },
                 },
             },
@@ -135,7 +136,7 @@ describe("Analyzer", function () {
                     theSelfRecursiveTypeInput: { $ref: "#/types/provider:index:SelfRecursive" },
                 },
                 outputs: {
-                    theSelfRecursiveTypeOutput: { $ref: "#/types/provider:index:SelfRecursive" },
+                    theSelfRecursiveTypeOutput: { $ref: "#/types/provider:index:SelfRecursiveComponentOutput" },
                 },
             },
         });
@@ -143,6 +144,10 @@ describe("Analyzer", function () {
             SelfRecursive: {
                 name: "SelfRecursive",
                 properties: { self: { $ref: "#/types/provider:index:SelfRecursive", plain: true } },
+            },
+            SelfRecursiveComponentOutput: {
+                name: "SelfRecursiveComponentOutput",
+                properties: { self: { $ref: "#/types/provider:index:SelfRecursiveComponentOutput" } },
             },
         });
     });
@@ -157,9 +162,7 @@ describe("Analyzer", function () {
                 inputs: {
                     typeAInput: { $ref: "#/types/provider:index:TypeA" },
                 },
-                outputs: {
-                    typeBOutput: { $ref: "#/types/provider:index:TypeB" },
-                },
+                outputs: {},
             },
         });
         assert.deepStrictEqual(typeDefinitions, {
@@ -332,7 +335,6 @@ describe("Analyzer", function () {
                     outputResource: { $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey" },
                     outputPlainResource: {
                         $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
-                        plain: true,
                     },
                     outputResourceOrUndefined: {
                         $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",

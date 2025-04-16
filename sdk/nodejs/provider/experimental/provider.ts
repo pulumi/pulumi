@@ -16,24 +16,20 @@ import { readFileSync } from "fs";
 import * as path from "path";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { ConstructResult, Provider } from "../provider";
-import { Inputs, Input, Output } from "../../output";
+import { Input, Inputs, Output } from "../../output";
 import { main } from "../server";
 import { generateSchema } from "./schema";
-import { Analyzer } from "./analyzer";
+import { Analyzer, ComponentDefinition } from "./analyzer";
 
-type OutputsToInputs<T> = {
-    [K in keyof T]: T[K] extends Output<infer U> ? Input<U> : never;
-};
-
-function getInputsFromOutputs<T extends ComponentResource>(resource: T): OutputsToInputs<T> {
+function getComponentOutputs<T extends ComponentResource>(
+    componentDefinition: ComponentDefinition,
+    resource: T,
+): Record<keyof T, Input<T[keyof T]>> {
     const result: any = {};
-    for (const key of Object.keys(resource)) {
-        const value = resource[key as keyof T];
-        if (Output.isInstance(value)) {
-            result[key] = value;
-        }
+    for (const key of Object.keys(componentDefinition.outputs)) {
+        result[key] = resource[key as keyof T];
     }
-    return result as OutputsToInputs<T>;
+    return result;
 }
 
 export type ComponentResourceConstructor = {
@@ -119,6 +115,8 @@ export class ComponentProvider implements Provider {
     private componentConstructors: Record<string, ComponentResourceConstructor>;
     private name: string;
     private namespace?: string;
+    private componentDefinitions?: Record<string, ComponentDefinition>;
+    private cachedSchema?: string;
     public version: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
@@ -162,6 +160,9 @@ export class ComponentProvider implements Provider {
     }
 
     async getSchema(): Promise<string> {
+        if (this.cachedSchema) {
+            return this.cachedSchema;
+        }
         const analyzer = new Analyzer(
             this.path,
             this.name,
@@ -178,7 +179,9 @@ export class ComponentProvider implements Provider {
             packageReferences,
             this.namespace,
         );
-        return JSON.stringify(schema);
+        this.cachedSchema = JSON.stringify(schema);
+        this.componentDefinitions = components;
+        return this.cachedSchema;
     }
 
     async construct(
@@ -194,9 +197,13 @@ export class ComponentProvider implements Provider {
             throw new Error(`Component class not found for '${componentName}'`);
         }
         const instance = new constructor(name, inputs, options);
+        if (!this.componentDefinitions) {
+            await this.getSchema();
+        }
+        const componentDefinition = this.componentDefinitions![componentName];
         return {
             urn: instance.urn,
-            state: getInputsFromOutputs(instance),
+            state: getComponentOutputs(componentDefinition, instance),
         };
     }
 }

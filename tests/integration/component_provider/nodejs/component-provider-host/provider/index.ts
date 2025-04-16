@@ -25,6 +25,7 @@ export class MyComponent extends pulumi.ComponentResource {
     aBooleanOutput: pulumi.Output<boolean>;
     aComplexTypeOutput: pulumi.Output<Complex>;
     aResourceOutput: pulumi.Output<random.RandomPet>;
+    aString: string;
 
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("nodejs-component-provider:index:MyComponent", name, args, opts);
@@ -36,12 +37,14 @@ export class MyComponent extends pulumi.ComponentResource {
             nestedComplexType: { aNumber: ct.nestedComplexType.aNumber * 2 }
         }));
         this.aResourceOutput = pulumi.output(new random.RandomPet(name + "-pet"));
+        this.aString = "hello";
         this.registerOutputs({
             aNumberOutput: this.aNumberOutput,
             anOptionalStringOutput: this.anOptionalStringOutput,
             aBooleanOutput: this.aBooleanOutput,
             aComplexTypeOutput: this.aComplexTypeOutput,
             aResourceOutput: this.aResourceOutput,
+            aString: this.aString,
         });
     }
 }
