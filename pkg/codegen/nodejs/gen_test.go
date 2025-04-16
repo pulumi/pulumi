@@ -57,8 +57,8 @@ func TestGeneratePackageThree(t *testing.T) {
 func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language: "nodejs",
-		GenPackage: func(s string, p *schema.Package, m map[string][]byte) (map[string][]byte, error) {
-			return GeneratePackage(s, p, m, nil, false)
+		GenPackage: func(s string, p *schema.Package, m map[string][]byte, l schema.ReferenceLoader) (map[string][]byte, error) {
+			return GeneratePackage(s, p, m, nil, false, l)
 		},
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": func(t *testing.T, pwd string) {

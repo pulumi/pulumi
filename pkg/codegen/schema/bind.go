@@ -199,6 +199,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	pkg.Resources = resources
 	pkg.Functions = functions
 	pkg.Parameterization = parameterization
+	pkg.Dependencies = spec.Dependencies
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
@@ -278,6 +279,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		PluginDownloadURL:   info.PluginDownloadURL,
 		Publisher:           info.Publisher,
 		Namespace:           info.Namespace,
+		Dependencies:        info.Dependencies,
 		AllowedPackageNames: info.AllowedPackageNames,
 		LogoURL:             info.LogoURL,
 		Language:            language,

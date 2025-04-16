@@ -35,7 +35,7 @@ import (
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
-type GenPkgSignature func(string, *schema.Package, map[string][]byte) (map[string][]byte, error)
+type GenPkgSignature func(string, *schema.Package, map[string][]byte, schema.ReferenceLoader) (map[string][]byte, error)
 
 // GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
 func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
@@ -65,7 +65,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, diags
 	}
 
-	return genPackageFunc("test", pkg, nil)
+	return genPackageFunc("test", pkg, nil, nil)
 }
 
 // LoadFiles loads the provided list of files from a directory.

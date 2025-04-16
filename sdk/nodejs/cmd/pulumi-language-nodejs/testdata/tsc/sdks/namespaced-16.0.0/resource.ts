@@ -4,6 +4,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
+import * as pulumiComponent from "@pulumi/component";
+
 export class Resource extends pulumi.CustomResource {
     /**
      * Get an existing Resource resource's state with the given name, ID, and optional extra
@@ -31,6 +33,7 @@ export class Resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Resource.__pulumiType;
     }
 
+    public readonly resourceRef!: pulumi.Output<pulumiComponent.Custom | undefined>;
     public readonly value!: pulumi.Output<boolean>;
 
     /**
@@ -47,8 +50,10 @@ export class Resource extends pulumi.CustomResource {
             if ((!args || args.value === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'value'");
             }
+            resourceInputs["resourceRef"] = args ? args.resourceRef : undefined;
             resourceInputs["value"] = args ? args.value : undefined;
         } else {
+            resourceInputs["resourceRef"] = undefined /*out*/;
             resourceInputs["value"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -60,5 +65,6 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
+    resourceRef?: pulumi.Input<pulumiComponent.Custom>;
     value: pulumi.Input<boolean>;
 }

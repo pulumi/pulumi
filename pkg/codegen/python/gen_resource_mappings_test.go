@@ -63,7 +63,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 			return ""
 		}
 
-		files, err := GeneratePackage("tool", pkg, nil)
+		files, err := GeneratePackage("tool", pkg, nil, nil)
 		if err != nil {
 			t.Error(err)
 			return ""

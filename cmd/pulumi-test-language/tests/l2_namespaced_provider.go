@@ -25,7 +25,7 @@ import (
 
 func init() {
 	LanguageTests["l2-namespaced-provider"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.NamespacedProvider{}},
+		Providers: []plugin.Provider{&providers.ComponentProvider{}, &providers.NamespacedProvider{}},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -34,18 +34,29 @@ func init() {
 				) {
 					RequireStackResource(l, err, changes)
 
-					// Check we have the one resource of the namespaced provider in the snapshot, its provider and the stack.
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					require.Len(l, snap.Resources, 7, "expected 5 resources in snapshot")
 
 					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:namespaced")
 					require.Equal(l, "pulumi:providers:namespaced", provider.Type.String(), "expected namespaced provider")
+					componentProv := RequireSingleResource(l, snap.Resources, "pulumi:providers:component")
+					require.Equal(l, "pulumi:providers:component", componentProv.Type.String(), "expected component provider")
 
 					namespaced := RequireSingleResource(l, snap.Resources, "namespaced:index:Resource")
 					require.Equal(l, "namespaced:index:Resource", namespaced.Type.String(), "expected namespaced resource")
 
-					want := resource.NewPropertyMapFromMap(map[string]interface{}{"value": true})
-					require.Equal(l, want, namespaced.Inputs, "expected inputs to be {value: true}")
+					//nolint:lll // Breaking the URN up makes it harder to read
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"value": true,
+						"resourceRef": resource.NewResourceReferenceProperty(resource.ResourceReference{
+							URN: "urn:pulumi:test::l2-namespaced-provider::component:index:ComponentCustomRefOutput$component:index:Custom::componentRes-child",
+							ID:  resource.NewStringProperty("id-foo-bar-baz"),
+						}),
+					})
+					require.Equal(l, want, namespaced.Inputs)
 					require.Equal(l, namespaced.Inputs, namespaced.Outputs, "expected inputs and outputs to match")
+
+					component := RequireSingleResource(l, snap.Resources, "component:index:Custom")
+					require.Equal(l, "component:index:Custom", component.Type.String(), "expected component resource")
 				},
 			},
 		},

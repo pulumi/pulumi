@@ -62,6 +62,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1635,7 +1636,8 @@ func (host *nodeLanguageHost) GeneratePackage(
 		}, nil
 	}
 
-	files, err := codegen.GeneratePackage("pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies, req.Local)
+	files, err := codegen.GeneratePackage(
+		"pulumi-language-nodejs", pkg, req.ExtraFiles, req.LocalDependencies, req.Local, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}
@@ -1752,7 +1754,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		npmInstallCmd := exec.Command(npm, "install")
 		npmInstallCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("npm install: %w", err)
+			return nil, errutil.ErrorWithStderr(err, "npm install")
 		}
 
 		// Pulumi SDKs always define a build command that will run tsc writing to a bin directory.
@@ -1764,7 +1766,7 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		npmBuildCmd := exec.Command(npm, "run", "build")
 		npmBuildCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(npmBuildCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("npm run build: %w", err)
+			return nil, errutil.ErrorWithStderr(err, "npm run build")
 		}
 
 		// "build" in SDKs isn't setup to copy the package.json to ./bin/

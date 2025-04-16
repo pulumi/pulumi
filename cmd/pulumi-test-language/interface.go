@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -444,6 +445,15 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 	return *info.Version, nil
 }
 
+func hasDependency(pkg *schema.Package, dep string) bool {
+	for _, d := range pkg.Dependencies {
+		if d.Name == dep {
+			return true
+		}
+	}
+	return false
+}
+
 // TODO(https://github.com/pulumi/pulumi/issues/13944): We need a RunLanguageTest(t *testing.T) function that
 // handles the machinery of plugging the language test logs into the testing.T.
 
@@ -609,6 +619,23 @@ func (eng *languageTestServer) RunLanguageTest(
 	if token.CoreArtifact != "" {
 		localDependencies["pulumi"] = token.CoreArtifact
 	}
+	packageSet := make(map[string]struct{}, len(packages))
+	for _, pkg := range packages {
+		packageSet[pkg.Name] = struct{}{}
+	}
+	// Check that all dependencies are fulfilled
+	for _, pkg := range packages {
+		for _, dep := range pkg.Dependencies {
+			if _, ok := packageSet[dep.Name]; !ok {
+				return nil, fmt.Errorf("package %s depends on %s, but it is not present", pkg.Name, dep.Name)
+			}
+		}
+	}
+	// Sort the packages, so dependent packages are generated first
+	sort.Slice(packages, func(i, j int) bool {
+		return hasDependency(packages[j], packages[i].Name)
+	})
+
 	for _, pkg := range packages {
 		sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 		sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
