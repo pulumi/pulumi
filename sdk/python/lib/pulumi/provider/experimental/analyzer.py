@@ -15,6 +15,7 @@
 import ast
 import collections
 from enum import Enum
+import importlib
 import inspect
 import sys
 import types
@@ -469,10 +470,38 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            # TODO: https://github.com/pulumi/pulumi/issues/18484
-            raise Exception(
-                f"Resource references are not supported yet: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
-            )
+            type_string = getattr(arg, "pulumi_type", None)
+            if not type_string:
+                raise Exception(
+                    f"Can not determine resource reference for type '{arg.__name__}' used in '{typ.__name__}.{name}'. "
+                    + f"'{arg.__name__}.pulumi_type' is not defined."
+                )
+            parts = type_string.split(":")
+            if len(parts) != 3:
+                raise Exception(
+                    f"invalid type string '{type_string}' for type '{arg}' used in '{typ.__name__}.{name}'"
+                )
+            package_name = parts[0]
+            try:
+                # Import _utilities from from the SDK
+                root_mod = arg.__module__.split(".")[0]
+                utilities = importlib.import_module(f"{root_mod}._utilities")
+                version = utilities.get_version()
+                return PropertyDefinition(
+                    ref=f"/{package_name}/v{version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
+                    optional=optional,
+                    description=self.get_docstring(typ, name),
+                )
+            except ImportError as e:
+                raise Exception(
+                    f"Could not import module '{package_name}'. "
+                    + "Please ensure that the module is part of your project's dependencies and run `pulumi install`."
+                ) from e
+            except AttributeError as e:
+                raise Exception(
+                    f"Could not determine version for module '{package_name}'."
+                ) from e
+
         elif is_union(arg):
             raise Exception(
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"

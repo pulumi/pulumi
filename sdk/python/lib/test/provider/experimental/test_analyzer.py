@@ -891,7 +891,30 @@ def test_analyze_descriptions():
 
 
 def test_analyze_resource_ref():
-    class MyResource(pulumi.CustomResource): ...
+    analyzer = Analyzer("resource-ref")
+
+    (component_defs, _) = analyzer.analyze(components=load_components(Path("testdata", "resource-ref")),)
+    assert component_defs == {
+        "Component": ComponentDefinition(
+            name="Component",
+            module="resource_ref",
+            inputs={
+                "password": PropertyDefinition(
+                    ref="/mock_package/v1.2.3/schema.json#/resources/mock_package:index:MyResource",
+                ),
+            },
+            inputs_mapping={
+                "password": "password",
+            },
+            outputs={},
+            outputs_mapping={},
+        )
+    }
+
+
+def test_analyze_resource_ref_no_resource_type():
+    class MyResource(pulumi.CustomResource):
+        pass
 
     class Args(TypedDict):
         password: pulumi.Input[MyResource]
@@ -902,10 +925,11 @@ def test_analyze_resource_ref():
     analyzer = Analyzer("resource-ref")
     try:
         analyzer.analyze_component(Component)
+        assert False, "expected an exception"
     except Exception as e:
         assert (
             str(e)
-            == "Resource references are not supported yet: found type 'MyResource' for 'Args.password'"
+            == "Can not determine resource reference for type 'MyResource' used in 'Args.password'. 'MyResource.pulumi_type' is not defined."
         )
 
 
