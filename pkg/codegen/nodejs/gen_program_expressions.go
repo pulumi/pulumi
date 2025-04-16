@@ -580,9 +580,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "rootDirectory":
 		g.genRootDirectory(w)
 	case "pulumiResourceName":
-		g.Fgenf(w, "pulumi.resourceName(%s)", expr.Args[0])
+		g.Fgenf(w, "pulumi.resourceName(%v)", expr.Args[0])
 	case "pulumiResourceType":
-		g.Fgenf(w, "pulumi.resourceType(%s)", expr.Args[0])
+		g.Fgenf(w, "pulumi.resourceType(%v)", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

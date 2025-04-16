@@ -1514,14 +1514,14 @@ export function pkgFromType(type: string): string | undefined {
 
 
 /**
- * The type assigned to the resource at construction.
+ * The Pulumi type assigned to the resource at construction, of the form `package:module:name`.
  */
 export function resourceType(res: Resource): string {
     return res.__pulumiType;
 }
 
 /**
- * The name assigned to the resource at construction.
+ * The Pulumi name assigned to the resource at construction, i.e. the "name" in its constructor call.
  */
 export function resourceName(res: Resource): string {
     if (res.__name === undefined) {
