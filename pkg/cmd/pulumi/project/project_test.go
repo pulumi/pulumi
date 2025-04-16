@@ -20,44 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetOrgFromStackName(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		stackRef string
-		expected string
-	}{
-		{
-			name:     "org/project/stack",
-			stackRef: "org/project/stack",
-			expected: "org",
-		},
-		{
-			name:     "org/project/stack/with/slashes",
-			stackRef: "org/project/stack/with/slashes",
-			expected: "org",
-		},
-		{
-			name:     "project/stack-no-org",
-			stackRef: "project/stack",
-			expected: "",
-		},
-		{
-			name:     "just-stack",
-			stackRef: "stack",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := GetOrgFromStackName(tt.stackRef)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestNewProjectCmd(t *testing.T) {
 	t.Parallel()
 	cmd := NewProjectCmd()
