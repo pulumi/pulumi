@@ -16,6 +16,10 @@ package apitype
 
 // StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
+	// ProgramID is the ID of the program that created this stack.
+	// This is a unique identifier for the stack, and is used to identify the stack in the
+	// Pulumi Console.
+	ProgramID string `json:"programId"`
 	// OrgName is the organization name the stack is found in.
 	OrgName string `json:"orgName"`
 	// ProjectName is the name of the project the stack is associated with.
