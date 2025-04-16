@@ -1199,7 +1199,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		updateOperation := backend.UpdateOperation{
 			Proj:               project,
 			Root:               projectDir,
-			Opts:               opts,
+			Opts:               &opts,
 			M:                  &backend.UpdateMetadata{},
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
