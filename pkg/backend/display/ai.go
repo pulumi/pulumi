@@ -71,4 +71,18 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 		fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
 	}
 	fmt.Fprintln(out)
+
+	permalink := "http://foo.bar/baz"
+	// Print the Copilot summary.
+	PrintCopilotLink(func(line string) {
+		fmt.Fprintln(out, opts.Color.Colorize(line))
+	}, permalink)
+}
+
+func PrintCopilotLink(printFn func(string), permalink string) {
+	printFn("  " +
+		colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help additional help with these diagnostics?")
+	printFn("  " +
+		colors.Underline + colors.Blue + permalink + "?explainFailure" + colors.Reset)
+	printFn("")
 }

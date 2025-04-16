@@ -616,6 +616,10 @@ func NewUpCmd() *cobra.Command {
 			opts.Display.ShowCopilotSummary = showCopilotSummary
 			opts.Display.CopilotSummaryModel = env.CopilotSummaryModel.Value()
 			opts.Display.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
+			if showCopilotSummary {
+				// We handle this in the copilot summary if its enabled.
+				opts.Display.ShowLinkToCopilot = false
+			}
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
