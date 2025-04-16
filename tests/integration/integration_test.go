@@ -1526,3 +1526,21 @@ func TestTaggedComponent(t *testing.T) {
 	stdout, _ = e.RunCommand("pulumi", "stack", "output", "randomString")
 	require.Len(t, strings.TrimSuffix(stdout, "\n"), 8, fmt.Sprintf("expected %s to have 8 characters", stdout))
 }
+
+func TestGetSchemaUsesCorrectVersion(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", "terraform-provider@0.10.0", "hashicorp/random", "3.6.0")
+	var packageSpec schema.PackageSpec
+	err := json.Unmarshal([]byte(stdout), &packageSpec)
+	require.NoError(t, err)
+	require.Equal(t, "3.6.0", packageSpec.Version)
+	require.Equal(t, "0.10.0", packageSpec.Parameterization.BaseProvider.Version)
+
+	stdout, _ = e.RunCommand("pulumi", "package", "get-schema", "terraform-provider", "hashicorp/random", "3.6.0")
+	err = json.Unmarshal([]byte(stdout), &packageSpec)
+	require.NoError(t, err)
+	require.Equal(t, "3.6.0", packageSpec.Version)
+}

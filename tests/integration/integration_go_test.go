@@ -1241,6 +1241,8 @@ func TestPackageAddGo(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+	randomVersion := getPluginVersion(e, "random")
+	assert.NotEmpty(t, randomVersion)
 	_, _ = e.RunCommand("pulumi", "package", "add", "random")
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
@@ -1248,9 +1250,42 @@ func TestPackageAddGo(t *testing.T) {
 	_, err = modfile.Parse("go.mod", modBytes, nil)
 	assert.NoError(t, err)
 
+	// Verify that the Pulumi.yaml file contains the random package with correct settings
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString, "random: random@"+randomVersion)
+
 	// Currently package add does not work correctly for non parameterized
 	// packages, once they add the go.mod as expected we can parse it and check
 	// if it contains a rename as the parameterized version of this test does.
+}
+
+// getPluginVersion finds the highest version of a plugin by name
+func getPluginVersion(e *ptesting.Environment, pluginName string) string {
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls", "--json")
+
+	type Plugin struct {
+		Name    string `json:"name"`
+		Kind    string `json:"kind"`
+		Version string `json:"version"`
+	}
+
+	var plugins []Plugin
+	err := json.Unmarshal([]byte(stdout), &plugins)
+	if err != nil {
+		return ""
+	}
+
+	for _, plugin := range plugins {
+		if plugin.Name == pluginName && plugin.Kind == "resource" {
+			// Even if multiple versions are installed, the entries are ordered descending.
+			return plugin.Version
+		}
+	}
+
+	return ""
 }
 
 //nolint:paralleltest // mutates environment
@@ -1263,8 +1298,23 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
+	// Install terraform-provider and note its version
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	terraformProviderVersion := getPluginVersion(e, "terraform-provider")
+	assert.NotEmpty(t, terraformProviderVersion)
 	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "NetApp/netapp-cloudmanager", "25.1.0")
+
+	// Verify that the Pulumi.yaml file contains the netapp-cloudmanage package with correct settings
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString, "netapp-cloudmanager:")
+	require.Contains(t, yamlString, "source: terraform-provider")
+	require.Contains(t, yamlString, "version: "+terraformProviderVersion)
+	require.Contains(t, yamlString, "parameters:")
+	require.Contains(t, yamlString, "- NetApp/netapp-cloudmanager")
+	require.Contains(t, yamlString, "- 25.1.0")
 
 	assert.True(t, e.PathExists("sdks/netapp-cloudmanager/go.mod"))
 	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/netapp-cloudmanager/go.mod"))

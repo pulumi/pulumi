@@ -39,6 +39,9 @@ class ConfigurerArgs:
 
 
 class Configurer(pulumi.ComponentResource):
+
+    pulumi_type = "metaprovider:index:Configurer"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

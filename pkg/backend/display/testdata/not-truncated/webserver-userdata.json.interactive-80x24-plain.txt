@@ -29,8 +29,8 @@ Diagnostics:
         aws:region: us-west-2
 
 Outputs:
-  ~ publicHostName: "ec2-34-211-56-110.us-west-2.compute.amazonaws.com" => undefined
-  ~ publicIp      : "34.211.56.110" => undefined
+  ~ publicHostName: "ec2-34-211-56-110.us-west-2.compute.amazonaws.com" => [unknown]
+  ~ publicIp      : "34.211.56.110" => [unknown]
 
 Resources:
     +-1 replaced

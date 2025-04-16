@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -200,6 +201,7 @@ func TestLanguage(t *testing.T) {
 		useTOML     bool
 		inputTypes  string
 		typechecker string
+		toolchain   string
 	}{
 		{
 			name:        "default",
@@ -207,6 +209,7 @@ func TestLanguage(t *testing.T) {
 			useTOML:     false,
 			inputTypes:  "",
 			typechecker: "mypy",
+			toolchain:   "uv",
 		},
 		{
 			name:        "toml",
@@ -214,6 +217,7 @@ func TestLanguage(t *testing.T) {
 			useTOML:     true,
 			inputTypes:  "classes-and-dicts",
 			typechecker: "pyright",
+			toolchain:   "uv",
 		},
 		{
 			name:        "classes",
@@ -221,6 +225,7 @@ func TestLanguage(t *testing.T) {
 			useTOML:     false,
 			inputTypes:  "classes",
 			typechecker: "pyright",
+			toolchain:   "uv",
 		},
 	}
 
@@ -235,8 +240,11 @@ func TestLanguage(t *testing.T) {
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					pythonExec := "../pulumi-language-python-exec"
-					host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker)
+					pythonExec, err := filepath.Abs("../pulumi-language-python-exec")
+					if err != nil {
+						return err
+					}
+					host := newLanguageHost(pythonExec, engineAddress, "", config.typechecker, config.toolchain)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},

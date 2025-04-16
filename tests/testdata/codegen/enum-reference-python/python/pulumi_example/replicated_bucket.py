@@ -43,6 +43,9 @@ class ReplicatedBucketArgs:
 
 
 class ReplicatedBucket(pulumi.ComponentResource):
+
+    pulumi_type = "example:index:ReplicatedBucket"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

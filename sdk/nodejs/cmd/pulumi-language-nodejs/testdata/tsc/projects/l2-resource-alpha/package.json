@@ -6,6 +6,6 @@
 	"dependencies": {
 		"typescript": "^4.0.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/alpha": "ROOT/artifacts/pulumi-alpha-3.0.0-alpha.1.internal.tgz"
+		"@pulumi/alpha": "ROOT/artifacts/pulumi-alpha-3.0.0-alpha.1.internal+exp.sha.12345678.tgz"
 	}
 }

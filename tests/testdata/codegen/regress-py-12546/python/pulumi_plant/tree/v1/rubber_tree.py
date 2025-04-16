@@ -134,6 +134,9 @@ class _RubberTreeState:
 
 
 class RubberTree(pulumi.CustomResource):
+
+    pulumi_type = "plant:tree/v1:RubberTree"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

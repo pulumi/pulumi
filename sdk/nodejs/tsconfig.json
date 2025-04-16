@@ -2,7 +2,7 @@
     "compilerOptions": {
         "strict": true,
         "outDir": "bin",
-        "target": "es2016",
+        "target": "es2020",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
@@ -44,6 +44,7 @@
         "provider/experimental/analyzer.ts",
         "provider/experimental/provider.ts",
         "provider/experimental/schema.ts",
+        "queryable/index.ts",
         "runtime/index.ts",
         "runtime/closure/codePaths.ts",
         "runtime/closure/createClosure.ts",

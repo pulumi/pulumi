@@ -38,6 +38,9 @@ class ProviderArgs:
 
 
 class Provider(pulumi.CustomResource):
+
+    pulumi_type = "providerType:submod:provider"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

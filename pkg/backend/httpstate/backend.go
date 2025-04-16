@@ -36,6 +36,7 @@ import (
 
 	esc_client "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -472,7 +473,7 @@ func (m defaultLoginManager) Login(
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
-		return nil, backend.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
+		return nil, backenderr.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
 	}
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
@@ -997,10 +998,10 @@ func (b *cloudBackend) CreateStack(
 			// A 409 error response is returned when per-stack organizations are over their limit,
 			// so we need to look at the message to differentiate.
 			if strings.Contains(errResp.Message, "already exists") {
-				return nil, &backend.StackAlreadyExistsError{StackName: stackID.String()}
+				return nil, &backenderr.StackAlreadyExistsError{StackName: stackID.String()}
 			}
 			if strings.Contains(errResp.Message, "you are using") {
-				return nil, &backend.OverStackLimitError{Message: errResp.Message}
+				return nil, &backenderr.OverStackLimitError{Message: errResp.Message}
 			}
 		}
 		return nil, err
@@ -1128,36 +1129,7 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	var events chan engine.Event
-
-	if op.Opts.Display.ShowCopilotSummary {
-		events = make(chan engine.Event)
-		renderDone := make(chan bool)
-		renderer := display.NewCaptureProgressEvents(
-			stack.Ref().Name(),
-			op.Proj.Name,
-			display.Options{
-				ShowResourceChanges: true,
-			},
-		)
-
-		go renderer.ProcessEvents(events, renderDone)
-
-		defer func() {
-			close(events)
-			<-renderDone
-			// Note: ShowCopilotSummary may have been set to false if the user's org does not have Copilot enabled so we
-			// check it again here.
-			if op.Opts.Display.ShowCopilotSummary && renderer.OutputIncludesFailure() {
-				summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
-				// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update if we
-				// can't generate a summary.
-				display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
-			}
-		}()
-	}
-
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, events)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1178,7 +1150,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1196,7 +1168,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1214,7 +1186,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1261,6 +1233,37 @@ func (b *cloudBackend) PromptAI(
 		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
 	}
 	return res, nil
+}
+
+func (b *cloudBackend) renderAndSummarizeOutput(
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation, events []engine.Event,
+) {
+	renderer := display.NewCaptureProgressEvents(
+		stack.Ref().Name(),
+		op.Proj.Name,
+		display.Options{
+			ShowResourceChanges: true,
+		},
+		true,
+		kind,
+	)
+
+	eventsChannel := make(chan engine.Event)
+	doneChannel := make(chan bool)
+
+	go renderer.ProcessEvents(eventsChannel, doneChannel)
+	for _, event := range events {
+		eventsChannel <- event
+	}
+	close(eventsChannel)
+	<-doneChannel
+
+	if renderer.OutputIncludesFailure() {
+		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+		// if we can't generate a summary.
+		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
+	}
 }
 
 func (b *cloudBackend) summarizeErrorWithCopilot(
@@ -1356,7 +1359,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
-			conflict := backend.ConflictingUpdateError{Err: err}
+			conflict := backenderr.ConflictingUpdateError{Err: err}
 			return client.UpdateIdentifier{}, updateMetadata{}, conflict
 		}
 		return client.UpdateIdentifier{}, updateMetadata{}, err
@@ -1417,6 +1420,40 @@ func (b *cloudBackend) apply(
 	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
+	// This code is here so we can capture errors from previews-of-updates as well as updates.
+	// The createAndStartUpdate call above can also disable ShowCopilotSummary if its not enabled in the user's org.
+	if op.Opts.Display.ShowCopilotSummary {
+		originalEvents := events
+		// New var as we need a bidirectional channel type to be able to read from it.
+		eventsChannel := make(chan engine.Event)
+		events = eventsChannel
+
+		var renderEvents []engine.Event
+		done := make(chan bool)
+		go func() {
+			for e := range eventsChannel {
+				// Forward all events from the engine to the original channel.
+				// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
+				if originalEvents != nil {
+					originalEvents <- e
+				}
+				// Do not send internal events to the copilot summary as they are not displayed to the user either.
+				// We can skip Ephemeral events as well as we want to display the "final" output.
+				if e.Internal() || e.Ephemeral() {
+					continue
+				}
+				renderEvents = append(renderEvents, e)
+			}
+			done <- true
+		}()
+		defer func() {
+			close(eventsChannel)
+			<-done
+			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents)
+		}()
 	}
 
 	// Display messages from the backend if present.
@@ -1517,7 +1554,11 @@ func (b *cloudBackend) runEngineAction(
 	case apitype.ResourceImportUpdate:
 		_, changes, updateErr = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
-		_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		if op.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(u, engineCtx, op.Opts.Engine, dryRun)
+		} else {
+			_, changes, updateErr = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		}
 	case apitype.DestroyUpdate:
 		if op.Opts.Engine.DestroyProgram {
 			_, changes, updateErr = engine.DestroyV2(u, engineCtx, op.Opts.Engine, dryRun)
@@ -1642,7 +1683,7 @@ func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
 	switch {
 	case err == client.ErrNoPreviousDeployment:
-		return nil, backend.ErrNoPreviousDeployment
+		return nil, backenderr.ErrNoPreviousDeployment
 	case err != nil:
 		return nil, err
 	default:

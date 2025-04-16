@@ -287,11 +287,12 @@ func TestRunCanceled(t *testing.T) {
 
 	go func() {
 		path := filepath.Join(e.RootPath, "ready")
-		for i := 0; i < 100; i++ {
+		for range 60 {
 			if _, err := os.Stat(path); err == nil {
+				t.Logf("Found %s", path)
 				break
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 		}
 		cancel()
 	}()

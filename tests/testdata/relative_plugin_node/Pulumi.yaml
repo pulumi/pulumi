@@ -1,7 +1,0 @@
-name: import_node
-runtime: nodejs
-description: A minimal NodeJS program to test relative provider plugin paths.
-plugins:
-  providers:
-    - name: testprovider
-      path: ../../testprovider

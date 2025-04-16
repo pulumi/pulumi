@@ -85,11 +85,6 @@ export interface Options {
     readonly testModeEnabled?: boolean;
 
     /**
-     * True if we're in query mode (does not allow resource registration).
-     */
-    readonly queryMode?: boolean;
-
-    /**
      * True if we will resolve missing outputs to inputs during preview.
      */
     readonly legacyApply?: boolean;
@@ -141,7 +136,6 @@ export function resetOptions(
     store.settings.options.project = project;
     store.settings.options.stack = stack;
     store.settings.options.dryRun = preview;
-    store.settings.options.queryMode = isQueryMode();
     store.settings.options.parallel = parallel;
     store.settings.options.monitorAddr = monitorAddr;
     store.settings.options.engineAddr = engineAddr;
@@ -286,24 +280,8 @@ export async function awaitFeatureSupport(): Promise<void> {
  * @internal
  *  Used only for testing purposes.
  */
-export function _setQueryMode(val: boolean) {
-    const { settings } = getStore();
-    settings.options.queryMode = val;
-}
-
-/**
- * @internal
- *  Used only for testing purposes.
- */
 export function _reset(): void {
     resetOptions("", "", -1, "", "", false, "");
-}
-
-/**
- * Returns true if query mode is enabled.
- */
-export function isQueryMode(): boolean {
-    return options().queryMode === true;
 }
 
 /**

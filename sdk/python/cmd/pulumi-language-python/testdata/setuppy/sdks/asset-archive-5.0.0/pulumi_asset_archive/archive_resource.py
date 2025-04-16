@@ -37,6 +37,9 @@ class ArchiveResourceArgs:
 
 
 class ArchiveResource(pulumi.CustomResource):
+
+    pulumi_type = "asset-archive:index:ArchiveResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Save package source to `packages` in Pulumi.yaml on `package add`

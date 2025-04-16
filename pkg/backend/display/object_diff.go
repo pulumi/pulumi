@@ -158,7 +158,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 			writef(&b, deploy.OpDelete, "%s", old.Provider)
 			writeVerbatim(&b, deploy.OpUpdate, " => ")
 			if newProv.ID() == providers.UnknownID {
-				writef(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::output<string>")
+				writef(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::[unknown]")
 			} else {
 				writef(&b, deploy.OpCreate, "%s", new.Provider)
 			}
@@ -847,24 +847,20 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 		} else {
 			p.writef("%q", v.StringValue())
 		}
-	} else if v.IsComputed() || v.IsOutput() {
-		// We render computed and output values differently depending on whether or not we are
-		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;
-		// in the former we display `undefined`. This is because we currently cannot distinguish
-		// between user-supplied undefined values and input properties that are undefined because
-		// they were sourced from undefined values in other resources' output properties. Once we
-		// have richer information about the dataflow between resources, we should be able to do a
-		// better job here (pulumi/pulumi#234).
-		if p.planning {
-			p.writeVerbatim(v.TypeString())
+	} else if v.IsComputed() {
+		p.writeVerbatim("[unknown]")
+	} else if v.IsOutput() {
+		o := v.OutputValue()
+		if o.Known {
+			p.printPrimitivePropertyValue(o.Element)
 		} else {
-			p.writef("undefined")
+			p.writeVerbatim("[unknown]")
 		}
 	} else if v.IsSecret() {
 		if p.showSecrets {
 			p.printPropertyValue(v.SecretValue().Element)
 		} else {
-			p.writef("[secret]")
+			p.writeVerbatim("[secret]")
 		}
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)

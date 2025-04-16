@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AsyncIterable } from "@pulumi/query/interfaces";
-
 type CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";
 const closeValue: CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";
 

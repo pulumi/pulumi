@@ -174,7 +174,7 @@ func installPackagesFromProject(pctx *plugin.Context, proj *workspace.Project, r
 			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
 		}
 
-		err := packagecmd.InstallPackage(
+		_, err := packagecmd.InstallPackage(
 			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, packageSpec.Parameters)
 		if err != nil {
 			return fmt.Errorf("failed to install package '%s': %w", name, err)

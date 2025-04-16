@@ -27,6 +27,9 @@ class GoodbyeComponentArgs:
 
 
 class GoodbyeComponent(pulumi.ComponentResource):
+
+    pulumi_type = "goodbye:index:GoodbyeComponent"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -41,6 +41,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -749,7 +750,7 @@ func (b *diyBackend) CreateStack(
 	}
 
 	if _, err := b.stackExists(ctx, diyStackRef); err == nil {
-		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
+		return nil, &backenderr.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
 	_, err = b.saveStack(ctx, diyStackRef, nil)
@@ -980,7 +981,7 @@ func (b *diyBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 	if len(hist) == 0 {
-		return nil, backend.ErrNoPreviousDeployment
+		return nil, backenderr.ErrNoPreviousDeployment
 	}
 
 	return hist[0].Config, nil
@@ -1014,7 +1015,7 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1041,7 +1042,7 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1066,7 +1067,7 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1091,7 +1092,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1185,7 +1186,11 @@ func (b *diyBackend) apply(
 	case apitype.ResourceImportUpdate:
 		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		if op.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
 	case apitype.DestroyUpdate:
 		if op.Opts.Engine.DestroyProgram {
 			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)

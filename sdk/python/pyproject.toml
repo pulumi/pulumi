@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.161.0"
+version = "3.163.0"
 license = "Apache-2.0"
 license-files = ["../..LICENSE"]
 requires-python = ">=3.9"
@@ -73,7 +73,12 @@ strict = ["lib/test_types"]
 [tool.ruff]
 target-version = "py39"
 
-include = ["lib/pulumi/**.py", "lib/pulumi/**.pyi", "lib/test/**.py"]
+include = [
+    "lib/pulumi/**.py",
+    "lib/pulumi/**.pyi",
+    "lib/test/**.py",
+    "cmd/pulumi-language-python-exec",
+]
 extend-exclude = [
     "*_pb2.py",
     "*_pb2.pyi",

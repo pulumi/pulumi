@@ -257,6 +257,9 @@ class ModuleResourceArgs:
 
 
 class ModuleResource(pulumi.CustomResource):
+
+    pulumi_type = "foobar::ModuleResource"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

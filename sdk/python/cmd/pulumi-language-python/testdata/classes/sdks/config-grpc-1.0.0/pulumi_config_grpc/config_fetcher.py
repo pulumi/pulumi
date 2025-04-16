@@ -22,6 +22,9 @@ class ConfigFetcherArgs:
 
 
 class ConfigFetcher(pulumi.CustomResource):
+
+    pulumi_type = "config-grpc:index:ConfigFetcher"
+
     @overload
     def __init__(__self__,
                  resource_name: str,

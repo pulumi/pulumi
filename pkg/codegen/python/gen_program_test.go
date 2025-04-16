@@ -63,7 +63,7 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			directory string, project workspace.Project,
 			program *pcl.Program, localDependencies map[string]string,
 		) error {
-			return GenerateProject(directory, project, program, localDependencies, "")
+			return GenerateProject(directory, project, program, localDependencies, "", "")
 		},
 	)
 }
