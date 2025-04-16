@@ -301,7 +301,7 @@ func NewDestroyCmd() *cobra.Command {
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
-				Opts:               opts,
+				Opts:               &opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
