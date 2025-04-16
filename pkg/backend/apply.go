@@ -243,11 +243,11 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		if response == explain {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
-			explain, err := explainer(stack.Ref(), op, events, opts.Display)
+			explanation, err := explainer(stack.Ref(), op, events, opts.Display)
 			if err != nil {
 				return nil, err
 			}
-			_, err = os.Stdout.WriteString(explain + "\n")
+			_, err = os.Stdout.WriteString(explanation + "\n")
 			contract.IgnoreError(err)
 			continue
 		}
