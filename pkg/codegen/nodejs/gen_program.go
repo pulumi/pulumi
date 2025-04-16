@@ -842,6 +842,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
@@ -862,6 +863,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
+	}
+	if opts.ImportID != nil {
+		appendOption("import", opts.ImportID)
 	}
 
 	if object == nil {
