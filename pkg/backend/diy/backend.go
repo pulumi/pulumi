@@ -1010,7 +1010,7 @@ func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, &op, opts, events)
+	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1045,7 +1045,7 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.ResourceImportUpdate, stack, &op, opts, nil /*events*/)
+			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
@@ -1070,7 +1070,7 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.RefreshUpdate, stack, &op, opts, nil /*events*/)
+			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
@@ -1095,7 +1095,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 
 		op.Opts.Engine.GeneratePlan = false
 		_, changes, err := b.apply(
-			ctx, apitype.DestroyUpdate, stack, &op, opts, nil /*events*/)
+			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 
@@ -1111,7 +1111,7 @@ func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
 // apply actually performs the provided type of update on a diy hosted stack.
 func (b *diyBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
-	op *backend.UpdateOperation, opts backend.ApplierOptions,
+	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	resetKeepRunning := nosleep.KeepRunning()
@@ -1135,7 +1135,7 @@ func (b *diyBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, *op)
+	update, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, op)
 	if err != nil {
 		return nil, nil, err
 	}

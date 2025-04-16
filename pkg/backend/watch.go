@@ -94,7 +94,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 				colors.Reset + colors.Magenta + "Deploying changes...\n" + colors.Reset))
 
 		// Perform the update operation
-		_, changes, err := apply(ctx, apitype.UpdateUpdate, stack, &op, opts, nil)
+		_, changes, err := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
 
 		// Display the kinds of updates performed.
 		var opKinds []string
