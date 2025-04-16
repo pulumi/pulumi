@@ -29,6 +29,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// StackReferenceWithOrg extends the backend.StackReference interface with Organization method
+type StackReferenceWithOrg interface {
+	backend.StackReference
+	Organization() (string, bool)
+}
+
 // projectListResult represents the results of a project listing for display purposes.
 type projectListResult struct {
 	Name         string `json:"name"`
@@ -105,7 +111,7 @@ func newProjectLsCmd() *cobra.Command {
 				var org string
 				if b.SupportsOrganizations() {
 					// Try to get the organization from the stack reference
-					if stackRef, ok := stack.Name().(interface{ Organization() (string, bool) }); ok {
+					if stackRef, ok := stack.Name().(StackReferenceWithOrg); ok {
 						if organization, hasOrg := stackRef.Organization(); hasOrg {
 							org = organization
 						}
