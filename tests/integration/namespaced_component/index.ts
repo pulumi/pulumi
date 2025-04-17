@@ -11,7 +11,7 @@ export interface MyComponentArgs {
 
 export class MyComponent extends pulumi.ComponentResource {
     constructor(name: string, args: MyComponentArgs, opts?: pulumi.ComponentResourceOptions) {
-	super("namespaced-component:component:MyComponent", name, args, opts);
+	super("namespaced-component:index:MyComponent", name, args, opts);
 
 	// Create a resource here
     }

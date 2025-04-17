@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: components/nodejs
+  description: Fix component construct when the there's a namespace in the `name` field in `package.json

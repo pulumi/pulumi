@@ -2743,3 +2743,19 @@ func TestNodeComponentNamespaceInference(t *testing.T) {
 	require.True(t, ok, fmt.Sprintf("missing expected input property in %v", res.InputProperties))
 	require.Equal(t, "#/types/namespaced-component:index:Nested", input.Ref)
 }
+
+func TestNodeCanConstructNamespacedComponent(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("namespaced_component")
+	installNodejsProviderDependencies(t, e.CWD)
+	e.CWD = filepath.Join(e.CWD, "example")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+	e.RunCommand("pulumi", "stack", "select", "organization/namespaced_component", "--create")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
