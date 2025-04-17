@@ -257,7 +257,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		orgName = parts[0]
 		projectName := parts[1]
 
-		stackName, err := buildStackName(args.stack)
+		stackName, err := buildStackName(ctx, b, args.stack)
 		if err != nil {
 			return err
 		}
