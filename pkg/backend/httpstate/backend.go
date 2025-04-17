@@ -1177,7 +1177,7 @@ func (b *cloudBackend) explain(
 	}
 	orgName := stackID.Owner
 
-	summary, err := b.client.SummarizePreviewWithCopilot(context.Background(), orgName, output)
+	summary, err := b.client.ExplainPreviewWithCopilot(context.Background(), orgName, output)
 	if err != nil {
 		return "", err
 	}

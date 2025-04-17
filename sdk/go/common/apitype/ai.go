@@ -40,8 +40,8 @@ type CopilotCloudContext struct {
 type CopilotSkill string
 
 const (
-	SkillSummarizeUpdate  CopilotSkill = "summarizeUpdate"
-	SkillSummarizePreview CopilotSkill = "explainPreview"
+	SkillSummarizeUpdate CopilotSkill = "summarizeUpdate"
+	SkillExplainPreview  CopilotSkill = "explainPreview"
 )
 
 // SummarizeUpdateRequest
@@ -62,20 +62,20 @@ type CopilotSummarizeUpdateParams struct {
 	MaxLen             int    `json:"maxLen,omitempty"`   // The maximum length of the returned summary.
 }
 
-// SummarizePreviewRequest
+// ExplainPreviewRequest
 
-type CopilotSummarizePreviewRequest struct {
+type CopilotExplainPreviewRequest struct {
 	CopilotRequest
-	DirectSkillCall CopilotSummarizePreview `json:"directSkillCall"`
+	DirectSkillCall CopilotExplainPreview `json:"directSkillCall"`
 }
 
-type CopilotSummarizePreview struct {
-	Skill  CopilotSkill                  `json:"skill"` // Always "summarizePreview"
-	Params CopilotSummarizePreviewParams `json:"params"`
+type CopilotExplainPreview struct {
+	Skill  CopilotSkill                `json:"skill"` // Always "explainPreview"
+	Params CopilotExplainPreviewParams `json:"params"`
 }
 
-type CopilotSummarizePreviewParams struct {
-	PulumiPreviewOutput string `json:"pulumiPreviewOutput"` // The Pulumi preview output to summarize.
+type CopilotExplainPreviewParams struct {
+	PulumiPreviewOutput string `json:"pulumiPreviewOutput"` // The Pulumi preview output to explain.
 }
 
 // Responses
