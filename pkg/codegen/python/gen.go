@@ -3272,7 +3272,7 @@ func GeneratePackage(
 	}
 	// Add typing-extensions if we're using TypedDicts
 	if typedDictEnabled(info.InputTypes) {
-		requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
+		requires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""
 	}
 
 	// Next, emit the package metadata (setup.py).
