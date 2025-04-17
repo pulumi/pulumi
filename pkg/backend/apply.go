@@ -161,7 +161,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(kind, stack, op, events, plan, *op.Opts, explainer)
+	plan, err = confirmBeforeUpdating(kind, stack, op, events, plan, op.Opts, explainer)
 	close(eventsChannel)
 	return plan, changes, err
 }

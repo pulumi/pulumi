@@ -287,7 +287,7 @@ type UpdateOperation struct {
 	Root               string
 	Imports            []deploy.Import
 	M                  *UpdateMetadata
-	Opts               *UpdateOptions
+	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
 	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
