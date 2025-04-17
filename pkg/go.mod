@@ -7,8 +7,6 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 // Working around https://github.com/sergi/go-diff/issues/123
 replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 
-replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
-
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
 require (
