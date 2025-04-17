@@ -1413,16 +1413,16 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	model string,
 	maxSummaryLen int,
 ) (string, error) {
-	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
+	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotSummarizeUpdateContentLength)
 	return pc.callCopilot(ctx, request)
 }
 
-func (pc *Client) SummarizePreviewWithCopilot(
+func (pc *Client) ExplainPreviewWithCopilot(
 	ctx context.Context,
 	orgID string,
 	lines []string,
 ) (string, error) {
-	request := createSummarizePreviewRequest(lines, orgID, maxCopilotContentLength)
+	request := createExplainPreviewRequest(lines, orgID, maxCopilotExplainPreviewContentLength)
 	return pc.callCopilot(ctx, request)
 }
 

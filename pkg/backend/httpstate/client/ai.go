@@ -22,6 +22,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
+// Maximum number of characters to send to Copilot for requests.
+// We do this in "chars" to avoid including a proper token counting library for now.
+// Tokens are 3-4 characters as a rough estimate.
+const (
+	// 4kb, we're optimizing for latency here. ~1000 tokens.
+	maxCopilotSummarizeUpdateContentLength = 4000
+	// 100kb, we're optimizing for quality here. ~25000 tokens. May cull further on the backend.
+	maxCopilotExplainPreviewContentLength = 100000
+)
+
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
 func createSummarizeUpdateRequest(
 	lines []string,
@@ -56,16 +66,16 @@ func createSummarizeUpdateRequest(
 	}
 }
 
-// createSummarizePreviewRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
-func createSummarizePreviewRequest(
+// createExplainPreviewRequest creates a new CopilotExplainPreviewRequest with the given content and org ID
+func createExplainPreviewRequest(
 	lines []string,
 	orgID string,
 	maxUpdateOutputLen int,
-) apitype.CopilotSummarizePreviewRequest {
+) apitype.CopilotExplainPreviewRequest {
 	content := strings.Join(lines, "\n")
 	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
-	return apitype.CopilotSummarizePreviewRequest{
+	return apitype.CopilotExplainPreviewRequest{
 		CopilotRequest: apitype.CopilotRequest{
 			State: apitype.CopilotState{
 				Client: apitype.CopilotClientState{
@@ -76,9 +86,9 @@ func createSummarizePreviewRequest(
 				},
 			},
 		},
-		DirectSkillCall: apitype.CopilotSummarizePreview{
-			Skill: apitype.SkillSummarizePreview,
-			Params: apitype.CopilotSummarizePreviewParams{
+		DirectSkillCall: apitype.CopilotExplainPreview{
+			Skill: apitype.SkillExplainPreview,
+			Params: apitype.CopilotExplainPreviewParams{
 				PulumiPreviewOutput: content,
 			},
 		},
@@ -105,10 +115,6 @@ func extractCopilotResponse(copilotResp apitype.CopilotResponse) (string, error)
 	}
 	return "", errors.New("no assistant message found in response")
 }
-
-// Maximum number of characters to send to Copilot. We do this to avoid including a proper token counting library for
-// now. Tokens are 3-4 characters as a rough estimate. So this is 1000 tokens.
-const maxCopilotContentLength = 4000
 
 const truncationNotice = "... (truncated) ..."
 
