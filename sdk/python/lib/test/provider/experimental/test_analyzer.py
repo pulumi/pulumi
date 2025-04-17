@@ -40,6 +40,7 @@ from pulumi.provider.experimental.analyzer import (
 )
 from pulumi.provider.experimental.component import (
     ComponentDefinition,
+    Dependency,
     EnumValueDefinition,
     PropertyDefinition,
     PropertyType,
@@ -790,7 +791,7 @@ def test_analyze_any():
 
 def test_analyze_descriptions():
     analyzer = Analyzer("descriptions")
-    (components, type_definitions) = analyzer.analyze(
+    (components, type_definitions, _) = analyzer.analyze(
         components=load_components(Path("testdata", "docstrings")),
     )
     assert components == {
@@ -893,7 +894,9 @@ def test_analyze_descriptions():
 def test_analyze_resource_ref():
     analyzer = Analyzer("resource-ref")
 
-    (component_defs, _) = analyzer.analyze(components=load_components(Path("testdata", "resource-ref")),)
+    (component_defs, _, dependencies) = analyzer.analyze(
+        components=load_components(Path("testdata", "resource-ref")),
+    )
     assert component_defs == {
         "Component": ComponentDefinition(
             name="Component",
@@ -910,6 +913,7 @@ def test_analyze_resource_ref():
             outputs_mapping={},
         )
     }
+    assert dependencies == [Dependency("mock_package", "1.2.3", None)]
 
 
 def test_analyze_resource_ref_no_resource_type():
@@ -1020,7 +1024,7 @@ def test_analyze_enum_type():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer("enum")
-    (component_defs, type_defs) = analyzer.analyze(components=[Component])
+    (component_defs, type_defs, _) = analyzer.analyze(components=[Component])
     assert component_defs == {
         "Component": ComponentDefinition(
             name="Component",
@@ -1239,7 +1243,7 @@ def test_analyze_component_self_recursive_complex_type():
 def test_analyze_component_mutually_recursive_complex_types_file():
     analyzer = Analyzer("mutually-recursive")
 
-    (components, type_definitions) = analyzer.analyze(
+    (components, type_definitions, _) = analyzer.analyze(
         components=load_components(Path("testdata", "mutually-recursive")),
     )
     assert type_definitions == {

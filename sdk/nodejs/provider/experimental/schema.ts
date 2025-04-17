@@ -58,6 +58,12 @@ export interface Resource extends ObjectType {
     requiredInputs?: string[];
 }
 
+export interface PackageDescriptor {
+    name: string;
+    version?: string;
+    downloadURL?: string;
+}
+
 /**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package
  */
@@ -69,6 +75,7 @@ export interface PackageSpec {
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
+    dependencies?: PackageDescriptor[];
 }
 
 export function generateSchema(

@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Pulumi SDKs have a get_version in _utilities
+# Pulumi SDKs have get_version and get_plugin_download_url in _utilities
+
+
 def get_version() -> str:
     return "1.2.3"
+
+
+def get_plugin_download_url():
+    return None

@@ -23,7 +23,12 @@ from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
 from .analyzer import Analyzer
-from .component import ComponentDefinition, PropertyDefinition, TypeDefinition
+from .component import (
+    ComponentDefinition,
+    Dependency,
+    PropertyDefinition,
+    TypeDefinition,
+)
 from .schema import generate_schema
 
 
@@ -39,6 +44,7 @@ class ComponentProvider(Provider):
     _type_defs: dict[str, TypeDefinition]
     _component_defs: dict[str, ComponentDefinition]
     _components: dict[str, type[ComponentResource]]
+    _dependencies: list[Dependency]
     _name: str
 
     def __init__(
@@ -50,16 +56,20 @@ class ComponentProvider(Provider):
     ) -> None:
         self._name = name
         self.analyzer = Analyzer(name)
-        (components_defs, type_definitions) = self.analyzer.analyze(components)
+        (components_defs, type_definitions, dependencies) = self.analyzer.analyze(
+            components
+        )
         self._components = {component.__name__: component for component in components}
         self._component_defs = components_defs
         self._type_defs = type_definitions
+        self._dependencies = dependencies
         schema = generate_schema(
             name,
             version,
             namespace,
             self._component_defs,
             self._type_defs,
+            self._dependencies,
         )
         super().__init__(version, json.dumps(schema.to_json()))
 

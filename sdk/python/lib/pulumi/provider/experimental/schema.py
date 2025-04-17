@@ -17,6 +17,7 @@ from typing import Any, Optional, Union
 
 from .component import (
     ComponentDefinition,
+    Dependency,
     EnumValueDefinition,
     PropertyDefinition,
     PropertyType,
@@ -188,6 +189,22 @@ class Resource(ObjectType):
 
 
 @dataclass
+class PackageDescriptor:
+    name: str
+    version: Optional[str]
+    downloadURL: Optional[str]
+
+    def to_json(self) -> dict[str, Any]:
+        return remove_none(
+            {
+                "name": self.name,
+                "version": self.version,
+                "downloadURL": self.downloadURL,
+            }
+        )
+
+
+@dataclass
 class PackageSpec:
     """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package"""
 
@@ -198,6 +215,7 @@ class PackageSpec:
     resources: dict[str, Resource]
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
+    dependencies: Optional[list[PackageDescriptor]]
 
     def to_json(self) -> dict[str, Any]:
         return remove_none(
@@ -209,6 +227,7 @@ class PackageSpec:
                 "resources": {k: v.to_json() for k, v in self.resources.items()},
                 "types": {k: v.to_json() for k, v in self.types.items()},
                 "language": self.language,
+                "dependencies": [dep.to_json() for dep in self.dependencies or []],
             }
         )
 
@@ -219,6 +238,7 @@ def generate_schema(
     namespace: Optional[str],
     components: dict[str, ComponentDefinition],
     type_definitions: dict[str, TypeDefinition],
+    dependencies: list[Dependency],
 ) -> PackageSpec:
     pkg = PackageSpec(
         name=name,
@@ -244,6 +264,7 @@ def generate_schema(
                 "respectSchemaVersion": True,
             },
         },
+        dependencies=[],
     )
     for component_name, component in components.items():
         pkg.resources[f"{name}:index:{component_name}"] = Resource.from_definition(
