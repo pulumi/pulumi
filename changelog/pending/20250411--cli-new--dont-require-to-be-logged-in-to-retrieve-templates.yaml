@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Don't require to be logged in to retrieve templates

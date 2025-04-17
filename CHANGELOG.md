@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.163.0 (2025-04-16)
+
+
+### Features
+
+- [cli/display] Display [unknown] rather than output<T> in diffs
+  [#19204](https://github.com/pulumi/pulumi/pull/19204)
+
+- [programgen] Add import to HCL2 serialization as well as other missing functions
+  [#19163](https://github.com/pulumi/pulumi/pull/19163)
+
+- [programgen/{dotnet,go,nodejs,python}] Utilize resource option import in codegen for go, nodejs, python, dotnet
+  [#19177](https://github.com/pulumi/pulumi/pull/19177)
+
+- [cli/package] Save package source to `packages` in Pulumi.yaml on `package add`
+  [#19157](https://github.com/pulumi/pulumi/pull/19157)
+
+- [sdk/python] Add static pulumi_type property to resource classes
+  [#19221](https://github.com/pulumi/pulumi/pull/19221)
+
+
+### Bug Fixes
+
+- [cli/new] Don't require to be logged in to retrieve templates
+  [#19196](https://github.com/pulumi/pulumi/pull/19196)
+
+- [engine] Fix ReplaceOnChanges being respected during deleteBeforeReplace checks
+  [#19188](https://github.com/pulumi/pulumi/pull/19188)
+
+- [programgen/go] Fix handling of build metadata in provider versions
+  [#19149](https://github.com/pulumi/pulumi/pull/19149)
+
+- [sdk/python] Support optional types using 3.10 union syntax
+  [#19207](https://github.com/pulumi/pulumi/pull/19207)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Target ES2020 instead of ES2016
+  [#19191](https://github.com/pulumi/pulumi/pull/19191)
+
 ## 3.162.0 (2025-04-09)
 
 
