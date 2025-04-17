@@ -427,8 +427,8 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := resource.NewState(
-			urn.Type(), urn, !imp.Component, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
-			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil)
+			urn.Type(), urn, !imp.Component, false, "", resource.PropertyMap{}, nil, parent, imp.Protect,
+			false, nil, nil, provider, nil, false, nil, nil, nil, imp.ID, false, "", nil, nil, "", nil, nil)
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &resource.Goal{})
 

@@ -1172,26 +1172,26 @@ func (s *RefreshStep) Skip() {
 }
 
 type ImportStep struct {
-	deployment    *Deployment                    // the current deployment.
-	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
-	original      *resource.State                // the original resource, if this is an import-replace.
-	old           *resource.State                // the state of the resource fetched from the provider.
-	new           *resource.State                // the newly computed state of the resource after importing.
-	replacing     bool                           // true if we are replacing a Pulumi-managed resource.
-	planned       bool                           // true if this import is from an import deployment.
-	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
-	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
-	ignoreChanges []string                       // a list of property paths to ignore when updating.
-	randomSeed    []byte                         // the random seed to use for Check.
-	provider      plugin.Provider                // the optional provider to use.
+	deployment    *Deployment                                // the current deployment.
+	reg           RegisterResourceEvent                      // the registration intent to convey a URN back to.
+	original      *resource.State                            // the original resource, if this is an import-replace.
+	old           *resource.State                            // the state of the resource fetched from the provider.
+	new           *resource.State                            // the newly computed state of the resource after importing.
+	replacing     bool                                       // true if we are replacing a Pulumi-managed resource.
+	planned       bool                                       // true if this import is from an import deployment.
+	ignoreChanges []string                                   // a list of property paths to ignore when updating.
+	randomSeed    []byte                                     // the random seed to use for Check.
+	provider      plugin.Provider                            // the optional provider to use.
+	cts           *promise.CompletionSource[*resource.State] // the completion source to signal when the import is complete.
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string, randomSeed []byte,
+	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new.ImportID != "", "new", "must have an ImportID")
 	contract.Requiref(new.Custom, "new", "must be a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
@@ -1203,17 +1203,19 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 		new:           new,
 		ignoreChanges: ignoreChanges,
 		randomSeed:    randomSeed,
+		cts:           cts,
 	}
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string, randomSeed []byte,
+	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(original != nil, "original", "must not be nil")
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new.ImportID != "", "new", "must have an ImportID")
 	contract.Requiref(new.Custom, "new", "must be a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
@@ -1228,13 +1230,15 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 		replacing:     true,
 		ignoreChanges: ignoreChanges,
 		randomSeed:    randomSeed,
+		cts:           cts,
 	}
 }
 
 func newImportDeploymentStep(deployment *Deployment, new *resource.State, randomSeed []byte) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(!new.Custom || new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.ImportID != "", "new", "must have an ImportID")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
@@ -1255,19 +1259,20 @@ func (s *ImportStep) Op() display.StepOp {
 	return OpImport
 }
 
-func (s *ImportStep) Deployment() *Deployment                      { return s.deployment }
-func (s *ImportStep) Type() tokens.Type                            { return s.new.Type }
-func (s *ImportStep) Provider() string                             { return s.new.Provider }
-func (s *ImportStep) URN() resource.URN                            { return s.new.URN }
-func (s *ImportStep) Old() *resource.State                         { return s.old }
-func (s *ImportStep) New() *resource.State                         { return s.new }
-func (s *ImportStep) Res() *resource.State                         { return s.new }
-func (s *ImportStep) Logical() bool                                { return !s.replacing }
-func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
-func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *ImportStep) Deployment() *Deployment { return s.deployment }
+func (s *ImportStep) Type() tokens.Type       { return s.new.Type }
+func (s *ImportStep) Provider() string        { return s.new.Provider }
+func (s *ImportStep) URN() resource.URN       { return s.new.URN }
+func (s *ImportStep) Old() *resource.State    { return s.old }
+func (s *ImportStep) New() *resource.State    { return s.new }
+func (s *ImportStep) Res() *resource.State    { return s.new }
+func (s *ImportStep) Logical() bool           { return !s.replacing }
 
 func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	complete := func() {
+		if s.cts != nil {
+			s.cts.MustFulfill(s.new)
+		}
 		s.reg.Done(&RegisterResult{State: s.new})
 	}
 
@@ -1302,7 +1307,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			URN:  s.new.URN,
 			Name: s.new.URN.Name(),
 			Type: s.new.URN.Type(),
-			ID:   s.new.ID,
+			ID:   s.new.ImportID,
 		})
 		rst = read.Status
 
@@ -1326,6 +1331,8 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 		if read.ID != "" {
 			s.new.ID = read.ID
+		} else {
+			s.new.ID = s.new.ImportID
 		}
 		inputs = read.Inputs
 		outputs = read.Outputs
@@ -1418,8 +1425,6 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, resp.Failures)
 
-		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
-
 		return rst, complete, nil
 	}
 
@@ -1430,59 +1435,11 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 	s.new.Inputs = processedInputs
 
-	// Check the inputs using the provider inputs for defaults.
-	resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
-		URN:           s.new.URN,
-		Name:          s.new.URN.Name(),
-		Type:          s.new.URN.Type(),
-		Olds:          s.old.Inputs,
-		News:          s.new.Inputs,
-		AllowUnknowns: s.deployment.opts.DryRun,
-		RandomSeed:    s.randomSeed,
-	})
-	if err != nil {
-		return rst, nil, err
-	}
-	if issueCheckErrors(s.deployment, s.new, s.new.URN, resp.Failures) {
-		return rst, nil, errors.New("one or more inputs failed to validate")
-	}
-	s.new.Inputs = resp.Properties
-
-	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
-	// is from an import deployment.
-	diff, err := diffResource(
-		s.new.URN, s.new.ID,
-		s.old.Inputs, s.old.Outputs,
-		s.new.Inputs,
-		prov,
-		s.deployment.opts.DryRun,
-		s.ignoreChanges,
-	)
-	if err != nil {
-		return rst, nil, err
-	}
-
-	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
-
-	if diff.Changes != plugin.DiffNone {
-		message := fmt.Sprintf("inputs to import do not match the existing resource: %v", s.diffs)
-
-		if s.deployment.opts.DryRun {
-			s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,
-				message+"; importing this resource will fail", 0))
-		} else {
-			err = errors.New(message)
-		}
-	}
-
 	// If we were asked to replace an existing, non-External resource, pend the deletion here.
-	if err == nil && s.replacing {
+	if s.replacing {
 		s.original.Delete = true
 	}
 
-	if err != nil {
-		return rst, nil, err
-	}
 	return rst, complete, nil
 }
 
