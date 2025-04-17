@@ -194,6 +194,7 @@ type cloudBackend struct {
 	client       *client.Client
 	escClient    esc_client.Client
 	capabilities *promise.Promise[apitype.Capabilities]
+	copilotEnabledForProject map[tokens.PackageName]bool
 
 	// The current project, if any.
 	currentProject *workspace.Project
@@ -223,6 +224,7 @@ func New(ctx context.Context, d diag.Sink,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(d, apiClient),
 		currentProject: project,
+		copilotEnabledForProject: map[tokens.PackageName]bool{},
 	}, nil
 }
 
@@ -1150,12 +1152,20 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b.explainer)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, newCopilotExplainer(b))
 }
 
-// explainer takes engine events, renders them out to a buffer as something similar to what the user sees
+func (b *cloudBackend) isCopilotEnabledForProject(projectName tokens.PackageName) bool {
+	enabled, ok := b.copilotEnabledForProject[projectName]
+	contract.Assertf(ok,
+		"copilotEnabledForProject has not been set for project %q. only available after an update has been started.",
+		projectName)
+	return enabled
+}
+
+// explain takes engine events, renders them out to a buffer as something similar to what the user sees
 // in the CLI, and then explains the output with Copilot.
-func (b *cloudBackend) explainer(
+func (b *cloudBackend) explain(
 	stackRef backend.StackReference,
 	op backend.UpdateOperation,
 	events []engine.Event,
@@ -1213,7 +1223,8 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b.explainer)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply,
+		newCopilotExplainer(b))
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1231,7 +1242,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b.explainer)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, newCopilotExplainer(b))
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1249,7 +1260,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b.explainer)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, newCopilotExplainer(b))
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1421,6 +1432,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
 	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
+	b.copilotEnabledForProject[op.Proj.Name] = isCopilotEnabled
 	copilotEnabledValueString := "is"
 	continuationString := ""
 	if isCopilotEnabled {
@@ -2244,6 +2256,13 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 		}
 
 		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+func newCopilotExplainer(b *cloudBackend) *backend.Explainer {
+	return &backend.Explainer{
+		Explain:             b.explain,
+		IsEnabledForProject: b.isCopilotEnabledForProject,
 	}
 }
 
