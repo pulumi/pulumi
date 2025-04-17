@@ -325,7 +325,7 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 // is unset. This API should only be called if the backend supports DefaultOrg as a capability.
 func (pc *Client) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganizationResponse, error) {
 	var resp apitype.GetDefaultOrganizationResponse
-	if err := pc.restCall(ctx, "GET", "/api/user/organization/default", nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", "/api/user/organizations/default", nil, nil, &resp); err != nil {
 		if is404(err) {
 			// The client continues to support legacy backends. They do not support GetDefaultOrg; decision
 			// for default org is left for the CLI to determine.

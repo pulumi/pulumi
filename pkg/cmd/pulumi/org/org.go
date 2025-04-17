@@ -164,7 +164,12 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			if defaultOrg != "" {
 				fmt.Println(defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Println("No Default Org Specified, falling back to backend")
+				resp, err := currentBe.GetDefaultOrg(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Println(resp.GitHubLogin)
 			}
 
 			return nil

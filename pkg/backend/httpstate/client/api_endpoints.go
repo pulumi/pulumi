@@ -81,7 +81,7 @@ func init() {
 
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
-	addEndpoint("GET", "/api/user/organization/default", "getDefaultOrg")
+	addEndpoint("GET", "/api/user/organizations/default", "getDefaultOrg")
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
 	addEndpoint("POST", "/api/stacks/{orgName}", "createStack")
 	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}", "deleteStack")
