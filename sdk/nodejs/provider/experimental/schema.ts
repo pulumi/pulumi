@@ -139,7 +139,7 @@ export function generateSchema(
     }
 
     for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
-        result.dependencies?.push({ name: packageName, version: packageVersion })
+        result.dependencies?.push({ name: packageName, version: packageVersion });
     }
 
     return result;
