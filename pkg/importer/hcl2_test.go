@@ -133,8 +133,7 @@ func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) resou
 	case "provider":
 		return resource.NewStringProperty(string(providerURN))
 	default:
-		assert.Failf(t, "", "unexpected variable reference %v", x.RootName)
-		return resource.NewNullProperty()
+		return resource.NewStringProperty(x.RootName)
 	}
 }
 
@@ -186,6 +185,8 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	protect := false
 	var parent resource.URN
 	var providerRef string
+	var importID resource.ID
+	var ignoreChanges []string
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
@@ -205,6 +206,22 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 				providerRef = v.StringValue() + "::id"
 			}
 		}
+		if r.Options.ImportID != nil {
+			v := renderExpr(t, r.Options.ImportID)
+			if assert.True(t, v.IsString()) {
+				importID = resource.ID(v.StringValue())
+			}
+		}
+		if r.Options.IgnoreChanges != nil {
+			v := renderExpr(t, r.Options.IgnoreChanges)
+			if assert.True(t, v.IsArray()) {
+				for _, item := range v.ArrayValue() {
+					if assert.True(t, item.IsString()) {
+						ignoreChanges = append(ignoreChanges, item.StringValue())
+					}
+				}
+			}
+		}
 	}
 
 	// Pull the raw token from the resource.
@@ -215,13 +232,15 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 		parentType = parent.QualifiedType()
 	}
 	return &resource.State{
-		Type:     token,
-		URN:      resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
-		Custom:   true,
-		Inputs:   inputs,
-		Parent:   parent,
-		Provider: providerRef,
-		Protect:  protect,
+		Type:          token,
+		URN:           resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
+		Custom:        true,
+		Inputs:        inputs,
+		Parent:        parent,
+		Provider:      providerRef,
+		Protect:       protect,
+		ImportID:      importID,
+		IgnoreChanges: ignoreChanges,
 	}
 }
 

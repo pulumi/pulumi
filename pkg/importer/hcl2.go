@@ -327,9 +327,12 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		resourceOptions = appendResourceOption(
 			resourceOptions,
 			"import",
-			&model.LiteralValueExpression{
-				Value:  v,
-				Tokens: syntax.NewLiteralValueTokens(v),
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: v,
+					},
+				},
 			},
 		)
 	}
