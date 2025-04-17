@@ -39,6 +39,11 @@ func NewOrgCmd() *cobra.Command {
 			"e.g. setting the default organization for a backend",
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			displayOpts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
@@ -51,7 +56,12 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			defaultOrg, err := placeholder.GetDefaultOrg(ctx, currentBe, project)
 			if err != nil {
 				return err
 			}
