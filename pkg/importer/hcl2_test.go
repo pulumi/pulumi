@@ -186,6 +186,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	protect := false
 	var parent resource.URN
 	var providerRef string
+	var importID resource.ID
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
@@ -205,6 +206,12 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 				providerRef = v.StringValue() + "::id"
 			}
 		}
+		if r.Options.ImportID != nil {
+			v := renderExpr(t, r.Options.ImportID)
+			if assert.True(t, v.IsString()) {
+				importID = resource.ID(v.StringValue())
+			}
+		}
 	}
 
 	// Pull the raw token from the resource.
@@ -222,6 +229,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 		Parent:   parent,
 		Provider: providerRef,
 		Protect:  protect,
+		ImportID: importID,
 	}
 }
 

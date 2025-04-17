@@ -303,9 +303,12 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		ignoreChanges := make([]model.Expression, len(state.IgnoreChanges))
 		for i, prop := range state.IgnoreChanges {
 			v := cty.StringVal(prop)
-			ignoreChanges[i] = &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(v),
-				Value:  v,
+			ignoreChanges[i] = &model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: v,
+					},
+				},
 			}
 		}
 		resourceOptions = appendResourceOption(resourceOptions, "ignoreChanges", &model.TupleConsExpression{
@@ -327,9 +330,12 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		resourceOptions = appendResourceOption(
 			resourceOptions,
 			"import",
-			&model.LiteralValueExpression{
-				Value:  v,
-				Tokens: syntax.NewLiteralValueTokens(v),
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: v,
+					},
+				},
 			},
 		)
 	}
