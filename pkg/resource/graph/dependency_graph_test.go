@@ -58,9 +58,9 @@ func TestDependencyGraph(t *testing.T) {
 	d3 := &resource.State{URN: "d3", Provider: providerDRef, DeletedWith: d1.URN}
 	d4 := &resource.State{URN: "d4", Parent: d2.URN}
 	d5 := &resource.State{URN: "d5", Parent: d3.URN}
-  d6 := &resource.State{URN: "d6", Custom: true}
-  d7 := &resource.State{URN: "d7", Parent: d6.URN}
-  d8 := &resource.State{URN: "d8", DeletedWith: d6.URN}
+	d6 := &resource.State{URN: "d6", Custom: true}
+	d7 := &resource.State{URN: "d7", Parent: d6.URN}
+	d8 := &resource.State{URN: "d8", DeletedWith: d6.URN}
 
 	e1 := &resource.State{URN: "e1"}
 	e2 := &resource.State{URN: "e2", Dependencies: []resource.URN{e1.URN}}
@@ -78,11 +78,11 @@ func TestDependencyGraph(t *testing.T) {
 	f2 := &resource.State{URN: "f2", DeletedWith: f1.URN}
 	f1D := &resource.State{URN: "f1", Delete: true}
 
-  g11 := &resource.State{URN: "g1"}
-  g12 := &resource.State{URN: "g1"}
-  g13 := &resource.State{URN: "g1"}
-  g21 := &resource.State{URN: "g2", Parent: g11.URN}
-  g22 := &resource.State{URN: "g2", Parent: g12.URN}
+	g11 := &resource.State{URN: "g1"}
+	g12 := &resource.State{URN: "g1"}
+	g13 := &resource.State{URN: "g1"}
+	g21 := &resource.State{URN: "g2", Parent: g11.URN}
+	g22 := &resource.State{URN: "g2", Parent: g12.URN}
 
 	dg := NewDependencyGraph([]*resource.State{
 		providerA,
@@ -97,9 +97,9 @@ func TestDependencyGraph(t *testing.T) {
 		d3,
 		d4,
 		d5,
-    d6,
-    d7,
-    d8,
+		d6,
+		d7,
+		d8,
 		e1,
 		e2,
 		e3,
@@ -109,15 +109,15 @@ func TestDependencyGraph(t *testing.T) {
 		f2,
 		f1D,
 
-    // the "g" resources are here to test that pointer equality is correclty used to distinguish between resources which
-    // have the same URN. The order in which they are added is important, as later resources with the same URN will
-    // "shadow" earlier ones, with pointer equality being key to working out which is being referenced by methods on the
-    // graph.
-    g11,
-    g21,
-    g12,
-    g22,
-    g13,
+		// the "g" resources are here to test that pointer equality is correclty used to distinguish between resources which
+		// have the same URN. The order in which they are added is important, as later resources with the same URN will
+		// "shadow" earlier ones, with pointer equality being key to working out which is being referenced by methods on the
+		// graph.
+		g11,
+		g21,
+		g12,
+		g22,
+		g13,
 	})
 
 	t.Run("DependingOn", func(t *testing.T) {
@@ -353,15 +353,15 @@ func TestDependencyGraph(t *testing.T) {
 					e5, // e5 is deleted with e3
 				},
 			},
-      {
-        name: "g11",
-        res: g11,
-        ignore: nil,
-        includeChildren: true,
-        expected: []*resource.State{
-          g21,
-        },
-      },
+			{
+				name:            "g11",
+				res:             g11,
+				ignore:          nil,
+				includeChildren: true,
+				expected: []*resource.State{
+					g21,
+				},
+			},
 		}
 
 		for _, c := range cases {
@@ -373,7 +373,7 @@ func TestDependencyGraph(t *testing.T) {
 				actual := dg.DependingOn(c.res, c.ignore, c.includeChildren)
 
 				// Assert.
-        assertSameStates(t, c.expected, actual)
+				assertSameStates(t, c.expected, actual)
 			})
 		}
 	})
@@ -418,7 +418,7 @@ func TestDependencyGraph(t *testing.T) {
 				actual := dg.OnlyDependsOn(c.res)
 
 				// Assert.
-        assertSameStates(t, c.expected, actual)
+				assertSameStates(t, c.expected, actual)
 			})
 		}
 	})
@@ -503,26 +503,26 @@ func TestDependencyGraph(t *testing.T) {
 					d2,        // d2 is a child of d1
 				),
 			},
-      {
-        name: "d6",
-        res:  d6,
-        expected: mapset.NewSet[*resource.State](),
-      },
-      {
-        name: "d7",
-        res:  d7,
-        expected: mapset.NewSet[*resource.State](
-          d6, // d7 is a child of d6
-        ),
-      },
-      {
-        name: "d8",
-        res:  d8,
-        expected: mapset.NewSet[*resource.State](
-          d6, // d8 is deleted with d6
-          // d7 does not appear as a child of d6 because d6 is not a component
-        ),
-      },
+			{
+				name:     "d6",
+				res:      d6,
+				expected: mapset.NewSet[*resource.State](),
+			},
+			{
+				name: "d7",
+				res:  d7,
+				expected: mapset.NewSet[*resource.State](
+					d6, // d7 is a child of d6
+				),
+			},
+			{
+				name: "d8",
+				res:  d8,
+				expected: mapset.NewSet[*resource.State](
+					d6, // d8 is deleted with d6
+					// d7 does not appear as a child of d6 because d6 is not a component
+				),
+			},
 			{
 				name:     "e1",
 				res:      e1,
@@ -746,6 +746,13 @@ func TestDependencyGraph(t *testing.T) {
 		DeletedWith: fx1.URN,
 	}
 
+	fu := &resource.State{URN: "fu", Provider: providerF3Ref}
+	fv := &resource.State{
+		URN:         "fv",
+		Provider:    providerF3Ref,
+		DeletedWith: fu.URN,
+	}
+
 	dgOnly := NewDependencyGraph([]*resource.State{
 		providerF1,
 		providerF2,
@@ -755,6 +762,8 @@ func TestDependencyGraph(t *testing.T) {
 		fy,
 		fz,
 		fw,
+		fu,
+		fv,
 	})
 
 	t.Run("OnlyDependsOn", func(t *testing.T) {
@@ -784,9 +793,8 @@ func TestDependencyGraph(t *testing.T) {
 				name: "providerF3",
 				res:  providerF3,
 				expected: []*resource.State{
-					fy,
-					fz,
-					fw,
+					fu,
+					fv,
 				},
 			},
 			{
@@ -795,9 +803,13 @@ func TestDependencyGraph(t *testing.T) {
 				expected: nil,
 			},
 			{
-				name:     "fx2",
-				res:      fx2,
-				expected: nil,
+				name: "fx2",
+				res:  fx2,
+				expected: []*resource.State{
+					fy,
+					fz,
+					fw,
+				},
 			},
 			{
 				name:     "fy1",
@@ -815,7 +827,7 @@ func TestDependencyGraph(t *testing.T) {
 				actual := dgOnly.OnlyDependsOn(c.res)
 
 				// Assert.
-        assertSameStates(t, c.expected, actual)
+				assertSameStates(t, c.expected, actual)
 			})
 		}
 	})
@@ -849,16 +861,16 @@ func TestDependencyGraph(t *testing.T) {
 				res:      d5,
 				expected: []*resource.State{d3},
 			},
-      {
-        name: "g21",
-        res: g21,
-        expected: []*resource.State{g11},
-      },
-      {
-        name: "g22",
-        res: g22,
-        expected: []*resource.State{g12},
-      },
+			{
+				name:     "g21",
+				res:      g21,
+				expected: []*resource.State{g11},
+			},
+			{
+				name:     "g22",
+				res:      g22,
+				expected: []*resource.State{g12},
+			},
 		}
 
 		for _, c := range cases {
@@ -870,7 +882,7 @@ func TestDependencyGraph(t *testing.T) {
 				actual := dg.ParentsOf(c.res)
 
 				// Assert.
-        assertSameStates(t, c.expected, actual)
+				assertSameStates(t, c.expected, actual)
 			})
 		}
 	})
@@ -977,59 +989,198 @@ func makeProvider(pkg, name, id string, deps ...resource.URN) (*resource.State, 
 }
 
 func assertSameStates(t *testing.T, expecteds []*resource.State, actuals []*resource.State) {
-  ne := len(expecteds)
-  na := len(actuals)
-  assert.Equal(t, ne, na, "different numbers of expected and actual states")
+	ne := len(expecteds)
+	na := len(actuals)
+	assert.Equal(t, ne, na, "different numbers of expected and actual states")
 
-  for i := 0; i < max(ne, na); i++ {
-    var expected, actual *resource.State
-    if i < ne {
-      expected = expecteds[i]
-    }
-    if i < na {
-      actual = actuals[i]
-    }
-    assert.Same(t, expected, actual, "expected and actual states do not match")
-  }
+	for i := 0; i < max(ne, na); i++ {
+		var expected, actual *resource.State
+		if i < ne {
+			expected = expecteds[i]
+		}
+		if i < na {
+			actual = actuals[i]
+		}
+		assert.Same(t, expected, actual, "expected and actual states do not match")
+	}
 }
 
 func BenchmarkDependencyGraphConstruction(b *testing.B) {
-  ns := []int{100, 1_000, 10_000, 100_000, 1_000_000}
-  for _, n := range ns {
-    n := n
+	ns := []int{100, 1_000, 10_000, 100_000, 1_000_000}
+	for _, n := range ns {
+		n := n
 
-    b.Run(fmt.Sprintf("size=%d", n), func(b *testing.B) {
-      resources := make([]*resource.State, n)
-      for i := 0; i < n; i++ {
-        resources[i] = &resource.State{
-          URN: resource.URN(fmt.Sprintf("urn%d", i)),
-        }
+		b.Run(fmt.Sprintf("size=%d", n), func(b *testing.B) {
+			resources := make([]*resource.State, n)
+			for i := 0; i < n; i++ {
+				resources[i] = &resource.State{
+					URN: resource.URN(fmt.Sprintf("urn%d", i)),
+				}
 
-        if i > 0 {
-          resources[i].Parent = resources[i-1].URN
-        }
-      }
+				if i > 0 {
+					resources[i].Parent = resources[i-1].URN
+				}
+			}
 
-      b.ResetTimer()
-      for i := 0; i < b.N; i++ {
-        NewDependencyGraph(resources)
-      }
-    })
-  }
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				NewDependencyGraph(resources)
+			}
+		})
+	}
 }
 
 func TestPerf(t *testing.T) {
-  n := 100_000
-  resources := make([]*resource.State, n)
-  for i := 0; i < n; i++ {
-    resources[i] = &resource.State{
-      URN: resource.URN(fmt.Sprintf("urn%d", i)),
-    }
+	n := 25_000
+	q := 5_000
 
-    if i > 0 {
-      resources[i].Parent = resources[i-1].URN
-    }
-  }
+	t.Run(fmt.Sprintf("Perf/%d", n), func(t *testing.T) {
+		resources := make([]*resource.State, n)
+		for i := 0; i < n; i++ {
+			resources[i] = &resource.State{
+				URN: resource.URN(fmt.Sprintf("urn%d", i)),
+			}
 
-  NewDependencyGraph(resources)
+			if i > 0 {
+				resources[i].Parent = resources[i-1].URN
+			}
+		}
+
+		var dg *DependencyGraph
+		t.Run("NewDependencyGraph", func(t *testing.T) {
+			dg = NewDependencyGraph(resources)
+		})
+
+		low := resources[0]
+		mid := resources[n/2]
+		high := resources[n-1]
+
+		t.Run("DependenciesOf/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependenciesOf(low)
+			}
+		})
+		t.Run("DependenciesOf/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependenciesOf(mid)
+			}
+		})
+		t.Run("DependenciesOf/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependenciesOf(high)
+			}
+		})
+
+		t.Run("ParentsOf/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.ParentsOf(low)
+			}
+		})
+		t.Run("ParentsOf/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.ParentsOf(mid)
+			}
+		})
+		t.Run("ParentsOf/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.ParentsOf(high)
+			}
+		})
+
+		t.Run("ChildrenOf/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.ChildrenOf(low)
+			}
+		})
+		t.Run("ChildrenOf/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.ChildrenOf(mid)
+			}
+		})
+		t.Run("ChildrenOf/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.ChildrenOf(high)
+			}
+		})
+
+		t.Run("TransitiveDependenciesOf/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.TransitiveDependenciesOf(low)
+			}
+		})
+		t.Run("TransitiveDependenciesOf/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.TransitiveDependenciesOf(mid)
+			}
+		})
+		t.Run("TransitiveDependenciesOf/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.TransitiveDependenciesOf(high)
+			}
+		})
+
+		t.Run("Contains/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.Contains(low)
+			}
+		})
+		t.Run("Contains/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.Contains(mid)
+			}
+		})
+		t.Run("Contains/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.Contains(high)
+			}
+		})
+
+		t.Run("DependingOn/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependingOn(low, nil, false)
+			}
+		})
+		t.Run("DependingOn/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependingOn(mid, nil, false)
+			}
+		})
+		t.Run("DependingOn/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependingOn(high, nil, false)
+			}
+		})
+
+		t.Run("DependingOnWithChildren/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependingOn(low, nil, true)
+			}
+		})
+		t.Run("DependingOnWithChildren/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependingOn(mid, nil, true)
+			}
+		})
+		t.Run("DependingOnWithChildren/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.DependingOn(high, nil, true)
+			}
+		})
+
+		t.Run("OnlyDependsOn/low", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.OnlyDependsOn(low)
+			}
+		})
+		t.Run("OnlyDependsOn/mid", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.OnlyDependsOn(mid)
+			}
+		})
+		t.Run("OnlyDependsOn/high", func(t *testing.T) {
+			for i := 0; i < q; i++ {
+				dg.OnlyDependsOn(high)
+			}
+		})
+	})
 }
