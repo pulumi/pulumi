@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/dotnet,go,nodejs,python
-  description: Utilize resource option import in codegen for go, nodejs, python, dotnet

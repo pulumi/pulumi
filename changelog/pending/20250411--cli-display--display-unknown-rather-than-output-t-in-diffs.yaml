@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Display [unknown] rather than output<T> in diffs
