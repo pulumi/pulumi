@@ -1512,7 +1512,6 @@ export function pkgFromType(type: string): string | undefined {
     return undefined;
 }
 
-
 /**
  * The Pulumi type assigned to the resource at construction, of the form `package:module:name`.
  */
