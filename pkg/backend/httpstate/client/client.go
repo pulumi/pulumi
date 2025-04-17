@@ -97,6 +97,18 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 	return newClient(apiURL, apiToken, insecure, d)
 }
 
+// WithHTTPClient sets the HTTP client for the API client.
+// Useful for testing.
+func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
+	pc.httpClient = httpClient
+	pc.restClient = &defaultRESTClient{
+		client: &defaultHTTPClient{
+			client: httpClient,
+		},
+	}
+	return pc
+}
+
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
@@ -1384,9 +1396,21 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	model string,
 	maxSummaryLen int,
 ) (string, error) {
-	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotContentLength)
+	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotSummarizeUpdateContentLength)
+	return pc.callCopilot(ctx, request)
+}
 
-	jsonData, err := json.Marshal(request)
+func (pc *Client) ExplainPreviewWithCopilot(
+	ctx context.Context,
+	orgID string,
+	lines []string,
+) (string, error) {
+	request := createExplainPreviewRequest(lines, orgID, maxCopilotExplainPreviewContentLength)
+	return pc.callCopilot(ctx, request)
+}
+
+func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (string, error) {
+	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
@@ -1396,7 +1420,10 @@ func (pc *Client) SummarizeErrorWithCopilot(
 	// context deadline exceeded" Copilot backend will see this in telemetry as well
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+
 	url := pc.apiURL + "/api/ai/chat/preview"
+	apiToken := string(pc.apiToken)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
@@ -1404,7 +1431,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", pc.apiToken))
+	req.Header.Set("Authorization", "token "+apiToken)
 
 	resp, err := pc.do(ctx, req)
 	if err != nil {
@@ -1425,7 +1452,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
-	var copilotResp apitype.CopilotSummarizeUpdateResponse
+	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {
 		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
 	}
@@ -1434,7 +1461,7 @@ func (pc *Client) SummarizeErrorWithCopilot(
 		return "", fmt.Errorf("copilot API error: %s\n%s", copilotResp.Error, copilotResp.Details)
 	}
 
-	return extractSummaryFromResponse(copilotResp)
+	return extractCopilotResponse(copilotResp)
 }
 
 func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePublishOp) error {

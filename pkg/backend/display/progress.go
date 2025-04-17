@@ -284,8 +284,8 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 	close(done)
 }
 
-// RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
-// for rendering the progress of an update.
+// setupProgressDisplay creates and initializes a ProgressDisplay with the given parameters.
+// It enforces consistent display settings:
 //
 // A "simple" terminal is used which does not render control sequences. The simple terminal's output
 // is written to opts.Stdout.
@@ -295,18 +295,15 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 //	opts.Color = colors.Never
 //	opts.RenderOnDirty = false
 //	opts.IsInteractive = true
-func RenderProgressEvents(
-	op string,
+func setupProgressDisplay(
 	action apitype.UpdateKind,
 	stack tokens.StackName,
 	proj tokens.PackageName,
 	permalink string,
-	events <-chan engine.Event,
-	done chan<- bool,
 	opts Options,
 	isPreview bool,
 	width, height int,
-) {
+) *ProgressDisplay {
 	o := opts
 	if o.term == nil {
 		o.term = terminal.NewSimpleTerminal(o.Stdout, width, height)
@@ -335,24 +332,39 @@ func RenderProgressEvents(
 	}
 	renderer.initializeDisplay(display)
 
+	return display
+}
+
+// RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
+// for rendering the progress of an update.
+func RenderProgressEvents(
+	op string,
+	action apitype.UpdateKind,
+	stack tokens.StackName,
+	proj tokens.PackageName,
+	permalink string,
+	events <-chan engine.Event,
+	done chan<- bool,
+	opts Options,
+	isPreview bool,
+	width, height int,
+) {
+	display := setupProgressDisplay(action, stack, proj, permalink, opts, isPreview, width, height)
 	display.processEvents(&time.Ticker{}, events)
 	contract.IgnoreClose(display.renderer)
-
-	// let our caller know we're done.
 	close(done)
 }
 
 type CaptureProgressEvents struct {
 	Buffer  *bytes.Buffer
-	Stack   tokens.StackName
-	Proj    tokens.PackageName
 	display *ProgressDisplay
 }
 
-// NewCaptureProgressEvents renders the provided engine events channel to an internal buffer. It returns a
-// CaptureProgressEvents instance that can be used to access both the output and the display instance after processing
-// the events. This is useful for detecting whether a failure was detected in the display layer, e.g. used to send the
-// output to Copilot if a failure was detected.
+// NewCaptureProgressEvents creates a buffer-backed progress display for event rendering.
+// It returns a CaptureProgressEvents instance that can be used to access both the output and
+// the display instance after processing the events. This is useful for detecting whether a
+// failure was detected in the display layer, e.g. used to send the output to Copilot if a
+// failure was detected.
 func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
@@ -361,43 +373,20 @@ func NewCaptureProgressEvents(
 	action apitype.UpdateKind,
 ) *CaptureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
-	width, height := 200, 80
 
+	// Create a copy of the options and redirect output to our buffer
 	o := opts
-	o.Color = colors.Never
-	o.RenderOnDirty = false
-	o.IsInteractive = true
-
 	o.Stdout = buffer
 	o.Stderr = io.Discard
-	o.term = terminal.NewSimpleTerminal(buffer, width, height)
 
-	permalink := ""
+	// Use standard dimensions for the captured output
+	width, height := 200, 80
 
-	printPermalinkInteractive(o.term, o, permalink, "")
-	renderer := newInteractiveRenderer(o.term, permalink, o)
-	display := &ProgressDisplay{
-		action:                action,
-		isPreview:             isPreview,
-		isTerminal:            true,
-		opts:                  o,
-		renderer:              renderer,
-		stack:                 stack,
-		proj:                  proj,
-		sames:                 make(map[resource.URN]bool),
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
-		displayOrderCounter:   1,
-		opStopwatch:           newOpStopwatch(),
-		permalink:             permalink,
-	}
-	renderer.initializeDisplay(display)
+	// Setup with empty permalink
+	display := setupProgressDisplay(action, stack, proj, "", o, isPreview, width, height)
 
 	return &CaptureProgressEvents{
 		Buffer:  buffer,
-		Stack:   stack,
-		Proj:    proj,
 		display: display,
 	}
 }
@@ -409,6 +398,17 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	r.display.processEvents(&time.Ticker{}, renderChan)
 	contract.IgnoreClose(r.display.renderer)
 	close(renderDone)
+}
+
+func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+	go r.ProcessEvents(eventsChan, renderDone)
+	for _, event := range events {
+		eventsChan <- event
+	}
+	close(eventsChan)
+	<-renderDone
 }
 
 func (r *CaptureProgressEvents) Output() []string {

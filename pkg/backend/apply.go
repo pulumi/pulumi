@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -43,6 +45,14 @@ type ApplierOptions struct {
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+
+// Explainer provides a function that explains the changes that will be made to the stack.
+// For Pulumi Cloud, this is a Copilot explainer.
+type Explainer struct {
+	Explain func(stackRef StackReference, op UpdateOperation, events []engine.Event,
+		opts display.Options) (string, error)
+	IsEnabledForProject func(projectName tokens.PackageName, opts display.Options) bool
+}
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -77,7 +87,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier,
+	op UpdateOperation, apply Applier, explainer *Explainer,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -155,14 +165,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
+	plan, err = confirmBeforeUpdating(kind, stack, op, events, plan, op.Opts, explainer)
 	close(eventsChannel)
 	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, plan *deploy.Plan, opts UpdateOptions,
+	op UpdateOperation, events []engine.Event, plan *deploy.Plan, opts UpdateOptions, explainer *Explainer,
 ) (*deploy.Plan, error) {
 	for {
 		var response string
@@ -175,9 +185,17 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		choices := []string{string(yes), string(no)}
 
+		// explain is down here instead of with the other choices so we can optionally emit an emoji
+		explain := "explain " + cmdutil.EmojiOr("✨", "")
+
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
 			choices = append(choices, string(details))
+
+			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
+			if explainer != nil && explainer.IsEnabledForProject(op.Proj.Name, opts.Display) {
+				choices = append(choices, explain)
+			}
 		}
 
 		var previewWarning string
@@ -226,14 +244,24 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			contract.IgnoreError(err)
 			continue
 		}
+
+		if response == explain {
+			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
+			explanation, err := explainer.Explain(stack.Ref(), op, events, opts.Display)
+			if err != nil {
+				return nil, err
+			}
+			_, err = os.Stdout.WriteString(explanation + "\n")
+			contract.IgnoreError(err)
+			continue
+		}
 	}
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier,
+	op UpdateOperation, apply Applier, explainer *Explainer,
 ) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
-
 	if !op.Opts.SkipPreview {
 		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
 		// but because plans are mutated as they're checked we need to clone it here.
@@ -244,7 +272,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
 		if err != nil || kind == apitype.PreviewUpdate {
 			return changes, err
 		}
