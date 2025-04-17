@@ -34,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -379,16 +380,12 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginSpec,
 // deployment is occurring and it may safely depend on these.
 func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,%s,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
-		h.runtime, info.Pwd, info.Info, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
-	config := make(map[string]string, len(info.Config))
-	for k, v := range info.Config {
-		config[k.String()] = v
-	}
-	configSecretKeys := make([]string, len(info.ConfigSecretKeys))
-	for i, k := range info.ConfigSecretKeys {
-		configSecretKeys[i] = k.String()
-	}
-	configPropertyMap, err := MarshalProperties(info.ConfigPropertyMap,
+		h.runtime, info.Pwd, info.Info, len(info.Args), info.Project, info.Stack, info.Config.Len(), info.DryRun)
+
+	config, configSecretKeys := PropertyMapToConfig(info.Config)
+
+	rawConfig := resource.ToResourcePropertyMap(info.Config)
+	configPropertyMap, err := MarshalProperties(rawConfig,
 		MarshalOptions{RejectUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return "", false, err

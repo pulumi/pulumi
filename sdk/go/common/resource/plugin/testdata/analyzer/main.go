@@ -23,7 +23,7 @@ func main() {
 		"test-project:bool":   "true",
 		"test-project:float":  "1.5",
 		"test-project:string": "hello",
-		"test-project:obj":    "{\"key\": \"value\"}",
+		"test-project:obj":    "{\"key\":\"value\"}",
 	}
 	if !reflect.DeepEqual(actual, expect) {
 		fmt.Printf("fatal: expected config to be %v, got %v\n", expect, actual)
