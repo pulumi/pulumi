@@ -1664,6 +1664,16 @@
 			"inputs": {
 				"byteLength": 42
 			}
+		},
+		{
+			"provider": "urn:pulumi:stack::project::pulumi:providers:random::default_123::123",
+			"urn": "urn:pulumi:stack::project::random:index/randomId:RandomId::ignored",
+			"custom": true,
+			"type": "random:index/randomId:RandomId",
+			"ignoreChanges": ["byteLength"],
+			"inputs": {
+				"byteLength": 42
+			}
 		}
     ]
 }
