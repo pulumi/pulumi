@@ -43,6 +43,45 @@ service Analyzer {
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
     // Configure configures the analyzer, passing configuration properties for each policy.
     rpc Configure(ConfigureAnalyzerRequest) returns (google.protobuf.Empty) {}
+
+    // `Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+    // analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+    // used to communicate between the two parties.
+    rpc Handshake(AnalyzerHandshakeRequest) returns (AnalyzerHandshakeResponse) {}
+}
+
+
+// `AnalyzerHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.Analyzer.Handshake) call.
+message AnalyzerHandshakeRequest {
+    // The gRPC address of the engine handshaking with the analyzer. At a minimum, this address will expose an instance
+    // of the [](pulumirpc.Engine) service.
+    string engine_address = 1;
+
+    // A *root directory* where the analyzer's binary, `PulumiPolicy.yaml`, or other identifying source code is located.
+    // In the event that the analyzer is *not* being booted by the engine (e.g. in the case that the engine has been
+    // asked to attach to an existing running analyzer instance via a host/port number), this field will be empty.
+    optional string root_directory = 2;
+
+    // A *program directory* in which the analyzer should execute. This is generally a subdirectory of the root
+    // directory, though this is not required. In the event that the analyzer is *not* being booted by the engine (e.g.
+    // in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
+    // number), this field will be empty.
+    optional string program_directory = 3;
+
+    // The stack name being analyzed.
+    string stack = 4; 
+    // The project name of the stack being analyzed.
+    string project = 5;
+    // The organization name of the stack being analyzed.
+    string organization = 6;
+    // True if this is a preview/dry run.
+    bool dry_run = 7;
+    // The configuration of the stack being analyzed as a property map.
+    google.protobuf.Struct config = 8;
+}
+
+// `AnalyzerHandshakeResponse` is the type of responses sent by a [](pulumirpc.Analyzer.Handshake) call.
+message AnalyzerHandshakeResponse {
 }
 
 message AnalyzeRequest {

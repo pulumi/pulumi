@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -140,8 +142,47 @@ func NewPolicyAnalyzer(
 		}
 	}
 
+	handshake := func(
+		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
+	) (*pulumirpc.AnalyzerHandshakeResponse, error) {
+		// For analyzers the root directory and program directory are the location of the PulumiPolicy.yaml _not_ the
+		// location of the shim plugin.
+		dir := policyPackPath
+		client := pulumirpc.NewAnalyzerClient(conn)
+
+		mconfig, err := MarshalProperties(resource.ToResourcePropertyMap(opts.Config),
+			MarshalOptions{KeepSecrets: true})
+		if err != nil {
+			return nil, fmt.Errorf("marshalling config: %w", err)
+		}
+
+		res, err := client.Handshake(ctx, &pulumirpc.AnalyzerHandshakeRequest{
+			EngineAddress:    host.ServerAddr(),
+			RootDirectory:    &dir,
+			ProgramDirectory: &dir,
+
+			Stack:        opts.Stack,
+			Project:      opts.Project,
+			Organization: opts.Organization,
+
+			DryRun: opts.DryRun,
+			Config: mconfig,
+		})
+		if err != nil {
+			status, ok := status.FromError(err)
+			if ok && status.Code() == codes.Unimplemented {
+				// If the provider doesn't implement Handshake, that's fine -- we'll fall back to existing behavior.
+				logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+				return nil, nil
+			}
+		}
+
+		logging.V(7).Infof("Handshake: success [%v]", bin)
+		return res, nil
+	}
+
 	plug, _, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, args, env, testConnection,
+		apitype.AnalyzerPlugin, args, env, handshake,
 		analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for

@@ -61,6 +61,79 @@ REMEDIATE: EnforcementLevel.ValueType  # 3
 global___EnforcementLevel = EnforcementLevel
 
 @typing_extensions.final
+class AnalyzerHandshakeRequest(google.protobuf.message.Message):
+    """`AnalyzerHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.Analyzer.Handshake) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
+    ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
+    PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
+    STACK_FIELD_NUMBER: builtins.int
+    PROJECT_FIELD_NUMBER: builtins.int
+    ORGANIZATION_FIELD_NUMBER: builtins.int
+    DRY_RUN_FIELD_NUMBER: builtins.int
+    CONFIG_FIELD_NUMBER: builtins.int
+    engine_address: builtins.str
+    """The gRPC address of the engine handshaking with the analyzer. At a minimum, this address will expose an instance
+    of the [](pulumirpc.Engine) service.
+    """
+    root_directory: builtins.str
+    """A *root directory* where the analyzer's binary, `PulumiPolicy.yaml`, or other identifying source code is located.
+    In the event that the analyzer is *not* being booted by the engine (e.g. in the case that the engine has been
+    asked to attach to an existing running analyzer instance via a host/port number), this field will be empty.
+    """
+    program_directory: builtins.str
+    """A *program directory* in which the analyzer should execute. This is generally a subdirectory of the root
+    directory, though this is not required. In the event that the analyzer is *not* being booted by the engine (e.g.
+    in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
+    number), this field will be empty.
+    """
+    stack: builtins.str
+    """The stack name being analyzed."""
+    project: builtins.str
+    """The project name of the stack being analyzed."""
+    organization: builtins.str
+    """The organization name of the stack being analyzed."""
+    dry_run: builtins.bool
+    """True if this is a preview/dry run."""
+    @property
+    def config(self) -> google.protobuf.struct_pb2.Struct:
+        """The configuration of the stack being analyzed as a property map."""
+    def __init__(
+        self,
+        *,
+        engine_address: builtins.str = ...,
+        root_directory: builtins.str | None = ...,
+        program_directory: builtins.str | None = ...,
+        stack: builtins.str = ...,
+        project: builtins.str = ...,
+        organization: builtins.str = ...,
+        dry_run: builtins.bool = ...,
+        config: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "config", b"config", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "config", b"config", "dry_run", b"dry_run", "engine_address", b"engine_address", "organization", b"organization", "program_directory", b"program_directory", "project", b"project", "root_directory", b"root_directory", "stack", b"stack"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_root_directory", b"_root_directory"]) -> typing_extensions.Literal["root_directory"] | None: ...
+
+global___AnalyzerHandshakeRequest = AnalyzerHandshakeRequest
+
+@typing_extensions.final
+class AnalyzerHandshakeResponse(google.protobuf.message.Message):
+    """`AnalyzerHandshakeResponse` is the type of responses sent by a [](pulumirpc.Analyzer.Handshake) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___AnalyzerHandshakeResponse = AnalyzerHandshakeResponse
+
+@typing_extensions.final
 class AnalyzeRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 

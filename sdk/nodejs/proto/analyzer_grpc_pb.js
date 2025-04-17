@@ -66,6 +66,28 @@ function deserialize_pulumirpc_AnalyzeStackRequest(buffer_arg) {
   return pulumi_analyzer_pb.AnalyzeStackRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_AnalyzerHandshakeRequest(arg) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzerHandshakeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.AnalyzerHandshakeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AnalyzerHandshakeRequest(buffer_arg) {
+  return pulumi_analyzer_pb.AnalyzerHandshakeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_AnalyzerHandshakeResponse(arg) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzerHandshakeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.AnalyzerHandshakeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AnalyzerHandshakeResponse(buffer_arg) {
+  return pulumi_analyzer_pb.AnalyzerHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_AnalyzerInfo(arg) {
   if (!(arg instanceof pulumi_analyzer_pb.AnalyzerInfo)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzerInfo');
@@ -191,6 +213,20 @@ configure: {
     requestDeserialize: deserialize_pulumirpc_ConfigureAnalyzerRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // `Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+// analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+// used to communicate between the two parties.
+handshake: {
+    path: '/pulumirpc.Analyzer/Handshake',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_analyzer_pb.AnalyzerHandshakeRequest,
+    responseType: pulumi_analyzer_pb.AnalyzerHandshakeResponse,
+    requestSerialize: serialize_pulumirpc_AnalyzerHandshakeRequest,
+    requestDeserialize: deserialize_pulumirpc_AnalyzerHandshakeRequest,
+    responseSerialize: serialize_pulumirpc_AnalyzerHandshakeResponse,
+    responseDeserialize: deserialize_pulumirpc_AnalyzerHandshakeResponse,
   },
 };
 
