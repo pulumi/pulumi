@@ -58,6 +58,12 @@ export interface Resource extends ObjectType {
     requiredInputs?: string[];
 }
 
+export interface PackageDescriptor {
+    name: string;
+    version?: string;
+    downloadURL?: string;
+}
+
 /**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package
  */
@@ -69,6 +75,7 @@ export interface PackageSpec {
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
+    dependencies?: PackageDescriptor[];
 }
 
 export function generateSchema(
@@ -108,6 +115,7 @@ export function generateSchema(
                 respectSchemaVersion: true,
             },
         },
+        dependencies: [],
     };
 
     for (const [name, component] of Object.entries(components)) {
@@ -131,25 +139,7 @@ export function generateSchema(
     }
 
     for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
-        result.language!.nodejs.dependencies[`@pulumi/${packageName}`] = packageVersion;
-        if (!result.language!.python.requires) {
-            result.language!.python.requires = {};
-        }
-        if (!result.language!.csharp.packageReferences) {
-            result.language!.csharp.packageReferences = {};
-        }
-        if (!result.language!.java.dependencies) {
-            result.language!.java.dependencies = {};
-        }
-        result.language!.python.requires[`pulumi-${packageName}`] = `==${packageVersion}`;
-
-        const csharpPackageName = packageName
-            .split("-")
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join("");
-        result.language!.csharp.packageReferences[`Pulumi.${csharpPackageName}`] = packageVersion;
-
-        result.language!.java.dependencies[`com.pulumi:${packageName}`] = packageVersion;
+        result.dependencies?.push({ name: packageName, version: packageVersion })
     }
 
     return result;

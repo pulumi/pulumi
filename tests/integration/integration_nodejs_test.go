@@ -2560,6 +2560,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	require.Equal(t, "0.0.0", schema["version"].(string))
 	require.Equal(t, "Node.js Sample Components", schema["description"].(string))
 
+	// Check the dependencies
+	dependencies := schema["dependencies"].([]any)
+	dep := dependencies[0].(map[string]any)
+	require.Equal(t, "random", dep["Name"].(string))
+	require.Equal(t, "4.18.0", dep["Version"].(string))
+
 	// Check the component schema
 	expectedJSON := `{
 		"isComponent": true,
