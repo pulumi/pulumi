@@ -413,7 +413,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			})
 
 			// Setup defaultOrg mock
-			defaultOrg := func(project *workspace.Project) (string, error) {
+			defaultOrg := func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 				return tt.mockOrg, tt.mockOrgErr
 			}
 
@@ -512,7 +512,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			})
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(project *workspace.Project) (string, error) {
+				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
 				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
@@ -567,7 +567,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			tt.setupBackend(t)
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(project *workspace.Project) (string, error) {
+				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
 				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
@@ -604,7 +604,7 @@ func (m *mockWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
 func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	cmd := packagePublishCmd{
-		defaultOrg: func(p *workspace.Project) (string, error) {
+		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 			return "", nil
 		},
 		extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
