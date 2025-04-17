@@ -17,7 +17,7 @@ import { generateSchema } from "../../../provider/experimental/schema";
 import { ComponentDefinition, TypeDefinition } from "../../../provider/experimental/analyzer";
 
 describe("Schema", function () {
-    it("should generate schema with correct language dependencies", function () {
+    it("should generate schema dependencies", function () {
         const components: Record<string, ComponentDefinition> = {};
         const typeDefinitions: Record<string, TypeDefinition> = {};
 
@@ -38,35 +38,11 @@ describe("Schema", function () {
             packageReferences,
         );
 
-        // Verify NodeJS dependencies
-        assert.deepStrictEqual(schema.language?.nodejs.dependencies, {
-            "@pulumi/aws": "5.0.0",
-            "@pulumi/azure-native": "4.0.0",
-            "@pulumi/kubernetes": "3.0.0",
-        });
-
-        // Verify Python dependencies
-        assert.deepStrictEqual(schema.language?.python.requires, {
-            "pulumi-aws": "==5.0.0",
-            "pulumi-azure-native": "==4.0.0",
-            "pulumi-kubernetes": "==3.0.0",
-        });
-
-        // Verify C# dependencies
-        assert.deepStrictEqual(schema.language?.csharp.packageReferences, {
-            "Pulumi.Aws": "5.0.0",
-            "Pulumi.AzureNative": "4.0.0",
-            "Pulumi.Kubernetes": "3.0.0",
-        });
-
-        // Verify Java dependencies
-        assert.deepStrictEqual(schema.language?.java.dependencies, {
-            "com.pulumi:aws": "5.0.0",
-            "com.pulumi:azure-native": "4.0.0",
-            "com.pulumi:kubernetes": "3.0.0",
-        });
-
-        assert.strictEqual(schema.description, "Test provider for Pulumi");
+        assert.deepStrictEqual(schema.dependencies, [
+            { name: "aws", version: "5.0.0" },
+            { name: "azure-native", version: "4.0.0" },
+            { name: "kubernetes", version: "3.0.0" },
+        ]);
     });
 
     it("should use the namespace if there is one", function () {
