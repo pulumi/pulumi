@@ -2275,7 +2275,7 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
-	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string,
+	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string,
 ) (string, error) {
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
@@ -2300,16 +2300,6 @@ func genPackageMetadata(
 		version = "\"" + PypiVersion(*pkg.Version) + "\""
 	}
 	fmt.Fprintf(w, "VERSION = %s\n", version)
-
-	if !ok || typedDictEnabled(info.InputTypes) {
-		// Add typing-extensions to the requires
-		updatedRequires := make(map[string]string, len(requires))
-		for key, value := range requires {
-			updatedRequires[key] = value
-		}
-		updatedRequires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""
-		requires = updatedRequires
-	}
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
@@ -3263,9 +3253,31 @@ func GeneratePackage(
 	}
 	files.Add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
+	requires := map[string]string{}
+	// Add package dependencies
+	for _, dep := range pkg.Dependencies {
+		ref, err := loader.LoadPackageReferenceV2(context.TODO(), &dep)
+		if err != nil {
+			return nil, err
+		}
+		namespace := "pulumi"
+		if ref.Namespace() != "" {
+			namespace = PyName(ref.Namespace())
+		}
+		requires[namespace+"_"+ref.Name()] = ">=" + dep.Version.String()
+	}
+	// Add language specific dependenceis
+	for name, version := range info.Requires {
+		requires[name] = version
+	}
+	// Add typing-extensions if we're using TypedDicts
+	if typedDictEnabled(info.InputTypes) {
+		requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
+	}
+
 	// Next, emit the package metadata (setup.py).
 	if !info.PyProject.Enabled {
-		setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
+		setup, err := genPackageMetadata(tool, pkg, pkgName, requires)
 		if err != nil {
 			return nil, err
 		}
@@ -3275,9 +3287,7 @@ func GeneratePackage(
 	// Finally, if pyproject.toml generation is enabled, generate
 	// this file and emit it as well.
 	if info.PyProject.Enabled {
-		project, err := genPyprojectTOML(
-			tool, pkg, pkgName, loader,
-		)
+		project, err := genPyprojectTOML(tool, pkg, pkgName, requires)
 		if err != nil {
 			return nil, err
 		}
@@ -3290,7 +3300,7 @@ func GeneratePackage(
 func genPyprojectTOML(tool string,
 	pkg *schema.Package,
 	pyPkgName string,
-	loader schema.ReferenceLoader,
+	requires map[string]string,
 ) (string, error) {
 	// First, create a Writer for everything in pyproject.toml
 	w := &bytes.Buffer{}
@@ -3303,7 +3313,7 @@ func genPyprojectTOML(tool string,
 
 	// Setting dependencies fails if the deps we provide specify
 	// an invalid Pulumi package version as a dep.
-	err := setDependencies(schema, pkg, loader)
+	err := setDependencies(schema, pkg, requires)
 	if err != nil {
 		return "", err
 	}
@@ -3406,30 +3416,8 @@ func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
 
 // setDependencies mutates the pyproject schema adding the dependencies to the
 // list in lexical order.
-func setDependencies(schema *PyprojectSchema, pkg *schema.Package, loader schema.ReferenceLoader) error {
-	requires := map[string]string{}
-	info, ok := pkg.Language["python"].(PackageInfo)
-	if ok {
-		for k, v := range info.Requires {
-			requires[k] = v
-		}
-	}
-	for _, dep := range pkg.Dependencies {
-		ref, err := loader.LoadPackageReferenceV2(context.TODO(), &dep)
-		if err != nil {
-			return err
-		}
-		namespace := "pulumi"
-		if ref.Namespace() != "" {
-			namespace = PyName(ref.Namespace())
-		}
-		requires[namespace+"_"+ref.Name()] = ">=" + dep.Version.String()
-	}
-
-	if !ok || typedDictEnabled(info.InputTypes) {
-		requires["typing-extensions"] = ">=4.11; python_version < \"3.11\""
-	}
-	deps, err := calculateDeps(pkg.Parameterization != nil, requires)
+func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies map[string]string) error {
+	deps, err := calculateDeps(pkg.Parameterization != nil, dependencies)
 	if err != nil {
 		return err
 	}
