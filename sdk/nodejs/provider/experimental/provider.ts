@@ -187,7 +187,7 @@ export class ComponentProvider implements Provider {
         inputs: Inputs,
         options: ComponentResourceOptions,
     ): Promise<ConstructResult> {
-        ComponentProvider.validateResourceType(this.packageJSON.name, type);
+        ComponentProvider.validateResourceType(this.name, type);
         const componentName = type.split(":")[2];
         const constructor = this.componentConstructors[componentName];
         if (!constructor) {
