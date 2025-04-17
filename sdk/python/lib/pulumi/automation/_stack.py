@@ -290,6 +290,7 @@ class Stack:
         continue_on_error: Optional[bool] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -413,6 +414,7 @@ class Stack:
         import_file: Optional[str] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -534,6 +536,7 @@ class Stack:
         debug: Optional[bool] = None,
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -648,6 +651,7 @@ class Stack:
         remove: Optional[bool] = None,
         refresh: Optional[bool] = None,
         preview_only: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -1075,6 +1079,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
     attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
     refresh: Optional[bool] = kwargs.get("refresh")
+    config_file: Optional[str] = kwargs.get("config_file")
 
     if message:
         extra_args.extend(["--message", message])
@@ -1124,6 +1129,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--attach-debugger"])
     if refresh:
         extra_args.extend(["--refresh"])
+    if config_file:
+        extra_args.extend(["--config-file", config_file])
     return extra_args
 
 
