@@ -287,6 +287,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 // setupProgressDisplay creates and initializes a ProgressDisplay with the given parameters.
 // It enforces consistent display settings:
 //
+// A "simple" terminal is used which does not render control sequences. The simple terminal's output
+// is written to opts.Stdout.
+//
+// For consistent output, these settings are enforced:
+//
 //	opts.Color = colors.Never
 //	opts.RenderOnDirty = false
 //	opts.IsInteractive = true
@@ -332,15 +337,6 @@ func setupProgressDisplay(
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
 // for rendering the progress of an update.
-//
-// A "simple" terminal is used which does not render control sequences. The simple terminal's output
-// is written to opts.Stdout.
-//
-// For consistent output, these settings are enforced:
-//
-//	opts.Color = colors.Never
-//	opts.RenderOnDirty = false
-//	opts.IsInteractive = true
 func RenderProgressEvents(
 	op string,
 	action apitype.UpdateKind,
@@ -356,7 +352,6 @@ func RenderProgressEvents(
 	display := setupProgressDisplay(action, stack, proj, permalink, opts, isPreview, width, height)
 	display.processEvents(&time.Ticker{}, events)
 	contract.IgnoreClose(display.renderer)
-	// let our caller know we're done.
 	close(done)
 }
 
@@ -400,10 +395,8 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	renderChan <-chan engine.Event,
 	renderDone chan<- bool,
 ) {
-	// Reuse the shared processing logic
 	r.display.processEvents(&time.Ticker{}, renderChan)
 	contract.IgnoreClose(r.display.renderer)
-	// let our caller know we're done.
 	close(renderDone)
 }
 
