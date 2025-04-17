@@ -1155,7 +1155,13 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, newCopilotExplainer(b))
 }
 
-func (b *cloudBackend) isCopilotEnabledForProject(projectName tokens.PackageName) bool {
+func (b *cloudBackend) isCopilotFeatureEnabled(projectName tokens.PackageName, opts display.Options) bool {
+	// Have copilot features been requested by specifying the --copilot flag to the cli
+	if !opts.ShowCopilotFeatures {
+		return false
+	}
+
+	// Is copilot enabled this project in Pulumi Cloud
 	enabled, ok := b.copilotEnabledForProject[projectName]
 	contract.Assertf(ok,
 		"copilotEnabledForProject has not been set for project %q. only available after an update has been started.",
@@ -1480,9 +1486,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	// This code is here so we can capture errors from previews-of-updates as well as updates.
-	// The createAndStartUpdate call above can also disable ShowCopilotFeatures if its not enabled in the user's org.
-	if op.Opts.Display.ShowCopilotFeatures {
+	if b.isCopilotFeatureEnabled(op.Proj.Name, op.Opts.Display) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)
@@ -2262,7 +2266,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 func newCopilotExplainer(b *cloudBackend) *backend.Explainer {
 	return &backend.Explainer{
 		Explain:             b.explain,
-		IsEnabledForProject: b.isCopilotEnabledForProject,
+		IsEnabledForProject: b.isCopilotFeatureEnabled,
 	}
 }
 
