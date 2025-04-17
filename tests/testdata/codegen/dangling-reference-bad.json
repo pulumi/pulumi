@@ -1,0 +1,11 @@
+{
+  "name": "dangling-reference",
+  "provider": {
+    "inputProperties": {
+      "p": {
+        "$ref": "#/types/dangling-reference:a:b"
+      }
+    }
+  },
+  "types": {}
+}
