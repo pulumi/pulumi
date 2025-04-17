@@ -51,7 +51,7 @@ type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op 
 type Explainer struct {
 	Explain func(stackRef StackReference, op UpdateOperation, events []engine.Event,
 		opts display.Options) (string, error)
-	IsEnabledForProject func(projectName tokens.PackageName) bool
+	IsEnabledForProject func(projectName tokens.PackageName, opts display.Options) bool
 }
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
@@ -193,7 +193,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			choices = append(choices, string(details))
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
-			if explainer != nil && explainer.IsEnabledForProject(op.Proj.Name) {
+			if explainer != nil && explainer.IsEnabledForProject(op.Proj.Name, opts.Display) {
 				choices = append(choices, explain)
 			}
 		}
