@@ -1926,6 +1926,44 @@ func TestPythonComponentProviderRun(t *testing.T) {
 	}
 }
 
+// Tests that we can run a Python component provider using bootstrap-less mode.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderBootstraplessRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "bootstrap-less"),
+		RelativeWorkDir: "yaml",
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+		},
+	})
+}
+
+// Tests that we can run a Python component provider that's a Python package
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderPackageRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "package"),
+		RelativeWorkDir: "yaml",
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+		},
+	})
+}
+
 func checkAssetText(t *testing.T, runtime, expected, actual string) {
 	t.Helper()
 	switch runtime {
@@ -2173,11 +2211,25 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 		Toolchain:  toolchain.Pip,
 	})
 	require.NoError(t, err)
+
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
-	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	// Install the core SDK
+	if _, err := os.Stat(filepath.Join(dir, "pyproject.toml")); err == nil {
+		t.Logf("Found bootstrap-less Python plugin in %s", dir)
+		// Create a venv and install the package into it
+		err = tc.EnsureVenv(context.Background(), dir, false, false, stdout, stderr)
+		require.NoError(t, err)
+		cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", dir)
+		require.NoError(t, err)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "output: %s", out)
+	} else {
+		// Install dependencies from requirements.txt
+		err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
+		require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
+	}
+
+	// Install the core SDK so we have the current version
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
 	require.NoError(t, err)
 	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", coreSDK)

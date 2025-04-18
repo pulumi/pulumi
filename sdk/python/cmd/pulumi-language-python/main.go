@@ -1342,18 +1342,26 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
+// RunPlugin runs a Python based plugin.
+//
+// We support two ways of running Python based plugins: bare directories or
+// buildable packages.
+//
+//   - If the plugin directory is a bare directory (that is not a Python
+//     package), we run the plugin's `__main__.py` directly.
+//
+//   - Otherwise, we check if the plugin directory is a buildable Python
+//     package. In that case we run the plugin via the `pulumi.run.plugin`
+//     entrypoint.
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run python plugin in %s", req.Info.ProgramDirectory)
+	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
 
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
 	}
-
-	args := []string{req.Info.ProgramDirectory}
-	args = append(args, req.Args...)
 
 	// Default the `virtualenv` option to `venv` if not provided. We don't support running
 	// plugins using the global or ambient Python environment.
@@ -1364,9 +1372,63 @@ func (host *pythonLanguageHost) RunPlugin(
 	if err != nil {
 		return err
 	}
-	cmd, err := tc.Command(server.Context(), args...)
+
+	var cmd *exec.Cmd
+
+	hasMainPy := true
+	mainPy := filepath.Join(opts.Root, "__main__.py")
+	if _, err = os.Stat(mainPy); err != nil {
+		if os.IsNotExist(err) {
+			hasMainPy = false
+		} else {
+			return fmt.Errorf("looking for __main__.py: %w", err)
+		}
+	}
+
+	// Check if the `pulumi.run.plugin` module exists in the plugin's
+	// Pulumi package. A plugin might ship with an old version, in which case we
+	// fallback to the bare directory mode.
+	hasPluginRunModule := true
+	checkModuleCmd, err := tc.Command(server.Context(), "-c", "import pulumi.run.plugin")
 	if err != nil {
 		return err
+	}
+	if out, err := checkModuleCmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), "ModuleNotFoundError") {
+			hasPluginRunModule = false
+		}
+	}
+
+	if hasPluginRunModule && !hasMainPy {
+		// Run `python -m pulumi.run.plugin <project name> req.Args...
+		buildable, err := toolchain.IsBuildablePackage(opts.Root)
+		if err != nil {
+			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
+		}
+		if !buildable {
+			return errors.New("plugin is not runnable, it provides neither __main__.py nor a buildable pyproject.toml")
+		}
+
+		pyproject, err := toolchain.LoadPyproject(opts.Root)
+		if err != nil {
+			return fmt.Errorf("loading pyproject: %w", err)
+		}
+
+		args := []string{pyproject.Project.Name}
+		args = append(args, req.Args...)
+		cmd, err = tc.ModuleCommand(server.Context(), "pulumi.run.plugin", args...)
+		if err != nil {
+			return err
+		}
+		logging.V(5).Infof("RunPlugin: %s", cmd.String())
+	} else {
+		// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
+		args := []string{req.Info.ProgramDirectory}
+		args = append(args, req.Args...)
+		cmd, err = tc.Command(server.Context(), args...)
+		if err != nil {
+			return err
+		}
 	}
 
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
