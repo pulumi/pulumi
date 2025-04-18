@@ -208,6 +208,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		output, isOutput := to.(*model.OutputType)
 		originalTo := to
 		if isOutput {
+			_, isFromOutput := from.Type().(*model.OutputType)
+			conversionKind := from.Type().ConversionFrom(output.ElementType)
+			if !isFromOutput && conversionKind == model.SafeConversion {
+				// If the from type is a union which contains the output element type, then this is just
+				// an explicit call to convert to an output type from an input union.
+				g.Fgenf(w, "pulumi.ToOutput(%v)", expr.Args[0])
+				return
+			}
 			to = output.ElementType
 		}
 		_, isFromOutput := from.Type().(*model.OutputType)
