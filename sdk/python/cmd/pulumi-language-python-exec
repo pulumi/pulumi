@@ -11,11 +11,13 @@ import sys
 import traceback
 import runpy
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 # The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
     import pulumi
     import pulumi.runtime
+    from pulumi.provider.component import has_component, run_from_path
 except ImportError:
     # For whatever reason, sys.stderr.write is not picked up by the engine as a message, but 'print' is. The Python
     # langhost automatically flushes stdout and stderr on shutdown, so we don't need to do it here - just trust that
@@ -98,6 +100,13 @@ if __name__ == "__main__":
     ap.add_argument("PROGRAM", help="The Python program to run")
     ap.add_argument("ARGS", help="Arguments to pass to the program", nargs="*")
     args = ap.parse_args()
+
+
+    path = Path(args.PROGRAM).absolute()
+    if has_component(path):
+        run_from_path(path)
+        sys.exit(0)
+
 
     # If any config variables are present, parse and set them, so subsequent accesses are fast.
     config_env = pulumi.runtime.get_config_env()
