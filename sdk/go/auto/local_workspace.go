@@ -113,7 +113,7 @@ func (l *LocalWorkspace) SaveStackSettings(
 	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s.yaml", name))
 	err := settings.Save(stackYamlPath)
 	if err != nil {
-		return fmt.Errorf("failed to save stack setttings for %s: %w", stackName, err)
+		return fmt.Errorf("failed to save stack settings for %s: %w", stackName, err)
 	}
 	return nil
 }
