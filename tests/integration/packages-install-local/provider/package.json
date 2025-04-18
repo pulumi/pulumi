@@ -1,6 +1,4 @@
 {
     "name": "provider",
-    "dependencies": {
-        "@pulumi/pulumi": "^3.163.0"
-    }
+    "dependencies": {}
 }
