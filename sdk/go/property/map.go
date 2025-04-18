@@ -22,7 +22,16 @@ import (
 type Map struct{ m map[string]Value }
 
 // AsMap converts the [Map] into a native Go map from strings to [Values].
-func (m Map) AsMap() map[string]Value { return copyMap(m.m) }
+//
+// AsMap always returns a non-nil map.
+func (m Map) AsMap() map[string]Value {
+	// We always return non-nil because it's generally painful to work with nil maps
+	// in Go.
+	//
+	// We return a nil for Array.AsSlice because it is easy to work with nil slices in
+	// Go.
+	return copyMapNonNil(m.m)
+}
 
 // All calls yield for each key value pair in the Map. All iterates in random order, just
 // like Go's native maps. For stable iteration order, use [Map.AllStable].
@@ -91,15 +100,22 @@ func (m Map) Len() int {
 //
 // Set does not mutate it's receiver.
 func (m Map) Set(key string, value Value) Map {
-	cp := copyMap(m.m)
+	cp := copyMapNonNil(m.m)
 	cp[key] = value
 	return Map{cp}
 }
 
 // NewMap creates a new map from m.
-func NewMap(m map[string]Value) Map { return Map{copyMap(m)} }
+func NewMap(m map[string]Value) Map { return Map{copyMapMaybeNil(m)} }
 
-func copyMap(m map[string]Value) map[string]Value {
+func copyMapMaybeNil(m map[string]Value) map[string]Value {
+	if len(m) == 0 {
+		return nil
+	}
+	return copyMapNonNil(m)
+}
+
+func copyMapNonNil(m map[string]Value) map[string]Value {
 	cp := make(map[string]Value, len(m))
 	for k, v := range m {
 		cp[k] = v

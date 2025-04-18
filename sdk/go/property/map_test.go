@@ -278,3 +278,15 @@ func TestMapGetOk(t *testing.T) {
 		assert.Equal(t, New(Null), value) // Assuming 'New(nil)' represents a null or zero value
 	})
 }
+
+func TestMapEmpty(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, Map{}, NewMap(nil))
+	assert.Equal(t, Map{}, NewMap(map[string]Value{}))
+
+	assert.Equal(t, New(Map{}), New(map[string]Value{}))
+	assert.Equal(t, New(Map{}).AsMap(), New(map[string]Value{}).AsMap())
+	assert.Equal(t, New(Map{}).AsMap(), Map{})
+	assert.Equal(t, Map{}.AsMap(), map[string]Value{})
+}

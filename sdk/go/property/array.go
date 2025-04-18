@@ -14,6 +14,8 @@
 
 package property
 
+import "slices"
+
 // An immutable Array of [Value]s.
 //
 // An Array is not itself a [Value], but it can be cheaply converted into a [Value] with
@@ -21,7 +23,15 @@ package property
 type Array struct{ arr []Value }
 
 // AsSlice copies the [Array] into a slice.
-func (a Array) AsSlice() []Value { return copyArray(a.arr) }
+//
+// AsSlice will return nil for an empty slice.
+func (a Array) AsSlice() []Value {
+	// We always return nil because it's generally easy to work with nil slices in Go.
+	//
+	// We return a non-nil for Map.AsMap because it is painful to work with nil maps
+	// in Go.
+	return copyArray(a.arr)
+}
 
 // All calls yield for each element of the list.
 //
@@ -68,16 +78,21 @@ func (a Array) Len() int {
 func (a Array) Append(v ...Value) Array {
 	// We need to copy a.arr since append may mutate the backing array, which may be
 	// shared.
+	if len(v) == 0 {
+		return a
+	}
 	return Array{append(copyArray(a.arr), v...)}
 }
 
 // NewArray creates a new [Array] from a slice of [Value]s. It is the inverse of
 // [Array.AsSlice].
-func NewArray(slice []Value) Array { return Array{copyArray(slice)} }
+func NewArray(slice []Value) Array {
+	return Array{copyArray(slice)}
+}
 
 func copyArray[T any](a []T) []T {
-	// Perform a shallow copy on v.
-	cp := make([]T, len(a))
-	copy(cp, a)
-	return cp
+	if len(a) == 0 {
+		return nil
+	}
+	return slices.Clone(a)
 }

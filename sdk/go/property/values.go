@@ -274,14 +274,10 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	//
 	// We don't want exiting references to dependencies to be able to effect
 	// v.dependencies.
-	if len(dependencies) == 0 {
-		v.dependencies = nil
-	} else {
-		v.dependencies = copyArray(dependencies)
-		// Sort the dependencies on ingestion so that Equals doesn't care about
-		// dependency order.
-		slices.Sort(v.dependencies)
-	}
+	v.dependencies = copyArray(dependencies)
+	// Sort the dependencies on ingestion so that Equals doesn't care about
+	// dependency order.
+	slices.Sort(v.dependencies)
 	return v
 }
 

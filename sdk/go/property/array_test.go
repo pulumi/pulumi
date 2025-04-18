@@ -216,3 +216,15 @@ func TestArrayAll(t *testing.T) {
 		})
 	})
 }
+
+func TestArrayEmpty(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, Array{}, NewArray(nil))
+	assert.Equal(t, Array{}, NewArray([]Value{}))
+
+	assert.Equal(t, New(Array{}), New([]Value{}))
+	assert.Equal(t, New(Array{}).AsArray(), New([]Value{}).AsArray())
+	assert.Equal(t, New(Array{}).AsArray(), Array{})
+	assert.Nil(t, Array{}.AsSlice())
+}
