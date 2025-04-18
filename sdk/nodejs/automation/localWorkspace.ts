@@ -943,6 +943,20 @@ export class LocalWorkspace implements Workspace {
     }
 
     /**
+     * Installs a plugin in the workspace from a file.
+     *
+     * @param name
+     *  The name of the plugin.
+     * @param version
+     *  The version of the plugin e.g. "v1.0.0".
+     * @param file
+     *  The file to install the plugin from e.g. "/usr/bin/pulumi-resource-kubernetes"
+     */
+    async installPluginFromFile(name: string, version: string, file: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", "resource", name, version, "--file", file]);
+    }
+
+    /**
      * Removes a plugin from the workspace matching the specified name and version.
      *
      * @param name
