@@ -21,7 +21,14 @@ package property
 type Array struct{ arr []Value }
 
 // AsSlice copies the [Array] into a slice.
-func (a Array) AsSlice() []Value { return copyArray(a.arr) }
+//
+// AsSlice will return nil for an empty slice.
+func (a Array) AsSlice() []Value {
+	if len(a.arr) == 0 {
+		return nil
+	}
+	return copyArray(a.arr)
+}
 
 // All calls yield for each element of the list.
 //
@@ -68,12 +75,20 @@ func (a Array) Len() int {
 func (a Array) Append(v ...Value) Array {
 	// We need to copy a.arr since append may mutate the backing array, which may be
 	// shared.
+	if len(v) == 0 {
+		return a
+	}
 	return Array{append(copyArray(a.arr), v...)}
 }
 
 // NewArray creates a new [Array] from a slice of [Value]s. It is the inverse of
 // [Array.AsSlice].
-func NewArray(slice []Value) Array { return Array{copyArray(slice)} }
+func NewArray(slice []Value) Array {
+	if len(slice) == 0 {
+		return Array{nil}
+	}
+	return Array{copyArray(slice)}
+}
 
 func copyArray[T any](a []T) []T {
 	// Perform a shallow copy on v.
