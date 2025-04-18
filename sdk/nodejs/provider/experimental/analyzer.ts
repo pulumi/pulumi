@@ -309,7 +309,7 @@ Please ensure these components are properly imported to your package's entry poi
         let inputs: Record<string, PropertyDefinition> = {};
         if (argsSymbol.members) {
             inputs = this.analyzeSymbols(
-                { component: componentName, inputOutput: InputOutput.Input, typeName: argsSymbol.getName() },
+                { component: componentName, inputOutput: InputOutput.Neither, typeName: argsSymbol.getName() },
                 symbolTableToSymbols(argsSymbol.members),
                 argsParam,
             );
@@ -388,13 +388,7 @@ Please ensure these components are properly imported to your package's entry poi
         if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
             docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
         }
-        return this.analyzeType(
-            { ...context, inputOutput: InputOutput.Neither },
-            propType,
-            location,
-            optional,
-            docString,
-        );
+        return this.analyzeType({ ...context }, propType, location, optional, docString);
     }
 
     private analyzeType(
@@ -493,7 +487,14 @@ Please ensure these components are properly imported to your package's entry poi
             if (this.docStrings[name]) {
                 this.typeDefinitions[name].description = this.docStrings[name];
             }
-            const typeContext = { ...context, typeName: name };
+            const typeContext = {
+                ...context,
+                // If the type is used in an output, we never set `plain`,
+                // otherwise it might or might not be plain, depending on
+                // whether it's wrapped in an `Input`.
+                inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
+                typeName: name,
+            };
             const properties = this.analyzeSymbols(typeContext, type.getProperties(), location);
             this.typeDefinitions[name].properties = properties;
             return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });

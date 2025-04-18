@@ -2603,9 +2603,12 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 			},
 			"aResourceOutput": {
 				"$ref": "/random/v4.18.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+			},
+			"aString": {
+				"type": "string"
 			}
 		},
-		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput"]
+		"required": ["aBooleanOutput", "aComplexTypeOutput", "aNumberOutput", "aResourceOutput", "aString"]
 	}
 	`
 	expected := make(map[string]interface{})
@@ -2679,11 +2682,13 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, tokens.Type("nodejs-component-provider:index:MyComponent"), urn.Type())
 					require.Equal(t, "comp", urn.Name())
+					t.Logf("stack.Outputs = %+v", stack.Outputs)
 					require.Equal(t, float64(246), stack.Outputs["aNumberOutput"].(float64))
 					require.Equal(t, "Hello, Bonnie!", stack.Outputs["anOptionalStringOutput"].(string))
 					require.Equal(t, false, stack.Outputs["aBooleanOutput"].(bool))
 					aComplexTypeOutput := stack.Outputs["aComplexTypeOutput"].(map[string]interface{})
 					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
+					require.Equal(t, "hello", stack.Outputs["aString"].(string))
 					if runtime == "python" {
 						// The output is stored in the stack as a plain object,
 						// but that means for Python the keys are snake_case.
