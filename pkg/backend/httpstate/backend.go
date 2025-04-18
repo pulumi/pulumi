@@ -2202,6 +2202,14 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	}
 }
 
+func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
+	resp, err := b.client.GetDefaultOrg(ctx)
+	if err != nil {
+		return "", err
+	}
+	return resp.GitHubLogin, nil
+}
+
 type httpstateBackendClient struct {
 	backend deploy.BackendClient
 }

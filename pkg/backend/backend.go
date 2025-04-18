@@ -130,6 +130,10 @@ type Backend interface {
 	// SupportsDeployments tells whether it is possible to manage deployments in this backend.
 	SupportsDeployments() bool
 
+	// GetDefaultOrg returns the organization if the backend has an opinion on what user organization to default to,
+	// if not configured locally by the user.
+	GetDefaultOrg(ctx context.Context) (string, error)
+
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
