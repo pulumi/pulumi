@@ -54,19 +54,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputMap<string>",
+                  "input": "Input<ImmutableDictionary<string, Input<string>>?>?",
                   "plain": "ImmutableDictionary<string, string>?"
                 },
                 "go": {
-                  "input": "pulumi.StringMapInput",
+                  "input": "map[string]pulumi.StringInput",
                   "plain": "map[string]string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>}> | undefined",
+                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>} | undefined> | undefined",
                   "plain": "{[key: string]: string} | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[builtins.str]]]]",
+                  "input": "Optional[pulumi.Input[Optional[Mapping[str, pulumi.Input[builtins.str]]]]]",
                   "plain": "Optional[Mapping[str, builtins.str]]"
                 }
               }
@@ -85,19 +85,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<object>?",
+                  "input": "Input<object?>?",
                   "plain": "object?"
                 },
                 "go": {
-                  "input": "pulumi.Input",
+                  "input": "interface{}",
                   "plain": "interface{}"
                 },
                 "nodejs": {
-                  "input": "any | undefined",
+                  "input": "pulumi.Input<any | undefined> | undefined",
                   "plain": "any | undefined"
                 },
                 "python": {
-                  "input": "Optional[Any]",
+                  "input": "Optional[pulumi.Input[Optional[Any]]]",
                   "plain": "Optional[Any]"
                 }
               }
@@ -110,19 +110,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<Archive>?",
+                  "input": "Input<Archive?>?",
                   "plain": "Archive?"
                 },
                 "go": {
-                  "input": "pulumi.ArchiveInput",
+                  "input": "pulumi.Archive",
                   "plain": "pulumi.Archive"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<pulumi.asset.Archive> | undefined",
+                  "input": "pulumi.Input<pulumi.asset.Archive | undefined> | undefined",
                   "plain": "pulumi.asset.Archive | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[pulumi.Archive]]",
+                  "input": "Optional[pulumi.Input[Optional[pulumi.Archive]]]",
                   "plain": "Optional[pulumi.Archive]"
                 }
               }
@@ -135,19 +135,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<AssetOrArchive>?",
+                  "input": "Input<AssetOrArchive?>?",
                   "plain": "AssetOrArchive?"
                 },
                 "go": {
-                  "input": "pulumi.AssetOrArchiveInput",
+                  "input": "pulumi.AssetOrArchive",
                   "plain": "pulumi.AssetOrArchive"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive> | undefined",
+                  "input": "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive | undefined> | undefined",
                   "plain": "pulumi.asset.Asset | pulumi.asset.Archive | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]",
+                  "input": "Optional[pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]]]",
                   "plain": "Optional[Union[pulumi.Asset, pulumi.Archive]]"
                 }
               }
@@ -160,19 +160,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<bool>?",
+                  "input": "Input<bool?>?",
                   "plain": "bool?"
                 },
                 "go": {
-                  "input": "pulumi.BoolPtrInput",
+                  "input": "*bool",
                   "plain": "*bool"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<boolean> | undefined",
+                  "input": "pulumi.Input<boolean | undefined> | undefined",
                   "plain": "boolean | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[builtins.bool]]",
+                  "input": "Optional[pulumi.Input[Optional[builtins.bool]]]",
                   "plain": "Optional[builtins.bool]"
                 }
               }
@@ -185,19 +185,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<int>?",
+                  "input": "Input<int?>?",
                   "plain": "int?"
                 },
                 "go": {
-                  "input": "pulumi.IntPtrInput",
+                  "input": "*int",
                   "plain": "*int"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<number> | undefined",
+                  "input": "pulumi.Input<number | undefined> | undefined",
                   "plain": "number | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[builtins.int]]",
+                  "input": "Optional[pulumi.Input[Optional[builtins.int]]]",
                   "plain": "Optional[builtins.int]"
                 }
               }
@@ -210,19 +210,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputJson?",
+                  "input": "Input<System.Text.Json.JsonElement?>?",
                   "plain": "System.Text.Json.JsonElement?"
                 },
                 "go": {
-                  "input": "pulumi.Input",
+                  "input": "interface{}",
                   "plain": "interface{}"
                 },
                 "nodejs": {
-                  "input": "any | undefined",
+                  "input": "pulumi.Input<any | undefined> | undefined",
                   "plain": "any | undefined"
                 },
                 "python": {
-                  "input": "Optional[Any]",
+                  "input": "Optional[pulumi.Input[Optional[Any]]]",
                   "plain": "Optional[Any]"
                 }
               }
@@ -235,19 +235,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<double>?",
+                  "input": "Input<double?>?",
                   "plain": "double?"
                 },
                 "go": {
-                  "input": "pulumi.Float64PtrInput",
+                  "input": "*float64",
                   "plain": "*float64"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<number> | undefined",
+                  "input": "pulumi.Input<number | undefined> | undefined",
                   "plain": "number | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[builtins.float]]",
+                  "input": "Optional[pulumi.Input[Optional[builtins.float]]]",
                   "plain": "Optional[builtins.float]"
                 }
               }
@@ -460,19 +460,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input<string>?",
+                  "input": "Input<string?>?",
                   "plain": "string?"
                 },
                 "go": {
-                  "input": "pulumi.StringPtrInput",
+                  "input": "*string",
                   "plain": "*string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<string> | undefined",
+                  "input": "pulumi.Input<string | undefined> | undefined",
                   "plain": "string | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[builtins.str]]",
+                  "input": "Optional[pulumi.Input[Optional[builtins.str]]]",
                   "plain": "Optional[builtins.str]"
                 }
               }
@@ -504,19 +504,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputMap<string>",
+                  "input": "Input<ImmutableDictionary<string, Input<string>>?>?",
                   "plain": "ImmutableDictionary<string, string>?"
                 },
                 "go": {
-                  "input": "pulumi.StringMapInput",
+                  "input": "map[string]pulumi.StringInput",
                   "plain": "map[string]string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>}> | undefined",
+                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>} | undefined> | undefined",
                   "plain": "{[key: string]: string} | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[builtins.str]]]]",
+                  "input": "Optional[pulumi.Input[Optional[Mapping[str, pulumi.Input[builtins.str]]]]]",
                   "plain": "Optional[Mapping[str, builtins.str]]"
                 }
               }
@@ -545,19 +545,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputUnion<ObjectArgs, ImmutableArray<System.Text.Json.JsonElement>>?",
+                  "input": "Input<Union<Input<ObjectArgs>, InputList<System.Text.Json.JsonElement>>?>?",
                   "plain": "Union<Object, ImmutableArray<System.Text.Json.JsonElement>>?"
                 },
                 "go": {
-                  "input": "pulumi.Input",
+                  "input": "interface{}",
                   "plain": "interface{}"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<outputs.ObjectArgs | any[]> | undefined",
+                  "input": "pulumi.Input<pulumi.Input<outputs.ObjectArgs> | pulumi.Input<any[]> | undefined> | undefined",
                   "plain": "outputs.Object | any[] | undefined"
                 },
                 "python": {
-                  "input": "Optional[Any]",
+                  "input": "Optional[pulumi.Input[Optional[Any]]]",
                   "plain": "Optional[Any]"
                 }
               }

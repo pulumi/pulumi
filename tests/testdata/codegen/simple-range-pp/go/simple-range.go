@@ -16,7 +16,7 @@ func main() {
 			__res, err := random.NewRandomInteger(ctx, fmt.Sprintf("numbers-%v", key0), &random.RandomIntegerArgs{
 				Min:  pulumi.Int(1),
 				Max:  pulumi.Int(val0),
-				Seed: pulumi.Sprintf("seed%v", val0),
+				Seed: fmt.Sprintf("seed%v", val0),
 			})
 			if err != nil {
 				return err

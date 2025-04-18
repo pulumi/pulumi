@@ -8,8 +8,8 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		aws_vpc, err := ec2.NewVpc(ctx, "aws_vpc", &ec2.VpcArgs{
-			CidrBlock:       pulumi.String("10.0.0.0/16"),
-			InstanceTenancy: pulumi.String("default"),
+			CidrBlock:       "10.0.0.0/16",
+			InstanceTenancy: "default",
 		})
 		if err != nil {
 			return err
@@ -33,14 +33,14 @@ func main() {
 		_, err = ec2.NewNetworkAclRule(ctx, "privateS3NetworkAclRule", &ec2.NetworkAclRuleArgs{
 			NetworkAclId: bar.ID(),
 			RuleNumber:   pulumi.Int(200),
-			Egress:       pulumi.Bool(false),
+			Egress:       false,
 			Protocol:     pulumi.String("tcp"),
 			RuleAction:   pulumi.String("allow"),
 			CidrBlock: privateS3PrefixList.ApplyT(func(privateS3PrefixList ec2.GetPrefixListResult) (string, error) {
 				return privateS3PrefixList.CidrBlocks[0], nil
 			}).(pulumi.StringOutput),
-			FromPort: pulumi.Int(443),
-			ToPort:   pulumi.Int(443),
+			FromPort: 443,
+			ToPort:   443,
 		})
 		if err != nil {
 			return err
@@ -52,8 +52,8 @@ func main() {
 			Owners: pulumi.StringArray{
 				bar.ID(),
 			},
-			Filters: ec2.GetAmiIdsFilterArray{
-				&ec2.GetAmiIdsFilterArgs{
+			Filters: []ec2.GetAmiIdsFilterArgs{
+				{
 					Name: bar.ID(),
 					Values: pulumi.StringArray{
 						pulumi.String("pulumi*"),

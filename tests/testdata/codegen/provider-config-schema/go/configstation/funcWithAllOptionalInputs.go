@@ -44,9 +44,9 @@ func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOption
 
 type FuncWithAllOptionalInputsOutputArgs struct {
 	// Property A
-	A pulumi.StringPtrInput `pulumi:"a"`
+	A *string `pulumi:"a"`
 	// Property B
-	B pulumi.StringPtrInput `pulumi:"b"`
+	B *string `pulumi:"b"`
 }
 
 func (FuncWithAllOptionalInputsOutputArgs) ElementType() reflect.Type {

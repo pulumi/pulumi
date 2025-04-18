@@ -32,31 +32,31 @@ MYPY = False
 
 if not MYPY:
     class ConfigMapArgsDict(TypedDict):
-        config: NotRequired[pulumi.Input[builtins.str]]
+        config: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     ConfigMapArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class ConfigMapArgs:
     def __init__(__self__, *,
-                 config: Optional[pulumi.Input[builtins.str]] = None):
+                 config: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         if config is not None:
             pulumi.set(__self__, "config", config)
 
     @property
     @pulumi.getter
-    def config(self) -> Optional[pulumi.Input[builtins.str]]:
+    def config(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "config")
 
     @config.setter
-    def config(self, value: Optional[pulumi.Input[builtins.str]]):
+    def config(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "config", value)
 
 
 if not MYPY:
     class ObjectWithNodeOptionalInputsArgsDict(TypedDict):
         foo: pulumi.Input[builtins.str]
-        bar: NotRequired[pulumi.Input[builtins.int]]
+        bar: NotRequired[pulumi.Input[NotRequired[builtins.int]]]
 elif False:
     ObjectWithNodeOptionalInputsArgsDict: TypeAlias = Mapping[str, Any]
 
@@ -64,7 +64,7 @@ elif False:
 class ObjectWithNodeOptionalInputsArgs:
     def __init__(__self__, *,
                  foo: pulumi.Input[builtins.str],
-                 bar: Optional[pulumi.Input[builtins.int]] = None):
+                 bar: Optional[pulumi.Input[Optional[builtins.int]]] = None):
         pulumi.set(__self__, "foo", foo)
         if bar is not None:
             pulumi.set(__self__, "bar", bar)
@@ -80,24 +80,24 @@ class ObjectWithNodeOptionalInputsArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input[builtins.int]]:
+    def bar(self) -> Optional[pulumi.Input[Optional[builtins.int]]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input[builtins.int]]):
+    def bar(self, value: Optional[pulumi.Input[Optional[builtins.int]]]):
         pulumi.set(self, "bar", value)
 
 
 if not MYPY:
     class ObjectArgsDict(TypedDict):
-        bar: NotRequired[pulumi.Input[builtins.str]]
-        configs: NotRequired[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgsDict']]]]
-        foo: NotRequired[pulumi.Input['Resource']]
-        others: NotRequired[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]
+        bar: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
+        configs: NotRequired[pulumi.Input[NotRequired[Sequence[pulumi.Input['ConfigMapArgsDict']]]]]
+        foo: NotRequired[pulumi.Input[NotRequired['Resource']]]
+        others: NotRequired[pulumi.Input[NotRequired[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
         """
         List of lists of other objects
         """
-        still_others: NotRequired[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]
+        still_others: NotRequired[pulumi.Input[NotRequired[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
         """
         Mapping from string to list of some other object
         """
@@ -107,14 +107,14 @@ elif False:
 @pulumi.input_type
 class ObjectArgs:
     def __init__(__self__, *,
-                 bar: Optional[pulumi.Input[builtins.str]] = None,
-                 configs: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]] = None,
-                 foo: Optional[pulumi.Input['Resource']] = None,
-                 others: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
-                 still_others: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None):
+                 bar: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 configs: Optional[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]]] = None,
+                 foo: Optional[pulumi.Input[Optional['Resource']]] = None,
+                 others: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]] = None,
+                 still_others: Optional[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]] = None):
         """
-        :param pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]] others: List of lists of other objects
-        :param pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]] still_others: Mapping from string to list of some other object
+        :param pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] others: List of lists of other objects
+        :param pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] still_others: Mapping from string to list of some other object
         """
         if bar is not None:
             pulumi.set(__self__, "bar", bar)
@@ -129,76 +129,76 @@ class ObjectArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input[builtins.str]]:
+    def bar(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input[builtins.str]]):
+    def bar(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "bar", value)
 
     @property
     @pulumi.getter
-    def configs(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]]:
+    def configs(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]]]:
         return pulumi.get(self, "configs")
 
     @configs.setter
-    def configs(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]]):
+    def configs(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]]]):
         pulumi.set(self, "configs", value)
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['Resource']]:
+    def foo(self) -> Optional[pulumi.Input[Optional['Resource']]]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['Resource']]):
+    def foo(self, value: Optional[pulumi.Input[Optional['Resource']]]):
         pulumi.set(self, "foo", value)
 
     @property
     @pulumi.getter
-    def others(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
+    def others(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]]:
         """
         List of lists of other objects
         """
         return pulumi.get(self, "others")
 
     @others.setter
-    def others(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
+    def others(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]]):
         pulumi.set(self, "others", value)
 
     @property
     @pulumi.getter(name="stillOthers")
-    def still_others(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
+    def still_others(self) -> Optional[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]]:
         """
         Mapping from string to list of some other object
         """
         return pulumi.get(self, "still_others")
 
     @still_others.setter
-    def still_others(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
+    def still_others(self, value: Optional[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]]):
         pulumi.set(self, "still_others", value)
 
 
 if not MYPY:
     class SomeOtherObjectArgsDict(TypedDict):
-        baz: NotRequired[pulumi.Input[builtins.str]]
+        baz: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     SomeOtherObjectArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class SomeOtherObjectArgs:
     def __init__(__self__, *,
-                 baz: Optional[pulumi.Input[builtins.str]] = None):
+                 baz: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         if baz is not None:
             pulumi.set(__self__, "baz", baz)
 
     @property
     @pulumi.getter
-    def baz(self) -> Optional[pulumi.Input[builtins.str]]:
+    def baz(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "baz")
 
     @baz.setter
-    def baz(self, value: Optional[pulumi.Input[builtins.str]]):
+    def baz(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "baz", value)
 
 

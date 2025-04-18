@@ -24,24 +24,24 @@ MYPY = False
 
 if not MYPY:
     class FooArgsDict(TypedDict):
-        a: NotRequired[pulumi.Input[builtins.bool]]
+        a: NotRequired[pulumi.Input[NotRequired[builtins.bool]]]
 elif False:
     FooArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class FooArgs:
     def __init__(__self__, *,
-                 a: Optional[pulumi.Input[builtins.bool]] = None):
+                 a: Optional[pulumi.Input[Optional[builtins.bool]]] = None):
         if a is not None:
             pulumi.set(__self__, "a", a)
 
     @property
     @pulumi.getter
-    def a(self) -> Optional[pulumi.Input[builtins.bool]]:
+    def a(self) -> Optional[pulumi.Input[Optional[builtins.bool]]]:
         return pulumi.get(self, "a")
 
     @a.setter
-    def a(self, value: Optional[pulumi.Input[builtins.bool]]):
+    def a(self, value: Optional[pulumi.Input[Optional[builtins.bool]]]):
         pulumi.set(self, "a", value)
 
 

@@ -47,5 +47,5 @@ export class FooResource extends pulumi.ComponentResource {
  * The set of arguments for constructing a FooResource resource.
  */
 export interface FooResourceArgs {
-    foo?: pulumi.Input<Resource>;
+    foo?: pulumi.Input<Resource | undefined | null>;
 }
