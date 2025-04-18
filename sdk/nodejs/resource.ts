@@ -1511,3 +1511,23 @@ export function pkgFromType(type: string): string | undefined {
     }
     return undefined;
 }
+
+/**
+ * The Pulumi type assigned to the resource at construction, of the form `package:module:name`.
+ */
+export function resourceType(res: Resource): string {
+    return res.__pulumiType;
+}
+
+/**
+ * The Pulumi name assigned to the resource at construction, i.e. the "name" in its constructor call.
+ */
+export function resourceName(res: Resource): string {
+    if (res.__name === undefined) {
+        throw new ResourceError(
+            "Resource name is not available, this resource instance must have been constructed by an old SDK",
+            res,
+        );
+    }
+    return res.__name;
+}
