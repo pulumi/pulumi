@@ -1,10 +1,8 @@
 name: nodejs-component-provider-yaml
 description: Using a component provider written in Node.js from YAML
 runtime: yaml
-plugins:
-  providers:
-    - name: nodejs-component-provider
-      path: ../provider
+packages:
+  provider: ../provider
 resources:
   comp:
     type: nodejs-component-provider:index:MyComponent
