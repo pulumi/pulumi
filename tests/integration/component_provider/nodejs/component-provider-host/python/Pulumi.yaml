@@ -5,7 +5,5 @@ runtime:
   options:
     toolchain: pip
     virtualenv: venv
-plugins:
-  providers:
-    - name: nodejs-component-provider
-      path: ../provider
+packages:
+  provider: ../provider
