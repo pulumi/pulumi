@@ -38,6 +38,10 @@ type (
 type Value struct {
 	isSecret bool
 
+	// That Value directly contains a slice (dependencies) makes it uncomparable with
+	// ==. Since we can't override ==, we want to ensure that == remains a compile
+	// error.
+
 	dependencies []urn.URN // the dependencies associated with this value.
 
 	// The inner go value for the Value.
