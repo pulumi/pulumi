@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/keystore"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -28,13 +29,22 @@ type Context interface {
 	// directory, which will be used as the root of the project's Pulumi program.
 	ReadProject() (*workspace.Project, string, error)
 
+	GetKeyStore() keystore.KeyStore
+
 	// GetStoredCredentials returns any credentials stored on the local machine.
 	GetStoredCredentials() (workspace.Credentials, error)
 }
 
-var Instance Context = &workspaceContext{}
+// TODO: Init KeyStore depending on executable (pulumi-cli, esc-cli, other)
+var Instance Context = &workspaceContext{keystore.KeyStore{"pulumi"}}
 
-type workspaceContext struct{}
+type workspaceContext struct {
+	ks keystore.KeyStore
+}
+
+func (c *workspaceContext) GetKeyStore() keystore.KeyStore {
+	return c.ks
+}
 
 func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
 	proj, path, err := workspace.DetectProjectAndPath()
@@ -46,5 +56,5 @@ func (c *workspaceContext) ReadProject() (*workspace.Project, string, error) {
 }
 
 func (c *workspaceContext) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.GetStoredCredentials()
+	return workspace.GetStoredCredentialsWithKeyStore(c.ks)
 }
