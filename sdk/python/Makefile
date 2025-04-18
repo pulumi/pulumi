@@ -45,7 +45,6 @@ format:: ensure
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
-	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
 
 install_plugin:: build_plugin
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-python \
@@ -73,7 +72,6 @@ dist::
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "${GOBIN}"
 	cp ./dist/pulumi-resource-pulumi-python "${GOBIN}"
-	cp ./dist/pulumi-analyzer-policy-python "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
@@ -81,7 +79,6 @@ brew::
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
 publish:: ensure
 	for file in ../../artifacts/sdk-python-*.whl; do \

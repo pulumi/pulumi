@@ -46,6 +46,7 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -1353,6 +1354,13 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 
 	args := []string{req.Info.ProgramDirectory}
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
+		// used to have a dedicated shim plugin "pulumi-analyzer-python-policy" that would start policy packs
+		// up, but now we just let the RunPlugin code handle that logic.
+		args = []string{"-u", "-m", "pulumi.policy"}
+	}
+
 	args = append(args, req.Args...)
 
 	// Default the `virtualenv` option to `venv` if not provided. We don't support running
