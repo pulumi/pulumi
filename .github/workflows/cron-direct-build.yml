@@ -4,7 +4,7 @@ on:
   schedule:
   # 1030 UTC every weekday
   - cron: "30 10 * * 1-5"
-
+  pull_request: {}
 jobs:
   pkg:
     runs-on: ubuntu-22.04
@@ -27,6 +27,8 @@ jobs:
         shell: bash
         run: |
           mkdir test
+          which pulumi
+          pulumi version
           cd test
           pulumi new random-go --generate-only --yes
           go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../sdk
