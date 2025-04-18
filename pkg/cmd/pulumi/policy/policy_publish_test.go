@@ -66,7 +66,7 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 			}
 			return filepath.Join(cwd, "testdata"), nil
 		},
-		defaultOrg: func(*workspace.Project) (string, error) {
+		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 			return "org1", nil
 		},
 	}

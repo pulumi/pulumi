@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/placeholder"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -38,6 +39,11 @@ func NewOrgCmd() *cobra.Command {
 			"e.g. setting the default organization for a backend",
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			displayOpts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
@@ -50,7 +56,12 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+			if err != nil {
+				return err
+			}
+
+			defaultOrg, err := placeholder.GetDefaultOrg(ctx, currentBe, project)
 			if err != nil {
 				return err
 			}
@@ -156,7 +167,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+			defaultOrg, err := placeholder.GetDefaultOrg(ctx, currentBe, project)
 			if err != nil {
 				return err
 			}
