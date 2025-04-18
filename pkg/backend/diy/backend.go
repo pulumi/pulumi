@@ -174,6 +174,11 @@ func (r *diyBackendReference) Project() (tokens.Name, bool) {
 	return r.project, r.project != ""
 }
 
+func (r *diyBackendReference) Organization() (string, bool) {
+	// DIY backend always uses "organization" as the fixed organization name
+	return "organization", r.project != ""
+}
+
 func (r *diyBackendReference) FullyQualifiedName() tokens.QName {
 	if r.project == "" {
 		return r.name.Q()
