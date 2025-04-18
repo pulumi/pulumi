@@ -278,6 +278,9 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 		v.dependencies = nil
 	} else {
 		v.dependencies = copyArray(dependencies)
+		// Sort the dependencies on ingestion so that Equals doesn't care about
+		// dependency order.
+		slices.Sort(v.dependencies)
 	}
 	return v
 }
