@@ -422,3 +422,10 @@ func TestWithDependencies(t *testing.T) {
 		assert.Equal(t, []urn.URN{"1", "2"}, v.Dependencies())
 	})
 }
+
+func TestNotComparable(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, reflect.TypeFor[Value]().Comparable(),
+		"We want to force comparability with .Equals, not with ==")
+}
