@@ -1866,13 +1866,12 @@ func TestPythonComponentProviderRun(t *testing.T) {
 		t.Run(runtime, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PrepareProject: func(info *engine.Projinfo) error {
-					installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
-					if runtime != "yaml" {
-						cmd := exec.Command("pulumi", "package", "add", filepath.Join(info.Root, "..", "provider"))
-						cmd.Dir = info.Root
-						out, err := cmd.CombinedOutput()
-						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-					}
+					providerPath := filepath.Join(info.Root, "..", "provider")
+					installPythonProviderDependencies(t, providerPath)
+					cmd := exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "python", "component-provider-host"),
