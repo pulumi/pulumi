@@ -1001,9 +1001,9 @@ func TestImportStep(t *testing.T) {
 						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ID:     "some-id",
-						Custom: true,
+						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID: "some-id",
+						Custom:   true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1026,9 +1026,9 @@ func TestImportStep(t *testing.T) {
 						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ID:     "some-id",
-						Custom: true,
+						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID: "some-id",
+						Custom:   true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1056,9 +1056,9 @@ func TestImportStep(t *testing.T) {
 						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ID:     "some-id",
-						Custom: true,
+						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID: "some-id",
+						Custom:   true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1081,9 +1081,9 @@ func TestImportStep(t *testing.T) {
 						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ID:     "some-id",
-						Custom: true,
+						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID: "some-id",
+						Custom:   true,
 					},
 					provider: &deploytest.Provider{
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1117,10 +1117,10 @@ func TestImportStep(t *testing.T) {
 						news: &gsync.Map[urn.URN, *resource.State]{},
 					},
 					new: &resource.State{
-						URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ID:     "some-id",
-						Type:   "foo:bar:Bar",
-						Custom: true,
+						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+						ImportID: "some-id",
+						Type:     "foo:bar:Bar",
+						Custom:   true,
 					},
 					randomSeed: []byte{},
 					provider: &deploytest.Provider{
@@ -1162,7 +1162,7 @@ func TestImportStep(t *testing.T) {
 					},
 					new: &resource.State{
 						URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
-						ID:       "some-id",
+						ImportID: "some-id",
 						Type:     "foo:bar:Bar",
 						Custom:   true,
 						Parent:   "urn:pulumi:stack::project::pulumi:pulumi:Stack::name",
@@ -1224,10 +1224,10 @@ func TestImportStep(t *testing.T) {
 					ctx:  ctx,
 				},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-					ID:     "some-id",
-					Type:   "foo:bar:Bar",
-					Custom: true,
+					URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ImportID: "some-id",
+					Type:     "foo:bar:Bar",
+					Custom:   true,
 				},
 				randomSeed: []byte{},
 				provider: &deploytest.Provider{
@@ -1271,10 +1271,10 @@ func TestImportStep(t *testing.T) {
 					ctx:  ctx,
 				},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-					ID:     "some-id",
-					Type:   "foo:bar:Bar",
-					Custom: true,
+					URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ImportID: "some-id",
+					Type:     "foo:bar:Bar",
+					Custom:   true,
 				},
 				randomSeed: []byte{},
 				provider:   &deploytest.Provider{},
@@ -1307,10 +1307,10 @@ func TestImportStep(t *testing.T) {
 					ctx:  ctx,
 				},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-					ID:     "some-id",
-					Type:   "foo:bar:Bar",
-					Custom: true,
+					URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ImportID: "some-id",
+					Type:     "foo:bar:Bar",
+					Custom:   true,
 				},
 				randomSeed: []byte{},
 				provider: &deploytest.Provider{
@@ -1355,10 +1355,10 @@ func TestImportStep(t *testing.T) {
 					ctx:  ctx,
 				},
 				new: &resource.State{
-					URN:    "urn:pulumi:stack::project::foo:bar:Bar::name",
-					ID:     "some-id",
-					Type:   "foo:bar:Bar",
-					Custom: true,
+					URN:      "urn:pulumi:stack::project::foo:bar:Bar::name",
+					ImportID: "some-id",
+					Type:     "foo:bar:Bar",
+					Custom:   true,
 				},
 				randomSeed: []byte{},
 				provider:   &deploytest.Provider{},

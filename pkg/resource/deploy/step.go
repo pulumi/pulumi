@@ -1191,7 +1191,8 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new.ImportID != "", "new", "must have an ImportID")
 	contract.Requiref(new.Custom, "new", "must be a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
@@ -1213,7 +1214,8 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new.ImportID != "", "new", "must have an ImportID")
 	contract.Requiref(new.Custom, "new", "must be a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
@@ -1234,7 +1236,8 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 func newImportDeploymentStep(deployment *Deployment, new *resource.State, randomSeed []byte) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(!new.Custom || new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.ImportID != "", "new", "must have an ImportID")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
@@ -1302,7 +1305,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			URN:  s.new.URN,
 			Name: s.new.URN.Name(),
 			Type: s.new.URN.Type(),
-			ID:   s.new.ID,
+			ID:   s.new.ImportID,
 		})
 		rst = read.Status
 
@@ -1326,6 +1329,8 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 		if read.ID != "" {
 			s.new.ID = read.ID
+		} else {
+			s.new.ID = s.new.ImportID
 		}
 		inputs = read.Inputs
 		outputs = read.Outputs
@@ -1358,10 +1363,15 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if s.planned {
 		contract.Assertf(len(s.new.Inputs) == 0, "import resource cannot have existing inputs")
 
+		// Historically, we would never set ImportID for resources imported via `pulumi import`. This
+		// continues that behavior. When adding support for https://github.com/pulumi/pulumi/issues/8836,
+		// we'll likly need to make this toggleable.
+		s.new.ImportID = ""
+
 		// Get the import object and see if it had properties set
 		var inputProperties []string
 		for _, imp := range s.deployment.imports {
-			if imp.ID == s.old.ID {
+			if imp.ID == s.old.ImportID {
 				inputProperties = imp.Properties
 				break
 			}
