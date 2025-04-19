@@ -72,3 +72,10 @@ class ComponentDefinition:
     module: Optional[str]
     """The Python module where this component is defined."""
     description: Optional[str] = None
+
+
+@dataclass
+class Dependency:
+    name: str
+    version: Optional[str] = None
+    downloadURL: Optional[str] = None

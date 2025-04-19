@@ -15,6 +15,7 @@
 import ast
 import collections
 from enum import Enum
+import importlib
 import inspect
 import sys
 import types
@@ -41,6 +42,7 @@ from ...output import Output
 from ...resource import ComponentResource, Resource
 from .component import (
     ComponentDefinition,
+    Dependency,
     EnumValueDefinition,
     PropertyDefinition,
     PropertyType,
@@ -153,6 +155,7 @@ class Analyzer:
 
     def __init__(self, name: str):
         self.name = name
+        self.dependencies: list[Dependency] = []
         self.type_definitions: dict[str, TypeDefinition] = {}
         # For unresolved types, we need to keep track of whether we saw them in a
         # component output or an input.
@@ -168,7 +171,9 @@ class Analyzer:
     def analyze(
         self,
         components: list[type[ComponentResource]],
-    ) -> tuple[dict[str, ComponentDefinition], dict[str, TypeDefinition]]:
+    ) -> tuple[
+        dict[str, ComponentDefinition], dict[str, TypeDefinition], list[Dependency]
+    ]:
         """
         Analyze walks the directory at `path` and searches for
         ComponentResources in Python files.
@@ -219,7 +224,7 @@ class Analyzer:
         if len(components) == 0:
             raise Exception("No components found")
 
-        return (component_defs, self.type_definitions)
+        return (component_defs, self.type_definitions, self.dependencies)
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
         if sys.version_info >= (3, 10):
@@ -469,10 +474,38 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            # TODO: https://github.com/pulumi/pulumi/issues/18484
-            raise Exception(
-                f"Resource references are not supported yet: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
-            )
+            type_string = getattr(arg, "pulumi_type", None)
+            if not type_string:
+                raise Exception(
+                    f"Can not determine resource reference for type '{arg.__name__}' used in '{typ.__name__}.{name}'. "
+                    + f"'{arg.__name__}.pulumi_type' is not defined."
+                )
+            parts = type_string.split(":")
+            if len(parts) != 3:
+                raise Exception(
+                    f"invalid type string '{type_string}' for type '{arg}' used in '{typ.__name__}.{name}'"
+                )
+            package_name = parts[0]
+            try:
+                # Import _utilities from from the SDK
+                root_mod = arg.__module__.split(".")[0]
+                utilities = importlib.import_module(f"{root_mod}._utilities")
+                version = utilities.get_version()
+                download_url = utilities.get_plugin_download_url()
+                self.dependencies.append(
+                    Dependency(package_name, version, download_url)
+                )
+                return PropertyDefinition(
+                    ref=f"/{package_name}/v{version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
+                    optional=optional,
+                    description=self.get_docstring(typ, name),
+                )
+            except ImportError as e:
+                raise Exception(
+                    f"Could not import module '{package_name}'. "
+                    + "Please ensure that the module is part of your project's dependencies and run `pulumi install`."
+                ) from e
+
         elif is_union(arg):
             raise Exception(
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"

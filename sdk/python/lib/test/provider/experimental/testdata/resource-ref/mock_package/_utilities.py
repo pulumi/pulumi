@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi.provider.experimental.schema import generate_schema
+# Pulumi SDKs have get_version and get_plugin_download_url in _utilities
 
 
-def test_generate_schema_with_namespace():
-    schema = generate_schema("name", "1.2.3", "namespace", {}, {}, [])
-    assert schema.name == "name"
-    assert schema.namespace == "namespace"
+def get_version() -> str:
+    return "1.2.3"
 
 
-def test_generate_schema_no_namespace():
-    schema = generate_schema("name", "1.2.3", None, {}, {}, [])
-    assert schema.name == "name"
-    assert schema.namespace is None
+def get_plugin_download_url():
+    return None

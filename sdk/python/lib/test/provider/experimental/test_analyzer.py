@@ -40,6 +40,7 @@ from pulumi.provider.experimental.analyzer import (
 )
 from pulumi.provider.experimental.component import (
     ComponentDefinition,
+    Dependency,
     EnumValueDefinition,
     PropertyDefinition,
     PropertyType,
@@ -790,7 +791,7 @@ def test_analyze_any():
 
 def test_analyze_descriptions():
     analyzer = Analyzer("descriptions")
-    (components, type_definitions) = analyzer.analyze(
+    (components, type_definitions, _) = analyzer.analyze(
         components=load_components(Path("testdata", "docstrings")),
     )
     assert components == {
@@ -891,7 +892,33 @@ def test_analyze_descriptions():
 
 
 def test_analyze_resource_ref():
-    class MyResource(pulumi.CustomResource): ...
+    analyzer = Analyzer("resource-ref")
+
+    (component_defs, _, dependencies) = analyzer.analyze(
+        components=load_components(Path("testdata", "resource-ref")),
+    )
+    assert component_defs == {
+        "Component": ComponentDefinition(
+            name="Component",
+            module="resource_ref",
+            inputs={
+                "password": PropertyDefinition(
+                    ref="/mock_package/v1.2.3/schema.json#/resources/mock_package:index:MyResource",
+                ),
+            },
+            inputs_mapping={
+                "password": "password",
+            },
+            outputs={},
+            outputs_mapping={},
+        )
+    }
+    assert dependencies == [Dependency("mock_package", "1.2.3", None)]
+
+
+def test_analyze_resource_ref_no_resource_type():
+    class MyResource(pulumi.CustomResource):
+        pass
 
     class Args(TypedDict):
         password: pulumi.Input[MyResource]
@@ -902,10 +929,11 @@ def test_analyze_resource_ref():
     analyzer = Analyzer("resource-ref")
     try:
         analyzer.analyze_component(Component)
+        assert False, "expected an exception"
     except Exception as e:
         assert (
             str(e)
-            == "Resource references are not supported yet: found type 'MyResource' for 'Args.password'"
+            == "Can not determine resource reference for type 'MyResource' used in 'Args.password'. 'MyResource.pulumi_type' is not defined."
         )
 
 
@@ -996,7 +1024,7 @@ def test_analyze_enum_type():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer("enum")
-    (component_defs, type_defs) = analyzer.analyze(components=[Component])
+    (component_defs, type_defs, _) = analyzer.analyze(components=[Component])
     assert component_defs == {
         "Component": ComponentDefinition(
             name="Component",
@@ -1215,7 +1243,7 @@ def test_analyze_component_self_recursive_complex_type():
 def test_analyze_component_mutually_recursive_complex_types_file():
     analyzer = Analyzer("mutually-recursive")
 
-    (components, type_definitions) = analyzer.analyze(
+    (components, type_definitions, _) = analyzer.analyze(
         components=load_components(Path("testdata", "mutually-recursive")),
     )
     assert type_definitions == {
