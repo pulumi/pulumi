@@ -24,8 +24,10 @@ build_package:: ensure
 	uv run -m build --outdir ./build --installer uv
 
 build_plugin::
-	go install -C cmd/pulumi-language-python \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go build -C cmd/pulumi-language-python \
+		-o ../../../../bin/pulumi-language-python \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
@@ -67,7 +69,6 @@ test_all:: test_fast test_auto test_go
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 
-dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	GOBIN=${GOBIN} go install -C cmd/pulumi-language-python \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}

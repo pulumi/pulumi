@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs,python
+  description: Don’t install python/nodejs runtimes during make build
