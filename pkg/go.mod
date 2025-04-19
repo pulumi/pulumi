@@ -1,6 +1,7 @@
 module github.com/pulumi/pulumi/pkg/v3
 
 go 1.22
+toolchain go1.24.1
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
@@ -46,8 +47,8 @@ require (
 	github.com/zclconf/go-cty v1.13.2
 	gocloud.dev v0.37.0
 	gocloud.dev/secrets/hashivault v0.37.0
-	golang.org/x/crypto v0.33.0 // indirect
-	golang.org/x/net v0.35.0
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/net v0.36.0
 	golang.org/x/oauth2 v0.22.0
 	golang.org/x/sync v0.11.0
 	google.golang.org/api v0.169.0
