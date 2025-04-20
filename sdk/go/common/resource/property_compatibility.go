@@ -73,7 +73,7 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	case v.Secret():
 		r = MakeSecret(r)
 	case v.IsComputed():
-		r = MakeComputed(r)
+		r = MakeComputed(NewProperty(""))
 	}
 
 	return r
