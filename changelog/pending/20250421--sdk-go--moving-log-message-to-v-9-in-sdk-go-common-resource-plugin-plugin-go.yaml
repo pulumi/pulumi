@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Moving log message to -v 9 in sdk/go/common/resource/plugin/plugin.go
