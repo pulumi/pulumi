@@ -16,7 +16,7 @@ package apitype
 
 // StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
-	// ID is the the stack's ProgramID.
+	// ID is the the id of the stack.
 	ID string `json:"id"`
 	// OrgName is the organization name the stack is found in.
 	OrgName string `json:"orgName"`
