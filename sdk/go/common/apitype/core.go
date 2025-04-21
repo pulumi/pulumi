@@ -436,6 +436,11 @@ const (
 
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
+	// ID is the logical ID of the stack.
+	//
+	// For maintainers of the Pulumi service:
+	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
+	ID          string       `json:"id"`
 	OrgName     string       `json:"orgName"`
 	ProjectName string       `json:"projectName"`
 	StackName   tokens.QName `json:"stackName"`
