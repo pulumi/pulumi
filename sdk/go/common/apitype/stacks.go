@@ -16,7 +16,10 @@ package apitype
 
 // StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
-	// ID is the the id of the stack.
+	// ID is the logical ID of the stack.
+	//
+	// For maintainers of the Pulumi service:
+	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
 	ID string `json:"id"`
 	// OrgName is the organization name the stack is found in.
 	OrgName string `json:"orgName"`
