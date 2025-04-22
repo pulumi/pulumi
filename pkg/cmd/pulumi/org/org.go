@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/placeholder"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -61,7 +61,7 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := placeholder.GetDefaultOrg(ctx, currentBe, project)
+			defaultOrg, err := httpstate.GetDefaultOrg(ctx, currentBe, project)
 			if err != nil {
 				return err
 			}
@@ -167,7 +167,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := placeholder.GetDefaultOrg(ctx, currentBe, project)
+			defaultOrg, err := httpstate.GetDefaultOrg(ctx, currentBe, project)
 			if err != nil {
 				return err
 			}

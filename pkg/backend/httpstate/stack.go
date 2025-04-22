@@ -25,7 +25,6 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/placeholder"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -64,7 +63,7 @@ func (c cloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := placeholder.GetDefaultOrg(context.Background(), c.b, c.b.currentProject)
+		defaultOrg, err := GetDefaultOrg(context.Background(), c.b, c.b.currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {

@@ -21,8 +21,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/placeholder"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -113,7 +113,7 @@ func buildStackName(ctx context.Context, b backend.Backend, stackName string) (s
 
 	// We never have a project at the point of calling buildStackName (only called from new), so we just pass
 	// nil for the project and only check the global settings.
-	defaultOrg, err := placeholder.GetDefaultOrg(ctx, b, nil)
+	defaultOrg, err := httpstate.GetDefaultOrg(ctx, b, nil)
 	if err != nil {
 		return "", err
 	}
