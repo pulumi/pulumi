@@ -24,10 +24,14 @@ import (
 )
 
 func TestGetDefaultOrg(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	userConfiguredOrg := "user-configured-default-org"
 	backendConfiguredOrg := "backend-configured-org"
 	t.Run("prefers user-configured default org", func(t *testing.T) {
+		t.Parallel()
+
 		// GIVEN
 		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
 			return userConfiguredOrg, nil
@@ -49,6 +53,8 @@ func TestGetDefaultOrg(t *testing.T) {
 	})
 
 	t.Run("falls back to making a call for user org", func(t *testing.T) {
+		t.Parallel()
+
 		// GIVEN
 		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
 			return "", nil
@@ -70,6 +76,8 @@ func TestGetDefaultOrg(t *testing.T) {
 
 	// This maintains existing behavior with `GetBackendConfigDefaultOrg`.
 	t.Run("returns empty string if nothing is configured", func(t *testing.T) {
+		t.Parallel()
+
 		// GIVEN
 		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
 			return "", nil
