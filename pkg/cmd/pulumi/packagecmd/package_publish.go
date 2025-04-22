@@ -27,7 +27,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -88,7 +87,7 @@ func newPackagePublishCmd() *cobra.Command {
 		Hidden: !env.Experimental.Value(),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			pkgPublishCmd.defaultOrg = httpstate.GetDefaultOrg
+			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
 			pkgPublishCmd.extractSchema = SchemaFromSchemaSource
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], cliArgs[1:])
 		},

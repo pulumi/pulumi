@@ -775,7 +775,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := GetDefaultOrg(context.Background(), b, b.currentProject)
+		defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
 		if err != nil {
 			return nil, err
 		}
@@ -915,7 +915,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 	}
 
 	getDefaultOrg := func() (string, error) {
-		return GetDefaultOrg(ctx, b, nil)
+		return backend.GetDefaultOrg(ctx, b, nil)
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)

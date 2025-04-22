@@ -63,7 +63,7 @@ func (c cloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := GetDefaultOrg(context.Background(), c.b, c.b.currentProject)
+		defaultOrg, err := backend.GetDefaultOrg(context.TODO(), c.b, c.b.currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {

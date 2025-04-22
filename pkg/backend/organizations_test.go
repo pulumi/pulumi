@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package httpstate
+package backend
 
 import (
 	"context"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +36,7 @@ func TestGetDefaultOrg(t *testing.T) {
 			return userConfiguredOrg, nil
 		}
 
-		testBackend := &backend.MockBackend{
+		testBackend := &MockBackend{
 			GetDefaultOrgF: func(ctx context.Context) (string, error) {
 				assert.Fail(t, "should not make api call for get default org")
 				return "", nil
@@ -60,7 +59,7 @@ func TestGetDefaultOrg(t *testing.T) {
 			return "", nil
 		}
 
-		testBackend := &backend.MockBackend{
+		testBackend := &MockBackend{
 			GetDefaultOrgF: func(ctx context.Context) (string, error) {
 				return backendConfiguredOrg, nil
 			},
@@ -83,7 +82,7 @@ func TestGetDefaultOrg(t *testing.T) {
 			return "", nil
 		}
 
-		testBackend := &backend.MockBackend{}
+		testBackend := &MockBackend{}
 
 		// WHEN
 		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)

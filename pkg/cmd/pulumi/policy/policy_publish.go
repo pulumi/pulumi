@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -61,7 +60,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		cmd.getwd = os.Getwd
 	}
 	if cmd.defaultOrg == nil {
-		cmd.defaultOrg = httpstate.GetDefaultOrg
+		cmd.defaultOrg = backend.GetDefaultOrg
 	}
 
 	b, err := loginToCloudBackend(ctx, lm)

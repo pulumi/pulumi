@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package httpstate
+package backend
 
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -27,13 +26,13 @@ import (
 // call to the backend for the backend opinion on default organization if not manually set by the user.
 // Returns an empty string if the user does not have a default org explicitly configured and if the backend
 // does not have an opinion on user organizations.
-func GetDefaultOrg(ctx context.Context, b backend.Backend, currentProject *workspace.Project) (string, error) {
+func GetDefaultOrg(ctx context.Context, b Backend, currentProject *workspace.Project) (string, error) {
 	return getDefaultOrg(ctx, b, currentProject, pkgWorkspace.GetBackendConfigDefaultOrg)
 }
 
 func getDefaultOrg(
 	ctx context.Context,
-	b backend.Backend,
+	b Backend,
 	currentProject *workspace.Project,
 	getBackendConfigDefaultOrgF func(*workspace.Project) (string, error),
 ) (string, error) {
