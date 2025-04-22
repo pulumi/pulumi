@@ -70,7 +70,7 @@ test_all:: test_fast test_auto test_go
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 
 dist::
-	GOBIN=${GOBIN} go install -C cmd/pulumi-language-python \
+	go install -C cmd/pulumi-language-python \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "${GOBIN}"
 	cp ./dist/pulumi-resource-pulumi-python "${GOBIN}"
