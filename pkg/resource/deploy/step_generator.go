@@ -874,7 +874,6 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 		// Write the ID of the resource to import into the new state and return an ImportStep or an
 		// ImportReplacementStep
-		new.ID = goal.ID
 		new.ImportID = goal.ID
 
 		// If we're generating plans create a plan, Imports have no diff, just a goal state
