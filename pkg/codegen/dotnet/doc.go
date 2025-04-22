@@ -92,14 +92,14 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return mod.typeString(t, qualifier, input, false /*state*/, true /*requireInitializers*/)
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return tokenToFunctionName(f.Token)
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	funcName := d.GetFunctionName(modName, f)
+	funcName := d.GetFunctionName(f)
 	return funcName + "Result"
 }
 
