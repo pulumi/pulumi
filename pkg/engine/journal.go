@@ -118,7 +118,6 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				dones[e.Step.Old()] = true
 			case deploy.OpImport, deploy.OpImportReplacement:
 				resources = append(resources, e.Step.New())
-				dones[e.Step.New()] = true
 			case deploy.OpRefresh:
 				step, ok := e.Step.(*deploy.RefreshStep)
 				contract.Assertf(ok, "expected *deploy.RefreshStep, got %T", e.Step)
