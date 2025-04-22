@@ -145,20 +145,3 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string, error) {
 	return enumMemberName(typeName, e)
 }
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	namespace := "@pulumi"
-	if pkg.Namespace != "" {
-		namespace = "@" + pkg.Namespace
-	}
-	if modName == "" {
-		displayName = fmt.Sprintf("%s/%s", namespace, pkg.Name)
-	} else {
-		displayName = fmt.Sprintf("%s/%s/%s", namespace, pkg.Name, strings.ToLower(modName))
-	}
-	link = d.GetDocLinkForResourceType(pkg, modName, "")
-	return displayName, link
-}

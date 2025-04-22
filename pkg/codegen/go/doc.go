@@ -166,16 +166,3 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 	}
 	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
 }
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = packageName(pkg)
-	} else {
-		displayName = fmt.Sprintf("%s/%s", packageName(pkg), modName)
-	}
-	link = d.GetDocLinkForResourceType(pkg, modName, "")
-	return displayName, link
-}
