@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 )
 
 type typeDetails struct {
@@ -2353,7 +2354,7 @@ func genProjectFile(pkg *schema.Package,
 	sort.Strings(restoreSources)
 
 	// Add local package references
-	pkgs := codegen.SortedKeys(localDependencies)
+	pkgs := maputil.SortedKeys(localDependencies)
 	for _, pkg := range pkgs {
 		nugetFilePath := localDependencies[pkg]
 		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {

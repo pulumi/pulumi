@@ -113,17 +113,6 @@ func (s Set) Has(v interface{}) bool {
 	return ok
 }
 
-// SortedKeys returns a sorted list of keys for the given map.
-func SortedKeys[T any](m map[string]T) []string {
-	keys := slice.Prealloc[string](len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	return keys
-}
-
 // CleanDir removes all existing files from a directory except those in the exclusions list.
 // Note: The exclusions currently don't function recursively, so you cannot exclude a single file
 // in a subdirectory, only entire subdirectories. This function will need improvements to be able to

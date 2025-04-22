@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -316,7 +317,7 @@ func GenerateProject(
 	csproj.WriteString("	<ItemGroup>\n")
 
 	// Add local package references
-	pkgs := codegen.SortedKeys(localDependencies)
+	pkgs := maputil.SortedKeys(localDependencies)
 	for _, pkg := range pkgs {
 		nugetFilePath := localDependencies[pkg]
 		if packageName, version, ok := extractNugetPackageNameAndVersion(nugetFilePath); ok {
@@ -701,7 +702,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 			g.Fprintf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
 				objectTypedConfigVars := collectComponentObjectTypedConfigVariables(component)
-				variableNames := pcl.SortedStringKeys(objectTypedConfigVars)
+				variableNames := maputil.SortedKeys(objectTypedConfigVars)
 				// generate resource args for this component
 				for _, variableName := range variableNames {
 					objectType := objectTypedConfigVars[variableName]
@@ -709,7 +710,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 					g.Fprintf(w, "%spublic class %s : global::Pulumi.ResourceArgs\n", g.Indent, objectTypeName)
 					g.Fprintf(w, "%s{\n", g.Indent)
 					g.Indented(func() {
-						propertyNames := pcl.SortedStringKeys(objectType.Properties)
+						propertyNames := maputil.SortedKeys(objectType.Properties)
 						for _, propertyName := range propertyNames {
 							propertyType := objectType.Properties[propertyName]
 							inputType := componentInputType(propertyType)
@@ -954,11 +955,11 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 	// those are referenced in config.GetObject<T> where T is one of these generated types
 	// they must be generated after the top-level statement call to Deployment.RunAsync
 	objectTypedConfigVariables := collectObjectTypedConfigVariables(g.program)
-	objectTypeKeys := pcl.SortedStringKeys(objectTypedConfigVariables)
+	objectTypeKeys := maputil.SortedKeys(objectTypedConfigVariables)
 	for _, typeName := range objectTypeKeys {
 		objectType := objectTypedConfigVariables[typeName]
 		g.Fgenf(w, "public class %s\n{\n", typeName)
-		sortedProperties := pcl.SortedStringKeys(objectType.Properties)
+		sortedProperties := maputil.SortedKeys(objectType.Properties)
 		for _, propertyName := range sortedProperties {
 			g.Indented(func() {
 				property := objectType.Properties[propertyName]

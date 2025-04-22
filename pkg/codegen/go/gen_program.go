@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -228,14 +229,14 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 	argsTypeName := Title(componentName) + "Args"
 
 	objectTypedConfigVars := collectObjectTypedConfigVariables(component)
-	variableNames := pcl.SortedStringKeys(objectTypedConfigVars)
+	variableNames := maputil.SortedKeys(objectTypedConfigVars)
 	// generate resource args for this component
 	for _, variableName := range variableNames {
 		objectType := objectTypedConfigVars[variableName]
 		objectTypeName := configObjectTypeName(variableName)
 		g.Fprintf(w, "type %s struct {\n", objectTypeName)
 		g.Indented(func() {
-			propertyNames := pcl.SortedStringKeys(objectType.Properties)
+			propertyNames := maputil.SortedKeys(objectType.Properties)
 			for _, propertyName := range propertyNames {
 				propertyType := objectType.Properties[propertyName]
 				inputType := componentInputType(propertyType)
@@ -635,7 +636,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 	// For any local dependencies, add a replace statement. Make sure we iter this in sorted order (c.f.
 	// https://github.com/pulumi/pulumi/issues/16859).
-	pkgs := codegen.SortedKeys(localDependencies)
+	pkgs := maputil.SortedKeys(localDependencies)
 	for _, pkg := range pkgs {
 		path := localDependencies[pkg]
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there

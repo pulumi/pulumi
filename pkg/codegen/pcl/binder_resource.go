@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -688,7 +689,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 			}
 		}
 
-		for _, k := range codegen.SortedKeys(objectType.Properties) {
+		for _, k := range maputil.SortedKeys(objectType.Properties) {
 			typ := objectType.Properties[k]
 			if model.IsOptionalType(typ) || attrNames.Has(k) {
 				// The type is present or optional. No error.
