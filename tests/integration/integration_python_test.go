@@ -1861,25 +1861,21 @@ func TestRegress18176(t *testing.T) {
 func TestPythonComponentProviderRun(t *testing.T) {
 	t.Parallel()
 
-	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "component-provider-host"))
-	require.NoError(t, err)
-	providerDir := filepath.Join(testData, "provider")
-	installPythonProviderDependencies(t, providerDir)
-
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, runtime := range []string{"yaml", "nodejs", "python"} {
 		t.Run(runtime, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PrepareProject: func(info *engine.Projinfo) error {
-					if runtime != "yaml" {
-						cmd := exec.Command("pulumi", "package", "add", providerDir)
-						cmd.Dir = info.Root
-						out, err := cmd.CombinedOutput()
-						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-					}
+					providerPath := filepath.Join(info.Root, "..", "provider")
+					installPythonProviderDependencies(t, providerPath)
+					cmd := exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					return nil
 				},
-				Dir: filepath.Join(testData, runtime),
+				Dir:             filepath.Join("component_provider", "python", "component-provider-host"),
+				RelativeWorkDir: runtime,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
 					require.NoError(t, err)
@@ -1979,17 +1975,16 @@ func checkAssetText(t *testing.T, runtime, expected, actual string) {
 // Tests that we can get the schema for a Python component provider using component_provider_host.
 func TestPythonComponentProviderGetSchema(t *testing.T) {
 	t.Parallel()
-	dir, err := filepath.Abs(filepath.Join("component_provider", "python", "component-provider-host", "provider"))
-	require.NoError(t, err)
-	installPythonProviderDependencies(t, dir)
 
 	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory(filepath.Join("component_provider", "python", "component-provider-host", "provider"))
 	defer e.DeleteIfNotFailed()
+	installPythonProviderDependencies(t, e.RootPath)
 
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", dir)
+	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	require.Empty(t, stderr)
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
@@ -2197,13 +2192,8 @@ func TestPythonComponentProviderException(t *testing.T) {
 	})
 }
 
-// lock to prevent concurrent installation of Python provider dependencies
-var installPythonProviderDependenciesLock sync.Mutex
-
 func installPythonProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
-	installPythonProviderDependenciesLock.Lock()
-	defer installPythonProviderDependenciesLock.Unlock()
 
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Root:       dir,
