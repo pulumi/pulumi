@@ -1266,8 +1266,6 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 		// if we can't generate a summary.
 		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
-	} else {
-		// display.RenderCopilotSummary(op.Opts.Display, permalink)
 	}
 }
 

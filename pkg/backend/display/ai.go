@@ -77,27 +77,12 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 	fmt.Fprintln(out)
 
 	// Print the Copilot summary.
-	PrintCopilotLink(out, permalink)
+	PrintCopilotLink(out, opts, permalink)
 }
 
-// func RenderCopilotSummary(opts Options, permalink string) {
-// 	out := opts.Stdout
-// 	if out == nil {
-// 		out = os.Stdout
-// 	}
-
-// 	header := opts.Color.Colorize(
-// 		colors.SpecHeadline + "Copilot" + copilotEmojiOr() + ":" + colors.Reset)
-
-// 	fmt.Fprintln(out, header)
-
-// 	// print link
-// 	PrintCopilotLink(out, permalink)
-// }
-
-func PrintCopilotLink(out io.Writer, permalink string) {
-	fmt.Fprintln(out, "  "+"Would you like help with this update?")
+func PrintCopilotLink(out io.Writer, opts Options, permalink string) {
+	fmt.Fprintln(out, "  "+"Would you like additional help with this update?")
 	fmt.Fprintln(out, "  "+
-		colors.Underline+colors.Blue+ExplainFailureLink(permalink)+colors.Reset)
+		opts.Color.Colorize(colors.Underline+colors.Blue+ExplainFailureLink(permalink)+colors.Reset))
 	fmt.Fprintln(out)
 }
