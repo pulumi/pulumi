@@ -39,8 +39,11 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 		Summary: summary,
 	}, nil, opts, "http://foo.bar/baz")
 
-	expectedCopilotSummary := fmt.Sprintf(`AI-generated summary%s:
+	expectedCopilotSummary := fmt.Sprintf(`Copilot Error Summary%s:
   This is a test summary
+
+  Would you like additional help with this update?
+  http://foo.bar/baz?explainFailure
 
 `, copilotEmojiOr())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
@@ -57,7 +60,7 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 
 	RenderCopilotErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithError := fmt.Sprintf(`AI-generated summary%s:
+	expectedCopilotSummaryWithError := fmt.Sprintf(`Copilot Error Summary%s:
   error summarizing update output: test error
 
 `, copilotEmojiOr())
@@ -93,7 +96,7 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 		Summary: summary,
 	}, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`AI-generated summary%s:
+	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Copilot Error Summary%s:
   error summarizing update output: test error
 
 `, copilotEmojiOr())

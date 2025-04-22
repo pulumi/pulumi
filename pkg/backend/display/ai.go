@@ -56,23 +56,19 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 
 	// Generate the header
 	header := opts.Color.Colorize(
-		colors.SpecHeadline + "Copilot" + copilotEmojiOr() + ":" + colors.Reset)
-	subHeader := opts.Color.Colorize(
-		colors.BrightBlue + "  Error Summary:" + colors.Reset)
-
-	// Print the header.
+		colors.SpecHeadline + "Copilot Error Summary" + copilotEmojiOr() + ":" + colors.Reset)
 	fmt.Fprintln(out, header)
-	fmt.Fprintln(out, subHeader)
+
 	// Print the error if there was one and return.
 	if err != nil {
-		fmt.Fprintf(out, "    error summarizing update output: %s\n", err)
+		fmt.Fprintf(out, "  error summarizing update output: %s\n", err)
 		fmt.Fprintln(out)
 		return
 	}
 
 	summaryLines := strings.Split(summary.Summary, "\n")
 	for _, line := range summaryLines {
-		fmt.Fprintln(out, "    "+opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
+		fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
 	}
 	fmt.Fprintln(out)
 
