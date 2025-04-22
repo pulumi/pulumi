@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
 
 // Calling == does not implement desirable behavior, so we ensure that it is invalid.
@@ -395,4 +396,45 @@ func TestHasComputed(t *testing.T) {
 			assert.Equal(t, tt.hasComputed, tt.v.HasComputed())
 		})
 	}
+}
+
+func TestWithDependencies(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty-is-nil", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, New("1"), New("1").WithDependencies(nil))
+		assert.Equal(t, New("1"), New("1").WithDependencies([]urn.URN{}))
+
+		assert.Nil(t, New("1").Dependencies())
+		assert.Nil(t, New("1").WithDependencies(nil).Dependencies())
+		assert.Nil(t, New("1").WithDependencies([]urn.URN{}).Dependencies())
+	})
+
+	t.Run("copy", func(t *testing.T) {
+		t.Parallel()
+
+		deps := []urn.URN{"1", "2"}
+		v := New("1").WithDependencies(deps)
+		assert.Equal(t, []urn.URN{"1", "2"}, v.Dependencies())
+		deps[0] = "0" // Mutate the slice we passed in
+		assert.Equal(t, []urn.URN{"1", "2"}, v.Dependencies())
+	})
+
+	t.Run("sort", func(t *testing.T) {
+		t.Parallel()
+
+		v1 := New("v").WithDependencies([]urn.URN{"1", "2"})
+		v2 := New("v").WithDependencies([]urn.URN{"2", "1"})
+		assert.Equal(t, v1, v2, "This tests that we can safely use dependencies in reflect based equality tests")
+		assert.True(t, v1.Equals(v2))
+	})
+}
+
+func TestNotComparable(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, reflect.TypeFor[Value]().Comparable(),
+		"We want to force comparability with .Equals, not with ==")
 }

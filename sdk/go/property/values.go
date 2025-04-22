@@ -17,6 +17,7 @@ package property
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -263,9 +264,7 @@ func (v Value) HasComputed() bool {
 // To set the dependencies of a value, use [Value.WithDependencies].
 func (v Value) Dependencies() []urn.URN {
 	// Create a copy of v.dependencies to keep v immutable.
-	cp := make([]urn.URN, len(v.dependencies))
-	copy(cp, v.dependencies)
-	return cp
+	return slices.Clone(v.dependencies)
 }
 
 // WithDependencies returns a new value identical to the receiver, except that it has as
@@ -276,6 +275,9 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	// We don't want exiting references to dependencies to be able to effect
 	// v.dependencies.
 	v.dependencies = copyArray(dependencies)
+	// Sort the dependencies on ingestion so that Equals doesn't care about
+	// dependency order.
+	slices.Sort(v.dependencies)
 	return v
 }
 
