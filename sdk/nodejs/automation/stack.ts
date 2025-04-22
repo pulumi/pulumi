@@ -477,7 +477,7 @@ Event: ${line}\n${e.toString()}`);
                 }
             }
             if (opts.excludeDependents) {
-              args.push("--exclude-dependents");
+                args.push("--exclude-dependents");
             }
             if (opts.target) {
                 for (const tURN of opts.target) {
@@ -485,7 +485,7 @@ Event: ${line}\n${e.toString()}`);
                 }
             }
             if (opts.targetDependents) {
-              args.push("--target-dependents");
+                args.push("--target-dependents");
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
