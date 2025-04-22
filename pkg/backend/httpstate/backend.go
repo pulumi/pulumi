@@ -189,11 +189,11 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d            diag.Sink
-	url          string
-	client       *client.Client
-	escClient    esc_client.Client
-	capabilities *promise.Promise[apitype.Capabilities]
+	d                        diag.Sink
+	url                      string
+	client                   *client.Client
+	escClient                esc_client.Client
+	capabilities             *promise.Promise[apitype.Capabilities]
 	copilotEnabledForProject map[tokens.PackageName]bool
 
 	// The current project, if any.
@@ -218,12 +218,12 @@ func New(ctx context.Context, d diag.Sink,
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	return &cloudBackend{
-		d:              d,
-		url:            cloudURL,
-		client:         apiClient,
-		escClient:      escClient,
-		capabilities:   detectCapabilities(d, apiClient),
-		currentProject: project,
+		d:                        d,
+		url:                      cloudURL,
+		client:                   apiClient,
+		escClient:                escClient,
+		capabilities:             detectCapabilities(d, apiClient),
+		currentProject:           project,
 		copilotEnabledForProject: map[tokens.PackageName]bool{},
 	}, nil
 }
@@ -2261,19 +2261,19 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	}
 }
 
-func newCopilotExplainer(b *cloudBackend) *backend.Explainer {
-	return &backend.Explainer{
-		Explain:             b.explain,
-		IsEnabledForProject: b.isCopilotFeatureEnabled,
-	}
-}
-
 func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
 	resp, err := b.client.GetDefaultOrg(ctx)
 	if err != nil {
 		return "", err
 	}
 	return resp.GitHubLogin, nil
+}
+
+func newCopilotExplainer(b *cloudBackend) *backend.Explainer {
+	return &backend.Explainer{
+		Explain:             b.explain,
+		IsEnabledForProject: b.isCopilotFeatureEnabled,
+	}
 }
 
 type httpstateBackendClient struct {
