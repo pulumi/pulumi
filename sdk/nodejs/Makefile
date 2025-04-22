@@ -49,8 +49,10 @@ build_package:: ensure
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 build_plugin::
-	cd cmd/pulumi-language-nodejs && \
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go build -C cmd/pulumi-language-nodejs \
+    	-o ../../../../bin/pulumi-language-nodejs \
+    	-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+        ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
@@ -59,8 +61,8 @@ install_package:: build
 	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
-	cd cmd/pulumi-language-nodejs && \
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -123,14 +125,16 @@ TEST_GREP ?= .*
 test_watch::
 	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
-dist:: build
-	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
+dist::
+	go install -C cmd/pulumi-language-nodejs \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
+	cp dist/pulumi-analyzer-policy "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	cd cmd/pulumi-language-nodejs && \
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -C cmd/pulumi-language-nodejs \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
