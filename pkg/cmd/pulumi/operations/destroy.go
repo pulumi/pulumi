@@ -81,6 +81,9 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeProtected bool
 	var continueOnError bool
 
+	// Flags for Copilot.
+	var copilotSummary bool
+
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
 		use, cmdArgs = "destroy [url]", cmdutil.MaximumNArgs(1)
@@ -185,6 +188,25 @@ func NewDestroyCmd() *cobra.Command {
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
 			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
+			}
+
+			// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use
+			// that value Otherwise fall back to environment variable, then default to false
+			var showCopilotSummary bool
+			if cmd.Flags().Changed("copilot-summary") {
+				showCopilotSummary = copilotSummary
+			} else {
+				showCopilotSummary = env.CopilotSummary.Value()
+			}
+			logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
+				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
+
+			opts.Display.ShowCopilotSummary = showCopilotSummary
+			opts.Display.CopilotSummaryModel = env.CopilotSummaryModel.Value()
+			opts.Display.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
+			if showCopilotSummary {
+				// We handle this in the copilot summary if its enabled.
+				opts.Display.ShowLinkToCopilot = false
 			}
 
 			s, err := cmdStack.RequireStack(
@@ -424,6 +446,18 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
+
+	// Flags for Copilot.
+	cmd.PersistentFlags().BoolVar(
+		&copilotSummary, "copilot-summary", false,
+		"Display the Copilot summary in diagnostics "+
+			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
+
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot-summary"),
+		`Could not mark "copilot-summary" as hidden`,
+	)
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

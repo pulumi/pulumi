@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -283,6 +284,9 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger bool
 
+	// Flags for Copilot.
+	var copilotSummary bool
+
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
 		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
@@ -369,6 +373,25 @@ func NewPreviewCmd() *cobra.Command {
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
 			if suppressPermalink != "false" && isDIYBackend {
 				displayOpts.SuppressPermalink = true
+			}
+
+			// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use
+			// that value Otherwise fall back to environment variable, then default to false
+			var showCopilotSummary bool
+			if cmd.Flags().Changed("copilot-summary") {
+				showCopilotSummary = copilotSummary
+			} else {
+				showCopilotSummary = env.CopilotSummary.Value()
+			}
+			logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
+				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
+
+			displayOpts.ShowCopilotSummary = showCopilotSummary
+			displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
+			displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
+			if showCopilotSummary {
+				// We handle this in the copilot summary if its enabled.
+				displayOpts.ShowLinkToCopilot = false
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
@@ -662,6 +685,18 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
+
+	// Flags for Copilot.
+	cmd.PersistentFlags().BoolVar(
+		&copilotSummary, "copilot-summary", false,
+		"Display the Copilot summary in diagnostics "+
+			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
+
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot-summary"),
+		`Could not mark "copilot-summary" as hidden`,
+	)
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)
