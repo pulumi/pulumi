@@ -1236,15 +1236,17 @@ func (b *cloudBackend) PromptAI(
 }
 
 func (b *cloudBackend) renderAndSummarizeOutput(
-	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation, events []engine.Event,
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation,
+	events []engine.Event, update client.UpdateIdentifier, updateMeta updateMetadata,
 ) {
+	dryRun := kind == apitype.PreviewUpdate
 	renderer := display.NewCaptureProgressEvents(
 		stack.Ref().Name(),
 		op.Proj.Name,
 		display.Options{
 			ShowResourceChanges: true,
 		},
-		true,
+		dryRun,
 		kind,
 	)
 
@@ -1258,11 +1260,14 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	close(eventsChannel)
 	<-doneChannel
 
+	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
 		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 		// if we can't generate a summary.
-		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
+		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
+	} else {
+		// display.RenderCopilotSummary(op.Opts.Display, permalink)
 	}
 }
 
@@ -1282,7 +1287,6 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 	model := opts.CopilotSummaryModel
 	maxSummaryLen := opts.CopilotSummaryMaxLen
 
-	startTime := time.Now()
 	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
 	if err != nil {
 		return nil, err
@@ -1293,11 +1297,8 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 		return nil, nil
 	}
 
-	elapsedMs := time.Since(startTime).Milliseconds()
-
 	return &display.CopilotErrorSummaryMetadata{
-		Summary:   summary,
-		ElapsedMs: elapsedMs,
+		Summary: summary,
 	}, nil
 }
 
@@ -1452,7 +1453,7 @@ func (b *cloudBackend) apply(
 		defer func() {
 			close(eventsChannel)
 			<-done
-			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents)
+			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta)
 		}()
 	}
 

@@ -28,7 +28,6 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 	t.Parallel()
 
 	summary := "This is a test summary"
-	elapsedMs := int64(100)
 	buf := new(bytes.Buffer)
 	opts := Options{
 		Stdout: buf,
@@ -37,11 +36,10 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 
 	// Render to buffer
 	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
-		Summary:   summary,
-		ElapsedMs: elapsedMs,
-	}, nil, opts)
+		Summary: summary,
+	}, nil, opts, "http://foo.bar/baz")
 
-	expectedCopilotSummary := fmt.Sprintf(`AI-generated summary%s: 100ms
+	expectedCopilotSummary := fmt.Sprintf(`AI-generated summary%s:
   This is a test summary
 
 `, copilotEmojiOr())
@@ -57,7 +55,7 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(nil, errors.New("test error"), opts)
+	RenderCopilotErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
 
 	expectedCopilotSummaryWithError := fmt.Sprintf(`AI-generated summary%s:
   error summarizing update output: test error
@@ -75,7 +73,7 @@ func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(nil, nil, opts)
+	RenderCopilotErrorSummary(nil, nil, opts, "http://foo.bar/baz")
 
 	assert.Equal(t, "", buf.String())
 }
@@ -85,7 +83,6 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	t.Parallel()
 
 	summary := "This is a test summary"
-	elapsedMs := int64(100)
 	buf := new(bytes.Buffer)
 	opts := Options{
 		Stdout: buf,
@@ -93,11 +90,10 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	}
 
 	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
-		Summary:   summary,
-		ElapsedMs: elapsedMs,
-	}, errors.New("test error"), opts)
+		Summary: summary,
+	}, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`AI-generated summary%s: 100ms
+	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`AI-generated summary%s:
   error summarizing update output: test error
 
 `, copilotEmojiOr())
