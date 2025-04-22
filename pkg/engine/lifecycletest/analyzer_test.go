@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -69,7 +70,18 @@ func TestSimpleAnalyzer(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
-		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+		deploytest.NewAnalyzerLoader("analyzerA", func(opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			assert.Equal(t, "", opts.Organization)
+			assert.Equal(t, "test-proj", opts.Project)
+			assert.Equal(t, "test", opts.Stack)
+
+			assert.Equal(t, map[config.Key]string{
+				config.MustMakeKey(opts.Project, "bool"):   "false",
+				config.MustMakeKey(opts.Project, "float"):  "1.5",
+				config.MustMakeKey(opts.Project, "string"): "hello",
+				config.MustMakeKey(opts.Project, "obj"):    "{\"key\":\"value\"}",
+			}, opts.Config)
+
 			return &deploytest.Analyzer{}, nil
 		}),
 	}
@@ -81,13 +93,21 @@ func TestSimpleAnalyzer(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
+	proj := "test-proj"
 	p := &lt.TestPlan{
+		Project: proj,
 		Options: lt.TestUpdateOptions{
 			T: t,
 			UpdateOptions: UpdateOptions{
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
 			HostF: hostF,
+		},
+		Config: config.Map{
+			config.MustMakeKey(proj, "bool"):   config.NewTypedValue("bool", config.TypeBool),
+			config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
+			config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
+			config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
 		},
 	}
 
