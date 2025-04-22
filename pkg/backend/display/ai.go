@@ -95,6 +95,6 @@ func FormatCopilotSummary(summary string, opts Options) string {
 // renderBoldMarkdown renders bold double-asterisk markdown in a summary as a colorized string.
 // Double-asterisk markdown is very common in Copilot summaries and is quite hard to read.
 func renderBoldMarkdown(summary string, opts Options) string {
-	summary = regexp.MustCompile(`\*\*(.*?)\*\*`).ReplaceAllString(summary, colors.Bold+"$1"+colors.Reset)
+	summary = regexp.MustCompile(`\*\*(.*?)\*\*`).ReplaceAllString(summary, colors.BrightBlue+"$1"+colors.Reset)
 	return summary
 }
