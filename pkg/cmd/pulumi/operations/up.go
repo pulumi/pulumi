@@ -603,6 +603,7 @@ func NewUpCmd() *cobra.Command {
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
 			ConfigureCopilotOptions(copilotEnabled, cmd, &opts.Display)
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
 					ctx,
