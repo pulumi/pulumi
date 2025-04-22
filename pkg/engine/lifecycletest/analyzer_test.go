@@ -76,7 +76,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 			assert.Equal(t, "test", opts.Stack)
 
 			assert.Equal(t, map[config.Key]string{
-				config.MustMakeKey(opts.Project, "bool"):   "false",
+				config.MustMakeKey(opts.Project, "bool"):   "true",
 				config.MustMakeKey(opts.Project, "float"):  "1.5",
 				config.MustMakeKey(opts.Project, "string"): "hello",
 				config.MustMakeKey(opts.Project, "obj"):    "{\"key\":\"value\"}",
@@ -104,7 +104,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 			HostF: hostF,
 		},
 		Config: config.Map{
-			config.MustMakeKey(proj, "bool"):   config.NewTypedValue("bool", config.TypeBool),
+			config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
 			config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
 			config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
 			config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
