@@ -112,23 +112,23 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 // ConfigureCopilotSummaryOptions configures display options related to Copilot summary features
 // based on the command line flags and environment variables.
-func ConfigureCopilotSummaryOptions(copilotSummary bool, cmd *cobra.Command, displayOpts *display.Options) {
+func ConfigureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options) {
 	// Handle copilot-summary flag and environment variable
 	// If flag is explicitly set (via command line), use that value
 	// Otherwise fall back to environment variable, then default to false
-	var showCopilotSummary bool
-	if cmd.Flags().Changed("copilot-summary") {
-		showCopilotSummary = copilotSummary
+	var showCopilotFeatures bool
+	if cmd.Flags().Changed("copilot") {
+		showCopilotFeatures = copilotEnabledFlag
 	} else {
-		showCopilotSummary = env.CopilotSummary.Value()
+		showCopilotFeatures = env.CopilotEnabled.Value()
 	}
-	logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
-		copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
+	logging.V(7).Infof("copilot flag=%v, PULUMI_COPILOT=%v, using value=%v",
+		copilotEnabledFlag, env.CopilotEnabled.Value(), showCopilotFeatures)
 
-	displayOpts.ShowCopilotSummary = showCopilotSummary
+	displayOpts.ShowCopilotFeatures = showCopilotFeatures
 	displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
 	displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
-	if showCopilotSummary {
+	if showCopilotFeatures {
 		// We handle this in the copilot summary if its enabled.
 		displayOpts.ShowLinkToCopilot = false
 	}

@@ -82,7 +82,7 @@ func NewDestroyCmd() *cobra.Command {
 	var continueOnError bool
 
 	// Flags for Copilot.
-	var copilotSummary bool
+	var copilotEnabled bool
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -190,7 +190,7 @@ func NewDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			ConfigureCopilotSummaryOptions(copilotSummary, cmd, &opts.Display)
+			ConfigureCopilotOptions(copilotEnabled, cmd, &opts.Display)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -432,14 +432,14 @@ func NewDestroyCmd() *cobra.Command {
 
 	// Flags for Copilot.
 	cmd.PersistentFlags().BoolVar(
-		&copilotSummary, "copilot-summary", false,
-		"Display the Copilot summary in diagnostics "+
-			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
+		&copilotEnabled, "copilot", false,
+		"Enables Copilot features: error summary and explain preview."+
+			"(can also be set with PULUMI_COPILOT environment variable)")
 
 	// hide the copilot-summary flag for now. (Soft-release)
 	contract.AssertNoErrorf(
-		cmd.PersistentFlags().MarkHidden("copilot-summary"),
-		`Could not mark "copilot-summary" as hidden`,
+		cmd.PersistentFlags().MarkHidden("copilot"),
+		`Could not mark "copilot" as hidden`,
 	)
 
 	// Remote flags

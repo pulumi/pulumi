@@ -1385,7 +1385,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		}
 	} else {
 		op.Opts.Display.ShowLinkToCopilot = false
-		op.Opts.Display.ShowCopilotSummary = false
+		op.Opts.Display.ShowCopilotFeatures = false
 		copilotEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",
@@ -1421,10 +1421,9 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
 	// This code is here so we can capture errors from previews-of-updates as well as updates.
-	// The createAndStartUpdate call above can also disable ShowCopilotSummary if its not enabled in the user's org.
-	if op.Opts.Display.ShowCopilotSummary {
+	// The createAndStartUpdate call above can also disable ShowCopilotFeatures if its not enabled in the user's org.
+	if op.Opts.Display.ShowCopilotFeatures {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)
