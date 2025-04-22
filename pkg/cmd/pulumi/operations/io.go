@@ -19,9 +19,14 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -103,4 +108,28 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 	// the default functionality right now is to always skip a refresh
 	return false, nil
+}
+
+// ConfigureCopilotSummaryOptions configures display options related to Copilot summary features
+// based on the command line flags and environment variables.
+func ConfigureCopilotSummaryOptions(copilotSummary bool, cmd *cobra.Command, displayOpts *display.Options) {
+	// Handle copilot-summary flag and environment variable
+	// If flag is explicitly set (via command line), use that value
+	// Otherwise fall back to environment variable, then default to false
+	var showCopilotSummary bool
+	if cmd.Flags().Changed("copilot-summary") {
+		showCopilotSummary = copilotSummary
+	} else {
+		showCopilotSummary = env.CopilotSummary.Value()
+	}
+	logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
+		copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
+
+	displayOpts.ShowCopilotSummary = showCopilotSummary
+	displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
+	displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
+	if showCopilotSummary {
+		// We handle this in the copilot summary if its enabled.
+		displayOpts.ShowLinkToCopilot = false
+	}
 }

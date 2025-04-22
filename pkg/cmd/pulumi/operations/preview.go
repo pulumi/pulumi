@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -375,24 +374,8 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
-			// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use
-			// that value Otherwise fall back to environment variable, then default to false
-			var showCopilotSummary bool
-			if cmd.Flags().Changed("copilot-summary") {
-				showCopilotSummary = copilotSummary
-			} else {
-				showCopilotSummary = env.CopilotSummary.Value()
-			}
-			logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
-				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
-
-			displayOpts.ShowCopilotSummary = showCopilotSummary
-			displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
-			displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
-			if showCopilotSummary {
-				// We handle this in the copilot summary if its enabled.
-				displayOpts.ShowLinkToCopilot = false
-			}
+			// Configure Copilot Summary Options based on flags and environment variables
+			ConfigureCopilotSummaryOptions(copilotSummary, cmd, &displayOpts)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
