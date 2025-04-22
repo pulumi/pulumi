@@ -19,6 +19,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
+// Translate a [property.Map] into a [PropertyMap].
+//
+// This is a lossless transition, such that this will be true:
+//
+//	FromResourcePropertyMap(ToResourcePropertyMap(m)).Equals(m)
+func ToResourcePropertyMap(v property.Map) PropertyMap {
+	vMap := v.AsMap()
+	rMap := make(PropertyMap, len(vMap))
+	for k, vElem := range vMap {
+		rMap[PropertyKey(k)] = ToResourcePropertyValue(vElem)
+	}
+	return rMap
+}
+
 // Translate a Value into a PropertyValue.
 //
 // This is a lossless transition, such that this will be true:
@@ -41,12 +55,7 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		}
 		r = NewArrayProperty(arr)
 	case v.IsMap():
-		vMap := v.AsMap().AsMap()
-		rMap := make(PropertyMap, len(vMap))
-		for k, vElem := range vMap {
-			rMap[PropertyKey(k)] = ToResourcePropertyValue(vElem)
-		}
-		r = NewObjectProperty(rMap)
+		r = NewObjectProperty(ToResourcePropertyMap(v.AsMap()))
 	case v.IsAsset():
 		r = NewAssetProperty(v.AsAsset())
 	case v.IsArchive():
@@ -79,6 +88,20 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	return r
 }
 
+// Translate a [PropertyValue] into a [property.Value].
+//
+// This is a normalizing transition, such that the last expression will be true:
+//
+//	normalized := ToResourcePropertyMap(FromResourcePropertyMap(m))
+//	normalized.DeepEquals(ToResourcePropertyMap(FromResourcePropertyMap(m)))
+func FromResourcePropertyMap(v PropertyMap) property.Map {
+	rMap := make(map[string]property.Value, len(v))
+	for k, v := range v {
+		rMap[string(k)] = FromResourcePropertyValue(v)
+	}
+	return property.NewMap(rMap)
+}
+
 // Translate a PropertyValue into a Value.
 //
 // This is a normalizing transition, such that the last expression will be true:
@@ -102,12 +125,7 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		}
 		return property.New(arr)
 	case v.IsObject():
-		vMap := v.ObjectValue()
-		rMap := make(map[string]property.Value, len(vMap))
-		for k, v := range vMap {
-			rMap[string(k)] = FromResourcePropertyValue(v)
-		}
-		return property.New(rMap)
+		return property.New(FromResourcePropertyMap(v.ObjectValue()))
 	case v.IsAsset():
 		return property.New(v.AssetValue())
 	case v.IsArchive():
