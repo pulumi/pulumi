@@ -2471,6 +2471,24 @@ func TestPackagesInstall(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestInstallLocalPlugin(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-local")
+	installNodejsProviderDependencies(t, filepath.Join(e.RootPath, "provider"))
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	// This command should generate the SDK for the local plugin
+	e.RunCommand("pulumi", "install")
+
+	require.True(t, e.PathExists(filepath.Join("sdks/provider/package.json")))
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "organization/install-local-plugin", "--create")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}
+
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
