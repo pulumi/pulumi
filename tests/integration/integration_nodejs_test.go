@@ -27,7 +27,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -2539,12 +2538,11 @@ func TestPackageAddWithPublisherSetNodeJS(t *testing.T) {
 // Tests that we can get the schema for a Node.js component provider using component_provider_host.
 func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	t.Parallel()
-	dir, err := filepath.Abs(filepath.Join("component_provider", "nodejs", "component-provider-host", "provider"))
-	require.NoError(t, err)
-	installNodejsProviderDependencies(t, dir)
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("component_provider", "nodejs", "component-provider-host", "provider"))
+	installNodejsProviderDependencies(t, e.RootPath)
 
 	// Install the random plugin so we can use it in the component provider.
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "v4.18.0")
@@ -2552,7 +2550,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 	// Run the command from a different, sibling, directory. This ensures that
 	// get-package does not rely on the current working directory.
 	e.CWD = t.TempDir()
-	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", dir)
+	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
 	require.Empty(t, stderr)
 	var schema map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
@@ -2653,12 +2651,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 //
 //nolint:paralleltest // Sets env vars
 func TestNodejsComponentProviderRun(t *testing.T) {
-	testData, err := filepath.Abs(filepath.Join("component_provider", "nodejs", "component-provider-host"))
-	require.NoError(t, err)
-	providerDir := filepath.Join(testData, "provider")
-	installNodejsProviderDependencies(t, providerDir)
-
-	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	//nolint:paralleltest // Sets env vars
 	for _, runtime := range []string{"yaml", "python"} {
 		t.Run(runtime, func(t *testing.T) {
 			// This uses the random plugin so needs to be able to download it
@@ -2667,15 +2660,16 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				NoParallel: true,
 				PrepareProject: func(info *engine.Projinfo) error {
-					if runtime != "yaml" {
-						cmd := exec.Command("pulumi", "package", "add", providerDir)
-						cmd.Dir = info.Root
-						out, err := cmd.CombinedOutput()
-						require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-					}
+					providerPath := filepath.Join(info.Root, "..", "provider")
+					installNodejsProviderDependencies(t, providerPath)
+					cmd := exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 					return nil
 				},
-				Dir: filepath.Join(testData, runtime),
+				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
+				RelativeWorkDir: runtime,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					t.Logf("Outputs: %v", stack.Outputs)
 					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
@@ -2706,14 +2700,8 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	}
 }
 
-// lock to prevent concurrent installation of provider dependencies
-var installNodejsProviderDependenciesLock sync.Mutex
-
 func installNodejsProviderDependencies(t *testing.T, dir string) {
 	t.Helper()
-
-	installNodejsProviderDependenciesLock.Lock()
-	defer installNodejsProviderDependenciesLock.Unlock()
 
 	pm, err := npm.ResolvePackageManager(npm.YarnPackageManager, dir)
 	require.NoError(t, err)
