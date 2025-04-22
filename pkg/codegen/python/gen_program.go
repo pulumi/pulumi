@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -161,14 +162,14 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 	hasAnyInputVariables := len(configVars) > 0
 	if hasAnyInputVariables {
 		objectTypedConfigs := collectObjectTypedConfigVariables(component)
-		variableNames := pcl.SortedStringKeys(objectTypedConfigs)
+		variableNames := maputil.SortedKeys(objectTypedConfigs)
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
 			objectTypeName := title(variableName)
 			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
-				propertyNames := pcl.SortedStringKeys(objectType.Properties)
+				propertyNames := maputil.SortedKeys(objectType.Properties)
 				for _, propertyName := range propertyNames {
 					propertyType := objectType.Properties[propertyName]
 					inputType := componentInputElementType(propertyType)
