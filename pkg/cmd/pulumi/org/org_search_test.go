@@ -149,6 +149,7 @@ type stubHTTPBackend struct {
 	) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearchF func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
 	CurrentUserF           func() (string, []string, *workspace.TokenInformation, error)
+	GetDefaultOrgF         func(ctx context.Context) (string, error)
 }
 
 var _ httpstate.Backend = (*stubHTTPBackend)(nil)
@@ -171,4 +172,11 @@ func (f *stubHTTPBackend) CurrentUser() (string, []string, *workspace.TokenInfor
 
 func (*stubHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
 	return apitype.Capabilities{}
+}
+
+func (f *stubHTTPBackend) GetDefaultOrg(ctx context.Context) (string, error) {
+	if f.GetDefaultOrgF == nil {
+		return "", nil
+	}
+	return f.GetDefaultOrgF(ctx)
 }
