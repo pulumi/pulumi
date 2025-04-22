@@ -184,7 +184,7 @@ func NewRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			ConfigureCopilotOptions(copilotEnabled, cmd, &opts.Display)
+			configureCopilotOptions(copilotEnabled, cmd, &opts.Display)
 
 			s, err := cmdStack.RequireStack(
 				ctx,

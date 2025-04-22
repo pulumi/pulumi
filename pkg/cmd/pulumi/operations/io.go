@@ -110,9 +110,9 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	return false, nil
 }
 
-// ConfigureCopilotOptions configures display options related to Copilot features based on the command line flags and
+// configureCopilotOptions configures display options related to Copilot features based on the command line flags and
 // environment variables.
-func ConfigureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options) {
+func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options) {
 	// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use that value
 	// Otherwise fall back to environment variable, then default to false
 	var showCopilotFeatures bool

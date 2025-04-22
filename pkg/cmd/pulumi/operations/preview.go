@@ -374,7 +374,7 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
-			ConfigureCopilotOptions(copilotEnabled, cmd, &displayOpts)
+			configureCopilotOptions(copilotEnabled, cmd, &displayOpts)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
