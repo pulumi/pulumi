@@ -124,3 +124,16 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 `, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithErrorAndSummary, buf.String())
 }
+
+func TestRenderBoldMarkdown(t *testing.T) {
+	t.Parallel()
+
+	summary := `**This** is a test **summary**
+**Resource** has been **created**`
+
+	expectedSummary := colors.Bold + "This" + colors.Reset + " is a test " + colors.Bold + "summary" + colors.Reset +
+		"\n" +
+		colors.Bold + "Resource" + colors.Reset + " has been " + colors.Bold + "created" + colors.Reset
+	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Always})
+	assert.Equal(t, expectedSummary, formattedSummary)
+}

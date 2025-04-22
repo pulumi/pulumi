@@ -1180,9 +1180,7 @@ func (b *cloudBackend) explain(
 	renderer := display.NewCaptureProgressEvents(
 		stackRef.Name(),
 		op.Proj.Name,
-		display.Options{
-			ShowResourceChanges: true,
-		},
+		display.Options{},
 		true,
 		apitype.UpdateUpdate,
 	)
@@ -1208,7 +1206,9 @@ func (b *cloudBackend) explain(
 		summary = "No summary available"
 	}
 
-	return fmt.Sprintf("\n%s\n", summary), nil
+	formattedSummary := display.FormatCopilotSummary(summary, opts)
+
+	return formattedSummary, nil
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1323,9 +1323,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	renderer := display.NewCaptureProgressEvents(
 		stack.Ref().Name(),
 		op.Proj.Name,
-		display.Options{
-			ShowResourceChanges: true,
-		},
+		display.Options{},
 		dryRun,
 		kind,
 	)
