@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs
-  description: Add InstallPluginFromFile

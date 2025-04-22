@@ -517,6 +517,11 @@ class LocalWorkspace(Workspace):
             ["plugin", "install", "resource", name, version, "--server", server]
         )
 
+    def install_plugin_from_file(self, name: str, version: str, file: str) -> None:
+        self._run_pulumi_cmd_sync(
+            ["plugin", "install", "resource", name, version, "--file", file]
+        )
+
     def remove_plugin(
         self,
         name: Optional[str] = None,
