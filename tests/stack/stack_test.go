@@ -479,11 +479,9 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	// Use the current username as the "organization" in certain operations.
-	username, _ := e.RunCommand("pulumi", "whoami")
-	orgName := strings.TrimSpace(username)
-	// Set default org to org name
-	assert.NoError(t, workspace.SetBackendConfigDefaultOrg(e.Backend, orgName))
+	// Use the default org as the "organization" in certain operations.
+	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	orgName := strings.TrimSpace(defaultOrg)
 
 	// Create a basic project.
 	stackName := addRandomSuffix("stack-rename-svcbe")
