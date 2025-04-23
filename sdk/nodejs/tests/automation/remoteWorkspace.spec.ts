@@ -222,6 +222,35 @@ describe("RemoteWorkspace", () => {
                 },
                 expected: ["--remote", "--remote-inherit-settings"],
             },
+            {
+                name: "remote image",
+                opts: {
+                    remote: true,
+                    remoteExecutorImage: {
+                        image: "test-image"
+                    },
+                },
+                expected: ["--remote", "--remote-executor-image=test-image"],
+            },
+            {
+                name: "remote image credentials",
+                opts: {
+                    remote: true,
+                    remoteExecutorImage: {
+                        image: "test-image",
+                        credentials: {
+                          username: "foo",
+                          password: "bar",
+                        },
+                    },
+                },
+                expected: [
+                  "--remote",
+                  "--remote-executor-image=test-image",
+                  "--remote-executor-image-username=foo",
+                  "--remote-executor-image-password=bar"
+                ],
+            },
         ];
         tests.forEach((test) => {
             it(`${test.name}`, async () => {
