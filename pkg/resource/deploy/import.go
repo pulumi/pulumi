@@ -396,12 +396,8 @@ func (i *importer) importResources(ctx context.Context) error {
 				oldID = old.ImportID
 			}
 			if oldID == imp.ID {
-				// Clear the ID because Same asserts that the new state has no ID.
-				new := old.Copy()
-				new.ID = ""
-				// Set a dummy goal so the resource is tracked as managed.
-				i.deployment.goals.Store(old.URN, &resource.Goal{})
-				steps = append(steps, NewSameStep(i.deployment, noopEvent(0), old, new))
+				// Nothing to do here, it already exists and we'll have registered it above in registerExistingResources
+				delete(urns, urn)
 				continue
 			}
 		}
