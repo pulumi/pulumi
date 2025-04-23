@@ -35,19 +35,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// ParameterizationDescriptor is the serializable description of a dependency's parameterization.
 type ParameterizationDescriptor struct {
-	Name    string         // the name of the package.
-	Version semver.Version // the version of the package.
-	Value   []byte         // the parameter value of the package.
+	// Name is the name of the package.
+	Name string `json:"name" yaml:"name"`
+	// Version is the version of the package.
+	Version semver.Version `json:"version" yaml:"version"`
+	// Value is the parameter value of the package.
+	Value []byte `json:"value" yaml:"value"`
 }
 
 // PackageDescriptor is a descriptor for a package, this is similar to a plugin spec but also contains parameterization
 // info.
 type PackageDescriptor struct {
-	Name             string                      // the simple name of the plugin.
-	Version          *semver.Version             // the plugin's semantic version, if present.
-	DownloadURL      string                      // an optional server to use when downloading this plugin.
-	Parameterization *ParameterizationDescriptor // the optional parameterization of the package.
+	// Name is the simple name of the plugin.
+	Name string `json:"name" yaml:"name"`
+	// Version is the optional version of the package.
+	Version *semver.Version `json:"version,omitempty" yaml:"version,omitempty"`
+	// DownloadURL is the optional URL to use when downloading the provider plugin binary.
+	DownloadURL string `json:"downloadURL,omitempty" yaml:"downloadURL,omitempty"`
+	// Parameterization is the optional parameterization of the package.
+	Parameterization *ParameterizationDescriptor `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
 }
 
 // PackageName returns the name of the package.

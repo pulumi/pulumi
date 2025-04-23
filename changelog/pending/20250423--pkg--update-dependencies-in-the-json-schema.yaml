@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg
+  description: Update Dependencies in the JSON schema
