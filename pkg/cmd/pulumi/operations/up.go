@@ -603,8 +603,6 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
-			// This call can disable ShowLinkToCopilot if the newer `--copilot` flag is set which provides its own link
-			// to Copilot.
 			configureCopilotOptions(copilotEnabled, cmd, &opts.Display)
 
 			if len(args) > 0 {

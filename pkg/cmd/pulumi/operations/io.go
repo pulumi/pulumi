@@ -127,8 +127,4 @@ func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displa
 	displayOpts.ShowCopilotFeatures = showCopilotFeatures
 	displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
 	displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
-	if showCopilotFeatures {
-		// We handle this in the copilot summary if its enabled.
-		displayOpts.ShowLinkToCopilot = false
-	}
 }

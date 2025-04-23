@@ -807,8 +807,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 	}
 
 	// Print a link to Copilot to explain the failure.
+	// ShowLinkToCopilot is an older, lighter feature that is now superseded by the _optional_ ShowCopilotFeatures.
+	// ShowCopilotFeatures provides it's own link if enabled.
+	showCopilotLink := display.opts.ShowLinkToCopilot && !display.opts.ShowCopilotFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showCopilotLink {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
