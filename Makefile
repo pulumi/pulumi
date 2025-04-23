@@ -112,7 +112,11 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
+
+lint_pulumi_json::
+	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix
 
