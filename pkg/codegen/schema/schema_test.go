@@ -2048,7 +2048,7 @@ func TestDanglingReferences(t *testing.T) {
 	pkgSpec := readSchemaFile("dangling-reference-bad.json")
 	_, diags, _ := BindSpec(pkgSpec, loader, SchemaValidationOptions{})
 
-	require.NotEmpty(t, diags)
+	require.Len(t, diags, 1)
 	require.Equal(t, diags[0].Summary, "#/provider/inputProperties/p/$ref: type dangling-reference:a:b not found in package dangling-reference")
 }
 
