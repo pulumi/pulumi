@@ -118,7 +118,10 @@ lint_pulumi_json::
 	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
 	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
 
-lint_fix:: lint_golang_fix
+lint_pulumi_json_fix::
+	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+
+lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
 lint_golang:: lint_deps
 	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
