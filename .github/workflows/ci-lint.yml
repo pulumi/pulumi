@@ -173,3 +173,27 @@ jobs:
           check-latest: true
       - run: |
           make lint_actions
+
+  pulumi-json:
+    name: Lint pulumi.json
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Ensure Node # We need to install Node.js deps so that biome is available
+        run: |
+          cd sdk/nodejs && make ensure
+      - run: |
+          make lint_pulumi_json
