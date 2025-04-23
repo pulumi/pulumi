@@ -599,9 +599,12 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			// Link to Copilot will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
+			// Currently only available for `pulumi up`.
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
+			// This call can disable ShowLinkToCopilot if the newer `--copilot` flag is set which provides its own link
+			// to Copilot.
 			configureCopilotOptions(copilotEnabled, cmd, &opts.Display)
 
 			if len(args) > 0 {
@@ -762,12 +765,10 @@ func NewUpCmd() *cobra.Command {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
 
-	// Flags for Copilot.
 	cmd.PersistentFlags().BoolVar(
 		&copilotEnabled, "copilot", false,
-		"Enables Copilot features: error summary and explain preview."+
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
 			"(can also be set with PULUMI_COPILOT environment variable)")
-
 	// hide the copilot-summary flag for now. (Soft-release)
 	contract.AssertNoErrorf(
 		cmd.PersistentFlags().MarkHidden("copilot"),

@@ -409,20 +409,18 @@ func NewRefreshCmd() *cobra.Command {
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
-	// Currently, we can't mix `--target` and `--exclude`.
-	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
-
-	// Flags for Copilot.
 	cmd.PersistentFlags().BoolVar(
 		&copilotEnabled, "copilot", false,
-		"Enables Copilot features: error summary and explain preview."+
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
 			"(can also be set with PULUMI_COPILOT environment variable)")
-
 	// hide the copilot-summary flag for now. (Soft-release)
 	contract.AssertNoErrorf(
 		cmd.PersistentFlags().MarkHidden("copilot"),
 		`Could not mark "copilot" as hidden`,
 	)
+
+	// Currently, we can't mix `--target` and `--exclude`.
+	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

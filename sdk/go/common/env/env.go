@@ -100,7 +100,7 @@ var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
 
 var CopilotEnabled = env.Bool("COPILOT",
-	"Enable showing the Copilot features in the CLI output.")
+	"Enable Pulumi Copilot's assistance for improved CLI experience and insights.")
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065

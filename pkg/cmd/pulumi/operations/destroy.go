@@ -430,12 +430,10 @@ func NewDestroyCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
 
-	// Flags for Copilot.
 	cmd.PersistentFlags().BoolVar(
 		&copilotEnabled, "copilot", false,
-		"Enables Copilot features: error summary and explain preview."+
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
 			"(can also be set with PULUMI_COPILOT environment variable)")
-
 	// hide the copilot-summary flag for now. (Soft-release)
 	contract.AssertNoErrorf(
 		cmd.PersistentFlags().MarkHidden("copilot"),

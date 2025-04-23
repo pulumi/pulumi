@@ -38,7 +38,7 @@ func ExplainFailureLink(permalink string) string {
 // copilotEmojiOr returns the emoji for Copilot or an empty string if emojis are disabled.
 // Exposed here for testing.
 func copilotEmojiOr() string {
-	return cmdutil.EmojiOr(" ✨", "")
+	return cmdutil.EmojiOr(" ✨", ":")
 }
 
 // RenderCopilotErrorSummary renders a Copilot error summary to the console.
@@ -56,7 +56,7 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 
 	// Generate the header
 	header := opts.Color.Colorize(
-		colors.SpecHeadline + "Copilot Error Summary" + copilotEmojiOr() + ":" + colors.Reset)
+		colors.SpecHeadline + "Copilot Diagnostics" + copilotEmojiOr() + colors.Reset)
 	fmt.Fprintln(out, header)
 
 	// Print the error if there was one and return.
