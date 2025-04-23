@@ -479,8 +479,12 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	// Use the default org as the "organization" in certain operations.
+	// Use the default org as the "organization" in certain operations,
+	// falling back to using the individual org if not set.
 	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	if strings.Contains(defaultOrg, "No Default Org") {
+		defaultOrg, _ = e.RunCommand("pulumi", "whoami")
+	}
 	orgName := strings.TrimSpace(defaultOrg)
 
 	// Create a basic project.

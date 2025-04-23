@@ -40,8 +40,12 @@ func TestPolicyWithConfig(t *testing.T) {
 		t.Fatal("PULUMI_ACCESS_TOKEN not found, aborting tests.")
 	}
 
-	name, _ := e.RunCommand("pulumi", "whoami")
-	orgName := strings.TrimSpace(name)
+	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	if strings.Contains(defaultOrg, "No Default Org") {
+		defaultOrg, _ = e.RunCommand("pulumi", "whoami")
+	}
+	orgName := strings.TrimSpace(defaultOrg)
+
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_w_config")
@@ -113,8 +117,11 @@ func TestPolicyWithoutConfig(t *testing.T) {
 		t.Fatal("PULUMI_ACCESS_TOKEN not found, aborting tests.")
 	}
 
-	name, _ := e.RunCommand("pulumi", "whoami")
-	orgName := strings.TrimSpace(name)
+	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	if strings.Contains(defaultOrg, "No Default Org") {
+		defaultOrg, _ = e.RunCommand("pulumi", "whoami")
+	}
+	orgName := strings.TrimSpace(defaultOrg)
 
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())

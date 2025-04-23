@@ -581,8 +581,11 @@ func TestDestroyStackRef_Cloud(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	output, _ := e.RunCommand("pulumi", "whoami")
-	organization := strings.TrimSpace(output)
+	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	if strings.Contains(defaultOrg, "No Default Org") {
+		defaultOrg, _ = e.RunCommand("pulumi", "whoami")
+	}
+	organization := strings.TrimSpace(defaultOrg)
 	testDestroyStackRef(e, organization)
 }
 
@@ -1097,8 +1100,11 @@ func TestProjectRename_Cloud(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	output, _ := e.RunCommand("pulumi", "whoami")
-	organization := strings.TrimSpace(output)
+	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	if strings.Contains(defaultOrg, "No Default Org") {
+		defaultOrg, _ = e.RunCommand("pulumi", "whoami")
+	}
+	organization := strings.TrimSpace(defaultOrg)
 	testProjectRename(e, organization)
 }
 
@@ -1204,8 +1210,11 @@ func TestStackRmConfig_Cloud(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	output, _ := e.RunCommand("pulumi", "whoami")
-	organization := strings.TrimSpace(output)
+	defaultOrg, _ := e.RunCommand("pulumi", "org", "get-default")
+	if strings.Contains(defaultOrg, "No Default Org") {
+		defaultOrg, _ = e.RunCommand("pulumi", "whoami")
+	}
+	organization := strings.TrimSpace(defaultOrg)
 	testStackRmConfig(e, organization)
 }
 
