@@ -1064,7 +1064,7 @@ func TestRegisterOutputs(t *testing.T) {
 	require.Empty(t, sp.SavedSnapshots)
 
 	// The step here is not important.
-	step := deploy.NewSameStep(nil, nil, resourceA, resourceA)
+	step := deploy.NewSameStep(nil, nil, resourceA, resourceA.Copy())
 	err := manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)
 

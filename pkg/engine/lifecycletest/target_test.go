@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/blang/semver"
@@ -46,18 +47,18 @@ func TestRefreshTargetChildren(t *testing.T) {
 
 	p := &lt.TestPlan{}
 	project := p.GetProject()
-	callCount := 0.0
+	var callCount int32
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					callCount++
+					count := atomic.AddInt32(&callCount, 1)
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Outputs: resource.PropertyMap{
-								"count": resource.NewNumberProperty(callCount),
+								"count": resource.NewNumberProperty(float64(count)),
 							},
 						},
 						Status: resource.StatusOK,
@@ -118,7 +119,7 @@ func TestRefreshTargetChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[4].URN, d)
 	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
 
-	assert.Equal(t, callCount, 3.0)
+	assert.Equal(t, callCount, int32(3))
 }
 
 func TestDestroyTarget(t *testing.T) {
@@ -438,16 +439,16 @@ func TestRefreshExcludeTarget(t *testing.T) {
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			callCount := 0.0
+			var callCount int32
 
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					callCount++
+					count := atomic.AddInt32(&callCount, 1)
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Outputs: resource.PropertyMap{
-								"count": resource.NewNumberProperty(callCount),
+								"count": resource.NewNumberProperty(float64(count)),
 							},
 						},
 						Status: resource.StatusOK,
