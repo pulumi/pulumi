@@ -18,7 +18,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -27,10 +26,6 @@ import (
 )
 
 func TestAnalyzerSpawn(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Skipping test on non-linux platforms")
-	}
-
 	d := diagtest.LogSink(t)
 	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
