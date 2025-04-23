@@ -125,6 +125,7 @@ TEST_GREP ?= .*
 test_watch::
 	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
+dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	go install -C cmd/pulumi-language-nodejs \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
