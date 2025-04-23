@@ -127,7 +127,7 @@ func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displa
 		copilotEnabledFlag, env.CopilotEnabled.Value(), showCopilotFeatures)
 
 	// Do not enable any copilot features if we are using a DIY backend
-	if isDIYBackend {
+	if showCopilotFeatures && isDIYBackend {
 		logging.Warningf("Copilot features are not available with DIY backends.")
 		return
 	}
