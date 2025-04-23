@@ -186,16 +186,16 @@ export interface RemoteWorkspaceOptions {
  * Information about the remote execution image.
  */
 export interface ExecutorImage {
-  image: string;
-  credentials?: DockerImageCredentials;
+    image: string;
+    credentials?: DockerImageCredentials;
 }
 
 /**
  * Credentials for the remote execution Docker image.
  */
 export interface DockerImageCredentials {
-  username: string;
-  password: string;
+    username: string;
+    password: string;
 }
 
 async function createLocalWorkspace(

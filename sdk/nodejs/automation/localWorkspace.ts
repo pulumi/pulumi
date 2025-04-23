@@ -1161,12 +1161,12 @@ export class LocalWorkspace implements Workspace {
         }
 
         if (this.remoteExecutorImage) {
-          args.push("--remote-executor-image=" + this.remoteExecutorImage.image)
+            args.push("--remote-executor-image=" + this.remoteExecutorImage.image);
 
-          if (this.remoteExecutorImage.credentials) {
-            args.push("--remote-executor-image-username=" + this.remoteExecutorImage.credentials.username)
-            args.push("--remote-executor-image-password=" + this.remoteExecutorImage.credentials.password)
-          }
+            if (this.remoteExecutorImage.credentials) {
+                args.push("--remote-executor-image-username=" + this.remoteExecutorImage.credentials.username);
+                args.push("--remote-executor-image-password=" + this.remoteExecutorImage.credentials.password);
+            }
         }
 
         if (this.remoteInheritSettings) {

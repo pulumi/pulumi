@@ -227,7 +227,7 @@ describe("RemoteWorkspace", () => {
                 opts: {
                     remote: true,
                     remoteExecutorImage: {
-                        image: "test-image"
+                        image: "test-image",
                     },
                 },
                 expected: ["--remote", "--remote-executor-image=test-image"],
@@ -239,16 +239,16 @@ describe("RemoteWorkspace", () => {
                     remoteExecutorImage: {
                         image: "test-image",
                         credentials: {
-                          username: "foo",
-                          password: "bar",
+                            username: "foo",
+                            password: "bar",
                         },
                     },
                 },
                 expected: [
-                  "--remote",
-                  "--remote-executor-image=test-image",
-                  "--remote-executor-image-username=foo",
-                  "--remote-executor-image-password=bar"
+                    "--remote",
+                    "--remote-executor-image=test-image",
+                    "--remote-executor-image-username=foo",
+                    "--remote-executor-image-password=bar",
                 ],
             },
         ];
