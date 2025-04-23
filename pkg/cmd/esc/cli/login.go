@@ -172,14 +172,8 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 			return fmt.Errorf("could not determine current cloud: %w", err)
 		}
 
-		defaultOrg, err := esc.workspace.GetBackendConfigDefaultOrg(backendURL, nAccount.Username)
-		if err != nil {
-			return fmt.Errorf("could not determine default org: %w", err)
-		}
-
 		account = &workspace.Account{
-			Account:    *nAccount,
-			DefaultOrg: defaultOrg,
+			Account: *nAccount,
 		}
 	}
 
@@ -197,6 +191,14 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	}
 
 	esc.client = esc.newClient(esc.userAgent, account.BackendURL, account.AccessToken, account.Insecure)
+
+	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, account.Username)
+	if err != nil {
+		return fmt.Errorf("looking up org to default to: %w", err)
+	} else if defaultOrg != "" {
+		esc.account.DefaultOrg = defaultOrg
+	}
+
 	return nil
 }
 
@@ -209,15 +211,9 @@ func (esc *escCommand) getCachedCredentials(ctx context.Context, backendURL stri
 		return false, nil
 	}
 
-	defaultOrg, err := esc.workspace.GetBackendConfigDefaultOrg(backendURL, account.Username)
-	if err != nil {
-		return false, err
-	}
-
 	esc.account = workspace.Account{
 		Account:    *account,
 		BackendURL: backendURL,
-		DefaultOrg: defaultOrg,
 	}
 	return true, nil
 }

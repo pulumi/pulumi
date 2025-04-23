@@ -23,6 +23,7 @@ func (w *Workspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg string) er
 	return w.pulumi.SetBackendConfigDefaultOrg(backendURL, defaultOrg)
 }
 
+// Returns the default org as configured in the backend, returning an empty string if unset.
 func (w *Workspace) GetBackendConfigDefaultOrg(backendURL, username string) (string, error) {
 	config, err := w.pulumi.GetPulumiConfig()
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -31,5 +32,5 @@ func (w *Workspace) GetBackendConfigDefaultOrg(backendURL, username string) (str
 	if cfg, ok := config.BackendConfig[backendURL]; ok && cfg.DefaultOrg != "" {
 		return cfg.DefaultOrg, nil
 	}
-	return username, nil
+	return "", nil
 }

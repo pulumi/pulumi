@@ -1124,3 +1124,26 @@ func TestDeleteEnvironmentTags(t *testing.T) {
 		assert.ErrorContains(t, err, http.StatusText(http.StatusNotFound))
 	})
 }
+
+func TestGetDefaultOrg(t *testing.T) {
+	t.Run("Not Found", func(t *testing.T) {
+		// GIVEN
+		client := newTestClient(t, http.MethodGet, "/api/user/organizations/default", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    http.StatusNotFound,
+				Message: http.StatusText(http.StatusNotFound),
+			})
+			require.NoError(t, err)
+		})
+
+		// WHEN
+		orgName, err := client.GetDefaultOrg(context.Background())
+
+		// THEN
+		// We should gracefully swallow the 404.
+		assert.NoError(t, err)
+		assert.Empty(t, orgName)
+	})
+}

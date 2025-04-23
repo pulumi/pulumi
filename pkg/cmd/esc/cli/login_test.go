@@ -134,13 +134,21 @@ func TestEnvVarOverridesAccounts(t *testing.T) {
 			},
 		},
 	}
+
+	// Configure a default org to skip mocking a client call for default org
+	backendConfig := make(map[string]pulumi_workspace.BackendConfig, len(creds.Accounts))
+	for url := range creds.Accounts {
+		backendConfig[url] = pulumi_workspace.BackendConfig{DefaultOrg: "test-user-org"}
+	}
+
 	esc := &escCommand{
 		command: "esc",
 		login:   &testLoginManager{creds: creds},
 		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
 			return client.New(userAgent, backendURL, accessToken, insecure)
 		},
-		workspace: workspace.New(testFS{}, &testPulumiWorkspace{}),
+		workspace: workspace.New(testFS{}, &testPulumiWorkspace{
+			config: pulumi_workspace.PulumiConfig{BackendConfig: backendConfig}}),
 	}
 
 	// Verify default
@@ -161,4 +169,103 @@ func TestEnvVarOverridesAccounts(t *testing.T) {
 	err = esc.getCachedClient(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, esc.client.URL(), "https://api.pulumi.com")
+}
+
+func TestDefaultOrgConfiguration(t *testing.T) {
+	username := "test-user"
+	backend := "https://api.pulumi.com"
+	creds := pulumi_workspace.Credentials{
+		Current: backend,
+		Accounts: map[string]pulumi_workspace.Account{
+			backend: {
+				Username:    username,
+				AccessToken: "access-token",
+			},
+		},
+	}
+
+	t.Run("prefers user configuration", func(t *testing.T) {
+		// GIVEN
+		// The user has configured a default org:
+		userConfiguredDefaultOrg := "my-default-org"
+		testWorkspace := workspace.New(testFS{}, &testPulumiWorkspace{
+			config: pulumi_workspace.PulumiConfig{
+				BackendConfig: map[string]pulumi_workspace.BackendConfig{
+					backend: {
+						DefaultOrg: userConfiguredDefaultOrg,
+					},
+				},
+			},
+		})
+
+		testClient := testPulumiClient{}
+		esc := &escCommand{
+			command: "esc",
+			login:   &testLoginManager{creds: creds},
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testClient
+			},
+			workspace: testWorkspace,
+		}
+
+		// WHEN
+		err := esc.getCachedClient(context.Background())
+
+		// THEN
+		assert.NoError(t, err)
+		assert.Equal(t, userConfiguredDefaultOrg, esc.account.DefaultOrg)
+	})
+
+	t.Run("falls back to backend client configuration", func(t *testing.T) {
+		// GIVEN
+		// The user has not configured a default org:
+		testWorkspace := workspace.New(testFS{}, &testPulumiWorkspace{})
+
+		// But the backend has an opinion on the default org:
+		serviceDefaultOrg := "service-default-org"
+		testClient := testPulumiClient{
+			defaultOrg: serviceDefaultOrg,
+		}
+
+		esc := &escCommand{
+			command: "esc",
+			login:   &testLoginManager{creds: creds},
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testClient
+			},
+			workspace: testWorkspace,
+		}
+
+		// WHEN
+		err := esc.getCachedClient(context.Background())
+
+		// THEN
+		assert.NoError(t, err)
+		assert.Equal(t, serviceDefaultOrg, esc.account.DefaultOrg)
+	})
+
+	t.Run("falls back to individual org as last resort", func(t *testing.T) {
+		// GIVEN
+		// The user has not configured a default org:
+		testWorkspace := workspace.New(testFS{}, &testPulumiWorkspace{})
+
+		// And the service has no opinion:
+		testClient := testPulumiClient{defaultOrg: ""}
+
+		esc := &escCommand{
+			command: "esc",
+			login:   &testLoginManager{creds: creds},
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testClient
+			},
+			workspace: testWorkspace,
+		}
+
+		// WHEN
+		err := esc.getCachedClient(context.Background())
+
+		// THEN
+		assert.NoError(t, err)
+		assert.Equal(t, username, esc.account.DefaultOrg)
+	})
 }

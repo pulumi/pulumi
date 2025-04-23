@@ -68,6 +68,10 @@ type Client interface {
 	// GetRevisionNumber returns the revision number for version.
 	GetRevisionNumber(ctx context.Context, orgName, projectName, envName, version string) (int, error)
 
+	// GetDefaultOrg returns the organization if the backend has an opinion on what user organization to default to,
+	// if not configured locally by the user.
+	GetDefaultOrg(ctx context.Context) (string, error)
+
 	// ListEnvironments lists all environments that are accessible to the calling user.
 	//
 	// Each call to ListEnvironments returns a page of results and a continuation token. If there are no
@@ -451,6 +455,19 @@ func (pc *client) GetRevisionNumber(ctx context.Context, orgName, projectName, e
 		return 0, fmt.Errorf("resolving tag %q: %w", version, err)
 	}
 	return resp.Revision, nil
+}
+
+// GetDefaultOrg returns the organization if the backend has an opinion on what user organization to default to,
+// if not configured locally by the user.
+func (pc *client) GetDefaultOrg(ctx context.Context) (string, error) {
+	var resp GetDefaultOrganizationResponse
+	if err := pc.restCall(ctx, http.MethodGet, "/api/user/organizations/default", nil, nil, &resp); err != nil {
+		if IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return resp.Organization, nil
 }
 
 func (pc *client) ListEnvironments(

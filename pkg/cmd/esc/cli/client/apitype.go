@@ -207,3 +207,11 @@ type RetractEnvironmentRevisionRequest struct {
 	Replacement *int   `json:"replacement,omitempty"`
 	Reason      string `json:"reason,omitempty"`
 }
+
+// GetDefaultOrganizationResponse returns the backend's opinion of which organization
+// to default to for a given user, if a default organization has not been configured.
+type GetDefaultOrganizationResponse struct {
+	// Returns the organization name.
+	// Can be an empty string, if the user is a member of no organizations
+	Organization string `json:"gitHubLogin"`
+}

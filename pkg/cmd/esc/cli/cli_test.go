@@ -151,6 +151,7 @@ func (env testEnviron) Vars() []string {
 
 type testPulumiWorkspace struct {
 	credentials workspace.Credentials
+	config      workspace.PulumiConfig
 }
 
 func (w *testPulumiWorkspace) DeleteAccount(backendURL string) error {
@@ -167,12 +168,12 @@ func (w *testPulumiWorkspace) DeleteAllAccounts() error {
 	return nil
 }
 
-func (*testPulumiWorkspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
+func (w *testPulumiWorkspace) SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
 	return nil
 }
 
-func (*testPulumiWorkspace) GetPulumiConfig() (workspace.PulumiConfig, error) {
-	return workspace.PulumiConfig{}, nil
+func (w *testPulumiWorkspace) GetPulumiConfig() (workspace.PulumiConfig, error) {
+	return w.config, nil
 }
 
 func (*testPulumiWorkspace) GetPulumiPath(elem ...string) (string, error) {
@@ -281,6 +282,7 @@ func (env *testEnvironment) latest() *testEnvironmentRevision {
 
 type testPulumiClient struct {
 	user         string
+	defaultOrg   string
 	environments map[string]*testEnvironment
 	openEnvs     map[string]*esc.Environment
 }
@@ -469,6 +471,11 @@ func (c *testPulumiClient) GetRevisionNumber(ctx context.Context, orgName, proje
 		return 0, err
 	}
 	return rev.number, nil
+
+}
+
+func (c *testPulumiClient) GetDefaultOrg(ctx context.Context) (string, error) {
+	return c.defaultOrg, nil
 
 }
 

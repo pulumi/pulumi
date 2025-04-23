@@ -4,6 +4,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -175,4 +176,30 @@ func (esc *escCommand) confirmPrompt(prompt, name string) bool {
 	reader := bufio.NewReader(esc.stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name
+}
+
+// Looks up the default org.
+// Prefers default org that the user has configured locally in their ~/.pulumi/config.json
+// If unset, then it will attempt to make an API call to the backend to determine the service's opinion
+// of which user organization should be the default; defaults to individual org otherwise if unset.
+func (esc *escCommand) lookupDefaultOrg(ctx context.Context, backendURL, username string) (string, error) {
+	userConfiguredDefaultOrg, err := esc.workspace.GetBackendConfigDefaultOrg(backendURL, username)
+	if err != nil {
+		return "", err
+	}
+	if userConfiguredDefaultOrg != "" {
+		return userConfiguredDefaultOrg, nil
+	}
+
+	if esc.client != nil {
+		backendDefaultOrg, err := esc.client.GetDefaultOrg(ctx)
+		if err != nil {
+			return backendDefaultOrg, err
+		} else if backendDefaultOrg != "" {
+			return backendDefaultOrg, err
+		}
+	}
+
+	// If client is unset, or if neither user nor backend have default configured, return the individual org.
+	return username, nil
 }
