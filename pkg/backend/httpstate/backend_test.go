@@ -397,7 +397,9 @@ func TestCopilotExplainer(t *testing.T) {
 			Color:   colors.Never,
 		}),
 	}
-	summary, err := b.explain(stackRef, op, events, display.Options{})
+	summary, err := b.explain(stackRef, op, events, display.Options{
+		Color: colors.Never,
+	})
 
 	// Verify results
 	require.NoError(t, err)
