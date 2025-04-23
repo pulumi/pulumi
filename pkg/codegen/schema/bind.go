@@ -1508,6 +1508,8 @@ func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Pr
 	for _, property := range properties {
 		if property.Name == "version" {
 			diags = diags.Append(errorf("#/config/variables/version", "version is a reserved configuration key"))
+		} else if property.Name == "pulumi" {
+			diags = diags.Append(errorf("#/config/variables/pulumi", "pulumi is a reserved configuration key"))
 		}
 	}
 
@@ -1571,6 +1573,9 @@ func (t *types) bindResourceDetails(
 	for _, property := range properties {
 		if property.Name == "urn" {
 			diags = diags.Append(warningf(path+"/properties/urn", "urn is a reserved property name"))
+		} else if property.Name == "pulumi" {
+			// pulumi is a reserved name
+			diags = diags.Append(warningf(path+"/properties/pulumi", "pulumi is a reserved property name"))
 		}
 
 		if !spec.IsComponent && property.Name == "id" {
@@ -1648,10 +1653,12 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	}
 	decl.IsProvider = true
 
-	// If any input property is called "version" error that it's reserved.
+	// If any input property is called "version" or "pulumi" error that it's reserved.
 	for _, property := range decl.InputProperties {
 		if property.Name == "version" {
 			diags = diags.Append(errorf("#/provider/properties/version", "version is a reserved property name"))
+		} else if property.Name == "pulumi" {
+			diags = diags.Append(errorf("#/provider/properties/pulumi", "pulumi is a reserved property name"))
 		}
 	}
 

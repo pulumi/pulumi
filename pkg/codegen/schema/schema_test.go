@@ -836,7 +836,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 }
 
-func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
+func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
@@ -847,6 +847,11 @@ func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"urn": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+						"pulumi": {
 							TypeSpec: TypeSpec{
 								Type: "string",
 							},
@@ -863,6 +868,11 @@ func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
 								Type: "string",
 							},
 						},
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
 					},
 				},
 			},
@@ -875,10 +885,14 @@ func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
 	// No error as binding should work fine even with warnings
 	assert.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
-	assert.Len(t, diags, 2)
+	assert.Len(t, diags, 4)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagWarning)
-		assert.Contains(t, diag.Summary, "urn is a reserved property name")
+		assert.True(
+			t,
+			strings.Contains(diag.Summary, "urn is a reserved property name") ||
+				strings.Contains(diag.Summary, "pulumi is a reserved property name"),
+		)
 	}
 	assert.NotNil(t, pkg)
 }
@@ -1969,19 +1983,24 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	return pluginCtx.Host
 }
 
-func TestProviderVersionIsAnError(t *testing.T) {
+func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	// c.f. https://github.com/pulumi/pulumi/issues/16757
 	t.Parallel()
 
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
-	// Test that "version" isn't allowed as a property in the package config.
+	// Test that certain names aren't allowed as a property in the package config.
 	pkgSpec := PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
 		Config: ConfigSpec{
 			Variables: map[string]PropertySpec{
 				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+				"pulumi": {
 					TypeSpec: TypeSpec{
 						Type: "string",
 					},
@@ -1995,15 +2014,21 @@ func TestProviderVersionIsAnError(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
-	assert.Equal(t, diags[0].Summary, "#/config/variables/version: version is a reserved configuration key")
+	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved configuration key")
+	assert.Equal(t, diags[1].Summary, "#/config/variables/version: version is a reserved configuration key")
 
-	// Test that "version" isn't allowed as an input property on the provider object.
+	// Test that certain words aren't allowed as an input property on the provider object.
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+				"pulumi": {
 					TypeSpec: TypeSpec{
 						Type: "string",
 					},
@@ -2017,10 +2042,11 @@ func TestProviderVersionIsAnError(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
-	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved property name")
+	assert.Equal(t, diags[0].Summary, "#/provider/properties/pulumi: pulumi is a reserved property name")
+	assert.Equal(t, diags[1].Summary, "#/provider/properties/version: version is a reserved property name")
 
-	// Test that "version" is allowed as an output property on the provider object. Most providers probably won't add
-	// this, but it's there if they want to expose it.
+	// Test that reserved are allowed as an output property on the provider object.
+	// Most providers probably won't add this, but it's there if they want to expose it.
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
@@ -2028,6 +2054,11 @@ func TestProviderVersionIsAnError(t *testing.T) {
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
 					"version": {
+						TypeSpec: TypeSpec{
+							Type: "string",
+						},
+					},
+					"pulumi": {
 						TypeSpec: TypeSpec{
 							Type: "string",
 						},
