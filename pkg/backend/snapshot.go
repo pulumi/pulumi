@@ -638,7 +638,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// Start with a copy of the resources produced during the evaluation of the current plan.
 	resources := make([]*resource.State, 0, len(sm.resources))
 
-	// if any resources have been deleted we need to filter them out here
+	// If any resources are "done", we need to filter them out here. These could be resources that have been later
+	// deleted, or had some other operation performed on them such as an import then an update.
 	for _, res := range sm.resources {
 		if !sm.dones[res] {
 			resources = append(resources, res)
