@@ -33,7 +33,7 @@ import (
 )
 
 type checkArgs struct {
-	forbidDanglingReferences bool
+	allowDanglingReferences bool
 }
 
 func newSchemaCheckCommand() *cobra.Command {
@@ -75,7 +75,9 @@ func newSchemaCheckCommand() *cobra.Command {
 				return fmt.Errorf("failed to unmarshal schema: %w", err)
 			}
 
-			_, diags, err := schema.BindSpec(pkgSpec, nil, schemaCheckArgs.forbidDanglingReferences)
+			_, diags, err := schema.BindSpec(pkgSpec, nil, schema.SchemaValidationOptions{
+				AllowDanglingReferences: schemaCheckArgs.allowDanglingReferences,
+			})
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
@@ -86,7 +88,7 @@ func newSchemaCheckCommand() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().BoolVar(&schemaCheckArgs.forbidDanglingReferences, "no-dangling-references", false,
+	cmd.PersistentFlags().BoolVar(&schemaCheckArgs.allowDanglingReferences, "allow-dangling-references", false,
 		"Whether references to nonexistent types should be considered errors")
 
 	return cmd

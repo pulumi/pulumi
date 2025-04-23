@@ -59,7 +59,7 @@ func newPulumiPackage() *Package {
 		},
 	}
 
-	pkg, diags, err := bindSpec(spec, nil, nullLoader{}, false, false)
+	pkg, diags, err := bindSpec(spec, nil, nullLoader{}, false, SchemaValidationOptions{})
 	if err == nil && diags.HasErrors() {
 		err = diags
 	}

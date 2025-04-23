@@ -66,7 +66,7 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil, false)
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.SchemaValidationOptions{})
 	assert.NoError(t, err, "could not import the test package spec")
 	return pkg
 }
