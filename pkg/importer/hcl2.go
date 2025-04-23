@@ -102,7 +102,7 @@ func GenerateHCL2Definition(
 
 	packageName := state.Type.Package()
 	if providers.IsProviderType(state.Type) {
-		// When the provider type is a provider type, the type triple is in the form
+		// When the type is a provider type, the type triple is in the form
 		// pulumi:providers:pkg instead of pkg:mod:type, so use the token "name"
 		// position as the package instead.
 		packageName = tokens.Package(state.Type.Name())
