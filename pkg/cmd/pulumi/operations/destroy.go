@@ -190,7 +190,7 @@ func NewDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display)
+			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,

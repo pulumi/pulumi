@@ -603,7 +603,7 @@ func NewUpCmd() *cobra.Command {
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
-			configureCopilotOptions(copilotEnabled, cmd, &opts.Display)
+			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(

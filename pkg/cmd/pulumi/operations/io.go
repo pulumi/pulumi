@@ -112,7 +112,7 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 // configureCopilotOptions configures display options related to Copilot features based on the command line flags and
 // environment variables.
-func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options) {
+func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options, isDIYBackend bool) {
 	// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use that value
 	// Otherwise fall back to environment variable, then default to false
 	var showCopilotFeatures bool
@@ -123,6 +123,12 @@ func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displa
 	}
 	logging.V(7).Infof("copilot flag=%v, PULUMI_COPILOT=%v, using value=%v",
 		copilotEnabledFlag, env.CopilotEnabled.Value(), showCopilotFeatures)
+
+	// Do not enable any copilot features if we are using a DIY backend
+	if isDIYBackend {
+		logging.Warningf("Copilot features are not available with DIY backends.")
+		return
+	}
 
 	displayOpts.ShowCopilotFeatures = showCopilotFeatures
 	displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
