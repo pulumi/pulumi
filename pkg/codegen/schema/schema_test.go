@@ -2050,6 +2050,10 @@ func TestDanglingReferences(t *testing.T) {
 
 	require.Len(t, diags, 1)
 	require.Equal(t, diags[0].Summary, "#/provider/inputProperties/p/$ref: type dangling-reference:a:b not found in package dangling-reference")
+
+	_, diags, err := BindSpec(pkgSpec, loader, SchemaValidationOptions{ AllowDanglingReferences: true })
+	require.NoError(t, err)
+	assert.Empty(t, diags)
 }
 
 func TestNoDanglingReferences(t *testing.T) {
