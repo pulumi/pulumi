@@ -86,6 +86,16 @@ func PrintCopilotLink(out io.Writer, opts Options, permalink string) {
 	fmt.Fprintln(out)
 }
 
+// RenderCopilotThinking displays an "Thinking..." message.
+func RenderCopilotThinking(opts Options) {
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+
+	fmt.Fprintln(stdout, "Thinking...")
+}
+
 // FormatCopilotSummary formats a Copilot summary for display.
 func FormatCopilotSummary(summary string, opts Options) string {
 	summary = renderBoldMarkdown(summary, opts)
