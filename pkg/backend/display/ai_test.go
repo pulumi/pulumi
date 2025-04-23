@@ -131,9 +131,22 @@ func TestRenderBoldMarkdown(t *testing.T) {
 	summary := `**This** is a test **summary**
 **Resource** has been **created**`
 
-	expectedSummary := colors.Bold + "This" + colors.Reset + " is a test " + colors.Bold + "summary" + colors.Reset +
+	highlightColor := colors.BrightBlue
+
+	expectedSummary := highlightColor + "This" + colors.Reset + " is a test " + highlightColor + "summary" + colors.Reset +
 		"\n" +
-		colors.Bold + "Resource" + colors.Reset + " has been " + colors.Bold + "created" + colors.Reset
+		highlightColor + "Resource" + colors.Reset + " has been " + highlightColor + "created" + colors.Reset
 	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Always})
+	assert.Equal(t, expectedSummary, formattedSummary)
+}
+
+func TestRenderBoldMarkdownNever(t *testing.T) {
+	t.Parallel()
+
+	summary := `This is a test summary
+Resource has been created`
+
+	expectedSummary := "This is a test summary\nResource has been created"
+	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Never})
 	assert.Equal(t, expectedSummary, formattedSummary)
 }
