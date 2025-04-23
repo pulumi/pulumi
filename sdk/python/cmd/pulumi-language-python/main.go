@@ -1583,7 +1583,7 @@ func (host *pythonLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader), schema.SchemaValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
