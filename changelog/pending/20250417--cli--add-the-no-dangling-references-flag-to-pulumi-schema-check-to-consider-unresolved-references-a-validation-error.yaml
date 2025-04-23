@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli
-  description: Add the `--no-dangling-references` flag to `pulumi schema check` to consider unresolved references a validation error.
+  description: Add the `--allow-dangling-references` flag to `pulumi schema check` to consider unresolved references a validation error.
