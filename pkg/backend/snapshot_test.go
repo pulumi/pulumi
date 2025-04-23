@@ -1095,7 +1095,7 @@ func TestRecordingSameFailure(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewSameStep(nil, nil, resourceA, resourceA)
+	step := deploy.NewSameStep(nil, nil, resourceA, resourceA.Copy())
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
