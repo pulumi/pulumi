@@ -398,19 +398,6 @@ jobs:
           path: |
             coverage/*
             !coverage/.gitkeep
-      - name: Debug branch name
-        env:
-          REF: ${{ github.ref }}
-          REF_NAME: ${{ github.ref_name }}
-          HEAD_REF: ${{ github.head_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-          BRANCH_NAME: ${{ github.event_name == 'merge_group' && 'master' || github.head_ref }}
-        run: |
-          echo REF="${REF}"
-          echo REF_NAME="${REF_NAME}"
-          echo HEAD_REF="${HEAD_REF}"
-          echo EVENT_NAME="${EVENT_NAME}"
-          echo BRANCH_NAME="${BRANCH_NAME}"
       - name: Upload codecov test results
         uses: codecov/test-results-action@v1
         with:
