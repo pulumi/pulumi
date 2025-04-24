@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -80,6 +81,9 @@ func NewRefreshCmd() *cobra.Command {
 	var skipPendingCreates bool
 	var clearPendingCreates bool
 	var importPendingCreates *[]string
+
+	// Flags for Copilot.
+	var copilotEnabled bool
 
 	use, cmdArgs := "refresh", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
@@ -179,6 +183,8 @@ func NewRefreshCmd() *cobra.Command {
 			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
+
+			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -402,6 +408,16 @@ func NewRefreshCmd() *cobra.Command {
 	importPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
+
+	cmd.PersistentFlags().BoolVar(
+		&copilotEnabled, "copilot", false,
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+			"(can also be set with PULUMI_COPILOT environment variable)")
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot"),
+		`Could not mark "copilot" as hidden`,
+	)
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")

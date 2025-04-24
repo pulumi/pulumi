@@ -122,7 +122,7 @@ func NewUpCmd() *cobra.Command {
 	var attachDebugger bool
 
 	// Flags for Copilot.
-	var copilotSummary bool
+	var copilotEnabled bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(
@@ -599,23 +599,11 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			// Link to Copilot will be shown for orgs that have Copilot enabled, unless the user explicitly suppressed it.
+			// Currently only available for `pulumi up`.
 			logging.V(7).Infof("PULUMI_SUPPRESS_COPILOT_LINK=%v", env.SuppressCopilotLink.Value())
 			opts.Display.ShowLinkToCopilot = !env.SuppressCopilotLink.Value()
 
-			// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use
-			// that value Otherwise fall back to environment variable, then default to false
-			var showCopilotSummary bool
-			if cmd.Flags().Changed("copilot-summary") {
-				showCopilotSummary = copilotSummary
-			} else {
-				showCopilotSummary = env.CopilotSummary.Value()
-			}
-			logging.V(7).Infof("copilot-summary flag=%v, PULUMI_COPILOT_SUMMARY=%v, using value=%v",
-				copilotSummary, env.CopilotSummary.Value(), showCopilotSummary)
-
-			opts.Display.ShowCopilotSummary = showCopilotSummary
-			opts.Display.CopilotSummaryModel = env.CopilotSummaryModel.Value()
-			opts.Display.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
+			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
@@ -766,12 +754,6 @@ func NewUpCmd() *cobra.Command {
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
 
-	// Flags for Copilot.
-	cmd.PersistentFlags().BoolVar(
-		&copilotSummary, "copilot-summary", false,
-		"Display the Copilot summary in diagnostics "+
-			"(can also be set with PULUMI_COPILOT_SUMMARY environment variable)")
-
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
 		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
@@ -781,10 +763,14 @@ func NewUpCmd() *cobra.Command {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
 
+	cmd.PersistentFlags().BoolVar(
+		&copilotEnabled, "copilot", false,
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+			"(can also be set with PULUMI_COPILOT environment variable)")
 	// hide the copilot-summary flag for now. (Soft-release)
 	contract.AssertNoErrorf(
-		cmd.PersistentFlags().MarkHidden("copilot-summary"),
-		`Could not mark "copilot-summary" as hidden`,
+		cmd.PersistentFlags().MarkHidden("copilot"),
+		`Could not mark "copilot" as hidden`,
 	)
 
 	// Currently, we can't mix `--target` and `--exclude`.
