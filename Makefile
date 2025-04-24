@@ -68,6 +68,9 @@ build:: build-proto go.ensure
 install:: .ensure.phony go.ensure
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
+install_race:: .ensure.phony go.ensure
+	cd pkg && GOBIN=$(PULUMI_BIN) go install -race -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+
 build_debug::
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
@@ -126,13 +129,13 @@ test_pkg_rest: get_schemas
 test_pkg:: test_pkg_rest test_codegen_dotnet test_codegen_go test_codegen_nodejs test_codegen_python
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
-test_integration_%:
+test_integration_%: install_race
 	@cd tests && PULUMI_INTEGRATION_TESTS=$(subset) $(GO_TEST) $(INTEGRATION_PKG)
 
-test_integration_subpkgs:
+test_integration_subpkgs: install_race
 	@cd tests && $(GO_TEST) $(TESTS_PKGS)
 
-test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
+test_integration:: install_race $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
 
 # Used by CI to run tests in parallel across the Go modules pkg, sdk, and tests.
 .PHONY: gotestsum/%
