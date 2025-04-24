@@ -367,6 +367,10 @@ func tokenToModule(tok string, pkg schema.PackageReference, moduleNameOverrides 
 		pkg = (&schema.Package{}).Reference()
 	}
 	canonicalModName := pkg.TokenToModule(tok)
+	return moduleToPythonModule(canonicalModName, moduleNameOverrides)
+}
+
+func moduleToPythonModule(canonicalModName string, moduleNameOverrides map[string]string) string {
 	if override, ok := moduleNameOverrides[canonicalModName]; ok {
 		return override
 	}

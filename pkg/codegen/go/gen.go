@@ -117,7 +117,10 @@ func Title(s string) string {
 }
 
 func tokenToPackage(pkg schema.PackageReference, overrides map[string]string, tok string) string {
-	mod := pkg.TokenToModule(tok)
+	return moduleToPackage(pkg, overrides, pkg.TokenToModule(tok))
+}
+
+func moduleToPackage(pkg schema.PackageReference, overrides map[string]string, mod string) string {
 	if override, ok := overrides[mod]; ok {
 		mod = override
 	}

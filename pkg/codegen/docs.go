@@ -25,20 +25,26 @@ import (
 type DocLanguageHelper interface {
 	GetPropertyName(p *schema.Property) (string, error)
 	GetEnumName(e *schema.Enum, typeName string) (string, error)
-	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
-	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
-	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string
-
+	// GetTypeName gets the name of a type in the language of the DocLanguageHelper.
+	//
+	// relativeToModule should always be a module returned from pkg.TokenToModule. It
+	// should not be language specialized.
+	GetTypeName(pkg *schema.Package, t schema.Type, input bool, relativeToModule string) string
 	GetFunctionName(f *schema.Function) string
 
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
 	// an existing resource.
 	GetResourceFunctionResultName(modName string, f *schema.Function) string
 
+	// Methods
 	GetMethodName(m *schema.Method) string
 	GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource, m *schema.Method) string
+
+	// Doc links
+	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
+	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
+	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
+	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 }
 
 func filterExamples(source []byte, node ast.Node, lang string) {

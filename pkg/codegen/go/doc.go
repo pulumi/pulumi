@@ -20,7 +20,6 @@ package gen
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/golang/glog"
@@ -90,11 +89,12 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	modPkg, ok := d.packages[moduleName]
+func (d DocLanguageHelper) GetTypeName(pkg *schema.Package, t schema.Type, input bool, relativeToModule string) string {
+	goPkg := moduleToPackage(pkg.Reference(), d.goPkgInfo.ModuleToPackage, relativeToModule)
+	modPkg, ok := d.packages[goPkg]
 	if !ok {
-		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
-		os.Exit(1)
+		glog.Fatalf("cannot calculate type string for type %q. could not find a package for module %q",
+			t.String(), goPkg)
 	}
 	return modPkg.typeString(t)
 }
@@ -164,9 +164,8 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 			t := objectReturnType.Properties[0].Type
 			modPkg, ok := d.packages[modName]
 			if !ok {
-				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
+				glog.Fatalf("cannot calculate type string for type %q. could not find a package for module %q",
 					t.String(), modName)
-				os.Exit(1)
 			}
 			return modPkg.outputType(t)
 		}
