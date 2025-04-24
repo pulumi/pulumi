@@ -102,6 +102,8 @@ from .stack_reference import (
     StackReferenceOutputDetails,
 )
 
+from .type_token import get_pulumi_type, pulumi_type
+
 from ._types import (
     MISSING,
     input_type,
@@ -178,6 +180,9 @@ __all__ = [
     # stack_reference
     "StackReference",
     "StackReferenceOutputDetails",
+    # type_token
+    "get_pulumi_type",
+    "pulumi_type",
     # _types
     "MISSING",
     "input_type",
