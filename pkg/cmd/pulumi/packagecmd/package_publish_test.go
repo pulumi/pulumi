@@ -712,4 +712,42 @@ func TestFindReadme(t *testing.T) {
 		assert.Empty(t, readme)
 		assert.NoError(t, err, "Should not return error when no readme is found")
 	})
+
+	t.Run("Git Plugin Download URL", func(t *testing.T) {
+		t.Parallel()
+		pluginDownloadURL := "git://github.com/pulumi/pulumi-example@v1.2.3"
+		pluginSpec, err := workspace.NewPluginSpec(pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		require.NoError(t, err)
+		pluginSpec.PluginDir = cmd.pluginDir
+
+		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
+		require.NoError(t, os.Mkdir(dirPath, 0o755))
+		readmePath := filepath.Join(dirPath, "README.md")
+		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
+
+		readme, err := cmd.findReadme(pluginDownloadURL)
+		assert.Equal(t, readmePath, readme)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
+		t.Parallel()
+		pluginDownloadURL := "git://github.com/pulumi/pulumi-subdir-example/path@v1.2.3"
+		pluginSpec, err := workspace.NewPluginSpec(pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		require.NoError(t, err)
+		pluginSpec.PluginDir = cmd.pluginDir
+
+		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
+		require.NoError(t, os.Mkdir(dirPath, 0o755))
+		readmePath := filepath.Join(dirPath, "README.md")
+		require.NoError(t, os.WriteFile(readmePath, []byte("# Root Readme"), 0o600))
+		subdirPath := filepath.Join(dirPath, "path")
+		require.NoError(t, os.Mkdir(subdirPath, 0o755))
+		subdirReadmePath := filepath.Join(subdirPath, "README.md")
+		require.NoError(t, os.WriteFile(subdirReadmePath, []byte("# Subdir Readme"), 0o600))
+
+		readme, err := cmd.findReadme(pluginDownloadURL)
+		assert.Equal(t, subdirReadmePath, readme)
+		assert.NoError(t, err)
+	})
 }
