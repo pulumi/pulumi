@@ -84,6 +84,7 @@ func TestImportOption(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							Inputs:  readInputs,
 							Outputs: readOutputs,
+							ID:      "imported-id",
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -93,23 +94,25 @@ func TestImportOption(t *testing.T) {
 	}
 
 	readID, importID, inputs := resource.ID(""), resource.ID("id"), resource.PropertyMap{}
+	expectedID := resource.ID("imported-id")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		var err error
 		if readID != "" {
-			_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", "")
+			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", "")
+			assert.NoError(t, err)
 		} else {
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:   inputs,
 				ImportID: importID,
 			})
+			assert.NoError(t, err)
+			assert.Equal(t, expectedID, resp.ID)
 		}
-		assert.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -140,6 +143,8 @@ func TestImportOption(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
+	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
@@ -157,6 +162,8 @@ func TestImportOption(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
+	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
 	// Change a property value and run a third update. The update should succeed.
 	inputs["foo"] = resource.NewStringProperty("rab")
@@ -178,11 +185,13 @@ func TestImportOption(t *testing.T) {
 	// This should call update not read, which just returns the passed inputs as outputs.
 	assert.Equal(t, inputs, snap.Resources[1].Inputs)
 	assert.Equal(t, inputs, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
+	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
 	// Change the property value s.t. the resource requires replacement. The update should fail.
 	inputs["foo"] = resource.NewStringProperty("replace")
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
-	assert.ErrorContains(t, err, "reviously-imported resources that still specify an ID may not be replaced")
+	assert.ErrorContains(t, err, "previously-imported resources that still specify an ID may not be replaced")
 
 	// Finally, destroy the stack. The `Delete` function should be called.
 	_, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
@@ -201,6 +210,7 @@ func TestImportOption(t *testing.T) {
 
 	// Now clear the ID to import and run an initial update to create a resource that we will import-replace.
 	importID, inputs["foo"] = "", resource.NewStringProperty("bar")
+	expectedID = resource.ID("created-id")
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -245,6 +255,7 @@ func TestImportOption(t *testing.T) {
 	// Then set the import ID and run another update. The update should succeed and should show an import-replace and
 	// a delete-replaced.
 	importID = "id"
+	expectedID = resource.ID("imported-id")
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -254,9 +265,9 @@ func TestImportOption(t *testing.T) {
 				case resURN:
 					switch entry.Step.Op() {
 					case deploy.OpReplace, deploy.OpImportReplacement:
-						assert.Equal(t, importID, entry.Step.New().ID)
+						assert.Equal(t, expectedID, entry.Step.New().ID)
 					case deploy.OpDeleteReplaced:
-						assert.NotEqual(t, importID, entry.Step.Old().ID)
+						assert.NotEqual(t, expectedID, entry.Step.Old().ID)
 					}
 				default:
 					t.Fatalf("unexpected resource %v", urn)
@@ -302,9 +313,9 @@ func TestImportOption(t *testing.T) {
 				case resURN:
 					switch entry.Step.Op() {
 					case deploy.OpReplace, deploy.OpImportReplacement:
-						assert.Equal(t, importID, entry.Step.New().ID)
+						assert.Equal(t, expectedID, entry.Step.New().ID)
 					case deploy.OpDiscardReplaced:
-						assert.Equal(t, importID, entry.Step.Old().ID)
+						assert.Equal(t, expectedID, entry.Step.Old().ID)
 					}
 				default:
 					t.Fatalf("unexpected resource %v", urn)
