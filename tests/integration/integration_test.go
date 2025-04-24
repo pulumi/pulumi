@@ -523,7 +523,12 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if organization != "" {
+		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
+		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	} else {
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1054,7 +1059,12 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if organization != "" {
+		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
+		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	} else {
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1161,17 +1171,18 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
+	qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
 	// Create a stack in the go project
 	e.CWD = goDir
 	e.ImportDirectory("large_resource/go")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
 	// Now create the js project
 	e.CWD = jsDir
 	e.ImportDirectory("large_resource/nodejs")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
