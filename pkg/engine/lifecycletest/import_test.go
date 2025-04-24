@@ -750,11 +750,11 @@ func TestImportPlanExistingImport(t *testing.T) {
 		Name: "resA",
 		ID:   "imported-id",
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
-		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, _ error) error {
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, e := range entries {
 				assert.Equal(t, deploy.OpSame, e.Step.Op())
 			}
-			return nil
+			return err
 		}, "2")
 
 	assert.NoError(t, err)
