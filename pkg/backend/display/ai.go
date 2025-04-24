@@ -35,9 +35,10 @@ func ExplainFailureLink(permalink string) string {
 	return permalink + "?explainFailure"
 }
 
-// copilotEmojiOr returns the emoji for Copilot or an empty string if emojis are disabled.
+// copilotDelimiterEmoji provides an end of line delimiter for Copilot diagnostics header.
+// Either an emoji or a colon is displayed, rendering a colon next to an emoji looks cluttered.
 // Exposed here for testing.
-func copilotEmojiOr() string {
+func copilotDelimiterEmoji() string {
 	return cmdutil.EmojiOr(" ✨", ":")
 }
 
@@ -56,7 +57,7 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 
 	// Generate the header
 	header := opts.Color.Colorize(
-		colors.SpecHeadline + "Copilot Diagnostics" + copilotEmojiOr() + colors.Reset)
+		colors.SpecHeadline + "Copilot Diagnostics" + copilotDelimiterEmoji() + colors.Reset)
 	fmt.Fprintln(out, header)
 
 	// Print the error if there was one and return.
@@ -80,6 +81,6 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 func PrintCopilotLink(out io.Writer, opts Options, permalink string) {
 	fmt.Fprintln(out, "  "+"Would you like additional help with this update?")
 	fmt.Fprintln(out, "  "+
-		opts.Color.Colorize(colors.Underline+colors.Blue+ExplainFailureLink(permalink)+colors.Reset))
+		opts.Color.Colorize(colors.Underline+colors.BrightBlue+ExplainFailureLink(permalink)+colors.Reset))
 	fmt.Fprintln(out)
 }

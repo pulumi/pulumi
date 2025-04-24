@@ -46,7 +46,7 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
   Would you like additional help with this update?
   http://foo.bar/baz?explainFailure
 
-`, copilotEmojiOr())
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
 }
 
@@ -67,7 +67,7 @@ func TestRenderCopilotErrorSummaryNoLink(t *testing.T) {
 	expectedCopilotSummary := fmt.Sprintf(`Copilot Diagnostics%s
   This is a test summary
 
-`, copilotEmojiOr())
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
 }
 
@@ -85,7 +85,7 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 	expectedCopilotSummaryWithError := fmt.Sprintf(`Copilot Diagnostics%s
   error summarizing update output: test error
 
-`, copilotEmojiOr())
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithError, buf.String())
 }
 
@@ -121,6 +121,6 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Copilot Diagnostics%s
   error summarizing update output: test error
 
-`, copilotEmojiOr())
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithErrorAndSummary, buf.String())
 }
