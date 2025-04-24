@@ -1038,12 +1038,30 @@ func (b *cloudBackend) ListStacks(
 		return nil, nil, err
 	}
 
+	// Look up the default organization and persist it across each stack summary, in order to reduce
+	// the number of lookups each stack summary would otherwise have to make to determine whether to
+	// elide the organization name.
+	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
+	// this has the added benefit of ensuring that the default org is consistent for the duration of the
+	// operation, even if the user changes their default org mid-process.
+	defaultOrg, err := b.GetDefaultOrg(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if defaultOrg == "" {
+		defaultOrg, _, _, err = b.CurrentUser()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// Convert []apitype.StackSummary into []backend.StackSummary.
 	backendSummaries := slice.Prealloc[backend.StackSummary](len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
-			summary: apiSummary,
-			b:       b,
+			summary:    apiSummary,
+			b:          b,
+			defaultOrg: defaultOrg,
 		}
 		backendSummaries = append(backendSummaries, backendSummary)
 	}
