@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -45,10 +44,11 @@ type Stack interface {
 }
 
 type cloudBackendReference struct {
-	name    tokens.StackName
-	project tokens.Name
-	owner   string
-	b       *cloudBackend
+	name       tokens.StackName
+	project    tokens.Name
+	defaultOrg string
+	owner      string
+	b          *cloudBackend
 }
 
 func (c cloudBackendReference) String() string {
@@ -64,7 +64,7 @@ func (c cloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(currentProject)
+		defaultOrg, err := c.getDefaultOrg()
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {
@@ -96,6 +96,15 @@ func (c cloudBackendReference) Organization() (string, bool) {
 
 func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
 	return tokens.IntoQName(fmt.Sprintf("%v/%v/%v", c.owner, c.project, c.name.String()))
+}
+
+// Returns configured default org, if configured..
+// If unset, will fallback to requesting default org from the backend, which may involve an additional API call.
+func (c cloudBackendReference) getDefaultOrg() (string, error) {
+	if c.defaultOrg != "" {
+		return c.defaultOrg, nil
+	}
+	return backend.GetDefaultOrg(context.TODO(), c.b, c.b.currentProject)
 }
 
 // cloudStack is a cloud stack descriptor.
@@ -226,8 +235,9 @@ func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
 // an apitype.StackSummary struct.
 type cloudStackSummary struct {
-	summary apitype.StackSummary
-	b       *cloudBackend
+	summary    apitype.StackSummary
+	b          *cloudBackend
+	defaultOrg string
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {
@@ -236,10 +246,11 @@ func (css cloudStackSummary) Name() backend.StackReference {
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", css.summary.StackName)
 
 	return cloudBackendReference{
-		owner:   css.summary.OrgName,
-		project: tokens.Name(css.summary.ProjectName),
-		name:    stackName,
-		b:       css.b,
+		owner:      css.summary.OrgName,
+		defaultOrg: css.defaultOrg,
+		project:    tokens.Name(css.summary.ProjectName),
+		name:       stackName,
+		b:          css.b,
 	}
 }
 
