@@ -305,10 +305,12 @@ func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
 	}
 	pluginSpec.PluginDir = cmd.pluginDir
 
-	dir, err := pluginSpec.DirPath()
+	pluginDir, err := pluginSpec.DirPath()
 	if err != nil {
 		return "", fmt.Errorf("failed to get plugin directory: %w", err)
 	}
+	_, path := pluginSpec.LocalName()
+	dir := filepath.Join(pluginDir, path)
 
 	if readmeFromPlugin := findReadmeInDir(dir); readmeFromPlugin != "" {
 		return readmeFromPlugin, nil
