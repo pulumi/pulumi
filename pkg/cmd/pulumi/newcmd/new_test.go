@@ -107,8 +107,8 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	assert.Equal(t, orgStackName, loadStackName(t))
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -131,8 +131,8 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	assert.Equal(t, orgStackName, loadStackName(t))
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -144,7 +144,8 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 
 	// the project name and the project name in the stack name must match
 	uniqueProjectName := filepath.Base(tempdir)
-	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), uniqueProjectName, stackName)
+	owner := currentUser(t)
+	fullStackName := fmt.Sprintf("%s/%s/%s", owner, uniqueProjectName, stackName)
 
 	args := newArgs{
 		interactive:       false,
@@ -158,8 +159,9 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	expectedStackName := fmt.Sprintf("%s/%s", owner, stackName)
+	assert.Equal(t, expectedStackName, loadStackName(t))
+	removeStack(t, tempdir, expectedStackName)
 }
 
 //nolint:paralleltest // changes directory for process
