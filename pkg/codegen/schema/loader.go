@@ -50,7 +50,7 @@ type ParameterizationDescriptor struct {
 type PackageDescriptor struct {
 	// Name is the simple name of the plugin.
 	Name string `json:"name" yaml:"name"`
-	// Version is the optional version of the package.
+	// Version is the optional version of the plugin.
 	Version *semver.Version `json:"version,omitempty" yaml:"version,omitempty"`
 	// DownloadURL is the optional URL to use when downloading the provider plugin binary.
 	DownloadURL string `json:"downloadURL,omitempty" yaml:"downloadURL,omitempty"`
