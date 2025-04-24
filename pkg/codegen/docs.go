@@ -31,7 +31,8 @@ type DocLanguageHelper interface {
 	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string
 
-	GetFunctionName(modName string, f *schema.Function) string
+	GetFunctionName(f *schema.Function) string
+
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
 	// an existing resource.
 	GetResourceFunctionResultName(modName string, f *schema.Function) string

@@ -33,7 +33,9 @@ const pulumiSDKVersion = "v3"
 
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
 type DocLanguageHelper struct {
-	packages map[string]*pkgContext
+	packages    map[string]*pkgContext
+	topLevelPkg schema.PackageReference
+	goPkgInfo   GoPackageInfo
 }
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
@@ -101,6 +103,8 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
 	var err error
 	d.packages, err = generatePackageContextMap(tool, pkg.Reference(), goInfo, nil)
+	d.goPkgInfo = goInfo
+	d.topLevelPkg = pkg.Reference()
 	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name)
 }
 
@@ -118,9 +122,12 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 	return makeSafeEnumName(name, typeName)
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	funcName := tokenToName(f.Token)
-	pkg, ok := d.packages[modName]
+	if d.topLevelPkg == nil {
+		return funcName
+	}
+	pkg, ok := d.packages[tokenToPackage(d.topLevelPkg, d.goPkgInfo.ModuleToPackage, f.Token)]
 	if !ok {
 		return funcName
 	}
@@ -134,7 +141,7 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	funcName := d.GetFunctionName(modName, f)
+	funcName := d.GetFunctionName(f)
 	return funcName + "Result"
 }
 
