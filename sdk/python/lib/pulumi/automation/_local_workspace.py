@@ -41,6 +41,7 @@ from ._workspace import (
     Workspace,
 )
 from .errors import InvalidVersionError
+from pulumi.automation._remote_workspace import ExecutorImage
 
 if TYPE_CHECKING:
     from pulumi.automation._remote_workspace import RemoteGitAuth
@@ -53,11 +54,11 @@ class Secret(str):
     Represents a secret value.
     """
 
-
 class LocalWorkspaceOptions:
     work_dir: Optional[str] = None
     pulumi_home: Optional[str] = None
     program: Optional[PulumiFn] = None
+    remote_executor_image: Optional[ExecutorImage] = None
     env_vars: Optional[Mapping[str, str]] = None
     secrets_provider: Optional[str] = None
     project_settings: Optional[ProjectSettings] = None
@@ -69,6 +70,7 @@ class LocalWorkspaceOptions:
         work_dir: Optional[str] = None,
         pulumi_home: Optional[str] = None,
         program: Optional[PulumiFn] = None,
+        remote_executor_image: Optional[ExecutorImage] = None,
         env_vars: Optional[Mapping[str, str]] = None,
         secrets_provider: Optional[str] = None,
         project_settings: Optional[ProjectSettings] = None,
@@ -77,6 +79,7 @@ class LocalWorkspaceOptions:
     ):
         self.work_dir = work_dir
         self.pulumi_home = pulumi_home
+        self.remote_executor_image = remote_executor_image
         self.program = program
         self.env_vars = env_vars
         self.secrets_provider = secrets_provider
@@ -102,6 +105,7 @@ class LocalWorkspace(Workspace):
     _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
     _remote_pre_run_commands: Optional[List[str]]
     _remote_skip_install_dependencies: Optional[bool]
+    _remote_executor_image: Optional[ExecutorImage]
     _remote_inherit_settings: Optional[bool]
     _remote_git_url: Optional[str]
     _remote_git_project_path: Optional[str]
@@ -667,6 +671,14 @@ class LocalWorkspace(Workspace):
 
         if self._remote_skip_install_dependencies:
             args.append("--remote-skip-install-dependencies")
+
+        if self._remote_executor_image:
+            if self._remote_executor_image.image:
+                args.append("--remote-executor-image=" + self._remote_executor_image.image)
+
+            if self._remote_executor_image.credentials:
+                args.append("--remote-executor-image-username=" + self._remote_executor_image.credentials.username)
+                args.append("--remote-executor-image-password=" + self._remote_executor_image.credentials.password)
 
         if self._remote_inherit_settings:
             args.append("--remote-inherit-settings")

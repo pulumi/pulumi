@@ -18,6 +18,22 @@ from pulumi.automation._local_workspace import LocalWorkspace, Secret
 from pulumi.automation._remote_stack import RemoteStack
 from pulumi.automation._stack import Stack
 
+class DockerImageCredentials:
+    """
+    Credentials for the remote execution Docker image.
+    """
+
+    username: str
+    password: str
+
+
+class ExecutorImage:
+    """
+    Information about the remote execution image.
+    """
+
+    image: Optional[None]
+    credentials: Optional[DockerImageCredentials]
 
 class RemoteWorkspaceOptions:
     """
@@ -27,6 +43,7 @@ class RemoteWorkspaceOptions:
     env_vars: Optional[Mapping[str, Union[str, Secret]]]
     pre_run_commands: Optional[List[str]]
     skip_install_dependencies: Optional[bool]
+    executor_image: Optional[ExecutorImage]
     inherit_settings: Optional[bool]
 
     def __init__(
@@ -35,13 +52,14 @@ class RemoteWorkspaceOptions:
         env_vars: Optional[Mapping[str, Union[str, Secret]]] = None,
         pre_run_commands: Optional[List[str]] = None,
         skip_install_dependencies: Optional[bool] = None,
+        executor_image: Optional[ExecutorImage] = None,
         inherit_settings: Optional[bool] = None,
     ):
         self.env_vars = env_vars
         self.pre_run_commands = pre_run_commands
         self.skip_install_dependencies = skip_install_dependencies
+        self.executor_image = executor_image
         self.inherit_settings = inherit_settings
-
 
 class RemoteGitAuth:
     """
@@ -193,11 +211,13 @@ def _create_local_workspace(
     env_vars = None
     pre_run_commands = None
     skip_install_dependencies = None
+    remote_executor_image = None
     inherit_settings = None
     if opts is not None:
         env_vars = opts.env_vars
         pre_run_commands = opts.pre_run_commands
         skip_install_dependencies = opts.skip_install_dependencies
+        remote_executor_image = opts.executor_image
         inherit_settings = opts.inherit_settings
 
     if not url and not inherit_settings:
@@ -217,6 +237,7 @@ def _create_local_workspace(
     ws._remote_env_vars = env_vars
     ws._remote_pre_run_commands = pre_run_commands
     ws._remote_skip_install_dependencies = skip_install_dependencies
+    ws._remote_executor_image = remote_executor_image
     ws._remote_inherit_settings = inherit_settings
     ws._remote_git_url = url
     ws._remote_git_project_path = project_path
