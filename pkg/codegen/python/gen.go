@@ -1372,15 +1372,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Produce a class definition with optional """ comment.
+	fmt.Fprintf(w, "@_utilities.pulumi_type(\"%s\")\n", res.Token)
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
-
-	fmt.Fprintln(w)
-	fmt.Fprintf(w, "    pulumi_type = \"%s\"\n", res.Token)
-	fmt.Fprintln(w)
 
 	// Determine if all inputs are optional.
 	allOptionalInputs := true
@@ -2132,7 +2129,8 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 
 	// Enum import
 	fmt.Fprintf(w, "import builtins\n")
-	fmt.Fprintf(w, "from enum import Enum\n\n")
+	fmt.Fprintf(w, "from enum import Enum\n")
+	fmt.Fprintf(w, "%s\n\n", mod.genUtilitiesImport())
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
@@ -2159,6 +2157,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 
 	switch enum.ElementType {
 	case schema.StringType, schema.IntType, schema.NumberType:
+		fmt.Fprintf(w, "@_utilities.pulumi_type(\"%s\")\n", enum.Token)
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
 		printComment(w, enum.Comment, indent)
 		for _, e := range enum.Elements {
