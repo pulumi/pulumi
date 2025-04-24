@@ -41,12 +41,35 @@ from ._workspace import (
     Workspace,
 )
 from .errors import InvalidVersionError
-from pulumi.automation._remote_workspace import ExecutorImage
 
 if TYPE_CHECKING:
     from pulumi.automation._remote_workspace import RemoteGitAuth
 
 _setting_extensions = [".yaml", ".yml", ".json"]
+
+class DockerImageCredentials:
+    """
+    Credentials for the remote execution Docker image.
+    """
+
+    username: str
+    password: str
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+
+class ExecutorImage:
+    """
+    Information about the remote execution image.
+    """
+
+    image: Optional[str]
+    credentials: Optional[DockerImageCredentials]
+
+    def __init__(self, image: Optional[str] = None, credentials: Optional[DockerImageCredentials] = None):
+        self.image = image
+        self.credentials = credentials
 
 
 class Secret(str):
@@ -58,7 +81,6 @@ class LocalWorkspaceOptions:
     work_dir: Optional[str] = None
     pulumi_home: Optional[str] = None
     program: Optional[PulumiFn] = None
-    remote_executor_image: Optional[ExecutorImage] = None
     env_vars: Optional[Mapping[str, str]] = None
     secrets_provider: Optional[str] = None
     project_settings: Optional[ProjectSettings] = None
@@ -70,7 +92,6 @@ class LocalWorkspaceOptions:
         work_dir: Optional[str] = None,
         pulumi_home: Optional[str] = None,
         program: Optional[PulumiFn] = None,
-        remote_executor_image: Optional[ExecutorImage] = None,
         env_vars: Optional[Mapping[str, str]] = None,
         secrets_provider: Optional[str] = None,
         project_settings: Optional[ProjectSettings] = None,
@@ -79,7 +100,6 @@ class LocalWorkspaceOptions:
     ):
         self.work_dir = work_dir
         self.pulumi_home = pulumi_home
-        self.remote_executor_image = remote_executor_image
         self.program = program
         self.env_vars = env_vars
         self.secrets_provider = secrets_provider

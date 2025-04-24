@@ -14,26 +14,9 @@
 
 from typing import List, Mapping, Optional, Union
 
-from pulumi.automation._local_workspace import LocalWorkspace, Secret
+from pulumi.automation._local_workspace import ExecutorImage, LocalWorkspace, Secret
 from pulumi.automation._remote_stack import RemoteStack
 from pulumi.automation._stack import Stack
-
-class DockerImageCredentials:
-    """
-    Credentials for the remote execution Docker image.
-    """
-
-    username: str
-    password: str
-
-
-class ExecutorImage:
-    """
-    Information about the remote execution image.
-    """
-
-    image: Optional[None]
-    credentials: Optional[DockerImageCredentials]
 
 class RemoteWorkspaceOptions:
     """
