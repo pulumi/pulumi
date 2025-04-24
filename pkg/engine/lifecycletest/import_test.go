@@ -742,7 +742,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 		Name: "resA",
 		ID:   "imported-id-2",
 	}}).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.ErrorContains(t, err, "resource 'urn:pulumi:test::test::pkgA:m:typA::resA' already exists")
 
 	// Run an import with a matching ID. This should succeed and do nothing.
 	snap, err = lt.ImportOp([]deploy.Import{{
