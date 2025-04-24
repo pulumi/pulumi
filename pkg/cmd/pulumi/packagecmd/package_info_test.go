@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -124,14 +125,17 @@ func TestPackageInfo(t *testing.T) {
 	cmd.SetOutput(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(`Provider: test (0.0.1)
-  Description: test description markdown formatted
-Total resources: 3
-Total modules: 2
+	require.Equal(t, fmt.Sprintf(`\x1b[1mName\x1b[0m: test
+\x1b[1mVersion\x1b[0m: 0.0.1
+\x1b[1mDescription\x1b[0m: test description markdown formatted
+\x1b[1mTotal resources\x1b[0m 3
+\x1b[1mTotal modules\x1b[0m: 2
 
-Use 'pulumi package info --module <module> %[1]s' to list resources in a module
-Use 'pulumi package info --module <module> --resource <resource> %[1]s' for detailed resource info
-`, schemaPath), output.String())
+\x1b[1mModules\x1b[0m: another, index
+
+Use 'pulumi package info %[1]s --module <module>' to list resources in a module
+Use 'pulumi package info %[1]s --resource <resource>  --module <module>' for detailed resource info
+`, schemaPath), strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
 
 func TestModuleInfo(t *testing.T) {
@@ -150,12 +154,14 @@ func TestModuleInfo(t *testing.T) {
 	cmd.SetOutput(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `Module: test:index
-Resources: 2
+	require.Equal(t, `\x1b[1mName\x1b[0m: test
+\x1b[1mVersion\x1b[0m: 0.0.1
+\x1b[1mDescription\x1b[0m: test description markdown formatted
+\x1b[1mResources\x1b[0m: 2
 
- - Test: test resource description
- - Test2: this is another test resource
-`, output.String())
+ - \x1b[1mTest\x1b[0m: test resource description
+ - \x1b[1mTest2\x1b[0m: this is another test resource
+`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
 
 func TestResourceInfo(t *testing.T) {
@@ -173,14 +179,16 @@ func TestResourceInfo(t *testing.T) {
 	cmd.SetOutput(&output)
 	err = cmd.Execute()
 	require.NoError(t, err)
-	require.Equal(t, `Resource: test:index:Test
+	require.Equal(t, `\x1b[1mResource\x1b[0m: test:index:Test
+\x1b[1mDescription\x1b[0m: test resource description
 
-Input Properties:
- - prop1 (string (optional)): this is a string property
+\x1b[1mInputs\x1b[0m:
+ - \x1b[1mprop1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m*\x1b[0m): this is a string property
+Inputs marked with '*' are required
 
-Output Properties:
- - arrayProp ([]TestType): this is an array property
- - enumProp (enum(string){EnumValue1, value2}): this is an enum property
- - prop1 (string (always present)): this is a string property
-`, output.String())
+\x1b[1mOutputs\x1b[0m:
+(All input properties are implicitly available as output properties)
+ - \x1b[1marrayProp\x1b[0m (\x1b[4m[]TestType\x1b[0m\x1b[4m\x1b[0m): this is an array property
+ - \x1b[1menumProp\x1b[0m (\x1b[4menum(string){EnumValue1, value2}\x1b[0m\x1b[4m\x1b[0m): this is an enum property
+`, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }

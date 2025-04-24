@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -67,12 +68,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 
 			stdout := cmd.OutOrStdout()
 
-			if resource != "" && module == "" {
-				return fmt.Errorf("resource name %q specified without module", resource)
-			}
-
-			if module == "" {
-				showProviderInfo(spec, args, stdout)
+			if module == "" && resource == "" {
+				return showProviderInfo(spec, args, stdout)
 			} else if resource == "" {
 				return showModuleInfo(spec, module, stdout)
 			} else {
@@ -88,11 +85,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 	return cmd
 }
 
-func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer) {
-	fmt.Fprintf(stdout, "Provider: %s (%s)\n", spec.Name, spec.Version)
-	fmt.Fprintf(stdout, "  Description: %s\n", summaryFromDescription(spec.Description))
-	fmt.Fprintf(stdout, "Total resources: %d\n", len(spec.Resources))
-
+func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer) error {
 	modules := make(map[string]struct{})
 	for res := range spec.Resources {
 		split := strings.Split(res, ":")
@@ -102,17 +95,63 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 		moduleSplit := strings.Split(split[1], "/")
 		modules[moduleSplit[0]] = struct{}{}
 	}
-	fmt.Fprintf(stdout, "Total modules: %d\n", len(modules))
+
+	if len(spec.Resources) == 1 {
+		for name := range spec.Resources {
+			nameSplit := strings.Split(name, ":")
+			if len(nameSplit) < 3 {
+				return fmt.Errorf("invalid resource name %q", name)
+			}
+			return showResourceInfo(spec, "", nameSplit[2], stdout)
+		}
+	}
+
+	if len(modules) == 1 {
+		for name := range modules {
+			return showModuleInfo(spec, name, stdout)
+		}
+	}
+
+	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
+	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, bold("Total resources")+" %d\n", len(spec.Resources))
+
+	fmt.Fprintf(stdout, bold("Total modules")+": %d\n", len(modules))
 
 	fmt.Fprintln(stdout)
-	fmt.Fprintf(
-		stdout,
-		"Use 'pulumi package info --module <module> %s' to list resources in a module\n",
-		strings.Join(args, " "))
-	fmt.Fprintf(
-		stdout,
-		"Use 'pulumi package info --module <module> --resource <resource> %s' for detailed resource info\n",
-		strings.Join(args, " "))
+
+	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
+
+	fmt.Fprintln(stdout)
+	if len(args) > 1 {
+		moduleString := ""
+		if len(modules) > 1 {
+			moduleString = "--module <module> "
+			fmt.Fprintf(
+				stdout,
+				"Use 'pulumi package info %s%s' to list resources in a module\n",
+				moduleString, strings.Join(args, " "))
+		}
+		fmt.Fprintf(
+			stdout,
+			"Use 'pulumi package info %s--resource <resource> %s' for detailed resource info\n",
+			moduleString, strings.Join(args, " "))
+	} else {
+		moduleString := ""
+		if len(modules) > 1 {
+			moduleString = " --module <module>"
+			fmt.Fprintf(
+				stdout,
+				"Use 'pulumi package info %s%s' to list resources in a module\n",
+				strings.Join(args, " "), moduleString)
+		}
+		fmt.Fprintf(
+			stdout,
+			"Use 'pulumi package info %s --resource <resource> %s' for detailed resource info\n",
+			strings.Join(args, " "), moduleString)
+	}
+	return nil
 }
 
 func summaryFromDescription(description string) string {
@@ -142,7 +181,9 @@ func simplifyModuleName(resourceName string) (string, error) {
 }
 
 func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer) error {
-	fmt.Fprintf(stdout, "Module: %s:%s\n", spec.Name, moduleName)
+	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
+	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
 
 	resources := make(map[string]schema.ResourceSpec)
 	for res, spec := range spec.Resources {
@@ -163,76 +204,129 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	if len(resources) == 0 {
 		return fmt.Errorf("module %q not found", moduleName)
 	}
-	fmt.Fprintf(stdout, "Resources: %d\n", len(resources))
+	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
 
 	fmt.Fprintln(stdout)
 	for _, name := range maputil.SortedKeys(resources) {
-		fmt.Fprintf(stdout, " - %s: %s\n", name, summaryFromDescription(resources[name].Description))
+		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
 	}
 	return nil
 }
 
+func bold(s string) string {
+	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
+}
+
+func underline(s string) string {
+	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
+}
+
 func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string, stdout io.Writer) error {
-	fullResourceName := fmt.Sprintf("%s:%s:%s", spec.Name, moduleName, resourceName)
+	var res schema.ResourceSpec
+	var specResName string
+	if moduleName != "" {
+		fullResourceName := fmt.Sprintf("%s:%s:%s", spec.Name, moduleName, resourceName)
+		var ok bool
+		res, ok = spec.Resources[fullResourceName]
+		specResName = fullResourceName
+		if !ok {
+			for name, r := range spec.Resources {
+				simplifiedName, err := simplifyModuleName(name)
+				if err != nil {
+					return err
+				}
 
-	fmt.Fprintf(stdout, "Resource: %s\n", fullResourceName)
-
-	res, ok := spec.Resources[fullResourceName]
-	if !ok {
-		for name, r := range spec.Resources {
-			simplifiedName, err := simplifyModuleName(name)
-			if err != nil {
-				return err
-			}
-			if fullResourceName == simplifiedName {
-				res = r
-				ok = true
-				break
+				if fullResourceName == simplifiedName {
+					res = r
+					ok = true
+					specResName = name
+					break
+				}
 			}
 		}
-	}
-	if !ok {
-		return fmt.Errorf("resource %q not found", fullResourceName)
+		if !ok {
+			return fmt.Errorf("resource %q not found", fullResourceName)
+		}
+	} else {
+		found := false
+		for name, r := range spec.Resources {
+			split := strings.Split(name, ":")
+			if len(split) < 3 {
+				return fmt.Errorf("invalid resource name %q", name)
+			}
+			resName := split[2]
+			if resName == resourceName {
+				if found {
+					return fmt.Errorf("ambiguous resource name %q, please use --module <module> to disambiguate", resourceName)
+				}
+				res = r
+				found = true
+				specResName = name
+			}
+		}
+		if !found {
+			return fmt.Errorf("resource %q not found", resourceName)
+		}
 	}
 
+	fmt.Fprintf(stdout, bold("Resource")+": %s\n", specResName)
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(res.Description))
+
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, "Input Properties:")
+	fmt.Fprintln(stdout, bold("Inputs")+":")
+	hasRequired := false
 	for _, name := range maputil.SortedKeys(res.InputProperties) {
 		prop := res.InputProperties[name]
-		optionalStr := ""
+		requiredStr := ""
 		if !slices.Contains(res.RequiredInputs, name) {
-			optionalStr = " (optional)"
+			hasRequired = true
+			requiredStr = "*"
 		}
 		typ, err := getType(spec, prop.TypeSpec)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			name, typ, optionalStr, summaryFromDescription(prop.Description))
+			bold(name), underline(typ), underline(requiredStr),
+			summaryFromDescription(prop.Description))
+	}
+	if hasRequired {
+		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
 	}
 
 	fmt.Fprintln(stdout)
 
-	fmt.Fprintln(stdout, "Output Properties:")
+	fmt.Fprintln(stdout, bold("Outputs")+":")
+	fmt.Fprintln(stdout, "(All input properties are implicitly available as output properties)")
+	hasPresent := false
 	for _, name := range maputil.SortedKeys(res.Properties) {
+		// Skip input properties, as they are already shown above.
+		if _, ok := res.InputProperties[name]; ok {
+			continue
+		}
 		prop := res.Properties[name]
 		presentStr := ""
 		if slices.Contains(res.Required, name) {
-			presentStr = " (always present)"
+			hasPresent = true
+			presentStr = "*"
 		}
 		typ, err := getType(spec, prop.TypeSpec)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			name, typ, presentStr, summaryFromDescription(prop.Description))
+			bold(name), underline(typ), underline(presentStr),
+			summaryFromDescription(prop.Description))
+	}
+	if hasPresent {
+		fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
 	}
 	return nil
 }
 
 func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
 	typ := prop.Type
-	if typ != "" && typ != "object" && typ != "array" {
+	if typ != "" && typ != "object" && typ != "array" && prop.Ref == "" {
 		return typ, nil
 	}
 	if prop.Type == "array" {
@@ -244,6 +338,16 @@ func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
 			return "", err
 		}
 		return "[]" + typ, nil
+	}
+	if prop.Type == "object" {
+		if prop.AdditionalProperties == nil {
+			return "object", nil
+		}
+		typ, err := getType(spec, *prop.AdditionalProperties)
+		if err != nil {
+			return "", err
+		}
+		return "map[string]" + typ, nil
 	}
 	if prop.Ref != "" {
 		if strings.HasPrefix(prop.Ref, "#/types/") {
@@ -262,9 +366,6 @@ func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
 				return split[2], nil
 			}
 		}
-		return prop.Ref, nil
-	}
-	if prop.Ref != "" {
 		return prop.Ref, nil
 	}
 	return "unknown", nil
