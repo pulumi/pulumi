@@ -267,6 +267,11 @@ func GetProviderParameterization(
 	}, nil
 }
 
+type providerEntry struct {
+	provider plugin.Provider
+	state    resource.PropertyMap
+}
+
 // Registry manages the lifecylce of provider resources and their plugins and handles the resolution of provider
 // references to loaded plugins.
 //
@@ -283,7 +288,7 @@ type Registry struct {
 
 	host      plugin.Host
 	isPreview bool
-	providers map[Reference]plugin.Provider
+	providers map[Reference]providerEntry
 	builtins  plugin.Provider
 	aliases   map[resource.URN]resource.URN
 	m         sync.RWMutex
@@ -390,7 +395,7 @@ func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Re
 	return &Registry{
 		host:      host,
 		isPreview: isPreview,
-		providers: make(map[Reference]plugin.Provider),
+		providers: make(map[Reference]providerEntry),
 		builtins:  builtins,
 		aliases:   make(map[resource.URN]resource.URN),
 	}
@@ -398,25 +403,34 @@ func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Re
 
 // GetProvider returns the provider plugin that is currently registered under the given reference, if any.
 func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {
+	p, _, ok := r.getProvider(ref)
+	return p, ok
+}
+
+func (r *Registry) getProvider(ref Reference) (plugin.Provider, resource.PropertyMap, bool) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
 	logging.V(7).Infof("GetProvider(%v)", ref)
 
 	provider, ok := r.providers[ref]
-	return provider, ok
+	return provider.provider, provider.state, ok
 }
 
-func (r *Registry) setProvider(ref Reference, provider plugin.Provider) {
+func (r *Registry) setProvider(ref Reference, provider plugin.Provider, state resource.PropertyMap) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	logging.V(7).Infof("setProvider(%v)", ref)
 
-	r.providers[ref] = provider
+	entry := providerEntry{
+		provider: provider,
+		state:    state,
+	}
+	r.providers[ref] = entry
 
 	if alias, ok := r.aliases[ref.URN()]; ok {
-		r.providers[mustNewReference(alias, ref.ID())] = provider
+		r.providers[mustNewReference(alias, ref.ID())] = entry
 	}
 }
 
@@ -429,7 +443,7 @@ func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
 		return nil, false
 	}
 	delete(r.providers, ref)
-	return provider, true
+	return provider.provider, true
 }
 
 // The rest of the methods below are the implementation of the plugin.Provider interface methods.
@@ -552,6 +566,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		Olds:          FilterProviderConfig(req.Olds),
 		News:          FilterProviderConfig(req.News),
 		AllowUnknowns: true,
+		PrivateState:  req.PrivateState,
 	})
 	if len(resp.Failures) != 0 || err != nil {
 		closeErr := r.host.CloseProvider(provider)
@@ -560,7 +575,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	}
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
-	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
+	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider, nil)
 
 	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it
 	// the checked properties returned from the plugin.
@@ -572,7 +587,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		resp.Properties[internalKey] = req.News[internalKey]
 	}
 
-	return plugin.CheckResponse{Properties: resp.Properties}, nil
+	return plugin.CheckResponse{Properties: resp.Properties, PrivateState: resp.PrivateState}, nil
 }
 
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list
@@ -615,6 +630,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 		NewInputs:     filteredNewInputs,
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
+		PrivateState:  req.PrivateState,
 	})
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
@@ -640,24 +656,24 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 // Same executes as part of the "Same" step for a provider that has not changed. It configures the provider
 // instance with the given state and fixes up aliases.
-func (r *Registry) Same(ctx context.Context, res *resource.State) error {
+func (r *Registry) Same(ctx context.Context, res *resource.State) (resource.PropertyMap, error) {
 	urn := res.URN
 	if !IsProviderType(urn.Type()) {
-		return fmt.Errorf("urn %v is not a provider type", urn)
+		return nil, fmt.Errorf("urn %v is not a provider type", urn)
 	}
 
 	// Ensure that this provider has a known ID.
 	if res.ID == "" || res.ID == UnknownID {
-		return fmt.Errorf("provider '%v' has an unknown ID", urn)
+		return nil, fmt.Errorf("provider '%v' has an unknown ID", urn)
 	}
 
 	ref := mustNewReference(urn, res.ID)
 	logging.V(7).Infof("Same(%v)", ref)
 
 	// If this provider is already configured, then we're done.
-	_, ok := r.GetProvider(ref)
+	_, state, ok := r.getProvider(ref)
 	if ok {
-		return nil
+		return state, nil
 	}
 
 	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
@@ -671,27 +687,27 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		// Parse the provider version, then load, configure, and register the provider.
 		name, err := GetProviderName(providerPkg, res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
+			return nil, fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		version, err := GetProviderVersion(res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
+			return nil, fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		downloadURL, err := GetProviderDownloadURL(res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
+			return nil, fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
 		if err != nil {
-			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
+			return nil, fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
 		if err != nil {
-			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
+			return nil, fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		if provider == nil {
-			return fmt.Errorf("find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
+			return nil, fmt.Errorf("find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
 		}
 	}
 	contract.Assertf(provider != nil, "provider must not be nil")
@@ -699,23 +715,25 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	name := urn.Name()
 	typ := urn.Type()
 
-	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
-		URN:    &urn,
-		Name:   &name,
-		Type:   &typ,
-		ID:     &res.ID,
-		Inputs: FilterProviderConfig(res.Inputs),
-	}); err != nil {
+	resp, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
+		URN:          &urn,
+		Name:         &name,
+		Type:         &typ,
+		ID:           &res.ID,
+		Inputs:       FilterProviderConfig(res.Inputs),
+		PrivateState: res.PrivateState,
+	})
+	if err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-		return fmt.Errorf("configure provider '%v': %w", urn, err)
+		return resp.PrivateState, fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
 	logging.V(7).Infof("loaded provider %v", ref)
 
-	r.setProvider(ref, provider)
+	r.setProvider(ref, provider, resp.PrivateState)
 
-	return nil
+	return resp.PrivateState, nil
 }
 
 // Create configures the provider with the given URN using the indicated configuration, assigns it an ID, and
@@ -783,21 +801,24 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	typ := req.URN.Type()
 
 	filteredProperties := FilterProviderConfig(req.Properties)
-	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
-		URN:    &req.URN,
-		Name:   &name,
-		Type:   &typ,
-		ID:     &id,
-		Inputs: filteredProperties,
-	}); err != nil {
+	resp, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
+		URN:          &req.URN,
+		Name:         &name,
+		Type:         &typ,
+		ID:           &id,
+		Inputs:       filteredProperties,
+		PrivateState: req.PrivateState,
+	})
+	if err != nil {
 		return plugin.CreateResponse{Status: resource.StatusOK}, err
 	}
 
-	r.setProvider(mustNewReference(req.URN, id), provider)
+	r.setProvider(mustNewReference(req.URN, id), provider, resp.PrivateState)
 	return plugin.CreateResponse{
-		ID:         id,
-		Properties: filteredProperties,
-		Status:     resource.StatusOK,
+		ID:           id,
+		Properties:   filteredProperties,
+		PrivateState: resp.PrivateState,
+		Status:       resource.StatusOK,
 	}, nil
 }
 
@@ -819,20 +840,21 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	typ := req.URN.Type()
 
 	filteredProperties := FilterProviderConfig(req.NewInputs)
-	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
-		URN:    &req.URN,
-		Name:   &name,
-		Type:   &typ,
-		ID:     &req.ID,
-		Inputs: filteredProperties,
+	resp, err := provider.Configure(ctx, plugin.ConfigureRequest{
+		URN:          &req.URN,
+		Name:         &name,
+		Type:         &typ,
+		ID:           &req.ID,
+		Inputs:       filteredProperties,
+		PrivateState: req.PrivateState,
 	})
 	if err != nil {
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
 	}
 
 	// Publish the configured provider.
-	r.setProvider(mustNewReference(req.URN, req.ID), provider)
-	return plugin.UpdateResponse{Properties: filteredProperties, Status: resource.StatusOK}, nil
+	r.setProvider(mustNewReference(req.URN, req.ID), provider, resp.PrivateState)
+	return plugin.UpdateResponse{Properties: filteredProperties, PrivateState: resp.PrivateState, Status: resource.StatusOK}, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded

@@ -276,6 +276,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		event.SourcePosition(),
 		nil, /* ignoreChanges */
 		nil, /* replaceOnChanges */
+		nil, /* privateState */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -731,7 +732,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges)
+		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges, nil)
 
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
@@ -911,9 +912,11 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 	var oldInputs resource.PropertyMap
 	var oldOutputs resource.PropertyMap
+	var privateState resource.PropertyMap
 	if old != nil {
 		oldInputs = old.Inputs
 		oldOutputs = old.Outputs
+		privateState = old.PrivateState
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -939,6 +942,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
+				PrivateState:  nil,
 			})
 		} else {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
@@ -948,6 +952,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
+				PrivateState:  privateState,
 			})
 		}
 		inputs = resp.Properties
@@ -958,6 +963,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			invalid = true
 		}
 		new.Inputs = inputs
+		new.PrivateState = resp.PrivateState
 	}
 
 	// If the resource is valid and we're generating plans then generate a plan
@@ -1437,6 +1443,9 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	event := diffEvent.Event()
 	goal := event.Goal()
 
+	// Set the resources private state to what was returned from diff
+	new.PrivateState = diff.PrivateState
+
 	// If we try to return zero steps change it to one same step
 	defer func() {
 		if len(updateSteps) == 0 {
@@ -1518,12 +1527,18 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
+				var privateState resource.PropertyMap
+				if old != nil {
+					privateState = old.PrivateState
+				}
+
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
 					News:          goal.Properties,
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
+					PrivateState:  privateState,
 				})
 				failures := resp.Failures
 				inputs := resp.Properties
@@ -1533,6 +1548,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
 				}
 				new.Inputs = inputs
+				new.PrivateState = old.PrivateState
 			}
 
 			if logging.V(7) {
@@ -2266,7 +2282,7 @@ func (sg *stepGenerator) diff(
 	if !sg.deployment.opts.ParallelDiff {
 		// If parallel diff isn't enabled just do the diff directly.
 		diff, err := diffResource(
-			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges)
+			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges, new.PrivateState)
 		return diff, nil, err
 	}
 
@@ -2294,7 +2310,7 @@ func (sg *stepGenerator) diff(
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
 func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string,
+	ignoreChanges []string, privateState resource.PropertyMap,
 ) (plugin.DiffResult, error) {
 	contract.Requiref(prov != nil, "prov", "must not be nil")
 
@@ -2310,6 +2326,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 		NewInputs:     newInputs,
 		AllowUnknowns: allowUnknowns,
 		IgnoreChanges: ignoreChanges,
+		PrivateState:  privateState,
 	})
 	if err != nil {
 		return diff, err
@@ -2608,7 +2625,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 			}
 		} else {
 			// This is a provider itself so load it so that Diff below is possible
-			err := sg.deployment.SameProvider(r)
+			_, err := sg.deployment.SameProvider(r)
 			if err != nil {
 				return false, nil, fmt.Errorf("create provider %v: %w", r.URN, err)
 			}
@@ -2623,7 +2640,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := diffResource(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges)
+		diff, err := diffResource(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges, r.PrivateState)
 		if err != nil {
 			return false, nil, err
 		}

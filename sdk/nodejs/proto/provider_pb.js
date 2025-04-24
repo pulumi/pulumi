@@ -984,7 +984,8 @@ proto.pulumirpc.ProviderHandshakeRequest.toObject = function(includeInstance, ms
     engineAddress: jspb.Message.getFieldWithDefault(msg, 1, ""),
     rootDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
     programDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    configureWithUrn: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    supportsPrivateState: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -1036,6 +1037,10 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setConfigureWithUrn(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSupportsPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -1091,6 +1096,13 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getSupportsPrivateState();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -1202,6 +1214,24 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.getConfigureWithUrn = functio
  */
 proto.pulumirpc.ProviderHandshakeRequest.prototype.setConfigureWithUrn = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool supports_private_state = 5;
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getSupportsPrivateState = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setSupportsPrivateState = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 
@@ -2544,7 +2574,8 @@ proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 7, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 8, ""),
     name: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 10, "")
+    type: jspb.Message.getFieldWithDefault(msg, 10, ""),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2623,6 +2654,11 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 11:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -2719,6 +2755,14 @@ proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, wri
     writer.writeString(
       10,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      11,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -2999,6 +3043,43 @@ proto.pulumirpc.ConfigureRequest.prototype.hasType = function() {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 11;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 11));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+*/
+proto.pulumirpc.ConfigureRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 11, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ConfigureRequest} returns this
+ */
+proto.pulumirpc.ConfigureRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 11) != null;
+};
+
+
 
 
 
@@ -3035,7 +3116,8 @@ proto.pulumirpc.ConfigureResponse.toObject = function(includeInstance, msg) {
     supportspreview: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
     acceptoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+    supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -3091,6 +3173,11 @@ proto.pulumirpc.ConfigureResponse.deserializeBinaryFromReader = function(msg, re
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSupportsAutonamingConfiguration(value);
+      break;
+    case 6:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -3154,6 +3241,14 @@ proto.pulumirpc.ConfigureResponse.serializeBinaryToWriter = function(message, wr
     writer.writeBool(
       5,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      6,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -3246,6 +3341,43 @@ proto.pulumirpc.ConfigureResponse.prototype.getSupportsAutonamingConfiguration =
  */
 proto.pulumirpc.ConfigureResponse.prototype.setSupportsAutonamingConfiguration = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct private_state = 6;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ConfigureResponse.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 6));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ConfigureResponse} returns this
+*/
+proto.pulumirpc.ConfigureResponse.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 6, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ConfigureResponse} returns this
+ */
+proto.pulumirpc.ConfigureResponse.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureResponse.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 6) != null;
 };
 
 
@@ -5068,7 +5200,8 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
     randomseed: msg.getRandomseed_asB64(),
     name: jspb.Message.getFieldWithDefault(msg, 6, ""),
     type: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    autonaming: (f = msg.getAutonaming()) && proto.pulumirpc.CheckRequest.AutonamingOptions.toObject(includeInstance, f)
+    autonaming: (f = msg.getAutonaming()) && proto.pulumirpc.CheckRequest.AutonamingOptions.toObject(includeInstance, f),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5135,6 +5268,11 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
       var value = new proto.pulumirpc.CheckRequest.AutonamingOptions;
       reader.readMessage(value,proto.pulumirpc.CheckRequest.AutonamingOptions.deserializeBinaryFromReader);
       msg.setAutonaming(value);
+      break;
+    case 9:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -5215,6 +5353,14 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
       8,
       f,
       proto.pulumirpc.CheckRequest.AutonamingOptions.serializeBinaryToWriter
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      9,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -5596,6 +5742,43 @@ proto.pulumirpc.CheckRequest.prototype.hasAutonaming = function() {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 9;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CheckRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 9));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+*/
+proto.pulumirpc.CheckRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 9, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+ */
+proto.pulumirpc.CheckRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CheckRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 9) != null;
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -5637,7 +5820,8 @@ proto.pulumirpc.CheckResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
-    proto.pulumirpc.CheckFailure.toObject, includeInstance)
+    proto.pulumirpc.CheckFailure.toObject, includeInstance),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -5684,6 +5868,11 @@ proto.pulumirpc.CheckResponse.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
       msg.addFailures(value);
       break;
+    case 3:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5727,6 +5916,14 @@ proto.pulumirpc.CheckResponse.serializeBinaryToWriter = function(message, writer
       2,
       f,
       proto.pulumirpc.CheckFailure.serializeBinaryToWriter
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      3,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -5804,6 +6001,43 @@ proto.pulumirpc.CheckResponse.prototype.addFailures = function(opt_value, opt_in
  */
 proto.pulumirpc.CheckResponse.prototype.clearFailuresList = function() {
   return this.setFailuresList([]);
+};
+
+
+/**
+ * optional google.protobuf.Struct private_state = 3;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CheckResponse.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CheckResponse} returns this
+*/
+proto.pulumirpc.CheckResponse.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CheckResponse} returns this
+ */
+proto.pulumirpc.CheckResponse.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CheckResponse.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 3) != null;
 };
 
 
@@ -6013,7 +6247,8 @@ proto.pulumirpc.DiffRequest.toObject = function(includeInstance, msg) {
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
     oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     name: jspb.Message.getFieldWithDefault(msg, 7, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 8, "")
+    type: jspb.Message.getFieldWithDefault(msg, 8, ""),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6084,6 +6319,11 @@ proto.pulumirpc.DiffRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 9:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -6171,6 +6411,14 @@ proto.pulumirpc.DiffRequest.serializeBinaryToWriter = function(message, writer) 
     writer.writeString(
       8,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      9,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -6396,6 +6644,43 @@ proto.pulumirpc.DiffRequest.prototype.setType = function(value) {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 9;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.DiffRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 9));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.DiffRequest} returns this
+*/
+proto.pulumirpc.DiffRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 9, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.DiffRequest} returns this
+ */
+proto.pulumirpc.DiffRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.DiffRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 9) != null;
+};
+
+
 
 
 
@@ -6613,7 +6898,8 @@ proto.pulumirpc.DiffResponse.toObject = function(includeInstance, msg) {
     changes: jspb.Message.getFieldWithDefault(msg, 4, 0),
     diffsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
     detaileddiffMap: (f = msg.getDetaileddiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
-    hasdetaileddiff: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
+    hasdetaileddiff: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -6679,6 +6965,11 @@ proto.pulumirpc.DiffResponse.deserializeBinaryFromReader = function(msg, reader)
     case 7:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setHasdetaileddiff(value);
+      break;
+    case 8:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -6753,6 +7044,14 @@ proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer)
     writer.writeBool(
       7,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      8,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -6954,6 +7253,43 @@ proto.pulumirpc.DiffResponse.prototype.setHasdetaileddiff = function(value) {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 8;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.DiffResponse.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 8));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.DiffResponse} returns this
+*/
+proto.pulumirpc.DiffResponse.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 8, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.DiffResponse} returns this
+ */
+proto.pulumirpc.DiffResponse.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.DiffResponse.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 8) != null;
+};
+
+
 
 
 
@@ -6991,7 +7327,8 @@ proto.pulumirpc.CreateRequest.toObject = function(includeInstance, msg) {
     timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 3, 0.0),
     preview: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
     name: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 6, "")
+    type: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7052,6 +7389,11 @@ proto.pulumirpc.CreateRequest.deserializeBinaryFromReader = function(msg, reader
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 7:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -7123,6 +7465,14 @@ proto.pulumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer
     writer.writeString(
       6,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      7,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -7255,6 +7605,43 @@ proto.pulumirpc.CreateRequest.prototype.setType = function(value) {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 7;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CreateRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 7));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CreateRequest} returns this
+*/
+proto.pulumirpc.CreateRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 7, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CreateRequest} returns this
+ */
+proto.pulumirpc.CreateRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CreateRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 7) != null;
+};
+
+
 
 
 
@@ -7288,7 +7675,8 @@ proto.pulumirpc.CreateResponse.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7334,6 +7722,11 @@ proto.pulumirpc.CreateResponse.deserializeBinaryFromReader = function(msg, reade
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7374,6 +7767,14 @@ proto.pulumirpc.CreateResponse.serializeBinaryToWriter = function(message, write
   if (f != null) {
     writer.writeMessage(
       2,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -7436,6 +7837,43 @@ proto.pulumirpc.CreateResponse.prototype.hasProperties = function() {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 3;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CreateResponse.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+*/
+proto.pulumirpc.CreateResponse.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CreateResponse.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 3) != null;
+};
+
+
 
 
 
@@ -7473,7 +7911,8 @@ proto.pulumirpc.ReadRequest.toObject = function(includeInstance, msg) {
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     name: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 6, "")
+    type: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7535,6 +7974,11 @@ proto.pulumirpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 7:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -7607,6 +8051,14 @@ proto.pulumirpc.ReadRequest.serializeBinaryToWriter = function(message, writer) 
     writer.writeString(
       6,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      7,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -7758,6 +8210,43 @@ proto.pulumirpc.ReadRequest.prototype.setType = function(value) {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 7;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ReadRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 7));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ReadRequest} returns this
+*/
+proto.pulumirpc.ReadRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 7, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ReadRequest} returns this
+ */
+proto.pulumirpc.ReadRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 7) != null;
+};
+
+
 
 
 
@@ -7792,7 +8281,8 @@ proto.pulumirpc.ReadResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -7843,6 +8333,11 @@ proto.pulumirpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader)
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setInputs(value);
       break;
+    case 4:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7891,6 +8386,14 @@ proto.pulumirpc.ReadResponse.serializeBinaryToWriter = function(message, writer)
   if (f != null) {
     writer.writeMessage(
       3,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -7990,6 +8493,43 @@ proto.pulumirpc.ReadResponse.prototype.hasInputs = function() {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 4;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ReadResponse.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ReadResponse} returns this
+*/
+proto.pulumirpc.ReadResponse.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ReadResponse} returns this
+ */
+proto.pulumirpc.ReadResponse.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResponse.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 4) != null;
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -8038,7 +8578,8 @@ proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
     preview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
     oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     name: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 10, "")
+    type: jspb.Message.getFieldWithDefault(msg, 10, ""),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -8117,6 +8658,11 @@ proto.pulumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 11:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -8218,6 +8764,14 @@ proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer
     writer.writeString(
       10,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      11,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -8479,6 +9033,43 @@ proto.pulumirpc.UpdateRequest.prototype.setType = function(value) {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 11;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.UpdateRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 11));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.UpdateRequest} returns this
+*/
+proto.pulumirpc.UpdateRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 11, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.UpdateRequest} returns this
+ */
+proto.pulumirpc.UpdateRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.UpdateRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 11) != null;
+};
+
+
 
 
 
@@ -8511,7 +9102,8 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -8553,6 +9145,11 @@ proto.pulumirpc.UpdateResponse.deserializeBinaryFromReader = function(msg, reade
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 2:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8586,6 +9183,14 @@ proto.pulumirpc.UpdateResponse.serializeBinaryToWriter = function(message, write
   if (f != null) {
     writer.writeMessage(
       1,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -8630,6 +9235,43 @@ proto.pulumirpc.UpdateResponse.prototype.hasProperties = function() {
 };
 
 
+/**
+ * optional google.protobuf.Struct private_state = 2;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.UpdateResponse.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+*/
+proto.pulumirpc.UpdateResponse.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 2, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.UpdateResponse.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 2) != null;
+};
+
+
 
 
 
@@ -8668,7 +9310,8 @@ proto.pulumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
     timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 4, 0.0),
     oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     name: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 7, "")
+    type: jspb.Message.getFieldWithDefault(msg, 7, ""),
+    privateState: (f = msg.getPrivateState()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -8734,6 +9377,11 @@ proto.pulumirpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
+      break;
+    case 8:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setPrivateState(value);
       break;
     default:
       reader.skipField();
@@ -8813,6 +9461,14 @@ proto.pulumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer
     writer.writeString(
       7,
       f
+    );
+  }
+  f = message.getPrivateState();
+  if (f != null) {
+    writer.writeMessage(
+      8,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -8979,6 +9635,43 @@ proto.pulumirpc.DeleteRequest.prototype.getType = function() {
  */
 proto.pulumirpc.DeleteRequest.prototype.setType = function(value) {
   return jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct private_state = 8;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.DeleteRequest.prototype.getPrivateState = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 8));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.DeleteRequest} returns this
+*/
+proto.pulumirpc.DeleteRequest.prototype.setPrivateState = function(value) {
+  return jspb.Message.setWrapperField(this, 8, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.DeleteRequest} returns this
+ */
+proto.pulumirpc.DeleteRequest.prototype.clearPrivateState = function() {
+  return this.setPrivateState(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.DeleteRequest.prototype.hasPrivateState = function() {
+  return jspb.Message.getField(this, 8) != null;
 };
 
 

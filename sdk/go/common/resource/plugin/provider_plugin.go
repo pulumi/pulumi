@@ -187,9 +187,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 			req := &ProviderHandshakeRequest{
 				EngineAddress: host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:    nil,
-				ProgramDirectory: nil,
-				ConfigureWithUrn: true,
+				RootDirectory:        nil,
+				ProgramDirectory:     nil,
+				ConfigureWithUrn:     true,
+				SupportsPrivateState: true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -240,10 +241,11 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		) (*ProviderHandshakeResponse, error) {
 			dir := filepath.Dir(bin)
 			req := &ProviderHandshakeRequest{
-				EngineAddress:    host.ServerAddr(),
-				RootDirectory:    &dir,
-				ProgramDirectory: &dir,
-				ConfigureWithUrn: true,
+				EngineAddress:        host.ServerAddr(),
+				RootDirectory:        &dir,
+				ProgramDirectory:     &dir,
+				ConfigureWithUrn:     true,
+				SupportsPrivateState: true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -306,10 +308,11 @@ func handshake(
 ) (*ProviderHandshakeResponse, error) {
 	client := pulumirpc.NewResourceProviderClient(conn)
 	res, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
+		EngineAddress:        req.EngineAddress,
+		RootDirectory:        req.RootDirectory,
+		ProgramDirectory:     req.ProgramDirectory,
+		ConfigureWithUrn:     req.ConfigureWithUrn,
+		SupportsPrivateState: req.SupportsPrivateState,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -362,10 +365,11 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	) (*ProviderHandshakeResponse, error) {
 		dir := filepath.Dir(bin)
 		req := &ProviderHandshakeRequest{
-			EngineAddress:    host.ServerAddr(),
-			RootDirectory:    &dir,
-			ProgramDirectory: &dir,
-			ConfigureWithUrn: true,
+			EngineAddress:        host.ServerAddr(),
+			RootDirectory:        &dir,
+			ProgramDirectory:     &dir,
+			ConfigureWithUrn:     true,
+			SupportsPrivateState: true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -474,10 +478,11 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 
 func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
 	res, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
+		EngineAddress:        req.EngineAddress,
+		RootDirectory:        req.RootDirectory,
+		ProgramDirectory:     req.ProgramDirectory,
+		ConfigureWithUrn:     req.ConfigureWithUrn,
+		SupportsPrivateState: req.SupportsPrivateState,
 	})
 	if err != nil {
 		return nil, err
@@ -566,6 +571,17 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
+	mstate, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return CheckConfigResponse{}, err
+	}
+
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
 		Label:        label + ".olds",
 		KeepUnknowns: req.AllowUnknowns,
@@ -583,11 +599,12 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:  string(req.URN),
-		Name: req.URN.Name(),
-		Type: req.URN.Type().String(),
-		Olds: molds,
-		News: mnews,
+		Urn:          string(req.URN),
+		Name:         req.URN.Name(),
+		Type:         req.URN.Type().String(),
+		Olds:         molds,
+		News:         mnews,
+		PrivateState: mstate,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -617,6 +634,17 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		}
 	}
 
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return CheckConfigResponse{}, err
+	}
+
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
@@ -626,7 +654,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
 	annotateSecrets(inputs, req.News)
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckConfigResponse{Properties: inputs, Failures: failures}, nil
+	return CheckConfigResponse{Properties: inputs, Failures: failures, PrivateState: privateState}, nil
 }
 
 func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
@@ -1071,6 +1099,16 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	if err != nil {
 		return CheckResponse{}, err
 	}
+	mstate, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return CheckResponse{}, err
+	}
 
 	var autonaming *pulumirpc.CheckRequest_AutonamingOptions
 	if req.Autonaming != nil {
@@ -1088,13 +1126,14 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:        string(req.URN),
-		Name:       req.URN.Name(),
-		Type:       req.URN.Type().String(),
-		Olds:       molds,
-		News:       mnews,
-		RandomSeed: req.RandomSeed,
-		Autonaming: autonaming,
+		Urn:          string(req.URN),
+		Name:         req.URN.Name(),
+		Type:         req.URN.Type().String(),
+		Olds:         molds,
+		News:         mnews,
+		RandomSeed:   req.RandomSeed,
+		Autonaming:   autonaming,
+		PrivateState: mstate,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1156,7 +1195,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	client := p.clientRaw
 	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResponse{}, err
 	}
 
 	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
@@ -1166,7 +1205,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
 		const message = "The provider for this resource has inputs that are not known during preview.\n" +
 			"This preview may not correctly represent the changes that will be applied during an update."
-		return DiffResult{}, DiffUnavailable(message)
+		return DiffResponse{}, DiffUnavailable(message)
 	}
 
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
@@ -1177,7 +1216,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResponse{}, err
 	}
 
 	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
@@ -1188,7 +1227,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResponse{}, err
 	}
 
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
@@ -1199,7 +1238,18 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepResources:      protocol.acceptResources,
 	})
 	if err != nil {
-		return DiffResult{}, err
+		return DiffResponse{}, err
+	}
+
+	mPrivateState, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return DiffResponse{}, err
 	}
 
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
@@ -1211,11 +1261,12 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
 		IgnoreChanges: req.IgnoreChanges,
+		PrivateState:  mPrivateState,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
-		return DiffResult{}, rpcError
+		return DiffResponse{}, rpcError
 	}
 
 	// nil is semantically important to a lot of the pulumi system so we only pre-allocate if we have non-zero length.
@@ -1232,18 +1283,30 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
 
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return DiffResponse{}, err
+	}
+
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
 	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v, detaileddiff=%v",
 		label, changes, replaces, stables, deleteBeforeReplace, diffs, resp.GetDetailedDiff())
 
-	return DiffResult{
+	return DiffResponse{
 		Changes:             DiffChanges(changes),
 		ReplaceKeys:         replaces,
 		StableKeys:          stables,
 		ChangedKeys:         diffs,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
+		PrivateState:        privateState,
 	}, nil
 }
 
@@ -1384,10 +1447,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 
 	// If the provider is not fully configured, return an empty bag.
 	if !pcfg.known {
-		return ReadResponse{ReadResult{
-			Outputs: resource.PropertyMap{},
-			Inputs:  resource.PropertyMap{},
-		}, resource.StatusUnknown}, nil
+		return ReadResponse{Status: resource.StatusUnknown}, err
 	}
 
 	// Marshal the resource inputs and state so we can perform the RPC.
@@ -1471,6 +1531,17 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		}
 	}
 
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return ReadResponse{Status: resourceStatus}, err
+	}
+
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
@@ -1484,11 +1555,15 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newState)
 
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
-	return ReadResponse{ReadResult{
-		ID:      readID,
-		Outputs: newState,
-		Inputs:  newInputs,
-	}, resourceStatus}, resourceError
+	return ReadResponse{
+		Status:       resourceStatus,
+		PrivateState: privateState,
+		ReadResult: ReadResult{
+			ID:      readID,
+			Outputs: newState,
+			Inputs:  newInputs,
+		},
+	}, resourceError
 }
 
 // Update updates an existing resource with new values.

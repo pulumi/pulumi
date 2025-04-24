@@ -59,6 +59,8 @@ type State struct {
 	SourcePosition          string                // If set, the source location of the resource registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
+
+	PrivateState PropertyMap // The private state of the resource. This is used by the provider to store opaque state.
 }
 
 // Copy creates a deep copy of the resource state, except without copying the lock.
@@ -90,6 +92,7 @@ func (s *State) Copy() *State {
 		SourcePosition:          s.SourcePosition,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
+		PrivateState:            s.PrivateState,
 	}
 }
 
@@ -112,7 +115,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
-	sourcePosition string, ignoreChanges []string, replaceOnChanges []string,
+	sourcePosition string, ignoreChanges []string, replaceOnChanges []string, privateState PropertyMap,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -143,6 +146,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		SourcePosition:          sourcePosition,
 		IgnoreChanges:           ignoreChanges,
 		ReplaceOnChanges:        replaceOnChanges,
+		PrivateState:            privateState,
 	}
 
 	if timeouts != nil {

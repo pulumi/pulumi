@@ -150,7 +150,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Lock.Lock()
 	defer s.new.Lock.Unlock()
 
-	// Retain the ID and outputs
+	// Retain the ID and outputs, and state
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
 
@@ -163,12 +163,16 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// old inputs, not the new ones.
 			st := s.new.Copy()
 			st.Inputs = s.old.Inputs
-			err := s.Deployment().SameProvider(st)
+			state, err := s.Deployment().SameProvider(st)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
 			}
+			s.new.PrivateState = state
 		}
+	} else {
+		// Provider resources get their private state re-set above from calling SameProvider
+		s.new.PrivateState = s.old.PrivateState
 	}
 
 	// TODO: should this step be marked as skipped if it comes from a targeted up?
@@ -289,6 +293,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	id := s.new.ID
 	outs := s.new.Outputs
+	state := s.new.PrivateState
 
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
@@ -298,12 +303,13 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-			URN:        s.URN(),
-			Name:       s.new.URN.Name(),
-			Type:       s.new.URN.Type(),
-			Properties: s.new.Inputs,
-			Timeout:    s.new.CustomTimeouts.Create,
-			Preview:    s.deployment.opts.DryRun,
+			URN:          s.URN(),
+			Name:         s.new.URN.Name(),
+			Type:         s.new.URN.Type(),
+			Properties:   s.new.Inputs,
+			Timeout:      s.new.CustomTimeouts.Create,
+			Preview:      s.deployment.opts.DryRun,
+			PrivateState: s.new.PrivateState,
 		})
 		if err != nil {
 			if resp.Status != resource.StatusPartialFailure {
@@ -320,6 +326,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		id = resp.ID
 		outs = resp.Properties
+		state = resp.PrivateState
 
 		if !s.deployment.opts.DryRun && id == "" {
 			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
@@ -332,6 +339,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
+	s.new.PrivateState = state
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -486,13 +494,14 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		if rst, err := prov.Delete(context.TODO(), plugin.DeleteRequest{
-			URN:     s.URN(),
-			Name:    s.URN().Name(),
-			Type:    s.URN().Type(),
-			ID:      s.old.ID,
-			Inputs:  s.old.Inputs,
-			Outputs: s.old.Outputs,
-			Timeout: s.old.CustomTimeouts.Delete,
+			URN:          s.URN(),
+			Name:         s.URN().Name(),
+			Type:         s.URN().Type(),
+			ID:           s.old.ID,
+			Inputs:       s.old.Inputs,
+			Outputs:      s.old.Outputs,
+			Timeout:      s.old.CustomTimeouts.Delete,
+			PrivateState: s.old.PrivateState,
 		}); err != nil {
 			return rst.Status, nil, err
 		}
@@ -661,6 +670,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			Timeout:       s.new.CustomTimeouts.Update,
 			IgnoreChanges: s.ignoreChanges,
 			Preview:       s.deployment.opts.DryRun,
+			PrivateState:  s.new.PrivateState,
 		})
 
 		s.new.Lock.Lock()
@@ -681,6 +691,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
 		s.new.Outputs = resp.Properties
+		s.new.PrivateState = resp.PrivateState
 
 		// UpdateStep doesn't create, but does modify state.
 		// Change the Modified timestamp.
@@ -1082,7 +1093,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
 			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
-			s.old.SourcePosition, s.old.IgnoreChanges, s.old.ReplaceOnChanges,
+			s.old.SourcePosition, s.old.IgnoreChanges, s.old.ReplaceOnChanges, s.old.PrivateState,
 		)
 		var inputsChange, outputsChange bool
 		if s.old != nil {
@@ -1143,6 +1154,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				// pass old inputs as new inputs
 				s.old.Inputs,
 				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
+				s.old.PrivateState,
 			)
 			if err != nil {
 				return refreshed.Status, nil, err
@@ -1348,7 +1360,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, inputs, outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
-		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.ReplaceOnChanges)
+		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.ReplaceOnChanges, s.new.PrivateState)
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()
@@ -1469,10 +1481,12 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		prov,
 		s.deployment.opts.DryRun,
 		s.ignoreChanges,
+		resp.PrivateState,
 	)
 	if err != nil {
 		return rst, nil, err
 	}
+	s.new.PrivateState = resp.PrivateState
 
 	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
@@ -1768,7 +1782,7 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	diff, err := diffResource(
-		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges)
+		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges, s.new.PrivateState)
 	if err != nil {
 		s.pcs.Reject(err)
 		return resource.StatusOK, nil, nil

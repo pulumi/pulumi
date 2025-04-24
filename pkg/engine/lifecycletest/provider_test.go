@@ -2059,3 +2059,166 @@ func TestMalformedProvider(t *testing.T) {
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NoError(t, err)
 }
+
+// TestPrivateState tests that private state flows through the provider correctly.
+func TestPrivateState(t *testing.T) {
+	t.Parallel()
+
+	// First time round this will be empty, then it will be "configure"
+	var expectedCheckConfig resource.PropertyMap
+	expectedDiffConfig := resource.PropertyMap{
+		"value": resource.NewStringProperty("check"),
+	}
+	// First time round we won't call diff, second time round we will and it will update this to expect "diff"
+	expectedConfigure := expectedDiffConfig
+
+	// Likewise first time round this will be empty, then updated for create/update.
+	var expectedCheck resource.PropertyMap
+	expectedDiff := resource.PropertyMap{
+		"value": resource.NewStringProperty("check"),
+	}
+	// We won't call diff for create
+	expectedCreate := resource.PropertyMap{
+		"value": resource.NewStringProperty("check"),
+	}
+	expectedUpdate := resource.PropertyMap{
+		"value": resource.NewStringProperty("diff"),
+	}
+	// We won't have called check or diff for update
+	expectedDelete := resource.PropertyMap{
+		"value": resource.NewStringProperty("update"),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					assert.Equal(t, expectedCheckConfig, req.PrivateState)
+
+					return plugin.CheckConfigResponse{
+						PrivateState: resource.PropertyMap{
+							"value": resource.NewStringProperty("check"),
+						},
+					}, nil
+				},
+				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					assert.Equal(t, expectedDiffConfig, req.PrivateState)
+					expectedConfigure = resource.PropertyMap{
+						"value": resource.NewStringProperty("diff"),
+					}
+					return plugin.DiffConfigResponse{PrivateState: expectedConfigure}, nil
+				},
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					assert.Equal(t, expectedConfigure, req.PrivateState)
+					expectedCheckConfig = resource.PropertyMap{
+						"value": resource.NewStringProperty("configure"),
+					}
+					return plugin.ConfigureResponse{
+						PrivateState: expectedCheckConfig,
+					}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					assert.Equal(t, expectedCheck, req.PrivateState)
+					return plugin.CheckResponse{
+						Properties: req.News,
+						PrivateState: resource.PropertyMap{
+							"value": resource.NewStringProperty("check"),
+						},
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					assert.Equal(t, expectedDiff, req.PrivateState)
+					return plugin.DiffResult{
+						Changes: plugin.DiffUnknown,
+						PrivateState: resource.PropertyMap{
+							"value": resource.NewStringProperty("diff"),
+						},
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					assert.Equal(t, expectedCreate, req.PrivateState)
+					expectedCheck = resource.PropertyMap{
+						"value": resource.NewStringProperty("create"),
+					}
+					return plugin.CreateResponse{
+						Status:       resource.StatusOK,
+						ID:           "created-id",
+						Properties:   req.Properties,
+						PrivateState: expectedCheck,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					assert.Equal(t, expectedUpdate, req.PrivateState)
+					expectedCheck = resource.PropertyMap{
+						"value": resource.NewStringProperty("update"),
+					}
+					return plugin.UpdateResponse{
+						Status:       resource.StatusOK,
+						Properties:   req.NewInputs,
+						PrivateState: expectedCheck,
+					}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, expectedDelete, req.PrivateState)
+					return plugin.DeleteResponse{
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{
+		"value": resource.NewStringProperty("100"),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if inputs != nil {
+			_, err := monitor.RegisterResource("pkg:mod:typ", "resA", true, deploytest.ResourceOptions{
+				Inputs: inputs,
+			})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+
+	// Run the first update to create the base state
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Assert the private state has the result of create and configure
+	assert.Equal(t, resource.NewStringProperty("configure"), snap.Resources[0].PrivateState["value"])
+	assert.Equal(t, resource.NewStringProperty("create"), snap.Resources[1].PrivateState["value"])
+
+	// Run another update that does nothing to check that the resources keep their private state from create, not diff.
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Assert the private state has the result of create and configure
+	assert.Equal(t, resource.NewStringProperty("configure"), snap.Resources[0].PrivateState["value"])
+	assert.Equal(t, resource.NewStringProperty("create"), snap.Resources[1].PrivateState["value"])
+
+	// Run another update to check that update gets the private state from the provider
+	inputs = resource.PropertyMap{
+		"value": resource.NewStringProperty("200"),
+	}
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Assert the private state has the result of update and configure
+	assert.Equal(t, resource.NewStringProperty("configure"), snap.Resources[0].PrivateState["value"])
+	assert.Equal(t, resource.NewStringProperty("update"), snap.Resources[1].PrivateState["value"])
+
+	// Run another update to check that delete gets the private state from the provider,
+	inputs = nil
+	// This will same the provider directly from state so its private state will be "configure" not "diff"
+	expectedConfigure = resource.PropertyMap{
+		"value": resource.NewStringProperty("configure"),
+	}
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 0)
+}

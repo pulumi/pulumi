@@ -55,6 +55,9 @@ type ProviderHandshakeRequest struct {
 
 	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
 	ConfigureWithUrn bool
+
+	// If true the engine supports provider private state.
+	SupportsPrivateState bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -137,11 +140,13 @@ type CheckConfigRequest struct {
 	Type          tokens.Type
 	Olds, News    resource.PropertyMap
 	AllowUnknowns bool
+	PrivateState  resource.PropertyMap
 }
 
 type CheckConfigResponse struct {
-	Properties resource.PropertyMap
-	Failures   []CheckFailure
+	Properties   resource.PropertyMap
+	Failures     []CheckFailure
+	PrivateState resource.PropertyMap
 }
 
 type DiffConfigRequest struct {
@@ -151,6 +156,7 @@ type DiffConfigRequest struct {
 	OldInputs, OldOutputs, NewInputs resource.PropertyMap
 	AllowUnknowns                    bool
 	IgnoreChanges                    []string
+	PrivateState                     resource.PropertyMap
 }
 
 type DiffConfigResponse = DiffResult
@@ -172,9 +178,14 @@ type ConfigureRequest struct {
 	ID *resource.ID
 	// A map of input properties for the provider.
 	Inputs resource.PropertyMap
+	// The private state for the provider, this will be passed on from DiffConfig or from state if DiffConfig wasn't
+	// called.
+	PrivateState resource.PropertyMap
 }
 
-type ConfigureResponse struct{}
+type ConfigureResponse struct {
+	PrivateState resource.PropertyMap
+}
 
 // The mode that controls how the provider handles the proposed name. If not specified, defaults to `Propose`.
 type AutonamingMode int32
@@ -210,11 +221,13 @@ type CheckRequest struct {
 	AllowUnknowns bool
 	RandomSeed    []byte
 	Autonaming    *AutonamingOptions
+	PrivateState  resource.PropertyMap
 }
 
 type CheckResponse struct {
-	Properties resource.PropertyMap
-	Failures   []CheckFailure
+	Properties   resource.PropertyMap
+	Failures     []CheckFailure
+	PrivateState resource.PropertyMap
 }
 
 type DiffRequest struct {
@@ -226,23 +239,26 @@ type DiffRequest struct {
 	OldInputs, OldOutputs, NewInputs resource.PropertyMap
 	AllowUnknowns                    bool
 	IgnoreChanges                    []string
+	PrivateState                     resource.PropertyMap
 }
 
 type DiffResponse = DiffResult
 
 type CreateRequest struct {
-	URN        resource.URN
-	Name       string
-	Type       tokens.Type
-	Properties resource.PropertyMap
-	Timeout    float64
-	Preview    bool
+	URN          resource.URN
+	Name         string
+	Type         tokens.Type
+	Properties   resource.PropertyMap
+	Timeout      float64
+	Preview      bool
+	PrivateState resource.PropertyMap
 }
 
 type CreateResponse struct {
-	ID         resource.ID
-	Properties resource.PropertyMap
-	Status     resource.Status
+	ID           resource.ID
+	Properties   resource.PropertyMap
+	Status       resource.Status
+	PrivateState resource.PropertyMap
 }
 
 type ReadRequest struct {
@@ -251,11 +267,13 @@ type ReadRequest struct {
 	Type          tokens.Type
 	ID            resource.ID
 	Inputs, State resource.PropertyMap
+	PrivateState  resource.PropertyMap
 }
 
 type ReadResponse struct {
 	ReadResult
-	Status resource.Status
+	Status       resource.Status
+	PrivateState resource.PropertyMap
 }
 
 type UpdateRequest struct {
@@ -267,11 +285,13 @@ type UpdateRequest struct {
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
+	PrivateState                     resource.PropertyMap
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
-	Status     resource.Status
+	Properties   resource.PropertyMap
+	Status       resource.Status
+	PrivateState resource.PropertyMap
 }
 
 type DeleteRequest struct {
@@ -281,6 +301,7 @@ type DeleteRequest struct {
 	ID              resource.ID
 	Inputs, Outputs resource.PropertyMap
 	Timeout         float64
+	PrivateState    resource.PropertyMap
 }
 
 type DeleteResponse struct {
@@ -583,6 +604,7 @@ type DiffResult struct {
 	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
 	DetailedDiff        map[string]PropertyDiff // an optional structured diff
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
+	PrivateState        resource.PropertyMap    // the private state for the resource.
 }
 
 // NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.

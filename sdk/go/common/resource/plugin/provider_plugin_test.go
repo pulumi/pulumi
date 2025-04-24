@@ -755,6 +755,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			props,
 			props,
 			1000,
+			resource.PropertyMap{},
 		})
 		assert.NoError(t, err, "Delete failed")
 	}()
@@ -893,6 +894,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{},
 		false,
 		nil,
+		resource.PropertyMap{},
 	})
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
@@ -907,6 +909,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{},
 		false,
 		nil,
+		resource.PropertyMap{},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, DiffUnknown, diff.Changes)
@@ -922,6 +925,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{},
 		false,
 		nil,
+		resource.PropertyMap{},
 	})
 	assert.ErrorContains(t, err, "some other error")
 }

@@ -122,12 +122,24 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 		}
 	}
 
+	mstate, err := MarshalProperties(diff.PrivateState, MarshalOptions{
+		Label:            "privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.DiffResponse{
 		Replaces:            replaces,
 		DeleteBeforeReplace: diff.DeleteBeforeReplace,
 		Changes:             changes,
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
+		PrivateState:        mstate,
 	}, nil
 }
 
@@ -136,10 +148,11 @@ func (p *providerServer) Handshake(
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
+		EngineAddress:        req.EngineAddress,
+		RootDirectory:        req.RootDirectory,
+		ProgramDirectory:     req.ProgramDirectory,
+		ConfigureWithUrn:     req.ConfigureWithUrn,
+		SupportsPrivateState: req.SupportsPrivateState,
 	})
 	if err != nil {
 		return nil, err
@@ -266,6 +279,8 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+
 	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
 		URN:           urn,
 		Name:          req.Name,
@@ -273,6 +288,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		Olds:          state,
 		News:          inputs,
 		AllowUnknowns: true,
+		PrivateState:  privateState,
 	})
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
@@ -283,12 +299,17 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
+	rpcState, err := MarshalProperties(resp.PrivateState, p.marshalOptions("privateState"))
+	if err != nil {
+		return nil, err
+	}
+
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures, PrivateState: rpcState}, nil
 }
 
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
@@ -326,6 +347,12 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	diff, err := p.provider.DiffConfig(ctx, DiffConfigRequest{
 		URN:           urn,
 		Name:          req.Name,
@@ -335,6 +362,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		NewInputs:     newInputs,
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
+		PrivateState:  privateState,
 	})
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
@@ -520,7 +548,11 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return p.marshalDiff(diff)
+	mdiff, err := p.marshalDiff(diff)
+	if err != nil {
+		return nil, err
+	}
+	return mdiff, nil
 }
 
 func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {

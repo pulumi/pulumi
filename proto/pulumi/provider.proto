@@ -258,6 +258,9 @@ message ProviderHandshakeRequest {
 
     // If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration.
     bool configure_with_urn = 4;
+
+    // If true the engine supports provider private state.
+    bool supports_private_state = 5;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -418,6 +421,9 @@ message ConfigureRequest {
     // is passed so that providers do not have to implement URN parsing in order to extract the type of the
     // provider. N.B. This will be null if configure_with_urn was false in Handshake.
     optional string type = 10;
+
+    // private state for this provider, this will be passed on from DiffConfig or from state if DiffConfig wasn't called.
+    google.protobuf.Struct private_state = 11;
 }
 
 // `ConfigureResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Configure) call. Its primary
@@ -447,6 +453,9 @@ message ConfigureResponse {
     // user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake) if the provider
     // supports handshaking.
     bool supports_autonaming_configuration = 5;
+
+    // private state for this resource, this will be saved to state.
+    google.protobuf.Struct private_state = 6;
 }
 
 // `ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
@@ -591,6 +600,9 @@ message CheckRequest {
         Mode mode = 2;
     }
     AutonamingOptions autonaming = 8;
+
+    // private state for this resource, this will be empty for new resources, otherwise it will be what was last saved to state.
+    google.protobuf.Struct private_state = 9;
 }
 
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
@@ -610,6 +622,9 @@ message CheckResponse {
 
     // Any validation failures that occurred.
     repeated CheckFailure failures = 2;
+
+    // private state for this resource, this will be passed on to diff.
+    google.protobuf.Struct private_state = 3;
 }
 
 // A `CheckFailure` describes a single validation error that arose as part of a
@@ -662,6 +677,9 @@ message DiffRequest {
     // The type of the resource being diffed. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 8;
+
+    // private state for this resource, this will be passed on from Check or from state if Check wasn't called.
+    google.protobuf.Struct private_state = 9;
 }
 
 // `PropertyDiff` describes the kind of change that occurred to a property during a diff operation. A `PropertyDiff` may
@@ -760,6 +778,9 @@ message DiffResponse {
         // A diff was performed, and changes were detected that require an update or replacement.
         DIFF_SOME = 2;
     }
+
+    // private state for this resource, this will be passed on to Configure/Create/Update etc.
+    google.protobuf.Struct private_state = 8;
 }
 
 // `CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call.
@@ -785,6 +806,9 @@ message CreateRequest {
     // The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 6;
+
+    // private state for this resource, this will be passed on from Diff or from state if Diff wasn't called.
+    google.protobuf.Struct private_state = 7;
 }
 
 // `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
@@ -796,6 +820,9 @@ message CreateResponse {
     // The resource's output properties. Typically this will be a union of the resource's input properties and any
     // additional values that were computed or made available during creation.
     google.protobuf.Struct properties = 2;
+
+    // private state for this resource, this will be saved to state.
+    google.protobuf.Struct private_state = 3;
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -820,6 +847,9 @@ message ReadRequest {
     // The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
     // providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 6;
+
+    // private state for this resource, this will be passed on from Diff or from state if Diff wasn't called.
+    google.protobuf.Struct private_state = 7;
 }
 
 // `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
@@ -834,6 +864,9 @@ message ReadResponse {
     // Output-derived input properties for the resource. These are returned as they would be returned from a
     // [](pulumirpc.ResourceProvider.Check) call with the same values.
     google.protobuf.Struct inputs = 3;
+
+    // private state for this resource, this will be saved to state.
+    google.protobuf.Struct private_state = 4;
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -871,6 +904,9 @@ message UpdateRequest {
     // The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 10;
+
+    // private state for this resource, this will be passed on from Diff or from state if Diff wasn't called.
+    google.protobuf.Struct private_state = 11;
 }
 
 // `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
@@ -878,6 +914,9 @@ message UpdateResponse {
     // An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
     // additional values that were computed or made available during the update.
     google.protobuf.Struct properties = 1;
+
+    // private state for this resource, this will be saved to state.
+    google.protobuf.Struct private_state = 2;
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
@@ -904,6 +943,9 @@ message DeleteRequest {
     // The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 7;
+
+    // private state for this resource, this will be passed on from Diff or from state if Diff wasn't called.
+    google.protobuf.Struct private_state = 8;
 }
 
 // `ConstructRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Construct) call. A
