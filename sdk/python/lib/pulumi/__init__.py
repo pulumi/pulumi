@@ -102,6 +102,8 @@ from .stack_reference import (
     StackReferenceOutputDetails,
 )
 
+from .type_token import get_type_token, type_token
+
 from ._types import (
     MISSING,
     input_type,
@@ -178,6 +180,9 @@ __all__ = [
     # stack_reference
     "StackReference",
     "StackReferenceOutputDetails",
+    # type_token
+    "get_type_token",
+    "type_token",
     # _types
     "MISSING",
     "input_type",
