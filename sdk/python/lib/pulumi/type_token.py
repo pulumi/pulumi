@@ -19,13 +19,13 @@ T = TypeVar("T", bound=type)
 _PULUMI_TYPE = "pulumi_type"
 
 
-def pulumi_type(type_token: str) -> Callable[[T], T]:
+def type_token(type_token: str) -> Callable[[T], T]:
     """
     Decorate a class representing a Pulumi type like a resource, but also enums,
     with its type token.
 
     Example:
-        @pulumi_type("aws:s3/bucket:Bucket")
+        @pulumi.type_token("aws:s3/bucket:Bucket")
         class Bucket(Resource): ...
     """
 
@@ -36,6 +36,6 @@ def pulumi_type(type_token: str) -> Callable[[T], T]:
     return decorator
 
 
-def get_pulumi_type(klass: type) -> Optional[str]:
+def get_type_token(klass: type) -> Optional[str]:
     """Retrieve the type token from a Pulumi type."""
     return getattr(klass, _PULUMI_TYPE, None)

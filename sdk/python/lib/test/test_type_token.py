@@ -14,24 +14,24 @@
 
 from enum import Enum
 from pulumi.resource import Resource
-from pulumi.type_token import get_pulumi_type, pulumi_type
+from pulumi.type_token import get_type_token, type_token
 
 
 def test_pulumi_type():
     class MyResourceWithoutToken(Resource): ...
 
-    assert get_pulumi_type(MyResourceWithoutToken) is None
+    assert get_type_token(MyResourceWithoutToken) is None
 
-    @pulumi_type("package:module:resource")
+    @type_token("package:module:resource")
     class MyResource(Resource): ...
 
-    assert get_pulumi_type(MyResource) == "package:module:resource"
+    assert get_type_token(MyResource) == "package:module:resource"
 
     class MyEnumWithoutToken(Enum): ...
 
-    assert get_pulumi_type(MyEnumWithoutToken) is None
+    assert get_type_token(MyEnumWithoutToken) is None
 
-    @pulumi_type("package:module:enum")
+    @type_token("package:module:enum")
     class MyEnum(Enum): ...
 
-    assert get_pulumi_type(MyEnum) == "package:module:enum"
+    assert get_type_token(MyEnum) == "package:module:enum"
