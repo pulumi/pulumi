@@ -141,15 +141,15 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	currBackend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}
-	cloudBackend, isCloud := backend.(httpstate.Backend)
+	cloudBackend, isCloud := currBackend.(httpstate.Backend)
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
-	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+	defaultOrg, err := backend.GetDefaultOrg(ctx, cloudBackend, project)
 	if err != nil {
 		return err
 	}
