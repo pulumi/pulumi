@@ -146,7 +146,8 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 
 	// the project name and the project name in the stack name must match
 	uniqueProjectName := filepath.Base(tempdir)
-	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), uniqueProjectName, stackName)
+	owner := currentUser(t)
+	fullStackName := fmt.Sprintf("%s/%s/%s", owner, uniqueProjectName, stackName)
 
 	args := newArgs{
 		interactive:       false,
