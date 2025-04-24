@@ -188,6 +188,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -202,6 +207,9 @@ Event: ${line}\n${e.toString()}`);
                 for (const packConfig of opts.policyPackConfigs) {
                     args.push("--policy-pack-config", packConfig);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -327,6 +335,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -341,6 +354,9 @@ Event: ${line}\n${e.toString()}`);
                 for (const packConfig of opts.policyPackConfigs) {
                     args.push("--policy-pack-config", packConfig);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -455,10 +471,21 @@ Event: ${line}\n${e.toString()}`);
             if (opts.clearPendingCreates) {
                 args.push("--clear-pending-creates");
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
@@ -532,10 +559,18 @@ Event: ${line}\n${e.toString()}`);
             if (opts.message) {
                 args.push("--message", opts.message);
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -1359,6 +1394,16 @@ export interface UpOptions extends GlobalOpts {
     policyPackConfigs?: string[];
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1459,6 +1504,16 @@ export interface PreviewOptions extends GlobalOpts {
     policyPackConfigs?: string[];
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1534,9 +1589,24 @@ export interface RefreshOptions extends GlobalOpts {
     clearPendingCreates?: boolean;
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
+    targetDependents?: boolean;
 
     /**
      * A custom user agent to use when executing the operation.
@@ -1586,6 +1656,16 @@ export interface DestroyOptions extends GlobalOpts {
      * Refresh the state of the stack's resources against the cloud provider before running destroy.
      */
     refresh?: boolean;
+
+    /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
 
     /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
