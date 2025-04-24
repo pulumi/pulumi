@@ -635,15 +635,14 @@ func (p *plugin) Close() error {
 		//	To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:
 		//
 		//	<output>
-		d.Errorf(diag.StreamMessage("", fmt.Sprintf("\n\n         Detected that %s exited prematurely.\n", p.Bin), id))
-		d.Errorf(diag.StreamMessage("",
-			"         This is *always* a bug in the provider. "+
-				"Please report the issue to the provider author as appropriate.\n\n", id))
-		d.Errorf(diag.StreamMessage("",
-			"To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:\n\n", id))
 		p.unstructuredOutput.outputLock.Lock()
 		defer p.unstructuredOutput.outputLock.Unlock()
-		d.Errorf(diag.StreamMessage("", p.unstructuredOutput.output.String(), id))
+		d.Errorf(diag.StreamMessage("",
+			fmt.Sprintf("Detected that %s exited prematurely. \n"+
+				"       This is *always* a bug in the provider. "+
+				"Please report the issue to the provider author as appropriate.\n"+
+				"       To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:%s\n",
+				p.Bin, p.unstructuredOutput.output.String()), id))
 	}
 
 	return result

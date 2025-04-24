@@ -20,9 +20,8 @@ import * as upath from "upath";
 
 import { CommandResult, PulumiCommand } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
-import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
-import { RemoteGitProgramArgs } from "./remoteWorkspace";
+import { ExecutorImage, RemoteGitProgramArgs } from "./remoteWorkspace";
 import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { TagMap } from "./tag";
@@ -78,6 +77,11 @@ export class LocalWorkspace implements Workspace {
         }
         return this._pulumiCommand;
     }
+
+    /**
+     * The image to use for the remote Pulumi operation.
+     */
+    remoteExecutorImage?: ExecutorImage;
 
     /**
      * The inline program {@link PulumiFn} to be used for preview/update
@@ -333,6 +337,7 @@ export class LocalWorkspace implements Workspace {
                 workDir,
                 pulumiHome,
                 program,
+                remoteExecutorImage,
                 envVars,
                 secretsProvider,
                 remote,
@@ -350,6 +355,7 @@ export class LocalWorkspace implements Workspace {
                 dir = workDir;
             }
             this.pulumiHome = pulumiHome;
+            this.remoteExecutorImage = remoteExecutorImage;
             this.program = program;
             this.secretsProvider = secretsProvider;
             this.remote = remote;
@@ -1154,6 +1160,15 @@ export class LocalWorkspace implements Workspace {
             args.push("--remote-skip-install-dependencies");
         }
 
+        if (this.remoteExecutorImage) {
+            args.push("--remote-executor-image=" + this.remoteExecutorImage.image);
+
+            if (this.remoteExecutorImage.credentials) {
+                args.push("--remote-executor-image-username=" + this.remoteExecutorImage.credentials.username);
+                args.push("--remote-executor-image-password=" + this.remoteExecutorImage.credentials.password);
+            }
+        }
+
         if (this.remoteInheritSettings) {
             args.push("--remote-inherit-settings");
         }
@@ -1224,6 +1239,11 @@ export interface LocalWorkspaceOptions {
      * {@link ProjectSettings} for this information.
      */
     program?: PulumiFn;
+
+    /**
+     * The image to use for the remote Pulumi operation.
+     */
+    remoteExecutorImage?: ExecutorImage;
 
     /**
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.

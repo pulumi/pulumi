@@ -99,8 +99,8 @@ var BackendURL = env.String("BACKEND_URL",
 var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
 	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
 
-var CopilotSummary = env.Bool("COPILOT_SUMMARY",
-	"Enable showing the Copilot summary in the CLI output.")
+var CopilotEnabled = env.Bool("COPILOT",
+	"Enable Pulumi Copilot's assistance for improved CLI experience and insights.")
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
@@ -126,6 +126,9 @@ var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 
 var ParallelDiff = env.Bool("PARALLEL_DIFF",
 	"Enable running diff calculations in parallel.")
+
+var RunProgram = env.Bool("RUN_PROGRAM",
+	"Run the Pulumi program for refresh and destroy operations. This is the same as passing --run-program=true.")
 
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`

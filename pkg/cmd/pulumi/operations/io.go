@@ -19,9 +19,14 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -103,4 +108,31 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 	// the default functionality right now is to always skip a refresh
 	return false, nil
+}
+
+// configureCopilotOptions configures display options related to Copilot features based on the command line flags and
+// environment variables.
+func configureCopilotOptions(copilotEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+	isDIYBackend bool,
+) {
+	// Handle copilot-summary flag and environment variable If flag is explicitly set (via command line), use that value
+	// Otherwise fall back to environment variable, then default to false
+	var showCopilotFeatures bool
+	if cmd.Flags().Changed("copilot") {
+		showCopilotFeatures = copilotEnabledFlag
+	} else {
+		showCopilotFeatures = env.CopilotEnabled.Value()
+	}
+	logging.V(7).Infof("copilot flag=%v, PULUMI_COPILOT=%v, using value=%v",
+		copilotEnabledFlag, env.CopilotEnabled.Value(), showCopilotFeatures)
+
+	// Do not enable any copilot features if we are using a DIY backend
+	if showCopilotFeatures && isDIYBackend {
+		logging.Warningf("Copilot features are not available with DIY backends.")
+		return
+	}
+
+	displayOpts.ShowCopilotFeatures = showCopilotFeatures
+	displayOpts.CopilotSummaryModel = env.CopilotSummaryModel.Value()
+	displayOpts.CopilotSummaryMaxLen = env.CopilotSummaryMaxLen.Value()
 }

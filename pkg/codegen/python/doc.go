@@ -94,7 +94,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return PyName(tokenToName(f.Token))
 }
 

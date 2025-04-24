@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Add `--exclude` and `--exclude-dependents` to the NodeJS Automation API

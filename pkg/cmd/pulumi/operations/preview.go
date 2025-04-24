@@ -283,6 +283,9 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger bool
 
+	// Flags for Copilot.
+	var copilotEnabled bool
+
 	use, cmdArgs := "preview", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
 		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
@@ -370,6 +373,8 @@ func NewPreviewCmd() *cobra.Command {
 			if suppressPermalink != "false" && isDIYBackend {
 				displayOpts.SuppressPermalink = true
 			}
+
+			configureCopilotOptions(copilotEnabled, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
 				return err
@@ -662,6 +667,16 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&attachDebugger, "attach-debugger", false,
 		"Enable the ability to attach a debugger to the program being executed")
+
+	cmd.PersistentFlags().BoolVar(
+		&copilotEnabled, "copilot", false,
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+			"(can also be set with PULUMI_COPILOT environment variable)")
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot"),
+		`Could not mark "copilot" as hidden`,
+	)
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)
