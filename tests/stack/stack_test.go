@@ -487,7 +487,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	stackName := addRandomSuffix("stack-rename-svcbe")
 	stackRenameBase := addRandomSuffix("renamed-stack-svcbe")
 	integration.CreateBasicPulumiRepo(e)
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", fmt.Sprintf("%s/%s", orgName, stackName))
 
 	// Create some configuration so that a per-project YAML file is generated.
 	e.RunCommand("pulumi", "config", "set", "xyz", "abc")
