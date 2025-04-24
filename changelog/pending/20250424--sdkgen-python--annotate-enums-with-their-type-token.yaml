@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: Annotate enums with their type token
