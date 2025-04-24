@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add PULUMI_RUN_PROGRAM environment variable to globally set --run-program

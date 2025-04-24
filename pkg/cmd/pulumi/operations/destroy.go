@@ -339,7 +339,7 @@ func NewDestroyCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
-		&runProgram, "run-program", false,
+		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to destroy resources")
 
 	cmd.PersistentFlags().BoolVarP(
