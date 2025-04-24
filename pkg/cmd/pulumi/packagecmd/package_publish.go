@@ -97,10 +97,12 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.source, "source", defaultPackageSource,
 		"The origin of the package (e.g., 'pulumi', 'private', 'opentofu'). Defaults to the private registry.")
-	// hide the source flag from the help output. Only registry administrators can set the source. Regular users can only
-	// publish private packages.
-	// ignore err, only happens if flag does not exist
-	_ = cmd.Flags().MarkHidden("source")
+	if !env.Dev.Value() {
+		// hide the source flag from the help output. Only registry administrators can set the source. Regular users can only
+		// publish private packages.
+		// ignore err, only happens if flag does not exist
+		_ = cmd.Flags().MarkHidden("source")
+	}
 
 	cmd.Flags().StringVar(
 		&args.publisher, "publisher", "",
