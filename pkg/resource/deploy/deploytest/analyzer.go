@@ -15,6 +15,7 @@
 package deploytest
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -25,6 +26,7 @@ type Analyzer struct {
 
 	AnalyzeF      func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
 	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
+	RemediateF    func(r plugin.AnalyzerResource) ([]plugin.Remediation, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
 }
@@ -53,13 +55,20 @@ func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) ([]plu
 	return nil, nil
 }
 
+func (a *Analyzer) Remediate(r plugin.AnalyzerResource) ([]plugin.Remediation, error) {
+	if a.RemediateF != nil {
+		return a.RemediateF(r)
+	}
+	return nil, nil
+}
+
 func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 	return a.Info, nil
 }
 
 func (a *Analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
-		Kind: workspace.AnalyzerPlugin,
+		Kind: apitype.AnalyzerPlugin,
 		Name: a.Info.Name,
 	}, nil
 }

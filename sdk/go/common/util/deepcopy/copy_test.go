@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,4 +83,13 @@ func TestDeepCopy(t *testing.T) {
 			assert.EqualValues(t, c, Copy(c))
 		})
 	}
+}
+
+func TestDeepCopyDoesntCopyOutputState(t *testing.T) {
+	t.Parallel()
+
+	state := internal.OutputState{}
+	assert.PanicsWithValue(t, "fatal: A failure has occurred: Outputs cannot be deep copied", func() {
+		Copy(state)
+	})
 }

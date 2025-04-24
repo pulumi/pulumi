@@ -22,11 +22,11 @@ import (
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type Goal struct {
 	Type                    tokens.Type           // the type of resource.
-	Name                    tokens.QName          // the name for the resource's URN.
+	Name                    string                // the name for the resource's URN.
 	Custom                  bool                  // true if this resource is custom, managed by a plugin.
 	Properties              PropertyMap           // the resource's property state.
 	Parent                  URN                   // an optional parent URN for this resource.
-	Protect                 bool                  // true to protect this resource from deletion.
+	Protect                 *bool                 // true to protect this resource from deletion.
 	Dependencies            []URN                 // dependencies of this resource object.
 	Provider                string                // the provider to use for this resource.
 	InitErrors              []string              // errors encountered as we attempted to initialize the resource.
@@ -39,7 +39,7 @@ type Goal struct {
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
 	// if set to True, the providers Delete method will not be called for this resource.
-	RetainOnDelete bool
+	RetainOnDelete *bool
 	// if set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
@@ -47,11 +47,11 @@ type Goal struct {
 }
 
 // NewGoal allocates a new resource goal state.
-func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
-	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
+func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
+	parent URN, protect *bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete bool, deletedWith URN, sourcePosition string,
+	replaceOnChanges []string, retainOnDelete *bool, deletedWith URN, sourcePosition string,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,

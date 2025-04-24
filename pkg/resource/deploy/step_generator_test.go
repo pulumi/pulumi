@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,6 +78,58 @@ func TestIgnoreChanges(t *testing.T) {
 			ignoreChanges: []string{"a.b"},
 		},
 		{
+			name: "Present in old and new sets, using [\"\"]",
+			oldInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "bar",
+					},
+				},
+				"c": 42,
+			},
+			expected: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+				"c": 42,
+			},
+			ignoreChanges: []string{"a.b[\"c\"]"},
+		},
+		{
+			name: "Missing in new sets, using [\"\"]",
+			oldInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+			},
+			newInputs: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{},
+				},
+				"c": 42,
+			},
+			expected: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "foo",
+					},
+				},
+				"c": 42,
+			},
+			ignoreChanges: []string{"a.b[\"c\"]"},
+		},
+		{
 			name:      "Missing in old deletes",
 			oldInputs: map[string]interface{}{},
 			newInputs: map[string]interface{}{
@@ -125,11 +179,11 @@ func TestIgnoreChanges(t *testing.T) {
 				expected = resource.NewPropertyMapFromMap(c.expected)
 			}
 
-			processed, res := processIgnoreChanges(news, olds, c.ignoreChanges)
+			processed, err := processIgnoreChanges(news, olds, c.ignoreChanges)
 			if c.expectFailure {
-				assert.NotNil(t, res)
+				assert.Error(t, err)
 			} else {
-				assert.Nil(t, res)
+				assert.NoError(t, err)
 				assert.Equal(t, expected, processed)
 			}
 		})
@@ -338,29 +392,29 @@ func TestGenerateAliases(t *testing.T) {
 
 	const (
 		project = "project"
-		stack   = "stack"
 	)
+	stack := tokens.MustParseStackName("stack")
 
-	parentTypeAlias := resource.CreateURN("myres", "test:resource:type2", "", project, stack)
-	parentNameAlias := resource.CreateURN("myres2", "test:resource:type", "", project, stack)
+	parentTypeAlias := resource.CreateURN("myres", "test:resource:type2", "", project, stack.String())
+	parentNameAlias := resource.CreateURN("myres2", "test:resource:type", "", project, stack.String())
 
 	cases := []struct {
 		name         string
 		parentAlias  *resource.URN
 		childAliases []resource.Alias
-		expected     map[resource.URN]struct{}
+		expected     []resource.URN
 	}{
 		{
 			name:     "no aliases",
-			expected: map[resource.URN]struct{}{},
+			expected: nil,
 		},
 		{
 			name: "child alias (type), no parent aliases",
 			childAliases: []resource.Alias{
 				{Type: "test:resource:child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child",
 			},
 		},
 		{
@@ -368,8 +422,8 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{Name: "child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2",
 			},
 		},
 		{
@@ -380,8 +434,8 @@ func TestGenerateAliases(t *testing.T) {
 					NoParent: true,
 				},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:child2::myres-child": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:child2::myres-child",
 			},
 		},
 		{
@@ -389,11 +443,11 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{
 					Type:   "test:resource:child2",
-					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack),
+					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack.String()),
 				},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:original$test:resource:child2::myres-child": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:original$test:resource:child2::myres-child",
 			},
 		},
 		{
@@ -402,10 +456,10 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{Name: "myres-child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2":  {},
-				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child":  {},
-				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child2": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child",
+				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child2",
 			},
 		},
 		{
@@ -414,10 +468,10 @@ func TestGenerateAliases(t *testing.T) {
 			childAliases: []resource.Alias{
 				{Name: "myres-child2"},
 			},
-			expected: map[resource.URN]struct{}{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2":  {},
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child":  {},
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2": {},
+			expected: []resource.URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
 			},
 		},
 	}
@@ -427,7 +481,7 @@ func TestGenerateAliases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack)
+			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack.String())
 			goal := &resource.Goal{
 				Parent:  parentURN,
 				Name:    "myres-child",
@@ -436,11 +490,12 @@ func TestGenerateAliases(t *testing.T) {
 			}
 
 			sg := newStepGenerator(&Deployment{
+				opts: &Options{},
 				target: &Target{
 					Name: stack,
 				},
 				source: NewNullSource(project),
-			}, Options{}, NewUrnTargets(nil), NewUrnTargets(nil))
+			}, false, updateMode, nil)
 
 			if tt.parentAlias != nil {
 				sg.aliases = map[resource.URN]resource.URN{
@@ -473,5 +528,413 @@ func TestDeleteProtectedErrorUsesCorrectQuotesOnOS(t *testing.T) {
 			return
 		}
 		assert.Contains(t, gotErrMsg, contains)
+	})
+}
+
+func TestStepGenerator(t *testing.T) {
+	t.Parallel()
+
+	t.Run("isTargetedForUpdate (no target dependents)", func(t *testing.T) {
+		t.Parallel()
+
+		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
+		apRef, err := providers.NewReference(apUrn, "0")
+		assert.NoError(t, err)
+
+		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
+		bpRef, err := providers.NewReference(bpUrn, "1")
+		assert.NoError(t, err)
+
+		// Arrange.
+		sg := &stepGenerator{
+			deployment: &Deployment{
+				opts: &Options{
+					TargetDependents: false,
+					Targets: UrnTargets{
+						literals: []resource.URN{"b"},
+					},
+				},
+			},
+			targetsActual: UrnTargets{
+				literals: []resource.URN{bpRef.URN()},
+			},
+		}
+
+		t.Run("is targeted directly", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			a := &resource.State{URN: "a"}
+			b := &resource.State{URN: "b"}
+
+			// Act.
+			aIsTargeted := sg.isTargetedForUpdate(a)
+			bIsTargeted := sg.isTargetedForUpdate(b)
+
+			// Assert.
+			assert.False(t, aIsTargeted)
+			assert.True(t, bIsTargeted)
+		})
+
+		t.Run("has a targeted provider", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			hasAAsProvider := &resource.State{Provider: apRef.String()}
+			hasBAsProvider := &resource.State{Provider: bpRef.String()}
+
+			// Act.
+			hasAAsProviderIsTargeted := sg.isTargetedForUpdate(hasAAsProvider)
+			hasBAsProviderIsTargeted := sg.isTargetedForUpdate(hasBAsProvider)
+
+			// Assert.
+			assert.False(t, hasAAsProviderIsTargeted)
+			assert.False(t, hasBAsProviderIsTargeted)
+		})
+
+		t.Run("has a targeted parent", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			hasAAsParent := &resource.State{Parent: "a"}
+			hasBAsParent := &resource.State{Parent: "b"}
+
+			// Act.
+			hasAAsParentIsTargeted := sg.isTargetedForUpdate(hasAAsParent)
+			hasBAsParentIsTargeted := sg.isTargetedForUpdate(hasBAsParent)
+
+			// Assert.
+			assert.False(t, hasAAsParentIsTargeted)
+			assert.False(t, hasBAsParentIsTargeted)
+		})
+
+		t.Run("has a targeted dependency", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			dependsOnA := &resource.State{Dependencies: []resource.URN{"a"}}
+			dependsOnB := &resource.State{Dependencies: []resource.URN{"a", "b"}}
+
+			// Act.
+			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
+			dependsOnBIsTargeted := sg.isTargetedForUpdate(dependsOnB)
+
+			// Assert.
+			assert.False(t, dependsOnAIsTargeted)
+			assert.False(t, dependsOnBIsTargeted)
+		})
+
+		t.Run("has a targeted property dependency", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			dependsOnA := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
+			dependsOnB := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
+
+			// Act.
+			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
+			dependsOnBIsTargeted := sg.isTargetedForUpdate(dependsOnB)
+
+			// Assert.
+			assert.False(t, dependsOnAIsTargeted)
+			assert.False(t, dependsOnBIsTargeted)
+		})
+
+		t.Run("is deleted with a target", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			isDeletedWithA := &resource.State{DeletedWith: "a"}
+			isDeletedWithB := &resource.State{DeletedWith: "b"}
+
+			// Act.
+			isDeletedWithAIsTargeted := sg.isTargetedForUpdate(isDeletedWithA)
+			isDeletedWithBIsTargeted := sg.isTargetedForUpdate(isDeletedWithB)
+
+			// Assert.
+			assert.False(t, isDeletedWithAIsTargeted)
+			assert.False(t, isDeletedWithBIsTargeted)
+		})
+	})
+
+	t.Run("isTargetedForUpdate (target dependents)", func(t *testing.T) {
+		t.Parallel()
+
+		// Arrange.
+		apUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "a")
+		apRef, err := providers.NewReference(apUrn, "0")
+		assert.NoError(t, err)
+
+		bpUrn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgB"), "b")
+		bpRef, err := providers.NewReference(bpUrn, "1")
+		assert.NoError(t, err)
+
+		sg := &stepGenerator{
+			deployment: &Deployment{
+				opts: &Options{
+					TargetDependents: true,
+					Targets: UrnTargets{
+						literals: []resource.URN{"c"},
+					},
+				},
+			},
+			targetsActual: UrnTargets{
+				literals: []resource.URN{"b", bpRef.URN()},
+			},
+		}
+
+		t.Run("is targeted directly", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			a := &resource.State{URN: "a"}
+			c := &resource.State{URN: "c"}
+
+			// Act.
+			aIsTargeted := sg.isTargetedForUpdate(a)
+			cIsTargeted := sg.isTargetedForUpdate(c)
+
+			// Assert.
+			assert.False(t, aIsTargeted)
+			assert.True(t, cIsTargeted)
+		})
+
+		t.Run("has a targeted provider", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			hasAAsProvider := &resource.State{Provider: apRef.String()}
+			hasBAsProvider := &resource.State{Provider: bpRef.String()}
+
+			// Act.
+			hasAAsProviderIsTargeted := sg.isTargetedForUpdate(hasAAsProvider)
+			hasBAsProviderIsTargeted := sg.isTargetedForUpdate(hasBAsProvider)
+
+			// Assert.
+			assert.False(t, hasAAsProviderIsTargeted)
+			assert.True(t, hasBAsProviderIsTargeted)
+		})
+
+		t.Run("has a targeted parent", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			hasAAsParent := &resource.State{Parent: "a"}
+			hasBAsParent := &resource.State{Parent: "b"}
+
+			// Act.
+			hasAAsParentIsTargeted := sg.isTargetedForUpdate(hasAAsParent)
+			hasBAsParentIsTargeted := sg.isTargetedForUpdate(hasBAsParent)
+
+			// Assert.
+			assert.False(t, hasAAsParentIsTargeted)
+			assert.True(t, hasBAsParentIsTargeted)
+		})
+
+		t.Run("has a targeted dependency", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			dependsOnA := &resource.State{Dependencies: []resource.URN{"a"}}
+			dependsOnB := &resource.State{Dependencies: []resource.URN{"a", "b"}}
+
+			// Act.
+			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
+			dependsOnBIsTargeted := sg.isTargetedForUpdate(dependsOnB)
+
+			// Assert.
+			assert.False(t, dependsOnAIsTargeted)
+			assert.True(t, dependsOnBIsTargeted)
+		})
+
+		t.Run("has a targeted property dependency", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			dependsOnA := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
+			dependsOnB := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
+
+			// Act.
+			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
+			dependsOnBIsTargeted := sg.isTargetedForUpdate(dependsOnB)
+
+			// Assert.
+			assert.False(t, dependsOnAIsTargeted)
+			assert.True(t, dependsOnBIsTargeted)
+		})
+
+		t.Run("is deleted with a target", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			isDeletedWithA := &resource.State{DeletedWith: "a"}
+			isDeletedWithB := &resource.State{DeletedWith: "b"}
+
+			// Act.
+			isDeletedWithAIsTargeted := sg.isTargetedForUpdate(isDeletedWithA)
+			isDeletedWithBIsTargeted := sg.isTargetedForUpdate(isDeletedWithB)
+
+			// Assert.
+			assert.False(t, isDeletedWithAIsTargeted)
+			assert.True(t, isDeletedWithBIsTargeted)
+		})
+	})
+
+	t.Run("checkParent", func(t *testing.T) {
+		t.Parallel()
+		t.Run("could not find parent resource", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+			}
+			_, err := sg.checkParent("does-not-exist", "")
+			assert.ErrorContains(t, err, "could not find parent resource")
+		})
+	})
+
+	t.Run("GenerateReadSteps", func(t *testing.T) {
+		t.Parallel()
+		t.Run("could not find parent resource", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+			}
+			_, err := sg.GenerateReadSteps(&readResourceEvent{
+				parent: "does-not-exist",
+			})
+			assert.ErrorContains(t, err, "could not find parent resource")
+		})
+
+		t.Run("fail generateURN", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{
+					"urn:pulumi:stack::::::": true,
+				},
+				deployment: &Deployment{
+					ctx: &plugin.Context{
+						Diag: &deploytest.NoopSink{},
+					},
+					opts: &Options{},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack"),
+					},
+					source: &nullSource{},
+				},
+			}
+			_, err := sg.GenerateReadSteps(&readResourceEvent{})
+			assert.ErrorContains(t, err, "Duplicate resource URN")
+		})
+	})
+
+	t.Run("generateSteps", func(t *testing.T) {
+		t.Parallel()
+		t.Run("could not find parent resource", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					target: &Target{
+						Name: tokens.MustParseStackName("stack"),
+					},
+					source: &nullSource{},
+				},
+			}
+			_, _, err := sg.generateSteps(&registerResourceEvent{
+				goal: &resource.Goal{
+					Parent: "does-not-exist",
+				},
+			})
+			assert.ErrorContains(t, err, "could not find parent resource")
+		})
+	})
+
+	t.Run("determineAllowedResourcesToDeleteFromTargets", func(t *testing.T) {
+		t.Parallel()
+		t.Run("handle non-existent target", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev: &Snapshot{
+						Resources: []*resource.State{
+							{
+								URN: "a",
+							},
+						},
+					},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
+				UrnTargets{literals: []resource.URN{"a"}},
+			)
+			assert.NoError(t, err)
+			assert.Empty(t, targets)
+		})
+	})
+
+	t.Run("providerChanged", func(t *testing.T) {
+		t.Parallel()
+		t.Run("invalid old ProviderReference", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev: &Snapshot{},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			_, err := sg.providerChanged("",
+				&resource.State{
+					Provider: "invalid-old-provider",
+				},
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
+				},
+			)
+			assert.ErrorContains(t, err, "expected '::' in provider reference 'invalid-old-provider'")
+		})
+
+		t.Run("invalid new ProviderReference", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev: &Snapshot{},
+					olds: map[resource.URN]*resource.State{},
+				},
+			}
+			_, err := sg.providerChanged("",
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
+				},
+				&resource.State{
+					Provider: "invalid-new-provider",
+				},
+			)
+			assert.ErrorContains(t, err, "expected '::' in provider reference 'invalid-new-provider'")
+		})
+
+		t.Run("error getting new default provider", func(t *testing.T) {
+			t.Parallel()
+			sg := &stepGenerator{
+				urns: map[resource.URN]bool{},
+				deployment: &Deployment{
+					prev:      &Snapshot{},
+					olds:      map[resource.URN]*resource.State{},
+					providers: &providers.Registry{},
+				},
+			}
+			_, err := sg.providerChanged("",
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_name::uuid",
+				},
+				&resource.State{
+					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_new::uuid",
+				},
+			)
+			assert.ErrorContains(t, err, "failed to resolve provider reference")
+		})
 	})
 }

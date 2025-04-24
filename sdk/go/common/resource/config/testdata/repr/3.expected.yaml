@@ -1,0 +1,27 @@
+decrypt:
+  my:parent: '{"nested":{"foo":12321123131}}'
+paths:
+  my:parent:
+    value:
+      nested:
+        foo: 12321123131
+    string: '{"nested":{"foo":12321123131}}'
+    redacted: '{"nested":{"foo":12321123131}}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA8/4I5AAEGbmVzdGVkF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IVAAEDZm9vBWludDY0BAcA+wW8ytZ2
+    secure: false
+    isObject: true
+  my:parent.nested:
+    value:
+      foo: 12321123131
+    string: '{"foo":12321123131}'
+    redacted: '{"foo":12321123131}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAY/4IVAAEDZm9vBWludDY0BAcA+wW8ytZ2
+    secure: false
+    isObject: true
+  my:parent.nested.foo:
+    value: "12321123131"
+    string: "12321123131"
+    redacted: "12321123131"
+    object: GBAABnN0cmluZwwNAAsxMjMyMTEyMzEzMQ==
+    secure: false
+    isObject: false

@@ -1,3 +1,17 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package resource
 
 import (
@@ -11,7 +25,7 @@ func TestPropertyPath(t *testing.T) {
 	t.Parallel()
 
 	makeValue := func() PropertyValue {
-		return NewObjectProperty(NewPropertyMapFromMap(map[string]interface{}{
+		return NewProperty(NewPropertyMapFromMap(map[string]interface{}{
 			"root": map[string]interface{}{
 				"nested": map[string]interface{}{
 					"array": []interface{}{
@@ -133,6 +147,19 @@ func TestPropertyPath(t *testing.T) {
 			PropertyPath{"root key with a .", 1},
 			`["root key with a ."][1]`,
 		},
+		// The following two cases are regressions for https://github.com/pulumi/pulumi/issues/14439. Ideally
+		// these would be a syntax error, but it seems providers have been emitting paths of this style and so
+		// we need to keep supporting them.
+		{
+			`root.array.[1]`,
+			PropertyPath{"root", "array", 1},
+			`root.array[1]`,
+		},
+		{
+			`root.["key with a ."]`,
+			PropertyPath{"root", "key with a ."},
+			`root["key with a ."]`,
+		},
 	}
 
 	for _, c := range cases {
@@ -148,25 +175,25 @@ func TestPropertyPath(t *testing.T) {
 			value := makeValue()
 
 			v, ok := parsed.Get(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, value)
 			assert.False(t, v.IsNull())
 
 			ok = parsed.Delete(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to delete %v from %v", parsed, value)
 
 			ok = parsed.Set(value, v)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to set %v in %v", v, parsed)
 
 			u, ok := parsed.Get(value)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, value)
 			assert.Equal(t, v, u)
 
 			vv := PropertyValue{}
 			vv, ok = parsed.Add(vv, v)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to add %v at %v", v, parsed)
 
 			u, ok = parsed.Get(vv)
-			assert.True(t, ok)
+			assert.True(t, ok, "Failed to get %v from %v", parsed, vv)
 			assert.Equal(t, v, u)
 		})
 	}
@@ -214,7 +241,7 @@ func TestPropertyPath(t *testing.T) {
 		`root["nested]`,
 		`root."double".nest`,
 		"root.array[abc]",
-		"root.[1]",
+		"root.",
 
 		// Missing values
 		"root[1]",
@@ -237,6 +264,22 @@ func TestPropertyPath(t *testing.T) {
 				assert.False(t, ok)
 				assert.True(t, v.IsNull())
 			}
+		})
+	}
+
+	negativeCasesStrict := []string{
+		// Syntax erros
+		`root.array.[1]`,
+		`root.["key with a ."]`,
+	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, c := range negativeCasesStrict {
+		c := c
+		t.Run(c, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ParsePropertyPathStrict(c)
+			assert.NotNil(t, err)
 		})
 	}
 }
@@ -358,8 +401,8 @@ func TestAddResizePropertyPath(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/5871:
 	// Ensure that adding a new element beyond the size of an array will resize it.
 	path, err := ParsePropertyPath("[1]")
-	assert.Nil(t, err)
-	_, ok := path.Add(NewArrayProperty([]PropertyValue{}), NewNumberProperty(42))
+	assert.NoError(t, err)
+	_, ok := path.Add(NewProperty([]PropertyValue{}), NewProperty(42.0))
 	assert.True(t, ok)
 }
 
@@ -376,164 +419,164 @@ func TestReset(t *testing.T) {
 		{
 			"Missing key, not in object",
 			PropertyPath{"missing"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(2.0)},
 		},
 		{
 			"Missing key, not an object",
 			PropertyPath{"root", "missing"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(2.0)},
 		},
 		{
 			"Missing index, changed from an object",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(2.0)},
 			nil,
 		},
 		{
 			"Missing index, changed to an object",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{})},
 		},
 		{
 			"Missing key along path, not in object",
 			PropertyPath{"missing", "path"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(2.0)},
 		},
 		{
 			"Missing key along path, not an object",
 			PropertyPath{"root", "missing", "path"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(2.0)},
 		},
 		{
 			"Missing index, not in array",
 			PropertyPath{"array", 1},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			&PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			&PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
 		},
 		{
 			"Missing index, not an array",
 			PropertyPath{"root", 0},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(2.0)},
 		},
 		{
 			"Missing index, changed from an array",
 			PropertyPath{"root", 0},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(2.0)},
 			nil,
 		},
 		{
 			"Missing index, changed to an array",
 			PropertyPath{"root", 0},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(2)})},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(2.0)})},
 			nil,
 		},
 		{
 			"Invalid index, not in array",
 			PropertyPath{"array", -1},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
 			nil,
 		},
 		{
 			"Invalid index, not an array",
 			PropertyPath{"root", -1},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
 			nil,
 		},
 		{
 			"Index out of bound in old",
 			PropertyPath{"root", 1},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(2)})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(3), NewNumberProperty(4)})},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(2.0)})},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(3.0), NewProperty(4.0)})},
 			nil,
 		},
 		{
 			"Index out of bound in new",
 			PropertyPath{"root", 1},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(1), NewNumberProperty(2)})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(3)})},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(1.0), NewProperty(2.0)})},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(3.0)})},
 			nil,
 		},
 		{
 			"Missing index along path",
 			PropertyPath{"root", 0, "other"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
 		},
 		{
 			"Index out of bound in old along path",
 			PropertyPath{"root", 1, "nested"},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)}),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(1.0)}),
 			})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(3)}),
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(4)}),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(3.0)}),
+				NewProperty(PropertyMap{"nested": NewProperty(4.0)}),
 			})},
 			nil,
 		},
 		{
 			"Index out of bound in new along path",
 			PropertyPath{"root", 1, "nested"},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)}),
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)}),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(1.0)}),
+				NewProperty(PropertyMap{"nested": NewProperty(2.0)}),
 			})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(3)}),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(3.0)}),
 			})},
 			nil,
 		},
 		{
 			"Single path element",
 			PropertyPath{"root"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(1)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(1.0)},
 		},
 		{
 			"Nested path element, changed",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
 		},
 		{
 			"Nested path element, added",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{})},
 		},
 		{
 			"Nested path element, removed",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
 		},
 		{
 			"Nested path element, fully removed",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
 			PropertyMap{},
 			nil,
 		},
@@ -541,184 +584,290 @@ func TestReset(t *testing.T) {
 			"Nested path element, nested added",
 			PropertyPath{"root", "nested"},
 			PropertyMap{},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{})},
 		},
 		{
 			"Nested path element, nested removed",
 			PropertyPath{"root", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
 			PropertyMap{},
 			nil,
 		},
 		{
 			"Array index",
 			PropertyPath{"array", 0},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(2)})},
-			&PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(2.0)})},
+			&PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
 		},
 		{
 			"Array index, along path",
 			PropertyPath{"array", 0, "item"},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"item": NewNumberProperty(1)}),
+			PropertyMap{"array": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"item": NewProperty(1.0)}),
 			})},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"item": NewNumberProperty(2)}),
+			PropertyMap{"array": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"item": NewProperty(2.0)}),
 			})},
-			&PropertyMap{"array": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"item": NewNumberProperty(1)}),
+			&PropertyMap{"array": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"item": NewProperty(1.0)}),
 			})},
 		},
 		{
 			"Array index, added",
 			PropertyPath{"array", 0},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{})},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(2)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(2.0)})},
 			nil,
 		},
 		{
 			"Array index, removed",
 			PropertyPath{"array", 0},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			PropertyMap{"array": NewArrayProperty([]PropertyValue{})},
+			PropertyMap{"array": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			PropertyMap{"array": NewProperty([]PropertyValue{})},
 			nil,
 		},
 		{
 			"Single wildcard at root",
 			PropertyPath{"*"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewNumberProperty(2)},
-			&PropertyMap{"root": NewNumberProperty(1)},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(2.0)},
+			&PropertyMap{"root": NewProperty(1.0)},
 		},
 		{
 			"Wildcard followed by path element",
 			PropertyPath{"*", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
 		},
 		{
 			"Wildcard in array followed by path element",
 			PropertyPath{"root", "*", "nested"},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)}),
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)}),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(1.0)}),
+				NewProperty(PropertyMap{"nested": NewProperty(2.0)}),
 			})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(3)}),
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(4)}),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(3.0)}),
+				NewProperty(PropertyMap{"nested": NewProperty(4.0)}),
 			})},
-			&PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)}),
-				NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)}),
+			&PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(PropertyMap{"nested": NewProperty(1.0)}),
+				NewProperty(PropertyMap{"nested": NewProperty(2.0)}),
 			})},
 		},
 		{
 			"Nested wildcard",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
 		},
 		{
 			"Nested wildcard in array",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewNumberProperty(1),
-				NewNumberProperty(2),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
 			})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewNumberProperty(3),
-				NewNumberProperty(4),
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
 			})},
-			&PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewNumberProperty(1),
-				NewNumberProperty(2),
+			&PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
 			})},
 		},
 		{
 			"Nested wildcard, added",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{})},
 		},
 		{
 			"Nested wildcard, removed",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
 		},
 		{
 			"Nested wildcard, change of type (array)",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			&PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
 		},
 		{
 			"Nested wildcard, change of type (object)",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
-			&PropertyMap{"root": NewArrayProperty([]PropertyValue{NewNumberProperty(1)})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(1.0)})},
+			&PropertyMap{"root": NewProperty([]PropertyValue{NewProperty(1.0)})},
 		},
 		{
 			"Nested wildcard, change of type (number)",
 			PropertyPath{"root", "*"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
-			PropertyMap{"root": NewNumberProperty(1)},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
+			PropertyMap{"root": NewProperty(1.0)},
 			nil,
 		},
 		{
 			"Untraversable in old wildcard followed by path element",
 			PropertyPath{"root", "*", "nested"},
-			PropertyMap{"root": NewNumberProperty(1)},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(2)})},
+			PropertyMap{"root": NewProperty(1.0)},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(2.0)})},
 			nil,
 		},
 		{
 			"Untraversable in new (not an object) wildcard followed by path element",
 			PropertyPath{"root", "*", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewNumberProperty(2)},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(2.0)},
 			nil,
 		},
 		{
 			"Untraversable in new (missing) wildcard followed by path element",
 			PropertyPath{"root", "*", "nested"},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{"nested": NewNumberProperty(1)})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{})},
+			PropertyMap{"root": NewProperty(PropertyMap{"nested": NewProperty(1.0)})},
+			PropertyMap{"root": NewProperty(PropertyMap{})},
 			nil,
 		},
 		{
-			"Nested object wildcard reset fails",
+			"Nested object wildcard index reset fails",
 			PropertyPath{"root", "*", 0},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{
-				"passes": NewNumberProperty(1),
-				"fails":  NewArrayProperty([]PropertyValue{NewNumberProperty(1)}),
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"passes": NewProperty(1.0),
+				"fails":  NewProperty([]PropertyValue{NewProperty(1.0)}),
 			})},
-			PropertyMap{"root": NewObjectProperty(PropertyMap{
-				"passes": NewNumberProperty(2),
-				"fails":  NewArrayProperty([]PropertyValue{}),
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"passes": NewProperty(2.0),
+				"fails":  NewProperty([]PropertyValue{}),
 			})},
 			nil,
 		},
 		{
-			"Nested array wildcard reset fails",
-			PropertyPath{"root", "*", 0},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewNumberProperty(1),
-				NewArrayProperty([]PropertyValue{NewNumberProperty(1)}),
+			"Nested array wildcard, new array is shorter fails",
+			PropertyPath{"root", "array", "*"},
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"array": NewProperty([]PropertyValue{
+					NewProperty(1.0),
+				}),
 			})},
-			PropertyMap{"root": NewArrayProperty([]PropertyValue{
-				NewNumberProperty(2),
-				NewArrayProperty([]PropertyValue{}),
+			PropertyMap{"root": NewProperty(PropertyMap{
+				"array": NewProperty([]PropertyValue{}),
 			})},
 			nil,
+		},
+		{
+			"Nested array wildcard index reset fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty([]PropertyValue{NewProperty(1.0)}),
+			})},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(2.0),
+				NewProperty([]PropertyValue{}),
+			})},
+			nil,
+		},
+		{
+			"Nested array wildcard index, old array is longer fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+			}))},
+			nil,
+		},
+		{
+			"Nested array wildcard index, new array is longer fails",
+			PropertyPath{"root", "*", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
+			nil,
+		},
+		{
+			"Nested path, secret old",
+			PropertyPath{"root", "secret"},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+			PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(2.0)})},
+			&PropertyMap{"root": NewProperty(PropertyMap{"secret": MakeSecret(NewProperty(1.0))})},
+		},
+		{
+			"Nested path, secret new",
+			PropertyPath{"root", "secret"},
+			PropertyMap{"root": NewProperty(PropertyMap{"secret": NewProperty(1.0)})},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(2.0)}))},
+			&PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+		},
+		{
+			"Nested path, secret both",
+			PropertyPath{"root", "secret"},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+			PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(2.0)}))},
+			&PropertyMap{"root": MakeSecret(NewProperty(PropertyMap{"secret": NewProperty(1.0)}))},
+		},
+		{
+			"Nested array, secret old",
+			PropertyPath{"root", 0},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			}))},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			})},
+			&PropertyMap{"root": NewProperty([]PropertyValue{
+				MakeSecret(NewProperty(1.0)),
+				NewProperty(4.0),
+			})},
+		},
+		{
+			"Nested array, secret new",
+			PropertyPath{"root", 0},
+			PropertyMap{"root": NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			})},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
+			&PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(4.0),
+			}))},
+		},
+		{
+			"Nested array, secret both",
+			PropertyPath{"root", 0},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(2.0),
+			}))},
+			PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(3.0),
+				NewProperty(4.0),
+			}))},
+			&PropertyMap{"root": MakeSecret(NewProperty([]PropertyValue{
+				NewProperty(1.0),
+				NewProperty(4.0),
+			}))},
 		},
 	}
 

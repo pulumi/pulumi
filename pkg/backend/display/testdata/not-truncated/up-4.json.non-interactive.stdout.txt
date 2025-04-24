@@ -11,7 +11,6 @@
  <{%fg 3%}>~ <{%reset%}> aws:ec2:SecurityGroup eks-sg <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~ingress<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> aws:eks:Cluster eks-cluster <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack eks-dev <{%reset%}><{%reset%}> 
-
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
     5 unchanged

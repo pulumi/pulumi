@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build nodejs || python || all
-
 package workspace
 
 import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -88,7 +86,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 	v1 := semver.MustParse("0.1.0")
 	plugin := PluginSpec{
 		Name:      "test",
-		Kind:      ResourcePlugin,
+		Kind:      apitype.ResourcePlugin,
 		Version:   &v1,
 		PluginDir: dir,
 	}
@@ -109,9 +107,8 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.NoError(t, err)
 	assert.False(t, info.IsDir())
 
-	info, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
-	assert.Error(t, err)
-	assert.True(t, os.IsNotExist(err))
+	_, err = os.Stat(filepath.Join(dir, plugin.Dir()+".partial"))
+	assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 
 	assert.True(t, HasPlugin(plugin))
 
@@ -149,7 +146,6 @@ func testDeletePlugin(t *testing.T, plugin PluginInfo) {
 
 	for _, path := range paths {
 		_, err := os.Stat(path)
-		assert.Error(t, err)
 		assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 	}
 }
@@ -175,6 +171,8 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
+	t.Parallel()
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -193,6 +191,8 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestReinstall(t *testing.T) {
+	t.Parallel()
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -201,7 +201,7 @@ func TestReinstall(t *testing.T) {
 	err := plugin.Install(tarball, false)
 	require.NoError(t, err)
 
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
@@ -211,8 +211,9 @@ func TestReinstall(t *testing.T) {
 	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
 
 	err = plugin.Install(tarball, true)
+	require.NoError(t, err)
 
-	pluginInfo = assertPluginInstalled(t, dir, plugin)
+	pluginInfo := assertPluginInstalled(t, dir, plugin)
 
 	b, err = os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
@@ -222,6 +223,8 @@ func TestReinstall(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
+	t.Parallel()
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -259,14 +262,19 @@ func TestConcurrentInstalls(t *testing.T) {
 }
 
 func TestInstallCleansOldFiles(t *testing.T) {
+	t.Parallel()
+
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	// Leftover temp dirs.
-	tempDir1, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	//nolint:usetesting // Need to use a specific location for the tmp dir
+	tempDir1, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
-	tempDir2, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	//nolint:usetesting // Need to use a specific location for the tmp dir
+	tempDir2, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
-	tempDir3, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	//nolint:usetesting // Need to use a specific location for the tmp dir
+	tempDir3, err := os.MkdirTemp(dir, plugin.Dir()+".tmp")
 	assert.NoError(t, err)
 
 	// Leftover partial file.
@@ -282,14 +290,15 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	// Verify leftover files were removed.
 	for _, path := range []string{tempDir1, tempDir2, tempDir3, partialPath} {
 		_, err := os.Stat(path)
-		assert.Error(t, err)
-		assert.True(t, os.IsNotExist(err))
+		assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 	}
 
 	testDeletePlugin(t, pluginInfo)
 }
 
 func TestGetPluginsSkipsPartial(t *testing.T) {
+	t.Parallel()
+
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	err := plugin.Install(tarball, false)
@@ -301,10 +310,11 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	assert.False(t, HasPlugin(plugin))
 
 	has, err := HasPluginGTE(plugin)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.False(t, has)
 
 	skipMetadata := true
 	plugins, err := getPlugins(dir, skipMetadata)
+	require.NoError(t, err)
 	assert.Equal(t, 0, len(plugins))
 }

@@ -15,10 +15,10 @@
 package cmdutil
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -31,15 +31,15 @@ var (
 
 // By default we'll attempt to figure out if we should have colors or not. This can be overridden
 // for any command by passing --color=... at the command line.
-var globalColorization = colors.Auto
+var globalColorization *colors.Colorization
 
 // GetGlobalColorization gets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
 func GetGlobalColorization() colors.Colorization {
-	if globalColorization != colors.Auto {
+	if globalColorization != nil {
 		// User has set an explicit colorization preference.  We'll respect whatever they asked for,
 		// no matter what.
-		return globalColorization
+		return *globalColorization
 	}
 
 	// Colorization is set to 'auto' (either explicit set to that by the user, or not set at all).
@@ -65,15 +65,18 @@ func GetGlobalColorization() colors.Colorization {
 func SetGlobalColorization(value string) error {
 	switch value {
 	case "auto":
-		globalColorization = colors.Auto
+		globalColorization = nil
 	case "always":
-		globalColorization = colors.Always
+		c := colors.Always
+		globalColorization = &c
 	case "never":
-		globalColorization = colors.Never
+		c := colors.Never
+		globalColorization = &c
 	case "raw":
-		globalColorization = colors.Raw
+		c := colors.Raw
+		globalColorization = &c
 	default:
-		return errors.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", value)
+		return fmt.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", value)
 	}
 
 	return nil

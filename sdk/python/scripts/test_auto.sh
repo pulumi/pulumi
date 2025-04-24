@@ -4,10 +4,14 @@ PULUMI_TEST_COVERAGE_PATH=$PULUMI_TEST_COVERAGE_PATH
 
 set -euo pipefail
 
-coverage run -m pytest lib/test/automation
+mkdir -p ../../junit
+JUNIT_DIR=$(realpath ../../junit)
+
+coverage run --append -m pytest --junitxml "$JUNIT_DIR/python-test-auto.xml" lib/test/automation
 
 if [[ "$PULUMI_TEST_COVERAGE_PATH" ]]; then
     if [ -e .coverage ]; then
-        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-fast.xml
+        UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
+        coverage xml -o $PULUMI_TEST_COVERAGE_PATH/python-auto-$UUID.xml
     fi
 fi

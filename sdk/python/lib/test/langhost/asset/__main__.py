@@ -17,12 +17,12 @@ from pulumi import CustomResource
 from pulumi.asset import FileAsset, StringAsset, RemoteAsset
 
 
-
 class MyResource(CustomResource):
     def __init__(self, name, asset):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            "asset": asset
-        })
+        CustomResource.__init__(
+            self, "test:index:MyResource", name, props={"asset": asset}
+        )
+
 
 MyResource("file", FileAsset("./testfile.txt"))
 MyResource("file", FileAsset(Path(".") / "testfile.txt"))

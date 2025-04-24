@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>Resource 'urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::b' depends on 'urn:pulumi:test::test::pkgA:m:typA::a' which was was not specified in --target list.<{%reset%}>

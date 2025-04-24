@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Allow binding unsupported range and collection types in non-strict mode for pulumi convert

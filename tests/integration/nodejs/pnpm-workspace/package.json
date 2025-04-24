@@ -1,0 +1,4 @@
+{
+  "name": "pnpm-workspace",
+  "description": "Use pnpm workspaces and import a workspace package in the pulumi program."
+}

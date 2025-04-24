@@ -15,15 +15,18 @@
 import asyncio
 import base64
 from concurrent import futures
+from threading import Event, Lock
+from typing import Any, Dict, Optional
+import os
 import sys
-import time
-
 import dill
 import grpc
 from google.protobuf import empty_pb2
-from pulumi.runtime import proto, rpc
+from pulumi.metadata import get_project
+from pulumi.runtime._serialization import _deserialize
+from pulumi.runtime import configure, proto, rpc, Settings
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
-from pulumi.dynamic import ResourceProvider
+from pulumi.dynamic import ResourceProvider, ConfigureRequest, Config
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 PROVIDER_KEY = "__provider"
@@ -33,12 +36,53 @@ _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
-def get_provider(props) -> ResourceProvider:
-    byts = base64.b64decode(props[PROVIDER_KEY])
-    return dill.loads(byts)
+_PROVIDER_CACHE: Dict[str, ResourceProvider] = {}
+_PROVIDER_LOCK = Lock()
+
+
+# get_provider deserializes the provider from the string found in
+# `props[PROVIDER_KEY]` and calls `provider.configure` with the config. The
+# deserialized and configured provider is stored in `_PROVIDER_CACHE`. This
+# guarantees that the provider is only deserialized and configured once per
+# process.
+def get_provider(props: Dict[str, Any], config: Dict[str, Any]) -> ResourceProvider:
+    # Ensure Settings are configured in the thread that calls get_provider
+    configure(
+        Settings(
+            project=os.environ.get("PULUMI_PROJECT", "project"),
+            # `stack` and `organization` are the default values for Settings.
+            # Ideally we'd like to get the actual values here and set them.
+            stack="stack",
+            organization="organization",
+        )
+    )
+    providerStr = props[PROVIDER_KEY]
+    provider: Optional[ResourceProvider] = _PROVIDER_CACHE.get(providerStr)
+    if provider is None:
+        # This is pesimistic locking, because if two different providers try to fetch at the same time they
+        # serialise. But it means we don't create two instances of the same provider. Also looking at issues
+        # like https://github.com/pulumi/pulumi/issues/14159 there may be resource contention in dill.loads,
+        # that this locking strategy will reduce.
+        with _PROVIDER_LOCK:
+            provider = _PROVIDER_CACHE.get(providerStr)
+            if provider is None:
+
+                def deserialize() -> ResourceProvider:
+                    byts = base64.b64decode(providerStr)
+                    return dill.loads(byts)
+
+                provider = _deserialize(deserialize)
+                dyn_config = Config(raw_config=config, project_name=get_project())
+                req = ConfigureRequest(config=dyn_config)
+                provider.configure(req)
+                _PROVIDER_CACHE[providerStr] = provider
+
+    return provider
 
 
 class DynamicResourceProviderServicer(ResourceProviderServicer):
+    _config: Dict[str, Any] = {}
+
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("CheckConfig is not implemented by the dynamic provider")
@@ -62,24 +106,18 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         olds = rpc.deserialize_properties(request.olds, True)
         news = rpc.deserialize_properties(request.news, True)
         if news[PROVIDER_KEY] == rpc.UNKNOWN:
-            provider = get_provider(olds)
+            provider = get_provider(olds, self._config)
         else:
-            provider = get_provider(news)
-        result = provider.diff(request.id, olds, news)  # pylint: disable=no-member
+            provider = get_provider(news, self._config)
+        result = provider.diff(request.id, olds, news)
         fields = {}
         if result.changes is not None:
             if result.changes:
-                fields[
-                    "changes"
-                ] = proto.DiffResponse.DIFF_SOME  # pylint: disable=no-member
+                fields["changes"] = proto.DiffResponse.DIFF_SOME
             else:
-                fields[
-                    "changes"
-                ] = proto.DiffResponse.DIFF_NONE  # pylint: disable=no-member
+                fields["changes"] = proto.DiffResponse.DIFF_NONE
         else:
-            fields[
-                "changes"
-            ] = proto.DiffResponse.DIFF_UNKNOWN  # pylint: disable=no-member
+            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN
         if result.replaces is not None:
             fields["replaces"] = result.replaces
         if result.delete_before_replace is not None:
@@ -89,9 +127,9 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Update(self, request, context):
         olds = rpc.deserialize_properties(request.olds)
         news = rpc.deserialize_properties(request.news)
-        provider = get_provider(news)
+        provider = get_provider(news, self._config)
 
-        result = provider.update(request.id, olds, news)  # pylint: disable=no-member
+        result = provider.update(request.id, olds, news)
         outs = {}
         if result.outs is not None:
             outs = result.outs
@@ -107,8 +145,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Delete(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
-        provider = get_provider(props)
-        provider.delete(id_, props)  # pylint: disable=no-member
+        provider = get_provider(props, self._config)
+        provider.delete(id_, props)
         return empty_pb2.Empty()
 
     def Cancel(self, request, context):
@@ -116,8 +154,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
     def Create(self, request, context):
         props = rpc.deserialize_properties(request.properties)
-        provider = get_provider(props)
-        result = provider.create(props)  # pylint: disable=no-member
+        provider = get_provider(props, self._config)
+        result = provider.create(props)
         outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -132,11 +170,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         olds = rpc.deserialize_properties(request.olds, True)
         news = rpc.deserialize_properties(request.news, True)
         if news[PROVIDER_KEY] == rpc.UNKNOWN:
-            provider = get_provider(olds)
+            provider = get_provider(olds, self._config)
         else:
-            provider = get_provider(news)
+            provider = get_provider(news, self._config)
 
-        result = provider.check(olds, news)  # pylint: disable=no-member
+        result = provider.check(olds, news)
         inputs = result.inputs
         failures = result.failures
 
@@ -154,6 +192,12 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         return proto.CheckResponse(**fields)
 
     def Configure(self, request, context):
+        # Get the configuration from the request and store it. When
+        # deserializing dynamic providers, we will call the provider's
+        # `configure` method with this configuration.
+        config = rpc.deserialize_properties(request.args)
+        config = {k: rpc.unwrap_rpc_secret(v) for k, v in config.items()}
+        self._config = config
         fields = {"acceptSecrets": False}
         return proto.ConfigureResponse(**fields)
 
@@ -171,8 +215,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Read(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
-        provider = get_provider(props)
-        result = provider.read(id_, props)  # pylint: disable=no-member
+        provider = get_provider(props, self._config)
+        result = provider.read(id_, props)
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -190,9 +234,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 def main():
     monitor = DynamicResourceProviderServicer()
     server = grpc.server(
-        futures.ThreadPoolExecutor(
-            max_workers=4
-        ),  # pylint: disable=consider-using-with
+        futures.ThreadPoolExecutor(max_workers=4),
         options=_GRPC_CHANNEL_OPTIONS,
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
@@ -200,8 +242,7 @@ def main():
     server.start()
     sys.stdout.buffer.write(f"{port}\n".encode())
     try:
-        while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
+        Event().wait()
     except KeyboardInterrupt:
         server.stop(0)
 

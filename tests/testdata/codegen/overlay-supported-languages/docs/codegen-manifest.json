@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "function/_index.md",
+    "overlayfunction/_index.md",
+    "overlayfunctionconstrainedlanguages/_index.md",
+    "overlayresource/_index.md",
+    "overlayresourceconstrainedlanguages/_index.md",
+    "provider/_index.md",
+    "resource/_index.md"
+  ]
+}

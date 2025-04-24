@@ -1,0 +1,3 @@
+my:servers:
+- host: example
+  name: foo

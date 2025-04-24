@@ -47,7 +47,15 @@ setup_python() (
     python3 -m venv venv --clear
     # shellcheck disable=SC1090
     . venv/*/activate
-    python3 -m pip install -e ../../../../sdk/python/env/src
+    # In Python 3.13.0, the virtualenv activate script does not correctly detect
+    # that we're on Windows when running in Git Bash. Use a path to the python
+    # executable in the virtualenv to work around this issue.
+    # https://github.com/python/cpython/issues/125398
+    pythonBin=$(command -v python)
+    if [[ ${OSTYPE} == "msys" ]]; then
+        pythonBin=$(cygpath -u "./venv/Scripts/python.exe")
+    fi
+    ${pythonBin} -m pip install -e ../../../../sdk/python
   fi
 )
 

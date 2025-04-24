@@ -1,0 +1,735 @@
+<{%fg 13%}><{%bold%}>View in Browser (Ctrl+O): <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<%hide-cursor%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  project-stack  <{%bold%}><{%reset%}><{%reset%}>           <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    1 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    1 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    2 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    2 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    3 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    3 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    3 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    4 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    5 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    5 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    6 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    6 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    6 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    7 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    7 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    7 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    8 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    9 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    9 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    9 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    10 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    10 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    11 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    12 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    12 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    13 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    13 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    14 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    14 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    15 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    15 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    16 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    16 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    17 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    18 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    18 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    19 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    19 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    20 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    20 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    21 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    21 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    22 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    22 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    23 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    23 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    24 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    24 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    25 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    25 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    26 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    26 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    27 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    27 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    28 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    28 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    29 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    29 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    30 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    30 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    31 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    31 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    32 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    32 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    33 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    33 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    34 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    34 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    35 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    35 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    36 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    36 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    37 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    37 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    38 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    38 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    39 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    39 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    40 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    40 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    40 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    40 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    41 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    41 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    42 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    42 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    43 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    43 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    44 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    44 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    45 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    45 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    46 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    46 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    47 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    47 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    48 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    48 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    49 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    49 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    50 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    50 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    51 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    51 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    52 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    52 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    53 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    53 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    54 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    54 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    55 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    55 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:5%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>      <{%reset%}>Configuration<%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>             <%clear-to-end%>
+ <{%bold%}><{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%bold%}><{%fg 3%}>updating<{%reset%}><{%bold%}><{%fg 3%}><{%reset%}>     [diff: <{%fg 3%}>~templ<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    56 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    57 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    57 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  <{%reset%}><{%reset%}>            1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    57 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                            <{%underline%}><{%fg 12%}>Name<{%reset%}>            <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack             aws-ts-eks-dev  <{%reset%}><{%reset%}>            1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  └─ eks:index:Cluster            cluster         <{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 3%}>~ <{%reset%}>     └─ aws:cloudformation:Stack  cluster-nodes   <{%fg 3%}>updated<{%reset%}>     [diff: <{%fg 3%}>~templa<{%reset%}><%clear-to-end%>
+<%clear-to-end%>
+<%clear-to-end%>
+<%clear-to-end%>
+<%cursor-up:2%><{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:pulumi:Stack (aws-ts-eks-dev):<{%reset%}>
+    <{%reset%}>Configuration:<{%reset%}>
+        aws:region: us-west-2
+
+<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
+<{%reset%}>    kubeconfig: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        clusters       : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                cluster: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    certificate-authority-data: <{%reset%}><{%reset%}>"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdPREEyTWpjMU5Wb1hEVE15TURRd05UQTJNamMxTlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2M5Ck9FSTNSLzltTnpWZy9nS284V3dmb3R6dHk5T2F5Y2hadkpXVStjWUJLVzVrUS9jc0lIVWk0M3pGWk52VjdRd2sKSkR5elFwZXI3R29CM3ZrSUlXNlpzZjdIRUVIU2h0QUxvRHJrOTlwU1ltcDJvNEhzMkx2aC9WSHkwZG4zRE9IcwpwSFkxWU9mSmUyK25UcUJ2NHhseTVDWjEzUTV3MGRVMUY1bm56b1RsS1ppTkdmYWhHNEN2QStsS3FPWFZ3dHZiCkcxRmJkVThBQXRDUnZPSmg5eTN6eDN1b0pPWVc0QkU0VDNsM0dpTlk4TVl3eGVRd3JvU0hseE1GbGJQUmQ2YXMKOUEyczNxK1RJZ2VKZzBxNFIrK3Z1QVlBcG5DRzFIbEpieU9kT3d3aldlUHZIVDhMZTJXN283NEFsNSt6bEFXdQptVm9VbE82WUlxc1h3YUl3QUY4Q0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFV2xRdERXbllFVEs2M0xBd2JSRUQ2TTJtM0ZNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVjFFOUVucWhUbkNQZVZEQmxXMURXMTBwdzdVMG9sdk5TWjA0cU9RRVkwNE5oZ29tTgprWC9GeDhQenBnT1h4SWlOYlBZYTdIYVVNZ0RPMHJ1bVNPQjc5ZThtbjNIZ055dlEyM3NOUkpsMnlaUUVDKzBXCllJcXhSM2pwMkV1MG40YkxDQzRyM2UweFRITldwbGd6Z1FkcUpNLzg0NmUxRTR0alV5Ry92V09VV3RGSzRjemoKTS85SXJZWnJRVFRVL1pISDVtMmtFYjRUcmYwZ1hyL2E3UmJWUG91Uzk2dmJpdjdoSE12YVptclpzeTN3bDBYYQpFUDdwMERHdWxCdnh1K3BjUkxVdkZMZUdLODFLY3JRZmpFU2ZqSldSWVYwTERGWnQ4YnlMT0J6V2MvU0Ywd0ZoCkt4ekFLWXkvZHhTNksySCtqeFY1amF2cXNTR1dzSGZ6Q0Q2MQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    server                    : <{%reset%}><{%reset%}>"https://8AE853AAF6BD7DFED415A3D30AD938E2.gr7.us-west-2.eks.amazonaws.com"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                name   : <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        contexts       : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                context: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    cluster: <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    user   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                name   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        current-context: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        kind           : <{%reset%}><{%reset%}>"Config"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        users          : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                name: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                user: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    exec: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        apiVersion: <{%reset%}><{%reset%}>"client.authentication.k8s.io/v1alpha1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                        args      : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                            [0]: <{%reset%}><{%reset%}>"eks"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                            [1]: <{%reset%}><{%reset%}>"get-token"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                            [2]: <{%reset%}><{%reset%}>"--cluster-name"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                            [3]: <{%reset%}><{%reset%}>"cluster-eksCluster-932639f"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                        command   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    57 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 2s
+
+<%show-cursor%>

@@ -15,10 +15,12 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -254,8 +256,9 @@ func TestDecrypt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Config   Map
-		Expected map[Key]string
+		Config     Map
+		Expected   map[Key]string
+		SecureKeys []Key
 	}{
 		{
 			Config: Map{
@@ -272,6 +275,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): "[secret]",
 			},
+			SecureKeys: []Key{MustMakeKey("my", "testKey")},
 		},
 		{
 			Config: Map{
@@ -288,6 +292,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): `{"inner":"[secret]"}`,
 			},
+			SecureKeys: []Key{MustMakeKey("my", "testKey")},
 		},
 		{
 			Config: Map{
@@ -297,6 +302,7 @@ func TestDecrypt(t *testing.T) {
 			Expected: map[Key]string{
 				MustMakeKey("my", "testKey"): `[{"inner":"[secret]"},"[secret]"]`,
 			},
+			SecureKeys: []Key{MustMakeKey("my", "testKey")},
 		},
 	}
 
@@ -310,6 +316,9 @@ func TestDecrypt(t *testing.T) {
 			actual, err := test.Config.Decrypt(decrypter)
 			assert.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
+
+			assert.Equal(t, len(test.SecureKeys) != 0, test.Config.HasSecureValue())
+			assert.ElementsMatch(t, test.SecureKeys, test.Config.SecureKeys())
 		})
 	}
 }
@@ -525,17 +534,19 @@ func TestGetFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key string
+		Key           string
+		ExpectedError string
 	}{
 		{
-			Key: `my:["foo`,
+			Key:           `my:["foo`,
+			ExpectedError: "invalid config key path: missing closing quote in property name",
 		},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		test := test
-		t.Run(fmt.Sprintf("%v", test.Key), func(t *testing.T) {
+		t.Run(test.Key, func(t *testing.T) {
 			t.Parallel()
 
 			config := make(Map)
@@ -545,7 +556,7 @@ func TestGetFail(t *testing.T) {
 
 			_, found, err := config.Get(key, true /*path*/)
 			assert.False(t, found)
-			assert.Error(t, err)
+			assert.EqualError(t, err, test.ExpectedError)
 		})
 	}
 }
@@ -655,6 +666,26 @@ func TestRemoveSuccess(t *testing.T) {
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
 		},
+		{
+			Key:  `my:outer.inner.nested`,
+			Path: true,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{"nested": "value"}}`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":{}}`),
+			},
+		},
+		{
+			Key:  `my:outer[0].nested`,
+			Path: true,
+			Config: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`[{"nested": "value"}]`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "outer"): NewObjectValue(`[{}]`),
+			},
+		},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -676,18 +707,21 @@ func TestRemoveFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key    string
-		Config Map
+		Key           string
+		Config        Map
+		ExpectedError string
 	}{
 		{
-			Key:    `my:["foo`,
-			Config: Map{},
+			Key:           `my:["foo`,
+			Config:        Map{},
+			ExpectedError: "invalid config key path: missing closing quote in property name",
 		},
 		{
 			Key: `my:foo.bar`,
 			Config: Map{
 				MustMakeKey("my", "foo"): NewObjectValue(`{"bar":"baz","secure":"myvalue"}`),
 			},
+			ExpectedError: "bar.bar: maps with the single key \"secure\" are reserved",
 		},
 	}
 
@@ -701,7 +735,7 @@ func TestRemoveFail(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = test.Config.Remove(key, true /*path*/)
-			assert.Error(t, err)
+			assert.EqualError(t, err, test.ExpectedError)
 		})
 	}
 }
@@ -1218,32 +1252,56 @@ func TestSetFail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		Key    string
-		Config Map
+		Key           string
+		Config        Map
+		ExpectedError string
 	}{
 		// Syntax errors.
-		{Key: "my:root["},
-		{Key: `my:root["nested]`},
-		{Key: "my:root.array[abc]"},
-		{Key: "my:root.[1]"},
+		{
+			Key:           "my:root[",
+			ExpectedError: "invalid config key path: missing closing bracket in array index",
+		},
+		{
+			Key:           `my:root["nested]`,
+			ExpectedError: "invalid config key path: missing closing quote in property name",
+		},
+		{
+			Key:           "my:root.array[abc]",
+			ExpectedError: "invalid config key path: invalid array index: strconv.ParseInt: parsing \"abc\": invalid syntax",
+		},
 
 		// First path component must be a string.
-		{Key: `my:[""]`},
-		{Key: "my:[0]"},
+		{
+			Key:           `my:[""]`,
+			ExpectedError: "config key is empty",
+		},
+		{
+			Key:           "my:[0]",
+			ExpectedError: "first path segement of config key must be a string",
+		},
 
 		// Index out of range.
-		{Key: `my:name[-1]`},
-		{Key: `my:name[1]`},
+		{
+			Key:           `my:name[-1]`,
+			ExpectedError: "name[-1]: array index out of range",
+		},
 		{
 			Key: `my:name[4]`,
 			Config: Map{
 				MustMakeKey("my", "name"): NewObjectValue(`["a","b","c"]`),
 			},
+			ExpectedError: "name[4]: array index out of range",
 		},
 
 		// A "secure" key that is a map with a single string value is reserved by the system.
-		{Key: `my:key.secure`},
-		{Key: `my:super.nested.map.secure`},
+		{
+			Key:           `my:key.secure`,
+			ExpectedError: "maps with the single key \"secure\" are reserved",
+		},
+		{
+			Key:           `my:super.nested.map.secure`,
+			ExpectedError: "maps with the single key \"secure\" are reserved",
+		},
 
 		// Type mismatches.
 		{
@@ -1251,24 +1309,34 @@ func TestSetFail(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue("[1,2,3]"),
 			},
+			ExpectedError: "outer.inner: key for an array must be an int",
 		},
 		{
 			Key: `my:array[0]`,
 			Config: Map{
 				MustMakeKey("my", "array"): NewObjectValue(`{"inner":"value"}`),
 			},
+			ExpectedError: "array[0]: key for a map must be a string",
 		},
 		{
 			Key: `my:outer.inner.nested`,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
+			ExpectedError: "outer.inner: expected a map",
 		},
 		{
 			Key: `my:outer.inner[0]`,
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
+			ExpectedError: "outer.inner: expected an array",
+		},
+
+		// Strict path parsing
+		{
+			Key:           `my:root.[1]"`,
+			ExpectedError: "invalid config key path: expected property name after '.'",
 		},
 	}
 
@@ -1286,7 +1354,7 @@ func TestSetFail(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = test.Config.Set(key, NewValue("value"), true /*path*/)
-			assert.Error(t, err)
+			assert.EqualError(t, err, test.ExpectedError)
 		})
 	}
 }
@@ -1368,6 +1436,115 @@ func TestCopyMap(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, test.Expected, newConfig)
+		})
+	}
+}
+
+func TestPropertyMap(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		Config   Map
+		Expected resource.PropertyMap
+	}{
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("testValue"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewStringProperty("testValue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("1"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewNumberProperty(1.0),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("18446744073709551615"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewNumberProperty(1.8446744073709552e+19),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewValue("true"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewBoolProperty(true),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewSecureValue("stackAsecurevalue"),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "testKey"): NewObjectValue(`{"inner":"value"}`),
+			},
+			Expected: resource.PropertyMap{
+				"my:testKey": resource.NewObjectProperty(resource.PropertyMap{
+					"inner": resource.NewStringProperty("value"),
+				}),
+			},
+		},
+		{
+			Config: Map{
+				//nolint:lll
+				MustMakeKey("my", "testKey"): NewSecureObjectValue(`[{"inner":{"secure":"stackAsecurevalue"}},{"secure":"stackAsecurevalue2"}]`),
+			},
+			Expected: resource.PropertyMap{
+				//nolint:lll
+				"my:testKey": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"inner": resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue")),
+					}),
+					resource.MakeSecret(resource.NewStringProperty("stackAsecurevalue2")),
+				}),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "test.Key"): NewValue("testValue"),
+			},
+			Expected: resource.PropertyMap{
+				"my:test.Key": resource.NewStringProperty("testValue"),
+			},
+		},
+		{
+			Config: Map{
+				MustMakeKey("my", "name"): NewObjectValue(`[["value"]]`),
+			},
+			Expected: resource.PropertyMap{
+				"my:name": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewStringProperty("value"),
+					}),
+				}),
+			},
+		},
+	}
+
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
+			decrypter := nopCrypter{}
+			propMap, err := test.Config.AsDecryptedPropertyMap(context.Background(), decrypter)
+			assert.NoError(t, err)
+
+			assert.Equal(t, test.Expected, propMap)
 		})
 	}
 }

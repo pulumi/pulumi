@@ -1,0 +1,3 @@
+name: pulumi-python-output-leak
+description: A Python program that tests waiting for outputs doesn't leak futures.
+runtime: python

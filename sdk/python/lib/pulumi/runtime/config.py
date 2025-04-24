@@ -15,6 +15,7 @@
 """
 Runtime support for the Pulumi configuration system.  Please use pulumi.Config instead.
 """
+
 from typing import Dict, Any, List, Optional, Set
 from contextvars import ContextVar
 

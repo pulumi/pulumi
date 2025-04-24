@@ -1,0 +1,15 @@
+exports.handler = __f0;
+
+var __module = {};
+var __module_exports = {exportedValue: 42};
+__module.exports = __module_exports;
+
+function __f0() {
+  return (function() {
+    with({ module: __module, this: undefined, arguments: undefined }) {
+
+return function () { console.log(module.exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

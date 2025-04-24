@@ -1,0 +1,176 @@
+View in Browser (Ctrl+O): link
+
+     Type                             Name                    Status      Info
+ +   pulumi:pulumi:Stack              eks-dev                 created     1 message
+ +   ├─ aws:ec2:SecurityGroup         eks-sg                  created     
+ +   ├─ aws:eks:Cluster               eks-cluster             created     
+ +   ├─ aws:iam:Role                  eks-role                created     
+ +   ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  created     
+ +   └─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  created     
+
+Changes:
+  aws:ec2:SecurityGroup (eks-sg):
+    + aws:ec2/securityGroup:SecurityGroup: (create)
+        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        arn                : "arn:aws:ec2:us-west-2:616138583583:security-group/sg-0d1f8bb63e78926f4"
+        description        : "Managed by Pulumi"
+        egress             : [
+            [0]: {
+                cidrBlocks    : [
+                    [0]: "0.0.0.0/0"
+                ]
+                description   : ""
+                fromPort      : 0
+                ipv6CidrBlocks: []
+                prefixListIds : []
+                protocol      : "-1"
+                securityGroups: []
+                self          : false
+                toPort        : 0
+            }
+        ]
+        id                 : "sg-0d1f8bb63e78926f4"
+        ingress            : [
+            [0]: {
+                cidrBlocks    : [
+                    [0]: "0.0.0.0/0"
+                ]
+                description   : ""
+                fromPort      : 80
+                ipv6CidrBlocks: []
+                prefixListIds : []
+                protocol      : "tcp"
+                securityGroups: []
+                self          : false
+                toPort        : 80
+            }
+        ]
+        name               : "eks-sg-b3dbcb0"
+        namePrefix         : ""
+        ownerId            : "616138583583"
+        revokeRulesOnDelete: false
+        tags               : {}
+        tagsAll            : {}
+        vpcId              : "vpc-4b82e033"
+
+  aws:eks:Cluster (eks-cluster):
+    + aws:eks/cluster:Cluster: (create)
+        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        arn                    : "arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-dc83353"
+        certificateAuthority   : {
+            data: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdNVEEzTXpZeU5Gb1hEVE15TURNeU9UQTNNell5TkZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBWCjRhZUVwNGgrcWcwbDhYeDQ4WlZ1eHlrc3IySFZyUWhkOTVsSm05WnRHUlB3Y2wzelAzNWtKVWV0dWdsMWtWVVkKcmRkc3NnNVBYdEtNK1lwdUlOQldDNTR5ZU14QzczcnpoU2hsYXAwMzliTExWcDI0WDFHQjJobWI3NDliN1JYZworNDRvdjVuRUFWTnc4SWgwU1FXL3g1bXBQNHBNTHVSNlFqOVpJZ3NXSTlDUGJCdG10RGphbHB4U1J3SWs3dXloCjZzOXhIUmFxNE95bmtCdFZ3OWNmd1pBdU5FeXFYbnppN0lrOW1Dc2hOWENuUXJScmFSWmhoMzdtUGVBS3RmdHIKdGV5UkNmQXo4U1UzREQrK0Z0SkJiSVdSZWFhVHBpU2NMclVXU21hQ0xSNlVpOXVhMEg5S2ttRUhZcHI3VGhFdQpMeHYrcnRFVnNxakZSOGhjN1VrQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZBRUlTUWNrVnQyZ0l5bzRRSVJ2eWZFcUQvNDJNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDUVI2emtsRGIwRDd0ZXF2bEFHVzU3Q0xtWnp2MzRWWVRTRTlXQkcyTmRQcEJ5VFJCcQpZejBvb05VamNqclg2NE94dlZEY1N5MXdoMlQzbU5nYi95ZVQ3ZlhLMU8xMEN2bXRHUWU3UU1kMEEwOUVDNElqCndyWDJjUTRObVEzRVd6Mkc3SW9tSFlNMjQyaUNFRHNtL3pqVm5hK0ZDeVpPdy9yUnE0V2NycEFYL085djR5Z3cKMStPNUJlOFVBYUV5ZzJSZ1RHQ0g4VEp5ZW94cnhnOXJCcnRvNmpUTmVpYXB5djVsRktrK1ZCd3N4dXdicjN2MworWmNlQXpkOWFhc2l5QW9OeEV0V3FIYmN6Mmp6S1dvazBpTWpUUk9iQ1NJQXhCUzhhRWhlejhYOXQxbzVZa0VJCmhNK1BtcUIzbVF2aEhWblJZVWdySUh0MnBneVJXZ1FmaG9SNAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+        }
+        createdAt              : "2022-04-01 07:31:02.127 +0000 UTC"
+        enabledClusterLogTypes : []
+        encryptionConfig       : <null>
+        endpoint               : "https://0030743A7B6BDF62E7A8C6F66FC10D8E.gr7.us-west-2.eks.amazonaws.com"
+        id                     : "eks-cluster-dc83353"
+        identities             : [
+            [0]: {
+                oidcs: [
+                    [0]: {
+                        issuer: "https://oidc.eks.us-west-2.amazonaws.com/id/0030743A7B6BDF62E7A8C6F66FC10D8E"
+                    }
+                ]
+            }
+        ]
+        kubernetesNetworkConfig: {
+            ipFamily       : "ipv4"
+            serviceIpv4Cidr: "10.100.0.0/16"
+        }
+        name                   : "eks-cluster-dc83353"
+        platformVersion        : "eks.5"
+        roleArn                : "arn:aws:iam::616138583583:role/eks-role-be36613"
+        status                 : "ACTIVE"
+        tags                   : {}
+        tagsAll                : {}
+        version                : "1.21"
+        vpcConfig              : {
+            clusterSecurityGroupId: "sg-02bacf2bb5464b516"
+            endpointPrivateAccess : false
+            endpointPublicAccess  : true
+            publicAccessCidrs     : [
+                [0]: "0.0.0.0/0"
+            ]
+            securityGroupIds      : [
+                [0]: "sg-0d1f8bb63e78926f4"
+            ]
+            subnetIds             : [
+                [0]: "subnet-0016572b"
+                [1]: "subnet-d7e7fe9c"
+                [2]: "subnet-c7d926bf"
+                [3]: "subnet-43f43a1e"
+            ]
+            vpcId                 : "vpc-4b82e033"
+        }
+
+  aws:iam:Role (eks-role):
+    + aws:iam/role:Role: (create)
+        [urn=urn:pulumi:dev::eks::aws:iam/role:Role::eks-role]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        arn                : "arn:aws:iam::616138583583:role/eks-role-be36613"
+        assumeRolePolicy   : (json) {
+            Statement: [
+                [0]: {
+                    Action   : "sts:AssumeRole"
+                    Effect   : "Allow"
+                    Principal: {
+                        Service: "eks.amazonaws.com"
+                    }
+                    Sid      : ""
+                }
+            ]
+            Version  : "2008-10-17"
+        }
+    
+        createDate         : "2022-04-01T07:30:56Z"
+        description        : ""
+        forceDetachPolicies: false
+        id                 : "eks-role-be36613"
+        inlinePolicies     : [
+            [0]: {
+                name  : ""
+                policy: ""
+            }
+        ]
+        managedPolicyArns  : []
+        maxSessionDuration : 3600
+        name               : "eks-role-be36613"
+        namePrefix         : ""
+        path               : "/"
+        tags               : {}
+        tagsAll            : {}
+        uniqueId           : "AROAY65FYVYPY5QOJG3Q3"
+
+  aws:iam:RolePolicyAttachment (eks-rpa-cluster-policy):
+    + aws:iam/rolePolicyAttachment:RolePolicyAttachment: (create)
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        id       : "eks-role-be36613-20220401073059129000000002"
+        policyArn: "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+        role     : "eks-role-be36613"
+
+  aws:iam:RolePolicyAttachment (eks-rpa-service-policy):
+    + aws:iam/rolePolicyAttachment:RolePolicyAttachment: (create)
+        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
+        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+        id       : "eks-role-be36613-20220401073059037900000001"
+        policyArn: "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+        role     : "eks-role-be36613"
+
+  pulumi:pulumi:Stack (eks-dev):
+    + pulumi:pulumi:Stack: (create)
+        [urn=urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev]
+
+Diagnostics:
+  pulumi:pulumi:Stack (eks-dev):
+    Configuration:
+        aws:region: us-west-2
+
+Resources:
+    + 6 created
+
+Duration: 8m22s
+

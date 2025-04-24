@@ -1,0 +1,11 @@
+<{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}><{%reset%}><{%reset%}>  component: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::component::parent]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

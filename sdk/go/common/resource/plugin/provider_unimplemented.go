@@ -12,25 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:lll
 package plugin
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// UnimplementedProvider can be embedded to have forward compatible implementations.
-type UnimplementedProvider struct{}
+// NotForwardCompatible can be embedded to explicitly opt out of forward compatibility.
+//
+// Either NotForwardCompatibleProvider or [UnimplementedProvider] must be embedded to
+// implement [Provider].
+type NotForwardCompatibleProvider struct{}
+
+// UnimplementedProvider can be embedded to have a forward compatible implementation of
+// [Provider].
+//
+// Either NotForwardCompatibleProvider or [UnimplementedProvider] must be embedded to
+// implement [Provider].
+type UnimplementedProvider struct{ NotForwardCompatibleProvider }
+
+func (p *UnimplementedProvider) Handshake(
+	context.Context, ProviderHandshakeRequest,
+) (*ProviderHandshakeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
 
 func (p *UnimplementedProvider) Close() error {
 	return status.Error(codes.Unimplemented, "Close is not yet implemented")
 }
 
-func (p *UnimplementedProvider) SignalCancellation() error {
+func (p *UnimplementedProvider) SignalCancellation(context.Context) error {
 	return status.Error(codes.Unimplemented, "SignalCancellation is not yet implemented")
 }
 
@@ -38,66 +54,74 @@ func (p *UnimplementedProvider) Pkg() tokens.Package {
 	return tokens.Package("")
 }
 
-func (p *UnimplementedProvider) GetSchema(version int) ([]byte, error) {
-	return nil, status.Error(codes.Unimplemented, "GetSchema is not yet implemented")
+func (p *UnimplementedProvider) Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error) {
+	return ParameterizeResponse{}, status.Error(codes.Unimplemented, "Parameterize is not yet implemented")
 }
 
-func (p *UnimplementedProvider) CheckConfig(urn resource.URN, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
-	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
+func (p *UnimplementedProvider) GetSchema(context.Context, GetSchemaRequest) (GetSchemaResponse, error) {
+	return GetSchemaResponse{}, status.Error(codes.Unimplemented, "GetSchema is not yet implemented")
 }
 
-func (p *UnimplementedProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+func (p *UnimplementedProvider) CheckConfig(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
+	return CheckConfigResponse{}, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
+}
+
+func (p *UnimplementedProvider) DiffConfig(context.Context, DiffConfigRequest) (DiffConfigResponse, error) {
 	return DiffResult{}, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Configure(inputs resource.PropertyMap) error {
-	return status.Error(codes.Unimplemented, "Configure is not yet implemented")
+func (p *UnimplementedProvider) Configure(context.Context, ConfigureRequest) (ConfigureResponse, error) {
+	return ConfigureResponse{}, status.Error(codes.Unimplemented, "Configure is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Check(urn resource.URN, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
-	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "Check is not yet implemented")
+func (p *UnimplementedProvider) Check(context.Context, CheckRequest) (CheckResponse, error) {
+	return CheckResponse{}, status.Error(codes.Unimplemented, "Check is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
-	return DiffResult{}, status.Error(codes.Unimplemented, "Diff is not yet implemented")
+func (p *UnimplementedProvider) Diff(context.Context, DiffRequest) (DiffResponse, error) {
+	return DiffResponse{}, status.Error(codes.Unimplemented, "Diff is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	return resource.ID(""), resource.PropertyMap{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Create is not yet implemented")
+func (p *UnimplementedProvider) Create(context.Context, CreateRequest) (CreateResponse, error) {
+	return CreateResponse{}, status.Error(codes.Unimplemented, "Create is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Read(urn resource.URN, id resource.ID, inputs resource.PropertyMap, state resource.PropertyMap) (ReadResult, resource.Status, error) {
-	return ReadResult{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Read is not yet implemented")
+func (p *UnimplementedProvider) Read(context.Context, ReadRequest) (ReadResponse, error) {
+	return ReadResponse{}, status.Error(codes.Unimplemented, "Read is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-	return resource.PropertyMap{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Update is not yet implemented")
+func (p *UnimplementedProvider) Update(context.Context, UpdateRequest) (UpdateResponse, error) {
+	return UpdateResponse{}, status.Error(codes.Unimplemented, "Update is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
-	return resource.StatusUnknown, status.Error(codes.Unimplemented, "Delete is not yet implemented")
+func (p *UnimplementedProvider) Delete(context.Context, DeleteRequest) (DeleteResponse, error) {
+	return DeleteResponse{}, status.Error(codes.Unimplemented, "Delete is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
-	return ConstructResult{}, status.Error(codes.Unimplemented, "Construct is not yet implemented")
+func (p *UnimplementedProvider) Construct(context.Context, ConstructRequest) (ConstructResponse, error) {
+	return ConstructResponse{}, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
-	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
+func (p *UnimplementedProvider) Invoke(context.Context, InvokeRequest) (InvokeResponse, error) {
+	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
-func (p *UnimplementedProvider) StreamInvoke(tok tokens.ModuleMember, args resource.PropertyMap, onNext func(resource.PropertyMap) error) ([]CheckFailure, error) {
-	return nil, status.Error(codes.Unimplemented, "StreamInvoke is not yet implemented")
+func (p *UnimplementedProvider) Call(context.Context, CallRequest) (CallResponse, error) {
+	return CallResponse{}, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo, options CallOptions) (CallResult, error) {
-	return CallResult{}, status.Error(codes.Unimplemented, "Call is not yet implemented")
-}
-
-func (p *UnimplementedProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *UnimplementedProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo is not yet implemented")
 }
 
-func (p *UnimplementedProvider) GetMapping(key string) ([]byte, string, error) {
-	return nil, "", status.Error(codes.Unimplemented, "GetMapping is not yet implemented")
+func (p *UnimplementedProvider) GetMapping(context.Context, GetMappingRequest) (GetMappingResponse, error) {
+	return GetMappingResponse{}, status.Error(codes.Unimplemented, "GetMapping is not yet implemented")
+}
+
+func (p *UnimplementedProvider) GetMappings(context.Context, GetMappingsRequest) (GetMappingsResponse, error) {
+	return GetMappingsResponse{}, status.Error(codes.Unimplemented, "GetMappings is not yet implemented")
+}
+
+func (p NotForwardCompatibleProvider) mustEmbedAForwardCompatibilityOption(
+	UnimplementedProvider, NotForwardCompatibleProvider) {
 }

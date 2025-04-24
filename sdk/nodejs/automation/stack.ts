@@ -14,7 +14,7 @@
 
 import * as fs from "fs";
 import * as os from "os";
-import * as path from "path";
+import * as pathlib from "path";
 import * as readline from "readline";
 import * as upath from "upath";
 
@@ -22,78 +22,86 @@ import * as grpc from "@grpc/grpc-js";
 import TailFile from "@logdna/tail-file";
 
 import * as log from "../log";
-import { CommandResult, runPulumiCmd } from "./cmd";
+import { CommandResult } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
-import { LanguageServer, maxRPCMessageSize } from "./server";
-import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { LocalWorkspace } from "./localWorkspace";
+import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-const langrpc = require("../proto/language_grpc_pb.js");
-
-interface ReadlineResult {
-    tail: TailFile;
-    rl: readline.Interface;
-}
+import * as langrpc from "../proto/language_grpc_pb";
 
 /**
- * Stack is an isolated, independently configurable instance of a Pulumi program.
- * Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
- * Multiple Stacks are commonly used to denote different phases of development
- * (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
+ * {@link Stack} is an isolated, independently configurable instance of a Pulumi
+ * program. {@link Stack} exposes methods for the full Pulumi lifecycle
+ * (up/preview/refresh/destroy), as well as managing configuration. Multiple
+ * {@link Stacks} are commonly used to denote different phases of development
+ * (such as development, staging and production) or feature branches (such as
+ * feature-x-dev, jane-feature-x-dev).
  *
  * @alpha
  */
 export class Stack {
     /**
-     * The name identifying the Stack.
+     * The name identifying the stack.
      */
     readonly name: string;
+
     /**
-     * The Workspace the Stack was created from.
+     * The {@link Workspace} the stack was created from.
      */
     readonly workspace: Workspace;
+
     private ready: Promise<any>;
+
     /**
      * Creates a new stack using the given workspace, and stack name.
      * It fails if a stack with that name already exists
      *
-     * @param name The name identifying the Stack.
-     * @param workspace The Workspace the Stack was created from.
+     * @param name
+     *  The name identifying the Stack.
+     * @param workspace
+     *  The Workspace the Stack was created from.
      */
     static async create(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "create");
         await stack.ready;
         return stack;
     }
+
     /**
-     * Selects stack using the given workspace, and stack name.
-     * It returns an error if the given Stack does not exist.
+     * Selects stack using the given workspace and stack name. It returns an
+     * error if the given stack does not exist.
      *
-     * @param name The name identifying the Stack.
-     * @param workspace The Workspace the Stack was created from.
+     * @param name
+     *  The name identifying the Stack.
+     * @param workspace
+     *  The {@link Workspace} the stack will be created from.
      */
     static async select(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "select");
         await stack.ready;
         return stack;
     }
+
     /**
-     * Tries to create a new stack using the given workspace and
-     * stack name if the stack does not already exist,
-     * or falls back to selecting the existing stack. If the stack does not exist,
-     * it will be created and selected.
+     * Creates a new stack using the given workspace and stack name if the stack
+     * does not already exist, or falls back to selecting the existing stack. If
+     * the stack does not exist, it will be created and selected.
      *
-     * @param name The name identifying the Stack.
-     * @param workspace The Workspace the Stack was created from.
+     * @param name
+     *  The name identifying the Stack.
+     * @param workspace
+     *  The {@link Workspace} the stack will be created from.
      */
     static async createOrSelect(name: string, workspace: Workspace): Promise<Stack> {
         const stack = new Stack(name, workspace, "createOrSelect");
         await stack.ready;
         return stack;
     }
+
     private constructor(name: string, workspace: Workspace, mode: StackInitMode) {
         this.name = name;
         this.workspace = workspace;
@@ -117,6 +125,7 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
+
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
         const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 }).on("tail_error", (err) => {
             throw err;
@@ -132,7 +141,6 @@ export class Stack {
                 log.warn(`Failed to parse engine event
 If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
 details about your environment.
-
 Event: ${line}\n${e.toString()}`);
             }
         });
@@ -142,11 +150,15 @@ Event: ${line}\n${e.toString()}`);
             rl: lineSplitter,
         };
     }
+
     /**
-     * Creates or updates the resources in a stack by executing the program in the Workspace.
-     * https://www.pulumi.com/docs/cli/commands/pulumi_up/
+     * Creates or updates the resources in a stack by executing the program in
+     * the {@link Workspace.}
      *
-     * @param opts Options to customize the behavior of the update.
+     * @param opts
+     *  Options to customize the behavior of the update.
+     *
+     * @see https://www.pulumi.com/docs/cli/commands/pulumi_up/
      */
     async up(opts?: UpOptions): Promise<UpResult> {
         const args = ["up", "--yes", "--skip-preview"];
@@ -165,12 +177,20 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
             if (opts.diff) {
                 args.push("--diff");
             }
             if (opts.replace) {
                 for (const rURN of opts.replace) {
                     args.push("--replace", rURN);
+                }
+            }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
                 }
             }
             if (opts.target) {
@@ -188,6 +208,9 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--policy-pack-config", packConfig);
                 }
             }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
             }
@@ -199,6 +222,12 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.plan) {
                 args.push("--plan", opts.plan);
+            }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
+            if (opts.attachDebugger) {
+                args.push("--attach-debugger");
             }
             applyGlobalOpts(opts, args);
         }
@@ -224,7 +253,6 @@ Event: ${line}\n${e.toString()}`);
                     }
                 });
             });
-            server.start();
             onExit = (hasError: boolean) => {
                 languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
@@ -249,7 +277,7 @@ Event: ${line}\n${e.toString()}`);
 
         let upResult: CommandResult;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -271,11 +299,13 @@ Event: ${line}\n${e.toString()}`);
             outputs: outputs!,
         };
     }
+
     /**
      * Performs a dry-run update to a stack, returning pending changes.
-     * https://www.pulumi.com/docs/cli/commands/pulumi_preview/
      *
      * @param opts Options to customize the behavior of the preview.
+     *
+     * @see https://www.pulumi.com/docs/cli/commands/pulumi_preview/
      */
     async preview(opts?: PreviewOptions): Promise<PreviewResult> {
         const args = ["preview"];
@@ -305,6 +335,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -320,6 +355,9 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--policy-pack-config", packConfig);
                 }
             }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
             }
@@ -331,6 +369,12 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.plan) {
                 args.push("--save-plan", opts.plan);
+            }
+            if (opts.importFile) {
+                args.push("--import-file", opts.importFile);
+            }
+            if (opts.attachDebugger) {
+                args.push("--attach-debugger");
             }
             applyGlobalOpts(opts, args);
         }
@@ -356,7 +400,6 @@ Event: ${line}\n${e.toString()}`);
                     }
                 });
             });
-            server.start();
             onExit = (hasError: boolean) => {
                 languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
@@ -382,7 +425,7 @@ Event: ${line}\n${e.toString()}`);
 
         let previewResult: CommandResult;
         try {
-            previewResult = await this.runPulumiCmd(args, opts?.onOutput);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -403,15 +446,19 @@ Event: ${line}\n${e.toString()}`);
             changeSummary: summaryEvent?.resourceChanges || {},
         };
     }
+
     /**
-     * Compares the current stack’s resource state with the state known to exist in the actual
-     * cloud provider. Any such changes are adopted into the current stack.
+     * Compares the current stack’s resource state with the state known to exist
+     * in the actual cloud provider. Any such changes are adopted into the
+     * current stack.
      *
-     * @param opts Options to customize the behavior of the refresh.
+     * @param opts
+     *  Options to customize the behavior of the refresh.
      */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
-        const args = ["refresh", "--yes", "--skip-preview"];
+        const args = ["refresh", "--yes"];
 
+        args.push(opts?.previewOnly ? "--preview-only" : "--skip-preview");
         args.push(...this.remoteArgs());
 
         if (opts) {
@@ -421,16 +468,37 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.clearPendingCreates) {
+                args.push("--clear-pending-creates");
+            }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
             }
             applyGlobalOpts(opts, args);
         }
@@ -451,9 +519,12 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let refResult: CommandResult;
+        try {
+            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
@@ -464,13 +535,23 @@ Event: ${line}\n${e.toString()}`);
             summary: summary!,
         };
     }
+
     /**
-     * Destroy deletes all resources in a stack, leaving all history and configuration intact.
+     * Deletes all resources in a stack. By default, this method will leave all
+     * history and configuration intact. If `opts.remove` is set, the entire
+     * stack and its configuration will also be deleted.
      *
-     * @param opts Options to customize the behavior of the destroy.
+     * @param opts
+     *  Options to customize the behavior of the destroy.
      */
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
-        const args = ["destroy", "--yes", "--skip-preview"];
+        const args = ["destroy"];
+
+        if (opts?.previewOnly) {
+            args.push("--preview-only");
+        } else {
+            args.push("--yes", "--skip-preview");
+        }
 
         args.push(...this.remoteArgs());
 
@@ -478,10 +559,18 @@ Event: ${line}\n${e.toString()}`);
             if (opts.message) {
                 args.push("--message", opts.message);
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -489,11 +578,24 @@ Event: ${line}\n${e.toString()}`);
             if (opts.excludeProtected) {
                 args.push("--exclude-protected");
             }
+            if (opts.continueOnError) {
+                args.push("--continue-on-error");
+            }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
+            if (opts.runProgram !== undefined) {
+                if (opts.runProgram) {
+                    args.push("--run-program=true");
+                } else {
+                    args.push("--run-program=false");
+                }
             }
             applyGlobalOpts(opts, args);
         }
@@ -514,72 +616,253 @@ Event: ${line}\n${e.toString()}`);
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
 
-        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
-        await cleanUp(logFile, logResult);
+        let desResult: CommandResult;
+        try {
+            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+        } finally {
+            await cleanUp(logFile, await logPromise);
+        }
 
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
         const summary = await this.info(!this.isRemote && opts?.showSecrets);
+
+        // If `opts.remove` was set, remove the stack now. We take this approach
+        // rather than passing `--remove` to `pulumi destroy` because the latter
+        // would make it impossible for us to retrieve a summary of the
+        // operation above for returning to the caller.
+        if (opts?.remove) {
+            await this.workspace.removeStack(this.name);
+        }
+
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
             summary: summary!,
         };
     }
+
+    /**
+     * Rename an existing stack
+     */
+    async rename(options: RenameOptions): Promise<RenameResult> {
+        const args = ["stack", "rename", options.stackName];
+        args.push(...this.remoteArgs());
+
+        applyGlobalOpts(options, args);
+
+        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+
+        if (this.isRemote && options?.showSecrets) {
+            throw new Error("can't enable `showSecrets` for remote workspaces");
+        }
+
+        const summary = await this.info(!this.isRemote && options?.showSecrets);
+
+        return {
+            stdout: renameResult.stdout,
+            stderr: renameResult.stderr,
+            summary: summary!,
+        };
+    }
+
+    /**
+     * Import resources into the stack
+     *
+     * @param options Options to specify resources and customize the behavior of the import.
+     */
+    async import(options: ImportOptions): Promise<ImportResult> {
+        const args = ["import", "--yes", "--skip-preview"];
+
+        if (options.message) {
+            args.push("--message", options.message);
+        }
+
+        applyGlobalOpts(options, args);
+
+        let importResult: CommandResult;
+        // for import operations, generate a temporary directory to store the following:
+        //   - the import file when the user specifies resources to import
+        //   - the output file for the generated code
+        // we use the import file as input to the import command
+        // we the output file to read the generated code and return it to the user
+        let tempDir: string = "";
+        try {
+            tempDir = await fs.promises.mkdtemp(pathlib.join(os.tmpdir(), "pulumi-import-"));
+            const tempGeneratedCodeFile = pathlib.join(tempDir, "generated-code.txt");
+            if (options.resources) {
+                // user has specified resources to import, write them to a temp import file
+                const tempImportFile = pathlib.join(tempDir, "import.json");
+                await fs.promises.writeFile(
+                    tempImportFile,
+                    JSON.stringify({
+                        nameTable: options.nameTable,
+                        resources: options.resources,
+                    }),
+                );
+
+                args.push("--file", tempImportFile);
+            }
+
+            if (options.generateCode === false) {
+                // --generate-code is set to true by default
+                // only use --generate-code=false if the user explicitly sets it to false
+                args.push("--generate-code=false");
+            } else {
+                args.push("--out", tempGeneratedCodeFile);
+            }
+
+            if (options.protect === false) {
+                // --protect is set to true by default
+                // only use --protect=false if the user explicitly sets it to false
+                args.push(`--protect=false`);
+            }
+
+            if (options.converter) {
+                // if the user specifies a converter, pass it to `--from <converter>` argument of import
+                args.push("--from", options.converter);
+                if (options.converterArgs) {
+                    // pass any additional arguments to the converter
+                    // for example using {
+                    //   converter: "terraform"
+                    //   converterArgs: "./tfstate.json"
+                    // }
+                    // would be equivalent to `pulumi import --from terraform ./tfstate.json`
+                    args.push("--");
+                    args.push(...options.converterArgs);
+                }
+            }
+
+            importResult = await this.runPulumiCmd(args, options.onOutput);
+
+            const summary = await this.info(!this.isRemote && options.showSecrets);
+
+            let generatedCode = "";
+            if (options.generateCode !== false) {
+                generatedCode = await fs.promises.readFile(tempGeneratedCodeFile, "utf8");
+            }
+
+            return {
+                stdout: importResult.stdout,
+                stderr: importResult.stderr,
+                generatedCode: generatedCode,
+                summary: summary!,
+            };
+        } finally {
+            if (tempDir !== "") {
+                // clean up temp directory we used for the import file
+                await fs.promises.rm(tempDir, { recursive: true });
+            }
+        }
+    }
+
+    /**
+     * Adds environments to the end of a stack's import list. Imported
+     * environments are merged in order per the ESC merge rules. The list of
+     * environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param environments
+     *  The names of the environments to add to the stack's configuration
+     */
+    async addEnvironments(...environments: string[]): Promise<void> {
+        await this.workspace.addEnvironments(this.name, ...environments);
+    }
+
+    /**
+     * Returns the list of environments currently in the stack's import list.
+     */
+    async listEnvironments(): Promise<string[]> {
+        return this.workspace.listEnvironments(this.name);
+    }
+
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param environment
+     *  The name of the environment to remove from the stack's configuration
+     */
+    async removeEnvironment(environment: string): Promise<void> {
+        await this.workspace.removeEnvironment(this.name, environment);
+    }
+
     /**
      * Returns the config value associated with the specified key.
      *
-     * @param key The key to use for the config lookup
+     * @param key
+     *  The key to use for the config lookup
+     * @param path
+     *  The key contains a path to a property in a map or list to get
      */
-    async getConfig(key: string): Promise<ConfigValue> {
-        return this.workspace.getConfig(this.name, key);
+    async getConfig(key: string, path?: boolean): Promise<ConfigValue> {
+        return this.workspace.getConfig(this.name, key, path);
     }
+
     /**
-     * Returns the full config map associated with the stack in the Workspace.
+     * Returns the full config map associated with the stack in the workspace.
      */
     async getAllConfig(): Promise<ConfigMap> {
         return this.workspace.getAllConfig(this.name);
     }
+
     /**
-     * Sets a config key-value pair on the Stack in the associated Workspace.
+     * Sets a config key-value pair on the stack in the associated Workspace.
      *
-     * @param key The key to set.
-     * @param value The config value to set.
+     * @param key
+     *  The key to set.
+     * @param value
+     *  The config value to set.
+     * @param path
+     *  The key contains a path to a property in a map or list to set.
      */
-    async setConfig(key: string, value: ConfigValue): Promise<void> {
-        return this.workspace.setConfig(this.name, key, value);
+    async setConfig(key: string, value: ConfigValue, path?: boolean): Promise<void> {
+        return this.workspace.setConfig(this.name, key, value, path);
     }
+
     /**
-     * Sets all specified config values on the stack in the associated Workspace.
+     * Sets all specified config values on the stack in the associated
+     * workspace.
      *
-     * @param config The map of config key-value pairs to set.
+     * @param config
+     *  The map of config key-value pairs to set.
+     * @param path
+     *  The keys contain a path to a property in a map or list to set.
      */
-    async setAllConfig(config: ConfigMap): Promise<void> {
-        return this.workspace.setAllConfig(this.name, config);
+    async setAllConfig(config: ConfigMap, path?: boolean): Promise<void> {
+        return this.workspace.setAllConfig(this.name, config, path);
     }
+
     /**
-     * Removes the specified config key from the Stack in the associated Workspace.
+     * Removes the specified config key from the stack in the associated workspace.
      *
-     * @param key The config key to remove.
+     * @param key
+     *  The config key to remove.
+     * @param path
+     *  The key contains a path to a property in a map or list to remove.
      */
-    async removeConfig(key: string): Promise<void> {
-        return this.workspace.removeConfig(this.name, key);
+    async removeConfig(key: string, path?: boolean): Promise<void> {
+        return this.workspace.removeConfig(this.name, key, path);
     }
+
     /**
-     * Removes the specified config keys from the Stack in the associated Workspace.
+     * Removes the specified config keys from the stack in the associated workspace.
      *
-     * @param keys The config keys to remove.
+     * @param keys
+     *  The config keys to remove.
+     * @param path
+     *  The keys contain a path to a property in a map or list to remove.
      */
-    async removeAllConfig(keys: string[]): Promise<void> {
-        return this.workspace.removeAllConfig(this.name, keys);
+    async removeAllConfig(keys: string[], path?: boolean): Promise<void> {
+        return this.workspace.removeAllConfig(this.name, keys, path);
     }
+
     /**
      * Gets and sets the config map used with the last update.
      */
     async refreshConfig(): Promise<ConfigMap> {
         return this.workspace.refreshConfig(this.name);
     }
+
     /**
      * Returns the tag value associated with specified key.
      *
@@ -588,38 +871,46 @@ Event: ${line}\n${e.toString()}`);
     async getTag(key: string): Promise<string> {
         return this.workspace.getTag(this.name, key);
     }
+
     /**
-     * Sets a tag key-value pair on the Stack in the associated Workspace.
+     * Sets a tag key-value pair on the stack in the associated workspace.
      *
-     * @param key The tag key to set.
-     * @param value The tag value to set.
+     * @param key
+     *  The tag key to set.
+     * @param value
+     *  The tag value to set.
      */
     async setTag(key: string, value: string): Promise<void> {
         await this.workspace.setTag(this.name, key, value);
     }
+
     /**
-     * Removes the specified tag key-value pair from the Stack in the associated Workspace.
+     * Removes the specified tag key-value pair from the stack in the associated
+     * workspace.
      *
      * @param key The tag key to remove.
      */
     async removeTag(key: string): Promise<void> {
         await this.workspace.removeTag(this.name, key);
     }
+
     /**
-     * Returns the full tag map associated with the stack in the Workspace.
+     * Returns the full tag map associated with the stack in the workspace.
      */
     async listTags(): Promise<TagMap> {
         return this.workspace.listTags(this.name);
     }
+
     /**
-     * Gets the current set of Stack outputs from the last Stack.up().
+     * Gets the current set of stack outputs from the last {@link Stack.up}.
      */
     async outputs(): Promise<OutputMap> {
         return this.workspace.stackOutputs(this.name);
     }
+
     /**
-     * Returns a list summarizing all previous and current results from Stack lifecycle operations
-     * (up/preview/refresh/destroy).
+     * Returns a list summarizing all previous and current results from Stack
+     * lifecycle operations (up/preview/refresh/destroy).
      */
     async history(pageSize?: number, page?: number, showSecrets?: boolean): Promise<UpdateSummary[]> {
         const args = ["stack", "history", "--json"];
@@ -641,6 +932,7 @@ Event: ${line}\n${e.toString()}`);
             return value;
         });
     }
+
     async info(showSecrets?: boolean): Promise<UpdateSummary | undefined> {
         const history = await this.history(1 /*pageSize*/, undefined, showSecrets);
         if (!history || history.length === 0) {
@@ -648,35 +940,43 @@ Event: ${line}\n${e.toString()}`);
         }
         return history[0];
     }
+
     /**
-     * Cancel stops a stack's currently running update. It returns an error if no update is currently running.
-     * Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
-     * if a resource operation was pending when the update was canceled.
-     * This command is not supported for local backends.
+     * Stops a stack's currently running update. It returns an error if no
+     * update is currently running. Note that this operation is _very
+     * dangerous_, and may leave the stack in an inconsistent state if a
+     * resource operation was pending when the update was canceled.
      */
     async cancel(): Promise<void> {
         await this.runPulumiCmd(["cancel", "--yes"]);
     }
 
     /**
-     * exportStack exports the deployment state of the stack.
-     * This can be combined with Stack.importStack to edit a stack's state (such as recovery from failed deployments).
+     * Exports the deployment state of the stack. This can be combined with
+     * {@link Stack.importStack} to edit a stack's state (such as recovery from
+     * failed deployments).
      */
     async exportStack(): Promise<Deployment> {
         return this.workspace.exportStack(this.name);
     }
 
     /**
-     * importStack imports the specified deployment state into a pre-existing stack.
-     * This can be combined with Stack.exportStack to edit a stack's state (such as recovery from failed deployments).
+     * Imports the specified deployment state into a pre-existing stack. This
+     * can be combined with {@link Stack.exportStack} to edit a stack's state
+     * (such as recovery from failed deployments).
      *
-     * @param state the stack state to import.
+     * @param state
+     *  The stack state to import.
      */
     async importStack(state: Deployment): Promise<void> {
         return this.workspace.importStack(this.name, state);
     }
 
-    private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
+    private async runPulumiCmd(
+        args: string[],
+        onOutput?: (out: string) => void,
+        signal?: AbortSignal,
+    ): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
             PULUMI_DEBUG_COMMANDS: "true",
         };
@@ -690,7 +990,7 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
+        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, signal);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -704,6 +1004,11 @@ Event: ${line}\n${e.toString()}`);
         const ws = this.workspace;
         return ws instanceof LocalWorkspace ? ws.remoteArgs() : [];
     }
+}
+
+interface ReadlineResult {
+    tail: TailFile;
+    rl: readline.Interface;
 }
 
 function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
@@ -725,44 +1030,117 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
     if (opts.debug) {
         args.push("--debug");
     }
+    if (opts.suppressOutputs) {
+        args.push("--suppress-outputs");
+    }
+    if (opts.suppressProgress) {
+        args.push("--suppress-progress");
+    }
 }
 
 /**
  * Returns a stack name formatted with the greatest possible specificity:
- * org/project/stack or user/project/stack
- * Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
- * Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
- * format, and instead only use the stack name without an org/user or project to qualify it.
+ * `org/project/stack` or `user/project/stack` Using this format avoids
+ * ambiguity in stack identity guards creating or selecting the wrong stack.
+ *
+ * Note: legacy DIY backends (local file, S3, Azure Blob) do not support
+ * stack names in this format, and instead only use the stack name without an
+ * org/user or project to qualify it.
+ *
  * See: https://github.com/pulumi/pulumi/issues/2522
  *
- * @param org The org (or user) that contains the Stack.
- * @param project The project that parents the Stack.
- * @param stack The name of the Stack.
+ * Non-legacy DIY backends do support the `org/project/stack` format, but `org`
+ * must be set to "organization".
+ *
+ * @param org
+ *  The org (or user) that contains the Stack.
+ * @param project
+ *  The project that parents the Stack.
+ * @param stack
+ *  The name of the Stack.
  */
 export function fullyQualifiedStackName(org: string, project: string, stack: string): string {
     return `${org}/${project}/${stack}`;
 }
 
+/**
+ * A set of outputs, keyed by name, that might be returned by a Pulumi program
+ * as part of a stack operation.
+ */
+export type OutputMap = { [key: string]: OutputValue };
+
+/**
+ * An output produced by a Pulumi program as part of a stack operation.
+ */
 export interface OutputValue {
+    /**
+     * The underlying output value.
+     */
     value: any;
+
+    /**
+     * True if and only if the value represents a secret.
+     */
     secret: boolean;
 }
 
-export type OutputMap = { [key: string]: OutputValue };
-
+/**
+ * A summary of a stack operation.
+ */
 export interface UpdateSummary {
-    // pre-update info
+    // Pre-update information.
+
+    /**
+     * The kind of operation to be executed/that was executed.
+     */
     kind: UpdateKind;
+
+    /**
+     * The time at which the operation started.
+     */
     startTime: Date;
+
+    /**
+     * An optional message associated with the operation.
+     */
     message: string;
+
+    /**
+     * The environment supplied to the operation.
+     */
     environment: { [key: string]: string };
+
+    /**
+     * The configuration used for the operation.
+     */
     config: ConfigMap;
 
-    // post-update info
+    // Post-update information.
+
+    /**
+     * The operation result.
+     */
     result: UpdateResult;
+
+    /**
+     * The time at which the operation completed.
+     */
     endTime: Date;
+
+    /**
+     * The version of the stack created by the operation.
+     */
     version: number;
+
+    /**
+     * A raw JSON blob detailing the deployment.
+     */
     Deployment?: RawJSON;
+
+    /**
+     * A summary of the changes yielded by the operation (e.g. 4 unchanged, 3
+     * created, etc.).
+     */
     resourceChanges?: OpMap;
 }
 
@@ -812,9 +1190,24 @@ export type RawJSON = string;
  * The deployment output from running a Pulumi program update.
  */
 export interface UpResult {
+    /**
+     * The standard output from the update.
+     */
     stdout: string;
+
+    /**
+     * The standard error output from the update.
+     */
     stderr: string;
+
+    /**
+     * The outputs from the update.
+     */
     outputs: OutputMap;
+
+    /**
+     * A summary of the update.
+     */
     summary: UpdateSummary;
 }
 
@@ -822,8 +1215,20 @@ export interface UpResult {
  * Output from running a Pulumi program preview.
  */
 export interface PreviewResult {
+    /**
+     * The standard output from the preview.
+     */
     stdout: string;
+
+    /**
+     * The standard error output from the preview.
+     */
     stderr: string;
+
+    /**
+     * A summary of the changes yielded by the operation (e.g. 4 unchanged, 3
+     * created, etc.).
+     */
     changeSummary: OpMap;
 }
 
@@ -831,8 +1236,19 @@ export interface PreviewResult {
  * Output from refreshing the resources in a given Stack.
  */
 export interface RefreshResult {
+    /**
+     * The standard output from the refresh.
+     */
     stdout: string;
+
+    /**
+     * The standard error output from the refresh.
+     */
     stderr: string;
+
+    /**
+     * A summary of the refresh.
+     */
     summary: UpdateSummary;
 }
 
@@ -840,115 +1256,565 @@ export interface RefreshResult {
  * Output from destroying all resources in a Stack.
  */
 export interface DestroyResult {
+    /**
+     * The standard output from the destroy.
+     */
+    stdout: string;
+
+    /**
+     * The standard error output from the destroy.
+     */
+    stderr: string;
+
+    /**
+     * A summary of the destroy.
+     */
+    summary: UpdateSummary;
+}
+
+/**
+ * Output from renaming the Stack.
+ */
+export interface RenameResult {
+    /**
+     * The standard output from the rename.
+     */
+    stdout: string;
+
+    /**
+     * The standard error output from the rename.
+     */
+    stderr: string;
+
+    /**
+     * A summary of the rename.
+     */
+    summary: UpdateSummary;
+}
+
+/**
+ * The output from performing an import operation.
+ */
+export interface ImportResult {
     stdout: string;
     stderr: string;
+    generatedCode: string;
     summary: UpdateSummary;
 }
 
 export interface GlobalOpts {
-    /** Colorize output. */
+    /**
+     * Colorize output.
+     */
     color?: "always" | "never" | "raw" | "auto";
-    /** Flow log settings to child processes (like plugins) */
+
+    /**
+     * Flow log settings to child processes (like plugins)
+     */
     logFlow?: boolean;
-    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+
+    /**
+     * Enable verbose logging (e.g., v=3); anything >3 is very verbose.
+     */
     logVerbosity?: number;
-    /** Log to stderr instead of to files */
+
+    /**
+     * Log to stderr instead of to files.
+     */
     logToStdErr?: boolean;
-    /** Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file */
+
+    /**
+     * Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local files.
+     */
     tracing?: string;
-    /** Print detailed debugging output during resource operations */
+
+    /**
+     * Print detailed debugging output during resource operations.
+     * */
     debug?: boolean;
+
+    /**
+     * Suppress display of stack outputs (in case they contain sensitive values).
+     */
+    suppressOutputs?: boolean;
+
+    /**
+     * Suppress display of periodic progress dots.
+     */
+    suppressProgress?: boolean;
+
+    /**
+     * Save any creates seen during the preview into an import file to use with `pulumi import`.
+     */
+    importFile?: string;
 }
 
 /**
  * Options controlling the behavior of a Stack.up() operation.
  */
 export interface UpOptions extends GlobalOpts {
+    /**
+     * Allow P resource operations to run in parallel at once (1 for no parallelism).
+     */
     parallel?: number;
+
+    /**
+     * Optional message to associate with the operation.
+     */
     message?: string;
+
+    /**
+     * Return an error if any changes occur during this operation.
+     */
     expectNoChanges?: boolean;
+
+    /**
+     * Refresh the state of the stack's resources before this update.
+     */
+    refresh?: boolean;
+
+    /**
+     * Display the operation as a rich diff showing the overall change.
+     */
     diff?: boolean;
+
+    /**
+     * Specify a set of resource URNs to replace.
+     */
     replace?: string[];
+
+    /**
+     * Run one or more policy packs as part of this operation.
+     */
     policyPacks?: string[];
+
+    /**
+     * A set of paths to JSON files containing configuration for the supplied `policyPacks`.
+     */
     policyPackConfigs?: string[];
+
+    /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
+     * Specify a set of resource URNs to operate on. Other resources will not be updated.
+     */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
     targetDependents?: boolean;
+
+    /**
+     * A custom user agent to use when executing the operation.
+     */
     userAgent?: string;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation yields an event.
+     */
     onEvent?: (event: EngineEvent) => void;
+
+    /**
+     * An inline (in-process) Pulumi program to execute the operation against.
+     */
     program?: PulumiFn;
+
     /**
      * Plan specifies the path to an update plan to use for the update.
      */
     plan?: string;
+
     /**
      * Include secrets in the UpSummary.
      */
     showSecrets?: boolean;
+
+    /**
+     * Continue the operation to completion even if errors occur.
+     */
+    continueOnError?: boolean;
+
+    /**
+     * Run the process under a debugger, and pause until a debugger is attached.
+     */
+    attachDebugger?: boolean;
+
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
  * Options controlling the behavior of a Stack.preview() operation.
  */
 export interface PreviewOptions extends GlobalOpts {
+    /**
+     * Allow P resource operations to run in parallel at once (1 for no parallelism).
+     */
     parallel?: number;
+
+    /**
+     * Optional message to associate with the operation.
+     */
     message?: string;
+
+    /**
+     * Return an error if any changes occur during this operation.
+     */
     expectNoChanges?: boolean;
+
     /**
      * Refresh the state of the stack's resources against the cloud provider before running preview.
      */
     refresh?: boolean;
+
+    /**
+     * Display the operation as a rich diff showing the overall change.
+     */
     diff?: boolean;
+
+    /**
+     * Specify a set of resource URNs to replace.
+     */
     replace?: string[];
+
+    /**
+     * Run one or more policy packs as part of this operation.
+     */
     policyPacks?: string[];
+
+    /**
+     * A set of paths to JSON files containing configuration for the supplied `policyPacks`.
+     */
     policyPackConfigs?: string[];
+
+    /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
+     * Specify a set of resource URNs to operate on. Other resources will not be updated.
+     */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
     targetDependents?: boolean;
+
+    /**
+     * A custom user agent to use when executing the operation.
+     */
     userAgent?: string;
+
+    /**
+     * An inline (in-process) Pulumi program to execute the operation against.
+     */
     program?: PulumiFn;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation yields an event.
+     */
     onEvent?: (event: EngineEvent) => void;
-    color?: "always" | "never" | "raw" | "auto";
+
     /**
      * Plan specifies the path where the update plan should be saved.
      */
     plan?: string;
+
+    /**
+     * Run the process under a debugger, and pause until a debugger is attached.
+     */
+    attachDebugger?: boolean;
+
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
 }
 
 /**
  * Options controlling the behavior of a Stack.refresh() operation.
  */
 export interface RefreshOptions extends GlobalOpts {
+    /**
+     * Allow P resource operations to run in parallel at once (1 for no parallelism).
+     */
     parallel?: number;
+
+    /**
+     * Optional message to associate with the operation.
+     */
     message?: string;
+
+    /**
+     * Only show a preview of the refresh, but don't perform the refresh itself.
+     */
+    previewOnly?: boolean;
+
+    /**
+     * Return an error if any changes occur during this operation.
+     */
     expectNoChanges?: boolean;
+
+    /**
+     * Clear all pending creates, dropping them from the state
+     */
+    clearPendingCreates?: boolean;
+
+    /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
+     * Specify a set of resource URNs to operate on. Other resources will not be updated.
+     */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
+    targetDependents?: boolean;
+
+    /**
+     * A custom user agent to use when executing the operation.
+     */
     userAgent?: string;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation yields an event.
+     */
     onEvent?: (event: EngineEvent) => void;
-    color?: "always" | "never" | "raw" | "auto";
-    // Include secrets in the RefreshSummary
+
+    /**
+     * Include secrets in the operation summary.
+     */
     showSecrets?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the refresh.
+     */
+    runProgram?: boolean;
 }
 
 /**
  * Options controlling the behavior of a Stack.destroy() operation.
  */
 export interface DestroyOptions extends GlobalOpts {
+    /**
+     * Allow P resource operations to run in parallel at once (1 for no parallelism).
+     */
     parallel?: number;
+
+    /**
+     * Optional message to associate with the operation.
+     */
     message?: string;
+
+    /**
+     * Refresh the state of the stack's resources against the cloud provider before running destroy.
+     */
+    refresh?: boolean;
+
+    /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
+     * Specify a set of resource URNs to operate on. Other resources will not be updated.
+     */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
     targetDependents?: boolean;
+
+    /**
+     * A custom user agent to use when executing the operation.
+     */
     userAgent?: string;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation yields an event.
+     */
     onEvent?: (event: EngineEvent) => void;
-    color?: "always" | "never" | "raw" | "auto";
-    // Include secrets in the DestroySummary
+
+    /**
+     * Include secrets in the operation summary.
+     */
     showSecrets?: boolean;
+
     /**
      * Do not destroy protected resources.
      */
     excludeProtected?: boolean;
+
+    /**
+     * Continue the operation to completion even if errors occur.
+     */
+    continueOnError?: boolean;
+
+    /**
+     * Only show a preview of the destroy, but don't perform the destroy itself.
+     */
+    previewOnly?: boolean;
+
+    /**
+     * Remove the stack and its configuration after all resources in the stack have been deleted.
+     */
+    remove?: boolean;
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
+
+    /**
+     * Run the program in the workspace to perform the destroy.
+     */
+    runProgram?: boolean;
+}
+
+/**
+ * Options controlling the behavior of a Stack.rename() operation.
+ */
+export interface RenameOptions extends GlobalOpts {
+    /**
+     * The new name for the stack.
+     */
+    stackName: string;
+
+    /**
+     * A callback to be executed when the operation produces output.
+     */
+    onOutput?: (out: string) => void;
+
+    /**
+     * Include secrets in the UpSummary.
+     */
+    showSecrets?: boolean;
+
+    /**
+     * A signal to abort an ongoing operation.
+     */
+    signal?: AbortSignal;
+}
+
+export interface ImportResource {
+    /**
+     * The type of the resource to import
+     */
+    type: string;
+    /**
+     * The name of the resource to import
+     */
+    name: string;
+    /**
+     * The ID of the resource to import. The format of the ID is specific to the resource type.
+     */
+    id?: string;
+    parent?: string;
+    provider?: string;
+    version?: string;
+    pluginDownloadUrl?: string;
+    logicalName?: string;
+    properties?: string[];
+    component?: boolean;
+    remote?: boolean;
+}
+
+/**
+ * Options controlling the behavior of a Stack.import() operation.
+ */
+export interface ImportOptions extends GlobalOpts {
+    /**
+     * The resource definitions to import into the stack
+     */
+    resources?: ImportResource[];
+    /**
+     * The name table maps language names to parent and provider URNs. These names are
+     * used in the generated definitions, and should match the corresponding declarations
+     * in the source program. This table is required if any parents or providers are
+     * specified by the resources to import.
+     */
+    nameTable?: { [key: string]: string };
+    /**
+     * Allow resources to be imported with protection from deletion enabled. Set to true by default.
+     */
+    protect?: boolean;
+    /**
+     * Generate resource declaration code for the imported resources. Set to true by default.
+     */
+    generateCode?: boolean;
+    /**
+     * Specify the name of a converter to import resources from.
+     */
+    converter?: string;
+    /**
+     * Additional arguments to pass to the converter, if the user specified one.
+     */
+    converterArgs?: string[];
+    /**
+     * Optional message to associate with the import operation
+     */
+    message?: string;
+    /**
+     * Include secrets in the import result summary
+     */
+    showSecrets?: boolean;
+    onOutput?: (out: string) => void;
 }
 
 const execKind = {
@@ -977,12 +1843,12 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
         // remove the logfile
         if (fs.rm) {
             // remove with Node JS 15.X+
-            fs.rm(path.dirname(logFile), { recursive: true }, () => {
+            fs.rm(pathlib.dirname(logFile), { recursive: true }, () => {
                 return;
             });
         } else {
             // remove with Node JS 14.X
-            fs.rmdir(path.dirname(logFile), { recursive: true }, () => {
+            fs.rmdir(pathlib.dirname(logFile), { recursive: true }, () => {
                 return;
             });
         }

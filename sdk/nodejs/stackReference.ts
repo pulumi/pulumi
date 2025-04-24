@@ -16,8 +16,9 @@ import { all, Input, Output, output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
 
 /**
- * Manages a reference to a Pulumi stack. The referenced stack's outputs are available via the
- * `outputs` property or the `output` method.
+ * Manages a reference to a Pulumi stack. The referenced stack's outputs are
+ * available via the {@link StackReference.outputs} property or the
+ * {@link StackReference.output} method.
  */
 export class StackReference extends CustomResource {
     /**
@@ -36,13 +37,18 @@ export class StackReference extends CustomResource {
     public readonly secretOutputNames!: Output<string[]>;
 
     /**
-     * Create a StackReference resource with the given unique name, arguments, and options.
+     * Create a {@link StackReference} resource with the given unique name,
+     * arguments, and options.
      *
-     * If args is not specified, the name of the referenced stack will be the name of the StackReference resource.
+     * If args is not specified, the name of the referenced stack will be the
+     * name of the {@link StackReference} resource.
      *
-     * @param name The _unique_ name of the stack reference.
-     * @param args The arguments to use to populate this resource's properties.
-     * @Param opts A bag of options that control this resource's behavior.
+     * @param name
+     *  The _unique_ name of the stack reference.
+     * @param args
+     *  The arguments to use to populate this resource's properties.
+     * @param opts
+     *  A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: StackReferenceArgs, opts?: CustomResourceOptions) {
         args = args || {};
@@ -62,9 +68,11 @@ export class StackReference extends CustomResource {
     }
 
     /**
-     * Fetches the value of the named stack output, or undefined if the stack output was not found.
+     * Fetches the value of the named stack output, or `undefined` if the stack
+     * output was not found.
      *
-     * @param name The name of the stack output to fetch.
+     * @param name
+     *  The name of the stack output to fetch.
      */
     public getOutput(name: Input<string>): Output<any> {
         // Note that this is subtly different from "apply" here. A default "apply" will set the secret bit if any
@@ -84,9 +92,11 @@ export class StackReference extends CustomResource {
     }
 
     /**
-     * Fetches the value of the named stack output, or throws an error if the output was not found.
+     * Fetches the value of the named stack output, or throws an error if the
+     * output was not found.
      *
-     * @param name The name of the stack output to fetch.
+     * @param name
+     *  The name of the stack output to fetch.
      */
     public requireOutput(name: Input<string>): Output<any> {
         const value = all([output(this.name), output(name), this.outputs]).apply(([stackname, n, os]) => {
@@ -105,14 +115,15 @@ export class StackReference extends CustomResource {
     }
 
     /**
-     * Fetches the value of the named stack output
-     * and builds a StackReferenceOutputDetails with it.
+     * Fetches the value of the named stack output and builds a
+     * {@link StackReferenceOutputDetails} with it.
      *
-     * The returned object has its `value` or `secretValue` fields set
-     * depending on wehther the output is a secret.
-     * Neither field is set if the output was not found.
+     * The returned object has its `value` or `secretValue` fields set depending
+     * on whether the output is a secret. Neither field is set if the output was
+     * not found.
      *
-     * @param name The name of the stack output to fetch.
+     * @param name
+     *  The name of the stack output to fetch.
      */
     public async getOutputDetails(name: string): Promise<StackReferenceOutputDetails> {
         const [out, isSecret] = await this.readOutputValue("getOutputValueDetails", name, false /*required*/);
@@ -124,12 +135,14 @@ export class StackReference extends CustomResource {
     }
 
     /**
-     * Fetches the value promptly of the named stack output. May return undefined if the value is
-     * not known for some reason.
+     * Fetches the value promptly of the named stack output. May return
+     * undefined if the value is not known for some reason.
      *
-     * This operation is not supported (and will throw) if the named stack output is a secret.
+     * This operation is not supported (and will throw) if the named stack
+     * output is a secret.
      *
-     * @param name The name of the stack output to fetch.
+     * @param name
+     *  The name of the stack output to fetch.
      */
     public async getOutputValue(name: string): Promise<any> {
         const [out, isSecret] = await this.readOutputValue("getOutputValue", name, false /*required*/);
@@ -142,12 +155,14 @@ export class StackReference extends CustomResource {
     }
 
     /**
-     * Fetches the value promptly of the named stack output. Throws an error if the stack output is
-     * not found.
+     * Fetches the value promptly of the named stack output. Throws an error if
+     * the stack output is not found.
      *
-     * This operation is not supported (and will throw) if the named stack output is a secret.
+     * This operation is not supported (and will throw) if the named stack
+     * output is a secret.
      *
-     * @param name The name of the stack output to fetch.
+     * @param name
+     *  The name of the stack output to fetch.
      */
     public async requireOutputValue(name: string): Promise<any> {
         const [out, isSecret] = await this.readOutputValue("requireOutputSync", name, true /*required*/);
@@ -166,7 +181,7 @@ export class StackReference extends CustomResource {
 }
 
 /**
- * The set of arguments for constructing a StackReference resource.
+ * The set of arguments for constructing a {@link StackReference} resource.
  */
 export interface StackReferenceArgs {
     /**
@@ -176,18 +191,20 @@ export interface StackReferenceArgs {
 }
 
 /**
- * Records the output of a StackReference.
- * At most one of th evalue and secretValue fields will be set.
+ * Records the output of a {@link StackReference}. Exactly one of `value` or
+ * `secretValue` will be set.
  */
 export interface StackReferenceOutputDetails {
     /**
-     * Output value returned by the StackReference.
-     * This is null if the value is a secret or it does not exist.
+     * An output value returned by the {@link StackReference}.
+     *
+     * This is `null` if the value is a secret or it does not exist.
      */
     readonly value?: any;
     /**
-     * Secret value returned by the StackReference.
-     * This is null if the value is not a secret or it does not exist.
+     * A secret value returned by the {@link StackReference}.
+     *
+     * This is `null` if the value is not a secret or it does not exist.
      */
     readonly secretValue?: any;
 }

@@ -10,7 +10,6 @@
  <{%bold%}><{%reset%}>  <{%reset%}> aws:ec2:SecurityGroup eks-sg <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> aws:eks:Cluster eks-cluster <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack eks-dev <{%reset%}><{%reset%}> 
-
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     6 unchanged
 

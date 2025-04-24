@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go,nodejs
-  description: Fix ReplaceOnChanges being dropped in Go and NodeJS codegen.

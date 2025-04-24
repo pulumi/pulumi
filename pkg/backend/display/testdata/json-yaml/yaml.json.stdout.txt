@@ -1,0 +1,13 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%fg 3%}>~ pulumi:pulumi:Stack: (update)
+<{%reset%}>    [urn=urn:pulumi:dev::pulumi-stack-output-diff::pulumi:pulumi:Stack::pulumi-stack-output-diff-dev]
+<{%reset%}><{%fg 3%}>  ~ vehicles: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ taxi: <{%reset%}><{%fg 3%}>(yaml) <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>          ~ color: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>yellow<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>red<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>            type : <{%reset%}><{%reset%}>"car"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>        }
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 0s

@@ -15,6 +15,7 @@
 """
 The Pulumi SDK runtime's Protobufs and gRPC stubs.  These are meant for internal use only.
 """
+
 from __future__ import absolute_import
 
 from .analyzer_pb2 import *

@@ -19,7 +19,9 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -39,7 +41,25 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 	label := "GetMapping"
 	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, req.Provider, req.PulumiProvider)
 
-	data, err := m.mapper.GetMapping(ctx, req.Provider, req.PulumiProvider)
+	var hint *MapperPackageHint
+	if len(req.PulumiProvider) > 0 {
+		hint = &MapperPackageHint{PluginName: req.PulumiProvider}
+
+		if req.ParameterizationHint != nil {
+			version, err := semver.ParseTolerant(req.ParameterizationHint.Version)
+			if err != nil {
+				return nil, err
+			}
+
+			hint.Parameterization = &workspace.Parameterization{
+				Name:    req.ParameterizationHint.Name,
+				Version: version,
+				Value:   req.ParameterizationHint.Value,
+			}
+		}
+	}
+
+	data, err := m.mapper.GetMapping(ctx, req.Provider, hint)
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err

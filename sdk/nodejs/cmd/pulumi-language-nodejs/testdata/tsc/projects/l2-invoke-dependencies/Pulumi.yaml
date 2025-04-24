@@ -1,0 +1,5 @@
+name: l2-invoke-dependencies
+runtime:
+  name: nodejs
+  options:
+    typescript: false

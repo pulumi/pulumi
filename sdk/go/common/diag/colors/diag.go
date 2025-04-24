@@ -14,15 +14,11 @@
 
 package colors
 
-import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-)
+import "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 type Colorization string
 
 const (
-	// Auto determines if we should colorize depending on the surrounding environment we're in.
-	Auto Colorization = "auto"
 	// Always colorizes text.
 	Always Colorization = "always"
 	// Never colorizes text.
@@ -49,7 +45,7 @@ func (c Colorization) ColorizeWithMaxWidth(v string, maxWidth int) string {
 	case Never:
 		return colorizeText(v, Never, maxWidth)
 	default:
-		contract.Failf("Unexpected colorization value: %v", c)
+		contract.Failf("Unrecognized colorization mode: %v", c)
 		return ""
 	}
 }

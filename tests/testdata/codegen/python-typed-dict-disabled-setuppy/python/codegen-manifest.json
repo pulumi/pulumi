@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "pulumi_typedDictDisabledExample/README.md",
+    "pulumi_typedDictDisabledExample/__init__.py",
+    "pulumi_typedDictDisabledExample/_inputs.py",
+    "pulumi_typedDictDisabledExample/_utilities.py",
+    "pulumi_typedDictDisabledExample/component.py",
+    "pulumi_typedDictDisabledExample/my_function.py",
+    "pulumi_typedDictDisabledExample/outputs.py",
+    "pulumi_typedDictDisabledExample/provider.py",
+    "pulumi_typedDictDisabledExample/pulumi-plugin.json",
+    "pulumi_typedDictDisabledExample/py.typed",
+    "setup.py"
+  ]
+}

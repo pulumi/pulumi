@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,7 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 	t := tokens.Type("a:b:c")
 	return &resource.State{
 		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, tokens.QName(name)),
+		URN:          resource.NewURN("test", "test", "", t, name),
 		Inputs:       resource.PropertyMap{},
 		Outputs:      resource.PropertyMap{},
 		Dependencies: deps,
@@ -55,7 +56,7 @@ func NewProviderResource(pkg, name, id string, deps ...resource.URN) *resource.S
 	t := providers.MakeProviderType(tokens.Package(pkg))
 	return &resource.State{
 		Type:         t,
-		URN:          resource.NewURN("test", "test", "", t, tokens.QName(name)),
+		URN:          resource.NewURN("test", "test", "", t, name),
 		ID:           resource.ID(id),
 		Inputs:       resource.PropertyMap{},
 		Outputs:      resource.PropertyMap{},
@@ -68,7 +69,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{})
 }
 
 func TestDeletion(t *testing.T) {
@@ -123,7 +124,6 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 		err := DeleteResource(snap, b1, nil, true /* targetDependents */)
 		require.NoError(t, err)
 
-		// assert.Equals does a deep equals with the expected list.
 		assert.Equal(t, []*resource.State{
 			pA, a, b2, b3, c,
 		}, snap.Resources)
@@ -145,7 +145,6 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 		err := DeleteResource(snap, b1, nil, false /* targetDependents */)
 		require.NoError(t, err)
 
-		// assert.Equals does a deep equals with the expected list.
 		assert.Equal(t, []*resource.State{
 			pA, a, b2, b3, c,
 		}, snap.Resources)
@@ -154,6 +153,112 @@ func TestDeletingDuplicateURNs(t *testing.T) {
 		for _, s := range snap.Resources {
 			assert.False(t, s == b1)
 		}
+	})
+}
+
+func TestDeletingDuplicateProviderURN(t *testing.T) {
+	t.Parallel()
+
+	// Create duplicate provider resources
+	pA0 := NewProviderResource("a", "p1", "0")
+	pA1 := NewProviderResource("a", "p1", "1")
+
+	// Create a resource that depends on the duplicate Provider.
+	b0 := NewResource("b", pA0)
+	b1 := NewResource("b", pA1)
+	assert.Equal(t, b0.URN, b1.URN)
+
+	c := NewResource("c", pA1, b0.URN)
+
+	t.Run("do-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b0, b1, c,
+		})
+
+		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
+		require.NoError(t, err)
+
+		assert.Equal(t, []*resource.State{
+			pA1, b1, c,
+		}, snap.Resources)
+	})
+
+	t.Run("do-not-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b0, b1, c,
+		})
+
+		err := DeleteResource(snap, pA0, nil, false /* targetDependents */)
+		require.ErrorContains(t, err,
+			"Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources")
+	})
+
+	t.Run("do-target-dependents-one-intermediate", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b0, c,
+		})
+
+		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
+		require.NoError(t, err)
+		assert.Equal(t, []*resource.State{
+			pA1,
+		}, snap.Resources)
+	})
+
+	t.Run("do-target-dependents-one-intermediate", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b0, c,
+		})
+
+		err := DeleteResource(snap, pA0, nil, false /* targetDependents */)
+		require.ErrorContains(t, err,
+			"Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources")
+	})
+}
+
+func TestDeletingDuplicateProviderURNWithDependents(t *testing.T) {
+	t.Parallel()
+
+	// Create duplicate provider resources
+	pA0 := NewProviderResource("a", "p1", "0")
+	pA1 := NewProviderResource("a", "p1", "1")
+
+	// Create a resource that depends on the duplicate Provider.
+	b0 := NewResource("b", pA0)
+
+	c0 := NewProviderResource("c", "p1", "0", b0.URN)
+	c1 := NewProviderResource("c", "p1", "1")
+
+	d0 := NewResource("d", c0)
+	d1 := NewResource("d", c1)
+
+	t.Run("do-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b0, c0, c1, d0, d1,
+		})
+
+		err := DeleteResource(snap, pA0, nil, true /* targetDependents */)
+		require.NoError(t, err)
+
+		assert.Equal(t, []*resource.State{
+			pA1, c1, d1,
+		}, snap.Resources)
+	})
+
+	t.Run("do-not-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA0, pA1, b0, c0, c1, d0, d1,
+		})
+
+		err := DeleteResource(snap, pA0, nil, false /* targetDependents */)
+		require.ErrorContains(t, err,
+			"Can't delete resource \"urn:pulumi:test::test::pulumi:providers:a::p1\" due to dependent resources")
 	})
 }
 
@@ -465,11 +570,70 @@ func TestLocateResourceExact(t *testing.T) {
 func TestRenameStack(t *testing.T) {
 	t.Parallel()
 
-	pA := NewProviderResource("a", "p1", "0")
-	a := NewResource("a", pA)
-	b := NewResource("b", pA)
-	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	locateResource := func(deployment *apitype.DeploymentV3, urn resource.URN) []apitype.ResourceV3 {
+		if deployment == nil {
+			return nil
+		}
+
+		var resources []apitype.ResourceV3
+		for _, res := range deployment.Resources {
+			if res.URN == urn {
+				resources = append(resources, res)
+			}
+		}
+
+		return resources
+	}
+
+	newResource := func(name string, provider *apitype.ResourceV3, deps ...resource.URN) apitype.ResourceV3 {
+		prov := ""
+		if provider != nil {
+			p, err := providers.NewReference(provider.URN, provider.ID)
+			if err != nil {
+				panic(err)
+			}
+			prov = p.String()
+		}
+
+		t := tokens.Type("a:b:c")
+		return apitype.ResourceV3{
+			Type:         t,
+			URN:          resource.NewURN("test", "test", "", t, name),
+			Inputs:       map[string]interface{}{},
+			Outputs:      map[string]interface{}{},
+			Dependencies: deps,
+			Provider:     prov,
+		}
+	}
+
+	newProviderResource := func(pkg, name, id string, deps ...resource.URN) apitype.ResourceV3 {
+		t := providers.MakeProviderType(tokens.Package(pkg))
+		return apitype.ResourceV3{
+			Type:         t,
+			URN:          resource.NewURN("test", "test", "", t, name),
+			ID:           resource.ID(id),
+			Inputs:       map[string]interface{}{},
+			Outputs:      map[string]interface{}{},
+			Dependencies: deps,
+		}
+	}
+
+	newDeployment := func(resources []apitype.ResourceV3) *apitype.DeploymentV3 {
+		return &apitype.DeploymentV3{
+			Manifest: apitype.ManifestV1{
+				Time:    time.Now(),
+				Version: version.Version,
+				Plugins: nil,
+			},
+			Resources: resources,
+		}
+	}
+
+	pA := newProviderResource("a", "p1", "0")
+	a := newResource("a", &pA)
+	b := newResource("b", &pA)
+	c := newResource("c", &pA)
+	deployment := newDeployment([]apitype.ResourceV3{
 		pA,
 		a,
 		b,
@@ -477,11 +641,11 @@ func TestRenameStack(t *testing.T) {
 	})
 
 	// Baseline. Can locate resource A.
-	resList := LocateResource(snap, a.URN)
+	resList := locateResource(deployment, a.URN)
 	assert.Len(t, resList, 1)
 	assert.Contains(t, resList, a)
 	if t.Failed() {
-		t.Fatal("Unable to find expected resource in initial snapshot.")
+		t.Fatal("Unable to find expected resource in initial checkpoint.")
 	}
 	baselineResourceURN := resList[0].URN
 
@@ -492,13 +656,13 @@ func TestRenameStack(t *testing.T) {
 	// Rename just the stack.
 	//nolint:paralleltest // uses shared stack
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(snap, tokens.Name("new-stack"), tokens.PackageName(""))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack"), tokens.PackageName(""))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
 
 		// Confirm the previous resource by URN isn't found.
-		assert.Len(t, LocateResource(snap, baselineResourceURN), 0)
+		assert.Len(t, locateResource(deployment, baselineResourceURN), 0)
 
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
@@ -506,13 +670,13 @@ func TestRenameStack(t *testing.T) {
 			"test", // project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, LocateResource(snap, updatedResourceURN), 1)
+		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 
 	// Rename the stack and project.
 	//nolint:paralleltest // uses shared stack
 	t.Run("StackAndProject", func(t *testing.T) {
-		err := RenameStack(snap, tokens.Name("new-stack2"), tokens.PackageName("new-project"))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -523,6 +687,6 @@ func TestRenameStack(t *testing.T) {
 			"new-project",
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, LocateResource(snap, updatedResourceURN), 1)
+		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 }

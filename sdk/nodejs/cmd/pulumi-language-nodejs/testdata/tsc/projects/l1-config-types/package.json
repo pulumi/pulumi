@@ -1,0 +1,10 @@
+{
+	"name": "l1-config-types",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+	}
+}

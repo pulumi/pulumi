@@ -1,0 +1,24 @@
+name: nodejs-component-provider-yaml
+description: Using a component provider written in Node.js from YAML
+runtime: yaml
+packages:
+  provider: ../provider
+resources:
+  comp:
+    type: nodejs-component-provider:index:MyComponent
+    properties:
+      aNumber: 123
+      anOptionalString: "Bonnie"
+      aBooleanInput: true
+      aComplexTypeInput:
+        aNumber: 7
+        nestedComplexType:
+          aNumber: 9
+outputs:
+  urn: ${comp.urn}
+  aNumberOutput: ${comp.aNumberOutput}
+  anOptionalStringOutput: ${comp.anOptionalStringOutput}
+  aBooleanOutput: ${comp.aBooleanOutput}
+  aComplexTypeOutput: ${comp.aComplexTypeOutput}
+  aResourceOutputUrn: ${comp.aResourceOutput.urn}
+  aString: ${comp.aString}

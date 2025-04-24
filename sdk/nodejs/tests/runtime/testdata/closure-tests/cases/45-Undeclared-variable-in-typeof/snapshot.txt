@@ -1,0 +1,11 @@
+exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ a: undefined, this: undefined, arguments: undefined }) {
+
+return function () { const x = typeof a; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

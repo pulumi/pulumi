@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // componentVariableType returns the type of the variable of which the value is a component.
@@ -31,7 +32,11 @@ func componentVariableType(program *Program) model.Type {
 	for _, node := range program.Nodes {
 		switch node := node.(type) {
 		case *OutputVariable:
-			switch nodeType := node.Type().(type) {
+			if node.Value == nil {
+				continue
+			}
+
+			switch nodeType := node.Value.Type().(type) {
 			case *model.OutputType:
 				// if the output variable is already an Output<T>, keep it as is
 				properties[node.LogicalName()] = nodeType
@@ -137,7 +142,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		// Load all .pp files in the components' directory
 		files, err := os.ReadDir(componentSourceDir)
 		if err != nil {
-			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 			return nil, diagnostics, nil
 		}
 
@@ -156,14 +161,14 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			if filepath.Ext(fileName) == ".pp" {
 				file, err := os.Open(path)
 				if err != nil {
-					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
 				}
 
 				err = parser.ParseFile(file, fileName)
-
+				contract.IgnoreError(file.Close())
 				if err != nil {
-					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
 				}
 
@@ -178,6 +183,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			Loader(loader),
 			DirPath(componentSourceDir),
 			ComponentBinder(ComponentProgramBinderFromFileSystem()),
+			Cache(args.PackageCache),
 		}
 
 		if args.AllowMissingVariables {
@@ -291,6 +297,27 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		return diagnostics
 	}
 
+	componentDirPath := filepath.Join(b.options.dirPath, node.source)
+	absoluteBinderPath, err := filepath.Abs(b.options.dirPath)
+	if err != nil {
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(),
+			"failed to get absolute path for binder directory %s: %s", b.options.dirPath, err.Error()))
+		return diagnostics
+	}
+
+	absoluteComponentPath, err := filepath.Abs(componentDirPath)
+	if err != nil {
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(),
+			"failed to get absolute path for component directory %s: %s", componentDirPath, err.Error()))
+		return diagnostics
+	}
+
+	if absoluteBinderPath == absoluteComponentPath {
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(),
+			"cannot bind component %s from the same directory as the parent program", node.Name()))
+		return diagnostics
+	}
+
 	componentProgram, programDiags, err := b.options.componentProgramBinder(ComponentProgramBinderArgs{
 		AllowMissingVariables:        b.options.allowMissingVariables,
 		AllowMissingProperties:       b.options.allowMissingProperties,
@@ -300,17 +327,18 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		PreferOutputVersionedInvokes: b.options.preferOutputVersionedInvokes,
 		BinderLoader:                 b.options.loader,
 		BinderDirPath:                b.options.dirPath,
+		PackageCache:                 b.options.packageCache,
 		ComponentSource:              node.source,
 		ComponentNodeRange:           node.SyntaxNode().Range(),
 	})
 	if err != nil {
-		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), err.Error()))
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), "%s", err.Error()))
 		node.VariableType = model.DynamicType
 		return diagnostics
 	}
 
 	if programDiags.HasErrors() || componentProgram == nil {
-		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), programDiags.Error()))
+		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), "%s", programDiags.Error()))
 		node.VariableType = model.DynamicType
 		return diagnostics
 	}
@@ -318,7 +346,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	node.Program = componentProgram
 	programVariableType := componentVariableType(componentProgram)
 	node.VariableType = transformComponentType(programVariableType)
-	node.dirPath = filepath.Join(b.options.dirPath, node.source)
+	node.dirPath = componentDirPath
 
 	componentInputs := componentInputs(componentProgram)
 	providedInputs := []string{}

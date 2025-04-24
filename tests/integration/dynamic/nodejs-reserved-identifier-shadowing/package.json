@@ -1,0 +1,10 @@
+{
+  "name": "nodejs-reserved-identifier-shadowing",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "typescript": "^4.5.4"
+  },
+  "peerDependencies": {
+    "@pulumi/pulumi": "latest"
+  }
+}

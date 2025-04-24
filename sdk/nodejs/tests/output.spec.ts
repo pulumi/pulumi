@@ -18,6 +18,7 @@ import * as assert from "assert";
 import {
     all,
     concat,
+    deferredOutput,
     interpolate,
     isSecret,
     jsonParse,
@@ -78,6 +79,139 @@ function mockOutput(isKnown: boolean | Promise<boolean>, value: any | Promise<an
 }
 
 describe("output", () => {
+    describe("throws on circular structures", () => {
+        const syncCases = [
+            {
+                name: "object in object",
+                block: () => {
+                    const a: any = {};
+                    a.a = a;
+                    output(a);
+                },
+            },
+            {
+                name: "array in array",
+                block: () => {
+                    const a: any[] = [];
+                    a.push(a);
+                    output(a);
+                },
+            },
+            {
+                name: "object in array in object",
+                block: () => {
+                    const a: any = { b: [] };
+                    a.b.push(a);
+                    output(a);
+                },
+            },
+            {
+                name: "array in object in array",
+                block: () => {
+                    const a: any[] = [];
+                    a.push({ b: a });
+                    output(a);
+                },
+            },
+        ];
+        for (const { name, block } of syncCases) {
+            it(name, () => {
+                assert.throws(block, /Cannot create an Output from a circular structure/);
+            });
+        }
+
+        const asyncCases = [
+            {
+                name: "promise object in object",
+                block: async () => {
+                    const a: any = {};
+                    a.a = Promise.resolve(a);
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise array in array",
+                block: async () => {
+                    const a: any[] = [];
+                    a.push(Promise.resolve(a));
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise object in array in object",
+                block: async () => {
+                    const a: any = { b: [] };
+                    a.b.push(Promise.resolve(a));
+                    await output(a).promise();
+                },
+            },
+            {
+                name: "promise array in object in array",
+                block: async () => {
+                    const a: any[] = [];
+                    a.push({ b: Promise.resolve(a) });
+                    await output(a).promise();
+                },
+            },
+        ];
+        for (const { name, block } of asyncCases) {
+            it(name, () => {
+                assert.rejects(block, /Cannot create an Output from a circular structure/);
+            });
+        }
+    });
+
+    describe("doesn't throw for non-circular structures", () => {
+        it("same object in array", async () => {
+            const a = {};
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [a, a]);
+        });
+        it("same array in object", async () => {
+            const a: any[] = [];
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: a, b: a });
+        });
+        it("same promise object in array", async () => {
+            const a = Promise.resolve({});
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same object in promise in array", async () => {
+            const a = {};
+            const b = [Promise.resolve(a), Promise.resolve(a)];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same promise array in object", async () => {
+            const a = Promise.resolve([]);
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+        it("same array in promise in object", async () => {
+            const a: any[] = [];
+            const b = { a: Promise.resolve(a), b: Promise.resolve(a) };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+        it("same output object in array", async () => {
+            const a = output({});
+            const b = [a, a];
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), [{}, {}]);
+        });
+        it("same output array in object", async () => {
+            const a = output([]);
+            const b = { a: a, b: a };
+            const o = output(b);
+            assert.deepStrictEqual(await o.promise(), { a: [], b: [] });
+        });
+    });
+
     it("propagates true isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
@@ -485,34 +619,31 @@ describe("output", () => {
             assert.strictEqual(await r.promise(), "inner");
         });
 
-        it("produces known on unknown", async () => {
+        it("produces unknown on unknown", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
             const r = out.apply((v) => v + 1);
 
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.promise(), 1);
+            assert.strictEqual(await r.isKnown, false);
         });
 
-        it("produces known on unknown awaitable", async () => {
+        it("produces unknown on unknown awaitable", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
             const r = out.apply((v) => Promise.resolve("inner"));
 
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.promise(), "inner");
+            assert.strictEqual(await r.isKnown, false);
         });
 
-        it("produces known on unknown known output", async () => {
+        it("produces unknown on unknown known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
             const r = out.apply((v) => createOutput("inner", true));
 
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.promise(), "inner");
+            assert.strictEqual(await r.isKnown, false);
         });
 
         it("produces unknown on unknown unknown output", async () => {
@@ -522,7 +653,6 @@ describe("output", () => {
             const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("preserves secret on known", async () => {
@@ -575,9 +705,8 @@ describe("output", () => {
             const out = createOutput(0, false, true);
             const r = out.apply((v) => v + 1);
 
-            assert.strictEqual(await r.isKnown, true);
+            assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), 1);
         });
 
         it("preserves secret on unknown awaitable", async () => {
@@ -586,9 +715,8 @@ describe("output", () => {
             const out = createOutput(0, false, true);
             const r = out.apply((v) => Promise.resolve("inner"));
 
-            assert.strictEqual(await r.isKnown, true);
+            assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("preserves secret on unknown known output", async () => {
@@ -597,9 +725,8 @@ describe("output", () => {
             const out = createOutput(0, false, true);
             const r = out.apply((v) => createOutput("inner", true));
 
-            assert.strictEqual(await r.isKnown, true);
+            assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("preserves secret on unknown known output", async () => {
@@ -610,7 +737,6 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("propagates secret on known known output", async () => {
@@ -621,7 +747,6 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
 
         it("propagates secret on known unknown output", async () => {
@@ -632,29 +757,6 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
-        });
-
-        it("propagates secret on unknown known output", async () => {
-            runtime._setIsDryRun(false);
-
-            const out = createOutput(0, false);
-            const r = out.apply((v) => createOutput("inner", true, true));
-
-            assert.strictEqual(await r.isKnown, true);
-            assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
-        });
-
-        it("propagates secret on unknown uknown output", async () => {
-            runtime._setIsDryRun(false);
-
-            const out = createOutput(0, false);
-            const r = out.apply((v) => createOutput("inner", false, true));
-
-            assert.strictEqual(await r.isKnown, false);
-            assert.strictEqual(await r.isSecret, true);
-            assert.strictEqual(await r.promise(), "inner");
         });
     });
 
@@ -1208,6 +1310,40 @@ describe("output", () => {
         });
     });
 
+    describe("output types", () => {
+        it("creates the right type for arrays", async () => {
+            const input: Array<Output<string>> = [output("hello"), output("world")];
+            const result: Array<string> = await all(input).promise();
+            assert.deepStrictEqual(result, ["hello", "world"]);
+        });
+
+        it("creates the right type for tuples", async () => {
+            const input: [Output<string>, Output<number>] = [output("hello"), output(123)];
+            const result: [string, number] = await all(input).promise();
+            assert.deepStrictEqual(result, ["hello", 123]);
+        });
+
+        it("creates the right type for many tuples", async () => {
+            // https://github.com/pulumi/pulumi/issues/17704#issuecomment-2460209864
+            const input: Output<[string, number]>[] = [output(["hello", 123]), output(["world", 456])];
+            const result: Array<[string, number]> = await all(input).promise();
+            assert.deepStrictEqual(result, [
+                ["hello", 123],
+                ["world", 456],
+            ]);
+        });
+
+        it("creates the right type for objects", async () => {
+            const input = {
+                name: output("Tom"),
+                likes_dogs: output(true),
+            };
+
+            const result: { name: string; likes_dogs: boolean } = await output(input).promise();
+            assert.deepStrictEqual(result, { name: "Tom", likes_dogs: true });
+        });
+    });
+
     describe("secret operations", () => {
         it("ensure secret", async () => {
             const sec = secret("foo");
@@ -1356,6 +1492,56 @@ describe("output", () => {
             const result18 = (<any>result16).qux;
             assert.strictEqual(await result18.isKnown, false);
             assert.strictEqual(await (<any>result18).promise(/*withUnknowns*/ true), unknown);
+        });
+    });
+
+    describe("deferred", () => {
+        it("can be created", async () => {
+            const [output, resolveFrom] = deferredOutput<string>();
+
+            const source = new Output(
+                new Set(),
+                Promise.resolve("Hello"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+
+            resolveFrom(source);
+
+            assert.strictEqual(await output.promise(), "Hello");
+            assert.strictEqual(await output.isKnown, true);
+            assert.strictEqual(await output.isSecret, false);
+            const resources = await output.allResources!();
+            assert.strictEqual(resources.size, 0);
+        });
+
+        it("can be created from secret output", async () => {
+            const [output, resolveFrom] = deferredOutput<string>();
+
+            const source = new Output(
+                new Set(),
+                Promise.resolve("Hello"),
+                Promise.resolve(true),
+                Promise.resolve(true), // secret
+                Promise.resolve(new Set()),
+            );
+
+            resolveFrom(source);
+
+            assert.strictEqual(await output.promise(), "Hello");
+            assert.strictEqual(await output.isKnown, true);
+            assert.strictEqual(await output.isSecret, true);
+            const resources = await output.allResources!();
+            assert.strictEqual(resources.size, 0);
+        });
+    });
+
+    describe("toString", () => {
+        it("toString message", async () => {
+            const x = output([0, 1]);
+            const result = x.toString();
+            assert.match(result, /Calling \[toString\] on an \[Output<T>\] is not supported\./);
         });
     });
 });

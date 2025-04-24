@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,15 +22,17 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -43,30 +45,35 @@ type Stack interface {
 }
 
 type cloudBackendReference struct {
-	name    tokens.Name
+	name    tokens.StackName
 	project tokens.Name
 	owner   string
 	b       *cloudBackend
 }
 
 func (c cloudBackendReference) String() string {
+	// If the user has asked us to fully qualify names, we won't elide any
+	// information.
+	if cmdutil.FullyQualifyStackNames {
+		return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
+	}
+
 	// When stringifying backend references, we take the current project (if present) into account.
 	currentProject := c.b.currentProject
 
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
-
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(currentProject)
+		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {
-				return string(c.name)
+				return c.name.String()
 			}
 		} else {
-			currentUser, _, userErr := c.b.CurrentUser()
+			currentUser, _, _, userErr := c.b.CurrentUser()
 			if userErr == nil && c.owner == currentUser {
-				return string(c.name)
+				return c.name.String()
 			}
 		}
 		return fmt.Sprintf("%s/%s", c.owner, c.name)
@@ -75,12 +82,16 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
-func (c cloudBackendReference) Name() tokens.Name {
+func (c cloudBackendReference) Name() tokens.StackName {
 	return c.name
 }
 
 func (c cloudBackendReference) Project() (tokens.Name, bool) {
 	return c.project, true
+}
+
+func (c cloudBackendReference) Organization() (string, bool) {
+	return c.owner, true
 }
 
 func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
@@ -105,12 +116,15 @@ type cloudStack struct {
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
+	stackName, err := tokens.ParseStackName(apistack.StackName.String())
+	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
+
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
 			owner:   apistack.OrgName,
 			project: tokens.Name(apistack.ProjectName),
-			name:    tokens.Name(apistack.StackName.String()),
+			name:    stackName,
 			b:       b,
 		},
 		orgName:          apistack.OrgName,
@@ -158,35 +172,36 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 func (s *cloudStack) Preview(
 	ctx context.Context,
 	op backend.UpdateOperation,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-	return backend.PreviewStack(ctx, s, op)
+	events chan<- engine.Event,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+	return backend.PreviewStack(ctx, s, op, events)
 }
 
 func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result,
+	error,
 ) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
 func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
 	imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
 func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result,
+	error,
 ) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
 func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result,
+	error,
 ) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) error {
 	return backend.WatchStack(ctx, s, op, paths)
 }
 
@@ -217,11 +232,13 @@ type cloudStackSummary struct {
 
 func (css cloudStackSummary) Name() backend.StackReference {
 	contract.Assertf(css.summary.ProjectName != "", "project name must not be empty")
+	stackName, err := tokens.ParseStackName(css.summary.StackName)
+	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", css.summary.StackName)
 
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,
 		project: tokens.Name(css.summary.ProjectName),
-		name:    tokens.Name(css.summary.StackName),
+		name:    stackName,
 		b:       css.b,
 	}
 }

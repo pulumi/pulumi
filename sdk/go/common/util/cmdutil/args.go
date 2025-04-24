@@ -15,9 +15,10 @@
 package cmdutil
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +27,8 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := argsValidator(cmd, args)
 		if err != nil {
-			contract.IgnoreError(cmd.Help())
-			Exit(err)
+			return errors.Join(cmd.Help(), err)
 		}
-
 		return nil
 	}
 }
@@ -60,21 +59,20 @@ func ExactArgs(n int) cobra.PositionalArgs {
 func SpecificArgs(argNames []string) cobra.PositionalArgs {
 	return ArgsFunc(func(cmd *cobra.Command, args []string) error {
 		if len(args) > len(argNames) {
-			return errors.Errorf("too many arguments: got %d, expected %d", len(args), len(argNames))
+			return fmt.Errorf("too many arguments: got %d, expected %d", len(args), len(argNames))
 		} else if len(args) < len(argNames) {
 			var result error
 			for i := len(args); i < len(argNames); i++ {
-				result = multierror.Append(result, errors.Errorf("missing required argument: %s", argNames[i]))
+				result = multierror.Append(result, fmt.Errorf("missing required argument: %s", argNames[i]))
 			}
 			return result
-		} else {
-			return nil
 		}
+		return nil
 	})
 }
 
 // RangeArgs is the same as cobra.RangeArgs, except it is wrapped with ArgsFunc to provide standard
 // Pulumi error handling.
-func RangeArgs(min int, max int) cobra.PositionalArgs {
-	return ArgsFunc(cobra.RangeArgs(min, max))
+func RangeArgs(minimum int, maximum int) cobra.PositionalArgs {
+	return ArgsFunc(cobra.RangeArgs(minimum, maximum))
 }

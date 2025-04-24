@@ -13,16 +13,10 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: {} }, global = proto;
+var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
-var pulumi_plugin_pb = require('./plugin_pb.js');
-goog.object.extend(proto, pulumi_plugin_pb);
-var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
-goog.object.extend(proto, google_protobuf_empty_pb);
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
-goog.object.extend(proto, google_protobuf_struct_pb);
 goog.exportSymbol('proto.pulumirpc.ConvertProgramRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ConvertProgramResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.ConvertStateRequest', null, global);
@@ -39,7 +33,7 @@ goog.exportSymbol('proto.pulumirpc.ResourceImport', null, global);
  * @constructor
  */
 proto.pulumirpc.ConvertStateRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ConvertStateRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ConvertStateRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -102,7 +96,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ConvertProgramRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ConvertProgramRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ConvertProgramRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -133,6 +127,13 @@ if (goog.DEBUG && !COMPILED) {
    */
   proto.pulumirpc.ConvertProgramResponse.displayName = 'proto.pulumirpc.ConvertProgramResponse';
 }
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ConvertStateRequest.repeatedFields_ = [2];
 
 
 
@@ -165,7 +166,8 @@ proto.pulumirpc.ConvertStateRequest.prototype.toObject = function(opt_includeIns
  */
 proto.pulumirpc.ConvertStateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, "")
+    mapperTarget: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    argsList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -206,6 +208,10 @@ proto.pulumirpc.ConvertStateRequest.deserializeBinaryFromReader = function(msg, 
       var value = /** @type {string} */ (reader.readString());
       msg.setMapperTarget(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addArgs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -242,6 +248,13 @@ proto.pulumirpc.ConvertStateRequest.serializeBinaryToWriter = function(message, 
       f
     );
   }
+  f = message.getArgsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -260,6 +273,43 @@ proto.pulumirpc.ConvertStateRequest.prototype.getMapperTarget = function() {
  */
 proto.pulumirpc.ConvertStateRequest.prototype.setMapperTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * repeated string args = 2;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.getArgsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ConvertStateRequest} returns this
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.setArgsList = function(value) {
+  return jspb.Message.setField(this, 2, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ConvertStateRequest} returns this
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.addArgs = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertStateRequest} returns this
+ */
+proto.pulumirpc.ConvertStateRequest.prototype.clearArgsList = function() {
+  return this.setArgsList([]);
 };
 
 
@@ -299,7 +349,10 @@ proto.pulumirpc.ResourceImport.toObject = function(includeInstance, msg) {
     name: jspb.Message.getFieldWithDefault(msg, 2, ""),
     id: jspb.Message.getFieldWithDefault(msg, 3, ""),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+    isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -355,6 +408,18 @@ proto.pulumirpc.ResourceImport.deserializeBinaryFromReader = function(msg, reade
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLogicalName(value);
+      break;
+    case 7:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsComponent(value);
+      break;
+    case 8:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsRemote(value);
       break;
     default:
       reader.skipField();
@@ -417,6 +482,27 @@ proto.pulumirpc.ResourceImport.serializeBinaryToWriter = function(message, write
   if (f.length > 0) {
     writer.writeString(
       5,
+      f
+    );
+  }
+  f = message.getLogicalName();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
+      f
+    );
+  }
+  f = message.getIsComponent();
+  if (f) {
+    writer.writeBool(
+      7,
+      f
+    );
+  }
+  f = message.getIsRemote();
+  if (f) {
+    writer.writeBool(
+      8,
       f
     );
   }
@@ -513,13 +599,67 @@ proto.pulumirpc.ResourceImport.prototype.setPlugindownloadurl = function(value) 
 };
 
 
+/**
+ * optional string logical_name = 6;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceImport.prototype.getLogicalName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setLogicalName = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional bool is_component = 7;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceImport.prototype.getIsComponent = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 7, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setIsComponent = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 7, value);
+};
+
+
+/**
+ * optional bool is_remote = 8;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceImport.prototype.getIsRemote = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setIsRemote = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 8, value);
+};
+
+
 
 /**
  * List of repeated fields within this message type.
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ConvertStateResponse.repeatedFields_ = [1];
+proto.pulumirpc.ConvertStateResponse.repeatedFields_ = [1,2];
 
 
 
@@ -553,7 +693,9 @@ proto.pulumirpc.ConvertStateResponse.prototype.toObject = function(opt_includeIn
 proto.pulumirpc.ConvertStateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
-    proto.pulumirpc.ResourceImport.toObject, includeInstance)
+    proto.pulumirpc.ResourceImport.toObject, includeInstance),
+    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+    pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -595,6 +737,11 @@ proto.pulumirpc.ConvertStateResponse.deserializeBinaryFromReader = function(msg,
       reader.readMessage(value,proto.pulumirpc.ResourceImport.deserializeBinaryFromReader);
       msg.addResources(value);
       break;
+    case 2:
+      var value = new pulumi_codegen_hcl_pb.Diagnostic;
+      reader.readMessage(value,pulumi_codegen_hcl_pb.Diagnostic.deserializeBinaryFromReader);
+      msg.addDiagnostics(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -630,6 +777,14 @@ proto.pulumirpc.ConvertStateResponse.serializeBinaryToWriter = function(message,
       1,
       f,
       proto.pulumirpc.ResourceImport.serializeBinaryToWriter
+    );
+  }
+  f = message.getDiagnosticsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      2,
+      f,
+      pulumi_codegen_hcl_pb.Diagnostic.serializeBinaryToWriter
     );
   }
 };
@@ -673,6 +828,51 @@ proto.pulumirpc.ConvertStateResponse.prototype.clearResourcesList = function() {
 };
 
 
+/**
+ * repeated codegen.Diagnostic diagnostics = 2;
+ * @return {!Array<!proto.pulumirpc.codegen.Diagnostic>}
+ */
+proto.pulumirpc.ConvertStateResponse.prototype.getDiagnosticsList = function() {
+  return /** @type{!Array<!proto.pulumirpc.codegen.Diagnostic>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_codegen_hcl_pb.Diagnostic, 2));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.codegen.Diagnostic>} value
+ * @return {!proto.pulumirpc.ConvertStateResponse} returns this
+*/
+proto.pulumirpc.ConvertStateResponse.prototype.setDiagnosticsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 2, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.codegen.Diagnostic=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.codegen.Diagnostic}
+ */
+proto.pulumirpc.ConvertStateResponse.prototype.addDiagnostics = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.codegen.Diagnostic, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertStateResponse} returns this
+ */
+proto.pulumirpc.ConvertStateResponse.prototype.clearDiagnosticsList = function() {
+  return this.setDiagnosticsList([]);
+};
+
+
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ConvertProgramRequest.repeatedFields_ = [5];
 
 
 
@@ -707,7 +907,9 @@ proto.pulumirpc.ConvertProgramRequest.toObject = function(includeInstance, msg) 
   var f, obj = {
     sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, "")
+    mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -756,6 +958,14 @@ proto.pulumirpc.ConvertProgramRequest.deserializeBinaryFromReader = function(msg
       var value = /** @type {string} */ (reader.readString());
       msg.setMapperTarget(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addArgs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -803,6 +1013,20 @@ proto.pulumirpc.ConvertProgramRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
+  f = message.getArgsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      5,
       f
     );
   }
@@ -860,6 +1084,61 @@ proto.pulumirpc.ConvertProgramRequest.prototype.getMapperTarget = function() {
  */
 proto.pulumirpc.ConvertProgramRequest.prototype.setMapperTarget = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string loader_target = 4;
+ * @return {string}
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * repeated string args = 5;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.getArgsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.setArgsList = function(value) {
+  return jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.addArgs = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.clearArgsList = function() {
+  return this.setArgsList([]);
 };
 
 

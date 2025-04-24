@@ -87,10 +87,9 @@ func TestProjectStackPath(t *testing.T) {
 		"WithBoth",
 		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacksA\nstackConfigDir: stacksB\n",
 		func(t *testing.T, projectDir, path string, err error) {
-			assert.Error(t, err)
 			errorMsg := "Should not use both config and stackConfigDir to define the stack directory. " +
 				"Use only stackConfigDir instead."
-			assert.Contains(t, err.Error(), errorMsg)
+			assert.EqualError(t, err, errorMsg)
 		},
 	}}
 
@@ -142,4 +141,104 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 
 	_, _, err = DetectProjectAndPath()
 	assert.ErrorIs(t, err, ErrProjectNotFound)
+}
+
+//nolint:paralleltest // These tests use and change the current working directory
+func TestDetectProjectStackDeploymentPath(t *testing.T) {
+	tmpDir := mkTempDir(t)
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+	err = os.Chdir(tmpDir)
+	assert.NoError(t, err)
+
+	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
+	yamlContents := `
+name: some_project
+description: Some project
+runtime: nodejs`
+
+	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
+	assert.NoError(t, err)
+
+	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
+	yamlDeployContents := ""
+
+	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
+	assert.NoError(t, err)
+
+	path, err := DetectProjectStackDeploymentPath("stack")
+	assert.NoError(t, err)
+	assert.Equal(t, yamlDeployPath, path)
+}
+
+func TestDetectPolicyPackPathAt(t *testing.T) {
+	t.Parallel()
+	tmpDir := mkTempDir(t)
+
+	// No policy pack file, return empty string
+	path, err := DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, "", path)
+
+	// Create a PolicyPack.yaml
+	policyPackPath := filepath.Join(tmpDir, "PulumiPolicy.yaml")
+	yamlContents := "runtime: nodejs\n"
+	require.NoError(t, os.WriteFile(policyPackPath, []byte(yamlContents), 0o600))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, policyPackPath, path)
+
+	// Check that we can also detect a PolicyPack.json
+	require.NoError(t, os.Remove(policyPackPath))
+	policyPackPath = filepath.Join(tmpDir, "PulumiPolicy.json")
+	jsonContents := `{"runtime": "nodejs"}`
+	require.NoError(t, os.WriteFile(policyPackPath, []byte(jsonContents), 0o600))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, policyPackPath, path)
+
+	// Return an empty string if the path is a directory
+	require.NoError(t, os.Remove(policyPackPath))
+	require.NoError(t, os.Mkdir(policyPackPath, 0o700))
+	path, err = DetectPolicyPackPathAt(tmpDir)
+	require.NoError(t, err)
+	require.Equal(t, "", path)
+}
+
+func TestDetectProjectPathFrom(t *testing.T) {
+	t.Parallel()
+	tmpDir := mkTempDir(t)
+
+	d1, err := filepath.Abs(tmpDir)
+	assert.NoError(t, err)
+	d2 := filepath.Join(d1, "a")
+	d3 := filepath.Join(d2, "b")
+	d4 := filepath.Join(d3, "c")
+
+	err = os.MkdirAll(d4, 0o700)
+	require.NoError(t, err)
+
+	indexTs := filepath.Join(d4, "index.ts")
+	err = os.WriteFile(indexTs, []byte("..."), 0o600)
+	assert.NoError(t, err)
+
+	f1 := filepath.Join(d2, "Pulumi.yaml")
+	err = os.WriteFile(f1, []byte("..."), 0o600)
+	assert.NoError(t, err)
+
+	for _, path := range []string{
+		filepath.Join(d4, "index.ts"),
+		d4,
+		d3,
+		d2,
+	} {
+		pulumiYamlPath, err := DetectProjectPathFrom(path)
+		assert.NoError(t, err)
+		assert.Equal(t, f1, pulumiYamlPath)
+	}
+
+	negative, err := DetectProjectPathFrom(d1)
+	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
+	assert.Equal(t, "", negative)
 }

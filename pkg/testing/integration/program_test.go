@@ -47,14 +47,14 @@ func TestRunCommandLog(t *testing.T) {
 
 	args := []string{node, "-e", "console.log('output from node');"}
 	err = RunCommand(t, "node", args, tempdir, opts)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	matches, err := filepath.Glob(filepath.Join(tempdir, commandOutputFolderName, "node.*"))
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(matches))
 
 	output, err := os.ReadFile(matches[0])
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, "output from node\n", string(output))
 }
 
@@ -109,14 +109,20 @@ func TestGoModEdits(t *testing.T) {
 	// of tests constrained to the test itself.
 
 	// The dir must be a relative path as well, so we make it relative to cwd (which is absolute).
+	// If we're on Windows and the drive letters don't match, we can't use a relative path, so we skip the test.
+	var skipInvalidPathTest bool
 	badModDir := t.TempDir()
-	badModDir, err = filepath.Rel(cwd, badModDir)
-	require.NoError(t, err)
-	badModFile := filepath.Join(badModDir, "go.mod")
-	err = os.WriteFile(badModFile, []byte(`
+	if runtime.GOOS == "windows" && cwd[0] != badModDir[0] {
+		skipInvalidPathTest = true
+	} else {
+		badModDir, err = filepath.Rel(cwd, badModDir)
+		require.NoError(t, err)
+		badModFile := filepath.Join(badModDir, "go.mod")
+		err = os.WriteFile(badModFile, []byte(`
 # invalid go.mod
 `), 0o600)
-	require.NoError(t, err)
+		require.NoError(t, err)
+	}
 
 	errNotExists := "no such file or directory"
 	if runtime.GOOS == "windows" {
@@ -128,6 +134,7 @@ func TestGoModEdits(t *testing.T) {
 		dep           string
 		expectedValue string
 		expectedError string
+		skip          bool
 	}{
 		{
 			name:          "valid-path",
@@ -143,6 +150,7 @@ func TestGoModEdits(t *testing.T) {
 			name:          "invalid-path-bad-go-mod",
 			dep:           badModDir,
 			expectedError: "error parsing go.mod",
+			skip:          skipInvalidPathTest,
 		},
 		{
 			name:          "valid-module-name",
@@ -175,6 +183,9 @@ func TestGoModEdits(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+			if test.skip {
+				t.Skip()
+			}
 
 			editStr, err := getEditStr(test.dep, gopath, depRoot)
 

@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -33,15 +33,19 @@ import (
 // HostClient is a client interface into the host's engine RPC interface.
 type HostClient struct {
 	conn   *grpc.ClientConn
-	client lumirpc.EngineClient
+	client pulumirpc.EngineClient
 }
+
+// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
+// See https://github.com/pulumi/pulumi/issues/7156
+//
+// grpclog.SetLoggerV2 sets global state, and thus must be called before any gRPC
+// connection is initiated. To avoid race conditions, we call it when the package loads.
+func init() { grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr)) }
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
-	// See https://github.com/pulumi/pulumi/issues/7156
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
@@ -53,7 +57,7 @@ func NewHostClient(addr string) (*HostClient, error) {
 	}
 	return &HostClient{
 		conn:   conn,
-		client: lumirpc.NewEngineClient(conn),
+		client: pulumirpc.NewEngineClient(conn),
 	}, nil
 }
 
@@ -70,20 +74,20 @@ func (host *HostClient) EngineConn() *grpc.ClientConn {
 func (host *HostClient) log(
 	context context.Context, sev diag.Severity, urn resource.URN, msg string, ephemeral bool,
 ) error {
-	var rpcsev lumirpc.LogSeverity
+	var rpcsev pulumirpc.LogSeverity
 	switch sev {
 	case diag.Debug:
-		rpcsev = lumirpc.LogSeverity_DEBUG
-	case diag.Info:
-		rpcsev = lumirpc.LogSeverity_INFO
+		rpcsev = pulumirpc.LogSeverity_DEBUG
+	case diag.Info, diag.Infoerr:
+		rpcsev = pulumirpc.LogSeverity_INFO
 	case diag.Warning:
-		rpcsev = lumirpc.LogSeverity_WARNING
+		rpcsev = pulumirpc.LogSeverity_WARNING
 	case diag.Error:
-		rpcsev = lumirpc.LogSeverity_ERROR
+		rpcsev = pulumirpc.LogSeverity_ERROR
 	default:
 		contract.Failf("Unrecognized log severity type: %v", sev)
 	}
-	_, err := host.client.Log(context, &lumirpc.LogRequest{
+	_, err := host.client.Log(context, &pulumirpc.LogRequest{
 		Severity:  rpcsev,
 		Message:   strings.ToValidUTF8(msg, "�"),
 		Urn:       string(urn),

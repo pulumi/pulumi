@@ -66,5 +66,4 @@ def _with_transitive_deps(
     yield r
 
     for x in _deps(r):
-        for y in _with_transitive_deps(x, visited):
-            yield y
+        yield from _with_transitive_deps(x, visited)

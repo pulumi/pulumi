@@ -205,7 +205,7 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		test := test
-		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 
 			result, err := parsePolicyPackConfig([]byte(test))
@@ -324,10 +324,7 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 
 			result, err := extractEnforcementLevel(test.Properties)
 			assert.Equal(t, apitype.EnforcementLevel(""), result)
-			assert.Error(t, err)
-			if test.ExpectedError != "" {
-				assert.Equal(t, test.ExpectedError, err.Error())
-			}
+			assert.EqualError(t, err, test.ExpectedError)
 		})
 	}
 }

@@ -1,0 +1,6 @@
+ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+ROOT/artifacts/pulumi_plain-13.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_primitive-7.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_primitive_ref-11.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_ref_ref-12.0.0-py3-none-any.whl
+mypy

@@ -13,12 +13,17 @@
 # limitations under the License.
 from pulumi import CustomResource
 
+
 class MyClass:
     def __init__(self):
         self.prop = "oh no!"
 
+
 class MyResource(CustomResource):
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyResource", name, {"class": MyClass()})
+        CustomResource.__init__(
+            self, "test:index:MyResource", name, {"class": MyClass()}
+        )
+
 
 MyResource("testResource1")

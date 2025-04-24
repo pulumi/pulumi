@@ -1,3 +1,17 @@
+// Copyright 2021-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //nolint:lll
 package testing
 
@@ -6,6 +20,8 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -135,7 +151,7 @@ func urnGenerator(ctx *StackContext) *rapid.Generator[resource.URN] {
 		projectName := tokens.PackageName(projectNameGenerator.Draw(t, "project name"))
 		parentType := TypeGenerator().Draw(t, "parent type")
 		resourceType := TypeGenerator().Draw(t, "resource type")
-		resourceName := tokens.QName(rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name"))
+		resourceName := rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name")
 		return resource.NewURN(stackName, projectName, parentType, resourceType, resourceName)
 	})
 }
@@ -187,17 +203,17 @@ func StringPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	})
 }
 
-// TextAssetGenerator generates textual *resource.Asset values.
-func TextAssetGenerator() *rapid.Generator[*resource.Asset] {
-	return rapid.Custom(func(t *rapid.T) *resource.Asset {
-		asset, err := resource.NewTextAsset(rapid.String().Draw(t, "text asset contents"))
+// TextAssetGenerator generates textual *asset.Asset values.
+func TextAssetGenerator() *rapid.Generator[*asset.Asset] {
+	return rapid.Custom(func(t *rapid.T) *asset.Asset {
+		asset, err := asset.FromText(rapid.String().Draw(t, "text asset contents"))
 		assert.NoError(t, err)
 		return asset
 	})
 }
 
-// AssetGenerator generates *resource.Asset values.
-func AssetGenerator() *rapid.Generator[*resource.Asset] {
+// AssetGenerator generates *asset.Asset values.
+func AssetGenerator() *rapid.Generator[*asset.Asset] {
 	return TextAssetGenerator()
 }
 
@@ -208,9 +224,9 @@ func AssetPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	})
 }
 
-// LiteralArchiveGenerator generates *resource.Archive values with literal archive contents.
-func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
-	return rapid.Custom(func(t *rapid.T) *resource.Archive {
+// LiteralArchiveGenerator generates *archive.Archive values with literal archive contents.
+func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
+	return rapid.Custom(func(t *rapid.T) *archive.Archive {
 		var contentsGenerator *rapid.Generator[map[string]interface{}]
 		if maxDepth > 0 {
 			contentsGenerator = rapid.MapOfN(
@@ -222,14 +238,14 @@ func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
 		} else {
 			contentsGenerator = rapid.Just(map[string]interface{}{})
 		}
-		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents"))
+		archive, err := archive.FromAssets(contentsGenerator.Draw(t, "literal archive contents"))
 		assert.NoError(t, err)
 		return archive
 	})
 }
 
-// ArchiveGenerator generates *resource.Archive values.
-func ArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
+// ArchiveGenerator generates *archive.Archive values.
+func ArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
 	return LiteralArchiveGenerator(maxDepth)
 }
 

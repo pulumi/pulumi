@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pulumi
 
 import (
@@ -28,7 +42,7 @@ func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 		ApplyT(func(args []interface{}) (interface{}, error) {
 			n, stack := args[0].(string), args[1].(resource.PropertyMap)
 			if !stack["outputs"].IsObject() {
-				return Any(nil), fmt.Errorf("failed to convert %T to object", stack)
+				return Any(nil), fmt.Errorf("failed to convert stack output %T to object", stack)
 			}
 			outs := stack["outputs"].ObjectValue()
 			v, ok := outs[resource.PropertyKey(n)]

@@ -1,0 +1,41 @@
+{
+  "version": "0.0.1",
+  "name": "foo",
+  "resources": {
+    "foo:nested/module:Resource": {
+      "properties": {
+        "bar": {
+          "type": "string",
+          "secret": true
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "string",
+          "secret": true
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.71"
+      }
+    },
+    "go": {
+      "importBasePath": "nested-module/foo",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

@@ -29,6 +29,7 @@ import (
 // slowly.
 func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 	color colors.Colorization, timesPerSecond time.Duration,
+	suppressProgress bool,
 ) (Spinner, *time.Ticker) {
 	if ttyFrames == nil {
 		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
@@ -39,13 +40,16 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 		}
 	}
 
+	if suppressProgress {
+		return &noopSpinner{}, time.NewTicker(time.Second * 20)
+	}
+
 	if Interactive() {
 		return &ttySpinner{
 			prefix: prefix,
 			frames: ttyFrames,
 		}, time.NewTicker(time.Second / timesPerSecond)
 	}
-
 	return &dotSpinner{
 		color:  color,
 		prefix: prefix,
@@ -128,3 +132,8 @@ func (spin *dotSpinner) Reset() {
 	}
 	spin.hasWritten = false
 }
+
+type noopSpinner struct{}
+
+func (spin *noopSpinner) Tick()  {}
+func (spin *noopSpinner) Reset() {}

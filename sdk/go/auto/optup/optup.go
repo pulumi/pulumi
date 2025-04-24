@@ -108,6 +108,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Color allows specifying whether to colorize output. Choices are: always, never, raw, auto (default "auto")
+func Color(color string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Color = color
+	})
+}
+
 // Plan specifies the path to an update plan to use for the update.
 func Plan(path string) Option {
 	return optionFunc(func(opts *Options) {
@@ -119,6 +126,48 @@ func Plan(path string) Option {
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ShowSecrets = &show
+	})
+}
+
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
+// Refresh will refresh the stack's state before the update.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
+// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
+func ContinueOnError() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ContinueOnError = true
+	})
+}
+
+// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
+func AttachDebugger() Option {
+	return optionFunc(func(opts *Options) {
+		opts.AttachDebugger = true
+	})
+}
+
+// ConfigFile specifies a file to use for configuration values rather than detecting the file name
+func ConfigFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ConfigFile = path
 	})
 }
 
@@ -166,6 +215,18 @@ type Options struct {
 	PolicyPackConfigs []string
 	// Show config secrets when they appear.
 	ShowSecrets *bool
+	// Refresh will refresh the stack's state before the update.
+	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
+	// ContinueOnError will continue to perform the update operation despite the occurrence of errors.
+	ContinueOnError bool
+	// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
+	AttachDebugger bool
+	// Run using the configuration values in the specified file rather than detecting the file name
+	ConfigFile string
 }
 
 type optionFunc func(*Options)

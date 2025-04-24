@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package validation
 
 import (
@@ -8,52 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestValidateStackName(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		title     string
-		stackName string
-		error     string
-	}{
-		{"empty", "", "a stack name may not be empty"},
-		{"valid", "foo", ""},
-		{
-			title:     "slash",
-			stackName: "foo/bar",
-			error: "a stack name may only contain alphanumeric, hyphens, " +
-				"underscores, or periods: invalid character '/'" +
-				" at position 3",
-		},
-		{"long", strings.Repeat("a", 100), ""},
-		{
-			title:     "too-long",
-			stackName: strings.Repeat("a", 101),
-			error:     "a stack name cannot exceed 100 characters",
-		},
-		{
-			title:     "first-char-invalid",
-			stackName: "@stack-name",
-			error: "a stack name may only contain alphanumeric, hyphens, " +
-				"underscores, or periods: invalid character '@' " +
-				"at position 0",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.title, func(t *testing.T) {
-			t.Parallel()
-			err := ValidateStackName(tt.stackName)
-			if tt.error == "" {
-				assert.NoError(t, err)
-			} else {
-				assert.ErrorContains(t, err, tt.error)
-			}
-		})
-	}
-}
 
 func TestValidateStackTag(t *testing.T) {
 	t.Parallel()
@@ -104,9 +72,8 @@ func TestValidateStackTag(t *testing.T) {
 				}
 
 				err := ValidateStackTags(tags)
-				assert.Error(t, err)
 				msg := "stack tag names may only contain alphanumerics, hyphens, underscores, periods, or colons"
-				assert.Equal(t, err.Error(), msg)
+				assert.EqualError(t, err, msg)
 			})
 		}
 	})
@@ -119,9 +86,8 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		err := ValidateStackTags(tags)
-		assert.Error(t, err)
 		msg := fmt.Sprintf("stack tag %q is too long (max length %d characters)", strings.Repeat("v", 41), 40)
-		assert.Equal(t, err.Error(), msg)
+		assert.EqualError(t, err, msg)
 	})
 
 	t.Run("too long tag value", func(t *testing.T) {
@@ -132,8 +98,7 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		err := ValidateStackTags(tags)
-		assert.Error(t, err)
 		msg := fmt.Sprintf("stack tag %q value is too long (max length %d characters)", "tag-name", 256)
-		assert.Equal(t, err.Error(), msg)
+		assert.EqualError(t, err, msg)
 	})
 }

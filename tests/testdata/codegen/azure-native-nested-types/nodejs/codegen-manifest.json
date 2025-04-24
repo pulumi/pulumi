@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "documentdb/index.ts",
+    "documentdb/sqlResourceSqlContainer.ts",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "tsconfig.json",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

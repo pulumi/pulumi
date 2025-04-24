@@ -1,9 +1,22 @@
+// Copyright 2021-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package passphrase
 
 import (
 	"encoding/json"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,23 +28,16 @@ const (
 	brokenState = `{"salt":"fozI5u6B030=:v1:F+6ZduL:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
 )
 
-func resetPassphraseTestEnvVars() func() {
-	clearCachedSecretsManagers()
-
-	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
-	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
-	return func() {
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE", oldPassphrase)
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", oldPassphraseFile)
-	}
-}
-
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
+
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	manager, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
@@ -50,10 +56,14 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(brokenState))
@@ -62,10 +72,14 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
@@ -75,23 +89,31 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
-		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
+	assert.ErrorContains(t, err, "passphrase must be set with "+
+		"PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 }
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
@@ -101,17 +123,21 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
-	tmpFile, err := os.CreateTemp("", "pulumi-secret-test")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "pulumi-secret-test")
 	assert.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.WriteString("password")
 	assert.NoError(t, err)
 
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
 
 	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err)
@@ -120,13 +146,17 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
-	resetEnv := resetPassphraseTestEnvVars()
-	defer resetEnv()
+	clearCachedSecretsManagers()
 
+	// There is no t.Unsetenv, so for variables we want to genuinely unset (and not just set to ""), we set the
+	// environment variables to empty strings using t.Setenv and then unset them using os.Unsetenv. In doing do, the
+	// cleanup of t.Setenv takes care of resetting the environment variables when the test has completed.
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
+
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
-	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
-		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
+	assert.ErrorContains(t, err, "passphrase must be set with "+
+		"PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 }

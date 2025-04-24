@@ -23,26 +23,77 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LanguageRuntimeClient interface {
-	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+	// `Handshake` is the first call made by the engine to a language host. It is used to pass the engine's address to
+	// the language host so that it may establish its own connections back, and to establish protocol configuration that
+	// will be used to communicate between the two parties.
+	Handshake(ctx context.Context, in *LanguageHandshakeRequest, opts ...grpc.CallOption) (*LanguageHandshakeResponse, error)
+	// Deprecated: Do not use.
+	// `GetRequiredPlugins` computes the complete set of anticipated [plugins](plugins) required by a Pulumi program.
+	// Among other things, it is intended to be used to pre-install plugins before running a program with
+	// [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+	// registrations](resource-registration) sent back from the running program to the engine.
+	//
+	// :::{important}
+	// The use of `GetRequiredPlugins` is deprecated in favour of [](pulumirpc.LanguageRuntime.GetRequiredPackages),
+	// which returns more granular information about which plugins are required by which packages.
+	// :::
 	GetRequiredPlugins(ctx context.Context, in *GetRequiredPluginsRequest, opts ...grpc.CallOption) (*GetRequiredPluginsResponse, error)
-	// Run executes a program and returns its result.
+	// `GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
+	// by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
+	// to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
+	// back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
+	// determine which plugins are required to service the import of a given resource, since given the presence of
+	// [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
+	// with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+	// providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
+	// provide multiple packages.
+	GetRequiredPackages(ctx context.Context, in *GetRequiredPackagesRequest, opts ...grpc.CallOption) (*GetRequiredPackagesResponse, error)
+	// `Run` executes a Pulumi program, returning information about whether or not the program produced an error.
 	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error)
-	// GetPluginInfo returns generic information about this plugin, like its version.
+	// `GetPluginInfo` returns information about the [plugin](plugins) implementing this language runtime.
 	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
-	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+	// `InstallDependencies` accepts a request specifying a Pulumi project and program that can be executed with
+	// [](pulumirpc.LanguageRuntime.Run) and installs the dependencies for that program (e.g. by running `npm install`
+	// for NodeJS, or `pip install` for Python). Since dependency installation could take a while, and callers may wish
+	// to report on its progress, this method returns a stream of [](pulumirpc.InstallDependenciesResponse) messages
+	// containing information about standard error and output.
 	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error)
-	// About returns information about the runtime for this language.
-	About(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AboutResponse, error)
-	// GetProgramDependencies returns the set of dependencies required by the program.
+	// `RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
+	// ask during `pulumi new`.
+	RuntimeOptionsPrompts(ctx context.Context, in *RuntimeOptionsRequest, opts ...grpc.CallOption) (*RuntimeOptionsResponse, error)
+	// `About` returns information about the language runtime being used.
+	About(ctx context.Context, in *AboutRequest, opts ...grpc.CallOption) (*AboutResponse, error)
+	// `GetProgramDependencies` computes the set of language-level dependencies (e.g. NPM packages for NodeJS, or Maven
+	// libraries for Java) required by a program.
 	GetProgramDependencies(ctx context.Context, in *GetProgramDependenciesRequest, opts ...grpc.CallOption) (*GetProgramDependenciesResponse, error)
-	// RunPlugin executes a plugin program and returns its result asynchronously.
+	// `RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
+	// [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+	// expected to terminate until instructed/for a long time, this method returns a stream of
+	// [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
+	// exit code of the plugin when it does terminate.
 	RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (LanguageRuntime_RunPluginClient, error)
-	// GenerateProgram generates a given PCL program into a program for this language.
+	// `GenerateProgram` generates code in this host's language that implements the given [PCL](pcl) program. Unlike
+	// [](pulumirpc.LanguageRuntime.GenerateProject), this method *only* generates program code, and does not e.g.
+	// generate a `package.json` for a NodeJS project that details how to run that code.
+	// [](pulumirpc.LanguageRuntime.GenerateProject), this method underpins ["programgen"](programgen) and the main
+	// functionality powering `pulumi convert`.
 	GenerateProgram(ctx context.Context, in *GenerateProgramRequest, opts ...grpc.CallOption) (*GenerateProgramResponse, error)
-	// GenerateProject generates a given PCL program into a project for this language.
+	// `GenerateProject` generates code in this host's language that implements the given [PCL](pcl) program and wraps
+	// it in some language-specific notion of a "project", where a project is a buildable or runnable artifact. In this
+	// sense, `GenerateProject`'s output is a superset of that of [](pulumirpc.LanguageRuntime.GenerateProgram). For
+	// instance, when generating a NodeJS project, this method might generate a corresponding `package.json` file, as
+	// well as the relevant NodeJS program code. Along with [](pulumirpc.LanguageRuntime.GenerateProgram), this method
+	// underpins ["programgen"](programgen) and the main functionality powering `pulumi convert`.
 	GenerateProject(ctx context.Context, in *GenerateProjectRequest, opts ...grpc.CallOption) (*GenerateProjectResponse, error)
-	// GeneratePackage generates a given pulumi package into a package for this language.
+	// `GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
+	// given Pulumi package, as specified by a [schema](schema).
 	GeneratePackage(ctx context.Context, in *GeneratePackageRequest, opts ...grpc.CallOption) (*GeneratePackageResponse, error)
+	// `Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
+	// instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
+	// a `.tgz` file might be produced from a list of `.js` sources; and so on. Presently, `Pack` is primarily used in
+	// [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
+	// to standardise e.g. provider publishing workflows.
+	Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error)
 }
 
 type languageRuntimeClient struct {
@@ -53,9 +104,28 @@ func NewLanguageRuntimeClient(cc grpc.ClientConnInterface) LanguageRuntimeClient
 	return &languageRuntimeClient{cc}
 }
 
+func (c *languageRuntimeClient) Handshake(ctx context.Context, in *LanguageHandshakeRequest, opts ...grpc.CallOption) (*LanguageHandshakeResponse, error) {
+	out := new(LanguageHandshakeResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/Handshake", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Deprecated: Do not use.
 func (c *languageRuntimeClient) GetRequiredPlugins(ctx context.Context, in *GetRequiredPluginsRequest, opts ...grpc.CallOption) (*GetRequiredPluginsResponse, error) {
 	out := new(GetRequiredPluginsResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GetRequiredPlugins", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) GetRequiredPackages(ctx context.Context, in *GetRequiredPackagesRequest, opts ...grpc.CallOption) (*GetRequiredPackagesResponse, error) {
+	out := new(GetRequiredPackagesResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GetRequiredPackages", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +182,16 @@ func (x *languageRuntimeInstallDependenciesClient) Recv() (*InstallDependenciesR
 	return m, nil
 }
 
-func (c *languageRuntimeClient) About(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AboutResponse, error) {
+func (c *languageRuntimeClient) RuntimeOptionsPrompts(ctx context.Context, in *RuntimeOptionsRequest, opts ...grpc.CallOption) (*RuntimeOptionsResponse, error) {
+	out := new(RuntimeOptionsResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) About(ctx context.Context, in *AboutRequest, opts ...grpc.CallOption) (*AboutResponse, error) {
 	out := new(AboutResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/About", in, out, opts...)
 	if err != nil {
@@ -189,30 +268,90 @@ func (c *languageRuntimeClient) GeneratePackage(ctx context.Context, in *Generat
 	return out, nil
 }
 
+func (c *languageRuntimeClient) Pack(ctx context.Context, in *PackRequest, opts ...grpc.CallOption) (*PackResponse, error) {
+	out := new(PackResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/Pack", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LanguageRuntimeServer is the server API for LanguageRuntime service.
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
 type LanguageRuntimeServer interface {
-	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+	// `Handshake` is the first call made by the engine to a language host. It is used to pass the engine's address to
+	// the language host so that it may establish its own connections back, and to establish protocol configuration that
+	// will be used to communicate between the two parties.
+	Handshake(context.Context, *LanguageHandshakeRequest) (*LanguageHandshakeResponse, error)
+	// Deprecated: Do not use.
+	// `GetRequiredPlugins` computes the complete set of anticipated [plugins](plugins) required by a Pulumi program.
+	// Among other things, it is intended to be used to pre-install plugins before running a program with
+	// [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+	// registrations](resource-registration) sent back from the running program to the engine.
+	//
+	// :::{important}
+	// The use of `GetRequiredPlugins` is deprecated in favour of [](pulumirpc.LanguageRuntime.GetRequiredPackages),
+	// which returns more granular information about which plugins are required by which packages.
+	// :::
 	GetRequiredPlugins(context.Context, *GetRequiredPluginsRequest) (*GetRequiredPluginsResponse, error)
-	// Run executes a program and returns its result.
+	// `GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
+	// by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
+	// to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
+	// back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
+	// determine which plugins are required to service the import of a given resource, since given the presence of
+	// [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
+	// with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+	// providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
+	// provide multiple packages.
+	GetRequiredPackages(context.Context, *GetRequiredPackagesRequest) (*GetRequiredPackagesResponse, error)
+	// `Run` executes a Pulumi program, returning information about whether or not the program produced an error.
 	Run(context.Context, *RunRequest) (*RunResponse, error)
-	// GetPluginInfo returns generic information about this plugin, like its version.
+	// `GetPluginInfo` returns information about the [plugin](plugins) implementing this language runtime.
 	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
-	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+	// `InstallDependencies` accepts a request specifying a Pulumi project and program that can be executed with
+	// [](pulumirpc.LanguageRuntime.Run) and installs the dependencies for that program (e.g. by running `npm install`
+	// for NodeJS, or `pip install` for Python). Since dependency installation could take a while, and callers may wish
+	// to report on its progress, this method returns a stream of [](pulumirpc.InstallDependenciesResponse) messages
+	// containing information about standard error and output.
 	InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error
-	// About returns information about the runtime for this language.
-	About(context.Context, *emptypb.Empty) (*AboutResponse, error)
-	// GetProgramDependencies returns the set of dependencies required by the program.
+	// `RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
+	// ask during `pulumi new`.
+	RuntimeOptionsPrompts(context.Context, *RuntimeOptionsRequest) (*RuntimeOptionsResponse, error)
+	// `About` returns information about the language runtime being used.
+	About(context.Context, *AboutRequest) (*AboutResponse, error)
+	// `GetProgramDependencies` computes the set of language-level dependencies (e.g. NPM packages for NodeJS, or Maven
+	// libraries for Java) required by a program.
 	GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error)
-	// RunPlugin executes a plugin program and returns its result asynchronously.
+	// `RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
+	// [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+	// expected to terminate until instructed/for a long time, this method returns a stream of
+	// [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
+	// exit code of the plugin when it does terminate.
 	RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error
-	// GenerateProgram generates a given PCL program into a program for this language.
+	// `GenerateProgram` generates code in this host's language that implements the given [PCL](pcl) program. Unlike
+	// [](pulumirpc.LanguageRuntime.GenerateProject), this method *only* generates program code, and does not e.g.
+	// generate a `package.json` for a NodeJS project that details how to run that code.
+	// [](pulumirpc.LanguageRuntime.GenerateProject), this method underpins ["programgen"](programgen) and the main
+	// functionality powering `pulumi convert`.
 	GenerateProgram(context.Context, *GenerateProgramRequest) (*GenerateProgramResponse, error)
-	// GenerateProject generates a given PCL program into a project for this language.
+	// `GenerateProject` generates code in this host's language that implements the given [PCL](pcl) program and wraps
+	// it in some language-specific notion of a "project", where a project is a buildable or runnable artifact. In this
+	// sense, `GenerateProject`'s output is a superset of that of [](pulumirpc.LanguageRuntime.GenerateProgram). For
+	// instance, when generating a NodeJS project, this method might generate a corresponding `package.json` file, as
+	// well as the relevant NodeJS program code. Along with [](pulumirpc.LanguageRuntime.GenerateProgram), this method
+	// underpins ["programgen"](programgen) and the main functionality powering `pulumi convert`.
 	GenerateProject(context.Context, *GenerateProjectRequest) (*GenerateProjectResponse, error)
-	// GeneratePackage generates a given pulumi package into a package for this language.
+	// `GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
+	// given Pulumi package, as specified by a [schema](schema).
 	GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error)
+	// `Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
+	// instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
+	// a `.tgz` file might be produced from a list of `.js` sources; and so on. Presently, `Pack` is primarily used in
+	// [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
+	// to standardise e.g. provider publishing workflows.
+	Pack(context.Context, *PackRequest) (*PackResponse, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -220,8 +359,14 @@ type LanguageRuntimeServer interface {
 type UnimplementedLanguageRuntimeServer struct {
 }
 
+func (UnimplementedLanguageRuntimeServer) Handshake(context.Context, *LanguageHandshakeRequest) (*LanguageHandshakeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
+}
 func (UnimplementedLanguageRuntimeServer) GetRequiredPlugins(context.Context, *GetRequiredPluginsRequest) (*GetRequiredPluginsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) GetRequiredPackages(context.Context, *GetRequiredPackagesRequest) (*GetRequiredPackagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPackages not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) Run(context.Context, *RunRequest) (*RunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
@@ -232,7 +377,10 @@ func (UnimplementedLanguageRuntimeServer) GetPluginInfo(context.Context, *emptyp
 func (UnimplementedLanguageRuntimeServer) InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error {
 	return status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
 }
-func (UnimplementedLanguageRuntimeServer) About(context.Context, *emptypb.Empty) (*AboutResponse, error) {
+func (UnimplementedLanguageRuntimeServer) RuntimeOptionsPrompts(context.Context, *RuntimeOptionsRequest) (*RuntimeOptionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RuntimeOptionsPrompts not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) About(context.Context, *AboutRequest) (*AboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error) {
@@ -250,6 +398,9 @@ func (UnimplementedLanguageRuntimeServer) GenerateProject(context.Context, *Gene
 func (UnimplementedLanguageRuntimeServer) GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GeneratePackage not implemented")
 }
+func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*PackResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pack not implemented")
+}
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
 
 // UnsafeLanguageRuntimeServer may be embedded to opt out of forward compatibility for this service.
@@ -261,6 +412,24 @@ type UnsafeLanguageRuntimeServer interface {
 
 func RegisterLanguageRuntimeServer(s grpc.ServiceRegistrar, srv LanguageRuntimeServer) {
 	s.RegisterService(&LanguageRuntime_ServiceDesc, srv)
+}
+
+func _LanguageRuntime_Handshake_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LanguageHandshakeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Handshake(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/Handshake",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Handshake(ctx, req.(*LanguageHandshakeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LanguageRuntime_GetRequiredPlugins_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -277,6 +446,24 @@ func _LanguageRuntime_GetRequiredPlugins_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LanguageRuntimeServer).GetRequiredPlugins(ctx, req.(*GetRequiredPluginsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LanguageRuntime_GetRequiredPackages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRequiredPackagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).GetRequiredPackages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/GetRequiredPackages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).GetRequiredPackages(ctx, req.(*GetRequiredPackagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -338,8 +525,26 @@ func (x *languageRuntimeInstallDependenciesServer) Send(m *InstallDependenciesRe
 	return x.ServerStream.SendMsg(m)
 }
 
+func _LanguageRuntime_RuntimeOptionsPrompts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RuntimeOptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).RuntimeOptionsPrompts(ctx, req.(*RuntimeOptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _LanguageRuntime_About_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(AboutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -351,7 +556,7 @@ func _LanguageRuntime_About_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: "/pulumirpc.LanguageRuntime/About",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LanguageRuntimeServer).About(ctx, req.(*emptypb.Empty))
+		return srv.(LanguageRuntimeServer).About(ctx, req.(*AboutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -449,6 +654,24 @@ func _LanguageRuntime_GeneratePackage_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LanguageRuntime_Pack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).Pack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/Pack",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).Pack(ctx, req.(*PackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LanguageRuntime_ServiceDesc is the grpc.ServiceDesc for LanguageRuntime service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -457,8 +680,16 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LanguageRuntimeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Handshake",
+			Handler:    _LanguageRuntime_Handshake_Handler,
+		},
+		{
 			MethodName: "GetRequiredPlugins",
 			Handler:    _LanguageRuntime_GetRequiredPlugins_Handler,
+		},
+		{
+			MethodName: "GetRequiredPackages",
+			Handler:    _LanguageRuntime_GetRequiredPackages_Handler,
 		},
 		{
 			MethodName: "Run",
@@ -467,6 +698,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPluginInfo",
 			Handler:    _LanguageRuntime_GetPluginInfo_Handler,
+		},
+		{
+			MethodName: "RuntimeOptionsPrompts",
+			Handler:    _LanguageRuntime_RuntimeOptionsPrompts_Handler,
 		},
 		{
 			MethodName: "About",
@@ -487,6 +722,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GeneratePackage",
 			Handler:    _LanguageRuntime_GeneratePackage_Handler,
+		},
+		{
+			MethodName: "Pack",
+			Handler:    _LanguageRuntime_Pack_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

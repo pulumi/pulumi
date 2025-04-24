@@ -14,11 +14,12 @@
 from pulumi import CustomResource
 from pulumi.runtime import is_dry_run
 
+
 class MyResource(CustomResource):
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyResource", name, {
-            "is_preview": is_dry_run()
-        })
+        CustomResource.__init__(
+            self, "test:index:MyResource", name, {"is_preview": is_dry_run()}
+        )
 
 
 MyResource("foo")

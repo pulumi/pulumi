@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The tsnode import is used for type-checking only. Do not reference it in the emitted code.
+import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as fspromises from "fs/promises";
 import * as ini from "ini";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as semver from "semver";
-import * as tsnode from "ts-node";
 import * as url from "url";
 import * as util from "util";
 import { ResourceError, RunError } from "../../errors";
@@ -28,6 +29,7 @@ import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
+import { defaultErrorMessage } from "./error";
 
 import * as mod from ".";
 
@@ -218,7 +220,7 @@ function tracingIsEnabled(tracingUrl: string | boolean): boolean {
 }
 
 /** @internal */
-export function run(
+export async function run(
     argv: minimist.ParsedArgs,
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
@@ -254,10 +256,31 @@ export function run(
 
     span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
-        const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require("ts-node");
+
+        // tanspileOnly controls wether ts-node should do type checking or not.
+        // Users might have a separate build step that runs tsc for type
+        // checking, and don't want to pay the performance cost of type checking
+        // twice. This also enables using swc, which doesn' support type
+        // checking, with ts-node.
+        //
+        // If the `PULUMI_NODEJS_TRANSPILE_ONLY `env variable is set, we use
+        // that to determine the value of `transpileOnly.` Otherwise we use the
+        // `noCheck `compiler option from the tsconfig. Otherwise we default to
+        // ts-node's default, which is to type check.
+        let transpileOnly = undefined;
+        const transpileOnlyEnv = process.env["PULUMI_NODEJS_TRANSPILE_ONLY"];
+        if (transpileOnlyEnv) {
+            transpileOnly = transpileOnlyEnv === "true";
+        } else {
+            // @ts-ignore
+            transpileOnly = compilerOptions.noCheck;
+        }
+
+        const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
+        const tsn: typeof tsnode = require(tsnodeRequire);
         tsn.register({
+            compiler: typescriptRequire,
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
             // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
@@ -274,6 +297,7 @@ export function run(
         });
     }
 
+    const hasEntrypoint = argv._[0] !== ".";
     let program: string = argv._[0];
     if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
@@ -294,21 +318,11 @@ export function run(
             return;
         }
 
-        // colorize stack trace if exists
-        const stackMessage = err.stack && util.inspect(err, { colors: true });
-
-        // Default message should be to include the full stack (which includes the message), or
-        // fallback to just the message if we can't get the stack.
-        //
-        // If both the stack and message are empty, then just stringify the err object itself. This
-        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = stackMessage || err.message || "" + err;
-
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        } else if (err.name === tsnode.TSError.name || err.name === SyntaxError.name) {
+        } else if (err.name === "TSError" || err.name === SyntaxError.name) {
             // Hide stack frames as TSError/SyntaxError have messages containing
             // where the error is located
             const errOut = err.stack?.toString() || "";
@@ -325,12 +339,12 @@ ${errMsg}`,
             );
         } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
-            const message = err.hideStack ? err.message : defaultMessage;
+            const message = err.hideStack ? err.message : defaultErrorMessage(err);
             log.error(message, err.resource);
         } else {
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
-${defaultMessage}`,
+${defaultErrorMessage(err)}`,
             );
         }
 
@@ -385,9 +399,9 @@ ${defaultMessage}`,
             const packageObject = packageObjectFromProjectRoot(packageRoot);
             let programExport: any;
 
-            // If the user provided an entrypoint, we use that file
-            // relative to the package directory.
-            if (packageObject["main"]) {
+            // If there is no entrypoint set in Pulumi.yaml via the main
+            // option, look for an entrypoint defined in package.json
+            if (!hasEntrypoint && packageObject["main"]) {
                 const packageMainPath = path.join(packageRoot, packageObject["main"]);
                 if (fs.existsSync(packageMainPath)) {
                     program = packageMainPath;
@@ -487,7 +501,8 @@ ${defaultMessage}`,
     };
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    const stackOutputs = stack.runInPulumiStack(runProgram);
+    const stackOutputs = await stack.runInPulumiStack(runProgram);
+    await settings.disconnect();
     span.end();
     return stackOutputs;
 }

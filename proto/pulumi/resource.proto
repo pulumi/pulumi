@@ -19,6 +19,7 @@ import "google/protobuf/struct.proto";
 import "pulumi/provider.proto";
 import "pulumi/alias.proto";
 import "pulumi/source.proto";
+import "pulumi/callback.proto";
 
 package pulumirpc;
 
@@ -28,11 +29,19 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
-    rpc StreamInvoke(ResourceInvokeRequest) returns (stream InvokeResponse) {}
-    rpc Call(CallRequest) returns (CallResponse) {}
+    rpc Call(ResourceCallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
+
+    // Register a resource transform for the stack
+    rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
+    // Register an invoke transform for the stack
+    rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
+
+    // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+    // Multiple requests are idempotent and guaranteed to return the same result.
+    rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -71,8 +80,11 @@ message ReadResourceRequest {
 
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
+    map<string, bytes> pluginChecksums = 15; // a map of checksums of the provider to use when servicing this request.
 
     SourcePosition sourcePosition = 14;    // the optional source position of the user code that initiated the read.
+
+    string packageRef = 16; // a reference from RegisterPackageRequest.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -99,7 +111,7 @@ message RegisterResourceRequest {
     string parent = 3;                                          // an optional parent URN that this child resource belongs to.
     bool custom = 4;                                            // true if the resource is a custom, managed by a plugin's CRUD operations.
     google.protobuf.Struct object = 5;                          // an object produced by the interpreter/source.
-    bool protect = 6;                                           // true if the resource should be marked protected.
+    optional bool protect = 6;                                  // true if the resource should be marked protected.
     repeated string dependencies = 7;                           // a list of URNs that this resource depends on, as observed by the language host.
     string provider = 8;                                        // an optional reference to the provider to manage this resource's CRUD operations.
     map<string, PropertyDependencies> propertyDependencies = 9; // a map from property keys to the dependencies of the property.
@@ -118,7 +130,8 @@ message RegisterResourceRequest {
     map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
     repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
     string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
-    bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
+    map<string, bytes> pluginChecksums = 30;                    // a map of checksums expected for the provider plugin.
+    optional bool retainOnDelete = 25;                          // if true the engine will not call the resource providers delete method for this resource.
     repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
     string deletedWith = 27;                                    // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
 
@@ -132,6 +145,17 @@ message RegisterResourceRequest {
     bool aliasSpecs = 28;
 
     SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
+
+    repeated Callback transforms = 31; // a list of transforms to apply to the resource before registering it.
+    bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
+
+    string packageRef = 33; // a reference from RegisterPackageRequest.
+}
+
+enum Result {
+	SUCCESS = 0;
+	FAIL = 1;
+	SKIP = 2;
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -148,6 +172,7 @@ message RegisterResourceResponse {
     bool stable = 4;                                            // if true, the object's state is stable and may be trusted not to change.
     repeated string stables = 5;                                // an optional list of guaranteed-stable properties.
     map<string, PropertyDependencies> propertyDependencies = 6; // a map from property keys to the dependencies of the property.
+    Result result = 7;                                          // the reason, whether the resource registration was successful, failed, or skipped.
 }
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.
@@ -163,6 +188,108 @@ message ResourceInvokeRequest {
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
+    map<string, bytes> pluginChecksums = 8; // a map of checksums expected for the provider plugin.
 
     SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
+
+    string packageRef = 9; // a reference from RegisterPackageRequest.
+}
+
+message ResourceCallRequest {
+    // ArgumentDependencies describes the resources that a particular argument depends on.
+    message ArgumentDependencies {
+        repeated string urns = 1; // A list of URNs this argument depends on.
+    }
+
+    string tok = 1;                                        // the function token to invoke.
+    google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
+    map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
+    string provider = 4;                                   // an optional reference to the provider to use for this invoke.
+    string version = 5;                                    // the version of the provider to use when servicing this request.
+    string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
+    map<string, bytes> pluginChecksums = 16;               // a map of checksums of the provider to use when servicing this request.
+
+    // We used to send CallRequest for both provider calls and monitor calls, despite them being different.
+    // We've now split them but need to make sure we don't confuse any old plugins/monitors making sure those
+    // fields don't get reused.
+    reserved 6, 7, 8, 9, 10, 11, 12, 14;
+    reserved "project", "stack", "config", "configSecretKeys", "dryRun", "parallel", "monitorEndpoint", "organization";
+
+    SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
+    string packageRef = 17; // a reference from RegisterPackageRequest.
+}
+
+// TransformResourceOptions is a subset of all resource options that are relevant to transforms.
+message TransformResourceOptions {
+    repeated string depends_on = 1;
+    optional bool protect = 2;
+    repeated string ignore_changes = 3;
+    repeated string replace_on_changes = 4;
+    string version = 5;
+    repeated Alias aliases = 6;
+    string provider = 7;
+    RegisterResourceRequest.CustomTimeouts custom_timeouts = 8;
+    string plugin_download_url = 9;
+    optional bool retain_on_delete = 10;
+    string deleted_with = 11;
+    optional bool delete_before_replace = 12;
+    repeated string additional_secret_outputs = 13;
+    map<string, string> providers = 14;
+    map<string, bytes> plugin_checksums = 15;
+}
+
+message TransformRequest {
+    string type = 1; // the type of the resource.
+    string name = 2; // the name of the resource.
+    bool custom = 3; // true if the resource is a custom resource, else it's a component resource.
+    string parent = 4; // the parent of the resource, this can't be changed by the transform.
+    google.protobuf.Struct properties = 5; // the input properties of the resource.
+    TransformResourceOptions options = 6; // the options for the resource.
+}
+
+message TransformResponse {
+    google.protobuf.Struct properties = 1; // the transformed input properties.
+    TransformResourceOptions options = 2; // the options for the resource.
+}
+
+// TransformInvokeRequest is the request object for the TransformInvoke RPC.
+message TransformInvokeRequest {
+    string token = 1; // the token for the invoke request.
+    google.protobuf.Struct args = 2; // the input args of the resource.
+    TransformInvokeOptions options = 3; // the options for the resource.
+}
+
+// TransformInvokeResponse is the response object for the TransformInvoke RPC.
+message TransformInvokeResponse {
+    google.protobuf.Struct args = 1; // the transformed input args.
+    TransformInvokeOptions options = 2; // the options for the resource.
+}
+
+// TransformInvokeOptions is a subset of all invoke options that are relevant to transforms.
+message TransformInvokeOptions {
+    string provider = 1;
+    string plugin_download_url = 2;
+    string version = 3;
+    map<string, bytes> plugin_checksums = 4;
+}
+
+message RegisterPackageRequest {
+    string name = 1; // the plugin name.
+    string version = 2; // the plugin version.
+    string download_url = 3; // the optional plugin download url.
+    map<string, bytes> checksums = 4; // the optional plugin checksums.
+    Parameterization parameterization = 5; // the optional parameterization for this package.
+}
+
+message RegisterPackageResponse {
+    // The UUID package reference for this registered package.
+    //
+    // Lifecycle methods accept this reference in the 'packageRef' field.
+    string ref = 1;
+}
+
+message Parameterization {
+    string name = 1; // the parameterized package name.
+    string version = 2; // the parameterized package version.
+    bytes value = 3; // the parameter value for the parameterized package.
 }

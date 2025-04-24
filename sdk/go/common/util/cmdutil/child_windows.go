@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build windows
 // +build windows
 
@@ -19,10 +20,27 @@ package cmdutil
 import (
 	"os"
 	"os/exec"
+	"syscall"
 
 	multierror "github.com/hashicorp/go-multierror"
 	ps "github.com/mitchellh/go-ps"
 )
+
+// killProcessGroup kills a process group by calling Process.Kill()
+// (which calls TerminateProcess on Windows) on all processes in the group.
+//
+// This is different from [KillChildren] which only kills child processes.
+//
+// This is a helper function for TerminateProcessGroup;
+// a Unix version with the same signature exists in child_unix.go.
+func killProcessGroup(proc *os.Process) error {
+	if err := KillChildren(proc.Pid); err != nil {
+		return err
+	}
+
+	// Kill the root process since KillChildren only kills child processes.
+	return proc.Kill()
+}
 
 // KillChildren calls os.Process.Kill() on every child process of `pid`'s, stoping after the first error (if any). It
 // also only kills direct child process, not any children they may have. This function is only implemented on Windows.
@@ -73,7 +91,13 @@ func processExistsWithParent(pid int, ppid int) (bool, error) {
 	return false, nil
 }
 
-// RegisterProcessGroup does nothing on Windows.
+// RegisterProcessGroup informs the OS that it should create a new process group
+// rooted at the given process.
+//
+// When it comes time to kill this process,
+// we'll kill all processes in the same process group.
 func RegisterProcessGroup(cmd *exec.Cmd) {
-	// nothing to do on Windows.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+	}
 }

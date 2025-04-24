@@ -26,11 +26,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
 
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,7 +52,7 @@ func chdir(t *testing.T, dir string) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables, changes working directory
+//nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
 		testInstall(t, "npm", false /*production*/)
@@ -62,10 +63,8 @@ func TestNPMInstall(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables, changes working directory
+//nolint:paralleltest // changes working directory
 func TestYarnInstall(t *testing.T) {
-	t.Setenv("PULUMI_PREFER_YARN", "true")
-
 	t.Run("development", func(t *testing.T) {
 		testInstall(t, "yarn", false /*production*/)
 	})
@@ -75,7 +74,135 @@ func TestYarnInstall(t *testing.T) {
 	})
 }
 
-func testInstall(t *testing.T, expectedBin string, production bool) {
+//nolint:paralleltest // changes working directory
+func TestPnpmInstall(t *testing.T) {
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "pnpm", false /*production*/)
+	})
+
+	t.Run("production", func(t *testing.T) {
+		testInstall(t, "pnpm", true /*production*/)
+	})
+}
+
+func TestResolvePackageManager(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name      string
+		pm        PackageManagerType
+		lockFiles []string
+		expected  string
+	}{
+		{"defaults to npm", AutoPackageManager, []string{}, "npm"},
+		{"picks npm", NpmPackageManager, []string{}, "npm"},
+		{"picks yarn", YarnPackageManager, []string{}, "yarn"},
+		{"picks pnpm", PnpmPackageManager, []string{}, "pnpm"},
+		{"picks npm based on lockfile", AutoPackageManager, []string{"npm"}, "npm"},
+		{"picks yarn based on lockfile", AutoPackageManager, []string{"yarn"}, "yarn"},
+		{"picks pnpm based on lockfile", AutoPackageManager, []string{"pnpm"}, "pnpm"},
+		{"yarn > pnpm > npm", AutoPackageManager, []string{"yarn", "pnpm", "npm"}, "yarn"},
+		{"pnpm > npm", AutoPackageManager, []string{"pnpm", "npm"}, "pnpm"},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			for _, lockFile := range tt.lockFiles {
+				writeLockFile(t, dir, lockFile)
+			}
+			pm, err := ResolvePackageManager(tt.pm, dir)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, pm.Name())
+		})
+	}
+}
+
+func TestPack(t *testing.T) {
+	t.Parallel()
+
+	packageJSON := []byte(`{
+	    "name": "test-package",
+		"version": "1.0"
+	}`)
+
+	for _, pm := range []string{"npm", "yarn", "pnpm"} {
+		pm := pm
+		t.Run(pm, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			writeLockFile(t, dir, pm)
+			packageJSONFilename := filepath.Join(dir, "package.json")
+			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+			stderr := new(bytes.Buffer)
+
+			artifact, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
+
+			require.NoError(t, err)
+			// check that the artifact contains a package.json
+			b, err := gzip.NewReader(bytes.NewReader((artifact)))
+			require.NoError(t, err)
+			tr := tar.NewReader(b)
+			for {
+				h, err := tr.Next()
+				if err == io.EOF {
+					require.Fail(t, "package.json not found")
+					break
+				}
+				require.NoError(t, err)
+				if h.Name == "package/package.json" {
+					break
+				}
+			}
+		})
+	}
+}
+
+func TestPackInvalidPackageJSON(t *testing.T) {
+	t.Parallel()
+
+	// Missing a version field
+	packageJSON := []byte(`{
+	    "name": "test-package"
+	}`)
+
+	for _, tt := range []struct{ packageManager, expectedErrorMessage string }{
+		{"npm", "Invalid package, must have name and version"},
+		{"yarn", "Package doesn't have a version"},
+		{"pnpm", "Package version is not defined in the package.json"},
+	} {
+		tt := tt
+		t.Run(tt.packageManager, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			writeLockFile(t, dir, tt.packageManager)
+			packageJSONFilename := filepath.Join(dir, "package.json")
+			require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
+			stderr := new(bytes.Buffer)
+
+			_, err := Pack(context.Background(), AutoPackageManager, dir, stderr)
+
+			exitErr := new(exec.ExitError)
+			require.ErrorAs(t, err, &exitErr)
+			assert.NotZero(t, exitErr.ExitCode())
+			require.Contains(t, stderr.String(), tt.expectedErrorMessage)
+		})
+	}
+}
+
+// writeLockFile writes a mock lockfile for the selected package manager
+func writeLockFile(t *testing.T, dir string, packageManager string) {
+	t.Helper()
+	switch packageManager {
+	case "npm":
+		writeFile(t, filepath.Join(dir, "package-lock.json"), "{\"lockfileVersion\": 2}")
+	case "yarn":
+		writeFile(t, filepath.Join(dir, "yarn.lock"), "# yarn lockfile v1")
+	case "pnpm":
+		writeFile(t, filepath.Join(dir, "pnpm-lock.yaml"), "lockfileVersion: '6.0'")
+	}
+}
+
+func testInstall(t *testing.T, packageManager string, production bool) {
 	// To test this functionality without actually hitting NPM,
 	// we'll spin up a local HTTP server that implements a subset
 	// of the NPM registry API.
@@ -84,6 +211,8 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	// containing the line:
 	//
 	//   registry = <srv.URL>
+	//
+	// Pnpm reads the same .npmrc file.
 	//
 	// Similarly, we'll tell Yarn to use this server with a
 	// ~/.yarnrc file containing the line:
@@ -116,14 +245,16 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	}`)
 	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 
+	writeLockFile(t, pkgdir, packageManager)
+
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
-	pulumi_testing.YarnInstallMutex.Lock()
-	defer pulumi_testing.YarnInstallMutex.Unlock()
+	ptesting.YarnInstallMutex.Lock()
+	defer ptesting.YarnInstallMutex.Unlock()
 	out := iotest.LogWriter(t)
-	bin, err := Install(context.Background(), pkgdir, production, out, out)
+	bin, err := Install(context.Background(), AutoPackageManager, pkgdir, production, out, out)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedBin, bin)
+	assert.Equal(t, packageManager, bin)
 }
 
 // fakeNPMRegistry starts up an HTTP server that implements a subset of the NPM registry API

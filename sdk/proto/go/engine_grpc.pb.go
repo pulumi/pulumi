@@ -30,6 +30,9 @@ type EngineClient interface {
 	GetRootResource(ctx context.Context, in *GetRootResourceRequest, opts ...grpc.CallOption) (*GetRootResourceResponse, error)
 	// SetRootResource sets the URN of the root resource.
 	SetRootResource(ctx context.Context, in *SetRootResourceRequest, opts ...grpc.CallOption) (*SetRootResourceResponse, error)
+	// StartDebugging indicates to the engine that the program has started under a debugger, and the engine
+	// should notify the user of how to connect to the debugger.
+	StartDebugging(ctx context.Context, in *StartDebuggingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type engineClient struct {
@@ -67,6 +70,15 @@ func (c *engineClient) SetRootResource(ctx context.Context, in *SetRootResourceR
 	return out, nil
 }
 
+func (c *engineClient) StartDebugging(ctx context.Context, in *StartDebuggingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Engine/StartDebugging", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EngineServer is the server API for Engine service.
 // All implementations must embed UnimplementedEngineServer
 // for forward compatibility
@@ -78,6 +90,9 @@ type EngineServer interface {
 	GetRootResource(context.Context, *GetRootResourceRequest) (*GetRootResourceResponse, error)
 	// SetRootResource sets the URN of the root resource.
 	SetRootResource(context.Context, *SetRootResourceRequest) (*SetRootResourceResponse, error)
+	// StartDebugging indicates to the engine that the program has started under a debugger, and the engine
+	// should notify the user of how to connect to the debugger.
+	StartDebugging(context.Context, *StartDebuggingRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedEngineServer()
 }
 
@@ -93,6 +108,9 @@ func (UnimplementedEngineServer) GetRootResource(context.Context, *GetRootResour
 }
 func (UnimplementedEngineServer) SetRootResource(context.Context, *SetRootResourceRequest) (*SetRootResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetRootResource not implemented")
+}
+func (UnimplementedEngineServer) StartDebugging(context.Context, *StartDebuggingRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartDebugging not implemented")
 }
 func (UnimplementedEngineServer) mustEmbedUnimplementedEngineServer() {}
 
@@ -161,6 +179,24 @@ func _Engine_SetRootResource_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Engine_StartDebugging_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartDebuggingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).StartDebugging(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.Engine/StartDebugging",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).StartDebugging(ctx, req.(*StartDebuggingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Engine_ServiceDesc is the grpc.ServiceDesc for Engine service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -179,6 +215,10 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetRootResource",
 			Handler:    _Engine_SetRootResource_Handler,
+		},
+		{
+			MethodName: "StartDebugging",
+			Handler:    _Engine_StartDebugging_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

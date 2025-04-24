@@ -1,0 +1,10 @@
+<{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=0]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=0996a039-d51f-4931-a14c-eea6abf4b068]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

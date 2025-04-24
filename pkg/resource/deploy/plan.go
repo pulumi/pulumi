@@ -1,20 +1,36 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/mitchellh/copystructure"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 // A Plan is a mapping from URNs to ResourcePlans. The plan defines an expected set of resources and the expected
@@ -108,7 +124,7 @@ type GoalPlan struct {
 	// the type of resource.
 	Type tokens.Type
 	// the name for the resource's URN.
-	Name tokens.QName
+	Name string
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
 	// the resource's checked input properties we expect to change.
@@ -171,6 +187,11 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 
 	diff := NewPlanDiff(inputDiff)
 
+	var protect bool
+	if goal.Protect != nil {
+		protect = *goal.Protect
+	}
+
 	return &GoalPlan{
 		Type:                    goal.Type,
 		Name:                    goal.Name,
@@ -178,7 +199,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		InputDiff:               diff,
 		OutputDiff:              PlanDiff{},
 		Parent:                  goal.Parent,
-		Protect:                 goal.Protect,
+		Protect:                 protect,
 		Dependencies:            goal.Dependencies,
 		Provider:                goal.Provider,
 		PropertyDependencies:    goal.PropertyDependencies,
@@ -522,7 +543,7 @@ func (rp *ResourcePlan) checkGoal(
 
 	if rp.Goal == nil {
 		// If the plan goal is nil it expected a delete
-		return fmt.Errorf("resource unexpectedly not deleted")
+		return errors.New("resource unexpectedly not deleted")
 	}
 
 	// Check that either both resources are custom resources or both are component resources.
@@ -558,7 +579,11 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the protect bit is identical.
-	if programGoal.Protect != rp.Goal.Protect {
+	var protect bool
+	if programGoal.Protect != nil {
+		protect = *programGoal.Protect
+	}
+	if protect != rp.Goal.Protect {
 		return fmt.Errorf("protect changed (expected %v)", rp.Goal.Protect)
 	}
 
@@ -573,7 +598,7 @@ func (rp *ResourcePlan) checkGoal(
 	default:
 		expected := "no value"
 		if rp.Goal.DeleteBeforeReplace != nil {
-			expected = fmt.Sprintf("%v", *rp.Goal.DeleteBeforeReplace)
+			expected = strconv.FormatBool(*rp.Goal.DeleteBeforeReplace)
 		}
 		return fmt.Errorf("deleteBeforeReplace changed (expected %v)", expected)
 	}

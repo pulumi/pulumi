@@ -1,0 +1,4 @@
+name: main-overrides-package-json
+description: The main option from Pulumi.yaml overrides the main setting from package.json
+main: entrypoint.js
+runtime: nodejs

@@ -16,9 +16,11 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -28,6 +30,7 @@ type tokenSourceCapability interface {
 
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
 type tokenSource struct {
+	clock    clockwork.Clock
 	requests chan tokenRequest
 	done     chan bool
 }
@@ -36,6 +39,18 @@ var _ tokenSourceCapability = &tokenSource{}
 
 type tokenRequest chan<- tokenResponse
 
+type expiredTokenError struct {
+	err error
+}
+
+func (e expiredTokenError) Error() string {
+	return fmt.Sprintf("token expired: %v", e.err)
+}
+
+func (e expiredTokenError) Unwrap() error {
+	return e.err
+}
+
 type tokenResponse struct {
 	token string
 	err   error
@@ -43,6 +58,7 @@ type tokenResponse struct {
 
 func newTokenSource(
 	ctx context.Context,
+	clock clockwork.Clock,
 	initialToken string,
 	initialTokenExpires time.Time,
 	duration time.Duration,
@@ -53,7 +69,7 @@ func newTokenSource(
 	) (string, time.Time, error),
 ) (*tokenSource, error) {
 	requests, done := make(chan tokenRequest), make(chan bool)
-	ts := &tokenSource{requests: requests, done: done}
+	ts := &tokenSource{clock: clock, requests: requests, done: done}
 	go ts.handleRequests(ctx, initialToken, initialTokenExpires, duration, refreshToken)
 	return ts, nil
 }
@@ -69,7 +85,7 @@ func (ts *tokenSource) handleRequests(
 		currentToken string,
 	) (string, time.Time, error),
 ) {
-	renewTicker := time.NewTicker(duration / 8)
+	renewTicker := ts.clock.NewTicker(duration / 8)
 	defer renewTicker.Stop()
 
 	state := struct {
@@ -86,7 +102,7 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
-		now := time.Now()
+		now := ts.clock.Now()
 
 		// We will renew the lease after 50% of the duration
 		// has elapsed to allow time for retries.
@@ -95,13 +111,21 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
+		logging.V(9).Infof("trying to renew token. Current token expiring at: %v ", state.expires)
+
 		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
-		// If renew failed, all further GetToken requests will return this error.
-		if err != nil {
+		// Renewing might fail because of network issues, or because the token is no longer valid.
+		// We only care about the latter, if it's just a network issue we should retry again.
+		var expired expiredTokenError
+		if errors.As(err, &expired) {
 			logging.V(3).Infof("error renewing lease: %v", err)
 			state.error = fmt.Errorf("renewing lease: %w", err)
 			renewTicker.Stop()
+		} else if err != nil {
+			// If we failed to renew the lease, we will retry in the next cycle.
+			logging.V(3).Infof("error renewing lease: %v", err)
 		} else {
+			logging.V(5).Infof("renewed lease. Next expiry: %v", newTokenExpires)
 			state.token = newToken
 			state.expires = newTokenExpires
 		}
@@ -109,7 +133,7 @@ func (ts *tokenSource) handleRequests(
 
 	for {
 		select {
-		case <-renewTicker.C:
+		case <-renewTicker.Chan():
 			renewUpdateLeaseIfStale()
 		case c, ok := <-ts.requests:
 			if !ok {

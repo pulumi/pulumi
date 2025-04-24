@@ -34,7 +34,7 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 // GetDocLinkForPulumiType returns the NodeJS API doc link for a Pulumi type.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return fmt.Sprintf("/docs/reference/pkg/nodejs/pulumi/pulumi/#%s", typeName)
+	return "/docs/reference/pkg/nodejs/pulumi/pulumi/#" + typeName
 }
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
@@ -144,17 +144,4 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 // GetEnumName returns the enum name specific to NodeJS.
 func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string, error) {
 	return enumMemberName(typeName, e)
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = fmt.Sprintf("@pulumi/%s", pkg.Name)
-	} else {
-		displayName = fmt.Sprintf("@pulumi/%s/%s", pkg.Name, strings.ToLower(modName))
-	}
-	link = d.GetDocLinkForResourceType(pkg, modName, "")
-	return displayName, link
 }

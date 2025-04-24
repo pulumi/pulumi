@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any, Dict
 import pulumi
+
 
 class TestClass:
     def __init__(self):
@@ -21,7 +23,7 @@ class TestClass:
 
 my_test_class_instance = TestClass()
 
-recursive = {"a": 1}
+recursive: Dict[str, Any] = {"a": 1}
 recursive["b"] = 2
 recursive["c"] = recursive
 
@@ -31,7 +33,9 @@ pulumi.export("boolean", True)
 pulumi.export("list", [])
 pulumi.export("list_with_none", [None])
 pulumi.export("list_of_lists", [[], []])
-pulumi.export("list_of_outputs", [[pulumi.Output.from_input(1)], pulumi.Output.from_input([2])])
+pulumi.export(
+    "list_of_outputs", [[pulumi.Output.from_input(1)], pulumi.Output.from_input([2])]
+)
 pulumi.export("set", set(["val"]))
 pulumi.export("dict", {"a": 1})
 pulumi.export("output", pulumi.Output.from_input(1))

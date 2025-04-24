@@ -17,8 +17,11 @@ from random import random
 
 from pulumi.automation import fully_qualified_stack_name
 
+
 def get_test_org():
-    test_org = "pulumi-test"
+    if os.getenv("PULUMI_ACCESS_TOKEN") is None:
+        return "organization"
+    test_org = "moolumi"
     env_var = os.getenv("PULUMI_TEST_ORG")
     if env_var is not None:
         test_org = env_var
@@ -30,4 +33,6 @@ def get_test_suffix() -> int:
 
 
 def stack_namer(project_name):
-    return fully_qualified_stack_name(get_test_org(), project_name, f"int_test_{get_test_suffix()}")
+    return fully_qualified_stack_name(
+        get_test_org(), project_name, f"int_test_{get_test_suffix()}"
+    )

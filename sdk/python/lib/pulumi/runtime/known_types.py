@@ -24,14 +24,15 @@ In order to break this circular reference, and to be clear about what types
 the runtime knows about and treats specially, we defer loading of the types from
 within the functions themselves.
 """
-from typing import Any, Optional
+
+from typing import Any
 
 
 def is_asset(obj: Any) -> bool:
     """
     Returns true if the given type is an Asset, false otherwise.
     """
-    from .. import Asset  # pylint: disable=import-outside-toplevel
+    from .. import Asset
 
     return isinstance(obj, Asset)
 
@@ -40,7 +41,7 @@ def is_archive(obj: Any) -> bool:
     """
     Returns true if the given type is an Archive, false otherwise.
     """
-    from .. import Archive  # pylint: disable=import-outside-toplevel
+    from .. import Archive
 
     return isinstance(obj, Archive)
 
@@ -49,7 +50,7 @@ def is_resource(obj: Any) -> bool:
     """
     Returns true if the given type is a Resource, false otherwise.
     """
-    from .. import Resource  # pylint: disable=import-outside-toplevel
+    from .. import Resource
 
     return isinstance(obj, Resource)
 
@@ -58,7 +59,7 @@ def is_custom_resource(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomResource, false otherwise.
     """
-    from .. import CustomResource  # pylint: disable=import-outside-toplevel
+    from .. import CustomResource
 
     return isinstance(obj, CustomResource)
 
@@ -67,7 +68,7 @@ def is_custom_timeouts(obj: Any) -> bool:
     """
     Returns true if the given type is a CustomTimeouts, false otherwise.
     """
-    from .. import CustomTimeouts  # pylint: disable=import-outside-toplevel
+    from .. import CustomTimeouts
 
     return isinstance(obj, CustomTimeouts)
 
@@ -76,7 +77,7 @@ def is_stack(obj: Any) -> bool:
     """
     Returns true if the given type is a Stack, false otherwise.
     """
-    from .stack import Stack  # pylint: disable=import-outside-toplevel
+    from .stack import Stack
 
     return isinstance(obj, Stack)
 
@@ -85,7 +86,7 @@ def is_output(obj: Any) -> bool:
     """
     Returns true if the given type is an Output, false otherwise.
     """
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from .. import Output
 
     return isinstance(obj, Output)
 
@@ -94,6 +95,6 @@ def is_unknown(obj: Any) -> bool:
     """
     Returns true if the given object is an Unknown, false otherwise.
     """
-    from ..output import Unknown  # pylint: disable=import-outside-toplevel
+    from ..output import Unknown
 
     return isinstance(obj, Unknown)

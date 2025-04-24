@@ -16,14 +16,18 @@ package pulumi
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -64,16 +68,22 @@ func TestRunningUnderMocks(t *testing.T) {
 
 	t.Run("With mocks", func(t *testing.T) {
 		t.Parallel()
-		testCtx := &Context{
+		testCtxState := &contextState{
 			monitor: &mockMonitor{},
+		}
+		testCtx := &Context{
+			state: testCtxState,
 		}
 		assert.True(t, testCtx.RunningWithMocks())
 	})
 
 	t.Run("Without mocks", func(t *testing.T) {
 		t.Parallel()
-		testCtx := &Context{
+		testCtxState := &contextState{
 			monitor: nil,
+		}
+		testCtx := &Context{
+			state: testCtxState,
 		}
 		assert.False(t, testCtx.RunningWithMocks())
 	})
@@ -349,7 +359,7 @@ func TestMergeProviders(t *testing.T) {
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		i, tt := i, tt
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
 
 			err := RunErr(func(ctx *Context) error {
@@ -367,7 +377,7 @@ func TestMergeProviders(t *testing.T) {
 				result := slice.Prealloc[string](len(provMap))
 				for k, p := range provMap {
 					assert.Equal(t, k, p.getPackage(), "pkg should match map key")
-					result = append(result, strings.TrimPrefix(p.getName(), "pulumi:providers:"))
+					result = append(result, strings.TrimPrefix(p.PulumiResourceName(), "pulumi:providers:"))
 				}
 
 				assert.ElementsMatch(t, tt.expected, result)
@@ -494,10 +504,10 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 			// alias specs.
 			// So if that's needed, wrap the monitor to claim it
 			// does.
-			if tt.supportsAliasSpecs {
+			if !tt.supportsAliasSpecs {
 				opts = append(opts, WrapResourceMonitorClient(
 					func(rmc pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
-						return resourceMonitorClientWithFeatures(rmc, "aliasSpecs")
+						return resourceMonitorClientWithoutFeatures(rmc, "aliasSpecs")
 					}))
 			}
 
@@ -529,23 +539,23 @@ func TestRegisterResource_aliasesSpecs(t *testing.T) {
 type resmonClientWithFeatures struct {
 	pulumirpc.ResourceMonitorClient
 
-	features map[string]struct{}
+	notFeatures map[string]struct{}
 }
 
-// resourceMonitorClientWithFeatures builds a ResourceMonitorClient
-// that reports the provided feature names as supported
-// in addition to those already supported by the client.
-func resourceMonitorClientWithFeatures(
+// resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
+// that reports the provided feature names as not supported
+// even if it is supported in the client
+func resourceMonitorClientWithoutFeatures(
 	cl pulumirpc.ResourceMonitorClient,
 	features ...string,
 ) pulumirpc.ResourceMonitorClient {
-	featureSet := make(map[string]struct{}, len(features))
+	notFeatureSet := make(map[string]struct{}, len(features))
 	for _, f := range features {
-		featureSet[f] = struct{}{}
+		notFeatureSet[f] = struct{}{}
 	}
 	return &resmonClientWithFeatures{
 		ResourceMonitorClient: cl,
-		features:              featureSet,
+		notFeatures:           notFeatureSet,
 	}
 }
 
@@ -554,9 +564,9 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 	req *pulumirpc.SupportsFeatureRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	if _, ok := c.features[req.GetId()]; ok {
+	if _, ok := c.notFeatures[req.GetId()]; ok {
 		return &pulumirpc.SupportsFeatureResponse{
-			HasSupport: ok,
+			HasSupport: false,
 		}, nil
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
@@ -602,4 +612,133 @@ func TestSourcePosition(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+}
+
+func TestWithValue(t *testing.T) {
+	t.Parallel()
+
+	key := "key"
+	val := "val"
+	testCtx := &Context{
+		state: &contextState{},
+		ctx:   context.Background(),
+	}
+	newCtx := testCtx.WithValue(key, val)
+
+	assert.Equal(t, nil, testCtx.Value(key))
+	assert.Equal(t, val, newCtx.Value(key))
+	assert.Equal(t, newCtx.state, testCtx.state)
+}
+
+func TestInvokeOutput(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			if args.Token == "test:invoke:fail" {
+				return nil, errors.New("invoke error")
+			}
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+		},
+	}
+
+	type invokeArgs struct {
+		Arg string
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		outType := AnyOutput{}
+		output := ctx.InvokeOutput("test:invoke:success", &invokeArgs{"will succeed"}, outType, InvokeOutputOptions{})
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+
+	err = RunErr(func(ctx *Context) error {
+		outType := AnyOutput{}
+		output := ctx.InvokeOutput("test:invoke:fail", &invokeArgs{"will fail"}, outType, InvokeOutputOptions{})
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "invoke error")
+}
+
+func TestInvokePlainWithOutputArgument(t *testing.T) {
+	// Unlike Node.js and Python, Go sensibly does not permit passing in outputs
+	// as an argument to a plain invoke. This test verifies that we return an
+	// error in this case.
+
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+		},
+	}
+
+	type result struct {
+		Result string
+	}
+
+	type InvokeOutputArgs struct {
+		Arg StringInput `pulumi:"arg"`
+	}
+
+	args := InvokeOutputArgs{
+		Arg: String("hello").ToStringOutput(),
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		res := result{}
+		return ctx.Invoke("test:invoke:success", args, &res)
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "cannot marshal an input of type")
+}
+
+// This test ensures that ctx.RegisterResourceOutputs is a no-op on subsequent
+// calls. This is important because user programs may call this method multiple
+// times, and we don't want to error out if they do.
+func TestRegisterResourceOutputs(t *testing.T) {
+	t.Parallel()
+
+	// Keep track of the number of times [monitor.RegisterResourceOutputs] is called.
+	var count atomic.Int32
+
+	mocks := &testMonitor{
+		RegisterResourceOutputsF: func() (*emptypb.Empty, error) {
+			resp := &emptypb.Empty{}
+			if c := count.Load(); c > 2 {
+				// Note: the first call registers the stack outputs for urn:
+				//  - urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack
+				// The second call registers the resource outputs for the component resource:
+				//  - urn:pulumi:stack::project::test:go:NewLoggingTestResource::res
+				return resp, fmt.Errorf("RegisterResourceOutputs called %d times; expected only 2 calls", c)
+			}
+
+			count.Add(1)
+			return resp, nil
+		},
+	}
+
+	var _ mockResourceMonitorWithRegisterResourceOutput = mocks // Surface compile-time error if the interface changes.
+
+	err := RunErr(func(ctx *Context) error {
+		resource, err := NewLoggingTestResource(t, ctx, "res", String("A"))
+		require.NoError(t, err)
+
+		// Attempt to register outputs again, it should be a no-op.
+		err = ctx.RegisterResourceOutputs(resource, Map(map[string]Input{
+			"testOutput": resource.TestOutput,
+		}))
+		require.NoError(t, err)
+
+		// Attempt to register outputs again, it should be a no-op.
+		err = ctx.RegisterResourceOutputs(resource, Map(map[string]Input{
+			"testOutput": resource.TestOutput,
+		}))
+		require.NoError(t, err)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
 }

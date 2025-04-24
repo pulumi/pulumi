@@ -1,0 +1,11 @@
+{
+	"name": "l2-large-string",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/large": "ROOT/artifacts/pulumi-large-4.3.2.tgz"
+	}
+}

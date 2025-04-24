@@ -211,6 +211,46 @@ describe("RemoteWorkspace", () => {
                 },
                 expected: ["--remote", "foo", "--remote-skip-install-dependencies"],
             },
+            {
+                name: "inherit settings",
+                opts: {
+                    remote: true,
+                    remoteGitProgramArgs: {
+                        stackName: "stack",
+                    },
+                    remoteInheritSettings: true,
+                },
+                expected: ["--remote", "--remote-inherit-settings"],
+            },
+            {
+                name: "remote image",
+                opts: {
+                    remote: true,
+                    remoteExecutorImage: {
+                        image: "test-image",
+                    },
+                },
+                expected: ["--remote", "--remote-executor-image=test-image"],
+            },
+            {
+                name: "remote image credentials",
+                opts: {
+                    remote: true,
+                    remoteExecutorImage: {
+                        image: "test-image",
+                        credentials: {
+                            username: "foo",
+                            password: "bar",
+                        },
+                    },
+                },
+                expected: [
+                    "--remote",
+                    "--remote-executor-image=test-image",
+                    "--remote-executor-image-username=foo",
+                    "--remote-executor-image-password=bar",
+                ],
+            },
         ];
         tests.forEach((test) => {
             it(`${test.name}`, async () => {
@@ -323,13 +363,13 @@ function testErrors(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptio
             name: "no url",
             stackName: stack,
             url: "",
-            error: `url is required.`,
+            error: `url is required if inheritSettings is not set.`,
         },
         {
             name: "no branch or commit",
             stackName: stack,
             url: testRepo,
-            error: `either branch or commitHash is required.`,
+            error: `either branch or commitHash is required if inheritSettings is not set.`,
         },
         {
             name: "both branch and commit",

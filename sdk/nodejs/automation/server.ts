@@ -21,14 +21,19 @@ import * as settings from "../runtime/settings";
 import * as stack from "../runtime/stack";
 import * as localState from "../runtime/state";
 
-const langproto = require("../proto/language_pb.js");
-const plugproto = require("../proto/plugin_pb.js");
+import * as langproto from "../proto/language_pb";
+import * as plugproto from "../proto/plugin_pb";
 
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-/** @internal */
+/**
+ * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
+ *
+ * @internal
+ */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
-/** @internal */
+/**
+ * @internal
+ */
 export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
     readonly program: () => Promise<T>;
 
@@ -37,14 +42,11 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
     constructor(program: () => Promise<T>) {
         this.program = program;
-
-        // set a bit in runtime settings to indicate that we're running in inline mode.
-        // this allows us to detect and fail fast for side by side pulumi scenarios.
-        settings.setInline();
     }
 
     onPulumiExit(hasError: boolean) {
-        // check for leaks once the CLI exits but skip if the program otherwise errored to keep error output clean
+        // Check for leaks once the CLI exits but skip if the program otherwise
+        // errored to keep error output clean
         if (!hasError) {
             const [leaks, leakMessage] = debuggable.leakedPromises();
             if (leaks.size !== 0) {
@@ -111,7 +113,17 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 }
 
                 if (errorSet.size !== 0 || log.hasErrors()) {
-                    throw new Error("One or more errors occurred");
+                    let errorMessage: string = "";
+                    if (errorSet.size !== 0) {
+                        errorMessage = ": ";
+                        errorSet.forEach((error) => {
+                            errorMessage += `${error.message}, `;
+                        });
+                        errorMessage = errorMessage.slice(0, -2);
+                    } else {
+                        errorMessage = ". Check logs for more details";
+                    }
+                    throw new Error(`One or more errors occurred${errorMessage}`);
                 }
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(`unknown error ${e}`);

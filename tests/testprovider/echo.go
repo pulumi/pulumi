@@ -18,24 +18,138 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"strconv"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type echoResourceProvider struct {
+func init() {
+	providerSchema.Resources["testprovider:index:Echo"] = pschema.ResourceSpec{
+		ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Description: "A test resource that echoes its input.",
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Ref: "pulumi.json#/Any",
+					},
+					Description: "Input to echo.",
+				},
+			},
+			Type: "object",
+		},
+		InputProperties: map[string]pschema.PropertySpec{
+			"echo": {
+				TypeSpec: pschema.TypeSpec{
+					Ref: "pulumi.json#/Any",
+				},
+				Description: "An echoed input.",
+			},
+		},
+		Methods: map[string]string{
+			"doEchoMethod": "testprovider:index:Echo/doEchoMethod",
+		},
+	}
+	providerSchema.Functions["testprovider:index:doEcho"] = pschema.FunctionSpec{
+		Description: "A test invoke that echoes its input.",
+		Inputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		Outputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+	if os.Getenv("PULUMI_TEST_MULTI_ARGUMENT_INPUTS") != "" {
+		// Conditionally add this if an env flag is set, since it does not work with all langs
+		providerSchema.Functions["testprovider:index:doMultiEcho"] = pschema.FunctionSpec{
+			Description: "A test invoke that echoes its input, using multiple inputs.",
+			MultiArgumentInputs: []string{
+				"echoA",
+				"echoB",
+			},
+			Inputs: &pschema.ObjectTypeSpec{
+				Properties: map[string]pschema.PropertySpec{
+					"echoA": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
+					},
+					"echoB": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+			Outputs: &pschema.ObjectTypeSpec{
+				Properties: map[string]pschema.PropertySpec{
+					"echoA": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
+					},
+					"echoB": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		}
+	}
+	providerSchema.Functions["testprovider:index:Echo/doEchoMethod"] = pschema.FunctionSpec{
+		Description: "A test call that echoes its input.",
+		Inputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"__self__": {
+					TypeSpec: pschema.TypeSpec{
+						Ref: "#/types/testprovider:index:Echo",
+					},
+				},
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		Outputs: &pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{
+				"echo": {
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+}
+
+type echoProvider struct {
 	id int
 }
 
-func (p *echoResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *echoProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *echoProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -48,17 +162,19 @@ func (p *echoResourceProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (
 
 	d := olds.Diff(news)
 	changes := rpc.DiffResponse_DIFF_NONE
-	if d.Changed("echo") {
+	var replaces []string
+	if d != nil && d.Changed("echo") {
 		changes = rpc.DiffResponse_DIFF_SOME
+		replaces = append(replaces, "echo")
 	}
 
 	return &rpc.DiffResponse{
 		Changes:  changes,
-		Replaces: []string{"echo"},
+		Replaces: replaces,
 	}, nil
 }
 
-func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *echoProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		KeepUnknowns: true,
 		SkipNulls:    true,
@@ -67,12 +183,8 @@ func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateReques
 		return nil, err
 	}
 
-	outputs := map[string]interface{}{
-		"echo": inputs["echo"],
-	}
-
 	outputProperties, err := plugin.MarshalProperties(
-		resource.NewPropertyMapFromMap(outputs),
+		inputs,
 		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
 	)
 	if err != nil {
@@ -81,22 +193,30 @@ func (p *echoResourceProvider) Create(ctx context.Context, req *rpc.CreateReques
 
 	p.id++
 	return &rpc.CreateResponse{
-		Id:         fmt.Sprintf("%v", p.id),
+		Id:         strconv.Itoa(p.id),
 		Properties: outputProperties,
 	}, nil
 }
 
-func (p *echoResourceProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *echoProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
 	return &rpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
-func (p *echoResourceProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *echoProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *echoResourceProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *echoProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
+func (p *echoProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+	return &rpc.InvokeResponse{Return: req.Args}, nil
+}
+
+func (p *echoProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	return &rpc.CallResponse{Return: req.Args}, nil
 }

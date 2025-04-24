@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Inputs, Input } from "./output";
 import { ProviderResource, Resource } from "./resource";
 
-/*
- * InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.
+/**
+ * {@link InvokeOptions} is a bag of options that control the behavior of a call
+ * to `runtime.invoke`.
  */
 export interface InvokeOptions {
     /**
@@ -30,8 +32,8 @@ export interface InvokeOptions {
     provider?: ProviderResource;
 
     /**
-     * An optional version, corresponding to the version of the provider plugin that should be used when performing this
-     * invoke.
+     * An optional version, corresponding to the version of the provider plugin
+     * that should be used when performing this invoke.
      */
     version?: string;
 
@@ -51,4 +53,63 @@ export interface InvokeOptions {
      * time.
      */
     async?: boolean;
+}
+
+/**
+ * {@link InvokeOutputOptions} is a bag of options that control the behavior of a call
+ * to `runtime.invokeOutput`.
+ */
+export interface InvokeOutputOptions extends InvokeOptions {
+    /**
+     * An optional set of additional explicit dependencies on other resources.
+     */
+    dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+}
+
+/**
+ * {@link InvokeTransform} is the callback signature for the `transforms`
+ * resource option for invokes.  A transform is passed the same set of inputs
+ * provided to the {@link Invoke} constructor, and can optionally return back
+ * alternate values for the `args` and/or `opts` prior to the invoke actually
+ * being executed.  The effect will be as though those args and opts were passed
+ * in place of the original call to the {@link Invoke}.  If the transform
+ * returns nil, this indicates
+ * that the Invoke
+ */
+export type InvokeTransform = (
+    args: InvokeTransformArgs,
+) => Promise<InvokeTransformResult | undefined> | InvokeTransformResult | undefined;
+
+/**
+ * {@link InvokeTransformArgs} is the argument bag passed to a invoke transform.
+ */
+export interface InvokeTransformArgs {
+    /**
+     * The token of the Invoke.
+     */
+    token: string;
+    /**
+     * The original args passed to the Invoke constructor.
+     */
+    args: Inputs;
+    /**
+     * The original invoke options passed to the Invoke constructor.
+     */
+    opts: InvokeOptions;
+}
+
+/**
+ * {@link InvokeTransformResult} is the result that must be returned by an invoke
+ * transform callback.  It includes new values to use for the `args` and `opts`
+ * of the `Invoke` in place of the originally provided values.
+ */
+export interface InvokeTransformResult {
+    /**
+     * The new properties to use in place of the original `args`
+     */
+    args: Inputs;
+    /**
+     * The new resource options to use in place of the original `opts`
+     */
+    opts: InvokeOptions;
 }

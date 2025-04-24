@@ -18,34 +18,53 @@ from ..util import LanghostTest
 class ReadTest(LanghostTest):
     def test_read(self):
         self.run_test(
-            program=path.join(self.base_path(), "read"),
-            expected_resource_count=1)
+            program=path.join(self.base_path(), "read"), expected_resource_count=1
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "foo2")
         return {
             "urn": self.make_urn(ty, name),
         }
 
-    def read_resource(self, ctx, ty, name, _id, parent, state, dependencies, provider, version):
+    def read_resource(
+        self, ctx, ty, name, _id, parent, state, dependencies, provider, version
+    ):
         if name == "foo":
-            self.assertDictEqual(state, {
-                "a": "bar",
-                "b": ["c", 4, "d"],
-                "c": {
-                    "nest": "baz"
-                }
-            })
+            self.assertDictEqual(
+                state, {"a": "bar", "b": ["c", 4, "d"], "c": {"nest": "baz"}}
+            )
             self.assertEqual(ty, "test:read:resource")
             self.assertEqual(_id, "myresourceid")
             self.assertEqual(version, "0.17.9")
         elif name == "foo-with-parent":
-            self.assertDictEqual(state, {
-                "state": "foo",
-            })
+            self.assertDictEqual(
+                state,
+                {
+                    "state": "foo",
+                },
+            )
             self.assertEqual(ty, "test:read:resource")
             self.assertEqual(_id, "myresourceid2")
             self.assertEqual(parent, self.make_urn("test:index:MyResource", "foo2"))

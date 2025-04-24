@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"runtime"
 	"strings"
 	"time"
@@ -31,13 +30,15 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 const (
@@ -45,11 +46,15 @@ const (
 	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
 )
 
+func UserAgent() string {
+	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+}
+
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
 	Owner   string
 	Project string
-	Stack   string
+	Stack   tokens.StackName
 }
 
 func (s StackIdentifier) String() string {
@@ -89,6 +94,12 @@ type httpCallOptions struct {
 
 	// GzipCompress compresses the request using gzip before sending it.
 	GzipCompress bool
+
+	// Header is any additional headers to add to the request.
+	Header http.Header
+
+	// ErrorResponse is an optional response body for errors.
+	ErrorResponse any
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -200,20 +211,18 @@ type defaultHTTPClient struct {
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
-	if policy.shouldRetry(req) {
-		// Wait 1s before retrying on failure. Then increase by 2x until the
-		// maximum delay is reached. Stop after maxRetryCount requests have
-		// been made.
-		opts := httputil.RetryOpts{
-			Delay:    durationPtr(time.Second),
-			Backoff:  float64Ptr(2.0),
-			MaxDelay: durationPtr(30 * time.Second),
+	// Wait 1s before retrying on failure. Then increase by 2x until the
+	// maximum delay is reached. Stop after maxRetryCount requests have
+	// been made.
+	opts := httputil.RetryOpts{
+		Delay:    durationPtr(time.Second),
+		Backoff:  float64Ptr(2.0),
+		MaxDelay: durationPtr(30 * time.Second),
 
-			MaxRetryCount: intPtr(4),
-		}
-		return httputil.DoWithRetryOpts(req, c.client, opts)
+		MaxRetryCount:         intPtr(4),
+		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
-	return c.client.Do(req)
+	return httputil.DoWithRetryOpts(req, c.client, opts)
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
@@ -263,12 +272,16 @@ func pulumiAPICall(ctx context.Context,
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
+	// Set headers from the incoming options.
+	for k, v := range opts.Header {
+		req.Header[k] = v
+	}
+
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
 	// backwards compatibility.
-	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", UserAgent())
 	// Specify the specific API version we accept.
-	req.Header.Set("Accept", "application/vnd.pulumi+8")
+	req.Header.Add("Accept", "application/vnd.pulumi+8")
 
 	// Apply credentials if provided.
 	creds, err := tok.Get(ctx)
@@ -291,7 +304,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	// Opt-in to accepting gzip-encoded responses from the service.
-	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Add("Accept-Encoding", "gzip")
 	if opts.GzipCompress {
 		// If we're sending something that's gzipped, set that header too.
 		req.Header.Set("Content-Encoding", "gzip")
@@ -323,7 +336,7 @@ func pulumiAPICall(ctx context.Context,
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
-		return "", nil, errors.New("this command requires logging in; try running `pulumi login` first")
+		return "", nil, backenderr.ErrLoginRequired
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
@@ -339,16 +352,25 @@ func pulumiAPICall(ctx context.Context,
 		if err != nil {
 			return "", nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
 		}
-
-		var errResp apitype.ErrorResponse
-		if err = json.Unmarshal(respBody, &errResp); err != nil {
-			errResp.Code = resp.StatusCode
-			errResp.Message = strings.TrimSpace(string(respBody))
-		}
-		return "", nil, &errResp
+		return "", nil, decodeError(respBody, resp.StatusCode, opts)
 	}
 
 	return url, resp, nil
+}
+
+func decodeError(respBody []byte, statusCode int, opts httpCallOptions) error {
+	if opts.ErrorResponse != nil {
+		if err := json.Unmarshal(respBody, opts.ErrorResponse); err == nil {
+			return opts.ErrorResponse.(error)
+		}
+	}
+
+	var errResp apitype.ErrorResponse
+	if err := json.Unmarshal(respBody, &errResp); err != nil {
+		errResp.Code = statusCode
+		errResp.Message = strings.TrimSpace(string(respBody))
+	}
+	return &errResp
 }
 
 // restClient is an abstraction for calling the Pulumi REST API.
@@ -412,6 +434,15 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		return err
 	}
 
+	switch respObj := respObj.(type) {
+	case **http.Response:
+		*respObj = resp
+		return nil
+	case *io.ReadCloser:
+		*respObj, err = bodyIntoReader(resp)
+		return err
+	}
+
 	// Read API response
 	respBody, err := readBody(resp)
 	if err != nil {
@@ -422,13 +453,13 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	}
 
 	if respObj != nil {
-		bytes := reflect.TypeOf([]byte(nil))
-		if typ := reflect.TypeOf(respObj); typ == reflect.PtrTo(bytes) {
+		switch respObj := respObj.(type) {
+		case *[]byte:
 			// Return the raw bytes of the response body.
-			*respObj.(*[]byte) = respBody
-		} else if typ == bytes {
-			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
-		} else {
+			*respObj = respBody
+		case []byte:
+			return errors.New("Can't unmarshal response body to []byte. Try *[]byte")
+		default:
 			// Else, unmarshal as JSON.
 			if err = json.Unmarshal(respBody, respObj); err != nil {
 				return fmt.Errorf("unmarshalling response object: %w", err)
@@ -442,11 +473,19 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 // readBody reads the contents of an http.Response into a byte array, returning an error if one occurred while in the
 // process of doing so. readBody uses the Content-Encoding of the response to pick the correct reader to use.
 func readBody(resp *http.Response) ([]byte, error) {
-	contentEncoding, ok := resp.Header["Content-Encoding"]
+	reader, err := bodyIntoReader(resp)
 	defer contract.IgnoreClose(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(reader)
+}
+
+func bodyIntoReader(resp *http.Response) (io.ReadCloser, error) {
+	contentEncoding, ok := resp.Header["Content-Encoding"]
 	if !ok {
 		// No header implies that there's no additional encoding on this response.
-		return io.ReadAll(resp.Body)
+		return resp.Body, nil
 	}
 
 	if len(contentEncoding) > 1 {
@@ -468,7 +507,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 			return nil, fmt.Errorf("reading gzip-compressed body: %w", err)
 		}
 
-		return io.ReadAll(reader)
+		return reader, nil
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}

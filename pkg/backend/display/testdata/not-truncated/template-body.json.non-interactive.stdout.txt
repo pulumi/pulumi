@@ -65,7 +65,6 @@
  <{%fg 3%}>~ <{%reset%}> aws:cloudformation:Stack cluster-nodes <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~templateBody<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:kubernetes cluster-provider <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack aws-ts-eks-dev <{%reset%}><{%reset%}> 
-
 <{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
 <{%reset%}>    kubeconfig: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>

@@ -19,18 +19,38 @@ import builtins
 import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
+import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
 import pulumi.alias_pb2
+import pulumi.callback_pb2
 import pulumi.source_pb2
 import sys
+import typing
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 10):
     import typing as typing_extensions
 else:
     import typing_extensions
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
+
+class _Result:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _ResultEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_Result.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    SUCCESS: _Result.ValueType  # 0
+    FAIL: _Result.ValueType  # 1
+    SKIP: _Result.ValueType  # 2
+
+class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
+
+SUCCESS: Result.ValueType  # 0
+FAIL: Result.ValueType  # 1
+SKIP: Result.ValueType  # 2
+global___Result = Result
 
 @typing_extensions.final
 class SupportsFeatureRequest(google.protobuf.message.Message):
@@ -81,6 +101,22 @@ class ReadResourceRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     ID_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
@@ -93,7 +129,9 @@ class ReadResourceRequest(google.protobuf.message.Message):
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
     id: builtins.str
     """the ID of the resource to read."""
     type: builtins.str
@@ -122,8 +160,13 @@ class ReadResourceRequest(google.protobuf.message.Message):
     pluginDownloadURL: builtins.str
     """the server url of the provider to use when servicing this request."""
     @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums of the provider to use when servicing this request."""
+    @property
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the read."""
+    packageRef: builtins.str
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -139,10 +182,12 @@ class ReadResourceRequest(google.protobuf.message.Message):
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         acceptResources: builtins.bool = ...,
         pluginDownloadURL: builtins.str = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "dependencies", b"dependencies", "id", b"id", "name", b"name", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "sourcePosition", b"sourcePosition", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ReadResourceRequest = ReadResourceRequest
 
@@ -251,6 +296,22 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
@@ -275,11 +336,15 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     PROVIDERS_FIELD_NUMBER: builtins.int
     REPLACEONCHANGES_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ALIASES_FIELD_NUMBER: builtins.int
     DELETEDWITH_FIELD_NUMBER: builtins.int
     ALIASSPECS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    TRANSFORMS_FIELD_NUMBER: builtins.int
+    SUPPORTSRESULTREPORTING_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -337,6 +402,9 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """a list of properties that if changed should force a replacement."""
     pluginDownloadURL: builtins.str
     """the server URL of the provider to use when servicing this request."""
+    @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums expected for the provider plugin."""
     retainOnDelete: builtins.bool
     """if true the engine will not call the resource providers delete method for this resource."""
     @property
@@ -356,6 +424,13 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     @property
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the register."""
+    @property
+    def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]:
+        """a list of transforms to apply to the resource before registering it."""
+    supportsResultReporting: builtins.bool
+    """true if the request is from an SDK that supports the result field in the response."""
+    packageRef: builtins.str
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -364,7 +439,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         parent: builtins.str = ...,
         custom: builtins.bool = ...,
         object: google.protobuf.struct_pb2.Struct | None = ...,
-        protect: builtins.bool = ...,
+        protect: builtins.bool | None = ...,
         dependencies: collections.abc.Iterable[builtins.str] | None = ...,
         provider: builtins.str = ...,
         propertyDependencies: collections.abc.Mapping[builtins.str, global___RegisterResourceRequest.PropertyDependencies] | None = ...,
@@ -383,14 +458,22 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         replaceOnChanges: collections.abc.Iterable[builtins.str] | None = ...,
         pluginDownloadURL: builtins.str = ...,
-        retainOnDelete: builtins.bool = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        retainOnDelete: builtins.bool | None = ...,
         aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
         deletedWith: builtins.str = ...,
         aliasSpecs: builtins.bool = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+        supportsResultReporting: builtins.bool = ...,
+        packageRef: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_retainOnDelete", b"_retainOnDelete"]) -> typing_extensions.Literal["retainOnDelete"] | None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 
@@ -443,6 +526,7 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     STABLE_FIELD_NUMBER: builtins.int
     STABLES_FIELD_NUMBER: builtins.int
     PROPERTYDEPENDENCIES_FIELD_NUMBER: builtins.int
+    RESULT_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN assigned by the engine."""
     id: builtins.str
@@ -458,6 +542,8 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     @property
     def propertyDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___RegisterResourceResponse.PropertyDependencies]:
         """a map from property keys to the dependencies of the property."""
+    result: global___Result.ValueType
+    """the reason, whether the resource registration was successful, failed, or skipped."""
     def __init__(
         self,
         *,
@@ -467,9 +553,10 @@ class RegisterResourceResponse(google.protobuf.message.Message):
         stable: builtins.bool = ...,
         stables: collections.abc.Iterable[builtins.str] | None = ...,
         propertyDependencies: collections.abc.Mapping[builtins.str, global___RegisterResourceResponse.PropertyDependencies] | None = ...,
+        result: global___Result.ValueType = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["object", b"object"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "object", b"object", "propertyDependencies", b"propertyDependencies", "stable", b"stable", "stables", b"stables", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "object", b"object", "propertyDependencies", b"propertyDependencies", "result", b"result", "stable", b"stable", "stables", b"stables", "urn", b"urn"]) -> None: ...
 
 global___RegisterResourceResponse = RegisterResourceResponse
 
@@ -501,13 +588,31 @@ global___RegisterResourceOutputsRequest = RegisterResourceOutputsRequest
 class ResourceInvokeRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     TOK_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     PROVIDER_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     ACCEPTRESOURCES_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
     SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     @property
@@ -522,8 +627,13 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     pluginDownloadURL: builtins.str
     """an optional reference to the provider url to use for this invoke."""
     @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums expected for the provider plugin."""
+    @property
     def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
         """the optional source position of the user code that initiated the invoke."""
+    packageRef: builtins.str
+    """a reference from RegisterPackageRequest."""
     def __init__(
         self,
         *,
@@ -533,9 +643,474 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         version: builtins.str = ...,
         acceptResources: builtins.bool = ...,
         pluginDownloadURL: builtins.str = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
         sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        packageRef: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "args", b"args", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
+
+@typing_extensions.final
+class ResourceCallRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class ArgumentDependencies(google.protobuf.message.Message):
+        """ArgumentDependencies describes the resources that a particular argument depends on."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        URNS_FIELD_NUMBER: builtins.int
+        @property
+        def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+            """A list of URNs this argument depends on."""
+        def __init__(
+            self,
+            *,
+            urns: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["urns", b"urns"]) -> None: ...
+
+    @typing_extensions.final
+    class ArgDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___ResourceCallRequest.ArgumentDependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___ResourceCallRequest.ArgumentDependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing_extensions.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    TOK_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
+    ARGDEPENDENCIES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
+    SOURCEPOSITION_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
+    tok: builtins.str
+    """the function token to invoke."""
+    @property
+    def args(self) -> google.protobuf.struct_pb2.Struct:
+        """the arguments for the function invocation."""
+    @property
+    def argDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ResourceCallRequest.ArgumentDependencies]:
+        """a map from argument keys to the dependencies of the argument."""
+    provider: builtins.str
+    """an optional reference to the provider to use for this invoke."""
+    version: builtins.str
+    """the version of the provider to use when servicing this request."""
+    pluginDownloadURL: builtins.str
+    """the pluginDownloadURL of the provider to use when servicing this request."""
+    @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums of the provider to use when servicing this request."""
+    @property
+    def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
+        """the optional source position of the user code that initiated the call."""
+    packageRef: builtins.str
+    """a reference from RegisterPackageRequest."""
+    def __init__(
+        self,
+        *,
+        tok: builtins.str = ...,
+        args: google.protobuf.struct_pb2.Struct | None = ...,
+        argDependencies: collections.abc.Mapping[builtins.str, global___ResourceCallRequest.ArgumentDependencies] | None = ...,
+        provider: builtins.str = ...,
+        version: builtins.str = ...,
+        pluginDownloadURL: builtins.str = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
+        packageRef: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "tok", b"tok", "version", b"version"]) -> None: ...
+
+global___ResourceCallRequest = ResourceCallRequest
+
+@typing_extensions.final
+class TransformResourceOptions(google.protobuf.message.Message):
+    """TransformResourceOptions is a subset of all resource options that are relevant to transforms."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class ProvidersEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    DEPENDS_ON_FIELD_NUMBER: builtins.int
+    PROTECT_FIELD_NUMBER: builtins.int
+    IGNORE_CHANGES_FIELD_NUMBER: builtins.int
+    REPLACE_ON_CHANGES_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    ALIASES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    CUSTOM_TIMEOUTS_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    RETAIN_ON_DELETE_FIELD_NUMBER: builtins.int
+    DELETED_WITH_FIELD_NUMBER: builtins.int
+    DELETE_BEFORE_REPLACE_FIELD_NUMBER: builtins.int
+    ADDITIONAL_SECRET_OUTPUTS_FIELD_NUMBER: builtins.int
+    PROVIDERS_FIELD_NUMBER: builtins.int
+    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    @property
+    def depends_on(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    protect: builtins.bool
+    @property
+    def ignore_changes(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def replace_on_changes(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    version: builtins.str
+    @property
+    def aliases(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.alias_pb2.Alias]: ...
+    provider: builtins.str
+    @property
+    def custom_timeouts(self) -> global___RegisterResourceRequest.CustomTimeouts: ...
+    plugin_download_url: builtins.str
+    retain_on_delete: builtins.bool
+    deleted_with: builtins.str
+    delete_before_replace: builtins.bool
+    @property
+    def additional_secret_outputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    @property
+    def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]: ...
+    @property
+    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    def __init__(
+        self,
+        *,
+        depends_on: collections.abc.Iterable[builtins.str] | None = ...,
+        protect: builtins.bool | None = ...,
+        ignore_changes: collections.abc.Iterable[builtins.str] | None = ...,
+        replace_on_changes: collections.abc.Iterable[builtins.str] | None = ...,
+        version: builtins.str = ...,
+        aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
+        provider: builtins.str = ...,
+        custom_timeouts: global___RegisterResourceRequest.CustomTimeouts | None = ...,
+        plugin_download_url: builtins.str = ...,
+        retain_on_delete: builtins.bool | None = ...,
+        deleted_with: builtins.str = ...,
+        delete_before_replace: builtins.bool | None = ...,
+        additional_secret_outputs: collections.abc.Iterable[builtins.str] | None = ...,
+        providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "protect", b"protect", "retain_on_delete", b"retain_on_delete"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace", "_protect", b"_protect", "_retain_on_delete", b"_retain_on_delete", "additional_secret_outputs", b"additional_secret_outputs", "aliases", b"aliases", "custom_timeouts", b"custom_timeouts", "delete_before_replace", b"delete_before_replace", "deleted_with", b"deleted_with", "depends_on", b"depends_on", "ignore_changes", b"ignore_changes", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "protect", b"protect", "provider", b"provider", "providers", b"providers", "replace_on_changes", b"replace_on_changes", "retain_on_delete", b"retain_on_delete", "version", b"version"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_delete_before_replace", b"_delete_before_replace"]) -> typing_extensions.Literal["delete_before_replace"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_retain_on_delete", b"_retain_on_delete"]) -> typing_extensions.Literal["retain_on_delete"] | None: ...
+
+global___TransformResourceOptions = TransformResourceOptions
+
+@typing_extensions.final
+class TransformRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    CUSTOM_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    """the type of the resource."""
+    name: builtins.str
+    """the name of the resource."""
+    custom: builtins.bool
+    """true if the resource is a custom resource, else it's a component resource."""
+    parent: builtins.str
+    """the parent of the resource, this can't be changed by the transform."""
+    @property
+    def properties(self) -> google.protobuf.struct_pb2.Struct:
+        """the input properties of the resource."""
+    @property
+    def options(self) -> global___TransformResourceOptions:
+        """the options for the resource."""
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+        name: builtins.str = ...,
+        custom: builtins.bool = ...,
+        parent: builtins.str = ...,
+        properties: google.protobuf.struct_pb2.Struct | None = ...,
+        options: global___TransformResourceOptions | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["options", b"options", "properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["custom", b"custom", "name", b"name", "options", b"options", "parent", b"parent", "properties", b"properties", "type", b"type"]) -> None: ...
+
+global___TransformRequest = TransformRequest
+
+@typing_extensions.final
+class TransformResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    @property
+    def properties(self) -> google.protobuf.struct_pb2.Struct:
+        """the transformed input properties."""
+    @property
+    def options(self) -> global___TransformResourceOptions:
+        """the options for the resource."""
+    def __init__(
+        self,
+        *,
+        properties: google.protobuf.struct_pb2.Struct | None = ...,
+        options: global___TransformResourceOptions | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["options", b"options", "properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["options", b"options", "properties", b"properties"]) -> None: ...
+
+global___TransformResponse = TransformResponse
+
+@typing_extensions.final
+class TransformInvokeRequest(google.protobuf.message.Message):
+    """TransformInvokeRequest is the request object for the TransformInvoke RPC."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """the token for the invoke request."""
+    @property
+    def args(self) -> google.protobuf.struct_pb2.Struct:
+        """the input args of the resource."""
+    @property
+    def options(self) -> global___TransformInvokeOptions:
+        """the options for the resource."""
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        args: google.protobuf.struct_pb2.Struct | None = ...,
+        options: global___TransformInvokeOptions | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options", "token", b"token"]) -> None: ...
+
+global___TransformInvokeRequest = TransformInvokeRequest
+
+@typing_extensions.final
+class TransformInvokeResponse(google.protobuf.message.Message):
+    """TransformInvokeResponse is the response object for the TransformInvoke RPC."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARGS_FIELD_NUMBER: builtins.int
+    OPTIONS_FIELD_NUMBER: builtins.int
+    @property
+    def args(self) -> google.protobuf.struct_pb2.Struct:
+        """the transformed input args."""
+    @property
+    def options(self) -> global___TransformInvokeOptions:
+        """the options for the resource."""
+    def __init__(
+        self,
+        *,
+        args: google.protobuf.struct_pb2.Struct | None = ...,
+        options: global___TransformInvokeOptions | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "options", b"options"]) -> None: ...
+
+global___TransformInvokeResponse = TransformInvokeResponse
+
+@typing_extensions.final
+class TransformInvokeOptions(google.protobuf.message.Message):
+    """TransformInvokeOptions is a subset of all invoke options that are relevant to transforms."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    PROVIDER_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    provider: builtins.str
+    plugin_download_url: builtins.str
+    version: builtins.str
+    @property
+    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]: ...
+    def __init__(
+        self,
+        *,
+        provider: builtins.str = ...,
+        plugin_download_url: builtins.str = ...,
+        version: builtins.str = ...,
+        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "provider", b"provider", "version", b"version"]) -> None: ...
+
+global___TransformInvokeOptions = TransformInvokeOptions
+
+@typing_extensions.final
+class RegisterPackageRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class ChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    CHECKSUMS_FIELD_NUMBER: builtins.int
+    PARAMETERIZATION_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """the plugin name."""
+    version: builtins.str
+    """the plugin version."""
+    download_url: builtins.str
+    """the optional plugin download url."""
+    @property
+    def checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """the optional plugin checksums."""
+    @property
+    def parameterization(self) -> global___Parameterization:
+        """the optional parameterization for this package."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        download_url: builtins.str = ...,
+        checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        parameterization: global___Parameterization | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "download_url", b"download_url", "name", b"name", "parameterization", b"parameterization", "version", b"version"]) -> None: ...
+
+global___RegisterPackageRequest = RegisterPackageRequest
+
+@typing_extensions.final
+class RegisterPackageResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REF_FIELD_NUMBER: builtins.int
+    ref: builtins.str
+    """The UUID package reference for this registered package.
+
+    Lifecycle methods accept this reference in the 'packageRef' field.
+    """
+    def __init__(
+        self,
+        *,
+        ref: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["ref", b"ref"]) -> None: ...
+
+global___RegisterPackageResponse = RegisterPackageResponse
+
+@typing_extensions.final
+class Parameterization(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    NAME_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    VALUE_FIELD_NUMBER: builtins.int
+    name: builtins.str
+    """the parameterized package name."""
+    version: builtins.str
+    """the parameterized package version."""
+    value: builtins.bytes
+    """the parameter value for the parameterized package."""
+    def __init__(
+        self,
+        *,
+        name: builtins.str = ...,
+        version: builtins.str = ...,
+        value: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "value", b"value", "version", b"version"]) -> None: ...
+
+global___Parameterization = Parameterization

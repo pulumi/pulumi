@@ -1,6 +1,21 @@
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -12,6 +27,7 @@ type Info interface {
 
 	ClearEnd(out io.Writer)
 	ClearLine(out io.Writer)
+	CarriageReturn(out io.Writer)
 	CursorUp(out io.Writer, count int)
 	CursorDown(out io.Writer, count int)
 	HideCursor(out io.Writer)
@@ -26,7 +42,7 @@ type termInfo interface {
 type noTermInfo int // canary used when no terminfo.
 
 func (ti noTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	return "", fmt.Errorf("noTermInfo")
+	return "", errors.New("noTermInfo")
 }
 
 type info struct {
@@ -66,6 +82,10 @@ func (i info) ClearEnd(out io.Writer) {
 	} else {
 		fmt.Fprintf(out, "\x1b[K")
 	}
+}
+
+func (i info) CarriageReturn(out io.Writer) {
+	fmt.Fprint(out, "\r")
 }
 
 func (i info) CursorUp(out io.Writer, count int) {

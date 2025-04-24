@@ -108,10 +108,59 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Color allows specifying whether to colorize output. Choices are: always, never, raw, auto (default "auto")
+func Color(color string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Color = color
+	})
+}
+
 // Plan specifies the path where the update plan should be saved.
 func Plan(path string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Plan = path
+	})
+}
+
+// Refresh will run a refresh before the preview.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
+// ImportFile save any creates seen during the preview into an import file to use with pulumi import
+func ImportFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ImportFile = path
+	})
+}
+
+// AttachDebugger will run the process under a debugger, and pause until a debugger is attached
+func AttachDebugger() Option {
+	return optionFunc(func(opts *Options) {
+		opts.AttachDebugger = true
+	})
+}
+
+// ConfigFile specifies a file to use for configuration values rather than detecting the file name
+func ConfigFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ConfigFile = path
 	})
 }
 
@@ -157,6 +206,18 @@ type Options struct {
 	PolicyPacks []string
 	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
 	PolicyPackConfigs []string
+	// Refresh will run a refresh before the preview.
+	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
+	// Save any creates seen during the preview into an import file to use with pulumi import
+	ImportFile string
+	// Run the process under a debugger, and pause until a debugger is attached
+	AttachDebugger bool
+	// Run using the configuration values in the specified file rather than detecting the file name
+	ConfigFile string
 }
 
 type optionFunc func(*Options)

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Don't discard non-outputty component outputs

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@ package httpstate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,19 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-type cloudQuery struct {
-	root string
-	proj *workspace.Project
-}
-
-func (q *cloudQuery) GetRoot() string {
-	return q.root
-}
-
-func (q *cloudQuery) GetProject() *workspace.Project {
-	return q.proj
-}
 
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
@@ -150,10 +140,22 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// the display and persistence go-routines are finished processing events.
 }
 
-func (b *cloudBackend) newQuery(ctx context.Context,
-	op backend.QueryOperation,
-) (engine.QueryInfo, error) {
-	return &cloudQuery{root: op.Root, proj: op.Proj}, nil
+func RenewLeaseFunc(
+	client *client.Client, update client.UpdateIdentifier, assumedExpires func() time.Time,
+) func(ctx context.Context, duration time.Duration, currentToken string) (string, time.Time, error) {
+	return func(ctx context.Context, duration time.Duration, currentToken string) (string, time.Time, error) {
+		tok, err := client.RenewUpdateLease(
+			ctx, update, currentToken, duration)
+		if err != nil {
+			// Translate 403 status codes to expired token errors to stop the token refresh loop.
+			var apierr *apitype.ErrorResponse
+			if errors.As(err, &apierr) && apierr.Code == 403 {
+				return "", time.Time{}, expiredTokenError{err}
+			}
+			return "", time.Time{}, err
+		}
+		return tok, assumedExpires(), err
+	}
 }
 
 func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
@@ -162,7 +164,6 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
 	if token != "" {
-
 		// TODO[pulumi/pulumi#10482] instead of assuming
 		// expiration, consider expiration times returned by
 		// the backend, if any.
@@ -171,20 +172,9 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 			return time.Now().Add(duration)
 		}
 
-		renewLease := func(
-			ctx context.Context,
-			duration time.Duration,
-			currentToken string,
-		) (string, time.Time, error) {
-			tok, err := b.Client().RenewUpdateLease(
-				ctx, update, currentToken, duration)
-			if err != nil {
-				return "", time.Time{}, err
-			}
-			return tok, assumedExpires(), err
-		}
+		renewLease := RenewLeaseFunc(b.Client(), update, assumedExpires)
 
-		ts, err := newTokenSource(ctx, token, assumedExpires(), duration, renewLease)
+		ts, err := newTokenSource(ctx, clockwork.NewRealClock(), token, assumedExpires(), duration, renewLease)
 		if err != nil {
 			return nil, err
 		}
@@ -223,6 +213,17 @@ func (b *cloudBackend) getSnapshot(ctx context.Context,
 		return nil, err
 	}
 
+	// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	if !backend.DisableIntegrityChecking {
+		if err := snapshot.VerifyIntegrity(); err != nil {
+			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
+			}
+
+			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
+		}
+	}
+
 	return snapshot, nil
 }
 
@@ -249,7 +250,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 	}
 
 	return &deploy.Target{
-		Name:         tokens.Name(stackID.Stack),
+		Name:         stackID.Stack,
 		Organization: tokens.Name(stackID.Owner),
 		Config:       cfg,
 		Decrypter:    dec,
@@ -295,11 +296,17 @@ func persistEngineEvents(
 		close(done)
 	}()
 
+	// We need to filter the engine events here to exclude any internal and
+	// ephemeral events, since these by definition should not be persisted.
+	events = channel.FilterRead(events, func(e engine.Event) bool {
+		return !e.Internal() && !e.Ephemeral()
+	})
+
 	var eventBatch []engine.Event
 	maxDelayTicker := time.NewTicker(maxTransmissionDelay)
 
 	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
-	// ensure events can be reconstructured in the same order they were emitted. (And not
+	// ensure events can be reconstructed in the same order they were emitted. (And not
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
 
@@ -312,7 +319,6 @@ func persistEngineEvents(
 	batchesToTransmit := make(chan engineEventBatch)
 
 	transmitBatchLoop := func() {
-		wg.Add(1)
 		defer wg.Done()
 
 		for eventBatch := range batchesToTransmit {
@@ -325,6 +331,7 @@ func persistEngineEvents(
 	// Start N different go-routines which will all pull from the batchesToTransmit channel
 	// and persist those engine events until the channel is closed.
 	for i := 0; i < maxConcurrentRequests; i++ {
+		wg.Add(1)
 		go transmitBatchLoop()
 	}
 

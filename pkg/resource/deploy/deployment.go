@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,15 +25,16 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -52,23 +53,54 @@ type BackendClient interface {
 
 // Options controls the deployment process.
 type Options struct {
-	Events                    Events     // an optional events callback interface.
-	Parallel                  int        // the degree of parallelism for resource operations (<=1 for serial).
-	Refresh                   bool       // whether or not to refresh before executing the deployment.
-	RefreshOnly               bool       // whether or not to exit after refreshing.
-	Targets                   UrnTargets // If specified, only operate on specified resources.
-	ReplaceTargets            UrnTargets // If specified, mark the specified resources for replacement.
-	TargetDependents          bool       // true if we're allowing things to proceed, even with unspecified targets
-	TrustDependencies         bool       // whether or not to trust the resource dependency graph.
-	UseLegacyDiff             bool       // whether or not to use legacy diffing behavior.
-	DisableResourceReferences bool       // true to disable resource reference support.
-	DisableOutputValues       bool       // true to disable output value support.
-	GeneratePlan              bool       // true to enable plan generation.
+	// true if the step generator should calculate diffs in parallel via DiffSteps.
+	ParallelDiff bool
+	// true if the process is a dry run (that is, won't make any changes), such as
+	// during a preview action or when previewing another action like refresh or
+	// destroy.
+	DryRun bool
+	// the degree of parallelism for resource operations (<=1 for serial).
+	Parallel int32
+	// whether or not to refresh before executing the deployment.
+	Refresh bool
+	// whether or not to exit after refreshing (i.e. this is specifically a
+	// refresh operation).
+	RefreshOnly bool
+	// true if the plan should run the program as part of refresh.
+	RefreshProgram bool
+	// true if the plan should run the program as part of destroy.
+	DestroyProgram bool
+	// if specified, only operate on the specified resources.
+	Targets UrnTargets
+	// if specified, mark the specified resources for replacement.
+	ReplaceTargets UrnTargets
+	// true if target dependents should be computed automatically.
+	TargetDependents bool
+	// if specified, ignore the specified resources
+	Excludes UrnTargets
+	// true if target dependents should be excluded automatically.
+	ExcludeDependents bool
+	// whether or not to use legacy diffing behavior.
+	UseLegacyDiff bool
+	// true if the deployment should use legacy refresh diffing behavior and
+	// report only output changes, as opposed to computing diffs against desired
+	// state.
+	UseLegacyRefreshDiff bool
+	// true to disable resource reference support.
+	DisableResourceReferences bool
+	// true to disable output value support.
+	DisableOutputValues bool
+	// true to enable plan generation.
+	GeneratePlan bool
+	// true if we should continue with the deployment even if a resource operation fails.
+	ContinueOnError bool
+	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
+	Autonamer autonaming.Autonamer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
 // deployment process.
-func (o Options) DegreeOfParallelism() int {
+func (o Options) DegreeOfParallelism() int32 {
 	if o.Parallel <= 1 {
 		return 1
 	}
@@ -112,6 +144,19 @@ func NewUrnTargets(urnOrGlobs []string) UrnTargets {
 // Create a new set of targets from fully resolved URNs.
 func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
 	return UrnTargets{urns, nil}
+}
+
+// Return a copy of the UrnTargets
+func (t UrnTargets) Clone() UrnTargets {
+	newLiterals := append(make([]resource.URN, 0, len(t.literals)), t.literals...)
+	newGlobs := make(map[string]*regexp.Regexp, len(t.globs))
+	for k, v := range t.globs {
+		newGlobs[k] = v
+	}
+	return UrnTargets{
+		literals: newLiterals,
+		globs:    newGlobs,
+	}
 }
 
 // Return if the target set constrains the set of acceptable URNs.
@@ -186,50 +231,13 @@ type StepExecutorEvents interface {
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
 
 // Events is an interface that can be used to hook interesting engine events.
 type Events interface {
 	StepExecutorEvents
 	PolicyEvents
-}
-
-type goalMap struct {
-	m sync.Map
-}
-
-func (m *goalMap) set(urn resource.URN, goal *resource.Goal) {
-	m.m.Store(urn, goal)
-}
-
-func (m *goalMap) get(urn resource.URN) (*resource.Goal, bool) {
-	g, ok := m.m.Load(urn)
-	if !ok {
-		return nil, false
-	}
-	return g.(*resource.Goal), true
-}
-
-type resourceMap struct {
-	m sync.Map
-}
-
-func (m *resourceMap) set(urn resource.URN, state *resource.State) {
-	m.m.Store(urn, state)
-}
-
-func (m *resourceMap) get(urn resource.URN) (*resource.State, bool) {
-	s, ok := m.m.Load(urn)
-	if !ok {
-		return nil, false
-	}
-	return s.(*resource.State), true
-}
-
-func (m *resourceMap) mapRange(callback func(urn resource.URN, state *resource.State) bool) {
-	m.m.Range(func(k, v interface{}) bool {
-		return callback(k.(resource.URN), v.(*resource.State))
-	})
 }
 
 type resourcePlans struct {
@@ -270,22 +278,42 @@ func (m *resourcePlans) plan() *Plan {
 // A running deployment emits events that indicate its progress. These events must be used to record the new state
 // of the deployment target.
 type Deployment struct {
-	ctx                  *plugin.Context                  // the plugin context (for provider operations).
-	target               *Target                          // the deployment target.
-	prev                 *Snapshot                        // the old resource snapshot for comparison.
-	olds                 map[resource.URN]*resource.State // a map of all old resources.
-	plan                 *Plan                            // a map of all planned resource changes, if any.
-	imports              []Import                         // resources to import, if this is an import deployment.
-	isImport             bool                             // true if this is an import deployment.
-	schemaLoader         schema.Loader                    // the schema cache for this deployment, if any.
-	source               Source                           // the source of new resources.
-	localPolicyPackPaths []string                         // the policy packs to run during this deployment's generation.
-	preview              bool                             // true if this deployment is to be previewed.
-	depGraph             *graph.DependencyGraph           // the dependency graph of the old snapshot.
-	providers            *providers.Registry              // the provider registry for this deployment.
-	goals                *goalMap                         // the set of resource goals generated by the deployment.
-	news                 *resourceMap                     // the set of new resources generated by the deployment
-	newPlans             *resourcePlans                   // the set of new resource plans.
+	// the plugin context (for provider operations).
+	ctx *plugin.Context
+	// options for this deployment.
+	opts *Options
+	// event handlers for this deployment.
+	events Events
+	// the deployment target.
+	target *Target
+	// the old resource snapshot for comparison.
+	prev *Snapshot
+	// a map of all old resources.
+	olds map[resource.URN]*resource.State
+	// a map of all planned resource changes, if any.
+	plan *Plan
+	// resources to import, if this is an import deployment.
+	imports []Import
+	// true if this is an import deployment.
+	isImport bool
+	// the schema cache for this deployment, if any.
+	schemaLoader schema.Loader
+	// the source of new resources.
+	source Source
+	// the policy packs to run during this deployment's generation.
+	localPolicyPackPaths []string
+	// the dependency graph of the old snapshot.
+	depGraph *graph.DependencyGraph
+	// the provider registry for this deployment.
+	providers *providers.Registry
+	// the set of resource goals generated by the deployment.
+	goals *gsync.Map[resource.URN, *resource.Goal]
+	// the set of new resources generated by the deployment.
+	news *gsync.Map[resource.URN, *resource.State]
+	// the set of new resource plans.
+	newPlans *resourcePlans
+	// the set of resources read as part of the deployment
+	reads *gsync.Map[resource.URN, *resource.State]
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -326,6 +354,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
 				providers.SetProviderVersion(inputs, pkgInfo.Version)
 				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
+				providers.SetProviderChecksums(inputs, pkgInfo.Checksums)
 			}
 
 			uuid, err := uuid.NewV4()
@@ -381,7 +410,14 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
 			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
-				res.Outputs = res.Inputs
+				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
+				res.Outputs = make(resource.PropertyMap)
+				for k, v := range res.Inputs {
+					if k == "__internal" {
+						continue
+					}
+					res.Outputs[k] = v
+				}
 			}
 		}
 	}
@@ -420,8 +456,16 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 //
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
-func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Plan, source Source,
-	localPolicyPackPaths []string, preview bool, backendClient BackendClient,
+func NewDeployment(
+	ctx *plugin.Context,
+	opts *Options,
+	events Events,
+	target *Target,
+	prev *Snapshot,
+	plan *Plan,
+	source Source,
+	localPolicyPackPaths []string,
+	backendClient BackendClient,
 ) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
@@ -435,7 +479,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// deploymentExecutor.refresh for details.
-	oldResources, olds, err := buildResourceMap(prev, preview)
+	oldResources, olds, err := buildResourceMap(prev, opts.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -444,33 +488,37 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	depGraph := graph.NewDependencyGraph(oldResources)
 
 	// Create a goal map for the deployment.
-	newGoals := &goalMap{}
+	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
 
 	// Create a resource map for the deployment.
-	newResources := &resourceMap{}
+	newResources := &gsync.Map[resource.URN, *resource.State]{}
+
+	reads := &gsync.Map[resource.URN, *resource.State]{}
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient, newResources)
+	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg := providers.NewRegistry(ctx.Host, preview, builtins)
+	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
 	return &Deployment{
 		ctx:                  ctx,
+		opts:                 opts,
+		events:               events,
 		target:               target,
 		prev:                 prev,
 		plan:                 plan,
 		olds:                 olds,
 		source:               source,
 		localPolicyPackPaths: localPolicyPackPaths,
-		preview:              preview,
 		depGraph:             depGraph,
 		providers:            reg,
 		goals:                newGoals,
 		news:                 newResources,
 		newPlans:             newResourcePlan(target.Config),
+		reads:                reads,
 	}, nil
 }
 
@@ -482,7 +530,13 @@ func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
 func (d *Deployment) SameProvider(res *resource.State) error {
-	return d.providers.Same(res)
+	var ctx context.Context
+	if d.ctx == nil {
+		ctx = context.Background()
+	} else {
+		ctx = d.ctx.Base()
+	}
+	return d.providers.Same(ctx, res)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
@@ -525,10 +579,10 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 
 // generateURN generates a resource's URN from its parent, type, and name under the scope of the deployment's stack and
 // project.
-func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
+func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) resource.URN {
 	// Use the resource goal state name to produce a globally unique URN.
 	parentType := tokens.Type("")
-	if parent != "" && parent.Type() != resource.RootStackType {
+	if parent != "" && parent.QualifiedType() != resource.RootStackType {
 		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
 		parentType = parent.QualifiedType()
 	}
@@ -559,7 +613,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
-func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, result.Result) {
+func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
 	deploymentExec := &deploymentExecutor{deployment: d}
-	return deploymentExec.Execute(ctx, opts, preview)
+	return deploymentExec.Execute(ctx)
 }

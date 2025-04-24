@@ -12,12 +12,104 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The typescript import is used for type-checking only. Do not reference it in the emitted code.
 import * as typescript from "typescript";
+import * as semver from "semver";
 import * as utils from "./utils";
 
-/** @internal */
+type Factory = {
+    createIdentifier: typeof typescript.createIdentifier;
+    createThis: typeof typescript.createThis;
+    createPropertyAccessExpression: typeof typescript.createPropertyAccess;
+    updatePropertyAccessExpression: typeof typescript.updatePropertyAccess;
+    updateFunctionDeclaration: typeof typescript.updateFunctionDeclaration;
+    updateElementAccessExpression: typeof typescript.updateElementAccess;
+    updateCallExpression: typeof typescript.updateCall;
+};
+
+// TypeScript 4.0 moved the factory functions to the transformationContext
+// with deprecation. TypeScript 5.0 removed the deprecated functions.
+// https://github.com/microsoft/TypeScript/wiki/API-Breaking-Changes#typescript-40
+// Use a shim factory that calls the correct function based on the TypeScript version.
+function getFactory(transformationContext: typescript.TransformationContext): Factory {
+    const ts: typeof typescript = require("../../typescript-shim");
+    const tsVersion = semver.parse(ts.version)!;
+    const tsLessThan4 = semver.satisfies(tsVersion, "<4.0.0");
+    const tsLessThan48 = semver.satisfies(tsVersion, "<4.8.0");
+    const transformationContextFactory = (<any>transformationContext).factory;
+
+    // In 4.8 the signature of updateFunctionDeclaration changed to remove the decorators parameter.
+    function updateFunctionDeclaration(
+        node: typescript.FunctionDeclaration,
+        decorators: readonly typescript.Decorator[] | undefined,
+        modifiers: readonly typescript.Modifier[] | undefined,
+        asteriskToken: typescript.AsteriskToken | undefined,
+        name: typescript.Identifier | undefined,
+        typeParameters: readonly typescript.TypeParameterDeclaration[] | undefined,
+        parameters: readonly typescript.ParameterDeclaration[],
+        type: typescript.TypeNode | undefined,
+        body: typescript.Block | undefined,
+    ): typescript.FunctionDeclaration {
+        if (tsLessThan4) {
+            return ts.updateFunctionDeclaration(
+                node,
+                decorators,
+                modifiers,
+                asteriskToken,
+                name,
+                typeParameters,
+                parameters,
+                type,
+                body,
+            );
+        } else if (tsLessThan48) {
+            return transformationContextFactory.updateFunctionDeclaration(
+                node,
+                decorators,
+                modifiers,
+                asteriskToken,
+                name,
+                typeParameters,
+                parameters,
+                type,
+                body,
+            );
+        } else {
+            return transformationContextFactory.updateFunctionDeclaration(
+                node,
+                modifiers,
+                asteriskToken,
+                name,
+                typeParameters,
+                parameters,
+                type,
+                body,
+            );
+        }
+    }
+
+    return {
+        createIdentifier: tsLessThan4 ? ts.createIdentifier : transformationContextFactory.createIdentifier,
+        createThis: tsLessThan4 ? ts.createThis : transformationContextFactory.createThis,
+        createPropertyAccessExpression: tsLessThan4
+            ? ts.createPropertyAccess
+            : transformationContextFactory.createPropertyAccessExpression,
+        updatePropertyAccessExpression: tsLessThan4
+            ? ts.updatePropertyAccess
+            : transformationContextFactory.updatePropertyAccessExpression,
+        updateFunctionDeclaration,
+        updateElementAccessExpression: tsLessThan4
+            ? ts.updateElementAccess
+            : transformationContextFactory.updateElementAccessExpression,
+        updateCallExpression: tsLessThan4 ? ts.updateCall : transformationContextFactory.updateCallExpression,
+    };
+}
+
+/**
+ * @internal
+ */
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
-    const ts: typeof typescript = require("typescript");
+    const ts: typeof typescript = require("../../typescript-shim");
     const sourceFile = ts.createSourceFile("", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
     // Transform any usages of "super(...)" into "__super.call(this, ...)", any
@@ -30,6 +122,7 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
     return output;
 
     function rewriteSuperCallsWorker(transformationContext: typescript.TransformationContext) {
+        const factory = getFactory(transformationContext);
         const newNodes = new Set<typescript.Node>();
         let firstFunctionDeclaration = true;
 
@@ -48,12 +141,12 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 const funcDecl = ts.visitEachChild(node, visitor, transformationContext);
 
                 const text = utils.isLegalMemberName(funcDecl.name!.text) ? "/*" + funcDecl.name!.text + "*/" : "";
-                return ts.updateFunctionDeclaration(
+                return factory.updateFunctionDeclaration(
                     funcDecl,
                     funcDecl.decorators,
                     funcDecl.modifiers,
                     funcDecl.asteriskToken,
-                    ts.createIdentifier(text),
+                    factory.createIdentifier(text),
                     funcDecl.typeParameters,
                     funcDecl.parameters,
                     funcDecl.type,
@@ -62,14 +155,14 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
             }
 
             if (node.kind === ts.SyntaxKind.SuperKeyword) {
-                const newNode = ts.createIdentifier("__super");
+                const newNode = factory.createIdentifier("__super");
                 newNodes.add(newNode);
                 return newNode;
             } else if (ts.isPropertyAccessExpression(node) && node.expression.kind === ts.SyntaxKind.SuperKeyword) {
                 const expr = isStatic
-                    ? ts.createIdentifier("__super")
-                    : ts.createPropertyAccess(ts.createIdentifier("__super"), "prototype");
-                const newNode = ts.updatePropertyAccess(node, expr, node.name);
+                    ? factory.createIdentifier("__super")
+                    : factory.createPropertyAccessExpression(factory.createIdentifier("__super"), "prototype");
+                const newNode = factory.updatePropertyAccessExpression(node, expr, node.name);
                 newNodes.add(newNode);
                 return newNode;
             } else if (
@@ -78,10 +171,9 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 node.expression.kind === ts.SyntaxKind.SuperKeyword
             ) {
                 const expr = isStatic
-                    ? ts.createIdentifier("__super")
-                    : ts.createPropertyAccess(ts.createIdentifier("__super"), "prototype");
-
-                const newNode = ts.updateElementAccess(node, expr, node.argumentExpression);
+                    ? factory.createIdentifier("__super")
+                    : factory.createPropertyAccessExpression(factory.createIdentifier("__super"), "prototype");
+                const newNode = factory.updateElementAccessExpression(node, expr, node.argumentExpression);
                 newNodes.add(newNode);
                 return newNode;
             }
@@ -98,11 +190,11 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 // to that, we have to add the .call(this, ...) call.
 
                 const argumentsCopy = rewritten.arguments.slice();
-                argumentsCopy.unshift(ts.createThis());
+                argumentsCopy.unshift(factory.createThis());
 
-                return ts.updateCall(
+                return factory.updateCallExpression(
                     rewritten,
-                    ts.createPropertyAccess(rewritten.expression, "call"),
+                    factory.createPropertyAccessExpression(rewritten.expression, "call"),
                     rewritten.typeArguments,
                     argumentsCopy,
                 );

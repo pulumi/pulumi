@@ -1,0 +1,26 @@
+decrypt:
+  my:foo: '{"bar":"baz","secure":"myvalue"}'
+paths:
+  my:foo:
+    value:
+      bar: baz
+      secure: myvalue
+    string: '{"bar":"baz","secure":"myvalue"}'
+    redacted: '{"bar":"baz","secure":"myvalue"}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAw/4ItAAIGc2VjdXJlBnN0cmluZwwJAAdteXZhbHVlA2JhcgZzdHJpbmcMBQADYmF6
+    secure: false
+    isObject: true
+  my:foo.bar:
+    value: baz
+    string: baz
+    redacted: baz
+    object: EBAABnN0cmluZwwFAANiYXo=
+    secure: false
+    isObject: false
+  my:foo.secure:
+    value: myvalue
+    string: myvalue
+    redacted: myvalue
+    object: FBAABnN0cmluZwwJAAdteXZhbHVl
+    secure: false
+    isObject: false

@@ -47,7 +47,6 @@ func getPwdMain(root, main string) (string, string, error) {
 	if main == "" {
 		main = "."
 	} else {
-
 		// The path can be relative from the package root.
 		if !filepath.IsAbs(main) {
 			cleanPwd := filepath.Clean(pwd)

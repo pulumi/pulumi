@@ -17,6 +17,7 @@ package httputil
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -32,6 +33,9 @@ type RetryOpts struct {
 	MaxDelay *time.Duration
 
 	MaxRetryCount *int
+	// HandshakeTimeoutsOnly indicates whether we should only be retrying timeouts that occur during the TLS handshake.
+	// These timeouts are safe to retry even on POST requests, since we know the actual request hasn't been sent yet.
+	HandshakeTimeoutsOnly bool
 }
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
@@ -78,9 +82,17 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			}
 
 			res, resErr := client.Do(req)
+			if opts.HandshakeTimeoutsOnly {
+				if resErr != nil && strings.Contains(resErr.Error(), "net/http: TLS handshake timeout") {
+					// If we have a handshake timeout, we can retry the request.
+					return false, nil, nil
+				}
+				return true, res, resErr
+			}
 			if resErr == nil && !inRange(res.StatusCode, 500, 599) {
 				return true, res, nil
 			}
+
 			if try >= (maxRetryCount - 1) {
 				return true, res, resErr
 			}

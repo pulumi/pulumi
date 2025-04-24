@@ -33,6 +33,11 @@ class EngineStub(object):
                 request_serializer=pulumi_dot_engine__pb2.SetRootResourceRequest.SerializeToString,
                 response_deserializer=pulumi_dot_engine__pb2.SetRootResourceResponse.FromString,
                 )
+        self.StartDebugging = channel.unary_unary(
+                '/pulumirpc.Engine/StartDebugging',
+                request_serializer=pulumi_dot_engine__pb2.StartDebuggingRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class EngineServicer(object):
@@ -63,6 +68,14 @@ class EngineServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def StartDebugging(self, request, context):
+        """StartDebugging indicates to the engine that the program has started under a debugger, and the engine
+        should notify the user of how to connect to the debugger.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_EngineServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -80,6 +93,11 @@ def add_EngineServicer_to_server(servicer, server):
                     servicer.SetRootResource,
                     request_deserializer=pulumi_dot_engine__pb2.SetRootResourceRequest.FromString,
                     response_serializer=pulumi_dot_engine__pb2.SetRootResourceResponse.SerializeToString,
+            ),
+            'StartDebugging': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartDebugging,
+                    request_deserializer=pulumi_dot_engine__pb2.StartDebuggingRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -142,5 +160,22 @@ class Engine(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Engine/SetRootResource',
             pulumi_dot_engine__pb2.SetRootResourceRequest.SerializeToString,
             pulumi_dot_engine__pb2.SetRootResourceResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def StartDebugging(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Engine/StartDebugging',
+            pulumi_dot_engine__pb2.StartDebuggingRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

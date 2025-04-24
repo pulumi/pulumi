@@ -1,0 +1,6 @@
+{
+  "name": "oom",
+  "peerDependencies": {
+    "@pulumi/pulumi": "^3.0.0"
+  }
+}

@@ -15,15 +15,26 @@
 """
 Utility functions for logging messages to the diagnostic stream of the Pulumi CLI.
 """
+
 import asyncio
 import sys
 from typing import Optional, TYPE_CHECKING
 
-from .runtime.settings import get_engine
 from .runtime.proto import engine_pb2
 
 if TYPE_CHECKING:
     from .resource import Resource
+
+
+def get_engine():
+    # `log` is imported across the codebase, so we need to be careful to not
+    # create import cycles when this module is imported. We lazily import
+    # `get_engine` on the first use. Subsequent calls will use the module cache
+    # here.
+    # pylint: disable=redefined-outer-name
+    from .runtime.settings import get_engine
+
+    return get_engine()
 
 
 def debug(

@@ -114,7 +114,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 
 	// Add the type to the name to disambiguate constants used for enum values
 	if strings.Contains(safeName, "_") && !strings.HasPrefix(safeName, "_") {
-		safeName = fmt.Sprintf("_%s", safeName)
+		safeName = "_" + safeName
 	}
 
 	safeName = typeName + safeName

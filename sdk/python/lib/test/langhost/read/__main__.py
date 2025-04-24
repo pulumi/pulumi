@@ -13,15 +13,19 @@
 # limitations under the License.
 from pulumi import CustomResource, ResourceOptions
 
-CustomResource("test:read:resource", "foo", {
-    "a": "bar",
-    "b": ["c", 4, "d"],
-    "c": {
-        "nest": "baz"
-    }
-}, opts=ResourceOptions(id="myresourceid", version="0.17.9"))
+CustomResource(
+    "test:read:resource",
+    "foo",
+    {"a": "bar", "b": ["c", 4, "d"], "c": {"nest": "baz"}},
+    opts=ResourceOptions(id="myresourceid", version="0.17.9"),
+)
 
 parent = CustomResource("test:index:MyResource", "foo2")
-CustomResource("test:read:resource", "foo-with-parent", {
-    "state": "foo",
-}, opts=ResourceOptions(id="myresourceid2", version="0.17.9", parent=parent))
+CustomResource(
+    "test:read:resource",
+    "foo-with-parent",
+    {
+        "state": "foo",
+    },
+    opts=ResourceOptions(id="myresourceid2", version="0.17.9", parent=parent),
+)

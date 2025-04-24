@@ -1,8 +1,8 @@
 package main
 
 import (
-	"example.com/dep"
-	"example.com/plugin"
+	"github.com/pulumi/go-dependency-testdata/dep"
+	"github.com/pulumi/go-dependency-testdata/plugin"
 )
 
 func main() {

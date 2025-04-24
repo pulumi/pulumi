@@ -15,10 +15,13 @@
 package workspace
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +43,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name: "myplugin",
-					Kind: workspace.ResourcePlugin,
+					Kind: apitype.ResourcePlugin,
 				},
 			},
 			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
@@ -52,7 +55,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name: "myplugin",
-					Kind: workspace.ConverterPlugin,
+					Kind: apitype.ConverterPlugin,
 				},
 			},
 			ExpectedError: "Could not automatically download and install converter plugin 'pulumi-converter-myplugin'," +
@@ -64,7 +67,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name:    "myplugin",
-					Kind:    workspace.ResourcePlugin,
+					Kind:    apitype.ResourcePlugin,
 					Version: &v1,
 				},
 			},
@@ -77,7 +80,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name:              "myplugin",
-					Kind:              workspace.ResourcePlugin,
+					Kind:              apitype.ResourcePlugin,
 					Version:           &v1,
 					PluginDownloadURL: "github://owner/repo",
 				},
@@ -92,7 +95,7 @@ func TestInstallPluginErrorText(t *testing.T) {
 				Err: err,
 				Spec: workspace.PluginSpec{
 					Name:              "myplugin",
-					Kind:              workspace.ResourcePlugin,
+					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "github://owner/repo",
 				},
 			},
@@ -106,7 +109,57 @@ func TestInstallPluginErrorText(t *testing.T) {
 		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.ExpectedError, tt.Err.Error())
+			assert.EqualError(t, &tt.Err, tt.ExpectedError)
 		})
+	}
+}
+
+func TestPluginInstallCancellation(t *testing.T) {
+	t.Parallel()
+
+	// Create a new cancellable context.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Now proceed to try various ways of installing plugins, all of which should promptly
+	// fail because we are operating on an already-cancelled context.
+	v4 := semver.MustParse("4.0.0")
+	spec := workspace.PluginSpec{
+		Name:    "random",
+		Kind:    apitype.ResourcePlugin,
+		Version: &v4,
+	}
+
+	// On the first pass, test that everything succeeds; then trigger cancellation, and
+	// test that everything fails.
+	for _, canceled := range []bool{false, true} {
+		t.Logf("Canceled: %v", canceled)
+
+		if canceled {
+			cancel()
+		}
+
+		assertCorrectFailureMode := func(err error) {
+			if canceled {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		}
+
+		t.Logf("InstallPlugin")
+		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {})
+		assertCorrectFailureMode(err)
+
+		t.Logf("GetLatestVersion")
+		_, err = spec.GetLatestVersion(ctx)
+		assertCorrectFailureMode(err)
+
+		t.Logf("Download")
+		rc, _, err := spec.Download(ctx)
+		assertCorrectFailureMode(err)
+		if rc != nil {
+			rc.Close()
+		}
 	}
 }

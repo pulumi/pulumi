@@ -1,0 +1,19 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:modA:type0 res0 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:modA:type1 res1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA default <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:modA:type2 res2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:modA:type2 res2 <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:modA:type3 res3 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:modA:type3 res3 <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:modA:type0 res0 <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:modA:type1 res1 <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

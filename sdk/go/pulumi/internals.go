@@ -14,11 +14,14 @@
 
 package pulumi
 
-import "context"
+import (
+	"context"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+)
 
 // Functions in this file are exposed in pulumi/internals via go:linkname
 func awaitWithContext(ctx context.Context, o Output) (interface{}, bool, bool, []Resource, error) {
-	value, known, secret, deps, err := o.getState().await(ctx)
-
-	return value, known, secret, deps, err
+	value, known, secret, deps, err := internal.AwaitOutput(ctx, o)
+	return value, known, secret, resourcesFromInternal(deps), err
 }

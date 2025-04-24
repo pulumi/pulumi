@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,39 +20,7 @@ import (
 	"regexp"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
-
-var stackNameRE = regexp.MustCompile("^" + tokens.NameRegexpPattern)
-
-// ValidateStackName checks if s is a valid stack name, otherwise returns a descriptive error.
-// This should match the stack naming rules enforced by the Pulumi Service.
-func ValidateStackName(s string) error {
-	if s == "" {
-		return errors.New("a stack name may not be empty")
-	}
-	if len(s) > 100 {
-		return errors.New("a stack name cannot exceed 100 characters")
-	}
-
-	failure := -1
-	if match := stackNameRE.FindStringIndex(s); match == nil {
-		// We have failed to find any match, so the first token must be invalid.
-		failure = 0
-	} else if match[1] != len(s) {
-		// Our match did not extend to the end, so the invalid token must be the
-		// first token not matched.
-		failure = match[1]
-	}
-
-	if failure == -1 {
-		return nil
-	}
-
-	return fmt.Errorf(
-		"a stack name may only contain alphanumeric, hyphens, underscores, or periods: "+
-			"invalid character %q at position %d", s[failure], failure)
-}
 
 // validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.
 // This should match the stack naming rules enforced by the Pulumi Service.
@@ -87,16 +55,4 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 	}
 
 	return nil
-}
-
-// ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
-// naming and length restrictions.
-func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	if err := ValidateStackName(stack); err != nil {
-		return err
-	}
-
-	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
-	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
-	return ValidateStackTags(tags)
 }

@@ -1,0 +1,18 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>update canceled<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>update canceled<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

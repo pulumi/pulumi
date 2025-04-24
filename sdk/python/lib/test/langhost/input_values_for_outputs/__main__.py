@@ -19,16 +19,25 @@ import pulumi
 
 class Instance(pulumi.CustomResource):
     public_ip: pulumi.Output[str]
-    def __init__(self, resource_name, name: pulumi.Input[str] = None, value: pulumi.Input[str] = None, opts = None):
+
+    def __init__(
+        self,
+        resource_name,
+        name: pulumi.Input[str] = None,
+        value: pulumi.Input[str] = None,
+        opts=None,
+    ):
         if opts is None:
             opts = pulumi.ResourceOptions()
         if name is None and not opts.urn:
             raise TypeError("Missing required property 'name'")
-        __props__: dict = dict()
+        __props__ = {}
         __props__["public_ip"] = None
         __props__["name"] = name
         __props__["value"] = value
-        super(Instance, self).__init__("aws:ec2/instance:Instance", resource_name, __props__, opts)
+        super(Instance, self).__init__(
+            "aws:ec2/instance:Instance", resource_name, __props__, opts
+        )
 
 
 @pulumi.input_type
@@ -67,10 +76,20 @@ class FargateTaskDefinitionArgs:
 # as `Instance`. When the provider returns no value for `logGroup`, it should not try to set the output to the
 # input value due to the type mismatch.
 class FargateTaskDefinition(pulumi.ComponentResource):
-    def __init__(self, resource_name: str, log_group: Optional[pulumi.InputType[DefaultLogGroupArgs]] = None):
+    def __init__(
+        self,
+        resource_name: str,
+        log_group: Optional[pulumi.InputType[DefaultLogGroupArgs]] = None,
+    ):
         __props__ = FargateTaskDefinitionArgs.__new__(FargateTaskDefinitionArgs)
         __props__.__dict__["log_group"] = log_group
-        super().__init__("awsx:ecs:FargateTaskDefinition", resource_name, __props__, None, remote=True)
+        super().__init__(
+            "awsx:ecs:FargateTaskDefinition",
+            resource_name,
+            __props__,
+            None,
+            remote=True,
+        )
 
     @property
     @pulumi.getter(name="logGroup")

@@ -42,7 +42,7 @@ func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
 	_, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
 	why := whyF()
 	if len(why) != 0 {
-		return errorf(expr.SyntaxNode().Range(), why[0].Summary)
+		return errorf(expr.SyntaxNode().Range(), "%s", why[0].Summary)
 	}
 	return errorf(expr.SyntaxNode().Range(), "cannot assign expression of type %s to location of type %s: ",
 		expr.Type().Pretty(), destType.Pretty())

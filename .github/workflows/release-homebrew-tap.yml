@@ -42,15 +42,15 @@ env:
 jobs:
   update-homebrew-tap:
     name: Update Homebrew Tap
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
           path: pulumi
       - name: Checkout tap repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: pulumi/homebrew-tap
           path: homebrew-tap
@@ -83,4 +83,4 @@ jobs:
         run: |
           set -euo pipefail
 
-          git push origin HEAD:master
+          git push origin HEAD:main

@@ -26,11 +26,11 @@ import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pulumi/appdash"
+	appdash_opentracing "github.com/pulumi/appdash/opentracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
-	"sourcegraph.com/sourcegraph/appdash"
-	appdash_opentracing "sourcegraph.com/sourcegraph/appdash/opentracing"
 )
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
@@ -213,6 +213,10 @@ func rootSpanTags() []opentracing.Tag {
 		{
 			Key:   "runtime.GOARCH",
 			Value: runtime.GOARCH,
+		},
+		{
+			Key:   "runtime.GOMAXPROCS",
+			Value: runtime.GOMAXPROCS(0),
 		},
 		{
 			Key:   "runtime.NumCPU",

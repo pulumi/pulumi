@@ -1,0 +1,11 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::C:\windows\paths]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::C:\windows\paths]
+<{%reset%}><{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::C:\windows\paths::960cf4ee-3f25-462c-9c03-1953d7e9d370]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typB: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::C:\windows\paths]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 3 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

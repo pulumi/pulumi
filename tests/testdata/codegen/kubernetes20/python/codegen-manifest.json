@@ -1,0 +1,28 @@
+{
+  "emittedFiles": [
+    "pulumi_kubernetes/README.md",
+    "pulumi_kubernetes/__init__.py",
+    "pulumi_kubernetes/_inputs.py",
+    "pulumi_kubernetes/_utilities.py",
+    "pulumi_kubernetes/core/__init__.py",
+    "pulumi_kubernetes/core/v1/ConfigMap.py",
+    "pulumi_kubernetes/core/v1/ConfigMapList.py",
+    "pulumi_kubernetes/core/v1/__init__.py",
+    "pulumi_kubernetes/core/v1/_inputs.py",
+    "pulumi_kubernetes/core/v1/outputs.py",
+    "pulumi_kubernetes/helm/__init__.py",
+    "pulumi_kubernetes/helm/v3/Release.py",
+    "pulumi_kubernetes/helm/v3/__init__.py",
+    "pulumi_kubernetes/meta/__init__.py",
+    "pulumi_kubernetes/meta/v1/__init__.py",
+    "pulumi_kubernetes/meta/v1/_inputs.py",
+    "pulumi_kubernetes/meta/v1/outputs.py",
+    "pulumi_kubernetes/provider.py",
+    "pulumi_kubernetes/pulumi-plugin.json",
+    "pulumi_kubernetes/py.typed",
+    "pulumi_kubernetes/yaml/__init__.py",
+    "pulumi_kubernetes/yaml/v2/ConfigGroup.py",
+    "pulumi_kubernetes/yaml/v2/__init__.py",
+    "pyproject.toml"
+  ]
+}

@@ -1,0 +1,20 @@
+View in Browser (Ctrl+O): link
+
+     Type                             Name                    Status     Info
+     pulumi:pulumi:Stack              eks-dev                            1 mess
+     ├─ aws:ec2:SecurityGroup         eks-sg                             
+     ├─ aws:eks:Cluster               eks-cluster                        
+     ├─ aws:iam:Role                  eks-role                           
+     ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy             
+     └─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy             
+
+Diagnostics:
+  pulumi:pulumi:Stack (eks-dev):
+    Configuration:
+        aws:region: us-west-2
+
+Resources:
+    6 unchanged
+
+Duration: 1s
+

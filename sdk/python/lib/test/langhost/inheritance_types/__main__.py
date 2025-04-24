@@ -19,6 +19,7 @@ import pulumi_pkg
 
 class MyResourceSubclass(pulumi_pkg.mod.MyResource):
     combined_values: pulumi.Output[str]
+
     def __init__(self, name):
         super().__init__(name)
         self.combined_values = self.foo.apply(lambda f: f"{f.bar} {f.baz}")

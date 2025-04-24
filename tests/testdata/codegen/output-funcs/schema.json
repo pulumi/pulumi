@@ -1,0 +1,669 @@
+{
+  "name": "mypkg",
+  "version": "0.0.1",
+  "functions": {
+    "mypkg::funcWithAllOptionalInputs": {
+      "description": "Check codegen of functions with all optional inputs.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string",
+            "description": "Property A"
+          },
+          "b": {
+            "type": "string",
+            "description": "Property B"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    },
+    "mypkg::funcWithConstInput": {
+      "description": "Codegen demo with const inputs",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "plainInput": {
+            "type": "string",
+            "const": "fixed"
+          }
+        }
+      }
+    },
+    "mypkg::funcWithDefaultValue": {
+      "description": "Check codegen of functions with default values.",
+      "inputs": {
+        "type": "object",
+        "required": [
+          "a"
+        ],
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string",
+            "default": "b-default"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    },
+    "mypkg::funcWithDictParam": {
+      "description": "Check codegen of functions with a Dict<str,str> parameter.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    },
+    "mypkg::funcWithListParam": {
+      "description": "Check codegen of functions with a List parameter.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    },
+    "mypkg::getClientConfig": {
+      "description": "Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.",
+      "outputs": {
+        "description": "Configuration values returned by getClientConfig.",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "Azure Client ID (Application Object ID)."
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Azure Object ID of the current user or service principal."
+          },
+          "subscriptionId": {
+            "type": "string",
+            "description": "Azure Subscription ID"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "Azure Tenant ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clientId",
+          "objectId",
+          "subscriptionId",
+          "tenantId"
+        ]
+      }
+    },
+    "mypkg::getIntegrationRuntimeObjectMetadatum": {
+      "description": "Another failing example. A list of SSIS object metadata.\nAPI Version: 2018-06-01.",
+      "inputs": {
+        "properties": {
+          "factoryName": {
+            "type": "string",
+            "description": "The factory name."
+          },
+          "integrationRuntimeName": {
+            "type": "string",
+            "description": "The integration runtime name."
+          },
+          "metadataPath": {
+            "type": "string",
+            "description": "Metadata path."
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "The resource group name."
+          }
+        },
+        "type": "object",
+        "required": [
+          "factoryName",
+          "integrationRuntimeName",
+          "resourceGroupName"
+        ]
+      },
+      "outputs": {
+        "description": "A list of SSIS object metadata.",
+        "properties": {
+          "nextLink": {
+            "type": "string",
+            "description": "The link to the next page of results, if any remaining results exist."
+          },
+          "value": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "$ref": "#/types/mypkg::SsisEnvironmentResponse"
+                },
+                {
+                  "type": "object",
+                  "$ref": "#/types/mypkg::SsisFolderResponse"
+                },
+                {
+                  "type": "object",
+                  "$ref": "#/types/mypkg::SsisPackageResponse"
+                },
+                {
+                  "type": "object",
+                  "$ref": "#/types/mypkg::SsisProjectResponse"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "Environment": "#/types/mypkg::SsisEnvironmentResponse",
+                  "Folder": "#/types/mypkg::SsisFolderResponse",
+                  "Package": "#/types/mypkg::SsisPackageResponse",
+                  "Project": "#/types/mypkg::SsisProjectResponse"
+                }
+              }
+            },
+            "description": "List of SSIS object metadata."
+          }
+        },
+        "type": "object"
+      }
+    },
+    "mypkg::listStorageAccountKeys": {
+      "description": "The response from the ListKeys operation.\nAPI Version: 2021-02-01.",
+      "inputs": {
+        "properties": {
+          "accountName": {
+            "type": "string",
+            "description": "The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only."
+          },
+          "expand": {
+            "type": "string",
+            "description": "Specifies type of the key to be listed. Possible value is kerb."
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "The name of the resource group within the user's subscription. The name is case insensitive."
+          }
+        },
+        "type": "object",
+        "required": [
+          "accountName",
+          "resourceGroupName"
+        ]
+      },
+      "outputs": {
+        "description": "The response from the ListKeys operation.",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/mypkg::StorageAccountKeyResponse"
+            },
+            "description": "Gets the list of storage account keys and their properties for the specified storage account."
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys"
+        ]
+      }
+    },
+    "mypkg::getBastionShareableLink": {
+      "description": "Response for all the Bastion Shareable Link endpoints.\nAPI Version: 2020-11-01.",
+      "inputs": {
+        "properties": {
+          "bastionHostName": {
+            "type": "string",
+            "description": "The name of the Bastion Host."
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "The name of the resource group."
+          },
+          "vms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/mypkg::BastionShareableLink"
+            },
+            "description": "List of VM references."
+          }
+        },
+        "type": "object",
+        "required": [
+          "bastionHostName",
+          "resourceGroupName"
+        ]
+      },
+      "outputs": {
+        "description": "Response for all the Bastion Shareable Link endpoints.",
+        "properties": {
+          "nextLink": {
+            "type": "string",
+            "description": "The URL to get the next set of results."
+          }
+        },
+        "type": "object"
+      }
+    },
+    "mypkg::funcWithEmptyOutputs": {
+      "description": "n/a",
+      "inputs": {
+          "properties": {
+              "name": {
+                  "type": "string",
+                  "description": "The Name of the FeatureGroup."
+              }
+          },
+          "required": [
+              "name"
+          ]
+      },
+      "outputs": {}
+    }
+  },
+  "types": {
+    "mypkg::BastionShareableLink": {
+      "description": "Bastion Shareable Link.",
+      "properties": {
+        "vm": {
+          "type": "string",
+          "description": "Reference of the virtual machine resource."
+        }
+      },
+      "type": "object",
+      "required": [
+        "vm"
+      ]
+    },
+    "mypkg::SsisEnvironmentResponse": {
+      "description": "Ssis environment.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Folder id which contains environment."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Environment'.",
+          "const": "Environment"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/mypkg::SsisVariableResponse"
+          },
+          "description": "Variable in environment"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "mypkg::SsisFolderResponse": {
+      "description": "Ssis folder.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Folder'.",
+          "const": "Folder"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "mypkg::SsisPackageResponse": {
+      "description": "Ssis Package.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Folder id which contains package."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/mypkg::SsisParameterResponse"
+          },
+          "description": "Parameters in package"
+        },
+        "projectId": {
+          "type": "number",
+          "description": "Project id which contains package."
+        },
+        "projectVersion": {
+          "type": "number",
+          "description": "Project version which contains package."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Package'.",
+          "const": "Package"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "mypkg::SsisProjectResponse": {
+      "description": "Ssis project.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "environmentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/mypkg::SsisEnvironmentReferenceResponse"
+          },
+          "description": "Environment reference in project"
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Folder id which contains project."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/mypkg::SsisParameterResponse"
+          },
+          "description": "Parameters in project"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Project'.",
+          "const": "Project"
+        },
+        "version": {
+          "type": "number",
+          "description": "Project version."
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "mypkg::SsisEnvironmentReferenceResponse": {
+      "description": "Ssis environment reference.",
+      "properties": {
+        "environmentFolderName": {
+          "type": "string",
+          "description": "Environment folder name."
+        },
+        "environmentName": {
+          "type": "string",
+          "description": "Environment name."
+        },
+        "id": {
+          "type": "number",
+          "description": "Environment reference id."
+        },
+        "referenceType": {
+          "type": "string",
+          "description": "Reference type"
+        }
+      },
+      "type": "object"
+    },
+    "mypkg::SsisParameterResponse": {
+      "description": "Ssis parameter.",
+      "properties": {
+        "dataType": {
+          "type": "string",
+          "description": "Parameter type."
+        },
+        "defaultValue": {
+          "type": "string",
+          "description": "Default value of parameter."
+        },
+        "description": {
+          "type": "string",
+          "description": "Parameter description."
+        },
+        "designDefaultValue": {
+          "type": "string",
+          "description": "Design default value of parameter."
+        },
+        "id": {
+          "type": "number",
+          "description": "Parameter id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Parameter name."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether parameter is required."
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Whether parameter is sensitive."
+        },
+        "sensitiveDefaultValue": {
+          "type": "string",
+          "description": "Default sensitive value of parameter."
+        },
+        "valueSet": {
+          "type": "boolean",
+          "description": "Parameter value set."
+        },
+        "valueType": {
+          "type": "string",
+          "description": "Parameter value type."
+        },
+        "variable": {
+          "type": "string",
+          "description": "Parameter reference variable."
+        }
+      },
+      "type": "object"
+    },
+    "mypkg::SsisVariableResponse": {
+      "description": "Ssis variable.",
+      "properties": {
+        "dataType": {
+          "type": "string",
+          "description": "Variable type."
+        },
+        "description": {
+          "type": "string",
+          "description": "Variable description."
+        },
+        "id": {
+          "type": "number",
+          "description": "Variable id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Variable name."
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Whether variable is sensitive."
+        },
+        "sensitiveValue": {
+          "type": "string",
+          "description": "Variable sensitive value."
+        },
+        "value": {
+          "type": "string",
+          "description": "Variable value."
+        }
+      },
+      "type": "object"
+    },
+    "mypkg::StorageAccountKeyResponse": {
+      "description": "An access key for the storage account.",
+      "properties": {
+        "creationTime": {
+          "type": "string",
+          "description": "Creation time of the key, in round trip date format."
+        },
+        "keyName": {
+          "type": "string",
+          "description": "Name of the key."
+        },
+        "permissions": {
+          "type": "string",
+          "description": "Permissions for the key -- read-only or full permissions."
+        },
+        "value": {
+          "type": "string",
+          "description": "Base 64-encoded value of the key."
+        }
+      },
+      "type": "object",
+      "required": [
+        "creationTime",
+        "keyName",
+        "permissions",
+        "value"
+      ]
+    }
+  },
+  "language": {
+    "nodejs": {
+      "optimizeNodeModuleLoading": ["lazy-load-functions", "lazy-load-resources", "use-type-only-enums-references"],
+      "devDependencies": {
+        "@types/mocha": "latest",
+        "@types/node": "ts4.3",
+        "mocha": "latest",
+        "ts-node": "latest"
+      },
+      "extraTypeScriptFiles": [
+        "tests/codegen.spec.ts"
+      ]
+    },
+    "go": {
+      "generateExtraInputTypes": true,
+      "importBasePath": "output-funcs/mypkg",
+      "generics": "side-by-side"
+    },
+    "python": {},
+    "csharp": {
+      "packageReferences": {
+        "FluentAssertions": "5.10.2",
+        "Microsoft.NET.Test.Sdk": "16.5.0",
+        "Moq": "4.13.1",
+        "NUnit": "3.12.0",
+        "NUnit3TestAdapter": "4.2.1"
+      }
+    }
+  }
+}

@@ -20,19 +20,19 @@ Regresses https://github.com/pulumi/pulumi/issues/8273
 
 """
 
+from copy import deepcopy
+
 import pytest
 from pulumi.runtime import settings, mocks
 import pulumi
 
-from copy import deepcopy
 
 class MyMocks(pulumi.runtime.Mocks):
-
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
-        raise Exception('new_resource')
+        raise Exception("new_resource")
 
     def call(self, args: pulumi.runtime.MockCallArgs):
-        raise Exception('call')
+        raise Exception("call")
 
 
 class MyMonitor(mocks.MockMonitor):
@@ -60,7 +60,7 @@ def my_mocks():
         # place them inside a test and make the code run after the
         # test stack completes constructing.
         assert monitor.outputs is not None
-        assert type(monitor.outputs.urn) == str
+        assert isinstance(monitor.outputs.urn, str)
 
 
 @pulumi.runtime.test

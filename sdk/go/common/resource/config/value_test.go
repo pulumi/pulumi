@@ -99,13 +99,6 @@ func TestHasSecureValue(t *testing.T) {
 			Expected: false,
 		},
 		{
-			Value: map[string]interface{}{
-				"foo": "bar",
-				"hi":  map[string]interface{}{"secure": 1},
-			},
-			Expected: false,
-		},
-		{
 			Value:    []interface{}{"a", "b", map[string]interface{}{"secure": "securevalue"}},
 			Expected: true,
 		},
@@ -144,11 +137,11 @@ func TestHasSecureValue(t *testing.T) {
 			jsonBytes, err := json.Marshal(test.Value)
 			assert.NoError(t, err)
 
-			var val interface{}
+			var val object
 			err = json.Unmarshal(jsonBytes, &val)
 			assert.NoError(t, err)
 
-			assert.Equal(t, test.Expected, hasSecureValue(val))
+			assert.Equal(t, test.Expected, val.Secure())
 		})
 	}
 }
@@ -222,10 +215,10 @@ func (d passThroughDecrypter) DecryptValue(
 	return ciphertext, nil
 }
 
-func (d passThroughDecrypter) BulkDecrypt(
+func (d passThroughDecrypter) BatchDecrypt(
 	ctx context.Context, ciphertexts []string,
-) (map[string]string, error) {
-	return DefaultBulkDecrypt(ctx, d, ciphertexts)
+) ([]string, error) {
+	return DefaultBatchDecrypt(ctx, d, ciphertexts)
 }
 
 func TestSecureValues(t *testing.T) {

@@ -15,7 +15,8 @@
 import { CommandResult } from "./cmd";
 
 /**
- * CommandError is an error resulting from invocation of a Pulumi Command.
+ * An error resulting from the invocation of a Pulumi command.
+ *
  * @alpha
  */
 export class CommandError extends Error {
@@ -27,7 +28,8 @@ export class CommandError extends Error {
 }
 
 /**
- * ConcurrentUpdateError is thrown when attempting to update a stack that already has an update in progress.
+ * An error thrown when attempting to update a stack that is already being
+ * updated.
  */
 export class ConcurrentUpdateError extends CommandError {
     /** @internal */
@@ -38,7 +40,7 @@ export class ConcurrentUpdateError extends CommandError {
 }
 
 /**
- * StackNotFoundError is thrown when attempting to select a stack that does not exist.
+ * An error thrown when attempting to select a stack that does not exist.
  */
 export class StackNotFoundError extends CommandError {
     /** @internal */
@@ -49,7 +51,7 @@ export class StackNotFoundError extends CommandError {
 }
 
 /**
- * StackAlreadyExistsError is thrown when attempting to create a stack that already exists.
+ * An error thrown when attempting to create a stack that already exists.
  */
 export class StackAlreadyExistsError extends CommandError {
     /** @internal */
@@ -62,18 +64,20 @@ export class StackAlreadyExistsError extends CommandError {
 const notFoundRegex = new RegExp("no stack named.*found");
 const alreadyExistsRegex = new RegExp("stack.*already exists");
 const conflictText = "[409] Conflict: Another update is currently in progress.";
-const localBackendConflictText = "the stack is currently locked by";
+const diyBackendConflictText = "the stack is currently locked by";
 
-/** @internal */
+/**
+ * @internal
+ */
 export function createCommandError(result: CommandResult): CommandError {
     const stderr = result.stderr;
     return notFoundRegex.test(stderr)
         ? new StackNotFoundError(result)
         : alreadyExistsRegex.test(stderr)
-        ? new StackAlreadyExistsError(result)
-        : stderr.indexOf(conflictText) >= 0
-        ? new ConcurrentUpdateError(result)
-        : stderr.indexOf(localBackendConflictText) >= 0
-        ? new ConcurrentUpdateError(result)
-        : new CommandError(result);
+          ? new StackAlreadyExistsError(result)
+          : stderr.indexOf(conflictText) >= 0
+            ? new ConcurrentUpdateError(result)
+            : stderr.indexOf(diyBackendConflictText) >= 0
+              ? new ConcurrentUpdateError(result)
+              : new CommandError(result);
 }

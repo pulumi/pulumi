@@ -16,6 +16,7 @@ import os
 import sys
 import subprocess
 import unittest
+import platform
 import pytest
 from pulumi.automation import (
     create_stack,
@@ -23,90 +24,124 @@ from pulumi.automation import (
     RuntimeError,
     CompilationError,
 )
-from .test_local_workspace import stack_namer, test_path
+from .test_local_workspace import stack_namer, get_test_path
 
 compilation_error_project = "compilation_error"
 runtime_error_project = "runtime_error"
 
-@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
+
 class TestErrors(unittest.TestCase):
     def test_inline_runtime_error_python(self):
         project_name = "inline_runtime_error_python"
         stack_name = stack_namer(project_name)
-        stack = create_stack(stack_name, program=failing_program, project_name=project_name)
+        stack = create_stack(
+            stack_name, program=failing_program, project_name=project_name
+        )
         inline_error_text = "python inline source runtime error"
 
         try:
             self.assertRaises(InlineSourceRuntimeError, stack.up)
-            self.assertRaisesRegex(InlineSourceRuntimeError, inline_error_text, stack.up)
+            self.assertRaisesRegex(
+                InlineSourceRuntimeError, inline_error_text, stack.up
+            )
             self.assertRaises(InlineSourceRuntimeError, stack.preview)
-            self.assertRaisesRegex(InlineSourceRuntimeError, inline_error_text, stack.preview)
+            self.assertRaisesRegex(
+                InlineSourceRuntimeError, inline_error_text, stack.preview
+            )
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
-    # This test fails on Windows related to the `subprocess.run` call associated with setting up the environment.
-    # Skipping for now.
-    @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
     def test_runtime_errors(self):
         for lang in ["python", "go", "dotnet", "javascript", "typescript"]:
             stack_name = stack_namer(runtime_error_project)
-            project_dir = test_path("errors", runtime_error_project, lang)
+            project_dir = get_test_path("errors", runtime_error_project, lang)
 
             if lang in ["javascript", "typescript"]:
-                subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
+                subprocess.run(
+                    ["npm", "install"], check=True, cwd=project_dir, capture_output=True
+                )
             if lang == "python":
-                subprocess.run(["python3", "-m", "venv", "venv"], check=True, cwd=project_dir, capture_output=True)
-                subprocess.run([os.path.join("venv", "bin", "python"),
-                                "-m", "pip", "install", "-r", "requirements.txt"],
-                               check=True, cwd=project_dir, capture_output=True)
+                subprocess.run(
+                    ["python3", "-m", "venv", "venv"],
+                    check=True,
+                    cwd=project_dir,
+                    capture_output=True,
+                )
+
+                # Get the path to the python executable in the virtual environment.
+                python_venv_path = os.path.join("venv", "bin", "python")
+                if platform.system() == "Windows":
+                    python_venv_path = os.path.join("venv", "Scripts", "python.exe")
+
+                # Determine the locally built Pulumi SDK path.
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                env_src_dir = os.path.join(script_dir, "..", "..", "..")
+
+                # Install the locally built Pulumi SDK in the virtual environment.
+                subprocess.run(
+                    [python_venv_path, "-m", "pip", "install", "-e", env_src_dir],
+                    check=True,
+                    cwd=project_dir,
+                    capture_output=True,
+                )
 
             stack = create_stack(stack_name, work_dir=project_dir)
 
             try:
                 self.assertRaises(RuntimeError, stack.up)
                 if lang == "go":
-                    self.assertRaisesRegex(RuntimeError, "panic: runtime error", stack.up)
+                    self.assertRaisesRegex(
+                        RuntimeError, "panic: runtime error", stack.up
+                    )
                 else:
-                    self.assertRaisesRegex(RuntimeError, "failed with an unhandled exception", stack.up)
+                    self.assertRaisesRegex(
+                        RuntimeError, "failed with an unhandled exception", stack.up
+                    )
             finally:
-                stack.workspace.remove_stack(stack_name)
+                stack.workspace.remove_stack(stack_name, force=True)
 
     def test_compilation_error_go(self):
         stack_name = stack_namer(compilation_error_project)
-        project_dir = test_path("errors", compilation_error_project, "go")
+        project_dir = get_test_path("errors", compilation_error_project, "go")
         stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
             self.assertRaises(CompilationError, stack.up)
-            self.assertRaisesRegex(CompilationError, ": syntax error:|: undefined:", stack.up)
+            self.assertRaisesRegex(
+                CompilationError, ": syntax error:|: undefined:", stack.up
+            )
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
     def test_compilation_error_dotnet(self):
         stack_name = stack_namer(compilation_error_project)
-        project_dir = test_path("errors", compilation_error_project, "dotnet")
+        project_dir = get_test_path("errors", compilation_error_project, "dotnet")
         stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
             self.assertRaises(CompilationError, stack.up)
             self.assertRaisesRegex(CompilationError, "Build FAILED.", stack.up)
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
     # This test fails on Windows related to the `subprocess.run` call associated with setting up the environment.
     # Skipping for now.
     @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
     def test_compilation_error_typescript(self):
         stack_name = stack_namer(compilation_error_project)
-        project_dir = test_path("errors", compilation_error_project, "typescript")
-        subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
+        project_dir = get_test_path("errors", compilation_error_project, "typescript")
+        subprocess.run(
+            ["npm", "install"], check=True, cwd=project_dir, capture_output=True
+        )
         stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
             self.assertRaises(CompilationError, stack.up)
-            self.assertRaisesRegex(CompilationError, "Unable to compile TypeScript", stack.up)
+            self.assertRaisesRegex(
+                CompilationError, "Unable to compile TypeScript", stack.up
+            )
         finally:
-            stack.workspace.remove_stack(stack_name)
+            stack.workspace.remove_stack(stack_name, force=True)
 
 
 def failing_program():

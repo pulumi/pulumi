@@ -1,0 +1,16 @@
+exports.handler = __f1;
+
+var __o = {};
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f1: __f1, this: undefined, arguments: undefined }) {
+
+return function /*f1*/() {
+    // @ts-ignore
+    console.log(o.c);
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

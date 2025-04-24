@@ -1,6 +1,4 @@
-//go:build go1.20
-
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build go1.20
 
 package httpstate
 
@@ -83,7 +83,7 @@ func (s *spanner) finish() ([]byte, spans) {
 }
 
 func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3) (spans, error) {
-	// one span for {"manifest":...,"secrets_providers":...,"resources":[
+	// one span for {"manifest":...,"secrets_providers":...,"metadata":...,"resources":[
 	// len(resources) spans for resources,
 	// one span for ],"pendingOperations":[
 	// len(operations) spans for operations
@@ -101,6 +101,10 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3) (spans, 
 		if err := encoder.Encode(d.SecretsProviders); err != nil {
 			return spans{}, err
 		}
+	}
+	spanner.WriteString(`,"metadata":`)
+	if err := encoder.Encode(d.Metadata); err != nil {
+		return spans{}, err
 	}
 
 	if len(d.Resources) > 0 {
@@ -169,7 +173,7 @@ func (*deploymentDiffState) computeEdits(ctx context.Context, before, after depl
 
 	delta, err := json.Marshal(edits)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot marshal the edits: %v", err)
+		return nil, fmt.Errorf("Cannot marshal the edits: %w", err)
 	}
 
 	return delta, nil

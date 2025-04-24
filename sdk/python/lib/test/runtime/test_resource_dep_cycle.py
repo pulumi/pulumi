@@ -22,24 +22,39 @@ import pulumi
 @pytest.mark.timeout(10)
 @pulumi.runtime.test
 def test_pulumi_does_not_hang_on_dependency_cycle(my_mocks):
-    c = MockComponentResource(name='c')
-    r = MockResource(name='r', input1=c.output1, opts=pulumi.ResourceOptions(parent=c))
+    c = MockComponentResource(name="c")
+    r = MockResource(name="r", input1=c.output1, opts=pulumi.ResourceOptions(parent=c))
     return pulumi.Output.all(c.urn, r.urn).apply(print)
 
 
 class MockResource(pulumi.CustomResource):
-    def __init__(self, name: str, input1: pulumi.Input[str], opts: Optional[pulumi.ResourceOptions] = None):
-        super().__init__('python:test_resource_dep_cycle:MockResource', name, {'input1': input1}, opts)
+    def __init__(
+        self,
+        name: str,
+        input1: pulumi.Input[str],
+        opts: Optional[pulumi.ResourceOptions] = None,
+    ):
+        super().__init__(
+            "python:test_resource_dep_cycle:MockResource",
+            name,
+            {"input1": input1},
+            opts,
+        )
 
 
 class MockComponentResource(pulumi.ComponentResource):
     output1: pulumi.Output[str]
 
     def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
-        super().__init__("python:test_resource_dep_cycle:MockComponentResource", name,
-                         props=None, opts=opts, remote=True)
+        super().__init__(
+            "python:test_resource_dep_cycle:MockComponentResource",
+            name,
+            props=None,
+            opts=opts,
+            remote=True,
+        )
         self.output1 = self.urn
-        self.register_outputs({'output1': self.output1})
+        self.register_outputs({"output1": self.output1})
 
 
 @pytest.fixture
@@ -54,9 +69,8 @@ def my_mocks():
 
 
 class MyMocks(pulumi.runtime.Mocks):
-
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
-        return [args.name + '_id', args.inputs]
+        return [args.name + "_id", args.inputs]
 
     def call(self, args: pulumi.runtime.MockCallArgs):
         return {}

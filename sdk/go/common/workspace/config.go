@@ -1,12 +1,29 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package workspace
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func formatMissingKeys(missingKeys []string) string {
@@ -46,18 +63,21 @@ func missingStackConfigurationKeysError(missingKeys []string, stackName string) 
 }
 
 type (
-	StackName            = string
-	ProjectConfigKey     = string
-	StackConfigValidator = func(StackName, ProjectConfigKey, ProjectConfigType, config.Value, config.Decrypter) error
+	StackName        = string
+	ProjectConfigKey = string
 )
 
-func DefaultStackConfigValidator(
+func validateStackConfigValue(
 	stackName string,
 	projectConfigKey string,
 	projectConfigType ProjectConfigType,
 	stackValue config.Value,
 	dec config.Decrypter,
 ) error {
+	if dec == nil {
+		return nil
+	}
+
 	// First check if the project says this should be secret, and if so that the stack value is
 	// secure.
 	if projectConfigType.Secret && !stackValue.Secure() {
@@ -95,16 +115,15 @@ func DefaultStackConfigValidator(
 	return nil
 }
 
-// The validator which does not validate anything
-// used when we only want to merge the project config onto the stack config
-func NoopStackConfigValidator(
-	stackName string,
-	projectConfigKey string,
-	projectConfigType ProjectConfigType,
-	stackValue config.Value,
-	dec config.Decrypter,
-) error {
-	return nil
+func parseConfigKey(projectName, key string) (config.Key, error) {
+	if strings.Contains(key, ":") {
+		// key is already namespaced
+		return config.ParseKey(key)
+	}
+
+	// key is not namespaced
+	// use the project as default namespace
+	return config.MustMakeKey(projectName, key), nil
 }
 
 func createConfigValue(rawValue interface{}) (config.Value, error) {
@@ -123,35 +142,114 @@ func createConfigValue(rawValue interface{}) (config.Value, error) {
 	return config.NewObjectValue(string(configValueJSON)), nil
 }
 
-func ValidateStackConfigAndMergeProjectConfig(
+func envConfigValue(v esc.Value) config.Plaintext {
+	if v.Unknown {
+		if v.Secret {
+			return config.NewSecurePlaintext("[unknown]")
+		}
+		return config.NewPlaintext("[unknown]")
+	}
+
+	switch repr := v.Value.(type) {
+	case nil:
+		return config.Plaintext{}
+	case bool:
+		return config.NewPlaintext(repr)
+	case json.Number:
+		if i, err := repr.Int64(); err == nil {
+			return config.NewPlaintext(i)
+		} else if f, err := repr.Float64(); err == nil {
+			return config.NewPlaintext(f)
+		}
+		// TODO(pdg): this disagrees with config unmarshaling semantics. Should probably fail.
+		return config.NewPlaintext(string(repr))
+	case string:
+		if v.Secret {
+			return config.NewSecurePlaintext(repr)
+		}
+		return config.NewPlaintext(repr)
+	case []esc.Value:
+		vs := make([]config.Plaintext, len(repr))
+		for i, v := range repr {
+			vs[i] = envConfigValue(v)
+		}
+		return config.NewPlaintext(vs)
+	case map[string]esc.Value:
+		vs := make(map[string]config.Plaintext, len(repr))
+		for k, v := range repr {
+			vs[k] = envConfigValue(v)
+		}
+		return config.NewPlaintext(vs)
+	default:
+		contract.Failf("unexpected environments value of type %T", repr)
+		return config.Plaintext{}
+	}
+}
+
+func mergeConfig(
+	ctx context.Context,
 	stackName string,
 	project *Project,
+	stackEnv esc.Value,
 	stackConfig config.Map,
-	lazyDecrypter func() config.Decrypter,
-	validate StackConfigValidator,
+	encrypter config.Encrypter,
+	decrypter config.Decrypter,
+	validate bool,
 ) error {
-	var decrypter config.Decrypter
 	missingConfigurationKeys := make([]string, 0)
 	projectName := project.Name.String()
-	for projectConfigKey, projectConfigType := range project.Config {
-		var key config.Key
-		if strings.Contains(projectConfigKey, ":") {
-			// key is already namespaced
-			parsedKey, parseError := config.ParseKey(projectConfigKey)
-			if parseError != nil {
-				return parseError
+
+	keys := make([]string, 0, len(project.Config))
+	for k := range project.Config {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// First merge the stack environment and the stack config together.
+	if envMap, ok := stackEnv.Value.(map[string]esc.Value); ok {
+		for rawKey, value := range envMap {
+			key, err := parseConfigKey(projectName, rawKey)
+			if err != nil {
+				return err
 			}
 
-			key = parsedKey
-		} else {
-			// key is not namespaced
-			// use the project as default namespace
-			key = config.MustMakeKey(projectName, projectConfigKey)
+			envValue, err := envConfigValue(value).Encrypt(ctx, encrypter)
+			if err != nil {
+				return err
+			}
+
+			stackValue, foundOnStack, err := stackConfig.Get(key, false)
+			if err != nil {
+				return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
+			}
+
+			if !foundOnStack {
+				err = stackConfig.Set(key, envValue, false)
+			} else {
+				merged, mergeErr := stackValue.Merge(envValue)
+				if mergeErr != nil {
+					return fmt.Errorf("merging environment config for key '%v': %w", key.String(), err)
+				}
+				err = stackConfig.Set(key, merged, false)
+			}
+			if err != nil {
+				return fmt.Errorf("setting merged config value for key '%v': %w", key.String(), err)
+			}
+		}
+	}
+
+	// Next validate the merged config and merge in the project config.
+	for _, projectConfigKey := range keys {
+		projectConfigType := project.Config[projectConfigKey]
+
+		key, err := parseConfigKey(projectName, projectConfigKey)
+		if err != nil {
+			return err
 		}
 
 		stackValue, foundOnStack, err := stackConfig.Get(key, true)
 		if err != nil {
-			return fmt.Errorf("Error while getting stack config value for key '%v': %v", key.String(), err)
+			return fmt.Errorf("getting stack config value for key '%v': %w", key.String(), err)
 		}
 
 		hasDefault := projectConfigType.Default != nil
@@ -189,18 +287,10 @@ func ValidateStackConfigAndMergeProjectConfig(
 		}
 
 		// Validate stack level value against the config defined at the project level
-		if projectConfigType.IsExplicitlyTyped() {
-			// we have a validator
-			if decrypter == nil {
-				// initialize the decrypter once
-				decrypter = lazyDecrypter()
-			}
-
-			if decrypter != nil {
-				validationError := validate(stackName, projectConfigKey, projectConfigType, stackValue, decrypter)
-				if validationError != nil {
-					return validationError
-				}
+		if validate && projectConfigType.IsExplicitlyTyped() {
+			err := validateStackConfigValue(stackName, projectConfigKey, projectConfigType, stackValue, decrypter)
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -215,28 +305,28 @@ func ValidateStackConfigAndMergeProjectConfig(
 }
 
 func ValidateStackConfigAndApplyProjectConfig(
+	ctx context.Context,
 	stackName string,
 	project *Project,
+	stackEnv esc.Value,
 	stackConfig config.Map,
-	dec config.Decrypter,
+	encrypter config.Encrypter,
+	decrypter config.Decrypter,
 ) error {
-	decrypter := func() config.Decrypter {
-		return dec
-	}
-
-	return ValidateStackConfigAndMergeProjectConfig(
-		stackName, project, stackConfig, decrypter, DefaultStackConfigValidator)
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, decrypter, true)
 }
 
 // ApplyConfigDefaults applies the default values for the project configuration onto the stack configuration
 // without validating the contents of stack config values.
 // This is because sometimes during pulumi config ls and pulumi config get, if users are
 // using PassphraseDecrypter, we don't want to always prompt for the values when not necessary
-func ApplyProjectConfig(stackName string, project *Project, stackConfig config.Map) error {
-	emptyDecrypter := func() config.Decrypter {
-		return nil
-	}
-
-	return ValidateStackConfigAndMergeProjectConfig(stackName, project, stackConfig,
-		emptyDecrypter, NoopStackConfigValidator)
+func ApplyProjectConfig(
+	ctx context.Context,
+	stackName string,
+	project *Project,
+	stackEnv esc.Value,
+	stackConfig config.Map,
+	encrypter config.Encrypter,
+) error {
+	return mergeConfig(ctx, stackName, project, stackEnv, stackConfig, encrypter, nil, false)
 }

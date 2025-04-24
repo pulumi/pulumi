@@ -1,0 +1,75 @@
+exports.handler = __f0;
+
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __config = {["test:TestingKey2"]: "TestingValue2"};
+var __runtimeConfig_1 = {getConfig: __getConfig};
+Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+var __deploymentOnlyModule = {Config: __f1};
+
+function __f1(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*constructor*/(name) {
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getConfig(__0) {
+  return (function() {
+    with({ config: __config, getConfig: __getConfig, this: undefined, arguments: undefined }) {
+
+return function /*getConfig*/(k) {
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2(__0) {
+  return (function() {
+    with({ runtimeConfig_1: __runtimeConfig_1, this: undefined, arguments: undefined }) {
+
+return function /*get*/(key) {
+        const v = runtimeConfig_1.getConfig(this.fullKey(key));
+        if (v === undefined) {
+            return undefined;
+        }
+        return v;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*fullKey*/(key) {
+        return this.name + ":" + key;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ deploymentOnlyModule: __deploymentOnlyModule, this: undefined, arguments: undefined }) {
+
+return function () { const v = new deploymentOnlyModule.Config("test").get("TestingKey2"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

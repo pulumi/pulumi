@@ -63,7 +63,7 @@ var hasDependency R = func(res, dependency *resource.State) bool {
 	return false
 }
 
-var expectedDependenciesOf R = union(isParent, hasProvider, hasDependency)
+var expectedDependenciesOf = union(isParent, hasProvider, hasDependency)
 
 // Verify `DependneciesOf` against `expectedDependenciesOf`.
 func TestRapidDependenciesOf(t *testing.T) {
@@ -75,21 +75,21 @@ func TestRapidDependenciesOf(t *testing.T) {
 			aD := dg.DependenciesOf(a)
 			for _, b := range universe {
 				if isParent(a, b) {
-					assert.Truef(t, aD[b],
+					assert.Truef(t, aD.Contains(b),
 						"DependenciesOf(%v) is missing a parent %v",
 						a.URN, b.URN)
 				}
 				if hasProvider(a, b) {
-					assert.Truef(t, aD[b],
+					assert.Truef(t, aD.Contains(b),
 						"DependenciesOf(%v) is missing a provider %v",
 						a.URN, b.URN)
 				}
 				if hasDependency(a, b) {
-					assert.Truef(t, aD[b],
+					assert.Truef(t, aD.Contains(b),
 						"DependenciesOf(%v) is missing a dependecy %v",
 						a.URN, b.URN)
 				}
-				if aD[b] {
+				if aD.Contains(b) {
 					assert.True(t, expectedDependenciesOf(a, b),
 						"DependenciesOf(%v) includes an unexpected %v",
 						a.URN, b.URN)
@@ -110,7 +110,7 @@ func TestRapidDependenciesOfAntisymmetric(t *testing.T) {
 			aD := dg.DependenciesOf(a)
 			for _, b := range universe {
 				bD := dg.DependenciesOf(b)
-				assert.Falsef(t, aD[b] && bD[a],
+				assert.Falsef(t, aD.Contains(b) && bD.Contains(a),
 					"DependenciesOf symmetric over (%v, %v)", a.URN, b.URN)
 			}
 		}
@@ -227,7 +227,7 @@ func TestRapidTransitiveDependenciesOf(t *testing.T) {
 			for _, b := range universe {
 				assert.Equalf(t,
 					expectedInTDepsOf(a, b),
-					tda[b],
+					tda.Contains(b),
 					"Mismatch on a=%v, b=%b",
 					a.URN,
 					b.URN)

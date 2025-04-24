@@ -69,525 +69,175 @@
 <{%reset%}>                [id=cluster-eksRole-role-262a7fa]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/role:Role::cluster-eksRole-role]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                assumeRolePolicy   : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Statement: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                        [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            Action   : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                [0]: <{%reset%}><{%reset%}>"sts:AssumeRole"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            Effect   : <{%reset%}><{%reset%}>"Allow"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            Principal: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                                Service: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                    [0]: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    Version  : <{%reset%}><{%reset%}>"2012-10-17"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                description        : <{%reset%}><{%reset%}>"Allows EKS to manage clusters on your behalf."<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                forceDetachPolicies: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                maxSessionDuration : <{%reset%}><{%reset%}>3600<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                name               : <{%reset%}><{%reset%}>"cluster-eksRole-role-262a7fa"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                path               : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:iam/role:Role: (same)
 <{%reset%}>                [id=cluster-instanceRole-role-f970009]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/role:Role::cluster-instanceRole-role]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                assumeRolePolicy   : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Statement: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                        [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            Action   : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                [0]: <{%reset%}><{%reset%}>"sts:AssumeRole"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            Effect   : <{%reset%}><{%reset%}>"Allow"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            Principal: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                                Service: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                    [0]: <{%reset%}><{%reset%}>"ec2.amazonaws.com"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    Version  : <{%reset%}><{%reset%}>"2012-10-17"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                forceDetachPolicies: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                maxSessionDuration : <{%reset%}><{%reset%}>3600<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                name               : <{%reset%}><{%reset%}>"cluster-instanceRole-role-f970009"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                path               : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  eks:index:RandomSuffix: (same)
 <{%reset%}>            [id=cluster-cfnStackName]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:RandomSuffix::cluster-cfnStackName]
-<{%reset%}><{%reset%}>            input: <{%reset%}><{%reset%}>"cluster"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/vpc:Vpc: (same)
 <{%reset%}>            [id=vpc-07f4302f6e57a447a]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$aws:ec2/vpc:Vpc::vpc]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            assignGeneratedIpv6CidrBlock: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            cidrBlock                   : <{%reset%}><{%reset%}>"10.0.0.0/16"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            enableDnsHostnames          : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            enableDnsSupport            : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            instanceTenancy             : <{%reset%}><{%reset%}>"default"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/eip:Eip: (same)
 <{%reset%}>                [id=eipalloc-097ef3ce06d0ff56e]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:NatGateway$aws:ec2/eip:Eip::vpc-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                tags      : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Name      : <{%reset%}><{%reset%}>"vpc-0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                vpc       : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/eip:Eip: (same)
 <{%reset%}>                [id=eipalloc-0b436f419d8000df5]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:NatGateway$aws:ec2/eip:Eip::vpc-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                tags      : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Name      : <{%reset%}><{%reset%}>"vpc-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                vpc       : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTable:RouteTable: (same)
 <{%reset%}>                [id=rtb-042c28a7a86d02b26]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTable:RouteTable::vpc-public-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                vpcId     : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTable:RouteTable: (same)
 <{%reset%}>                [id=rtb-0e7a3faa0b87573ed]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTable:RouteTable::vpc-private-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                vpcId     : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/internetGateway:InternetGateway: (same)
 <{%reset%}>                [id=igw-01656d8cc8ff48960]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:InternetGateway$aws:ec2/internetGateway:InternetGateway::vpc]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                vpcId     : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroup:SecurityGroup: (same)
 <{%reset%}>            [id=sg-05607b7d551164ea7]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroup:SecurityGroup::cluster-eksClusterSecurityGroup]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            description        : <{%reset%}><{%reset%}>"Managed by Pulumi"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            name               : <{%reset%}><{%reset%}>"cluster-eksClusterSecurityGroup-83e3d8d"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            revokeRulesOnDelete: <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            tags               : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                Name      : <{%reset%}><{%reset%}>"cluster-eksClusterSecurityGroup"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            vpcId              : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/subnet:Subnet: (same)
 <{%reset%}>                [id=subnet-0028b879bc4eabc11]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/subnet:Subnet::vpc-private-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                assignIpv6AddressOnCreation            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                availabilityZone                       : <{%reset%}><{%reset%}>"us-west-2b"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                cidrBlock                              : <{%reset%}><{%reset%}>"10.0.192.0/18"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableDns64                            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsARecordOnLaunch   : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsAaaaRecordOnLaunch: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ipv6Native                             : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                mapPublicIpOnLaunch                    : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                tags                                   : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Name      : <{%reset%}><{%reset%}>"vpc-private-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    type      : <{%reset%}><{%reset%}>"private"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                vpcId                                  : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTable:RouteTable: (same)
 <{%reset%}>                [id=rtb-049b808a147c29711]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTable:RouteTable::vpc-public-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                vpcId     : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/subnet:Subnet: (same)
 <{%reset%}>                [id=subnet-0065b9ab25cb0ab6b]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/subnet:Subnet::vpc-public-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                assignIpv6AddressOnCreation            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                availabilityZone                       : <{%reset%}><{%reset%}>"us-west-2a"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                cidrBlock                              : <{%reset%}><{%reset%}>"10.0.0.0/18"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableDns64                            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsARecordOnLaunch   : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsAaaaRecordOnLaunch: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ipv6Native                             : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                mapPublicIpOnLaunch                    : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                tags                                   : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Name      : <{%reset%}><{%reset%}>"vpc-public-0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    type      : <{%reset%}><{%reset%}>"public"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                vpcId                                  : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTable:RouteTable: (same)
 <{%reset%}>                [id=rtb-06ffd3cc9cd4f6b40]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTable:RouteTable::vpc-private-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                vpcId     : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/subnet:Subnet: (same)
 <{%reset%}>                [id=subnet-0760f3666d46304ce]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/subnet:Subnet::vpc-private-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                assignIpv6AddressOnCreation            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                availabilityZone                       : <{%reset%}><{%reset%}>"us-west-2a"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                cidrBlock                              : <{%reset%}><{%reset%}>"10.0.128.0/18"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableDns64                            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsARecordOnLaunch   : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsAaaaRecordOnLaunch: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ipv6Native                             : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                mapPublicIpOnLaunch                    : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                tags                                   : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Name      : <{%reset%}><{%reset%}>"vpc-private-0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    type      : <{%reset%}><{%reset%}>"private"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                vpcId                                  : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/subnet:Subnet: (same)
 <{%reset%}>                [id=subnet-0e7f681a099ea15a1]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/subnet:Subnet::vpc-public-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                assignIpv6AddressOnCreation            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                availabilityZone                       : <{%reset%}><{%reset%}>"us-west-2b"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                cidrBlock                              : <{%reset%}><{%reset%}>"10.0.64.0/18"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableDns64                            : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsARecordOnLaunch   : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                enableResourceNameDnsAaaaRecordOnLaunch: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ipv6Native                             : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                mapPublicIpOnLaunch                    : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                tags                                   : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Name      : <{%reset%}><{%reset%}>"vpc-public-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    type      : <{%reset%}><{%reset%}>"public"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                vpcId                                  : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>                [id=cluster-eksRole-role-262a7fa-20220408062128998200000004]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/rolePolicyAttachment:RolePolicyAttachment::cluster-eksRole-4b490823]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                role      : <{%reset%}><{%reset%}>"cluster-eksRole-role-262a7fa"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>                [id=cluster-eksRole-role-262a7fa-20220408062129023100000005]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/rolePolicyAttachment:RolePolicyAttachment::cluster-eksRole-90eb1c99]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSServicePolicy"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                role      : <{%reset%}><{%reset%}>"cluster-eksRole-role-262a7fa"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>                [id=cluster-instanceRole-role-f970009-20220408062123584400000001]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/rolePolicyAttachment:RolePolicyAttachment::cluster-instanceRole-e1b295bd]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                role      : <{%reset%}><{%reset%}>"cluster-instanceRole-role-f970009"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>                [id=cluster-instanceRole-role-f970009-20220408062123733700000002]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/rolePolicyAttachment:RolePolicyAttachment::cluster-instanceRole-3eb088f2]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                role      : <{%reset%}><{%reset%}>"cluster-instanceRole-role-f970009"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>                [id=cluster-instanceRole-role-f970009-20220408062123800200000003]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:ServiceRole$aws:iam/rolePolicyAttachment:RolePolicyAttachment::cluster-instanceRole-03516f97]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                role      : <{%reset%}><{%reset%}>"cluster-instanceRole-role-f970009"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/route:Route: (same)
 <{%reset%}>                [id=r-rtb-042c28a7a86d02b261080289494]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/route:Route::vpc-public-0-ig]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                destinationCidrBlock: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                gatewayId           : <{%reset%}><{%reset%}>"igw-01656d8cc8ff48960"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                routeTableId        : <{%reset%}><{%reset%}>"rtb-042c28a7a86d02b26"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroupRule:SecurityGroupRule: (same)
 <{%reset%}>            [id=sgrule-2860589334]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroupRule:SecurityGroupRule::cluster-eksClusterInternetEgressRule]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            cidrBlocks     : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            description    : <{%reset%}><{%reset%}>"Allow internet access."<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            fromPort       : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            protocol       : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupId: <{%reset%}><{%reset%}>"sg-05607b7d551164ea7"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            toPort         : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            type           : <{%reset%}><{%reset%}>"egress"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTableAssociation:RouteTableAssociation: (same)
 <{%reset%}>                [id=rtbassoc-0b253c6381a71b2e4]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTableAssociation:RouteTableAssociation::vpc-private-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                routeTableId: <{%reset%}><{%reset%}>"rtb-0e7a3faa0b87573ed"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetId    : <{%reset%}><{%reset%}>"subnet-0028b879bc4eabc11"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/route:Route: (same)
 <{%reset%}>                [id=r-rtb-049b808a147c297111080289494]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/route:Route::vpc-public-1-ig]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                destinationCidrBlock: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                gatewayId           : <{%reset%}><{%reset%}>"igw-01656d8cc8ff48960"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                routeTableId        : <{%reset%}><{%reset%}>"rtb-049b808a147c29711"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTableAssociation:RouteTableAssociation: (same)
 <{%reset%}>                [id=rtbassoc-00aa815ae88b3517f]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTableAssociation:RouteTableAssociation::vpc-public-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                routeTableId: <{%reset%}><{%reset%}>"rtb-042c28a7a86d02b26"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetId    : <{%reset%}><{%reset%}>"subnet-0065b9ab25cb0ab6b"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTableAssociation:RouteTableAssociation: (same)
 <{%reset%}>                [id=rtbassoc-008fbbbb67a0cbfaa]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTableAssociation:RouteTableAssociation::vpc-private-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                routeTableId: <{%reset%}><{%reset%}>"rtb-06ffd3cc9cd4f6b40"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetId    : <{%reset%}><{%reset%}>"subnet-0760f3666d46304ce"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/routeTableAssociation:RouteTableAssociation: (same)
 <{%reset%}>                [id=rtbassoc-0ca900348ffc531e8]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/routeTableAssociation:RouteTableAssociation::vpc-public-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                routeTableId: <{%reset%}><{%reset%}>"rtb-049b808a147c29711"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetId    : <{%reset%}><{%reset%}>"subnet-0e7f681a099ea15a1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:iam/instanceProfile:InstanceProfile: (same)
 <{%reset%}>            [id=cluster-instanceProfile-f6fe53d]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:iam/instanceProfile:InstanceProfile::cluster-instanceProfile]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            name      : <{%reset%}><{%reset%}>"cluster-instanceProfile-f6fe53d"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            path      : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            role      : <{%reset%}><{%reset%}>"cluster-instanceRole-role-f970009"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/natGateway:NatGateway: (same)
 <{%reset%}>                [id=nat-0a90adc6801962207]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:NatGateway$aws:ec2/natGateway:NatGateway::vpc-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                allocationId    : <{%reset%}><{%reset%}>"eipalloc-097ef3ce06d0ff56e"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                connectivityType: <{%reset%}><{%reset%}>"public"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetId        : <{%reset%}><{%reset%}>"subnet-0065b9ab25cb0ab6b"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/natGateway:NatGateway: (same)
 <{%reset%}>                [id=nat-0eed359c3b8cede53]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:NatGateway$aws:ec2/natGateway:NatGateway::vpc-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                allocationId    : <{%reset%}><{%reset%}>"eipalloc-0b436f419d8000df5"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                connectivityType: <{%reset%}><{%reset%}>"public"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetId        : <{%reset%}><{%reset%}>"subnet-0e7f681a099ea15a1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:eks/cluster:Cluster: (same)
 <{%reset%}>            [id=cluster-eksCluster-932639f]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:eks/cluster:Cluster::cluster-eksCluster]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            name      : <{%reset%}><{%reset%}>"cluster-eksCluster-932639f"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            roleArn   : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/cluster-eksRole-role-262a7fa"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            tags      : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                Name      : <{%reset%}><{%reset%}>"cluster-eksCluster"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            vpcConfig : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                endpointPrivateAccess: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                endpointPublicAccess : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                securityGroupIds     : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"sg-05607b7d551164ea7"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                subnetIds            : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"subnet-0065b9ab25cb0ab6b"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    [1]: <{%reset%}><{%reset%}>"subnet-0e7f681a099ea15a1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/route:Route: (same)
 <{%reset%}>                [id=r-rtb-06ffd3cc9cd4f6b401080289494]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/route:Route::vpc-private-0-nat-0]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                destinationCidrBlock: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                natGatewayId        : <{%reset%}><{%reset%}>"nat-0a90adc6801962207"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                routeTableId        : <{%reset%}><{%reset%}>"rtb-06ffd3cc9cd4f6b40"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            <{%reset%}>  aws:ec2/route:Route: (same)
 <{%reset%}>                [id=r-rtb-0e7a3faa0b87573ed1080289494]
 <{%reset%}><{%reset%}>                [urn=urn:pulumi:dev::aws-ts-eks::awsx:x:ec2:Vpc$awsx:x:ec2:Subnet$aws:ec2/route:Route::vpc-private-1-nat-1]
 <{%reset%}><{%reset%}>                [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>                destinationCidrBlock: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                natGatewayId        : <{%reset%}><{%reset%}>"nat-0eed359c3b8cede53"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                routeTableId        : <{%reset%}><{%reset%}>"rtb-0e7a3faa0b87573ed"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  eks:index:VpcCni: (same)
 <{%reset%}>            [id=1d530726ede55308]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$eks:index:VpcCni::cluster-vpc-cni]
-<{%reset%}><{%reset%}>            kubeconfig: <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                clusters       : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        cluster: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            certificate-authority-data: <{%reset%}><{%reset%}>"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdPREEyTWpjMU5Wb1hEVE15TURRd05UQTJNamMxTlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2M5Ck9FSTNSLzltTnpWZy9nS284V3dmb3R6dHk5T2F5Y2hadkpXVStjWUJLVzVrUS9jc0lIVWk0M3pGWk52VjdRd2sKSkR5elFwZXI3R29CM3ZrSUlXNlpzZjdIRUVIU2h0QUxvRHJrOTlwU1ltcDJvNEhzMkx2aC9WSHkwZG4zRE9IcwpwSFkxWU9mSmUyK25UcUJ2NHhseTVDWjEzUTV3MGRVMUY1bm56b1RsS1ppTkdmYWhHNEN2QStsS3FPWFZ3dHZiCkcxRmJkVThBQXRDUnZPSmg5eTN6eDN1b0pPWVc0QkU0VDNsM0dpTlk4TVl3eGVRd3JvU0hseE1GbGJQUmQ2YXMKOUEyczNxK1RJZ2VKZzBxNFIrK3Z1QVlBcG5DRzFIbEpieU9kT3d3aldlUHZIVDhMZTJXN283NEFsNSt6bEFXdQptVm9VbE82WUlxc1h3YUl3QUY4Q0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFV2xRdERXbllFVEs2M0xBd2JSRUQ2TTJtM0ZNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVjFFOUVucWhUbkNQZVZEQmxXMURXMTBwdzdVMG9sdk5TWjA0cU9RRVkwNE5oZ29tTgprWC9GeDhQenBnT1h4SWlOYlBZYTdIYVVNZ0RPMHJ1bVNPQjc5ZThtbjNIZ055dlEyM3NOUkpsMnlaUUVDKzBXCllJcXhSM2pwMkV1MG40YkxDQzRyM2UweFRITldwbGd6Z1FkcUpNLzg0NmUxRTR0alV5Ry92V09VV3RGSzRjemoKTS85SXJZWnJRVFRVL1pISDVtMmtFYjRUcmYwZ1hyL2E3UmJWUG91Uzk2dmJpdjdoSE12YVptclpzeTN3bDBYYQpFUDdwMERHdWxCdnh1K3BjUkxVdkZMZUdLODFLY3JRZmpFU2ZqSldSWVYwTERGWnQ4YnlMT0J6V2MvU0Ywd0ZoCkt4ekFLWXkvZHhTNksySCtqeFY1amF2cXNTR1dzSGZ6Q0Q2MQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            server                    : <{%reset%}><{%reset%}>"https://8AE853AAF6BD7DFED415A3D30AD938E2.gr7.us-west-2.eks.amazonaws.com"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        name   : <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                contexts       : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        context: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            cluster: <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            user   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        name   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                current-context: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                kind           : <{%reset%}><{%reset%}>"Config"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                users          : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        name: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        user: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            exec: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                                apiVersion: <{%reset%}><{%reset%}>"client.authentication.k8s.io/v1alpha1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                args      : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                    [0]: <{%reset%}><{%reset%}>"eks"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [1]: <{%reset%}><{%reset%}>"get-token"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [2]: <{%reset%}><{%reset%}>"--cluster-name"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [3]: <{%reset%}><{%reset%}>"cluster-eksCluster-932639f"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                command   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroup:SecurityGroup: (same)
 <{%reset%}>            [id=sg-0377eac317c3aef31]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroup:SecurityGroup::cluster-nodeSecurityGroup]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            description        : <{%reset%}><{%reset%}>"Managed by Pulumi"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            name               : <{%reset%}><{%reset%}>"cluster-nodeSecurityGroup-a7e018f"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            revokeRulesOnDelete: <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            tags               : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                Name                                            : <{%reset%}><{%reset%}>"cluster-nodeSecurityGroup"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                kubernetes.io/cluster/cluster-eksCluster-932639f: <{%reset%}><{%reset%}>"owned"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            vpcId              : <{%reset%}><{%reset%}>"vpc-07f4302f6e57a447a"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  pulumi:providers:kubernetes: (same)
 <{%reset%}>            [id=fac1319d-5ae2-4480-96a2-f702fb3e2c92]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$pulumi:providers:kubernetes::cluster-eks-k8s]
-<{%reset%}><{%reset%}>            kubeconfig: <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                clusters       : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        cluster: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            certificate-authority-data: <{%reset%}><{%reset%}>"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdPREEyTWpjMU5Wb1hEVE15TURRd05UQTJNamMxTlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2M5Ck9FSTNSLzltTnpWZy9nS284V3dmb3R6dHk5T2F5Y2hadkpXVStjWUJLVzVrUS9jc0lIVWk0M3pGWk52VjdRd2sKSkR5elFwZXI3R29CM3ZrSUlXNlpzZjdIRUVIU2h0QUxvRHJrOTlwU1ltcDJvNEhzMkx2aC9WSHkwZG4zRE9IcwpwSFkxWU9mSmUyK25UcUJ2NHhseTVDWjEzUTV3MGRVMUY1bm56b1RsS1ppTkdmYWhHNEN2QStsS3FPWFZ3dHZiCkcxRmJkVThBQXRDUnZPSmg5eTN6eDN1b0pPWVc0QkU0VDNsM0dpTlk4TVl3eGVRd3JvU0hseE1GbGJQUmQ2YXMKOUEyczNxK1RJZ2VKZzBxNFIrK3Z1QVlBcG5DRzFIbEpieU9kT3d3aldlUHZIVDhMZTJXN283NEFsNSt6bEFXdQptVm9VbE82WUlxc1h3YUl3QUY4Q0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFV2xRdERXbllFVEs2M0xBd2JSRUQ2TTJtM0ZNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVjFFOUVucWhUbkNQZVZEQmxXMURXMTBwdzdVMG9sdk5TWjA0cU9RRVkwNE5oZ29tTgprWC9GeDhQenBnT1h4SWlOYlBZYTdIYVVNZ0RPMHJ1bVNPQjc5ZThtbjNIZ055dlEyM3NOUkpsMnlaUUVDKzBXCllJcXhSM2pwMkV1MG40YkxDQzRyM2UweFRITldwbGd6Z1FkcUpNLzg0NmUxRTR0alV5Ry92V09VV3RGSzRjemoKTS85SXJZWnJRVFRVL1pISDVtMmtFYjRUcmYwZ1hyL2E3UmJWUG91Uzk2dmJpdjdoSE12YVptclpzeTN3bDBYYQpFUDdwMERHdWxCdnh1K3BjUkxVdkZMZUdLODFLY3JRZmpFU2ZqSldSWVYwTERGWnQ4YnlMT0J6V2MvU0Ywd0ZoCkt4ekFLWXkvZHhTNksySCtqeFY1amF2cXNTR1dzSGZ6Q0Q2MQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            server                    : <{%reset%}><{%reset%}>"https://8AE853AAF6BD7DFED415A3D30AD938E2.gr7.us-west-2.eks.amazonaws.com"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        name   : <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                contexts       : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        context: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            cluster: <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            user   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        name   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                current-context: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                kind           : <{%reset%}><{%reset%}>"Config"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                users          : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        name: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        user: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            exec: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                                apiVersion: <{%reset%}><{%reset%}>"client.authentication.k8s.io/v1alpha1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                args      : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                    [0]: <{%reset%}><{%reset%}>"eks"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [1]: <{%reset%}><{%reset%}>"get-token"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [2]: <{%reset%}><{%reset%}>"--cluster-name"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [3]: <{%reset%}><{%reset%}>"cluster-eksCluster-932639f"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                command   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            version   : <{%reset%}><{%reset%}>"3.18.2"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroupRule:SecurityGroupRule: (same)
 <{%reset%}>            [id=sgrule-607663483]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroupRule:SecurityGroupRule::cluster-eksExtApiServerClusterIngressRule]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            description          : <{%reset%}><{%reset%}>"Allow pods running extension API servers on port 443 to receive communication from cluster control plane"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            fromPort             : <{%reset%}><{%reset%}>443<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            protocol             : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupId      : <{%reset%}><{%reset%}>"sg-0377eac317c3aef31"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            sourceSecurityGroupId: <{%reset%}><{%reset%}>"sg-05607b7d551164ea7"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            toPort               : <{%reset%}><{%reset%}>443<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            type                 : <{%reset%}><{%reset%}>"ingress"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroupRule:SecurityGroupRule: (same)
 <{%reset%}>            [id=sgrule-314771918]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroupRule:SecurityGroupRule::cluster-eksClusterIngressRule]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            description          : <{%reset%}><{%reset%}>"Allow pods to communicate with the cluster API Server"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            fromPort             : <{%reset%}><{%reset%}>443<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            protocol             : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupId      : <{%reset%}><{%reset%}>"sg-05607b7d551164ea7"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            sourceSecurityGroupId: <{%reset%}><{%reset%}>"sg-0377eac317c3aef31"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            toPort               : <{%reset%}><{%reset%}>443<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            type                 : <{%reset%}><{%reset%}>"ingress"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroupRule:SecurityGroupRule: (same)
 <{%reset%}>            [id=sgrule-1434770101]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroupRule:SecurityGroupRule::cluster-eksNodeInternetEgressRule]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            cidrBlocks     : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            description    : <{%reset%}><{%reset%}>"Allow internet access."<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            fromPort       : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            protocol       : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupId: <{%reset%}><{%reset%}>"sg-0377eac317c3aef31"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            toPort         : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            type           : <{%reset%}><{%reset%}>"egress"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroupRule:SecurityGroupRule: (same)
 <{%reset%}>            [id=sgrule-1912528542]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroupRule:SecurityGroupRule::cluster-eksNodeIngressRule]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            description    : <{%reset%}><{%reset%}>"Allow nodes to communicate with each other"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            fromPort       : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            protocol       : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupId: <{%reset%}><{%reset%}>"sg-0377eac317c3aef31"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            self           : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            toPort         : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            type           : <{%reset%}><{%reset%}>"ingress"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/securityGroupRule:SecurityGroupRule: (same)
 <{%reset%}>            [id=sgrule-288662049]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/securityGroupRule:SecurityGroupRule::cluster-eksNodeClusterIngressRule]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            description          : <{%reset%}><{%reset%}>"Allow worker Kubelets and pods to receive communication from the cluster control plane"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            fromPort             : <{%reset%}><{%reset%}>1025<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            protocol             : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupId      : <{%reset%}><{%reset%}>"sg-0377eac317c3aef31"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            sourceSecurityGroupId: <{%reset%}><{%reset%}>"sg-05607b7d551164ea7"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            toPort               : <{%reset%}><{%reset%}>65535<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            type                 : <{%reset%}><{%reset%}>"ingress"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  kubernetes:core/v1:ConfigMap: (same)
 <{%reset%}>            [id=kube-system/aws-auth]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$kubernetes:core/v1:ConfigMap::cluster-nodeAccess]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$pulumi:providers:kubernetes::cluster-eks-k8s::fac1319d-5ae2-4480-96a2-f702fb3e2c92]
-<{%reset%}><{%reset%}>            apiVersion: <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            data      : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                mapRoles: <{%reset%}><{%reset%}>(yaml) <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        groups  : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                            [0]: <{%reset%}><{%reset%}>"system:bootstrappers"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            [1]: <{%reset%}><{%reset%}>"system:nodes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        rolearn : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/cluster-instanceRole-role-f970009"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        username: <{%reset%}><{%reset%}>"system:node:{{EC2PrivateDNSName}}"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            kind      : <{%reset%}><{%reset%}>"ConfigMap"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            metadata  : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                labels   : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    app.kubernetes.io/managed-by: <{%reset%}><{%reset%}>"pulumi"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                name     : <{%reset%}><{%reset%}>"aws-auth"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                namespace: <{%reset%}><{%reset%}>"kube-system"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%reset%}>  aws:ec2/launchConfiguration:LaunchConfiguration: (same)
 <{%reset%}>            [id=cluster-nodeLaunchConfiguration-1013b9d]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:ec2/launchConfiguration:LaunchConfiguration::cluster-nodeLaunchConfiguration]
 <{%reset%}><{%reset%}>            [provider=urn:pulumi:dev::aws-ts-eks::pulumi:providers:aws::default_4_38_1::9a24a173-1489-4d55-9224-f01ff9dee91f]
-<{%reset%}><{%reset%}>            associatePublicIpAddress: <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            enableMonitoring        : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            iamInstanceProfile      : <{%reset%}><{%reset%}>"cluster-instanceProfile-f6fe53d"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            imageId                 : <{%reset%}><{%reset%}>"ami-06cd63540c27f992e"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            instanceType            : <{%reset%}><{%reset%}>"t2.small"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            name                    : <{%reset%}><{%reset%}>"cluster-nodeLaunchConfiguration-1013b9d"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            rootBlockDevice         : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                deleteOnTermination: <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                volumeSize         : <{%reset%}><{%reset%}>20<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                volumeType         : <{%reset%}><{%reset%}>"gp2"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroups          : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"sg-0377eac317c3aef31"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            userData                : <{%reset%}><{%reset%}>"#!/bin/bash\n\n/etc/eks/bootstrap.sh --apiserver-endpoint \"https://8AE853AAF6BD7DFED415A3D30AD938E2.gr7.us-west-2.eks.amazonaws.com\" --b64-cluster-ca \"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdPREEyTWpjMU5Wb1hEVE15TURRd05UQTJNamMxTlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2M5Ck9FSTNSLzltTnpWZy9nS284V3dmb3R6dHk5T2F5Y2hadkpXVStjWUJLVzVrUS9jc0lIVWk0M3pGWk52VjdRd2sKSkR5elFwZXI3R29CM3ZrSUlXNlpzZjdIRUVIU2h0QUxvRHJrOTlwU1ltcDJvNEhzMkx2aC9WSHkwZG4zRE9IcwpwSFkxWU9mSmUyK25UcUJ2NHhseTVDWjEzUTV3MGRVMUY1bm56b1RsS1ppTkdmYWhHNEN2QStsS3FPWFZ3dHZiCkcxRmJkVThBQXRDUnZPSmg5eTN6eDN1b0pPWVc0QkU0VDNsM0dpTlk4TVl3eGVRd3JvU0hseE1GbGJQUmQ2YXMKOUEyczNxK1RJZ2VKZzBxNFIrK3Z1QVlBcG5DRzFIbEpieU9kT3d3aldlUHZIVDhMZTJXN283NEFsNSt6bEFXdQptVm9VbE82WUlxc1h3YUl3QUY4Q0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFV2xRdERXbllFVEs2M0xBd2JSRUQ2TTJtM0ZNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVjFFOUVucWhUbkNQZVZEQmxXMURXMTBwdzdVMG9sdk5TWjA0cU9RRVkwNE5oZ29tTgprWC9GeDhQenBnT1h4SWlOYlBZYTdIYVVNZ0RPMHJ1bVNPQjc5ZThtbjNIZ055dlEyM3NOUkpsMnlaUUVDKzBXCllJcXhSM2pwMkV1MG40YkxDQzRyM2UweFRITldwbGd6Z1FkcUpNLzg0NmUxRTR0alV5Ry92V09VV3RGSzRjemoKTS85SXJZWnJRVFRVL1pISDVtMmtFYjRUcmYwZ1hyL2E3UmJWUG91Uzk2dmJpdjdoSE12YVptclpzeTN3bDBYYQpFUDdwMERHdWxCdnh1K3BjUkxVdkZMZUdLODFLY3JRZmpFU2ZqSldSWVYwTERGWnQ4YnlMT0J6V2MvU0Ywd0ZoCkt4ekFLWXkvZHhTNksySCtqeFY1amF2cXNTR1dzSGZ6Q0Q2MQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==\" \"cluster-eksCluster-932639f\"\n\n/opt/aws/bin/cfn-signal --exit-code $? --stack cluster-9085c3f2 --resource NodeGroup --region us-west-2\n"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        <{%fg 3%}>~ aws:cloudformation/stack:Stack: (update)
 <{%reset%}>            [id=arn:aws:cloudformation:us-west-2:616138583583:stack/cluster-9085c3f2/838936d0-b705-11ec-b5c6-0a71999bcd3f]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$aws:cloudformation/stack:Stack::cluster-nodes]
@@ -617,48 +267,6 @@
 <{%reset%}><{%reset%}>        <{%reset%}>  pulumi:providers:kubernetes: (same)
 <{%reset%}>            [id=e99e4ebc-d3ed-445c-80f8-e7be504678d4]
 <{%reset%}><{%reset%}>            [urn=urn:pulumi:dev::aws-ts-eks::eks:index:Cluster$pulumi:providers:kubernetes::cluster-provider]
-<{%reset%}><{%reset%}>            kubeconfig: <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                clusters       : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        cluster: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            certificate-authority-data: <{%reset%}><{%reset%}>"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdPREEyTWpjMU5Wb1hEVE15TURRd05UQTJNamMxTlZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2M5Ck9FSTNSLzltTnpWZy9nS284V3dmb3R6dHk5T2F5Y2hadkpXVStjWUJLVzVrUS9jc0lIVWk0M3pGWk52VjdRd2sKSkR5elFwZXI3R29CM3ZrSUlXNlpzZjdIRUVIU2h0QUxvRHJrOTlwU1ltcDJvNEhzMkx2aC9WSHkwZG4zRE9IcwpwSFkxWU9mSmUyK25UcUJ2NHhseTVDWjEzUTV3MGRVMUY1bm56b1RsS1ppTkdmYWhHNEN2QStsS3FPWFZ3dHZiCkcxRmJkVThBQXRDUnZPSmg5eTN6eDN1b0pPWVc0QkU0VDNsM0dpTlk4TVl3eGVRd3JvU0hseE1GbGJQUmQ2YXMKOUEyczNxK1RJZ2VKZzBxNFIrK3Z1QVlBcG5DRzFIbEpieU9kT3d3aldlUHZIVDhMZTJXN283NEFsNSt6bEFXdQptVm9VbE82WUlxc1h3YUl3QUY4Q0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFV2xRdERXbllFVEs2M0xBd2JSRUQ2TTJtM0ZNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDVjFFOUVucWhUbkNQZVZEQmxXMURXMTBwdzdVMG9sdk5TWjA0cU9RRVkwNE5oZ29tTgprWC9GeDhQenBnT1h4SWlOYlBZYTdIYVVNZ0RPMHJ1bVNPQjc5ZThtbjNIZ055dlEyM3NOUkpsMnlaUUVDKzBXCllJcXhSM2pwMkV1MG40YkxDQzRyM2UweFRITldwbGd6Z1FkcUpNLzg0NmUxRTR0alV5Ry92V09VV3RGSzRjemoKTS85SXJZWnJRVFRVL1pISDVtMmtFYjRUcmYwZ1hyL2E3UmJWUG91Uzk2dmJpdjdoSE12YVptclpzeTN3bDBYYQpFUDdwMERHdWxCdnh1K3BjUkxVdkZMZUdLODFLY3JRZmpFU2ZqSldSWVYwTERGWnQ4YnlMT0J6V2MvU0Ywd0ZoCkt4ekFLWXkvZHhTNksySCtqeFY1amF2cXNTR1dzSGZ6Q0Q2MQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            server                    : <{%reset%}><{%reset%}>"https://8AE853AAF6BD7DFED415A3D30AD938E2.gr7.us-west-2.eks.amazonaws.com"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        name   : <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                contexts       : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        context: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            cluster: <{%reset%}><{%reset%}>"kubernetes"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            user   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        name   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                current-context: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                kind           : <{%reset%}><{%reset%}>"Config"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                users          : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        name: <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        user: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                            exec: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                                apiVersion: <{%reset%}><{%reset%}>"client.authentication.k8s.io/v1alpha1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                args      : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                                    [0]: <{%reset%}><{%reset%}>"eks"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [1]: <{%reset%}><{%reset%}>"get-token"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [2]: <{%reset%}><{%reset%}>"--cluster-name"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                    [3]: <{%reset%}><{%reset%}>"cluster-eksCluster-932639f"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                                command   : <{%reset%}><{%reset%}>"aws"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            version   : <{%reset%}><{%reset%}>"3.18.2"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    kubeconfig: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>

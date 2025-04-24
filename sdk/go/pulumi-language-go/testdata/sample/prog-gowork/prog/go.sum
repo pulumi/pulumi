@@ -1,0 +1,6 @@
+github.com/pulumi/go-dependency-testdata/dep v1.6.0 h1:+pE3tVvVIpmzkBTeF+SEXwzkXWKbaWgLaHJGDerrkPU=
+github.com/pulumi/go-dependency-testdata/dep v1.6.0/go.mod h1:t9byisapw0AiX6vfRYXbsnV1P3KGcmJS3i9SsP1eIMk=
+github.com/pulumi/go-dependency-testdata/indirect-dep/v2 v2.1.0 h1:Sj9+i/tlHlTp9uP4buJ8daySIZ5UJW/IT44Q81a0HBM=
+github.com/pulumi/go-dependency-testdata/indirect-dep/v2 v2.1.0/go.mod h1:kIcnZs58bSUyAFxJPdbkJXOzWGwOcODgwictOy8aMuI=
+github.com/pulumi/go-dependency-testdata/plugin v1.2.3 h1:ouER+7c/L36grY9u+ksFw19fkyYzzDl05widnPfGWyg=
+github.com/pulumi/go-dependency-testdata/plugin v1.2.3/go.mod h1:S4PBUfQePMxlR58DPhZUpJAjgEb5qZlg/TR3cLdCkZ0=

@@ -1,0 +1,13 @@
+<{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=f7bc968f-3b7a-4866-97a2-df3c29dbeaf8]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=edbb8446-456d-4e7f-a059-ecf2f213ded3]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

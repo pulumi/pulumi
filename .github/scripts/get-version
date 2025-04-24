@@ -10,4 +10,4 @@ if [ -n "${CI:-""}" ]; then
 fi
 
 # Remove whitespace, this is our version:
-tr -d '[:space:]' < "${ROOT}/.version"
+tr -d '[:space:]' < "${ROOT}/sdk/.version"

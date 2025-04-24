@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -35,6 +36,9 @@ type testConverterClient struct {
 func (c *testConverterClient) ConvertState(
 	ctx context.Context, req *pulumirpc.ConvertStateRequest, opts ...grpc.CallOption,
 ) (*pulumirpc.ConvertStateResponse, error) {
+	if !reflect.DeepEqual(req.Args, []string{"arg1", "arg2"}) {
+		return nil, fmt.Errorf("unexpected Args: %v", req.Args)
+	}
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
@@ -47,8 +51,12 @@ func (c *testConverterClient) ConvertState(
 				Id:                "test:id",
 				Version:           "test:version",
 				PluginDownloadURL: "test:pluginDownloadURL",
+				LogicalName:       "test:logicalName",
+				IsRemote:          true,
+				IsComponent:       true,
 			},
 		},
+		Diagnostics: c.diagnostics,
 	}, nil
 }
 
@@ -64,6 +72,9 @@ func (c *testConverterClient) ConvertProgram(
 	if req.TargetDirectory != "dst" {
 		return nil, fmt.Errorf("unexpected TargetDirectory: %s", req.TargetDirectory)
 	}
+	if !reflect.DeepEqual(req.Args, []string{"arg1", "arg2"}) {
+		return nil, fmt.Errorf("unexpected args: %v", req.Args)
+	}
 
 	return &pulumirpc.ConvertProgramResponse{
 		Diagnostics: c.diagnostics,
@@ -74,11 +85,20 @@ func TestConverterPlugin_State(t *testing.T) {
 	t.Parallel()
 
 	plugin := &converter{
-		clientRaw: &testConverterClient{},
+		clientRaw: &testConverterClient{
+			diagnostics: []*codegenrpc.Diagnostic{
+				{
+					Severity: codegenrpc.DiagnosticSeverity_DIAG_ERROR,
+					Summary:  "test:summary",
+					Detail:   "test:detail",
+				},
+			},
+		},
 	}
 
 	resp, err := plugin.ConvertState(context.Background(), &ConvertStateRequest{
-		MapperAddress: "localhost:1234",
+		Args:         []string{"arg1", "arg2"},
+		MapperTarget: "localhost:1234",
 	})
 
 	require.NoError(t, err)
@@ -90,6 +110,14 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:id", res.ID)
 	assert.Equal(t, "test:version", res.Version)
 	assert.Equal(t, "test:pluginDownloadURL", res.PluginDownloadURL)
+	assert.Equal(t, "test:logicalName", res.LogicalName)
+	assert.True(t, res.IsRemote)
+	assert.True(t, res.IsComponent)
+
+	diag := resp.Diagnostics[0]
+	assert.Equal(t, hcl.DiagError, diag.Severity)
+	assert.Equal(t, "test:summary", diag.Summary)
+	assert.Equal(t, "test:detail", diag.Detail)
 }
 
 func TestConverterPlugin_Program(t *testing.T) {
@@ -108,9 +136,11 @@ func TestConverterPlugin_Program(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
-		MapperAddress:   "localhost:1234",
+		MapperTarget:    "localhost:1234",
+		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
+		Args:            []string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)
@@ -136,9 +166,11 @@ func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
-		MapperAddress:   "localhost:1234",
+		MapperTarget:    "localhost:1234",
+		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
+		Args:            []string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)

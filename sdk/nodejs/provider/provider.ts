@@ -16,7 +16,8 @@ import { Input, Inputs } from "../output";
 import * as resource from "../resource";
 
 /**
- * CheckResult represents the results of a call to `ResourceProvider.check`.
+ * {@link CheckResult} represents the results of a call to
+ * {@link ResourceProvider.check}.
  */
 export interface CheckResult {
     /**
@@ -31,7 +32,8 @@ export interface CheckResult {
 }
 
 /**
- * CheckFailure represents a single failure in the results of a call to `ResourceProvider.check`
+ * {@link CheckFailure} represents a single failure in the results of a call to
+ * {@link ResourceProvider.check}.
  */
 export interface CheckFailure {
     /**
@@ -46,7 +48,8 @@ export interface CheckFailure {
 }
 
 /**
- * DiffResult represents the results of a call to `ResourceProvider.diff`.
+ * {@link DiffResult} represents the results of a call to
+ * {@link ResourceProvider.diff}.
  */
 export interface DiffResult {
     /**
@@ -65,14 +68,16 @@ export interface DiffResult {
     readonly stables?: string[];
 
     /**
-     * If true, and a replacement occurs, the resource will first be deleted before being recreated.  This is to
-     * avoid potential side-by-side issues with the default create before delete behavior.
+     * If true, and a replacement occurs, the resource will first be deleted
+     * before being recreated.  This is to avoid potential side-by-side issues
+     * with the default create before delete behavior.
      */
     readonly deleteBeforeReplace?: boolean;
 }
 
 /**
- * CreateResult represents the results of a call to `ResourceProvider.create`.
+ * {@link CreateResult} represents the results of a call to
+ * {@link ResourceProvider.create}.
  */
 export interface CreateResult {
     /**
@@ -86,6 +91,10 @@ export interface CreateResult {
     readonly outs?: any;
 }
 
+/**
+ * {@link ReadResult} represents the results of a call to
+ * {@link ResourceProvider.read}.
+ */
 export interface ReadResult {
     /**
      * The ID of the resource ready back (or blank if missing).
@@ -95,10 +104,15 @@ export interface ReadResult {
      * The current property state read from the live environment.
      */
     readonly props?: any;
+    /**
+     * The inputs that would lead to the current resource state when importing it.
+     */
+    readonly inputs?: any;
 }
 
 /**
- * UpdateResult represents the results of a call to `ResourceProvider.update`.
+ * {@link UpdateResult} represents the results of a call to
+ * {@link ResourceProvider.update}.
  */
 export interface UpdateResult {
     /**
@@ -108,7 +122,8 @@ export interface UpdateResult {
 }
 
 /**
- * ConstructResult represents the results of a call to `ResourceProvider.construct`.
+ * {@link ConstructResult} represents the results of a call to
+ * {@link ResourceProvider.construct}.
  */
 export interface ConstructResult {
     /**
@@ -123,7 +138,8 @@ export interface ConstructResult {
 }
 
 /**
- * InvokeResult represents the results of a call to `ResourceProvider.invoke`.
+ * {@link InvokeResult} represents the results of a call to
+ * {@link ResourceProvider.invoke}.
  */
 export interface InvokeResult {
     /**
@@ -138,13 +154,32 @@ export interface InvokeResult {
 }
 
 /**
- * Provider represents an object that implements the resources and functions for a particular Pulumi package.
+ * {@link ParameterizeResult} represents the results of a call to
+ * {@link ResourceProvider.parameterize}.  It contains the ame and
+ * version that can be used to identify the sub-package that now
+ * exists as a result of parameterization.
+ */
+export interface ParameterizeResult {
+    /**
+     * The name of the sub-package parameterized.
+     */
+    readonly name: string;
+
+    /**
+     * The version of the sub-package parameterized.
+     */
+    readonly version: string;
+}
+
+/**
+ * {@link Provider} represents an object that implements the resources and
+ * functions for a particular Pulumi package.
  */
 export interface Provider {
     /**
      * The version of the provider. Must be valid semver.
      */
-    version: string;
+    version?: string;
 
     /**
      * The JSON-encoded schema for this provider's package.
@@ -152,60 +187,87 @@ export interface Provider {
     schema?: string;
 
     /**
-     * Check validates that the given property bag is valid for a resource of the given type.
+     * Gets the JSON-encoded schema for this provider's package.
+     * Implementations can lazily load or generate the schema when needed.
      *
-     * @param olds The old input properties to use for validation.
-     * @param news The new input properties to use for validation.
+     * @returns A promise that resolves to the JSON-encoded schema string.
+     */
+    getSchema?: () => Promise<string>;
+
+    /**
+     * Validates that the given property bag is valid for a resource of the
+     * given type.
+     *
+     * @param olds
+     *  The old input properties to use for validation.
+     * @param news
+     *  The new input properties to use for validation.
      */
     check?: (urn: resource.URN, olds: any, news: any) => Promise<CheckResult>;
 
     /**
-     * Diff checks what impacts a hypothetical update will have on the resource's properties.
+     * Checks what impacts a hypothetical update will have on the resource's properties.
      *
-     * @param id The ID of the resource to diff.
-     * @param olds The old values of properties to diff.
-     * @param news The new values of properties to diff.
+     * @param id
+     *  The ID of the resource to diff.
+     * @param olds
+     *  The old values of properties to diff.
+     * @param news
+     *  The new values of properties to diff.
      */
     diff?: (id: resource.ID, urn: resource.URN, olds: any, news: any) => Promise<DiffResult>;
 
     /**
-     * Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-     * If this call fails, the resource must not have been created (i.e., it is "transactional").
+     * Allocates a new instance of the provided resource and returns its unique
+     * ID afterwards. If this call fails, the resource must not have been
+     * created (i.e., it is "transactional").
      *
-     * @param inputs The properties to set during creation.
+     * @param inputs
+     *  The properties to set during creation.
      */
     create?: (urn: resource.URN, inputs: any) => Promise<CreateResult>;
 
     /**
-     * Reads the current live state associated with a resource.  Enough state must be included in the inputs to uniquely
-     * identify the resource; this is typically just the resource ID, but it may also include some properties.
+     * Reads the current live state associated with a resource. Enough state
+     * must be included in the inputs to uniquely identify the resource; this is
+     * typically just the resource ID, but it may also include some properties.
      */
     read?: (id: resource.ID, urn: resource.URN, props?: any) => Promise<ReadResult>;
 
     /**
      * Update updates an existing resource with new values.
      *
-     * @param id The ID of the resource to update.
-     * @param olds The old values of properties to update.
-     * @param news The new values of properties to update.
+     * @param id
+     *  The ID of the resource to update.
+     * @param olds
+     *  The old values of properties to update.
+     * @param news
+     *  The new values of properties to update.
      */
     update?: (id: resource.ID, urn: resource.URN, olds: any, news: any) => Promise<UpdateResult>;
 
     /**
-     * Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+     * Tears down an existing resource with the given ID.  If it fails, the
+     * resource is assumed to still exist.
      *
-     * @param id The ID of the resource to delete.
-     * @param props The current properties on the resource.
+     * @param id
+     *  The ID of the resource to delete.
+     * @param props
+     *  The current properties on the resource.
      */
     delete?: (id: resource.ID, urn: resource.URN, props: any) => Promise<void>;
 
     /**
-     * Construct creates a new component resource.
+     * Creates a new component resource.
      *
-     * @param name The name of the resource to create.
-     * @param type The type of the resource to create.
-     * @param inputs The inputs to the resource.
-     * @param options the options for the resource.
+     * @param name
+     *  The name of the resource to create.
+     * @param type
+     *  The type of the resource to create.
+     * @param inputs
+     *  The inputs to the resource.
+     * @param options
+     *  The options for the resource.
      */
     construct?: (
         name: string,
@@ -215,18 +277,44 @@ export interface Provider {
     ) => Promise<ConstructResult>;
 
     /**
-     * Call calls the indicated method.
+     * Calls the indicated method.
      *
-     * @param token The token of the method to call.
-     * @param inputs The inputs to the method.
+     * @param token
+     *  The token of the method to call.
+     * @param inputs
+     *  The inputs to the method.
      */
     call?: (token: string, inputs: Inputs) => Promise<InvokeResult>;
 
     /**
-     * Invoke calls the indicated function.
+     * Calls the indicated function.
      *
-     * @param token The token of the function to call.
-     * @param inputs The inputs to the function.
+     * @param token
+     *  The token of the function to call.
+     * @param inputs
+     *  The inputs to the function.
      */
     invoke?: (token: string, inputs: any) => Promise<InvokeResult>;
+
+    /**
+     * Parameterizes a sub-package.
+     *
+     * @param args
+     *   A parameter value, represented as an array of strings,
+     *   as might be provided by a command-line invocation, such
+     *   as that used to generate an SDK.
+     */
+    parameterizeArgs?: (args: string[]) => Promise<ParameterizeResult>;
+
+    /**
+     * Parameterizes a sub-package.
+     *
+     * @param name
+     *   The sub-package name for this sub-schema parameterization.
+     * @param version
+     *   The sub-package version for this sub-schema parameterization.
+     * @param value
+     *   The embedded value from the sub-package.
+     */
+    parameterizeValue?: (name: string, version: string, value: string) => Promise<ParameterizeResult>;
 }

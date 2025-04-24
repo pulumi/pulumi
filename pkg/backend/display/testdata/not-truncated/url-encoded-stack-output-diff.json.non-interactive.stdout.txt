@@ -1,0 +1,14 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<{%reset%}>Configuration:<{%reset%}>
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack urlencodedoutput-dev running 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack urlencodedoutput-dev <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
+<{%fg 3%}>  ~ path: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>%2<{%reset%}><{%fg 1%}>F<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>%2<{%reset%}><{%fg 2%}>f<{%reset%}><{%fg 3%}>"
+<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

@@ -24,8 +24,9 @@ import {
     runtime,
     secret,
 } from "../../index";
+import * as state from "../../runtime/state";
 
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
 class TestComponentResource extends ComponentResource {
     constructor(name: string, opts?: ResourceOptions) {
@@ -90,7 +91,7 @@ const TestStrEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestStrEnum = typeof TestStrEnum[keyof typeof TestStrEnum];
+type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestIntEnum = {
@@ -99,7 +100,7 @@ const TestIntEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestIntEnum = typeof TestIntEnum[keyof typeof TestIntEnum];
+type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestNumEnum = {
@@ -108,7 +109,7 @@ const TestNumEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestNumEnum = typeof TestNumEnum[keyof typeof TestNumEnum];
+type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestBoolEnum = {
@@ -117,7 +118,7 @@ const TestBoolEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestBoolEnum = typeof TestBoolEnum[keyof typeof TestBoolEnum];
+type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
 
 interface TestInputs {
     aNum: number;
@@ -206,7 +207,7 @@ describe("runtime", () => {
 
             for (const test of generateTests()) {
                 it(`marshals ${test.name} correctly`, async () => {
-                    runtime._setFeatureSupport("outputValues", true);
+                    state.getStore().supportsOutputValues = true;
 
                     const inputs = { value: test.input };
                     const expected = { value: test.expected };
@@ -255,7 +256,7 @@ describe("runtime", () => {
             };
 
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            runtime._setFeatureSupport("secrets", true);
+            state.getStore().supportsSecrets = true;
             let transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             let result = runtime.deserializeProperties(transfer);
             assert.ok(runtime.isRpcSecret(result.secret1));
@@ -264,7 +265,7 @@ describe("runtime", () => {
             assert.strictEqual(runtime.unwrapRpcSecret(result.secret2), null);
 
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            runtime._setFeatureSupport("secrets", false);
+            state.getStore().supportsSecrets = false;
             transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             result = runtime.deserializeProperties(transfer);
             assert.ok(!runtime.isRpcSecret(result.secret1));
@@ -288,7 +289,7 @@ describe("runtime", () => {
                 custom: custom,
             };
 
-            runtime._setFeatureSupport("resourceReferences", true);
+            state.getStore().supportsResourceReferences = true;
 
             let serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
@@ -303,7 +304,7 @@ describe("runtime", () => {
                 },
             });
 
-            runtime._setFeatureSupport("resourceReferences", false);
+            state.getStore().supportsResourceReferences = false;
             serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
                 component: componentURN,
@@ -326,7 +327,7 @@ describe("runtime", () => {
                 custom: custom,
             };
 
-            runtime._setFeatureSupport("resourceReferences", true);
+            state.getStore().supportsResourceReferences = true;
 
             let serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
@@ -341,12 +342,56 @@ describe("runtime", () => {
                 },
             });
 
-            runtime._setFeatureSupport("resourceReferences", false);
+            state.getStore().supportsResourceReferences = false;
             serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
                 component: componentURN,
                 custom: customID,
             });
+        });
+
+        describe("determines resource reference dependencies correctly", async () => {
+            runtime.setMocks(new TestMocks());
+
+            const custom1 = new TestCustomResource("custom1");
+            const custom2 = new TestCustomResource("custom1");
+
+            const inputs: Inputs = {
+                resources: [custom1, custom2],
+            };
+
+            const tests = [
+                {
+                    supports: true,
+                    exclude: true,
+                    expected: [],
+                },
+                {
+                    supports: true,
+                    exclude: false,
+                    expected: [custom1, custom2],
+                },
+                {
+                    supports: false,
+                    exclude: true,
+                    expected: [custom1, custom2],
+                },
+                {
+                    supports: false,
+                    exclude: false,
+                    expected: [custom1, custom2],
+                },
+            ];
+
+            for (const test of tests) {
+                it(`supportsResourceRefs=${test.supports}, excludeResourceRefsFromDeps=${test.exclude}`, async () => {
+                    state.getStore().supportsResourceReferences = test.supports;
+                    const [_, deps] = await runtime.serializePropertiesReturnDeps("test", inputs, {
+                        excludeResourceReferencesFromDependencies: test.exclude,
+                    });
+                    assert.deepEqual(deps, new Map().set("resources", new Set(test.expected)));
+                });
+            }
         });
     });
 
@@ -416,7 +461,7 @@ describe("runtime", () => {
         });
         it("deserializes resource references properly during preview", async () => {
             runtime.setMocks(new TestMocks());
-            runtime._setFeatureSupport("resourceReferences", true);
+            state.getStore().supportsResourceReferences = true;
             runtime.registerResourceModule("test", "index", new TestResourceModule());
 
             const component = new TestComponentResource("test");

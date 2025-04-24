@@ -43,7 +43,7 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 	version := pulumiSDKVersion
 	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		if info.PulumiSDKVersion == 1 {
-			return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#%s", typeName)
+			return "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#" + typeName
 		}
 		if info.PulumiSDKVersion != 0 {
 			version = fmt.Sprintf("v%d", info.PulumiSDKVersion)
@@ -165,17 +165,4 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 		}
 	}
 	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = packageName(pkg)
-	} else {
-		displayName = fmt.Sprintf("%s/%s", packageName(pkg), modName)
-	}
-	link = d.GetDocLinkForResourceType(pkg, modName, "")
-	return displayName, link
 }

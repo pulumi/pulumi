@@ -1,0 +1,40 @@
+View in Browser (Ctrl+O): link
+
+     Type                      Name                  Status       Info
+     pulumi:pulumi:Stack       aws-ts-webserver-dev               1 message
+ +-  ├─ aws:ec2:Instance       web-server-www        replaced     [diff: ~userD
+     └─ aws:ec2:SecurityGroup  web-secgrp                         
+
+Changes:
+  aws:ec2:Instance (web-server-www):
+    --aws:ec2/instance:Instance: (delete-replaced)
+        [id=i-0207dc7a2d8c5135a]
+        [urn=urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www]
+        [provider=urn:pulumi:dev::aws-ts-webserver::pulumi:providers:aws::default_3_38_1::57baf899-740a-486a-908e-43cf27cce182]
+        ami                : "ami-0175af5baaf2bce8e"
+        getPasswordData    : false
+        instanceType       : "t2.micro"
+        sourceDestCheck    : true
+        tags               : {
+            Name      : "web-server-www"
+        }
+        userData           : "#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &"
+        vpcSecurityGroupIds: [
+            [0]: "sg-07498abcdbdf88f34"
+        ]
+
+Diagnostics:
+  pulumi:pulumi:Stack (aws-ts-webserver-dev):
+    Configuration:
+        aws:region: us-west-2
+
+Outputs:
+  ~ publicHostName: "ec2-34-211-56-110.us-west-2.compute.amazonaws.com" => [unknown]
+  ~ publicIp      : "34.211.56.110" => [unknown]
+
+Resources:
+    +-1 replaced
+    2 unchanged
+
+Duration: 12s
+

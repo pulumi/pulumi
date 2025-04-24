@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The tsnode import is used for type-checking only. Do not reference it in the emitted code.
+import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as tsnode from "ts-node";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
@@ -29,7 +30,7 @@ import * as stack from "../../runtime/stack";
 //
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
-// https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+// https://nodejs.org/api/process.html#process_exit_codes
 const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
 /**
@@ -140,8 +141,6 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
 /** @internal */
 export interface RunOpts {
-    // TODO: Explicitly pass `main` in here instead of just argv.
-
     argv: minimist.ParsedArgs;
     programStarted: () => void;
     reportLoggedError: (err: Error) => void;
@@ -166,12 +165,14 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     const tsConfigPath = "tsconfig.json";
 
     if (opts.typeScript) {
+        const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require("ts-node");
+        const tsn: typeof tsnode = require(tsnodeRequire);
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
+            compiler: typescriptRequire,
             compilerOptions: {
                 target: "es6",
                 module: "commonjs",
@@ -220,7 +221,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        } else if (err.name === tsnode.TSError.name || err.name === SyntaxError.name) {
+        } else if (err.name === "TSError" || err.name === SyntaxError.name) {
             // Hide stack frames as TSError/SyntaxError have messages containing
             // where the error is located
             const errOut = err.stack?.toString() || "";

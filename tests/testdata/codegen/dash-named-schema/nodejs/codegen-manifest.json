@@ -1,0 +1,16 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "submodule1/fooencryptedBarClass.ts",
+    "submodule1/index.ts",
+    "submodule1/moduleResource.ts",
+    "tsconfig.json",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

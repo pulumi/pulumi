@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lifecycletest
 
 import (
@@ -6,12 +20,12 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -23,13 +37,14 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
-	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+	p := &lt.TestPlan{
+		// Skip display tests because different ordering makes the colouring different.
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -58,11 +73,11 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
@@ -87,7 +102,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			assert.True(t, deletedID0)
 			assert.True(t, deletedID1)
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, old)
@@ -102,10 +117,11 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		}),
 	}
 
-	host := deploytest.NewPluginHost(nil, nil, nil, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
 
-	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+	p := &lt.TestPlan{
+		// Skip display tests because different ordering makes the colouring different.
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -134,11 +150,11 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		},
 	}
 
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Destroy,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result,
-		) result.Result {
+			_ []Event, err error,
+		) error {
 			// Verify that we see a DeleteReplacement for the resource with ID 0 and a Delete for the resource with
 			// ID 1.
 			deletedID0, deletedID1 := false, false
@@ -163,7 +179,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 			assert.True(t, deletedID0)
 			assert.True(t, deletedID1)
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, old)

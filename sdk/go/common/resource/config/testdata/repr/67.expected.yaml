@@ -1,0 +1,18 @@
+decrypt:
+  my:testKey: '[10]'
+paths:
+  my:testKey:
+    value:
+    - 10
+    string: '[10]'
+    redacted: '[10]'
+    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAD/+EDAABBWludDY0BAIAFA==
+    secure: false
+    isObject: true
+  my:testKey[0]:
+    value: "10"
+    string: "10"
+    redacted: "10"
+    object: DxAABnN0cmluZwwEAAIxMA==
+    secure: false
+    isObject: false

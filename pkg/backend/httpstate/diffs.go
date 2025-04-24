@@ -20,10 +20,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 )
 
 type deploymentDiffState struct {
@@ -71,7 +72,7 @@ func (dds *deploymentDiffState) ShouldDiff(new deployment) bool {
 
 func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment) (deploymentDiff, error) {
 	if !dds.CanDiff() {
-		return deploymentDiff{}, fmt.Errorf("Diff() cannot be called before Saved()")
+		return deploymentDiff{}, errors.New("Diff() cannot be called before Saved()")
 	}
 
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "Diff")
@@ -80,21 +81,19 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 	before := dds.lastSavedDeployment.raw
 	after := deployment.raw
 
-	var checkpointHash string
-	checkpointHashReady := &sync.WaitGroup{}
-
-	checkpointHashReady.Add(1)
-	go func() {
-		defer checkpointHashReady.Done()
-		checkpointHash = dds.computeHash(childCtx, after)
-	}()
+	checkpointHashPromise := promise.Run(func() (string, error) {
+		return dds.computeHash(childCtx, after), nil
+	})
 
 	delta, err := dds.computeEdits(childCtx, dds.lastSavedDeployment, deployment)
 	if err != nil {
-		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
+		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %w", err)
 	}
 
-	checkpointHashReady.Wait()
+	checkpointHash, err := checkpointHashPromise.Result(ctx)
+	if err != nil {
+		return deploymentDiff{}, fmt.Errorf("Cannot compute the checkpoint hash: %w", err)
+	}
 
 	tracingSpan.SetTag("before", len(before))
 	tracingSpan.SetTag("after", len(after))

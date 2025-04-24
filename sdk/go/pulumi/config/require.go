@@ -53,7 +53,7 @@ func Require(ctx *pulumi.Context, key string) string {
 func requireObject(ctx *pulumi.Context, key string, secret bool, output interface{}, use, insteadOf string) {
 	v := require(ctx, key, secret, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
-		failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to unmarshall required configuration variable '%s'; %s", key, err)
 	}
 }
 
@@ -67,7 +67,7 @@ func requireBool(ctx *pulumi.Context, key string, secret bool, use, insteadOf st
 	v := require(ctx, key, secret, use, insteadOf)
 	o, err := cast.ToBoolE(v)
 	if err != nil {
-		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err)
 	}
 	return o
 }
@@ -81,7 +81,7 @@ func requireFloat64(ctx *pulumi.Context, key string, secret bool, use, insteadOf
 	v := require(ctx, key, secret, use, insteadOf)
 	o, err := cast.ToFloat64E(v)
 	if err != nil {
-		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err)
 	}
 	return o
 }
@@ -95,7 +95,7 @@ func requireInt(ctx *pulumi.Context, key string, secret bool, use, insteadOf str
 	v := require(ctx, key, secret, use, insteadOf)
 	o, err := cast.ToIntE(v)
 	if err != nil {
-		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err)
 	}
 	return o
 }

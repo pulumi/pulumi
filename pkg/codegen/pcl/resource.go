@@ -46,6 +46,11 @@ type ResourceOptions struct {
 	Version model.Expression
 	// The plugin download URL for this resource.
 	PluginDownloadURL model.Expression
+	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
+	// deleted as well.
+	DeletedWith model.Expression
+	// If the resource was imported, the id that was imported.
+	ImportID model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.

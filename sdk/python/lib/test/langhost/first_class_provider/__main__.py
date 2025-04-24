@@ -13,6 +13,7 @@
 # limitations under the License.
 from pulumi import CustomResource, ProviderResource, ResourceOptions
 
+
 class Provider(ProviderResource):
     def __init__(self, name, opts=None):
         ProviderResource.__init__(self, "test", name, {}, opts)
@@ -21,6 +22,7 @@ class Provider(ProviderResource):
 class Resource(CustomResource):
     def __init__(self, name, opts=None):
         CustomResource.__init__(self, "test:index:Resource", name, {}, opts)
+
 
 # Create a Provider that we'll use to create other resources.
 prov = Provider("testprov")

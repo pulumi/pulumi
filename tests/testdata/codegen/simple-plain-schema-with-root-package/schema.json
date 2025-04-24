@@ -1,0 +1,132 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example::Foo": {
+      "properties": {
+        "a": {
+          "type": "boolean",
+          "plain": true
+        },
+        "b": {
+          "type": "boolean",
+          "plain": true
+        },
+        "c": {
+          "type": "integer",
+          "plain": true
+        },
+        "d": {
+          "type": "integer",
+          "plain": true
+        },
+        "e": {
+          "type": "string",
+          "plain": true
+        },
+        "f": {
+          "type": "string",
+          "plain": true
+        }
+      },
+      "required": ["a", "c", "e"],
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example::Component": {
+      "isComponent": true,
+      "properties": {
+        "a": {
+          "type": "boolean"
+        },
+        "b": {
+          "type": "boolean"
+        },
+        "c": {
+          "type": "integer"
+        },
+        "d": {
+          "type": "integer"
+        },
+        "e": {
+          "type": "string"
+        },
+        "f": {
+          "type": "string"
+        },
+        "foo": {
+          "$ref": "#/types/example::Foo"
+        },
+        "bar": {
+          "$ref": "#/types/example::Foo"
+        },
+        "baz": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example::Foo"
+          }
+        }
+      },
+      "required": ["a", "c", "e"],
+      "inputProperties": {
+        "a": {
+          "type": "boolean",
+          "plain": true
+        },
+        "b": {
+          "type": "boolean",
+          "plain": true
+        },
+        "c": {
+          "type": "integer",
+          "plain": true
+        },
+        "d": {
+          "type": "integer",
+          "plain": true
+        },
+        "e": {
+          "type": "string",
+          "plain": true
+        },
+        "f": {
+          "type": "string",
+          "plain": true
+        },
+        "foo": {
+          "$ref": "#/types/example::Foo"
+        },
+        "bar": {
+          "$ref": "#/types/example::Foo",
+          "plain": true
+        },
+        "baz": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example::Foo"
+          },
+          "plain": true
+        }
+      },
+      "requiredInputs": ["a", "c", "e"],
+      "type": "object"
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "simple-plain-schema-with-root-package",
+      "rootPackageName": "different",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

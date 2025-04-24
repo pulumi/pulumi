@@ -15,13 +15,13 @@
 package rpcutil
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
@@ -80,7 +80,7 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	lis, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
 	if err != nil {
 		return ServeHandle{Port: port}, nil,
-			errors.Errorf("failed to listen on TCP port ':%v': %v", port, err)
+			fmt.Errorf("failed to listen on TCP port ':%v': %v", port, err)
 	}
 
 	health := health.NewServer()
@@ -92,7 +92,7 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	if opts.Init != nil {
 		if err := opts.Init(srv); err != nil {
 			return ServeHandle{Port: port}, nil,
-				errors.Errorf("failed to Init GRPC to register RPC handlers: %v", err)
+				fmt.Errorf("failed to Init GRPC to register RPC handlers: %v", err)
 		}
 	}
 
@@ -126,7 +126,7 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	done := make(chan error)
 	go func() {
 		if err := srv.Serve(lis); err != nil && !IsBenignCloseErr(err) {
-			done <- errors.Errorf("stopped serving: %v", err)
+			done <- fmt.Errorf("stopped serving: %v", err)
 		} else {
 			done <- nil // send a signal so caller knows we're done, even though it's nil.
 		}

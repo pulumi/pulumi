@@ -15,7 +15,6 @@
  <{%bold%}><{%fg 2%}>+ <{%reset%}> aws:eks:Cluster eks-cluster <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> aws:eks:Cluster eks-cluster <{%fg 2%}>created<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack eks-dev <{%fg 2%}>created<{%reset%}> 
-
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 6 created<{%reset%}>
 

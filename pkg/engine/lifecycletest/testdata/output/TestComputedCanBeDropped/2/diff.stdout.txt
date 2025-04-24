@@ -1,0 +1,45 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=d9894eeb-68cd-48e9-be23-ab8553a6ab5b]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=created-id-resA]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    baz: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        a: <{%reset%}><{%reset%}>42<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        b: <{%reset%}><{%reset%}>"alpha"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    qux: <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>        [0]: <{%reset%}><{%reset%}>"beta"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        [1]: <{%reset%}><{%reset%}>24<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    zed: <{%reset%}><{%reset%}>"grr"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=created-id-resB]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%fg 3%}>  ~ baz: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 1%}>      - b: <{%reset%}><{%fg 1%}>"alpha"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%fg 3%}>  ~ qux: <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%fg 1%}>      - [0]: <{%reset%}><{%fg 1%}>"beta"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 3%}>    ]
+<{%reset%}><{%fg 1%}>  - zed: <{%reset%}><{%fg 1%}>"grr"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - zed: <{%reset%}><{%fg 1%}>"grr"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ baz: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%reset%}>        a: <{%reset%}><{%reset%}>42<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 1%}>      - b: <{%reset%}><{%fg 1%}>"alpha"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>  ~ qux: <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%fg 1%}>      - [0]: <{%reset%}><{%fg 1%}>"beta"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}>        [1]: <{%reset%}><{%reset%}>24<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>    ]
+<{%reset%}><{%fg 1%}>  - zed: <{%reset%}><{%fg 1%}>"grr"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

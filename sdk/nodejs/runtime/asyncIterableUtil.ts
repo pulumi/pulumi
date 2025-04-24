@@ -12,28 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AsyncIterable } from "@pulumi/query/interfaces";
-
 type CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";
 const closeValue: CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";
 
-// PushableAsyncIterable is an `AsyncIterable` that data can be pushed to. It is useful for turning
-// push-based callback APIs into pull-based `AsyncIterable` APIs. For example, a user can write:
-//
-//     const queue = new PushableAsyncIterable();
-//     call.on("data", (thing: any) => queue.push(live));
-//
-// And then later consume `queue` as any other `AsyncIterable`:
-//
-//     for await (const l of list) {
-//         console.log(l.metadata.name);
-//     }
-//
-// Note that this class implements `AsyncIterable<T | undefined>`. This is for a fundamental reason:
-// the user can call `complete` at any time. `AsyncIteratable` would normally know when an element
-// is the last, but in this case it can't. Or, another way to look at it is, the last element is
-// guaranteed to be `undefined`.
-/** @internal */
+/**
+ * {@link PushableAsyncIterable} is an {@link AsyncIterable} that data can be
+ * pushed to. It is useful for turning push-based callback APIs into pull-based
+ * {@link AsyncIterable} APIs. For example, a user can write:
+ *
+ * ```typescript
+ * const queue = new PushableAsyncIterable();
+ * call.on("data", (thing: any) => queue.push(live));
+ * ```
+ *
+ * And then later consume `queue` as any other {@link AsyncIterable}:
+ *
+ * ```typescript
+ * for await (const l of list) {
+ *     console.log(l.metadata.name);
+ * }
+ * ```
+ *
+ * Note that this class implements `AsyncIterable<T | undefined>`. This is for a
+ * fundamental reason: the user can call `complete` at any time. `AsyncIterable`
+ * would normally know when an element is the last, but in this case it can't.
+ * Or, another way to look at it is, the last element is guaranteed to be
+ * `undefined`.
+ *
+ * @internal
+ */
 export class PushableAsyncIterable<T> implements AsyncIterable<T | undefined> {
     private bufferedData: T[] = [];
     private nextQueue: ((payload: T | CloseValue) => void)[] = [];

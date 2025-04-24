@@ -19,21 +19,41 @@ class SourcePositionTest(LanghostTest):
     def test_source_position(self):
         self.run_test(
             program=path.join(self.base_path(), "source_position"),
-            expected_resource_count=2)
+            expected_resource_count=2,
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
-
-        assert source_position is not None
-        assert source_position.uri.endswith("__main__.py")
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
+        self.assertIsNotNone(source_position)
+        self.assertTrue(
+            source_position.uri.endswith("__main__.py"), source_position.uri
+        )
 
         if name == "custom":
-            self.assertEqual(source_position.line, 24)
+            self.assertEqual(source_position.line, 34)
         elif name == "component":
-            self.assertEqual(source_position.line, 25)
+            self.assertEqual(source_position.line, 35)
         else:
-            assert False
+            self.fail("unexpected name: " + name)
 
         return {
             "urn": self.make_urn(ty, name),

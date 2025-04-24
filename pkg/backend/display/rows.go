@@ -22,12 +22,12 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
@@ -60,9 +60,11 @@ type ResourceRow interface {
 
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
+	PolicyRemediationPayloads() []engine.PolicyRemediationEventPayload
 
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
+	RecordPolicyRemediationEvent(diagEvent engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -126,8 +128,9 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
-	diagInfo       *DiagInfo
-	policyPayloads []engine.PolicyViolationEventPayload
+	diagInfo                  *DiagInfo
+	policyPayloads            []engine.PolicyViolationEventPayload
+	policyRemediationPayloads []engine.PolicyRemediationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -219,7 +222,7 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	}
 }
 
-// PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
+// PolicyPayloads returns the PolicyViolationEventPayload object associated with the resourceRowData.
 func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
 	return data.policyPayloads
 }
@@ -228,6 +231,17 @@ func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPaylo
 func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
 	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
+}
+
+// PolicyRemediationPayloads returns all policy remediation event payloads that have been registered.
+func (data *resourceRowData) PolicyRemediationPayloads() []engine.PolicyRemediationEventPayload {
+	return data.policyRemediationPayloads
+}
+
+// RecordPolicyRemediationEvent records a policy remediation with the resourceRowData.
+func (data *resourceRowData) RecordPolicyRemediationEvent(event engine.Event) {
+	tPayload := event.Payload().(engine.PolicyRemediationEventPayload)
+	data.policyRemediationPayloads = append(data.policyRemediationPayloads, tPayload)
 }
 
 type column int
@@ -294,7 +308,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := string(urn.Name())
+	name := urn.Name()
 	typ := urn.Type().DisplayName()
 
 	done := data.IsDone()
@@ -316,14 +330,10 @@ func (data *resourceRowData) ColorizedColumns() []string {
 // addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
 // RetainOnDelete and the step will discard the resource.
 func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
-	// If there's no old status, we don't need to report retain.
-	if step.Old == nil || step.Old.State == nil {
+	if step.Old == nil || !step.Old.RetainOnDelete {
 		return status
 	}
 
-	if !step.Old.State.RetainOnDelete {
-		return status
-	}
 	switch step.Op {
 	// Deletes and Replacements should indicate retain on delete behavior as they can leave
 	// untracked resources in the environment.
@@ -331,7 +341,6 @@ func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
 		status += "[retain]"
 	}
 
-	// The resource's update status behavior is not affected by the RetainOnDelete flag.
 	return status
 }
 
@@ -421,18 +430,17 @@ func (data *resourceRowData) getInfoColumn() string {
 }
 
 func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
-	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
-		if step.DetailedDiff != nil {
-			diff = engine.TranslateDetailedDiff(&step)
-		} else if diffOutputs {
-			if step.Old.Outputs != nil && step.New.Outputs != nil {
-				diff = step.Old.Outputs.Diff(step.New.Outputs)
+		// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+		if step.Op != deploy.OpSame {
+			if step.DetailedDiff != nil {
+				diff = engine.TranslateDetailedDiff(&step, false)
+			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
+				diff = step.Old.Inputs.Diff(step.New.Inputs)
 			}
-		} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-			diff = step.Old.Inputs.Diff(step.New.Inputs)
 		}
 
 		// Show a diff if either `provider` or `protect` changed; they might not show a diff via inputs or outputs, but
@@ -457,45 +465,49 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		recordMetadataDiff("protect",
 			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
 
-		if diff != nil {
-			writeString(changesBuf, "diff: ")
-
-			updates := make(resource.PropertyMap)
-			for k := range diff.Updates {
-				updates[k] = resource.PropertyValue{}
-			}
-
-			filteredKeys := func(m resource.PropertyMap) []string {
-				keys := slice.Prealloc[string](len(m))
-				for k := range m {
-					keys = append(keys, string(k))
-				}
-				return keys
-			}
-			if include := step.Diffs; len(include) > 0 {
-				includeSet := make(map[resource.PropertyKey]bool)
-				for _, k := range include {
-					includeSet[k] = true
-				}
-				filteredKeys = func(m resource.PropertyMap) []string {
-					var filteredKeys []string
-					for k := range m {
-						if includeSet[k] {
-							filteredKeys = append(filteredKeys, string(k))
-						}
-					}
-					return filteredKeys
-				}
-			}
-
-			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
-			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
-			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
-		}
+		writeShortDiff(changesBuf, diff, step.Diffs)
 	}
 
 	fprintIgnoreError(changesBuf, colors.Reset)
 	return changesBuf.String()
+}
+
+func writeShortDiff(changesBuf io.StringWriter, diff *resource.ObjectDiff, include []resource.PropertyKey) {
+	if diff != nil {
+		writeString(changesBuf, "diff: ")
+
+		updates := make(resource.PropertyMap)
+		for k := range diff.Updates {
+			updates[k] = resource.PropertyValue{}
+		}
+
+		filteredKeys := func(m resource.PropertyMap) []string {
+			keys := slice.Prealloc[string](len(m))
+			for k := range m {
+				keys = append(keys, string(k))
+			}
+			return keys
+		}
+		if len(include) > 0 {
+			includeSet := make(map[resource.PropertyKey]bool)
+			for _, k := range include {
+				includeSet[k] = true
+			}
+			filteredKeys = func(m resource.PropertyMap) []string {
+				var filteredKeys []string
+				for k := range m {
+					if includeSet[k] {
+						filteredKeys = append(filteredKeys, string(k))
+					}
+				}
+				return filteredKeys
+			}
+		}
+
+		writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
+		writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
+		writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
+	}
 }
 
 func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {

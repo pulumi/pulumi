@@ -14,15 +14,17 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Mapping, Optional, Awaitable
+from dataclasses import dataclass
 
+from ._cmd import PulumiCommand
 from ._config import ConfigMap, ConfigValue
 from ._output import OutputMap
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._tag import TagMap
 
-PulumiFn = Callable[[], None]
+PulumiFn = Callable[[], Optional[Awaitable[None]]]
 
 
 class StackSummary:
@@ -30,7 +32,7 @@ class StackSummary:
 
     name: str
     current: bool
-    update_in_progress: bool
+    update_in_progress: Optional[bool]
     last_update: Optional[datetime]
     resource_count: Optional[int]
     url: Optional[str]
@@ -39,7 +41,7 @@ class StackSummary:
         self,
         name: str,
         current: bool,
-        update_in_progress: bool = False,
+        update_in_progress: Optional[bool] = None,
         last_update: Optional[datetime] = None,
         resource_count: Optional[int] = None,
         url: Optional[str] = None,
@@ -52,22 +54,34 @@ class StackSummary:
         self.url = url
 
 
+@dataclass
+class TokenInformation:
+    """Information about the token that was used to authenticate the current user."""
+
+    name: str
+    organization: Optional[str]
+    team: Optional[str]
+
+
 class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
     user: str
     url: Optional[str]
     organizations: Optional[List[str]]
+    token_information: Optional[TokenInformation]
 
     def __init__(
         self,
         user: str,
         url: Optional[str] = None,
         organizations: Optional[List[str]] = None,
+        token_information: Optional[TokenInformation] = None,
     ) -> None:
         self.user = user
         self.url = url
         self.organizations = organizations
+        self.token_information = token_information
 
 
 class PluginInfo:
@@ -151,6 +165,11 @@ class Workspace(ABC):
     The version of the underlying Pulumi CLI/Engine.
     """
 
+    pulumi_command: PulumiCommand
+    """
+    The underlying PulumiCommand instance that is used to execute CLI commands.
+    """
+
     @abstractmethod
     def project_settings(self) -> ProjectSettings:
         """
@@ -204,6 +223,36 @@ class Workspace(ABC):
         LocalWorkspace does not utilize this extensibility point.
 
         :param stack_name: The name of the stack.
+        """
+
+    @abstractmethod
+    def add_environments(self, stack_name: str, *environment_names: str) -> None:
+        """
+        Adds environments to the end of a stack's import list. Imported environments are merged in order
+        per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+        environment.
+
+
+        :param stack_name: The name of the stack.
+        :param environment_names: The names of the environment to add.
+        """
+
+    @abstractmethod
+    def list_environments(self, stack_name: str) -> List[str]:
+        """
+        Returns the list of environments specified in a stack's configuration.
+
+        :param stack_name: The name of the stack.
+        :returns: List[str]
+        """
+
+    @abstractmethod
+    def remove_environment(self, stack_name: str, environment_name: str) -> None:
+        """
+        Removes the specified environment from the stack configuration.
+
+        :param stack_name: The name of the stack.
+        :param environment_name: The name of the environment to remove.
         """
 
     @abstractmethod
@@ -360,7 +409,12 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def remove_stack(self, stack_name: str) -> None:
+    def remove_stack(
+        self,
+        stack_name: str,
+        force: Optional[bool] = None,
+        preserve_config: Optional[bool] = None,
+    ) -> None:
         """
         Deletes the stack and all associated configuration and history.
 
@@ -368,12 +422,13 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def list_stacks(self) -> List[StackSummary]:
+    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
         """
         Returns all Stacks created under the current Project.
         This queries underlying backend and may return stacks not present in the Workspace
         (as Pulumi.<stack>.yaml files).
 
+        :param include_all: List all stacks instead of just stacks for the current project
         :returns: List[StackSummary]
         """
 

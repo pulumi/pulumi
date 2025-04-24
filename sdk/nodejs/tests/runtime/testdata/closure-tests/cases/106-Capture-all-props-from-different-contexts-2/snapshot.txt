@@ -1,0 +1,28 @@
+exports.handler = __f1;
+
+var __o = {a: 1, b: 1, c: 2};
+
+function __f2() {
+  return (function() {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
+
+return function /*f2*/() {
+    console.log(o.a);
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
+
+return function /*f1*/() {
+    console.log(o);
+    f2();
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

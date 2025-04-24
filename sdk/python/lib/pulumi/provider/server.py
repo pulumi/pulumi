@@ -21,6 +21,7 @@ from typing import Dict, List, Set, Optional, TypeVar, Any, cast
 import argparse
 import asyncio
 import sys
+import traceback
 
 import grpc
 import grpc.aio
@@ -35,17 +36,38 @@ from pulumi.resource import (
     _parse_resource_reference,
 )
 from pulumi.runtime import known_types, proto, rpc
-from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
+from pulumi.runtime.proto import (
+    provider_pb2_grpc,
+    ResourceProviderServicer,
+    status_pb2,
+    errors_pb2,
+)
 from pulumi.runtime.stack import wait_for_rpcs
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
-
+from pulumi.errors import (
+    InputPropertiesError,
+    InputPropertyError,
+    InputPropertyErrorDetails,
+)
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
+
+
+class ComponentInitError(Exception):
+    """
+    ComponentInitError signals an error raised from within the __init__ method
+    of a component. This allows us to distinguish between a user error and a
+    system error.
+    """
+
+    def __init__(self, inner: Exception) -> None:
+        super().__init__(str(inner))
+        self.inner = inner
 
 
 class ProviderServicer(ResourceProviderServicer):
@@ -63,7 +85,39 @@ class ProviderServicer(ResourceProviderServicer):
     args: List[str]
     lock: asyncio.Lock
 
-    async def Construct(  # pylint: disable=invalid-overridden-method
+    def create_grpc_invalid_properties_status(
+        self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
+    ):
+        status = grpc.Status()  # type: ignore[attr-defined]
+        # We don't care about the exact status code here, since they are pretty web centric, and don't
+        # necessarily make sense in this context.  Pick one that's close enough.
+        # type: ignore
+        status.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+        status.details = message
+
+        if errors is not None:
+            s = status_pb2.Status()  # type: ignore[attr-defined]
+            # This code needs to match the code above.
+            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+            s.message = message
+
+            error_details = errors_pb2.InputPropertiesError()
+            for error in errors:
+                property_error = errors_pb2.InputPropertiesError.PropertyError()
+                property_error.property_path = error["property_path"]
+                property_error.reason = error["reason"]
+                error_details.errors.append(property_error)
+
+            details_container = s.details.add()
+            details_container.Pack(error_details)
+
+            status.trailing_metadata = (
+                ("grpc-status-details-bin", s.SerializeToString()),
+            )
+
+        return status
+
+    async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
@@ -71,13 +125,34 @@ class ProviderServicer(ResourceProviderServicer):
         await self.lock.acquire()
         try:
             return await self._construct(request, context)
+        except Exception as e:  # noqa
+            if isinstance(e, InputPropertiesError):
+                status = self.create_grpc_invalid_properties_status(e.message, e.errors)
+                await context.abort_with_status(status)
+                # We already aborted at this point
+                raise
+            elif isinstance(e, InputPropertyError):
+                status = self.create_grpc_invalid_properties_status(
+                    "", [{"property_path": e.property_path, "reason": e.reason}]
+                )
+                await context.abort_with_status(status)
+                # We already aborted at this point
+                raise
+            else:
+                if isinstance(e, ComponentInitError):
+                    stack = traceback.extract_tb(e.inner.__traceback__)[:]
+                    # Drop the internal frame for `self._construct`.
+                    stack = stack[1:]
+                else:
+                    stack = traceback.extract_tb(e.__traceback__)[:]
+                pretty_stack = "".join(traceback.format_list(stack))
+                raise Exception(f"{str(e)}:\n{pretty_stack}")
         finally:
             self.lock.release()
 
     async def _construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # pylint: disable=unused-argument
         assert isinstance(
             request, proto.ConstructRequest
         ), f"request is not ConstructRequest but is {type(request)} instead"
@@ -193,23 +268,34 @@ class ProviderServicer(ResourceProviderServicer):
         deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, resources in property_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
-            deps[k] = proto.ConstructResponse.PropertyDependencies(urns=urns)
+            # filter out any unknowns
+            knownUrns = [u for u in urns if u is not None]
+            deps[k] = proto.ConstructResponse.PropertyDependencies(urns=knownUrns)
 
         return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
-    async def Call(
-        self, request: proto.CallRequest, context
-    ):  # pylint: disable=invalid-overridden-method
+    async def Call(self, request: proto.CallRequest, context):
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
         # avoid modifying globals, we can remove the locking.
         await self.lock.acquire()
         try:
             return await self._call(request, context)
+        except InputPropertiesError as e:
+            status = self.create_grpc_invalid_properties_status(e.message, e.errors)
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise
+        except InputPropertyError as e:
+            status = self.create_grpc_invalid_properties_status(
+                "", [{"property_path": e.property_path, "reason": e.reason}]
+            )
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise
         finally:
             self.lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
-        # pylint: disable=unused-argument
         assert isinstance(
             request, proto.CallRequest
         ), f"request is not CallRequest but is {type(request)} instead"
@@ -276,7 +362,9 @@ class ProviderServicer(ResourceProviderServicer):
         deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, resources in ret_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
-            deps[k] = proto.CallResponse.ReturnDependencies(urns=urns)
+            # filter out any unknowns
+            knownUrns = [u for u in urns if u is not None]
+            deps[k] = proto.CallResponse.ReturnDependencies(urns=knownUrns)
 
         failures = None
         if result.failures:
@@ -306,7 +394,7 @@ class ProviderServicer(ResourceProviderServicer):
             ]
         return proto.InvokeResponse(**resp)
 
-    async def Invoke(  # pylint: disable=invalid-overridden-method
+    async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
         args = rpc.deserialize_properties(
@@ -316,19 +404,17 @@ class ProviderServicer(ResourceProviderServicer):
         response = await self._invoke_response(result)
         return response
 
-    async def Configure(  # pylint: disable=invalid-overridden-method
-        self, request, context
-    ) -> proto.ConfigureResponse:
+    async def Configure(self, request, context) -> proto.ConfigureResponse:
         return proto.ConfigureResponse(
             acceptSecrets=True, acceptResources=True, acceptOutputs=True
         )
 
-    async def GetPluginInfo(  # pylint: disable=invalid-overridden-method
-        self, request, context
-    ) -> proto.PluginInfo:
+    async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
+        if self.provider.version is None:
+            return proto.PluginInfo(version="")
         return proto.PluginInfo(version=self.provider.version)
 
-    async def GetSchema(  # pylint: disable=invalid-overridden-method
+    async def GetSchema(
         self, request: proto.GetSchemaRequest, context
     ) -> proto.GetSchemaResponse:
         if request.version != 0:
@@ -384,7 +470,7 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         pass
 
 
-T = TypeVar("T")  # pylint: disable=invalid-name
+T = TypeVar("T")
 
 
 def _as_future(value: T) -> "asyncio.Future[T]":

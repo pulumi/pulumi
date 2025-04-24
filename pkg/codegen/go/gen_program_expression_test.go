@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package gen
 
 import (
@@ -90,6 +104,7 @@ func TestBinaryOpExpression(t *testing.T) {
 		{hcl2Expr: "0 <= 0", goCode: "0 <= 0"},
 		{hcl2Expr: "0 >= 0", goCode: "0 >= 0"},
 		{hcl2Expr: "0 + 0", goCode: "0 + 0"},
+		{hcl2Expr: "0 - 0", goCode: "0 - 0"},
 		{hcl2Expr: "0 * 0", goCode: "0 * 0"},
 		{hcl2Expr: "0 / 0", goCode: "0 / 0"},
 		{hcl2Expr: "0 % 0", goCode: "0 % 0"},
@@ -125,6 +140,157 @@ func TestUnaryOpExrepssion(t *testing.T) {
 
 	for _, c := range cases {
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
+	}
+}
+
+func TestArgumentTypeName(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	noneTypeName := g.argumentTypeName(model.NoneType, false /*isInput*/)
+	assert.Equal(t, "", noneTypeName)
+
+	plainIntType := g.argumentTypeName(model.IntType, false /*isInput*/)
+	assert.Equal(t, "int", plainIntType)
+	inputIntType := g.argumentTypeName(model.IntType, true /*isInput*/)
+	assert.Equal(t, "pulumi.Int", inputIntType)
+
+	plainStringType := g.argumentTypeName(model.StringType, false /*isInput*/)
+	assert.Equal(t, "string", plainStringType)
+	inputStringType := g.argumentTypeName(model.StringType, true /*isInput*/)
+	assert.Equal(t, "pulumi.String", inputStringType)
+
+	plainBoolType := g.argumentTypeName(model.BoolType, false /*isInput*/)
+	assert.Equal(t, "bool", plainBoolType)
+	inputBoolType := g.argumentTypeName(model.BoolType, true /*isInput*/)
+	assert.Equal(t, "pulumi.Bool", inputBoolType)
+
+	plainNumberType := g.argumentTypeName(model.NumberType, false /*isInput*/)
+	assert.Equal(t, "float64", plainNumberType)
+	inputNumberType := g.argumentTypeName(model.NumberType, true /*isInput*/)
+	assert.Equal(t, "pulumi.Float64", inputNumberType)
+
+	plainDynamicType := g.argumentTypeName(model.DynamicType, false /*isInput*/)
+	assert.Equal(t, "interface{}", plainDynamicType)
+	inputDynamicType := g.argumentTypeName(model.DynamicType, true /*isInput*/)
+	assert.Equal(t, "pulumi.Any", inputDynamicType)
+
+	objectType := model.NewObjectType(map[string]model.Type{
+		"foo": model.StringType,
+		"bar": model.IntType,
+	})
+
+	plainObjectType := g.argumentTypeName(objectType, false /*isInput*/)
+	assert.Equal(t, "map[string]interface{}", plainObjectType)
+	inputObjectType := g.argumentTypeName(objectType, true /*isInput*/)
+	assert.Equal(t, "pulumi.Map", inputObjectType)
+
+	uniformObjectType := model.NewObjectType(map[string]model.Type{
+		"x": model.IntType,
+		"y": model.IntType,
+	})
+
+	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
+	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
+	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
+	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
+
+	plainMapType := g.argumentTypeName(model.NewMapType(model.StringType), false /*isInput*/)
+	assert.Equal(t, "map[string]string", plainMapType)
+	inputMapType := g.argumentTypeName(model.NewMapType(model.StringType), true /*isInput*/)
+	assert.Equal(t, "pulumi.StringMap", inputMapType)
+
+	plainIntListType := g.argumentTypeName(model.NewListType(model.IntType), false /*isInput*/)
+	assert.Equal(t, "[]int", plainIntListType)
+	inputIntListType := g.argumentTypeName(model.NewListType(model.IntType), true /*isInput*/)
+	assert.Equal(t, "pulumi.IntArray", inputIntListType)
+
+	plainDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), false /*isInput*/)
+	assert.Equal(t, "[]interface{}", plainDynamicListType)
+	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
+	assert.Equal(t, "pulumi.Array", inputDynamicListType)
+
+	// assert that the Output[T] + input=false is the same as T + input=true
+	// in this case where T = string
+	assert.Equal(t,
+		g.argumentTypeName(model.NewOutputType(model.StringType), false /*isInput*/),
+		g.argumentTypeName(model.StringType, true /*isInput*/))
+}
+
+func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+
+	notYetImplementedFunctions := []string{
+		"split",
+		"element",
+		"entries",
+		"lookup",
+		"range",
+	}
+
+	for _, fn := range notYetImplementedFunctions {
+		var content bytes.Buffer
+		g.GenFunctionCallExpression(&content, &model.FunctionCallExpression{
+			Name: fn,
+		})
+
+		assert.Contains(t, content.String(), "call "+fn)
+	}
+}
+
+func TestGeneratingGoOptionalFunctions(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+
+	testCases := []struct {
+		expr      *model.FunctionCallExpression
+		generated string
+	}{
+		{
+			expr: &model.FunctionCallExpression{
+				Name: "goOptionalString",
+				Args: []model.Expression{
+					model.VariableReference(&model.Variable{Name: "foo"}),
+				},
+			},
+			generated: "pulumi.StringRef(foo)",
+		},
+		{
+			expr: &model.FunctionCallExpression{
+				Name: "goOptionalInt",
+				Args: []model.Expression{
+					model.VariableReference(&model.Variable{Name: "foo"}),
+				},
+			},
+			generated: "pulumi.IntRef(foo)",
+		},
+		{
+			expr: &model.FunctionCallExpression{
+				Name: "goOptionalBool",
+				Args: []model.Expression{
+					model.VariableReference(&model.Variable{Name: "foo"}),
+				},
+			},
+			generated: "pulumi.BoolRef(foo)",
+		},
+		{
+			expr: &model.FunctionCallExpression{
+				Name: "goOptionalFloat64",
+				Args: []model.Expression{
+					model.VariableReference(&model.Variable{Name: "foo"}),
+				},
+			},
+			generated: "pulumi.Float64Ref(foo)",
+		},
+	}
+
+	for _, test := range testCases {
+		var content bytes.Buffer
+		g.GenFunctionCallExpression(&content, test.expr)
+		assert.Contains(t, content.String(), test.generated)
 	}
 }
 

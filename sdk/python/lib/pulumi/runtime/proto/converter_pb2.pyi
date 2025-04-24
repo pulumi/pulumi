@@ -35,14 +35,21 @@ class ConvertStateRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
-    """the gRPC address of the mapper service."""
+    """the gRPC target of the mapper service."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
+        import from.
+        """
     def __init__(
         self,
         *,
         mapper_target: builtins.str = ...,
+        args: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["mapper_target", b"mapper_target"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "mapper_target", b"mapper_target"]) -> None: ...
 
 global___ConvertStateRequest = ConvertStateRequest
 
@@ -57,6 +64,9 @@ class ResourceImport(google.protobuf.message.Message):
     ID_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    LOGICAL_NAME_FIELD_NUMBER: builtins.int
+    IS_COMPONENT_FIELD_NUMBER: builtins.int
+    IS_REMOTE_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -67,6 +77,12 @@ class ResourceImport(google.protobuf.message.Message):
     """the provider version to use for the resource, if any."""
     pluginDownloadURL: builtins.str
     """the provider PluginDownloadURL to use for the resource, if any."""
+    logical_name: builtins.str
+    """the logical name of the resource."""
+    is_component: builtins.bool
+    """true if this is a component resource."""
+    is_remote: builtins.bool
+    """true if this is a remote resource. Ignored if is_component is false."""
     def __init__(
         self,
         *,
@@ -75,8 +91,11 @@ class ResourceImport(google.protobuf.message.Message):
         id: builtins.str = ...,
         version: builtins.str = ...,
         pluginDownloadURL: builtins.str = ...,
+        logical_name: builtins.str = ...,
+        is_component: builtins.bool = ...,
+        is_remote: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 
@@ -85,15 +104,20 @@ class ConvertStateResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     RESOURCES_FIELD_NUMBER: builtins.int
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
     @property
     def resources(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ResourceImport]:
         """a list of resources to import."""
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """any diagnostics from state conversion."""
     def __init__(
         self,
         *,
         resources: collections.abc.Iterable[global___ResourceImport] | None = ...,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["resources", b"resources"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics", "resources", b"resources"]) -> None: ...
 
 global___ConvertStateResponse = ConvertStateResponse
 
@@ -104,20 +128,29 @@ class ConvertProgramRequest(google.protobuf.message.Message):
     SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
     TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """the source directory containing the program to convert from."""
     target_directory: builtins.str
     """a target directory to write the resulting PCL code and project file to."""
     mapper_target: builtins.str
-    """the gRPC address of the mapper service."""
+    """the gRPC target of the mapper service."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options."""
     def __init__(
         self,
         *,
         source_directory: builtins.str = ...,
         target_directory: builtins.str = ...,
         mapper_target: builtins.str = ...,
+        loader_target: builtins.str = ...,
+        args: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["mapper_target", b"mapper_target", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
 
 global___ConvertProgramRequest = ConvertProgramRequest
 

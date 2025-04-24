@@ -1,19 +1,37 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package lifecycletest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -22,8 +40,8 @@ type propertyDependencies map[resource.PropertyKey][]resource.URN
 var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
 
 func generateComplexTestDependencyGraph(
-	t *testing.T, p *TestPlan,
-) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	t *testing.T, p *lt.TestPlan,
+) ([]resource.URN, *deploy.Snapshot, deploytest.LanguageRuntimeFactory) {
 	resType := tokens.Type("pkgA:m:typA")
 
 	names := complexTestDependencyGraphNames
@@ -85,15 +103,16 @@ func generateComplexTestDependencyGraph(
 				propertyDependencies{"B": []resource.URN{urnF, urnG}}, nil),
 		},
 	}
+	assert.NoError(t, old.VerifyIntegrity())
 
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(urn resource.URN, provider string, inputs resource.PropertyMap) resource.ID {
-			_, id, _, err := monitor.RegisterResource(urn.Type(), string(urn.Name()), true, deploytest.ResourceOptions{
+			resp, err := monitor.RegisterResource(urn.Type(), urn.Name(), true, deploytest.ResourceOptions{
 				Provider: provider,
 				Inputs:   inputs,
 			})
 			assert.NoError(t, err)
-			return id
+			return resp.ID
 		}
 
 		idA := register(urnA, "", resource.PropertyMap{"A": resource.NewStringProperty("bar")})
@@ -112,7 +131,7 @@ func generateComplexTestDependencyGraph(
 		return nil
 	})
 
-	return urns, old, program
+	return urns, old, programF
 }
 
 func TestDeleteBeforeReplace(t *testing.T) {
@@ -136,18 +155,19 @@ func TestDeleteBeforeReplace(t *testing.T) {
 	//
 	// With that in mind, the following resources should require replacement: A, B, C, E, F, and K
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
-	urns, old, program := generateComplexTestDependencyGraph(t, p)
+	urns, old, programF := generateComplexTestDependencyGraph(t, p)
 	names := complexTestDependencyGraphNames
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-					ignoreChanges []string,
+				DiffConfigF: func(
+					_ context.Context,
+					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -155,10 +175,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					}
 					return plugin.DiffResult{}, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -167,16 +185,16 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		}),
 	}
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
-
-	p.Steps = []TestStep{{
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
+	p.Steps = []lt.TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			replaced := make(map[resource.URN]bool)
 			for _, entry := range entries {
@@ -194,7 +212,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 				pickURN(t, urns, names, "K"): true,
 			}, replaced)
 
-			return res
+			return err
 		},
 	}}
 
@@ -216,18 +234,18 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 
 	const resType = "pkgA:m:typA"
 	var urnA, urnB, urnC, urnD resource.URN
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		register := func(name string, inputs resource.PropertyMap, inputDeps propertyDependencies,
 			dependencies []resource.URN,
 		) resource.URN {
-			urn, _, _, err := monitor.RegisterResource(resType, name, true, deploytest.ResourceOptions{
+			resp, err := monitor.RegisterResource(resType, name, true, deploytest.ResourceOptions{
 				Inputs:       inputs,
 				Dependencies: dependencies,
 				PropertyDeps: inputDeps,
 			})
 			assert.NoError(t, err)
 
-			return urn
+			return resp.URN
 		}
 
 		urnA = register("A", nil, nil, nil)
@@ -247,10 +265,10 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
-		Steps:   []TestStep{{Op: Update}},
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:   []lt.TestStep{{Op: Update}},
 	}
 	snap := p.Run(t, nil)
 	for _, res := range snap.Resources {
@@ -259,17 +277,15 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 			assert.Empty(t, res.Dependencies)
 			assert.Empty(t, res.PropertyDependencies)
 		case urnC:
-			assert.Equal(t, []resource.URN{urnA, urnB}, res.Dependencies)
-			assert.EqualValues(t, propertyDependencies{
-				"A": res.Dependencies,
-				"B": res.Dependencies,
-			}, res.PropertyDependencies)
+			assert.ElementsMatch(t, []resource.URN{urnA, urnB}, res.Dependencies)
+			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, maps.Keys(res.PropertyDependencies))
+			assert.ElementsMatch(t, res.Dependencies, res.PropertyDependencies["A"])
+			assert.ElementsMatch(t, res.Dependencies, res.PropertyDependencies["B"])
 		case urnD:
-			assert.Equal(t, []resource.URN{urnA, urnB, urnC}, res.Dependencies)
-			assert.EqualValues(t, propertyDependencies{
-				"A": []resource.URN{urnB},
-				"B": []resource.URN{urnA, urnC},
-			}, res.PropertyDependencies)
+			assert.ElementsMatch(t, []resource.URN{urnA, urnB, urnC}, res.Dependencies)
+			assert.ElementsMatch(t, []resource.PropertyKey{"A", "B"}, maps.Keys(res.PropertyDependencies))
+			assert.ElementsMatch(t, []resource.URN{urnB}, res.PropertyDependencies["A"])
+			assert.ElementsMatch(t, []resource.URN{urnA, urnC}, res.PropertyDependencies["B"])
 		}
 	}
 }
@@ -277,16 +293,14 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	dbrDiff := false
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: dbrDiff,
@@ -305,51 +319,50 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
 
 	var provURN, urnA, urnB resource.URN
-	var provID resource.ID
-	var err error
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, err = monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
+		provURN = resp.URN
 
-		if provID == "" {
-			provID = providers.UnknownID
-		}
-		provRef, err := providers.NewReference(provURN, provID)
+		provRef, err := providers.NewReference(provURN, resp.ID)
 		assert.NoError(t, err)
 		provA := provRef.String()
 
-		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Provider:            provA,
 			Inputs:              inputsA,
 			DeleteBeforeReplace: dbrA,
 		})
 		assert.NoError(t, err)
+		urnA = respA.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
-		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+		respB, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Provider:     provA,
 			Inputs:       inputsB,
 			Dependencies: []resource.URN{urnA},
 			PropertyDeps: inputDepsB,
 		})
 		assert.NoError(t, err)
+		urnB = respB.URN
 
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p.Steps = []TestStep{{Op: Update}}
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	inputsA["A"] = resource.NewStringProperty("bar")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -359,7 +372,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -367,13 +380,13 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
 	dbrA, inputsA["A"] = &dbrValue, resource.NewStringProperty("baz")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -385,20 +398,20 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnB},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
 
 	// Change the value of resB.A. Only resB should be replaced, and the replacement should be create-before-delete.
 	inputsB["A"] = resource.NewStringProperty("qux")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -408,7 +421,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnB},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -416,13 +429,13 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the registration of resA such that it no longer requires delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	dbrA, inputsA["A"] = nil, resource.NewStringProperty("zam")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -432,7 +445,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -440,13 +453,13 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the diff of resA such that it requires delete-before-replace and change the value of resA.A. Both
 	// resA and resB should be replaced, and the replacements should be delete-before-replace.
 	dbrDiff, inputsA["A"] = true, resource.NewStringProperty("foo")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -458,7 +471,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpCreateReplacement, URN: urnB},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	snap = p.Run(t, snap)
@@ -466,13 +479,13 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	// Change the registration of resA such that it disables delete-before-replace and change the value of
 	// resA.A. Only resA should be replaced, and the replacement should be create-before-delete.
 	dbrA, dbrValue, inputsA["A"] = &dbrValue, false, resource.NewStringProperty("bar")
-	p.Steps = []TestStep{{
+	p.Steps = []lt.TestStep{{
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result,
-		) result.Result {
-			assert.Nil(t, res)
+			evts []Event, err error,
+		) error {
+			assert.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: provURN},
@@ -482,7 +495,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 				{Op: deploy.OpDeleteReplaced, URN: urnA},
 			}, SuccessfulSteps(entries))
 
-			return res
+			return err
 		},
 	}}
 	p.Run(t, snap)
@@ -491,31 +504,31 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 func TestDependencyChangeDBR(t *testing.T) {
 	t.Parallel()
 
-	p := &TestPlan{}
+	p := &lt.TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					if !oldOutputs["A"].DeepEquals(newInputs["A"]) {
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !oldOutputs["B"].DeepEquals(newInputs["B"]) {
+					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
-				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
 				},
 			}, nil
 		}),
@@ -527,51 +540,55 @@ func TestDependencyChangeDBR(t *testing.T) {
 	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
 
 	var urnA, urnB resource.URN
-	var err error
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
 		assert.NoError(t, err)
+		urnA = resp.URN
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {urnA}}
-		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+		resp, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs:       inputsB,
 			Dependencies: []resource.URN{urnA},
 			PropertyDeps: inputDepsB,
 		})
 		assert.NoError(t, err)
+		urnB = resp.URN
 
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p.Steps = []TestStep{{Op: Update}}
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.T = t
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
 	inputsA["A"] = resource.NewStringProperty("bar")
-	program = deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urnB, _, _, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+	programF = deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
 			Inputs: inputsB,
 		})
 		assert.NoError(t, err)
+		urnB = resp.URN
 
-		urnA, _, _, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+		resp, err = monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
 		assert.NoError(t, err)
+		urnA = resp.URN
 
 		return nil
 	})
 
-	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
-	p.Steps = []TestStep{
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Steps = []lt.TestStep{
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result,
-			) result.Result {
-				assert.Nil(t, res)
+				evts []Event, err error,
+			) error {
+				assert.NoError(t, err)
 				assert.True(t, len(entries) > 0)
 
 				resBDeleted, resBSame := false, false
@@ -588,9 +605,190 @@ func TestDependencyChangeDBR(t *testing.T) {
 				assert.True(t, resBSame)
 				assert.False(t, resBDeleted)
 
-				return res
+				return err
 			},
 		},
 	}
 	p.Run(t, snap)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/15763. Check that if a resource gets implicated in a
+// replacement chain that it fails if the resource is protected.
+func TestDBRProtect(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
+						return plugin.DiffResult{
+							Changes: plugin.DiffSome,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resType = "pkgA:index:typ"
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]interface{}{"A": "foo"})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		assert.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
+		protect := true
+		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+			Inputs:       inputsB,
+			Dependencies: []resource.URN{respA.URN},
+			PropertyDeps: inputDepsB,
+			Protect:      &protect,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := lt.TestUpdateOptions{T: t, HostF: hostF}
+	p := &lt.TestPlan{}
+
+	project := p.GetProject()
+
+	// First update just create the two resources.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+
+	// Update A to trigger a replace this should error because of the protect flag on B.
+	inputsA["A"] = resource.NewStringProperty("bar")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "unable to replace resource \"urn:pulumi:test::test::pkgA:index:typ::resB\""+
+		" as part of replacing \"urn:pulumi:test::test::pkgA:index:typ::resA\" as it is currently marked for protection.")
+
+	// Remove the protect flag and try again
+	assert.Equal(t, snap.Resources[2].Protect, true)
+	snap.Resources[2].Protect = false
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19056. If a resource has "replaceOnChanges" set and a
+// DBR changes that property we should trigger a replace.
+func TestDBRReplaceOnChanges(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.Name == "resA" {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"value"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputsA := resource.PropertyMap{
+		"value": resource.NewStringProperty("foo"),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:index:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		assert.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"value": {respA.URN}}
+		_, err = monitor.RegisterResource("pkgA:index:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"value": respA.Outputs["value"],
+			},
+			Dependencies:     []resource.URN{respA.URN},
+			PropertyDeps:     inputDepsB,
+			ReplaceOnChanges: []string{"value"},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	p := &lt.TestPlan{}
+
+	project := p.GetProject()
+
+	// First update just create the two resources.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
+
+	// Update value to trigger a replace this should also replace resB because of the replaceOnChanges.
+	inputsA["value"] = resource.NewStringProperty("bar")
+	validate := func(
+		project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+		events []engine.Event, err error,
+	) error {
+		// resB should have replaced before resA was created. The ReplaceOnChanges kicks in (even before the
+		// fixes for #19056) so we will see a replace op, the
+		resADeleted := false
+		resBDeleted := false
+		for _, entry := range entries {
+			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resA" {
+				switch entry.Step.Op() {
+				case deploy.OpDeleteReplaced:
+					resADeleted = true
+				}
+			}
+
+			if entry.Kind == engine.JournalEntrySuccess && entry.Step.URN().Name() == "resB" {
+				switch entry.Step.Op() {
+				case deploy.OpDeleteReplaced:
+					assert.False(t, resADeleted, "resA should not have been deleted yet")
+					resBDeleted = true
+				}
+			}
+		}
+		assert.True(t, resADeleted, "resA should have been deleted")
+		assert.True(t, resBDeleted, "resB should have been deleted")
+
+		return err
+	}
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, validate, "1")
+	require.NoError(t, err)
+	assert.Len(t, snap.Resources, 3)
 }

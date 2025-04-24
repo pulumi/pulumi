@@ -18,6 +18,7 @@ COVER_PACKAGES=( \
     "github.com/pulumi/pulumi/sdk/v3/..." \
     "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/..." \
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/..." \
+    "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/..." \
 )
 
 # Join COVER_PACKAGES with commas.
@@ -29,19 +30,32 @@ case "$1" in
         if [ -z "$MODE" ]; then
             # If a build mode was not specified,
             # guess based on whether a coverage path was supplied.
-            MODE=normal
+            MODE=coverage
             if [ -z "$PULUMI_TEST_COVERAGE_PATH" ]; then
                 MODE=normal
             fi
         fi
 
+        RACE=
+        CGO_ENABLED=0
+        if [ "$PULUMI_ENABLE_RACE_DETECTION" = "true" ]; then
+            RACE='-race'
+
+            if [ "$(go env GOOS)" != "darwin" ]; then
+                # On macOS, we don't need CGO but windows and linux still do.
+                CGO_ENABLED=1
+            fi
+        fi
+        export CGO_ENABLED
+
         case "$MODE" in
             normal)
-                go "$@"
+                shift
+                go build ${RACE} "$@"
                 ;;
             coverage)
                 shift
-                go build -cover -coverpkg "$COVERPKG" "$@"
+                go build ${RACE} -cover -coverpkg "$COVERPKG" "$@"
                 ;;
             *)
                 echo "unknown build mode: $MODE"

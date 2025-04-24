@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
 
 package resource
 
-import (
-	"runtime"
-	"strings"
+// The contents of this file have been moved. The logic behind URN now lives in
+// "github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn". This file exists to fulfill
+// backwards-compatibility requirements. No new declarations should be added here.
 
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // URN is a friendly, but unique, URN for a resource, most often auto-assigned by Pulumi.  These are
@@ -44,93 +45,22 @@ import (
 //
 // In the future, we may add elements to the URN; it is more important that it is unique than it is
 // human-typable.
-type URN string
+type URN = urn.URN
 
 const (
-	URNPrefix        = "urn:" + URNNamespaceID + ":" // the standard URN prefix
-	URNNamespaceID   = "pulumi"                      // the URN namespace
-	URNNameDelimiter = "::"                          // the delimiter between URN name elements
-	URNTypeDelimiter = "$"                           // the delimiter between URN type elements
+	URNPrefix        = urn.Prefix        // the standard URN prefix
+	URNNamespaceID   = urn.NamespaceID   // the URN namespace
+	URNNameDelimiter = urn.NameDelimiter // the delimiter between URN name elements
+	URNTypeDelimiter = urn.TypeDelimiter // the delimiter between URN type elements
 )
 
+// ParseURN attempts to parse a string into a URN returning an error if it's not valid.
+func ParseURN(s string) (URN, error) { return urn.Parse(s) }
+
+// ParseOptionalURN is the same as ParseURN except it will allow the empty string.
+func ParseOptionalURN(s string) (URN, error) { return urn.ParseOptional(s) }
+
 // NewURN creates a unique resource URN for the given resource object.
-func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
-	typ := string(baseType)
-	if parentType != "" {
-		typ = string(parentType) + URNTypeDelimiter + typ
-	}
-
-	return URN(
-		URNPrefix +
-			string(stack) +
-			URNNameDelimiter + string(proj) +
-			URNNameDelimiter + typ +
-			URNNameDelimiter + string(name),
-	)
-}
-
-// Quote returns the quoted form of the URN appropriate for use as a command line argument for the current OS.
-func (urn URN) Quote() string {
-	quote := `'`
-	if runtime.GOOS == "windows" {
-		// Windows uses double-quotes instead of single-quotes.
-		quote = `"`
-	}
-	return quote + string(urn) + quote
-}
-
-// IsValid returns true if the URN is well-formed.
-func (urn URN) IsValid() bool {
-	if !strings.HasPrefix(string(urn), URNPrefix) {
-		return false
-	}
-	return len(strings.Split(string(urn), URNNameDelimiter)) == 4
-}
-
-// URNName returns the URN name part of a URN (i.e., strips off the prefix).
-func (urn URN) URNName() string {
-	s := string(urn)
-	contract.Assertf(strings.HasPrefix(s, URNPrefix), "Urn is: '%s'", string(urn))
-	return s[len(URNPrefix):]
-}
-
-// Stack returns the resource stack part of a URN.
-func (urn URN) Stack() tokens.QName {
-	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[0])
-}
-
-// Project returns the project name part of a URN.
-func (urn URN) Project() tokens.PackageName {
-	return tokens.PackageName(strings.Split(urn.URNName(), URNNameDelimiter)[1])
-}
-
-// QualifiedType returns the resource type part of a URN including the parent type
-func (urn URN) QualifiedType() tokens.Type {
-	return tokens.Type(strings.Split(urn.URNName(), URNNameDelimiter)[2])
-}
-
-// Type returns the resource type part of a URN
-func (urn URN) Type() tokens.Type {
-	qualifiedType := strings.Split(urn.URNName(), URNNameDelimiter)[2]
-	types := strings.Split(qualifiedType, URNTypeDelimiter)
-	lastType := types[len(types)-1]
-	return tokens.Type(lastType)
-}
-
-// Name returns the resource name part of a URN.
-func (urn URN) Name() tokens.QName {
-	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[3])
-}
-
-// Returns a new URN with an updated name part
-func (urn URN) Rename(newName string) URN {
-	return NewURN(
-		urn.Stack(),
-		urn.Project(),
-		// parent type is empty because
-		// assuming the qualified type already includes it
-		"",
-		urn.QualifiedType(),
-		tokens.QName(newName),
-	)
+func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name string) URN {
+	return urn.New(stack, proj, parentType, baseType, name)
 }

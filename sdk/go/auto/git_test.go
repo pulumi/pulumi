@@ -1,3 +1,17 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package auto
 
 import (
@@ -69,10 +83,11 @@ func TestGitClone(t *testing.T) {
 	assert.NoError(t, err)
 
 	type testcase struct {
-		branchName   string
-		commitHash   string
-		testName     string // use when supplying a hash, for a stable name
-		expectedHead plumbing.Hash
+		branchName    string
+		commitHash    string
+		testName      string // use when supplying a hash, for a stable name
+		expectedHead  plumbing.Hash
+		expectedError string
 	}
 
 	for _, tc := range []testcase{
@@ -107,10 +122,11 @@ func TestGitClone(t *testing.T) {
 				CommitHash: tc.commitHash,
 			}
 
+			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			assert.NoError(t, err)
 
-			_, err = setupGitRepo(context.TODO(), tmp, repo)
+			_, err = setupGitRepo(context.Background(), tmp, repo)
 			assert.NoError(t, err)
 
 			r, err := git.PlainOpen(tmp)
@@ -123,11 +139,32 @@ func TestGitClone(t *testing.T) {
 
 	// test that these result in errors
 	for _, tc := range []testcase{
-		{testName: "simple branch doesn't exist", branchName: "doesnotexist"},
-		{testName: "full branch doesn't exist", branchName: "refs/heads/doesnotexist"},
-		{testName: "malformed branch name", branchName: "refs/notathing/default"},
-		{testName: "simple tag name won't work", branchName: "v1.0.0"},
-		{testName: "wrong remote", branchName: "refs/remotes/upstream/default"},
+		{
+			testName:      "simple branch doesn't exist",
+			branchName:    "doesnotexist",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:      "full branch doesn't exist",
+			branchName:    "refs/heads/doesnotexist",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:      "malformed branch name",
+			branchName:    "refs/notathing/default",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:      "simple tag name won't work",
+			branchName:    "v1.0.0",
+			expectedError: "unable to clone repo: reference not found",
+		},
+		{
+			testName:   "wrong remote",
+			branchName: "refs/remotes/upstream/default",
+			expectedError: "a remote ref must begin with 'refs/remote/origin/', " +
+				"but got \"refs/remotes/upstream/default\"",
+		},
 	} {
 		tc := tc
 		if tc.testName == "" {
@@ -141,11 +178,12 @@ func TestGitClone(t *testing.T) {
 				CommitHash: tc.commitHash,
 			}
 
+			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			assert.NoError(t, err)
 
-			_, err = setupGitRepo(context.TODO(), tmp, repo)
-			assert.Error(t, err)
+			_, err = setupGitRepo(context.Background(), tmp, repo)
+			assert.EqualError(t, err, tc.expectedError)
 		})
 	}
 }

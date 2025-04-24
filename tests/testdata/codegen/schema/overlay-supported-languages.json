@@ -1,0 +1,156 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example::ConfigMap": {
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::EnumOverlay": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "SomeEnumValue",
+          "value": "SOME_ENUM_VALUE"
+        }
+      ],
+      "isOverlay": true
+    },
+    "example::ConfigMapOverlay": {
+      "isOverlay": true,
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example::Resource": {
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "type": "object"
+    },
+    "example::OverlayResource": {
+      "isOverlay": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "type": "object"
+    },
+    "example::OverlayResourceConstrainedLanguages": {
+      "isOverlay": true,
+      "overlaySupportedLanguages": [
+        "go",
+        "nodejs",
+        "python"
+      ],
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "functions": {
+    "example::Function": {
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "example::OverlayFunction": {
+      "isOverlay": true,
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "example::OverlayFunctionConstrainedLanguages": {
+      "isOverlay": true,
+      "overlaySupportedLanguages": [
+        "go",
+        "nodejs",
+        "python"
+      ],
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

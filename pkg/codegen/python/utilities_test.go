@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
@@ -91,6 +105,9 @@ func TestMakePyPiVersion(t *testing.T) {
 		{"1.2.3-dev321", "1.2.3.dev321"},
 		{"1.2.3-post456", "1.2.3.post456"},
 		{"1.2.3-posttt456", "1.2.3+posttt456"},
+		{"0.0.1-alpha.18", "0.0.1a18"},
+		{"0.0.1-beta.18", "0.0.1b18"},
+		{"0.0.1-rc.18", "0.0.1rc18"},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -98,7 +115,7 @@ func TestMakePyPiVersion(t *testing.T) {
 			t.Parallel()
 
 			v := semver.MustParse(tt.input)
-			actual := pypiVersion(v)
+			actual := PypiVersion(v)
 			if tt.expected != actual {
 				t.Errorf("expected %q != actual %q", tt.expected, actual)
 			}

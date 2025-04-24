@@ -23,3 +23,4 @@ export * from "./workspace";
 export * from "./events";
 export * from "./remoteStack";
 export * from "./remoteWorkspace";
+export * from "./tag";

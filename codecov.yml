@@ -31,16 +31,25 @@ coverage:
     # Patch tracks the coverage of the changes in a single patch.
     patch:
       default:
-        informational: true
+        # coverage for new/modified code
+        target: 80%
+        # only allow coverage to drop by 5% in new/modified code
+        threshold: 5%
+        # make codecov block PR if coverage goals aren't met
+        informational: false
 
 ignore:
-  # Integration tests and codegen test data
+  # Integration tests, lifecycle tests and codegen test data
   # should not count against coverage.
   - "tests/"
+  - "pkg/engine/lifecycletest/"
   - "pkg/codegen/testing/test/testdata"
 
   # Don't count protobuf-generated code against coverage.
   - "sdk/proto"
+
+  # Ignore code generator for pulumix/applyn.go.
+  - "sdk/go/internal/gen-pux-applyn"
 
   # More generally, none of the test data
   # should count against coverage.

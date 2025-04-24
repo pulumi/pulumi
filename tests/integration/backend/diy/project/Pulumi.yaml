@@ -1,0 +1,3 @@
+name: project
+runtime: go
+description: A minimal Go Pulumi program

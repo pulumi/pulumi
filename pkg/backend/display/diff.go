@@ -16,17 +16,20 @@ package display
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize/english"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -51,7 +54,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
 	if stdout == os.Stdout && stderr == os.Stderr {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/, opts.SuppressProgress)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -96,14 +99,19 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
+	case engine.PolicyLoadEvent:
+		return ""
+	case engine.StartDebuggingEvent:
+		return ""
+	case engine.ProgressEvent:
+		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		const wroteDiagnosticHeader = false
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -118,8 +126,10 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
+	case engine.PolicyRemediationEvent:
+		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
+		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -134,26 +144,85 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {
-	return opts.Color.Colorize(payload.Prefix + payload.Message)
+func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
+	prefix string, detailed bool, opts Options,
+) string {
+	// Diff the before/after state. If there is no diff, we show nothing.
+	diff := payload.Before.Diff(payload.After)
+	if diff == nil {
+		return ""
+	}
+
+	// Print the individual remediation's name and target resource type/name.
+	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
+
+	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	if prefix == "" {
+		remediationLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, remediationLine)
+	} else {
+		remediationLine = fmt.Sprintf("%s%s", prefix, remediationLine)
+	}
+
+	// Render the event's diff; if a detailed diff is requested, a full object diff is emitted, otherwise
+	// a short diff summary similar to what is show for an update row is emitted.
+	if detailed {
+		var b bytes.Buffer
+		PrintObjectDiff(&b, *diff, nil,
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets)
+		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
+	} else {
+		var b bytes.Buffer
+		writeShortDiff(&b, diff, nil)
+		remediationLine = fmt.Sprintf("%s [%s]", remediationLine, b.String())
+	}
+
+	return opts.Color.Colorize(remediationLine + "\n")
+}
+
+func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
+	prefix string, linePrefix string, opts Options,
+) string {
+	// Colorize mandatory and warning violations differently.
+	c := colors.SpecWarning
+	if payload.EnforcementLevel == apitype.Mandatory {
+		c = colors.SpecError
+	}
+
+	// Print the individual policy's name and target resource type/name.
+	policyLine := fmt.Sprintf("%s[%s]  %s%s  (%s: %s)",
+		c, payload.EnforcementLevel, payload.PolicyName, colors.Reset,
+		payload.ResourceURN.Type(), payload.ResourceURN.Name())
+
+	// If there is already a prefix string requested, use it, otherwise fall back to a default.
+	if prefix == "" {
+		policyLine = fmt.Sprintf("    %s%s@v%s %s%s",
+			colors.SpecInfo, payload.PolicyPackName, payload.PolicyPackVersion, colors.Reset, policyLine)
+	} else {
+		policyLine = fmt.Sprintf("%s%s", prefix, policyLine)
+	}
+
+	// If there is a line prefix, separate the heading and lines with a newline.
+	if linePrefix != "" {
+		policyLine += "\n"
+	}
+
+	// The message may span multiple lines, so we massage it so it will be indented properly.
+	message := strings.TrimSuffix(payload.Message, "\n")
+	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
+	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
+	return opts.Color.Colorize(policyLine + "\n")
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool, opts Options) string {
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
-
-	// If this is a failed preview, we only render the Policy Packs that ran. This is because rendering the summary
-	// for a failed preview may be surprising/misleading, as it does not describe the totality of the proposed changes
-	// (as the preview may have aborted when the error occurred).
-	if event.IsPreview && hasError {
-		renderPolicyPacks(out, event.PolicyPacks, opts)
-		return out.String()
-	}
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
 
@@ -171,11 +240,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Op
 		// Ignore anything that didn't change, or is related to 'reads'.  'reads' are just an
 		// indication of the operations we were performing, and are not indicative of any sort of
 		// change to the system.
-		if op != deploy.OpSame &&
-			op != deploy.OpRead &&
-			op != deploy.OpReadDiscard &&
-			op != deploy.OpReadReplacement {
-
+		if op != deploy.OpSame && op != deploy.OpRead && op != deploy.OpReadDiscard && op != deploy.OpReadReplacement {
 			if c := changes[op]; c > 0 {
 				opDescription := string(op)
 				if !event.IsPreview {
@@ -221,8 +286,13 @@ func renderSummaryEvent(event engine.SummaryEventPayload, hasError bool, opts Op
 		fprintIgnoreError(out, "\n")
 	}
 
-	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
-	renderPolicyPacks(out, event.PolicyPacks, opts)
+	if diffStyleSummary {
+		// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
+		// This is only shown during the diff view, because in the progress view we have a nicer
+		// summarization and grouping of all violations and remediations that have occurred. The
+		// diff view renders events incrementally as we go, so it cannot do this.
+		renderPolicyPacks(out, event.PolicyPacks, opts)
+	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
@@ -281,7 +351,8 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
+		_, err := fmt.Fprintf(out, "    %v: %v\n", key, event.Config[key])
+		contract.IgnoreError(err)
 	}
 
 	return out.String()
@@ -303,7 +374,7 @@ func renderDiffResourceOperationFailedEvent(
 func renderDiff(
 	out io.Writer,
 	metadata engine.StepEventMetadata,
-	planning, debug bool,
+	planning, debug, refresh bool,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) {
@@ -311,20 +382,25 @@ func renderDiff(
 	summary := getResourcePropertiesSummary(metadata, indent)
 
 	var details string
-	if metadata.DetailedDiff != nil {
-		var buf bytes.Buffer
-		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
-			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
+	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
+	// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
+	if metadata.Op != deploy.OpSame {
+		if metadata.DetailedDiff != nil {
+			var buf bytes.Buffer
+			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
+				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
+					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
+			} else {
+				PrintObject(
+					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
+					opts.TruncateOutput, debug, opts.ShowSecrets)
+			}
+			details = buf.String()
 		} else {
-			PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
+			details = getResourcePropertiesDetails(
+				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
 		}
-		details = buf.String()
-	} else {
-		details = getResourcePropertiesDetails(
-			metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 	}
-
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
 	fprintIgnoreError(out, opts.Color.Colorize(details))
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
@@ -342,7 +418,7 @@ func renderDiffResourcePreEvent(
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
+		renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, false /* refresh */, seen, opts)
 	}
 	return out.String()
 }
@@ -354,34 +430,113 @@ func renderDiffResourceOutputsEvent(
 ) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		// If this is the output step for an import, we actually want to display the diff at this point.
-		if payload.Metadata.Op == deploy.OpImport {
-			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
-			return out.String()
-		}
-
-		indent := getIndent(payload.Metadata, seen)
-
 		refresh := false // are these outputs from a refresh?
 		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
 			refresh = true
+		}
+
+		// There are two cases where we want to display a diff at the point of a
+		// resource output event:
+		//
+		// * Imports, where we now have information from the provider about the
+		//   resource being imported.
+		// * Refreshes, where similarly we might have updated information about the
+		//   resource from the provider.
+		//
+		// Note that refresh step result operations will be OpUpdates (something
+		// changed in the provider), OpSames (nothing changed in the provider), or
+		// OpDeletes (the resource was deleted in the provider). We only want to
+		// display a diff in the OpUpdate case. In the OpSame case, there is no diff
+		// (otherwise the operation would have been OpUpdate), and in the OpDelete
+		// case, we will already be indicating a deletion and it doesn't make sense
+		// to display a diff that shows that we are deleting everything.
+		if payload.Metadata.Op == deploy.OpImport || (refresh && payload.Metadata.Op == deploy.OpUpdate) {
+			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, refresh, seen, opts)
+			return out.String()
+		}
+
+		// If we don't want to display a diff, then we'll display at most a summary and resource outputs. The rules are as
+		// follows:
+		//
+		// * If we are doing a `--refresh` as part of another operation (that is, e.g. `pulumi up --refresh`), and *not* a
+		//   standalone refresh (e.g. `pulumi refresh`), then we will only display summaries and outputs for resources that
+		//   the refresh changed. We identify these cases by checking if the metadata operation is a refresh and if there
+		//   is output information. This will not affect standalone (`pulumi refresh`) operations, since their operation
+		//   types will be rewritten from refreshes to sames, updates, deletes, and so on (see RefreshStep.ResultOp for
+		//   more).
+		//
+		// * As with other `--show-sames`-related checks, we always display the root stack.
+		// * If we have been asked to suppress outputs (e.g., because they contain sensitive information), then we will not
+		//   display them.
+		indent := getIndent(payload.Metadata, seen)
+
+		text := getResourceOutputsPropertiesString(
+			payload.Metadata, indent+1, payload.Planning,
+			payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
+
+		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
+			// We would not have rendered the summary yet in this case, so do it now.
 			summary := getResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
-		if !opts.SuppressOutputs {
+		if !opts.SuppressOutputs && text != "" {
 			// We want to hide same outputs if we're doing a read and the user didn't ask to see
 			// things that are the same.
-			text := getResourceOutputsPropertiesString(
-				payload.Metadata, indent+1, payload.Planning,
-				payload.Debug, refresh, opts.ShowSameResources)
-			if text != "" {
-				header := fmt.Sprintf("%v%v--outputs:--%v\n",
-					deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
-				fprintIgnoreError(out, opts.Color.Colorize(header))
-				fprintIgnoreError(out, opts.Color.Colorize(text))
-			}
+			header := fmt.Sprintf("%v%v--outputs:--%v\n",
+				deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
+			fprintIgnoreError(out, opts.Color.Colorize(header))
+			fprintIgnoreError(out, opts.Color.Colorize(text))
 		}
 	}
 	return out.String()
+}
+
+// CreateDiff renders a view of the given events, enforcing an order of rendering that is consistent
+// with the diff view.
+func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
+	buff := &bytes.Buffer{}
+
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	displayOpts.SummaryDiff = true
+
+	if displayOpts.Color == "" {
+		// ColorizeWithMaxWidth panics if the colorization mode is not recognized, so we enforce it here.
+		return "", errors.New("color must be specified")
+	}
+
+	remediationEventsDiff := make([]string, 0)
+	for _, e := range events {
+		if e.Type == engine.SummaryEvent {
+			continue
+		}
+
+		msg := RenderDiffEvent(e, seen, displayOpts)
+		if msg == "" {
+			continue
+		}
+
+		// Keep track of remediation events separately, since we print them after the ordinary resource
+		// diff information.
+		if e.Type == engine.PolicyRemediationEvent {
+			remediationEventsDiff = append(remediationEventsDiff, msg)
+			continue
+		}
+
+		_, err := buff.WriteString(msg)
+		contract.IgnoreError(err)
+	}
+
+	// Print policy remediations last.
+	if len(remediationEventsDiff) > 0 {
+		_, err := buff.WriteString(displayOpts.Color.Colorize(
+			fmt.Sprintf("\n%s  Policy Remediations:%s\n", colors.SpecHeadline, colors.Reset)))
+		contract.IgnoreError(err)
+		for _, msg := range remediationEventsDiff {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	return strings.TrimSpace(buff.String()), nil
 }

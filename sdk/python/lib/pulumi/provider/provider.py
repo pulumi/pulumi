@@ -43,9 +43,7 @@ class CheckFailure:
     reason: str
     """The reason that the property failed validation."""
 
-    def __init__(
-        self, property: str, reason: str  # pylint: disable=redefined-builtin
-    ) -> None:
+    def __init__(self, property: str, reason: str) -> None:
         self.property = property
         self.reason = reason
 
@@ -90,10 +88,10 @@ class Provider:
 
     """
 
-    version: str
+    version: Optional[str]
     schema: Optional[str]
 
-    def __init__(self, version: str, schema: Optional[str] = None) -> None:
+    def __init__(self, version: Optional[str], schema: Optional[str] = None) -> None:
         """
         :param str version: The version of the provider. Must be valid semver.
         :param Optional[str] schema: The JSON-encoded schema for this provider's package.

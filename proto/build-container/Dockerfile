@@ -2,7 +2,7 @@
 FROM ubuntu:bionic
 
 # This image was copied from https://github.com/pulumi/pulumi-build-container
-# It can probably be simplifed as it is now purely used to generate the protobuf files
+# It can probably be simplified as it is now purely used to generate the protobuf files
 
 LABEL description="Pulumi Protobuf Build Container"
 
@@ -54,7 +54,8 @@ RUN PROTOC_VERSION=3.20.1 \
     PROTOC_GEN_GO_VERSION=1.28.1 \
     PROTOC_GEN_GO_GRPC_VERSION=1.2.0 \
     NODEJS_GRPC_VERSION=1.24.2 \
-    NODEJS_GRPC_TOOLS_VERSION=1.8.1 \
+    NODEJS_GRPC_TOOLS_VERSION=1.12.4 \
+    NODEJS_TS_PROTOC_GEN_VERSION=5.3.3 \
     PYTHON_GRPCIO_VERSION=1.50.0 \
     PYTHON_GRPCIO_TOOLS_VERSION=1.50.0 \
     /build-scripts/install-protobuf-tools.sh

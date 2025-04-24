@@ -1,0 +1,14 @@
+<{%reset%}>  prog:index:myStandardType: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::prog:index:myStandardType::resA]
+<{%reset%}><{%reset%}>    <{%reset%}>  prog:index:myType: (same)
+<{%reset%}>        [urn=urn:pulumi:test::test::prog:index:myStandardType$prog:index:myType::resB]
+<{%reset%}><{%reset%}><{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=4bf89722-7613-4876-9e52-dcb57918e6a1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>        [id=1]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::prog:index:myStandardType$pkgA:m:typA::resC]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

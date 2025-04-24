@@ -12,21 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import base64
 import pickle
-from typing import TYPE_CHECKING, Any, ClassVar, List, Optional, cast, no_type_check
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    cast,
+    no_type_check,
+)
 
 import dill
 
 import pulumi
 
 from .. import CustomResource, ResourceOptions
+from ..runtime._serialization import _serialize
+from .config import Config
 
 if TYPE_CHECKING:
-    from ..output import Inputs, Output
+    from ..output import Inputs
 
 PROVIDER_KEY = "__provider"
+
+
+class ConfigureRequest:
+    """
+    ConfigureRequest is the shape of the configuration data passed to a
+    provider's configure method.
+    """
+
+    config: Config
+    """
+    The stack's configuration.
+    """
+
+    def __init__(self, config: Config):
+        self.config = config
 
 
 class CheckResult:
@@ -34,7 +59,7 @@ class CheckResult:
     CheckResult represents the results of a call to `ResourceProvider.check`.
     """
 
-    inputs: Any
+    inputs: Dict[str, Any]
     """
     The inputs to use, if any.
     """
@@ -44,7 +69,7 @@ class CheckResult:
     Any validation failures that occurred.
     """
 
-    def __init__(self, inputs: Any, failures: List["CheckFailure"]) -> None:
+    def __init__(self, inputs: Dict[str, Any], failures: List["CheckFailure"]) -> None:
         self.inputs = inputs
         self.failures = failures
 
@@ -118,12 +143,12 @@ class CreateResult:
     The ID of the created resource.
     """
 
-    outs: Optional[Any]
+    outs: Optional[Dict[str, Any]]
     """
     Any properties that were computed during creation.
     """
 
-    def __init__(self, id_: str, outs: Optional[Any] = None) -> None:
+    def __init__(self, id_: str, outs: Optional[Dict[str, Any]] = None) -> None:
         self.id = id_
         self.outs = outs
 
@@ -138,12 +163,16 @@ class ReadResult:
     The ID of the resource ready back (or blank if missing).
     """
 
-    outs: Optional[Any]
+    outs: Optional[Dict[str, Any]]
     """
     The current property state read from the live environment.
     """
 
-    def __init__(self, id_: Optional[str] = None, outs: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        id_: Optional[str] = None,
+        outs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self.id = id_
         self.outs = outs
 
@@ -153,12 +182,12 @@ class UpdateResult:
     UpdateResult represents the results of a call to `ResourceProvider.update`.
     """
 
-    outs: Optional[Any]
+    outs: Optional[Dict[str, Any]]
     """
     Any properties that were computed during updating.
     """
 
-    def __init__(self, outs: Optional[Any] = None) -> None:
+    def __init__(self, outs: Optional[Dict[str, Any]] = None) -> None:
         self.outs = outs
 
 
@@ -168,19 +197,32 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
-    def check(self, _olds: Any, news: Any) -> CheckResult:
+    serialize_as_secret_always: bool = True
+    """
+    Controls whether the serialized provider is a secret.
+    By default it is True which makes the serialized provider a secret always.
+    Set to False in a subclass to make the serialized provider a secret only
+    if any secret Outputs were captured during serialization of the provider.
+    """
+
+    def check(self, _olds: Dict[str, Any], news: Dict[str, Any]) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
         """
         return CheckResult(news, [])
 
-    def diff(self, _id: str, _olds: Any, _news: Any) -> DiffResult:
+    def diff(
+        self,
+        _id: str,
+        _olds: Dict[str, Any],
+        _news: Dict[str, Any],
+    ) -> DiffResult:
         """
         Diff checks what impacts a hypothetical update will have on the resource's properties.
         """
         return DiffResult()
 
-    def create(self, props: Any) -> CreateResult:
+    def create(self, props: Dict[str, Any]) -> CreateResult:
         """
         Create allocates a new instance of the provided resource and returns its unique ID
         afterwards. If this call fails, the resource must not have been created (i.e., it is
@@ -188,7 +230,7 @@ class ResourceProvider:
         """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
 
-    def read(self, id_: str, props: Any) -> ReadResult:
+    def read(self, id_: str, props: Dict[str, Any]) -> ReadResult:
         """
         Reads the current live state associated with a resource.  Enough state must be included in
         the inputs to uniquely identify the resource; this is typically just the resource ID, but it
@@ -196,16 +238,27 @@ class ResourceProvider:
         """
         return ReadResult(id_, props)
 
-    def update(self, _id: str, _olds: Any, _news: Any) -> UpdateResult:
+    def update(
+        self,
+        _id: str,
+        _olds: Dict[str, Any],
+        _news: Dict[str, Any],
+    ) -> UpdateResult:
         """
         Update updates an existing resource with new values.
         """
         return UpdateResult()
 
-    def delete(self, _id: str, _props: Any) -> None:
+    def delete(self, _id: str, _props: Dict[str, Any]) -> None:
         """
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.
+        """
+
+    def configure(self, req: ConfigureRequest) -> None:
+        """
+        Configure sets up the resource provider. Use this to initialize the
+        provider and store configuration.
         """
 
     def __init__(self) -> None:
@@ -220,7 +273,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
     # ensure we get a deterministic result.  Without this we would see changes to our serialized
     # provider even when there are no actual changes.
     old_pickler = pickle.Pickler
-    pickle.Pickler = pickle._Pickler  # pylint: disable=protected-access
+    pickle.Pickler = pickle._Pickler
 
     # See: https://github.com/uqfoundation/dill/issues/481#issuecomment-1133789848
     unsorted_batch_setitems = pickle.Pickler._batch_setitems
@@ -237,7 +290,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
             self.write(pickle.MARK + pickle.DICT)
 
         self.memoize(obj)
-        self._batch_setitems(obj.items())  # pylint: disable=protected-access
+        self._batch_setitems(obj.items())
 
     pickle.Pickler.save_dict = save_dict_sorted
 
@@ -281,6 +334,23 @@ class Resource(CustomResource):
             raise Exception("A dynamic resource must not define the __provider key")
 
         props = cast(dict, props)
-        props[PROVIDER_KEY] = pulumi.Output.secret(serialize_provider(provider))
+
+        # Serialize the provider, allowing secret Outputs to be captured.
+        serialized_provider, contains_secrets = _serialize(
+            True, serialize_provider, provider
+        )
+
+        # serialize_as_secret_always is True by default, which makes the serialized provider
+        # a secret always, which is the existing behavior as of v3.75.0.
+        # When serialize_as_secret_always is set to False, the serialized provider is made a
+        # secret only if any secret Outputs were captured during serialization of the
+        # provider.
+        serialize_as_secret_always: bool = getattr(
+            provider, "serialize_as_secret_always", True
+        )
+        if serialize_as_secret_always or contains_secrets:
+            serialized_provider = pulumi.Output.secret(serialized_provider)
+
+        props[PROVIDER_KEY] = serialized_provider
 
         super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)

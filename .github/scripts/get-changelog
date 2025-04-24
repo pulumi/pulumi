@@ -27,4 +27,4 @@ fi
 
 >&2 echo "::debug::Merge base ${MERGE_BASE}"
 
-go run github.com/aaronfriel/go-change@v0.1.2 render --filter-since-commit "${MERGE_BASE}" "${@}"
+go run github.com/pulumi/go-change@v0.1.3 render --filter-since-commit "${MERGE_BASE}" "${@}"

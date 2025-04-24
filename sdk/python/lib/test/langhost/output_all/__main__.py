@@ -18,18 +18,28 @@ class MyResource(CustomResource):
     number: Output[str]
 
     def __init__(self, name):
-        CustomResource.__init__(self, "test:index:MyResource", name, {
-            "number": None,
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            {
+                "number": None,
+            },
+        )
 
 
 class FinalResource(CustomResource):
     number: Output[str]
 
     def __init__(self, name, number):
-        CustomResource.__init__(self, "test:index:FinalResource", name, {
-            "number": number,
-        })
+        CustomResource.__init__(
+            self,
+            "test:index:FinalResource",
+            name,
+            {
+                "number": number,
+            },
+        )
 
 
 def assert_eq(lhs, rhs):
@@ -47,9 +57,13 @@ res2.number.apply(lambda n: assert_eq(n, 3))
 resSum = Output.all(res1.number, res2.number).apply(lambda l: l[0] + l[1])
 FinalResource("testResource3", resSum)
 
-resSumDict = Output.all(first_num=res1.number, second_num=res2.number).apply(lambda l: l["first_num"] + l["second_num"])
+resSumDict = Output.all(first_num=res1.number, second_num=res2.number).apply(
+    lambda l: l["first_num"] + l["second_num"]
+)
 FinalResource("testResource4", resSumDict)
 
 # Test additional Output helpers
-hello_world = Output.concat("Hello ", Output.from_input("world!")).apply(lambda s: assert_eq(s, "Hello world!"))
+hello_world = Output.concat("Hello ", Output.from_input("world!")).apply(
+    lambda s: assert_eq(s, "Hello world!")
+)
 export("helloworld", hello_world)

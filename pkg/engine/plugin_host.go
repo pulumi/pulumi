@@ -33,7 +33,7 @@ type clientLanguageRuntimeHost struct {
 
 func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host, error) {
 	// Dial the language runtime.
-	conn, err := grpc.Dial(address, langRuntimePluginDialOptions(ctx, address)...)
+	conn, err := grpc.NewClient(address, langRuntimePluginDialOptions(ctx, address)...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to language host: %w", err)
 	}
@@ -46,7 +46,8 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 }
 
 func (host *clientLanguageRuntimeHost) LanguageRuntime(
-	root, pwd, runtime string, options map[string]interface{},
+	runtime string,
+	info plugin.ProgramInfo,
 ) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
 }

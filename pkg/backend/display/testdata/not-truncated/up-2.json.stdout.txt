@@ -6,24 +6,6 @@
 <{%reset%}>        [id=eks-role-24b1266]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/role:Role::eks-role]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-<{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>            Statement: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                    Action   : <{%reset%}><{%reset%}>"sts:AssumeRole"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    Effect   : <{%reset%}><{%reset%}>"Allow"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    Principal: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                        Service: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                    Sid      : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            Version  : <{%reset%}><{%reset%}>"2008-10-17"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        forceDetachPolicies: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        maxSessionDuration : <{%reset%}><{%reset%}>3600<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        name               : <{%reset%}><{%reset%}>"eks-role-24b1266"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        path               : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/eks-role-24b1266"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
@@ -57,48 +39,18 @@
 <{%reset%}>        [id=eks-role-24b1266-20220209231452499500000001]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-<{%reset%}><{%reset%}>        policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSServicePolicy"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        role      : <{%reset%}><{%reset%}>"eks-role-24b1266"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        id       : <{%reset%}><{%reset%}>"eks-role-24b1266-20220209231452499500000001"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>        [id=eks-role-24b1266-20220209231452597100000002]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-<{%reset%}><{%reset%}>        policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        role      : <{%reset%}><{%reset%}>"eks-role-24b1266"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        id       : <{%reset%}><{%reset%}>"eks-role-24b1266-20220209231452597100000002"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%reset%}>  aws:ec2/securityGroup:SecurityGroup: (same)
 <{%reset%}>        [id=sg-0e760e824fba2d002]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-<{%reset%}><{%reset%}>        description        : <{%reset%}><{%reset%}>"Managed by Pulumi"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        egress             : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                cidrBlocks: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                fromPort  : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                protocol  : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                self      : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                toPort    : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        ingress            : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>                cidrBlocks: <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                fromPort  : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                protocol  : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                self      : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                toPort    : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        name               : <{%reset%}><{%reset%}>"eks-sg-8cab9e0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        revokeRulesOnDelete: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        vpcId              : <{%reset%}><{%reset%}>"vpc-4b82e033"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:ec2:us-west-2:616138583583:security-group/sg-0e760e824fba2d002"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        egress             : <{%reset%}><{%reset%}>[
@@ -137,24 +89,6 @@
 <{%reset%}>        [id=eks-cluster-fb2cd6e]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
-<{%reset%}><{%reset%}>        name      : <{%reset%}><{%reset%}>"eks-cluster-fb2cd6e"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        roleArn   : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/eks-role-24b1266"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        vpcConfig : <{%reset%}><{%reset%}>{
-<{%reset%}><{%reset%}>            endpointPrivateAccess: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            endpointPublicAccess : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            publicAccessCidrs    : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            securityGroupIds     : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"sg-0e760e824fba2d002"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            subnetIds            : <{%reset%}><{%reset%}>[
-<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"subnet-0016572b"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                [1]: <{%reset%}><{%reset%}>"subnet-d7e7fe9c"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                [2]: <{%reset%}><{%reset%}>"subnet-c7d926bf"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                [3]: <{%reset%}><{%reset%}>"subnet-43f43a1e"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        arn                    : <{%reset%}><{%reset%}>"arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-fb2cd6e"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        certificateAuthority   : <{%reset%}><{%reset%}>{

@@ -8,8 +8,10 @@ from . import provider_pb2 as pulumi_dot_provider__pb2
 
 
 class ResourceProviderStub(object):
-    """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-    within a single package.  It is driven by the overall planning engine in response to resource diffs.
+    """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
+    manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
+    operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
+    as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
 
     def __init__(self, channel):
@@ -18,6 +20,16 @@ class ResourceProviderStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Handshake',
+                request_serializer=pulumi_dot_provider__pb2.ProviderHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ProviderHandshakeResponse.FromString,
+                )
+        self.Parameterize = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Parameterize',
+                request_serializer=pulumi_dot_provider__pb2.ParameterizeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ParameterizeResponse.FromString,
+                )
         self.GetSchema = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/GetSchema',
                 request_serializer=pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
@@ -40,11 +52,6 @@ class ResourceProviderStub(object):
                 )
         self.Invoke = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Invoke',
-                request_serializer=pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
-                )
-        self.StreamInvoke = channel.unary_stream(
-                '/pulumirpc.ResourceProvider/StreamInvoke',
                 request_serializer=pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
@@ -108,12 +115,63 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.GetMappingRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.GetMappingResponse.FromString,
                 )
+        self.GetMappings = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/GetMappings',
+                request_serializer=pulumi_dot_provider__pb2.GetMappingsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.GetMappingsResponse.FromString,
+                )
 
 
 class ResourceProviderServicer(object):
-    """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-    within a single package.  It is driven by the overall planning engine in response to resource diffs.
+    """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
+    manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
+    operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
+    as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
+
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made by the engine to a provider. It is used to pass the engine's address to the
+        provider so that it may establish its own connections back, and to establish protocol configuration that will be
+        used to communicate between the two parties. Providers that support `Handshake` should return responses
+        consistent with those returned in response to [](pulumirpc.ResourceProvider.Configure) calls where there is
+        overlap due to the use of `Configure` prior to `Handshake`'s introduction.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Parameterize(self, request, context):
+        """`Parameterize` is the primary means of supporting [parameterized providers](parameterized-providers), which allow
+        a caller to change a provider's behavior ahead of its [configuration](pulumirpc.ResourceProvider.Configure) and
+        subsequent use. Where a [](pulumirpc.ResourceProvider.Configure) call allows a caller to influence provider
+        behaviour at a high level (e.g. by specifying the region in which an AWS provider should operate), a
+        `Parameterize` call may change the set of resources and functions that a provider offers (that is, its schema).
+        This is useful in any case where some "set" of providers can be captured by a single implementation that may
+        power fundamentally different schemata -- dynamically bridging Terraform providers, or managing Kubernetes
+        clusters with custom resource definitions, for instance, are good examples. The parameterized package that
+        `Parameterize` yields is known as a *sub-package* of the original (unparameterized) package.
+
+        `Parameterize` supports two types of parameterization:
+
+        * *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
+        original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
+        the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
+        Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
+
+        * *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
+        original. This is useful in cases where a provider can be extended with additional resources or functions, such
+        as a Kubernetes provider that can be extended with resources representing custom resource definitions.
+        Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
+        packages may even be called multiple times with the same package name, but with different versions. The CRUD
+        operations of extension resources must include the version of which sub-package they correspond to.
+
+        `Parameterize` should work the same whether it is provided with `ParametersArgs` or `ParametersValue` input. In
+        each case it should return the sub-package name and version (which when a `ParametersValue` is supplied should
+        match the given input).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetSchema(self, request, context):
         """GetSchema fetches the schema for this resource provider.
@@ -123,21 +181,73 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def CheckConfig(self, request, context):
-        """CheckConfig validates the configuration for this resource provider.
+        """`CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
+        `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
+        is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
+        a provider using user-supplied values. In the case that provider inputs are coming from some source that has been
+        checked previously (e.g. a Pulumi state), it is not necessary to call `CheckConfig`.
+
+        A `CheckConfig` call returns either a set of checked, known-valid inputs that may subsequently be passed to
+        [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure), or a set of errors
+        explaining why the inputs are invalid. In the case that a set of inputs are successfully validated and returned,
+        `CheckConfig` *may also populate default values* for provider configuration, returning them so that they may be
+        passed to a subsequent [](pulumirpc.ResourceProvider.Configure) call and persisted in the Pulumi state. In the
+        case that `CheckConfig` fails and returns a set of errors, it is expected that the caller (typically the Pulumi
+        engine) will fail provider registration.
+
+        As a rule, the provider inputs returned by a call to `CheckConfig` should preserve the original representation of
+        the properties as present in the program inputs. Though this rule is not required for correctness, violations
+        thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
+        rendering diffs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def DiffConfig(self, request, context):
-        """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
+        """`DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
+        difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
+        is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
+        by a [](pulumirpc.ResourceProvider.CheckConfig) call. The [](pulumirpc.DiffResponse) returned by a `DiffConfig`
+        call is used primarily to determine whether or not the newly configured provider is capable of managing resources
+        owned by the old provider. If `DiffConfig` indicates that the provider resource needs to be replaced, for
+        instance, then all resources owned by that provider will *also* need to be replaced. Replacement semantics should
+        thus be reserved for changes to configuration properties that are guaranteed to make old resources unmanageable.
+        Changes to an AWS region, for example, will almost certainly require a provider replacement, but changes to an
+        AWS access key, should almost certainly not.
+
+        Implementations must satisfy the invariants documented on `DiffResponse`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Configure(self, request, context):
-        """Configure configures the resource provider with "globals" that control its behavior.
+        """`Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
+
+        * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+        [](pulumirpc.ResourceProvider.CheckConfig) call.
+        * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+
+        The provider is expected to return its own set of protocol configuration, indicating which features it supports
+        in turn so that the caller and the provider can interact appropriately.
+
+        Providers may expect a *single* call to `Configure`. If a call to `Configure` is missing required configuration,
+        the provider may return a set of error details containing [](pulumirpc.ConfigureErrorMissingKeys) values to
+        indicate which keys are missing.
+
+        :::{important}
+        The use of `Configure` to configure protocol features is deprecated in favour of the
+        [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
+        compatibility between older engines and providers:
+
+        * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+        set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+        must support them. See [](pulumirpc.ConfigureRequest) for more information.
+        * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+        indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+        [](pulumirpc.ConfigureResponse) for more information.
+        :::
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -145,14 +255,6 @@ class ResourceProviderServicer(object):
 
     def Invoke(self, request, context):
         """Invoke dynamically executes a built-in function in the provider.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def StreamInvoke(self, request, context):
-        """StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-        of responses.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -166,55 +268,88 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Check(self, request, context):
-        """Check validates that the given property bag is valid for a resource of the given type and returns the inputs
-        that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
-        inputs returned by a call to Check should preserve the original representation of the properties as present in
-        the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
-        the end-user experience, as the provider inputs are using for detecting and rendering diffs.
+        """`Check` validates a set of input properties against a given resource type. A `Check` call returns either a set of
+        checked, known-valid inputs that may subsequently be passed to [](pulumirpc.ResourceProvider.Diff),
+        [](pulumirpc.ResourceProvider.Create), or [](pulumirpc.ResourceProvider.Update); or a set of errors explaining
+        why the inputs are invalid. In the case that a set of inputs are successfully validated and returned, `Check`
+        *may also populate default values* for resource inputs, returning them so that they may be passed to a subsequent
+        call and persisted in the Pulumi state. In the case that `Check` fails and returns a set of errors, it is
+        expected that the caller (typically the Pulumi engine) will fail resource registration.
+
+        As a rule, the provider inputs returned by a call to `Check` should preserve the original representation of the
+        properties as present in the program inputs. Though this rule is not required for correctness, violations thereof
+        can negatively impact the end-user experience, as the provider inputs are used for detecting and rendering
+        diffs.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Diff(self, request, context):
-        """Diff checks what impacts a hypothetical update will have on the resource's properties.
+        """`Diff` compares an existing ("old") set of resource properties with a new set of properties and computes the
+        difference (if any) between them. `Diff` should only be called with values that have at some point been validated
+        by a [](pulumirpc.ResourceProvider.Check) call.
+
+        Implementations must satisfy the invariants documented on `DiffResponse`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Create(self, request, context):
-        """Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-        must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
+        """`Create` provisions a new instance of the specified [(custom) resource](custom-resources). It returns a
+        provider-assigned ID for the resource as well as the output properties that arose from the creation properties.
+        Output properties are typically the union of the resource's input properties and any additional values that were
+        computed or made available during creation.
+
+        If creation fails, `Create` may return an [](pulumirpc.ErrorResourceInitFailed) error detail explaining why.
+        Moreover, if `Create` does return an error, it must be the case that the resource was *not* created (that is,
+        `Create` can be thought of as transactional or atomic).
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Read(self, request, context):
-        """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
-        identify the resource; this is typically just the resource ID, but may also include some properties.
+        """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
+        must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
+        include other properties.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Update(self, request, context):
-        """Update updates an existing resource with new values.
+        """`Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Delete(self, request, context):
-        """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+        """`Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
+        a call to `Delete` fails, it must be the case that the resource was *not* deleted and can be assumed to still
+        exist.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Construct(self, request, context):
-        """Construct creates a new instance of the provided component resource and returns its state.
+        """`Construct` provisions a new [component resource](component-resources). Providers that implement `Construct` are
+        referred to as [component providers](component-providers). `Construct` is to component resources what
+        [](pulumirpc.ResourceProvider.Create) is to [custom resources](custom-resources). Components do not have any
+        lifecycle of their own, and instead embody the lifecycles of the resources that they are composed of. As such,
+        `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
+        consequently passed enough information to manage fully these resources. At a high level, this comprises:
+
+        * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+        custom or component resources that belong to the component.
+
+        * A set of input properties.
+
+        * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+        propagate to resources it registers against the supplied resource monitor.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -248,6 +383,39 @@ class ResourceProviderServicer(object):
     def GetMapping(self, request, context):
         """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
         response (not an error) if it doesn't have a mapping for the given key.
+
+        `GetMapping` returns mappings designed to aid in [converting programs and state from other
+        ecosystems](converters). It accepts a "conversion key", which effectively corresponds to a source language, such
+        as `terraform`, and a *source provider name*, which is the name of the provider *in the source language*. Given
+        these, it returns source-specific mapping data for the provider requested. As an example, the Pulumi AWS
+        provider, which is bridged from the Terraform AWS provider and thus capable of mapping names between the two,
+        might respond to a call with key `terraform` and source provider name `aws` with mapping data for transforming
+        (among other things) Terraform AWS names such as `aws_s3_bucket` into Pulumi AWS types such as
+        `aws:s3/bucket:Bucket`. If a provider only supports a single source provider, or has some sensible default, it
+        may respond also to a call in which the source provider name is empty (`""`), which will be made when the engine
+        does not have sufficient knowledge to work out which provider offers a specific mapping.
+
+        In general, it is expected that providers implemented by bridging an equivalent provider from another ecosystem
+        (such as bridged Terraform providers built atop the `pulumi-terraform-bridge`, for instance) implement
+        `GetMapping` to support conversion from that ecosystem into Pulumi using the same logic that underpins the
+        bridging itself.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetMappings(self, request, context):
+        """`GetMappings` is an optional method designed to aid in [converting programs and state from other
+        ecosystems](converters). `GetMappings` accepts a "conversion key". This corresponds to a source language, for
+        which we want to retrieve mappings for names etc. from that source language into Pulumi. An example key might
+        therefore be `terraform` in the event that we wish to map e.g. Terraform resource names to Pulumi resource types.
+        Given a key, `GetMappings` returns a list of *source provider names* for which calls to `GetMapping` will return
+        mappings. So, continuing the Terraform example, the Pulumi AWS provider, which is bridged from the Terraform AWS
+        provider and thus capable of mapping names between the two, might return the list `["aws"]` in response to a call
+        with key `terraform`.
+
+        If a provider does not implement `GetMappings`, the engine will fall back to calling `GetMapping` blindly without
+        a source provider name (that is, with the value `""`).
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -256,6 +424,16 @@ class ResourceProviderServicer(object):
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_provider__pb2.ProviderHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ProviderHandshakeResponse.SerializeToString,
+            ),
+            'Parameterize': grpc.unary_unary_rpc_method_handler(
+                    servicer.Parameterize,
+                    request_deserializer=pulumi_dot_provider__pb2.ParameterizeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ParameterizeResponse.SerializeToString,
+            ),
             'GetSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSchema,
                     request_deserializer=pulumi_dot_provider__pb2.GetSchemaRequest.FromString,
@@ -278,11 +456,6 @@ def add_ResourceProviderServicer_to_server(servicer, server):
             ),
             'Invoke': grpc.unary_unary_rpc_method_handler(
                     servicer.Invoke,
-                    request_deserializer=pulumi_dot_provider__pb2.InvokeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
-            ),
-            'StreamInvoke': grpc.unary_stream_rpc_method_handler(
-                    servicer.StreamInvoke,
                     request_deserializer=pulumi_dot_provider__pb2.InvokeRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
@@ -346,6 +519,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_provider__pb2.GetMappingRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.GetMappingResponse.SerializeToString,
             ),
+            'GetMappings': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetMappings,
+                    request_deserializer=pulumi_dot_provider__pb2.GetMappingsRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.GetMappingsResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'pulumirpc.ResourceProvider', rpc_method_handlers)
@@ -354,9 +532,45 @@ def add_ResourceProviderServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class ResourceProvider(object):
-    """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-    within a single package.  It is driven by the overall planning engine in response to resource diffs.
+    """The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
+    manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD
+    operations on resources and invocations of functions. Resource providers are primarily managed by the Pulumi engine
+    as part of a deployment in order to interact with the cloud providers underpinning a Pulumi application.
     """
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Handshake',
+            pulumi_dot_provider__pb2.ProviderHandshakeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ProviderHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Parameterize(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Parameterize',
+            pulumi_dot_provider__pb2.ParameterizeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ParameterizeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetSchema(request,
@@ -438,23 +652,6 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Invoke',
-            pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.InvokeResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def StreamInvoke(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceProvider/StreamInvoke',
             pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
             pulumi_dot_provider__pb2.InvokeResponse.FromString,
             options, channel_credentials,
@@ -661,5 +858,22 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetMapping',
             pulumi_dot_provider__pb2.GetMappingRequest.SerializeToString,
             pulumi_dot_provider__pb2.GetMappingResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetMappings(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetMappings',
+            pulumi_dot_provider__pb2.GetMappingsRequest.SerializeToString,
+            pulumi_dot_provider__pb2.GetMappingsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

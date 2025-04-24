@@ -1,0 +1,11 @@
+{
+	"name": "l2-provider-grpc-config",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/config-grpc": "ROOT/artifacts/pulumi-config-grpc-1.0.0.tgz"
+	}
+}

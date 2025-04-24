@@ -19,20 +19,37 @@ class TestIgnoreChanges(LanghostTest):
     """
     Tests that Pulumi resources can accept ignore_changes resource options.
     """
+
     def test_ignore_changes(self):
         self.run_test(
             program=path.join(self.base_path(), "ignore_changes"),
-            expected_resource_count=1)
+            expected_resource_count=1,
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
-
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         # Note that here we expect to receive `ignoredProperty`, even though the user provided `ignored_property`.
-        self.assertListEqual(_ignore_changes, ["ignoredProperty", "ignored_property_other"])
+        self.assertListEqual(
+            _ignore_changes, ["ignoredProperty", "ignored_property_other"]
+        )
 
-        return {
-            "urn": self.make_urn(ty, name),
-            "id": name,
-            "object": _resource
-        }
+        return {"urn": self.make_urn(ty, name), "id": name, "object": _resource}

@@ -1,0 +1,22 @@
+[project]
+  name = "pulumi_kubernetes"
+  description = "A Pulumi package for creating and managing Kubernetes resources."
+  dependencies = ["parver>=0.2.1", "pulumi>=3.25.0,<4.0.0", "requests>=2.21,<3.0", "semver>=2.8.1", "typing-extensions>=4.11,<5; python_version < \"3.11\""]
+  keywords = ["pulumi", "kubernetes", "category/cloud", "kind/native"]
+  readme = "README.md"
+  requires-python = ">=3.9"
+  version = "0.0.0"
+  [project.license]
+    text = "Apache-2.0"
+  [project.urls]
+    Homepage = "https://pulumi.com"
+    Repository = "https://github.com/pulumi/pulumi-kubernetes"
+
+[build-system]
+  requires = ["setuptools>=61.0"]
+  build-backend = "setuptools.build_meta"
+
+[tool]
+  [tool.setuptools]
+    [tool.setuptools.package-data]
+      pulumi_kubernetes = ["py.typed", "pulumi-plugin.json"]

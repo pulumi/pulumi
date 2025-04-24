@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -37,74 +38,116 @@ import (
 // This message is printed in non-interactive scenarios.
 // In order to maintain backwards compatibility with older versions of the Automation API,
 // the message is not changed for non-interactive scenarios.
-func printPermalinkNonInteractive(out io.Writer, opts Options, permalink string) {
-	printPermalink(out, opts, "View Live", permalink)
+func printPermalinkNonInteractive(out io.Writer, opts Options, permalink, prefix string) {
+	printPermalink(out, opts, "View Live", permalink, prefix)
 }
 
 // printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `.
 // This is printed in interactive scenarios that use the tree renderer.
-func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink string) {
-	printPermalink(term, opts, "View in Browser (Ctrl+O)", permalink)
+func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink, prefix string) {
+	printPermalink(term, opts, "View in Browser (Ctrl+O)", permalink, prefix)
 }
 
-func printPermalink(out io.Writer, opts Options, message, permalink string) {
+func printPermalink(out io.Writer, opts Options, message, permalink, prefix string) {
 	if !opts.SuppressPermalink && permalink != "" {
 		// Print a URL at the beginning of the update pointing to the Pulumi Service.
-		headline := colors.SpecHeadline + message + ": " + colors.Underline + colors.BrightBlue + permalink +
+		headline := prefix +
+			colors.SpecHeadline + message + ": " +
+			colors.Underline + colors.BrightBlue + permalink +
 			colors.Reset + "\n\n"
 		fmt.Fprint(out, opts.Color.Colorize(headline))
 	}
+}
+
+// stampEvents stamps each event with a sequence number and a timestamp, this is to ensure consistent
+// timestamps between the events written to event log files and the events displayed in the terminal.
+func stampEvents(events <-chan engine.Event) <-chan engine.StampedEvent {
+	stampedEvents := make(chan engine.StampedEvent)
+	go func() {
+		var sequence int
+		for e := range events {
+			timestamp := int(time.Now().Unix())
+			stampedEvents <- engine.StampedEvent{Event: e, Sequence: sequence, Timestamp: timestamp}
+			sequence++
+		}
+		close(stampedEvents)
+	}()
+	return stampedEvents
 }
 
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func ShowEvents(
-	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
+	op string, action apitype.UpdateKind, stack tokens.StackName, proj tokens.PackageName,
 	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
+	// As we show events we need to stamp them with a sequence number and a timestamp, this is so we get
+	// consistent timestamps written in both startEventLogger and ShowJSONEvents. If we feed these two
+	// separate functions the raw `engine.Event` channel to do their own timestamping we can end up with
+	// timestamp differences.
+	stampedEvents := stampEvents(events)
+
 	if opts.EventLogPath != "" {
-		events, done = startEventLogger(events, done, opts)
+		stampedEvents, done = startEventLogger(stampedEvents, done, opts)
 	}
+
+	// Need to filter the engine events here to exclude any internal events.
+	stampedEvents = channel.FilterRead(stampedEvents, func(e engine.StampedEvent) bool {
+		return !e.Event.Internal()
+	})
 
 	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
 
+	// If we're in non-preview JSON display mode we need to show the stamped events, for anything else we need
+	// to show the raw events. We work out here if we're transforming the stamped events back to raw events so
+	// that we can consistently use `rawEvents` in both `ShowPreviewDigest` and the non-json display modes. We
+	// can't always create rawEvents because if we're in ShowJSONEvents we'll have two consumers competing for
+	// the stamped events.
+	var rawEvents chan engine.Event
+	if !opts.JSONDisplay || (isPreview && !streamPreview) {
+		rawEvents = make(chan engine.Event)
+		go func() {
+			for e := range stampedEvents {
+				rawEvents <- e.Event
+			}
+			close(rawEvents)
+		}()
+	}
+
 	if opts.JSONDisplay {
 		if isPreview && !streamPreview {
-			ShowPreviewDigest(events, done, opts)
+			ShowPreviewDigest(rawEvents, done, opts)
 		} else {
-			ShowJSONEvents(events, done, opts)
+			ShowJSONEvents(stampedEvents, done, opts)
 		}
 		return
 	}
 
-	if opts.Type != DisplayProgress {
-		printPermalinkNonInteractive(os.Stdout, opts, permalink)
+	if opts.Type != DisplayProgress && opts.Type != DisplayWatch {
+		printPermalinkNonInteractive(os.Stdout, opts, permalink, "")
 	}
 
 	switch opts.Type {
 	case DisplayDiff:
-		ShowDiffEvents(op, events, done, opts)
+		ShowDiffEvents(op, rawEvents, done, opts)
 	case DisplayProgress:
-		ShowProgressEvents(op, action, stack, proj, permalink, events, done, opts, isPreview)
-	case DisplayQuery:
-		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
-			"directly instead of through ShowEvents")
+		ShowProgressEvents(op, action, stack, proj, permalink, rawEvents, done, opts, isPreview)
 	case DisplayWatch:
-		ShowWatchEvents(op, events, done, opts)
+		ShowWatchEvents(op, permalink, rawEvents, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}
 }
 
-func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
-	apiEvent, err := ConvertEngineEvent(event, false /* showSecrets */)
+func logJSONEvent(encoder *json.Encoder, event engine.StampedEvent, opts Options) error {
+	apiEvent, err := ConvertEngineEvent(event.Event, false /* showSecrets */)
 	if err != nil {
 		return err
 	}
 
-	apiEvent.Sequence = seq
-	apiEvent.Timestamp = int(time.Now().Unix())
+	apiEvent.Sequence = event.Sequence
+	apiEvent.Timestamp = event.Timestamp
 	// If opts.Color == "never" (i.e. NO_COLOR is specified or --color=never), clean up the color directives
 	// from the emitted events.
 	if opts.Color == colors.Never {
@@ -125,7 +168,9 @@ func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq i
 	return encoder.Encode(apiEvent)
 }
 
-func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
+func startEventLogger(
+	events <-chan engine.StampedEvent, done chan<- bool, opts Options,
+) (<-chan engine.StampedEvent, chan<- bool) {
 	// Before moving further, attempt to open the log file.
 	//
 	// Try setting O_APPEND to see if that helps with the malformed reads we've been seeing in automation api:
@@ -136,21 +181,19 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 		return events, done
 	}
 
-	outEvents, outDone := make(chan engine.Event), make(chan bool)
+	outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
 	go func() {
 		defer close(done)
 		defer func() {
 			contract.IgnoreError(logFile.Close())
 		}()
 
-		sequence := 0
 		encoder := json.NewEncoder(logFile)
 		encoder.SetEscapeHTML(false)
 		for e := range events {
-			if err = logJSONEvent(encoder, e, opts, sequence); err != nil {
+			if err = logJSONEvent(encoder, e, opts); err != nil {
 				logging.V(7).Infof("failed to log event: %v", err)
 			}
-			sequence++
 
 			outEvents <- e
 
@@ -179,7 +222,7 @@ func isRootStack(step engine.StepEventMetadata) bool {
 }
 
 func isRootURN(urn resource.URN) bool {
-	return urn != "" && urn.Type() == resource.RootStackType
+	return urn != "" && urn.QualifiedType() == resource.RootStackType
 }
 
 // shouldShow returns true if a step should show in the output.
@@ -193,19 +236,16 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 		return opts.ShowSameResources
 	}
 
-	// For logical replacement operations, only show them during progress-style updates (since this is integrated
+	// For non-logical replacement operations, only show them during progress-style updates (since this is integrated
 	// into the resource status update), or if it is requested explicitly (for diffs and JSON outputs).
-	if (opts.Type == DisplayDiff || opts.JSONDisplay) && !step.Logical && !opts.ShowReplacementSteps {
-		return false
+	if !opts.ShowReplacementSteps {
+		if (opts.Type == DisplayDiff || opts.JSONDisplay) && !step.Logical && deploy.IsReplacementStep(step.Op) {
+			return false
+		}
 	}
 
 	// Otherwise, default to showing the operation.
 	return true
-}
-
-func fprintfIgnoreError(w io.Writer, format string, a ...interface{}) {
-	_, err := fmt.Fprintf(w, format, a...)
-	contract.IgnoreError(err)
 }
 
 func fprintIgnoreError(w io.Writer, a ...interface{}) {

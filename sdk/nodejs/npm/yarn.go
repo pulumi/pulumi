@@ -1,8 +1,23 @@
+// Copyright 2023-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package npm
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,10 +38,16 @@ var _ PackageManager = &yarnClassic{}
 
 func newYarnClassic() (*yarnClassic, error) {
 	yarnPath, err := exec.LookPath("yarn")
-	yarn := &yarnClassic{
-		executable: yarnPath,
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return nil, errors.New("Could not find `yarn` executable.\n" +
+				"Install yarn and make sure it is in your PATH.")
+		}
+		return nil, err
 	}
-	return yarn, err
+	return &yarnClassic{
+		executable: yarnPath,
+	}, nil
 }
 
 func (yarn *yarnClassic) Name() string {
@@ -103,7 +124,7 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 	// Read the tarball in as a byte slice.
 	tarball, err := os.ReadFile(packfile)
 	if err != nil {
-		return nil, fmt.Errorf("'yarn pack' completed successfully but the packed .tgz file was not generated: %v", err)
+		return nil, fmt.Errorf("'yarn pack' completed successfully but the packed .tgz file was not generated: %w", err)
 	}
 
 	return tarball, nil

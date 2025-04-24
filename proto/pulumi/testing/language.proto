@@ -1,0 +1,96 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package pulumirpc.testing;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing";
+
+// LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+// currently subject to breaking changes without warning.
+service LanguageTest {
+    // GetLanguageTests returns a list of all the language tests.
+    rpc GetLanguageTests(GetLanguageTestsRequest) returns (GetLanguageTestsResponse) {}
+
+    // PrepareLanguageTests prepares the engine to run language tests. It sets up a stable artifacts folder
+    // (which should be .gitignore'd) and fills it with the core SDK artifact.
+    rpc PrepareLanguageTests(PrepareLanguageTestsRequest) returns (PrepareLanguageTestsResponse) {}
+
+    // RunLanguageTest runs a single test of the language plugin.
+    rpc RunLanguageTest(RunLanguageTestRequest) returns (RunLanguageTestResponse) {}
+}
+
+message GetLanguageTestsRequest {
+
+}
+
+message GetLanguageTestsResponse {
+    repeated string tests = 1;
+}
+
+message PrepareLanguageTestsRequest {
+    message Replacement {
+        string path = 1;
+        string pattern = 2;
+        string replacement = 3;
+    }
+
+    // ProgramOverrides represent overrides whereby a test may specify a set of hardcoded or pre-generated programs to
+    // be used, in place of running GenerateProject on source PCL. This is useful for testing SDK functionality when the
+    // requisite program code generation is not yet complete enough to support generating programs which exercise that
+    // functionality.
+    message ProgramOverride {
+        // A list of paths to directories containing programs to use for the test. The length of this list should
+        // correspond to the number of `Runs` in the test, with each entry being used for the corresponding run (e.g.
+        // entry 0 for run 0, entry 1 for run 1, etc.).
+        repeated string paths = 1;
+    }
+
+    string language_plugin_name = 1;
+    string language_plugin_target = 2;
+    string snapshot_directory = 3;
+    string temporary_directory = 4;
+    string core_sdk_directory = 5;
+    string core_sdk_version = 6;
+    repeated Replacement snapshot_edits = 7;
+
+    // a JSON string that will be inserted into every schema loaded (for both GeneratePackage and GenerateProject) in
+    // the "Languages[language_plugin_name]" field. This can be used to test language specific options such as
+    // inputTypes in python.
+    string language_info = 8;
+
+    // A map of test names to program overrides. This may be used to specify tests for which program generation should
+    // not be run (e.g. because it does not support the necessary features), but where the test can still execute and
+    // pass. This is useful in cases where e.g. a language's code SDK is relatively feature complete (and thus it's
+    // desirable to test that feature set) but where program code generation is not yet complete enough to support
+    // generating programs which exercise that functionality.
+    map<string, ProgramOverride> program_overrides = 9;
+}
+
+message PrepareLanguageTestsResponse {
+    string token = 1;
+}
+
+message RunLanguageTestRequest {
+    string token = 1;
+    string test = 2;
+}
+
+message RunLanguageTestResponse {
+    bool success = 1;
+    repeated string messages = 2;
+    string stdout = 3;
+    string stderr = 4;
+}

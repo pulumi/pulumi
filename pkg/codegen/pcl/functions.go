@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package pcl
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
@@ -46,7 +48,13 @@ func getEntriesSignature(
 		"key":   keyType,
 		"value": valueType,
 	})
-	signature.ReturnType = model.NewListType(elementType)
+
+	var returnType model.Type = model.NewListType(elementType)
+	if p, o := model.ContainsEventuals(args[0].Type()); p || o {
+		returnType = model.NewOutputType(returnType)
+	}
+
+	signature.ReturnType = returnType
 	return signature, diagnostics
 }
 
@@ -65,14 +73,22 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						_, elementType := model.UnifyTypes(t.ElementTypes...)
 						listType, returnType = args[0].Type(), elementType
 					default:
-						rng := args[0].SyntaxNode().Range()
-						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Summary:  "the first argument to 'element' must be a list or tuple",
-							Subject:  &rng,
-						}}
+						if !options.skipRangeTypecheck {
+							// we are in strict mode, so we should error if the type is not a list or tuple
+							rng := args[0].SyntaxNode().Range()
+							diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary:  "the first argument to 'element' must be a list or tuple",
+								Subject:  &rng,
+							}}
+						}
 					}
 				}
+
+				if p, o := model.ContainsEventuals(listType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{
 						{
@@ -169,12 +185,18 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						}
 					}
 				}
+
+				var returnType model.Type = model.IntType
+				if p, o := model.ContainsEventuals(valueType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
 						Type: valueType,
 					}},
-					ReturnType: model.IntType,
+					ReturnType: returnType,
 				}, diagnostics
 			})),
 		"lookup": model.NewFunction(model.GenericFunctionSignature(
@@ -201,6 +223,12 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						}}
 					}
 				}
+
+				returnType := elementType
+				if p, o := model.ContainsEventuals(mapType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{
 						{
@@ -216,7 +244,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 							Type: model.NewOptionalType(elementType),
 						},
 					},
-					ReturnType: elementType,
+					ReturnType: returnType,
 				}, diagnostics
 			})),
 		"mimeType": model.NewFunction(model.StaticFunctionSignature{
@@ -331,19 +359,43 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 			}},
 			ReturnType: model.StringType,
 		}),
-		"toJSON": model.NewFunction(model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{
-				Name: "value",
-				Type: model.DynamicType,
-			}},
-			ReturnType: model.StringType,
-		}),
+		"toJSON": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				// toJSON takes a dynamic input, but if that contains eventuals then we need to lift the operation to be
+				// an output.
+
+				signature := model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{
+						Name: "value",
+						Type: model.DynamicType,
+					}},
+					ReturnType: model.StringType,
+				}
+
+				if len(args) != 1 {
+					return signature, hcl.Diagnostics{
+						errorf(hcl.Range{}, "'toJSON' expects exactly one argument"),
+					}
+				}
+
+				// If the input is an output, we need to return an output string.
+				if p, o := model.ContainsEventuals(args[0].Type()); p || o {
+					signature.ReturnType = model.NewOutputType(signature.ReturnType)
+				}
+
+				return signature, nil
+			},
+		)),
 		// Returns the name of the current stack
 		"stack": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
 		// Returns the name of the current project
 		"project": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
+		// Returns the name of the current organization
+		"organization": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
 		// Returns the directory from which pulumi was run
@@ -392,13 +444,175 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}
 				}
 
+				returnType := model.NewOptionalType(elementType)
+				if p, o := model.ContainsEventuals(valueType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
 						Type: valueType,
 					}},
-					ReturnType: model.NewOptionalType(elementType),
+					ReturnType: returnType,
 				}, diagnostics
 			})),
+		"getOutput": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "stackReference",
+				// TODO: should be StackReference resource type but I'm not sure how to define that
+				Type: model.DynamicType,
+			}, {
+				Name: "outputName",
+				Type: model.StringType,
+			}},
+			ReturnType: model.NewOutputType(model.DynamicType),
+		}),
+		"try": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				// `try` is a variadic PCL function, so we can bind it in all cases except that in which there are no arguments.
+				// When we do bind it, we generate a type based on the types of the actual arguments provided. So a call of the
+				// form `try(e1, e2, ... en)` will be typed as `(t1, t2, ..., tn) -> output(dynamic)`, where `ti` is the type of
+				// `ei`.
+				if len(args) == 0 {
+					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "'try' expects at least one argument",
+					}}
+				}
+
+				// Return a type that is a union of all argument types.
+				argTypes := make([]model.Type, len(args))
+				for i, arg := range args {
+					argTypes[i] = arg.Type()
+				}
+				returnType, _ := model.UnifyTypes(argTypes...)
+
+				lift := false
+				for i, arg := range args {
+					argTypes[i] = arg.Type()
+					// If any of the arguments are eventuals or dynamic, we need to lift the return type to be an output.
+					if p, o := model.ContainsEventuals(arg.Type()); p || o {
+						lift = true
+					}
+					// Also if its dynamic just make the return type dynamic, feels like maybe UnifyTypes should do this
+					// for us but it doesn't, so for now do it locally here.
+					if arg.Type() == model.DynamicType {
+						lift = true
+						returnType = model.DynamicType
+					}
+				}
+				if lift {
+					returnType = model.NewOutputType(returnType)
+				}
+
+				parameters := make([]model.Parameter, len(args))
+				for i, arg := range args {
+					parameters[i] = model.Parameter{
+						Name: fmt.Sprintf("arg%d", i),
+						Type: arg.Type(),
+					}
+				}
+
+				sig := model.StaticFunctionSignature{
+					Parameters: parameters,
+					ReturnType: returnType,
+				}
+
+				return sig, diagnostics
+			},
+		)),
+		"can": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				// if the input is not a single argument, we should error
+				if len(args) != 1 {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "'can' expects exactly one argument",
+					})
+				}
+
+				var argType model.Type
+				argType = model.DynamicType
+				if len(args) == 1 {
+					argType = args[0].Type()
+				}
+
+				// if the input type is dynamic or an output we need to return an output bool,
+				// but otherwise we can return a plain bool
+				var returnType model.Type
+				returnType = model.BoolType
+				if isOutput(argType) || argType == model.DynamicType {
+					returnType = model.NewOutputType(returnType)
+				}
+
+				sig := model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "arg",
+							Type: argType,
+						},
+					},
+					ReturnType: returnType,
+				}
+
+				return sig, diagnostics
+			},
+		)),
+		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
+			ReturnType: model.StringType,
+		}),
+		// pulumiResourceType/Name takes a single argument, the resource, and returns a string. There isn't a good way
+		// to do this with a StaticFunctionSignature so we use a GenericFunctionSignature with a similar check for
+		// "resource type" as we do for `call` expressions.
+		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
+		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
 	}
+}
+
+func newResourceFunction(functionName string) *model.Function {
+	return model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			if len(args) != 1 {
+				var r hcl.Range
+				if len(args) > 0 {
+					r = args[0].SyntaxNode().Range()
+				} else {
+					r = hcl.Range{}
+				}
+
+				return model.StaticFunctionSignature{}, hcl.Diagnostics{
+					errorf(r, functionName+" expects exactly one argument"),
+				}
+			}
+
+			arg := args[0]
+			var res *Resource
+			if objectType, ok := arg.Type().(*model.ObjectType); ok {
+				if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
+					res = annotation.Node
+				}
+			}
+
+			if res == nil {
+				return model.StaticFunctionSignature{}, hcl.Diagnostics{
+					errorf(args[0].SyntaxNode().Range(), functionName+" argument must be a single resource"),
+				}
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{
+					{
+						Name: "resource",
+						Type: arg.Type(),
+					},
+				},
+				ReturnType: model.StringType,
+			}, nil
+		},
+	))
 }

@@ -87,10 +87,67 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Color allows specifying whether to colorize output. Choices are: always, never, raw, auto (default "auto")
+func Color(color string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Color = color
+	})
+}
+
 // ShowSecrets configures whether to show config secrets when they appear.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ShowSecrets = &show
+	})
+}
+
+// Refresh will run a refresh before the destroy.
+func Refresh() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Refresh = true
+	})
+}
+
+// Suppress display of periodic progress dots
+func SuppressProgress() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressProgress = true
+	})
+}
+
+// Suppress display of stack outputs (in case they contain sensitive values)
+func SuppressOutputs() Option {
+	return optionFunc(func(opts *Options) {
+		opts.SuppressOutputs = true
+	})
+}
+
+// Continue to perform the destroy operation despite the occurrence of errors.
+func ContinueOnError() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ContinueOnError = true
+	})
+}
+
+// Remove the stack and its configuration after all resources in the stack have
+// been deleted.
+func Remove() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Remove = true
+	})
+}
+
+// ConfigFile specifies a file to use for configuration values rather than detecting the file name
+func ConfigFile(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ConfigFile = path
+	})
+}
+
+// RunProgram runs the program in the workspace to perform the destroy.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
 	})
 }
 
@@ -126,6 +183,21 @@ type Options struct {
 	Color string
 	// Show config secrets when they appear.
 	ShowSecrets *bool
+	// Refresh will run a refresh before the destroy.
+	Refresh bool
+	// Suppress display of periodic progress dots
+	SuppressProgress bool
+	// Suppress display of stack outputs (in case they contain sensitive values)
+	SuppressOutputs bool
+	// Continue to perform the destroy operation despite the occurrence of errors.
+	ContinueOnError bool
+	// Remove the stack and its configuration after all resources in the stack
+	// have been deleted.
+	Remove bool
+	// Run using the configuration values in the specified file rather than detecting the file name
+	ConfigFile string
+	// When set to true, run the program in the workspace to perform the destroy.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

@@ -36,7 +36,7 @@ type mapperClient struct {
 func NewMapperClient(target string) (Mapper, error) {
 	contract.Assertf(target != "", "unexpected empty target for mapper")
 
-	conn, err := grpc.Dial(
+	conn, err := grpc.NewClient(
 		target,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
@@ -63,13 +63,31 @@ func (m *mapperClient) Close() error {
 	return nil
 }
 
-func (m *mapperClient) GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error) {
+func (m *mapperClient) GetMapping(
+	ctx context.Context,
+	provider string,
+	hint *MapperPackageHint,
+) ([]byte, error) {
 	label := "GetMapping"
-	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, provider, pulumiProvider)
+	logging.V(7).Infof("%s executing: provider=%s, hint=%v", label, provider, hint)
+
+	pluginName := ""
+	var parameterizationHint *codegenrpc.MapperParameterizationHint
+	if hint != nil {
+		pluginName = hint.PluginName
+		if hint.Parameterization != nil {
+			parameterizationHint = &codegenrpc.MapperParameterizationHint{
+				Name:    hint.Parameterization.Name,
+				Version: hint.Parameterization.Version.String(),
+				Value:   hint.Parameterization.Value,
+			}
+		}
+	}
 
 	resp, err := m.clientRaw.GetMapping(ctx, &codegenrpc.GetMappingRequest{
-		Provider:       provider,
-		PulumiProvider: pulumiProvider,
+		Provider:             provider,
+		PulumiProvider:       pluginName,
+		ParameterizationHint: parameterizationHint,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

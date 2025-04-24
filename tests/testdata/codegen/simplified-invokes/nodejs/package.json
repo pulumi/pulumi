@@ -1,0 +1,21 @@
+{
+    "name": "@pulumi/std",
+    "version": "1.0.0",
+    "homepage": "https://github.com/pulumi/pulumi-std",
+    "repository": "https://github.com/pulumi/pulumi-std",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "std",
+        "version": "1.0.0"
+    }
+}

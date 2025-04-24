@@ -20,10 +20,10 @@ from pulumi.runtime import stack
 from pulumi.runtime.settings import _get_rpc_manager
 
 
-async def _explode(n = 10):
+async def _explode(n=10):
     if n == 0:
         raise Exception("sadness")
-    await _explode(n-1)
+    await _explode(n - 1)
 
 
 @pytest.mark.asyncio
@@ -43,4 +43,4 @@ async def test_wait_for_rpcs():
         pytest.fail("Expected Exception")
         tb = ""
 
-    assert "await _explode(n-1)" in tb
+    assert "await _explode(n - 1)" in tb

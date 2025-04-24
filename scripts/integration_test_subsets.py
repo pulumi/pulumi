@@ -27,7 +27,7 @@ def get_integration_tests():
     integration_tests = {}
 
     for lang in languages:
-        with open(os.path.join(integration_dir, get_lang_filename(lang))) as f:
+        with open(os.path.join(integration_dir, get_lang_filename(lang)), encoding='utf_8') as f:
             contents = f.read()
             test_funcs = re.findall(r'func\s+(Test\w+)', contents)
             run_arg = "^(" + '|'.join(test_funcs) + ')$'
@@ -35,7 +35,7 @@ def get_integration_tests():
 
     all_other_tests = []
     for filename in other_tests:
-        with open(os.path.join(integration_dir, filename)) as f:
+        with open(os.path.join(integration_dir, filename), encoding='utf_8') as f:
             contents = f.read()
             test_funcs = re.findall(r'func\s+(Test\w+)', contents)
             all_other_tests += test_funcs

@@ -11,30 +11,16 @@ permissions:
 on:
   pull_request:
     paths-ignore:
-      - '.version'
+      - "sdk/.version"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 # The jobs in this workflow are only run on branches. The `on-community-pr.yml` job provides
 # commands for running workflows from forks.
 
 jobs:
-  changelog-comment:
-    name: changelog preview
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    permissions:
-      contents: read
-      pull-requests: write
-    uses: ./.github/workflows/on-pr-changelog.yml
-    with:
-      ref: ${{ github.ref }}
-      base-ref: origin/${{ github.base_ref }}
-      pr-number: ${{ github.event.pull_request.number }}
-      changelog-required: ${{ !contains(github.event.pull_request.labels.*.name, 'impact/no-changelog-required') }}
-    secrets: inherit
-
   info:
     name: info
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
@@ -42,21 +28,21 @@ jobs:
     permissions:
       contents: read
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.head_ref }}
       is-snapshot: true
     secrets: inherit
 
-  # Determines which files have changed
-  # so we can avoid running expensive tests
+  # Determines which files have changed so we can avoid running expensive tests
   # if they're not necessary.
   inspect:
     name: Inspect changed files
-    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-22.04
     steps:
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: changes
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           filters: |
             # If files matching any of these patterns change,
             # we will run codegen tests for pull requests.
@@ -81,68 +67,56 @@ jobs:
       # To sign artifacts.
       id-token: write
     with:
-      ref: ${{ github.ref }}
+      ref: ${{ github.head_ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
-      # codegen tests take quite a while to run.
-      # Run them only if ci/test is set,
-      # or if one of the codegen files changed.
-      test-codegen:  >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test') ||
-          (needs.inspect.outputs.test-codegen == 'true')
-        }}
+      # codegen tests are not the fastest, but we want to run them
+      # on PR to get correct coverage numbers.
+      test-codegen: true
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
           && 'minimum current'
           || 'current'
         }}
-      integration-test-platforms: ubuntu-latest
+      integration-test-platforms: ubuntu-22.04
       acceptance-test-platforms: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
           && 'macos-latest windows-latest'
-          || ''
+          || 'windows-latest'
         }}
       enable-coverage: true
     secrets: inherit
 
-  prepare-release:
-    name: prepare
-    if: >- # No newlines or trailing newline.
-      ${{
-        github.event.pull_request.head.repo.full_name == github.repository
-        && contains(github.event.pull_request.labels.*.name, 'ci/test')
-      }}
-    needs: [info, ci]
-    uses: ./.github/workflows/ci-prepare-release.yml
+  performance-gate:
+    name: Performance Gate
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [info, inspect]
+    uses: ./.github/workflows/ci-performance-gate.yml
     permissions:
-      contents: write
-      # To sign artifacts.
-      id-token: write
+      contents: read
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
-      release-notes: ${{ needs.info.outputs.release-notes }}
-      project: ${{ github.repository }}
-      draft: true
-      prerelease: true
+      test-version-sets: 'minimum current'
+      performance-test-platforms: ubuntu-22.04
     secrets: inherit
 
-  # release:
-  #   name: release
-  #   if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
-  #   needs: [info, matrix, prepare-release]
-  #   uses: ./.github/workflows/release.yml
-  #   permissions:
-  #     contents: write
-  #     pull-requests: write
-  #   with:
-  #     ref: ${{ github.ref }}
-  #     version: ${{ needs.info.outputs.version }}
-  #     release-notes: ${{ needs.info.outputs.release-notes }}
-  #     version-set: ${{ needs.matrix.outputs.version-set }}
-  #     queue-merge: false
-  #   secrets: inherit
+  ci-ok:
+    name: ci-ok
+    needs: [ci, performance-gate]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      # If the PR is a community PR, we don't run the usual checks, but instead
+      # require maintainers to run them manually by commenting with
+      # /run-acceptance-tests. Since the checks then run outside of the PR,
+      # ci-ok is not a useful status in these cases. We thus want to skip this
+      # job for community PRs. We detect community contributions by checking if
+      # the head repository is different to the base repository.
+      - name: CI failed
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && needs.ci.result != 'success' }}
+        run: exit 1
+      - name: CI succeeded
+        run: exit 0

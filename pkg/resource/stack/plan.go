@@ -1,9 +1,25 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package stack
 
 import (
+	"context"
+
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -13,12 +29,13 @@ func SerializePlanDiff(
 	enc config.Encrypter,
 	showSecrets bool,
 ) (apitype.PlanDiffV1, error) {
-	adds, err := SerializeProperties(diff.Adds, enc, showSecrets)
+	ctx := context.TODO()
+	adds, err := SerializeProperties(ctx, diff.Adds, enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
 
-	updates, err := SerializeProperties(diff.Updates, enc, showSecrets)
+	updates, err := SerializeProperties(ctx, diff.Updates, enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
@@ -38,14 +55,13 @@ func SerializePlanDiff(
 func DeserializePlanDiff(
 	diff apitype.PlanDiffV1,
 	dec config.Decrypter,
-	enc config.Encrypter,
 ) (deploy.PlanDiff, error) {
-	adds, err := DeserializeProperties(diff.Adds, dec, enc)
+	adds, err := DeserializeProperties(diff.Adds, dec)
 	if err != nil {
 		return deploy.PlanDiff{}, err
 	}
 
-	updates, err := DeserializeProperties(diff.Updates, dec, enc)
+	updates, err := DeserializeProperties(diff.Updates, dec)
 	if err != nil {
 		return deploy.PlanDiff{}, err
 	}
@@ -65,7 +81,8 @@ func SerializeResourcePlan(
 ) (apitype.ResourcePlanV1, error) {
 	var outputs map[string]interface{}
 	if plan.Outputs != nil {
-		outs, err := SerializeProperties(plan.Outputs, enc, showSecrets)
+		ctx := context.TODO()
+		outs, err := SerializeProperties(ctx, plan.Outputs, enc, showSecrets)
 		if err != nil {
 			return apitype.ResourcePlanV1{}, err
 		}
@@ -137,16 +154,15 @@ func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (a
 func DeserializeResourcePlan(
 	plan apitype.ResourcePlanV1,
 	dec config.Decrypter,
-	enc config.Encrypter,
 ) (*deploy.ResourcePlan, error) {
 	var goal *deploy.GoalPlan
 	if plan.Goal != nil {
-		inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec, enc)
+		inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec)
 		if err != nil {
 			return nil, err
 		}
 
-		outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec, enc)
+		outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +189,7 @@ func DeserializeResourcePlan(
 
 	var outputs resource.PropertyMap
 	if plan.Outputs != nil {
-		outs, err := DeserializeProperties(plan.Outputs, dec, enc)
+		outs, err := DeserializeProperties(plan.Outputs, dec)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +209,7 @@ func DeserializeResourcePlan(
 	}, nil
 }
 
-func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
+func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter) (*deploy.Plan, error) {
 	manifest, err := deploy.DeserializeManifest(plan.Manifest)
 	if err != nil {
 		return nil, err
@@ -205,7 +221,7 @@ func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc co
 		ResourcePlans: make(map[resource.URN]*deploy.ResourcePlan),
 	}
 	for urn, resourcePlan := range plan.ResourcePlans {
-		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
+		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec)
 		if err != nil {
 			return nil, err
 		}

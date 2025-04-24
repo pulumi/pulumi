@@ -34,27 +34,74 @@ from .test_utils import stack_namer
 test_repo = "https://github.com/pulumi/test-repo.git"
 
 
-@pytest.mark.parametrize("factory", [
-    create_remote_stack_git_source,
-    create_or_select_remote_stack_git_source,
-    select_remote_stack_git_source,
-])
-@pytest.mark.parametrize("error,stack_name,url,branch,commit_hash,auth", [
-    ('stack name "" must be fully qualified.', "", "", None, None, None),
-    ('stack name "name" must be fully qualified.', "name", "", None, None, None),
-    ('stack name "owner/name" must be fully qualified.', "owner/name", "", None, None, None),
-    ('stack name "/" must be fully qualified.', "/", "", None, None, None),
-    ('stack name "//" must be fully qualified.', "//", "", None, None, None),
-    ('stack name "///" must be fully qualified.', "///", "", None, None, None),
-    ('stack name "owner/project/stack/wat" must be fully qualified.', "owner/project/stack/wat", "", None, None, None),
-    ('url is required.', "owner/project/stack", None, None, None, None),
-    ('url is required.', "owner/project/stack", "", None, None, None),
-    ('either branch or commit_hash is required.', "owner/project/stack", test_repo, None, None, None),
-    ('either branch or commit_hash is required.', "owner/project/stack", test_repo, "", "", None),
-    ('branch and commit_hash cannot both be specified.', "owner/project/stack", test_repo, "branch", "commit", None),
-    ('ssh_private_key and ssh_private_key_path cannot both be specified.', "owner/project/stack", test_repo, "branch",
-        None, RemoteGitAuth(ssh_private_key="key", ssh_private_key_path="path")),
-])
+@pytest.mark.parametrize(
+    "factory",
+    [
+        create_remote_stack_git_source,
+        create_or_select_remote_stack_git_source,
+        select_remote_stack_git_source,
+    ],
+)
+@pytest.mark.parametrize(
+    "error,stack_name,url,branch,commit_hash,auth",
+    [
+        ('stack name "" must be fully qualified.', "", "", None, None, None),
+        ('stack name "name" must be fully qualified.', "name", "", None, None, None),
+        (
+            'stack name "owner/name" must be fully qualified.',
+            "owner/name",
+            "",
+            None,
+            None,
+            None,
+        ),
+        ('stack name "/" must be fully qualified.', "/", "", None, None, None),
+        ('stack name "//" must be fully qualified.', "//", "", None, None, None),
+        ('stack name "///" must be fully qualified.', "///", "", None, None, None),
+        (
+            'stack name "owner/project/stack/wat" must be fully qualified.',
+            "owner/project/stack/wat",
+            "",
+            None,
+            None,
+            None,
+        ),
+        ("url is required.", "owner/project/stack", None, None, None, None),
+        ("url is required.", "owner/project/stack", "", None, None, None),
+        (
+            "either branch or commit_hash is required.",
+            "owner/project/stack",
+            test_repo,
+            None,
+            None,
+            None,
+        ),
+        (
+            "either branch or commit_hash is required.",
+            "owner/project/stack",
+            test_repo,
+            "",
+            "",
+            None,
+        ),
+        (
+            "branch and commit_hash cannot both be specified.",
+            "owner/project/stack",
+            test_repo,
+            "branch",
+            "commit",
+            None,
+        ),
+        (
+            "ssh_private_key and ssh_private_key_path cannot both be specified.",
+            "owner/project/stack",
+            test_repo,
+            "branch",
+            None,
+            RemoteGitAuth(ssh_private_key="key", ssh_private_key_path="path"),
+        ),
+    ],
+)
 def test_remote_workspace_errors(
     factory,
     error: str,
@@ -65,19 +112,33 @@ def test_remote_workspace_errors(
     auth: Optional[RemoteGitAuth],
 ):
     with pytest.raises(Exception) as e_info:
-        factory(stack_name=stack_name, url=url, branch=branch, commit_hash=commit_hash, auth=auth)
+        factory(
+            stack_name=stack_name,
+            url=url,
+            branch=branch,
+            commit_hash=commit_hash,
+            auth=auth,
+        )
     assert str(e_info.value) == error
 
 
 # These tests require the service with access to Pulumi Deployments.
 # Set PULUMI_ACCESS_TOKEN to an access token with access to Pulumi Deployments
 # and set PULUMI_TEST_DEPLOYMENTS_API to any value to enable the tests.
-@pytest.mark.parametrize("factory", [
-    create_remote_stack_git_source,
-    create_or_select_remote_stack_git_source,
-])
-@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
-@pytest.mark.skipif("PULUMI_TEST_DEPLOYMENTS_API" not in os.environ, reason="PULUMI_TEST_DEPLOYMENTS_API not set")
+@pytest.mark.parametrize(
+    "factory",
+    [
+        create_remote_stack_git_source,
+        create_or_select_remote_stack_git_source,
+    ],
+)
+@pytest.mark.skipif(
+    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
+)
+@pytest.mark.skipif(
+    "PULUMI_TEST_DEPLOYMENTS_API" not in os.environ,
+    reason="PULUMI_TEST_DEPLOYMENTS_API not set",
+)
 def test_remote_workspace_stack_lifecycle(factory):
     project_name = "go_remote_proj"
     stack_name = stack_namer(project_name)
@@ -124,16 +185,19 @@ def test_remote_workspace_stack_lifecycle(factory):
     LocalWorkspace().remove_stack(stack_name)
 
 
-@pytest.mark.parametrize("input,expected", [
-    ("owner/project/stack", True),
-    ("", False),
-    ("name", False),
-    ("owner/name", False),
-    ("/", False),
-    ("//", False),
-    ("///", False),
-    ("owner/project/stack/wat", False),
-])
+@pytest.mark.parametrize(
+    "input,expected",
+    [
+        ("owner/project/stack", True),
+        ("", False),
+        ("name", False),
+        ("owner/name", False),
+        ("/", False),
+        ("//", False),
+        ("///", False),
+        ("owner/project/stack/wat", False),
+    ],
+)
 def test_config_get_with_defaults(input, expected):
     actual = _is_fully_qualified_stack_name(input)
     assert expected == actual

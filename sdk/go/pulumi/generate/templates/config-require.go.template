@@ -29,46 +29,54 @@ func failf(format string, a ...interface{}) {
 	panic(fmt.Errorf(format, a...))
 }
 
-func require(ctx *pulumi.Context, key, use, insteadOf string) string {
+func require(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) string {
 	v, ok := get(ctx, key, use, insteadOf)
+
+	secretText := " "
+	if secret {
+		secretText = " --secret "
+	}
+
 	if !ok {
-		failf("missing required configuration variable '%s'; run `pulumi config` to set", key)
+		failf("Missing required configuration variable '%s'\n"+
+			"\tplease set a value using the command `pulumi config set%s%s <value>`",
+			key, secretText, key)
 	}
 	return v
 }
 
 // Require loads a configuration value by its key, or panics if it doesn't exist.
 func Require(ctx *pulumi.Context, key string) string {
-	return require(ctx, key, "RequireSecret", "Require")
+	return require(ctx, key, false, "RequireSecret", "Require")
 }
 
-func requireObject(ctx *pulumi.Context, key string, output interface{}, use, insteadOf string) {
-	v := require(ctx, key, use, insteadOf)
+func requireObject(ctx *pulumi.Context, key string, secret bool, output interface{}, use, insteadOf string) {
+	v := require(ctx, key, secret, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
-		failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to unmarshall required configuration variable '%s'; %s", key, err)
 	}
 }
 
 // RequireObject loads an optional configuration value by its key into the output variable,
 // or panics if unable to do so.
 func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
-	requireObject(ctx, key, output, "RequireSecretObject", "RequireObject")
+	requireObject(ctx, key, false, output, "RequireSecretObject", "RequireObject")
 }
 
 {{range .Builtins}}
 {{if .GenerateConfig}}
-func require{{.Name}}(ctx *pulumi.Context, key, use, insteadOf string) {{.Type}} {
-	v := require(ctx, key, use, insteadOf)
+func require{{.Name}}(ctx *pulumi.Context, key string, secret bool, use, insteadOf string) {{.Type}} {
+	v := require(ctx, key, secret, use, insteadOf)
 	o, err := cast.To{{.Name}}E(v)
 	if err != nil {
-		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err)
 	}
 	return o
 }
 
 // Require{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or panics if it doesn't exist.
 func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
-	return require{{.Name}}(ctx, key, "RequireSecret{{.Name}}", "Require{{.Name}}")
+	return require{{.Name}}(ctx, key, false, "RequireSecret{{.Name}}", "Require{{.Name}}")
 }
 
 {{end}}
@@ -76,13 +84,13 @@ func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
 func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
-	return pulumi.ToSecret(require(ctx, key, "", "")).(pulumi.StringOutput)
+	return pulumi.ToSecret(require(ctx, key, true, "", "")).(pulumi.StringOutput)
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
 // returning it wrapped in a secret Output, or panics if unable to do so.
 func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pulumi.Output {
-	requireObject(ctx, key, output, "", "")
+	requireObject(ctx, key, true, output, "", "")
 	return pulumi.ToSecret(output)
 }
 
@@ -91,7 +99,7 @@ func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pu
 // RequireSecret{{.Name}} loads an optional configuration value by its key,
 // as a {{.Type}} wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.{{.Name}}Output {
-	return pulumi.ToSecret(require{{.Name}}(ctx, key, "", "")).(pulumi.{{.Name}}Output)
+	return pulumi.ToSecret(require{{.Name}}(ctx, key, true, "", "")).(pulumi.{{.Name}}Output)
 }
 {{end}}
 {{end}}

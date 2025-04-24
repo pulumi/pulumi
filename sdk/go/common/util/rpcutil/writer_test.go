@@ -177,6 +177,7 @@ func TestWriter_IsPTY(t *testing.T) {
 		// These will be os.Files if a pty
 		file, ok := stdout.(*os.File)
 		assert.True(t, ok, "stdout was not a File")
+		//nolint:gosec
 		assert.True(t, term.IsTerminal(int(file.Fd())), "stdout was not a terminal")
 	}
 

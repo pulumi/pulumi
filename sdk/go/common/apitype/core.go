@@ -36,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 //go:embed deployments.json
@@ -149,11 +148,30 @@ type DeploymentV3 struct {
 	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+	// Metadata associated with the snapshot.
+	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
 type SecretsProvidersV1 struct {
 	Type  string          `json:"type"`
 	State json.RawMessage `json:"state,omitempty"`
+}
+
+// SnapshotMetadataV1 contains metadata about a deployment snapshot.
+type SnapshotMetadataV1 struct {
+	// Metadata associated with any integrity error affecting the snapshot.
+	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadataV1 `json:"integrity_error,omitempty" yaml:"integrity_error,omitempty"`
+}
+
+// SnapshotIntegrityErrorMetadataV1 contains metadata about a snapshot integrity error, such as the version
+// and invocation of the Pulumi engine that caused it.
+type SnapshotIntegrityErrorMetadataV1 struct {
+	// The version of the Pulumi engine that caused the integrity error.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// The command/invocation of the Pulumi engine that caused the integrity error.
+	Command string `json:"command,omitempty" yaml:"command,omitempty"`
+	// The error message associated with the integrity error.
+	Error string `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 // OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
@@ -335,6 +353,10 @@ type ResourceV3 struct {
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// IgnoreChanges is a list of properties to ignore changes for.
+	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
+	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
@@ -351,10 +373,10 @@ type ManifestV1 struct {
 
 // PluginInfoV1 captures the version and information about a plugin.
 type PluginInfoV1 struct {
-	Name    string               `json:"name" yaml:"name"`
-	Path    string               `json:"path" yaml:"path"`
-	Type    workspace.PluginKind `json:"type" yaml:"type"`
-	Version string               `json:"version" yaml:"version"`
+	Name    string     `json:"name" yaml:"name"`
+	Path    string     `json:"path" yaml:"path"`
+	Type    PluginKind `json:"type" yaml:"type"`
+	Version string     `json:"version" yaml:"version"`
 }
 
 // SecretV1 captures the information that a particular value is secret and must be decrypted before use.
@@ -390,13 +412,8 @@ const (
 	ProjectRuntimeTag StackTagName = "pulumi:runtime"
 	// ProjectDescriptionTag is a tag that represents the description of a project (Pulumi.yaml's `description`).
 	ProjectDescriptionTag StackTagName = "pulumi:description"
-	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
-	// may be associated with (inferred by the CLI based on git remote info).
-	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
-	GitHubOwnerNameTag StackTagName = "gitHub:owner"
-	// GitHubRepositoryNameTag is a tag that represents the name of a repository on GitHub that this stack
-	// may be associated with (inferred by the CLI based on git remote info).
-	GitHubRepositoryNameTag StackTagName = "gitHub:repo"
+	// ProjectTemplateTag is a tag that represents the template that was used to create a project.
+	ProjectTemplateTag StackTagName = "pulumi:template"
 	// VCSOwnerNameTag is a tag that represents the name of the owner on the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	VCSOwnerNameTag StackTagName = "vcs:owner"
@@ -411,8 +428,19 @@ const (
 	VCSRepositoryRootTag StackTagName = "vcs:root"
 )
 
+const (
+	// PulumiTagsConfigKey sets additional tags for a stack on a deployment. This is additive to any
+	// tags that are already set on the stack.
+	PulumiTagsConfigKey string = "pulumi:tags"
+)
+
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
+	// ID is the logical ID of the stack.
+	//
+	// For maintainers of the Pulumi service:
+	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
+	ID          string       `json:"id"`
 	OrgName     string       `json:"orgName"`
 	ProjectName string       `json:"projectName"`
 	StackName   tokens.QName `json:"stackName"`
@@ -421,7 +449,25 @@ type Stack struct {
 	ActiveUpdate     string                  `json:"activeUpdate"`
 	Tags             map[StackTagName]string `json:"tags,omitempty"`
 
+	// Optional cloud-persisted stack configuration.
+	// If set, then the stack's configuration is loaded from the cloud and not a file on disk.
+	Config *StackConfig `json:"config,omitempty"`
+
 	Version int `json:"version"`
+}
+
+// StackConfig describes the configuration of a stack from Pulumi Cloud.
+type StackConfig struct {
+	// Reference to ESC environment to use as stack configuration.
+	Environment string `json:"environment"`
+	// SecretsProvider is this stack's secrets provider.
+	SecretsProvider string `json:"secretsprovider,omitempty"`
+	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
+	// Only used for cloud-based secrets providers.
+	EncryptedKey string `json:"encryptedkey,omitempty"`
+	// EncryptionSalt is this stack's base64 encoded encryption salt. Only used for
+	// passphrase-based secrets providers.
+	EncryptionSalt string `json:"encryptionsalt,omitempty"`
 }
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.

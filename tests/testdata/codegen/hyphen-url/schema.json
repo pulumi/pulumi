@@ -1,0 +1,58 @@
+{
+  "name": "registrygeoreplication",
+  "version": "0.0.1",
+  "resources": {
+    "registrygeoreplication:index:RegistryGeoReplication": {
+      "isComponent": true,
+      "inputProperties": {
+        "resourceGroup": {
+          "$ref": "/azure-native/v1.28.0/schema.json#/resources/azure-native:resources:ResourceGroup",
+          "description": "The resource group that hosts the component resource"
+        }
+      },
+      "requiredInputs": ["resourceGroup"],
+      "properties": {
+        "registry": {
+          "$ref": "/azure-native/v1.28.0/schema.json#/resources/azure-native:containerregistry:Registry",
+          "description": "The Registry"
+        },
+        "replication": {
+          "$ref": "/azure-native/v1.28.0/schema.json#/resources/azure-native:containerregistry:Replication",
+          "description": "The replication policy"
+        },
+        "acrLoginServerOut": {
+          "type": "string",
+          "description": "The login server url"
+        }
+      },
+      "required": ["acrLoginServerOut", "registry", "replication"]
+    }
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi.AzureNative": "1.28.*"
+      }
+    },
+    "go": {
+      "generateResourceContainerTypes": true,
+      "importBasePath": "github.com/pulumi/pulumi-registrygeoreplication/sdk/go/registrygeoreplication",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.7.0",
+        "@pulumi/azure-native": "^1.28.0"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {
+      "requires": {
+        "pulumi": ">=3.0.0,<4.0.0",
+        "pulumi-azure-native": ">=1.0.0,<2.0.0"
+      }
+    }
+  }
+}

@@ -17,20 +17,21 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.53
+  GOLANGCI_LINT_VERSION: v1.64.2
 
 jobs:
   golangci:
     name: Lint Go
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
           # golangci-lint-action handles all the caching for Go.
           cache: false
 
@@ -38,29 +39,30 @@ jobs:
       # and maintain the cache,
       # but we want to run the command ourselves.
       # The action doesn't have an install-only mode,
-      # so we'll ask it to print its version only.
+      # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --version
+          args: --help
 
       - name: Run golangci-lint
         # Print GitHub Actions-friendly output so that errors get marked
         # in the pull request.
-        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=github-actions
+        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=colored-line-number
 
   tidy:
     name: go mod tidy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
       - name: Run go mod tidy
         run: make tidy
       - name: Fail if go mod not tidy
@@ -71,36 +73,62 @@ jobs:
             exit 1
           fi
 
+  gen:
+    name: Generate Go SDK
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Run make gen
+        run: cd sdk/go && make gen
+      - name: Fail if there are changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error Running 'make gen' in sdk/go resulted in changes"
+            echo "::error Please run 'make gen' in sdk/go and commit the changes"
+            exit 1
+          fi
+
   protobuf-lint:
     name: Lint Protobufs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Check Protobufs
         run: |
-          make check-proto
+          make check_proto
 
   sdk-lint:
     name: Lint SDKs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache: pip
-          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
@@ -115,7 +143,7 @@ jobs:
       - name: Update path
         run: |
           echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set Go Dep path
@@ -133,26 +161,39 @@ jobs:
 
   actionlint:
     name: Lint GHA
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
       - run: |
           make lint_actions
 
-  linear-history:
-    name: linear-history
-    runs-on: ubuntu-latest
+  pulumi-json:
+    name: Lint pulumi.json
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          # This should be the merge commit of the PR or candidate merge commit in the staging branch for `bors`.
           ref: ${{ inputs.ref }}
-          fetch-depth: 0
-      - name: Check for non-linear history
-        run: ./scripts/git-linear-history-check.sh
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Ensure Node # We need to install Node.js deps so that biome is available
+        run: |
+          cd sdk/nodejs && make ensure
+      - run: |
+          make lint_pulumi_json

@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -27,7 +28,7 @@ func TestUrlAlreadySet(t *testing.T) {
 
 	spec := workspace.PluginSpec{
 		Name:              "acme",
-		Kind:              workspace.ResourcePlugin,
+		Kind:              apitype.ResourcePlugin,
 		PluginDownloadURL: "github://api.github.com/pulumiverse",
 	}
 	res := SetKnownPluginDownloadURL(&spec)
@@ -39,7 +40,7 @@ func TestKnownProvider(t *testing.T) {
 
 	spec := workspace.PluginSpec{
 		Name: "acme",
-		Kind: workspace.ResourcePlugin,
+		Kind: apitype.ResourcePlugin,
 	}
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.True(t, res)

@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dotnet
 
 import (
@@ -17,8 +31,12 @@ func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language:   "dotnet",
-		GenPackage: GeneratePackage,
+		Language: "dotnet",
+		GenPackage: func(
+			t string, p *schema.Package, e map[string][]byte, l schema.ReferenceLoader,
+		) (map[string][]byte, error) {
+			return GeneratePackage(t, p, e, nil)
+		},
 		Checks: map[string]test.CodegenCheck{
 			"dotnet/compile": typeCheckGeneratedPackage,
 			"dotnet/test":    testGeneratedPackage,
@@ -38,15 +56,19 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 		require.NoError(t, err)
 	}
 
-	// dotnet build requires exclusive access to shared nuget package:
-	// https://github.com/pulumi/pulumi/runs/5436354735?check_suite_focus=true#step:36:277
+	// dotnet build requires exclusive access to shared nuget package
+	// See: https://github.com/pulumi/pulumi/issues/18738
 	buildMutex.Lock()
 	defer buildMutex.Unlock()
 	test.RunCommand(t, "dotnet build", pwd, "dotnet", "build")
 }
 
 func testGeneratedPackage(t *testing.T, pwd string) {
-	test.RunCommand(t, "dotnet build", pwd, "dotnet", "test")
+	// dotnet test requires exclusive access to shared nuget package
+	// See: https://github.com/pulumi/pulumi/issues/18738
+	buildMutex.Lock()
+	defer buildMutex.Unlock()
+	test.RunCommand(t, "dotnet test", pwd, "dotnet", "test")
 }
 
 func TestGenerateType(t *testing.T) {

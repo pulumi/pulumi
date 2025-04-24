@@ -1,0 +1,45 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=e40a5b47-ef81-451e-bf27-1af647629a6f]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    version: <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::default_1_0_0::e40a5b47-ef81-451e-bf27-1af647629a6f]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
+<{%reset%}>    [id=249caf22-ca7a-49d0-aadb-d824f2f7d206]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    name            : <{%reset%}><{%reset%}>"pkgA"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    parameterization: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        value  : <{%reset%}><{%reset%}>"cmVwbGFjZW1lbnQ="<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version         : <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resB]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::249caf22-ca7a-49d0-aadb-d824f2f7d206]
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resC]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::249caf22-ca7a-49d0-aadb-d824f2f7d206]
+<{%reset%}><{%reset%}>  pulumi:providers:pkgExt: (same)
+<{%reset%}>    [id=f2ed78f3-2edb-435e-bbcc-cfbe36d4177c]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgExt::provider]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    name            : <{%reset%}><{%reset%}>"pkgA"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    parameterization: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        value  : <{%reset%}><{%reset%}>"cmVwbGFjZW1lbnQ="<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    version         : <{%reset%}><{%reset%}>"1.0.0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>  pkgExt:m:typA: (same)
+<{%reset%}>    [id=id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgExt:m:typA::resD]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::provider::f2ed78f3-2edb-435e-bbcc-cfbe36d4177c]
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    5 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA provider <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkgA provider <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA resA <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA resB <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test <{%fg 2%}>created<{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

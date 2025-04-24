@@ -1,0 +1,5 @@
+name: l1-output-array
+runtime:
+  name: nodejs
+  options:
+    typescript: false

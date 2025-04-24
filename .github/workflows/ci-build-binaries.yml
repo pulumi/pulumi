@@ -20,19 +20,32 @@ on:
         type: string
       build-platform:
         required: false
-        default: ubuntu-latest
+        default: ubuntu-22.04
         description: 'Build platform (i.e.: runs-on) for job'
+        type: string
+      artifact-suffix:
+        required: false
+        description: "Suffix to append to the artifact names"
+        type: string
+      dev-version:
+        required: false
+        description: "Dev version to bake into the binary"
         type: string
       version:
         required: true
         description: "Version to produce"
         type: string
       version-set:
-        required: false
+        required: true
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
       enable-coverage:
         description: "Build coverage instrumented binaries"
+        default: false
+        required: false
+        type: boolean
+      enable-race-detection:
+        description: "Build binaries with race detection"
         default: false
         required: false
         type: boolean
@@ -43,18 +56,11 @@ defaults:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  PULUMI_VERSION: ${{ inputs.version }}
 
 jobs:
   build:
     name: ${{ inputs.os }}-${{ inputs.arch }}
     runs-on: ${{ inputs.build-platform }}
-
-    env:
-      PULUMI_VERSION: ${{ inputs.version }}
-
-    permissions:
-      id-token: write
 
     steps:
       - name: "Windows cache workaround"
@@ -71,16 +77,17 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
           cache: true
           cache-dependency-path: |
             pkg/go.sum
@@ -89,17 +96,13 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v6
         with:
           install-only: true
           distribution: goreleaser-pro
-          # TODO[pulumi/pulumi#13312: Change this to not pin to a version after
-          # addressing the root cause of why GoReleaser v1.19.0 fails to read
-          # the configuration.
-          version: v1.18.2
-      - name: Set up bin dir
+      - name: Prepare bin dir for goreleaser
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOS: ${{ inputs.os }}
           GOARCH: ${{ inputs.arch }}
         run: ./scripts/prep-for-goreleaser.sh local
@@ -115,18 +118,22 @@ jobs:
         shell: bash
         env:
           GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+          PULUMI_VERSION: ${{ inputs.dev-version || inputs.version }}
           PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && 'coverage' || 'normal' }}
+          PULUMI_ENABLE_RACE_DETECTION: ${{ inputs.enable-race-detection && 'true' || 'false' }}
         run: |
           set -euxo pipefail
           # Spurious, this command requires piping via stdin
           # shellcheck disable=SC2002
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
-            | goreleaser release -f - -p 5 --skip-validate --rm-dist --snapshot
-      - uses: actions/upload-artifact@v2
+            | goreleaser release -f - -p 5 --skip=validate --clean --snapshot
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.os != 'js' }}
         with:
-          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
-          retention-days: 1
+          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}${{ inputs.artifact-suffix || ''}}
+          overwrite: true
+          retention-days: 7
           path: |
             goreleaser/*.tar.gz
             goreleaser/*.zip

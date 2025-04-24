@@ -1,0 +1,96 @@
+exports.handler = __f0;
+
+var __f3_prototype = {};
+Object.defineProperty(__f3_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
+var __f3_prototype_sym = Object.create(global.Symbol.prototype);
+Object.defineProperty(__f3_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f4 });
+Object.defineProperty(__f3, "prototype", { value: __f3_prototype });
+var __f2_prototype = Object.create(__f3_prototype);
+Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f2_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f5 });
+Object.defineProperty(__f2, "prototype", { value: __f2_prototype });
+Object.setPrototypeOf(__f2, __f3);
+var __f1_prototype = Object.create(__f2_prototype);
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f6 });
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+Object.setPrototypeOf(__f1, __f2);
+
+function __f3(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function /*constructor*/(n) {
+        this.n = n;
+        console.log("AConstruction");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4(__0) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function (x) { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2(__0) {
+  return (function() {
+    with({ __super: __f3, this: undefined, arguments: undefined }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n + 1);
+    console.log("BConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f5(__0) {
+  return (function() {
+    with({ sym: __f3_prototype_sym, __super: __f3, this: undefined, arguments: undefined }) {
+
+return function /*__computed*/(n) { return 1 + __super.prototype[sym].call(this, n + 1); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1(__0) {
+  return (function() {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n * 2);
+    console.log("CConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6(__0) {
+  return (function() {
+    with({ sym: __f3_prototype_sym, __super: __f2, this: undefined, arguments: undefined }) {
+
+return function /*__computed*/(n) { return 2 * __super.prototype[sym].call(this, n * 2); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

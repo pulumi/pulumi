@@ -273,7 +273,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			Example:       fmt.Sprintf("%sMapArray{%sMap{\"baz\": %s}}", name, name, p.Example),
 			RegisterInput: true,
 		})
-		builtins = append(builtins, &builtin{
+		mapMapType := &builtin{
 			Name:          name + "MapMap",
 			Type:          "map[string]" + name + "MapInput",
 			ItemType:      name + "MapInput",
@@ -281,7 +281,8 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			item:          mapType,
 			Example:       fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %s}}", name, name, p.Example),
 			RegisterInput: true,
-		})
+		}
+		builtins = append(builtins, mapMapType)
 		arrayArrayType := &builtin{
 			Name:          name + "ArrayArray",
 			Type:          "[]" + name + "ArrayInput",
@@ -302,6 +303,19 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 				elementType:   "map[string][][]" + p.Type,
 				item:          arrayArrayType,
 				Example:       fmt.Sprintf("%sArrayArrayMap{\"baz\": %sArrayArray{Array{%s}}}", name, name, p.Example),
+				RegisterInput: true,
+			})
+		}
+
+		// Unblock https://github.com/pulumi/pulumi/issues/17415
+		if name == "String" {
+			builtins = append(builtins, &builtin{
+				Name:          name + "MapMapMap",
+				Type:          "map[string]" + name + "MapMapInput",
+				ItemType:      name + "MapMapInput",
+				elementType:   "map[string]map[string]map[string]" + p.Type,
+				item:          mapMapType,
+				Example:       fmt.Sprintf("%sMapMapMap{\"baz\": %sMapMap{\"baz\": %sMap{\"baz\": %s}}}", name, name, name, p.Example),
 				RegisterInput: true,
 			})
 		}
@@ -337,7 +351,7 @@ func main() {
 
 		pwd, err := os.Getwd()
 		if err != nil {
-			log.Fatalf("code generation failed: %v", err.Error())
+			log.Fatalf("code generation failed: %v", err)
 		}
 
 		fullname := filepath.Join(pwd, templateFilePath(t.Name()))

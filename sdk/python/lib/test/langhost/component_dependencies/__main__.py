@@ -14,16 +14,27 @@
 import functools
 from pulumi import ComponentResource, CustomResource, Output, ResourceOptions
 
+
 class MyResource(CustomResource):
     def __init__(self, name, args, opts=None):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            **args,
-            "outprop": None,
-        }, opts=opts)
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                **args,
+                "outprop": None,
+            },
+            opts=opts,
+        )
+
 
 class MyComponent(ComponentResource):
     def __init__(self, name, opts=None):
-        ComponentResource.__init__(self, "test:index:MyComponent", name, props={}, opts=opts)
+        ComponentResource.__init__(
+            self, "test:index:MyComponent", name, props={}, opts=opts
+        )
+
 
 resA = MyResource("resA", {})
 comp1 = MyComponent("comp1")

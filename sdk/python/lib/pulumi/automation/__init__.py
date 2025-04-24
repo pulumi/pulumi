@@ -98,18 +98,17 @@ from pulumi.automation._remote_workspace import (
 
 from pulumi.automation._remote_stack import RemoteStack
 
-from ._cmd import CommandResult, OnOutput
+from ._cmd import CommandResult, OnOutput, PulumiCommand
 
 from ._config import ConfigMap, ConfigValue
 
-# pylint: disable=redefined-builtin
 from .errors import (
     StackNotFoundError,
     StackAlreadyExistsError,
     CommandError,
     ConcurrentUpdateError,
     InlineSourceRuntimeError,
-    RuntimeError,
+    RuntimeError,  # noqa: A004 shadowing builtin
     CompilationError,
     InvalidVersionError,
 )
@@ -155,8 +154,10 @@ from ._output import OutputMap, OutputValue
 
 from ._project_settings import (
     ProjectBackend,
-    ProjectSettings,
     ProjectRuntimeInfo,
+    ProjectSettings,
+    ProjectTemplate,
+    ProjectTemplateConfigValue,
 )
 
 from ._stack_settings import StackSettings
@@ -175,6 +176,7 @@ from ._stack import (
 __all__ = [
     # _cmd
     "CommandResult",
+    "PulumiCommand",
     "OnOutput",
     # _config
     "ConfigMap",
@@ -224,8 +226,10 @@ __all__ = [
     "OutputValue",
     # _project_settings
     "ProjectBackend",
-    "ProjectSettings",
     "ProjectRuntimeInfo",
+    "ProjectSettings",
+    "ProjectTemplate",
+    "ProjectTemplateConfigValue",
     # _stack_settings
     "StackSettings",
     # _stack

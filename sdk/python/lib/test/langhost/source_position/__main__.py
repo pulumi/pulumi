@@ -13,13 +13,23 @@
 # limitations under the License.
 from pulumi import ComponentResource, CustomResource
 
+
 class MyResource(CustomResource):
     def __init__(self, name, opts=None):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={}, opts=opts)
+        self.__internal_init__(name, opts)
+
+    def __internal_init__(self, name, opts):
+        CustomResource.__init__(
+            self, "test:index:MyResource", name, props={}, opts=opts
+        )
+
 
 class MyComponent(ComponentResource):
     def __init__(self, name, opts=None):
-        ComponentResource.__init__(self, "test:index:MyComponent", name, props={}, opts=opts)
+        ComponentResource.__init__(
+            self, "test:index:MyComponent", name, props={}, opts=opts
+        )
+
 
 custom = MyResource("custom")
 component = MyComponent("component")

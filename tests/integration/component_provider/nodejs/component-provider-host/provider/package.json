@@ -1,0 +1,7 @@
+{
+    "name": "nodejs-component-provider",
+    "description": "Node.js Sample Components",
+    "dependencies": {
+        "@pulumi/random": "4.18.0"
+    }
+}

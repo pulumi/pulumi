@@ -1,0 +1,27 @@
+exports.handler = __f1;
+
+var __o = {a: 1, b: __f0};
+
+function __f0() {
+  return (function() {
+    with({ message: "Function 'b' cannot be called at runtime. It can only be used at deployment time.\n\nFunction code:\n  () => console.log(\"the actual function\")\n", this: undefined, arguments: undefined }) {
+
+return () => {
+            throw new Error(message);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f1: __f1, this: undefined, arguments: undefined }) {
+
+return function /*f1*/() {
+    console.log(o);
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

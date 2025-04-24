@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "index.ts",
+    "package.json",
+    "person.ts",
+    "pet.ts",
+    "provider.ts",
+    "tsconfig.json",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

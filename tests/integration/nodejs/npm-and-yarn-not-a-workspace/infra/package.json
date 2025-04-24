@@ -1,0 +1,9 @@
+{
+    "name": "infra",
+    "description": "This project is not part of the npm/yarn workspaces setup in the parent directory's package.json",
+    "main": "index.ts",
+    "version": "1.0.0",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.104.2"
+    }
+}

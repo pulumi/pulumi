@@ -18,13 +18,20 @@ import (
 	"context"
 	"io"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+type ResultState int
+
+const (
+	ResultStateSuccess ResultState = iota
+	ResultStateFailed
+	ResultStateSkipped
 )
 
 // A ProviderSource allows a Source to lookup provider plugins.
@@ -39,11 +46,9 @@ type Source interface {
 
 	// Project returns the package name of the Pulumi project we are obtaining resources from.
 	Project() tokens.PackageName
-	// Info returns a serializable payload that can be used to stamp snapshots for future reconciliation.
-	Info() interface{}
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result)
+	Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
@@ -51,7 +56,7 @@ type SourceIterator interface {
 	io.Closer
 
 	// Next returns the next event from the source.
-	Next() (SourceEvent, result.Result)
+	Next() (SourceEvent, error)
 }
 
 // SourceResourceMonitor directs resource operations from the `Source` to various resource
@@ -62,14 +67,15 @@ type SourceResourceMonitor interface {
 
 	Address() string
 	Cancel() error
+	AbortChan() <-chan bool
 	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
-	Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
 	RegisterResource(ctx context.Context,
 		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error)
+		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 }
 
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source
@@ -89,7 +95,8 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State *resource.State // the resource state.
+	State  *resource.State // the resource state.
+	Result ResultState     // the result of the registration.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -110,7 +117,7 @@ type ReadResourceEvent interface {
 	// ID is the requested ID of this read.
 	ID() resource.ID
 	// Name is the requested name of this read.
-	Name() tokens.QName
+	Name() string
 	// Type is type of the resource being read.
 	Type() tokens.Type
 	// Provider is a reference to the provider instance to use for this read.
@@ -130,5 +137,6 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State *resource.State
+	State  *resource.State
+	Result ResultState
 }

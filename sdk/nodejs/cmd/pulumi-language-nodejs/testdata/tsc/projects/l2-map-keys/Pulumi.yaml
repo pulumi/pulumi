@@ -1,0 +1,5 @@
+name: l2-map-keys
+runtime:
+  name: nodejs
+  options:
+    typescript: false

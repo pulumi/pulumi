@@ -17,32 +17,53 @@
 package ints
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/BurntSushi/toml"
+	"github.com/google/go-dap"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 // This checks that error logs are not being emitted twice
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "missing-main"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Stdout:        stdout,
 		Stderr:        stderr,
@@ -56,22 +77,25 @@ func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
 }
 
 // TestPrintfPython tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPrintfPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("printf", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:                  true,
 		ExtraRuntimeValidation: printfTestValidation,
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStackOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_outputs", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -91,12 +115,107 @@ func TestStackOutputsPython(t *testing.T) {
 	})
 }
 
+// TestStackOutputsProgramErrorPython tests that when a program error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsProgramErrorPython(t *testing.T) {
+	d := filepath.Join("stack_outputs_program_error", "python")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",       // Expected to be updated
+					"foo": float64(42), // Expected to remain the same
+				}),
+			},
+		},
+	})
+}
+
+// TestStackOutputsResourceErrorPython tests that when a resource error occurs, we update any
+// updated stack outputs, but otherwise leave others untouched.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStackOutputsResourceErrorPython(t *testing.T) {
+	d := filepath.Join("stack_outputs_resource_error", "python")
+
+	validateOutputs := func(
+		expected map[string]interface{},
+	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(d, "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+			"xyz": "ABC",
+			"foo": float64(42),
+		}),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:           filepath.Join(d, "step2"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
+				// called for the stack.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "ABC",
+					"foo": float64(42),
+				}),
+			},
+			{
+				Dir:           filepath.Join(d, "step3"),
+				Additive:      true,
+				ExpectFailure: true,
+				// Expect the values to be updated.
+				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+					"xyz": "DEF",
+					"foo": float64(1),
+				}),
+			},
+		},
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -122,11 +241,13 @@ func TestConfigBasicPython(t *testing.T) {
 }
 
 // Tests configuration error from the perspective of a Pulumi program.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigMissingPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_missing", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick:         true,
 		ExpectFailure: true,
@@ -150,13 +271,15 @@ func TestConfigMissingPython(t *testing.T) {
 }
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestConfigSecretsWarnPython(t *testing.T) {
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_secrets_warn", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -288,51 +411,12 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 	})
 }
 
-func TestMultiStackReferencePython(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-	t.Parallel()
-
-	// build a stack with an export
-	exporterOpts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
-		DestroyOnCleanup: true,
-	}
-	exporterStackName := exporterOpts.GetStackName().String()
-	integration.ProgramTest(t, exporterOpts)
-
-	importerOpts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
-			"exporter_stack_name": exporterStackName,
-		},
-		DestroyOnCleanup: true,
-	}
-	integration.ProgramTest(t, importerOpts)
-}
-
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("secret_outputs", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -370,6 +454,8 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPython3NotInstalled(t *testing.T) {
 	// TODO[pulumi/pulumi#6304]
 	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
@@ -381,14 +467,14 @@ func TestPython3NotInstalled(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 		Env: []string{
 			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
 			// for Python 3, since anyone running tests surely already has Python 3 installed on their
 			// machine. The code paths are functionally the same.
-			fmt.Sprintf("PULUMI_PYTHON_CMD=%s", badPython),
+			"PULUMI_PYTHON_CMD=" + badPython,
 		},
 		ExpectFailure: true,
 		Stderr:        stderr,
@@ -400,11 +486,13 @@ func TestPython3NotInstalled(t *testing.T) {
 }
 
 // Tests custom resource type name of dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-resource-type-name"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urnOut := stack.Outputs["urn"].(string)
@@ -415,32 +503,142 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	})
 }
 
+// Tests dynamic provider in Python with `serialize_as_secret_always` set to `False`.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
+	dir := filepath.Join("dynamic", "python-disable-serialization-as-secret")
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: dir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      filepath.Join(dir, "step1"),
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+
+				// `serialize_as_secret_always` is set to `False`, so we expect `__provider` to be a plain string
+				// and not a secret since it didn't capture any secrets.
+				dynRes := stack.Deployment.Resources[2]
+				assert.IsType(t, "", dynRes.Inputs["__provider"], "expect __provider to be a string")
+				assert.IsType(t, "", dynRes.Outputs["__provider"], "expect __provider to be a string")
+
+				// Ensure there are no diagnostic events other than debug.
+				for _, event := range stack.Events {
+					if event.DiagnosticEvent != nil {
+						assert.Equal(t, "debug", event.DiagnosticEvent.Severity,
+							"unexpected diagnostic event: %#v", event.DiagnosticEvent)
+					}
+				}
+			},
+		}},
+		UseSharedVirtualEnv: boolPointer(false),
+	})
+}
+
+// Tests custom resource type name of dynamic provider in Python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicProviderSecretsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-secrets"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Secrets: map[string]string{
+			"password": "s3cret",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the __provider input (and corresponding output) was marked secret
+			dynRes := stackInfo.Deployment.Resources[2]
+			for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
+				switch v := providerVal.(type) {
+				case string:
+					assert.Fail(t, "__provider was not a secret")
+				case map[string]interface{}:
+					assert.Equal(t, resource.SecretSig, v[resource.SigKey])
+				}
+			}
+			// Ensure the resulting output had the expected value
+			code, ok := stackInfo.Outputs["out"].(string)
+			assert.True(t, ok)
+			assert.Equal(t, "200", code)
+		},
+	})
+}
+
+// Tests configuration for dynamic providers
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicProviderConfig(t *testing.T) {
+	tests := []string{
+		"python-config",
+		"python-config-separate-module",
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir: filepath.Join("dynamic", test),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python"),
+				},
+				Secrets: map[string]string{
+					"password":      "s3cret",
+					"colors:banana": "yellow",
+				},
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Ensure the resulting output had the expected value
+					code, ok := stackInfo.Outputs["authenticated"].(string)
+					assert.True(t, ok)
+					assert.Equal(t, "200", code)
+
+					color, ok := stackInfo.Outputs["color"].(string)
+					assert.True(t, ok)
+					assert.Equal(t, "yellow", color)
+				},
+			})
+		})
+	}
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialValuesPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		AllowEmptyPreviewChanges: true,
 	})
 }
 
 // Tests a resource with a large (>4mb) string prop in Python
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestLargeResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("large_resource", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 	})
 }
 
 // Test enum outputs
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEnumOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("enums", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
@@ -453,13 +651,15 @@ func TestEnumOutputsPython(t *testing.T) {
 }
 
 // Test to ensure Pylint is clean.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonPylint(t *testing.T) {
 	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "pylint"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomURN := stack.Outputs["random_urn"].(string)
@@ -487,6 +687,8 @@ func TestPythonPylint(t *testing.T) {
 
 // Test Python SDK codegen to ensure <Resource>Args and traditional keyword args work.
 func TestPythonResourceArgs(t *testing.T) {
+	t.Parallel()
+
 	testdir := filepath.Join("python", "resource_args")
 
 	// Generate example library from schema.
@@ -496,16 +698,13 @@ func TestPythonResourceArgs(t *testing.T) {
 	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
 	pkg, err := schema.ImportSpec(spec, nil)
 	assert.NoError(t, err)
-	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{})
+	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{}, nil)
 	assert.NoError(t, err)
 	outdir := filepath.Join(testdir, "lib")
 	assert.NoError(t, os.RemoveAll(outdir))
 	for f, contents := range files {
 		outfile := filepath.Join(outdir, f)
 		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
-		if outfile == filepath.Join(outdir, "setup.py") {
-			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
-		}
 		assert.NoError(t, os.WriteFile(outfile, contents, 0o600))
 	}
 	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
@@ -514,28 +713,32 @@ func TestPythonResourceArgs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: testdir,
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 			filepath.Join(testdir, "lib"),
 		},
-		Quick: true,
+		Quick:      true,
+		NoParallel: true,
 	})
 }
 
 // Test to ensure that internal stacks are hidden
 func TestPythonStackTruncate(t *testing.T) {
+	t.Parallel()
+
 	cases := []string{
 		"normal",
 		"main_specified",
 		"main_dir_specified",
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, name := range cases {
 		// Test the program.
 		t.Run(name, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join("python", "stack_truncate", name),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				Quick: true,
 				// This test should fail because it raises an exception
@@ -576,6 +779,8 @@ func TestPythonStackTruncate(t *testing.T) {
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowPython(t *testing.T) {
+	t.Parallel()
+
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
@@ -593,10 +798,11 @@ func TestConstructSlowPython(t *testing.T) {
 		Env: []string{testYarnLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
+		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -643,6 +849,7 @@ func TestConstructPlainPython(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -662,7 +869,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: localProviders,
 		Quick:          true,
@@ -675,7 +882,8 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownPython(t *testing.T) {
-	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	t.Parallel()
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 // Test methods on remote components.
@@ -698,6 +906,8 @@ func TestConstructMethodsPython(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -707,7 +917,7 @@ func TestConstructMethodsPython(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
@@ -719,16 +929,69 @@ func TestConstructMethodsPython(t *testing.T) {
 	}
 }
 
+func findResource(token string, resources []apitype.ResourceV3) *apitype.ResourceV3 {
+	for _, r := range resources {
+		if string(r.Type) == token {
+			return &r
+		}
+	}
+	return nil
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestConstructComponentWithIdOutputPython(t *testing.T) {
+	testDir := "construct_component_id_output"
+
+	// the component implementation is written as a simple provider in go
+	localProvider := integration.LocalDependency{
+		Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go"),
+	}
+
+	// run python program against the component
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			component := findResource("testcomponent:index:Component", stackInfo.Deployment.Resources)
+			require.NotNil(t, component, "component should be present in the deployment")
+			require.NotNil(t, component.Outputs, "component should have outputs")
+			componentID, ok := component.Outputs["id"].(string)
+			require.True(t, ok, "component should have an output called ID")
+			require.Equal(t, "42-hello", componentID, "component id output should be '42-hello'")
+
+			// the stack should also have an output called ID
+			stack := findResource("pulumi:pulumi:Stack", stackInfo.Deployment.Resources)
+			require.NotNil(t, stack, "stack should be present in the deployment")
+			require.NotNil(t, stack.Outputs, "stack should have outputs")
+			stackID, ok := stack.Outputs["id"].(string)
+			require.True(t, ok, "stack should have an output named 'id'")
+			require.Equal(t, "42-hello", stackID, "stack id output should be '42-hello'")
+		},
+	})
+}
+
 func TestConstructMethodsUnknownPython(t *testing.T) {
-	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	t.Parallel()
+	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructMethodsResourcesPython(t *testing.T) {
-	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	t.Parallel()
+	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructMethodsErrorsPython(t *testing.T) {
-	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	t.Parallel()
+	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python"))
+}
+
+func TestConstructMethodsProviderPython(t *testing.T) {
+	t.Parallel()
+	testConstructMethodsProvider(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 func TestConstructProviderPython(t *testing.T) {
@@ -750,6 +1013,8 @@ func TestConstructProviderPython(t *testing.T) {
 			componentDir: "testcomponent-go",
 		},
 	}
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -759,7 +1024,7 @@ func TestConstructProviderPython(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
-					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+					filepath.Join("..", "..", "sdk", "python"),
 				},
 				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:          true,
@@ -771,11 +1036,12 @@ func TestConstructProviderPython(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("get_resource", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		AllowEmptyPreviewChanges: true,
 	})
@@ -784,11 +1050,12 @@ func TestGetResourcePython(t *testing.T) {
 func TestPythonAwaitOutputs(t *testing.T) {
 	t.Parallel()
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("SuccessSimple", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "success"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -806,11 +1073,12 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("SuccessMultipleOutputs", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "multiple_outputs"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -839,11 +1107,12 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("CreateWithinApply", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "create_inside_apply"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -861,11 +1130,12 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("ErrorHandlingSuccess", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "error_handling"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			Quick:                    true,
@@ -883,13 +1153,14 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("FailureSimple", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "failure"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			ExpectFailure:            true,
@@ -902,13 +1173,14 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("FailureWithExportedOutput", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "failure_exported_output"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			ExpectFailure:            true,
@@ -940,13 +1212,14 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("FailureMultipleOutputs", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "failure_multiple_unexported_outputs"),
 			Dependencies: []string{
-				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				filepath.Join("..", "..", "sdk", "python"),
 			},
 			AllowEmptyPreviewChanges: true,
 			ExpectFailure:            true,
@@ -977,20 +1250,62 @@ func TestPythonAwaitOutputs(t *testing.T) {
 			},
 		})
 	})
+
+	// This checks we await outputs but not asyncio.tasks
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("AsyncioTasks", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "asyncio_tasks"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python"),
+			},
+			Quick: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "PRINT: 42") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
+	// This checks we don't leak futures awaiting outputs. Regression test for
+	// https://github.com/pulumi/pulumi/issues/16055.
+	//
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("OutputLeak", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "output_leak"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python"),
+			},
+			Quick:   true,
+			Verbose: true,
+		})
+	})
 }
 
 // Test dict key translations.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonTranslation(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "translation"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 	})
 }
 
 func TestComponentProviderSchemaPython(t *testing.T) {
+	t.Parallel()
 	// TODO[https://github.com/pulumi/pulumi/issues/12365] we no longer have shim files so there's no native
 	// binary for the testComponentProviderSchema to just exec. It _ought_ to be rewritten to use the plugin
 	// host framework so that it starts the component up the same as all the other tests are doing (via
@@ -1012,40 +1327,43 @@ func TestAboutPython(t *testing.T) {
 	dir := filepath.Join("about", "python")
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironmentFallible()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	stdout, _ := e.RunCommand("pulumi", "about", "--json")
+	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "pulumi-kubernetes")
+	// Assert we parsed the language plugin, we don't assert against the minor version number
+	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
 
 func TestConstructOutputValuesPython(t *testing.T) {
-	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+	t.Parallel()
+	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
 
 // TestResourceRefsGetResourcePython tests that invoking the built-in 'pulumi:pulumi:getResource' function
 // returns resource references for any resource reference in a resource's state.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceRefsGetResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("resource_refs_get_resource", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		Quick: true,
 	})
 }
 
 // TestDeletedWithPython tests the DeletedWith resource option.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDeletedWithPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("deleted_with", "python"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
@@ -1058,16 +1376,18 @@ func TestConstructProviderPropagationPython(t *testing.T) {
 	t.Parallel()
 
 	testConstructProviderPropagation(t, "python", []string{
-		filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		filepath.Join("..", "..", "sdk", "python"),
 	})
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/9411
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDuplicateOutputPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "duplicate-output"),
 		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join("..", "..", "sdk", "python"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			expected := []interface{}{float64(1), float64(2)}
@@ -1081,6 +1401,843 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 	t.Parallel()
 
 	testConstructProviderExplicit(t, "python", []string{
-		filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		filepath.Join("..", "..", "sdk", "python"),
+	})
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13551
+//
+//nolint:paralleltest // ProgramTestManualLifeCycle calls t.Parallel()
+func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
+	t.Skip("Temporarily skipping flakey test - pulumi/pulumi#14708")
+
+	stdout := &bytes.Buffer{}
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "implicit-dependency-cycles"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Stdout: stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Contains(
+				t, stdout.String(),
+				"RuntimeError: We have detected a circular dependency involving a resource of type "+
+					"my:module:Child-1 named a-child-1.")
+			assert.Contains(
+				t, stdout.String(),
+				"Please review any `depends_on`, `parent` or other dependency relationships between "+
+					"your resources to ensure no cycles have been introduced in your program.")
+		},
+	})
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	t.Cleanup(pt.TestCleanUp)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
+}
+
+// Test a paramaterized provider with python.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestParameterizedPython(t *testing.T) {
+	// TODO: Unskip this test after 3.134.0 is released. Python codegen for parameterized providers will try to
+	// refer to release 3.134.0, but until we actually release that version pip will fail that this constraint
+	// can't be met.
+	t.Skip("This needs to skip until 3.134.0 is released due to how pip resoloution works")
+
+	e := ptesting.NewEnvironment(t)
+
+	// We can't use ImportDirectory here because we need to run this in the right directory such that the relative paths
+	// work. This also means we don't delete the directory after the test runs.
+	var err error
+	e.CWD, err = filepath.Abs("python/parameterized")
+	require.NoError(t, err)
+
+	err = os.RemoveAll(filepath.Join("python", "parameterized", "sdk"))
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "python", "--local")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "parameterized"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+	})
+}
+
+//nolint:paralleltest // mutates environment
+func TestPackageAddPython(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	for _, pm := range []struct {
+		packageManager string
+		usePyProject   bool
+		pyprojectPath  string
+	}{
+		{packageManager: "pip", usePyProject: false},
+		{packageManager: "uv", usePyProject: true, pyprojectPath: "tool.uv.sources"},
+		{packageManager: "poetry", usePyProject: true, pyprojectPath: "tool.poetry.dependencies"},
+	} {
+		t.Run(pm.packageManager, func(t *testing.T) {
+			var err error
+			templatePath, err := filepath.Abs("python/packageadd_" + pm.packageManager)
+			require.NoError(t, err)
+			err = fsutil.CopyFile(e.CWD, templatePath, nil)
+			require.NoError(t, err)
+
+			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+			_, _ = e.RunCommand("pulumi", "package", "add", "random")
+
+			assert.True(t, e.PathExists("sdks/random"))
+
+			if pm.usePyProject {
+				pyprojectToml := make(map[string]any)
+				_, err := toml.DecodeFile(filepath.Join(e.CWD, "pyproject.toml"), &pyprojectToml)
+				assert.NoError(t, err)
+
+				path := strings.Split(pm.pyprojectPath, ".")
+				data := pyprojectToml
+				for _, p := range path {
+					data = data[p].(map[string]any)
+				}
+
+				pkgSpec, ok := data["pulumi-random"]
+				assert.True(t, ok)
+				pkgSpecMap, ok := pkgSpec.(map[string]any)
+				assert.True(t, ok)
+				pf, ok := pkgSpecMap["path"]
+				assert.True(t, ok)
+				pf, ok = pf.(string)
+				assert.True(t, ok)
+
+				assert.Equal(t, "sdks/random", pf)
+			} else {
+				b1, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
+				assert.NoError(t, err)
+				assert.Contains(t, string(b1), "sdks/random")
+
+				// Run the command again to ensure it doesn't add the dependency twice to requirements.txt
+				_, _ = e.RunCommand("pulumi", "package", "add", "random")
+				b2, err := os.ReadFile(filepath.Join(e.CWD, "requirements.txt"))
+				assert.NoError(t, err)
+				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
+				var sdksRandomCount int
+				for _, line := range lines {
+					if strings.Contains(line, "sdks/random") {
+						sdksRandomCount++
+					}
+				}
+				assert.Equal(t, 1, sdksRandomCount, "sdks/random should only appear once in requirements.txt")
+				assert.Equal(t, b1, b2, "requirements.txt should not change")
+			}
+		})
+	}
+}
+
+func TestPackageAddWithPublisherSetPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packageadd-namespace")
+	e.CWD = filepath.Join(e.RootPath, "python")
+	stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+	require.Contains(t, stdout,
+		"You can then import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg")
+
+	// Make sure the SDK was generated in the expected directory
+	_, err := os.Stat(filepath.Join(e.CWD, "sdks", "my-namespace-mypkg", "my_namespace_mypkg"))
+	require.NoError(t, err)
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderPython(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "python", "--out", "pydir")
+
+	b, err := os.ReadFile(filepath.Join(e.CWD, "pydir/requirements.txt"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(b), "sdks/supabase")
+
+	// Check that `supabase` was installed
+	type dependency struct {
+		Name    string
+		Version string
+	}
+	type about struct {
+		Dependencies []dependency
+	}
+	e.CWD = filepath.Join(e.CWD, "pydir")
+	out, _ := e.RunCommand("pulumi", "about", "--json")
+	e.CWD = e.RootPath
+	a := about{}
+	err = json.Unmarshal([]byte(out), &a)
+	assert.NoError(t, err)
+	found := false
+	depList := []string{}
+	for _, dep := range a.Dependencies {
+		if dep.Name == "pulumi_supabase" {
+			found = true
+			break
+		}
+		depList = append(depList, dep.Name)
+	}
+	require.True(t, found, fmt.Sprintf("pulumi_supabase not found in dependencies.  Full list: %v", depList))
+}
+
+func TestConfigGetterOverloads(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("python/config-getter-types")
+
+	stackName := ptesting.RandomStackName()
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+
+	// ProgramTest installs extra dependencies as editable packages using the `-e` flag, but typecheckers do not
+	// handle editable packages well. We have to manually install the SDK without `-e` flag instead.
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	sdkPath := filepath.Join(cwd, "..", "..", "sdk", "python")
+	pythonBin := "./venv/bin/python"
+	if runtime.GOOS == "windows" {
+		pythonBin = ".\\venv\\Scripts\\python.exe"
+	}
+	e.RunCommand(pythonBin, "-m", "pip", "install", sdkPath)
+
+	// Add some config values
+	e.RunCommand("pulumi", "config", "set", "foo", "bar")
+	e.RunCommand("pulumi", "config", "set", "foo_int", "42")
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo_secret", "3")
+
+	// Run a preview. This will typecheck the program and fail if typechecking has errors.
+	e.RunCommand("pulumi", "preview")
+}
+
+// Test that we can run a program, attach a debugger to it, and send debugging commands using the dap protocol
+// and finally that the program terminates successfully after the debugger is detached.
+func TestDebuggerAttachPython(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("python", "venv"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
+		e.RunCommand("pulumi", "stack", "init", "debugger-test")
+		e.RunCommand("pulumi", "stack", "select", "debugger-test")
+		e.RunCommand("pulumi", "preview", "--attach-debugger",
+			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
+	}()
+
+	// Wait for the debugging event
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.NoError(t, err)
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		wait *= 2
+	}
+	require.NotNil(t, debugEvent)
+
+	// We've attached a debugger, so we need to connect to it and let the program continue.
+	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(
+		int(debugEvent.Config["connect"].(map[string]interface{})["port"].(float64))))
+	if err != nil {
+		log.Fatalf("Failed to connect to debugger: %v", err)
+	}
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	resp, err := dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.OutputEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.OutputEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	// go-dap doesn't support this event, but we need to read it
+	// anyway.  We don't actually care that it's not supported,
+	// since we don't want to do anyting with it.
+	require.ErrorContains(t, err, "Event event 'debugpySockets' is not supported (seq: 3)")
+	require.Nil(t, resp)
+
+	seq := 0
+	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
+		Request: newDAPRequest(seq, "initialize"),
+		Arguments: dap.InitializeRequestArguments{
+			ClientID:        "pulumi",
+			ClientName:      "Pulumi",
+			AdapterID:       "pulumi",
+			Locale:          "en-us",
+			LinesStartAt1:   true,
+			ColumnsStartAt1: true,
+		},
+	})
+	require.NoError(t, err)
+	seq++
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializeResponse{}, resp)
+
+	json, err := json.Marshal(debugEvent.Config)
+	require.NoError(t, err)
+	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
+		Request:   newDAPRequest(seq, "attach"),
+		Arguments: json,
+	})
+	require.NoError(t, err)
+	seq++
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	// As above we don't care about the details of this event
+	require.ErrorContains(t, err, "Event event 'debugpyWaitingForServer' is not supported (seq: 5)")
+	require.Nil(t, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializedEvent{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.ConfigurationDoneRequest{
+		Request: newDAPRequest(seq, "configurationDone"),
+	})
+	require.NoError(t, err)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ConfigurationDoneResponse{}, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.AttachResponse{}, resp)
+
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ProcessEvent{}, resp)
+
+	for {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		if reflect.TypeOf(resp) == reflect.TypeOf(&dap.TerminatedEvent{}) {
+			break
+		}
+		require.IsType(t, &dap.ThreadEvent{}, resp)
+	}
+	conn.Close()
+
+	// Make sure the program finished successfully.
+	wg.Wait()
+}
+
+func TestConstructFailuresPython(t *testing.T) {
+	t.Parallel()
+	testConstructFailures(t, "python", filepath.Join("..", "..", "sdk", "python"))
+}
+
+func TestCallFailuresPython(t *testing.T) {
+	t.Parallel()
+	testCallFailures(t, "python", filepath.Join("..", "..", "sdk", "python"))
+}
+
+// TestLogDebugPython tests that the amount of debug logs is reasonable.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestLogDebugPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("log_debug", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			var count int
+			for _, ev := range stack.Events {
+				if de := ev.DiagnosticEvent; de != nil && de.Severity == "debug" {
+					count++
+				}
+			}
+			t.Logf("Found %v debug log events", count)
+
+			// Ensure at least 1 debug log events are emitted, confirming debug logs are working as expected.
+			assert.Greaterf(t, count, 0, "%v is not enough debug log events", count)
+
+			// More than 25 debug log events on such a simple program is very likely unintended.
+			assert.LessOrEqual(t, count, 25, "%v is too many debug log events", count)
+		},
+	})
+}
+
+func TestDynamicProviderPython(t *testing.T) {
+	t.Parallel()
+	for _, toolchain := range []string{"pip", "uv", "poetry"} {
+		toolchain := toolchain
+		t.Run(toolchain, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory(filepath.Join("python", "dynamic-provider", toolchain))
+			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+			require.NoError(t, err)
+			if toolchain == "poetry" {
+				e.RunCommand("pulumi", "install")
+				e.RunCommand("poetry", "add", coreSDK)
+			} else {
+				f, err := os.OpenFile(filepath.Join(e.RootPath, "requirements.txt"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+				require.NoError(t, err)
+				_, err = fmt.Fprintln(f, coreSDK)
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+				e.RunCommand("pulumi", "install")
+			}
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			stackName := ptesting.RandomStackName()
+			e.RunCommand("pulumi", "stack", "init", stackName)
+			defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--stack", stackName)
+			e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
+			e.RunCommand("pulumi", "dn", "--yes", "--skip-preview")
+		})
+	}
+}
+
+// The shutdown of the callback server used for transform would log exceptions
+// to stderr.
+// https://github.com/pulumi/pulumi/issues/18176
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestRegress18176(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"},
+		Dir: filepath.Join("python", "excepthook"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick:      true,
+		SkipUpdate: true,
+		Stdout:     stdout,
+		Stderr:     stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			require.Empty(t, stack.Events)
+			require.NotContains(t, stdout.String(), "Error in sys.excepthook")
+			require.NotContains(t, stderr.String(), "Error in sys.excepthook")
+		},
+	})
+}
+
+// Tests that we can run a Python component provider using component_provider_host
+func TestPythonComponentProviderRun(t *testing.T) {
+	t.Parallel()
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	for _, runtime := range []string{"yaml", "nodejs", "python"} {
+		t.Run(runtime, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				PrepareProject: func(info *engine.Projinfo) error {
+					providerPath := filepath.Join(info.Root, "..", "provider")
+					installPythonProviderDependencies(t, providerPath)
+					cmd := exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					return nil
+				},
+				Dir:             filepath.Join("component_provider", "python", "component-provider-host"),
+				RelativeWorkDir: runtime,
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+					require.NoError(t, err)
+					require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+					require.Equal(t, "comp", urn.Name())
+					t.Logf("Outputs: %v", stack.Outputs)
+					require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
+					require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
+					complexOutput := stack.Outputs["complexOutput"].(map[string]interface{})
+					if runtime == "python" {
+						// The output is stored in the stack as a plain object,
+						// but that means for Python the keys are snake_case.
+						require.Equal(t, "complex_str_output_value", complexOutput["str_value"].(string))
+						nested := complexOutput["nested_value"].(map[string]interface{})
+						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
+					} else {
+						require.Equal(t, "complex_str_output_value", complexOutput["strValue"].(string))
+						nested := complexOutput["nestedValue"].(map[string]interface{})
+						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
+					}
+					require.Equal(t, []interface{}{"A", "B", "C"}, stack.Outputs["listOutput"].([]interface{}))
+					require.Equal(t, map[string]interface{}{
+						"a": float64(2),
+						"b": float64(4),
+						"c": float64(6),
+					}, stack.Outputs["dictOutput"])
+					require.Equal(t, "b", stack.Outputs["enumOutput"])
+					// TODO: YAML is not properly exporting assets https://github.com/pulumi/pulumi-yaml/issues/714
+					if runtime != "yaml" {
+						// We're expecting assetOutput = map[text:HELLO, WORLD!]
+						asset := stack.Outputs["assetOutput"].(map[string]interface{})
+						text := asset["text"].(string)
+						checkAssetText(t, runtime, "HELLO, WORLD!", text)
+
+						// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
+						archive := stack.Outputs["archiveOutput"].(map[string]interface{})
+						asset1 := archive["assets"].(map[string]interface{})["asset1"].(map[string]interface{})
+						text = asset1["text"].(string)
+						checkAssetText(t, runtime, "IM INSIDE AN ARCHIVE", text)
+					}
+				},
+			})
+		})
+	}
+}
+
+// Tests that we can run a Python component provider using bootstrap-less mode.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderBootstraplessRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "bootstrap-less"),
+		RelativeWorkDir: "yaml",
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+		},
+	})
+}
+
+// Tests that we can run a Python component provider that's a Python package
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderPackageRun(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("component_provider", "python", "package"),
+		RelativeWorkDir: "yaml",
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(info.Root, "..", "provider"))
+			return nil
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("provider:index:MyComponent"), urn.Type())
+		},
+	})
+}
+
+func checkAssetText(t *testing.T, runtime, expected, actual string) {
+	t.Helper()
+	switch runtime {
+	case "nodejs":
+		// Node.js replaces the asset text with "..." in the stack output.
+		// https://github.com/pulumi/pulumi/blob/a3c9fd948de150043a7e07aa82ca17ffaee0bddc/sdk/nodejs/runtime/stack.ts#L163
+		require.Equal(t, "...", actual)
+	default:
+		require.Equal(t, expected, actual)
+	}
+}
+
+// Tests that we can get the schema for a Python component provider using component_provider_host.
+func TestPythonComponentProviderGetSchema(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.ImportDirectory(filepath.Join("component_provider", "python", "component-provider-host", "provider"))
+	defer e.DeleteIfNotFailed()
+	installPythonProviderDependencies(t, e.RootPath)
+
+	// Run the command from a different, sibling, directory. This ensures that
+	// get-package does not rely on the current working directory.
+	e.CWD = t.TempDir()
+	stdout, stderr := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
+	require.Empty(t, stderr)
+	var schema map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
+	require.Equal(t, "provider", schema["name"].(string))
+	require.Equal(t, "0.0.0", schema["version"].(string))
+	require.Equal(t, "provider", schema["displayName"].(string))
+
+	// Check the component schema
+	expectedJSON := `{
+		"isComponent": true,
+		"type": "object",
+		"description": "MyComponent is the best",
+		"properties": {
+			"optionalIntOutput": { "type": "integer" },
+			"strOutput": {
+				"type": "string",
+				"description": "This is a string output"
+			},
+			"complexOutput": { "$ref": "#/types/provider:index:ComplexOutput" },
+			"listOutput": {
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			},
+			"dictOutput": {
+				"type": "object",
+				"additionalProperties": {
+					"type": "integer"
+				}
+			},
+			"assetOutput": { "$ref": "pulumi.json#/Asset" },
+			"archiveOutput": { "$ref": "pulumi.json#/Archive" },
+			"enumOutput": { "$ref": "#/types/provider:index:Emu" }
+		},
+		"required": ["archiveOutput", "assetOutput", "dictOutput", "enumOutput", "listOutput", "strOutput"],
+		"inputProperties": {
+			"strInput": {
+				"type": "string",
+				"description": "This is a string input"
+			},
+			"optionalIntInput": { "type": "integer" },
+			"complexInput": { "$ref": "#/types/provider:index:Complex"},
+			"listInput": {
+				"type": "array",
+				"items": {
+					"type": "string",
+					"plain": true
+				}
+			},
+			"dictInput": {
+				"type": "object",
+				"additionalProperties": {
+					"type": "integer",
+					"plain": true
+				}
+			},
+			"assetInput": { "$ref": "pulumi.json#/Asset" },
+			"archiveInput": { "$ref": "pulumi.json#/Archive" },
+			"enumInput": { "$ref": "#/types/provider:index:Emu" }
+		},
+		"requiredInputs": ["archiveInput", "assetInput", "dictInput", "enumInput", "listInput", "strInput"]
+	}
+	`
+	expected := make(map[string]interface{})
+	resources := schema["resources"].(map[string]interface{})
+	component := resources["provider:index:MyComponent"].(map[string]interface{})
+	require.NoError(t, json.Unmarshal([]byte(expectedJSON), &expected))
+	// TODO https://github.com/pulumi/pulumi/issues/18481
+	// properties.dictOutput.additionalProperties.plain and
+	// properties.listOutput.items.plain should be true, but they are not. The
+	// actual JSON the provider returns has these fields set to true, however
+	// somehwere in `package get-schema`, this information is lost.
+	require.Equal(t, expected, component)
+
+	// Check the complex types
+	expectedTypesJSON := `{
+		"provider:index:Complex": {
+			"description": "ComplexType is very complicated",
+			"properties": {
+				"strInput": {
+					"type": "string"
+				},
+				"nestedInput": {
+					"$ref": "#/types/provider:index:Nested"
+				}
+			},
+			"type": "object",
+			"required": ["nestedInput", "strInput"]
+		},
+		"provider:index:Nested": {
+			"description": "Deep nesting",
+			"properties": {
+				"strPlain": {
+					"type": "string",
+					"plain": true,
+					"description": "A plain string"
+				}
+			},
+			"type": "object",
+			"required": ["strPlain"]
+		},
+		"provider:index:ComplexOutput": {
+			"properties": {
+				"strValue": {
+					"type": "string"
+				},
+				"nestedValue": {
+					"$ref": "#/types/provider:index:NestedOutput"
+				}
+			},
+			"type": "object",
+			"required": ["nestedValue", "strValue"]
+		},
+		"provider:index:NestedOutput": {
+			"properties": {
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object",
+			"required": ["value"]
+		},
+		"provider:index:Emu": {
+			"description": "A or B",
+			"type": "string",
+			"enum": [
+				{ "name": "A", "value": "a" },
+				{ "name": "B", "value": "b" }
+			]
+		}
+	}`
+	expectedTypes := make(map[string]interface{})
+	types := schema["types"].(map[string]interface{})
+	require.NoError(t, json.Unmarshal([]byte(expectedTypesJSON), &expectedTypes))
+	require.Equal(t, expectedTypes, types)
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderRecursiveTypes(t *testing.T) {
+	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "recursive-types"))
+	require.NoError(t, err)
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(testData, "provider"))
+			return nil
+		},
+		Dir: filepath.Join(testData, "yaml"),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+			require.NoError(t, err)
+			require.Equal(t, tokens.Type("component:index:MyComponent"), urn.Type())
+			require.Equal(t, "comp", urn.Name())
+			// map[rec:map[a:map[b:map[a:map[b:map[]]]]]
+			rec := stack.Outputs["rec"].(map[string]interface{})
+			rec, ok := rec["a"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["b"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["a"].(map[string]interface{})
+			require.True(t, ok)
+			rec, ok = rec["b"].(map[string]interface{})
+			require.True(t, ok)
+			require.Equal(t, map[string]interface{}{}, rec)
+		},
+	})
+}
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonComponentProviderException(t *testing.T) {
+	testData, err := filepath.Abs(filepath.Join("component_provider", "python", "exception"))
+	require.NoError(t, err)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PrepareProject: func(info *engine.Projinfo) error {
+			installPythonProviderDependencies(t, filepath.Join(testData, "provider"))
+			return nil
+		},
+		Dir:           filepath.Join(testData, "yaml"),
+		Stdout:        stdout,
+		Stderr:        stderr,
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"MyComponent resource 'comp' has a problem: Unexpected <class 'Exception'>: method_b failed")
+
+					matches := regexp.MustCompile(`File.*, line \d+, in .*`).FindAllString(event.DiagnosticEvent.Message, -1)
+					require.Len(t, matches, 3, "Expected 3 stack trace lines")
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"tests/integration/component_provider/python/exception/provider/component.py\", line 27, in __init__")
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"tests/integration/component_provider/python/exception/provider/component.py\", line 31, in method_a")
+					require.Contains(t, event.DiagnosticEvent.Message,
+						"tests/integration/component_provider/python/exception/provider/component.py\", line 34, in method_b")
+					foundError = true
+				}
+			}
+			require.True(t, foundError, "expected to find an error in the stack events")
+		},
+	})
+}
+
+func installPythonProviderDependencies(t *testing.T, dir string) {
+	t.Helper()
+
+	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
+		Root:       dir,
+		Virtualenv: "venv",
+		Toolchain:  toolchain.Pip,
+	})
+	require.NoError(t, err)
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	if _, err := os.Stat(filepath.Join(dir, "pyproject.toml")); err == nil {
+		t.Logf("Found bootstrap-less Python plugin in %s", dir)
+		// Create a venv and install the package into it
+		err = tc.EnsureVenv(context.Background(), dir, false, false, stdout, stderr)
+		require.NoError(t, err)
+		cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", dir)
+		require.NoError(t, err)
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "output: %s", out)
+	} else {
+		// Install dependencies from requirements.txt
+		err = tc.InstallDependencies(context.Background(), dir, false, false, stdout, stderr)
+		require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
+	}
+
+	// Install the core SDK so we have the current version
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", coreSDK)
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", out)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/18768
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestOrganization(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("python", "organization"),
+		Dependencies: []string{
+			// We explicitly do not depend on the local Python SDK here.
+			// Instead, the version specified in requirements.txt is used.
+		},
+		Quick: true,
 	})
 }

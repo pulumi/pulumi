@@ -24,7 +24,9 @@
 //
 // The code can prepend `--logtostderr` and verbosity e.g. `-v=9`
 // arguments. We ignore these for the moment.
-/** @internal */
+/**
+ * @internal
+ */
 export function parseArgs(args: string[]): { engineAddress: string } | undefined {
     const cleanArgs = [];
 

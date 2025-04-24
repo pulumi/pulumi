@@ -149,6 +149,13 @@
                 "null"
             ],
             "properties":{
+                "displayName":{
+                    "description":"Optional user-friendly name of the template.",
+                    "type":[
+                        "string",
+                        "null"
+                    ]
+                },
                 "description":{
                     "description":"Description of the template.",
                     "type":[
@@ -169,6 +176,16 @@
                         "boolean",
                         "null"
                     ]
+                },
+                "metadata":{
+                    "description":"Metadata is a map of key/value pairs to associate with the template",
+                    "type":[
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties":{
+                        "type": "string"
+                    }
                 },
                 "config":{
                     "description":"Config to apply to each stack in the project.",
@@ -200,6 +217,21 @@
                 }
             },
             "additionalProperties":false
+        },
+        "packages":{
+            "description":"Package dependencies for this Pulumi project.",
+            "type":"object",
+            "additionalProperties":{
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "description": "Package source in a string format, optionally with `@version` suffix"
+                    },
+                    {
+                        "$ref":"#/$defs/packageSpec"
+                    }
+                ]
+            }
         },
         "plugins":{
             "description":"Override for the plugin selection. Intended for use in developing pulumi plugins.",
@@ -235,6 +267,31 @@
     ],
     "additionalProperties":true,
     "$defs":{
+        "packageSpec":{
+            "title":"PackageSpec",
+            "type":"object",
+            "additionalProperties":false,
+            "required":[
+                "source"
+            ],
+            "properties":{
+                "source":{
+                    "type":"string",
+                    "description":"Source of the package, which can be a URL scheme like 'github://', 'git://', a file path './local/path', or a name like 'terraform-provider'"
+                },
+                "version":{
+                    "type":"string",
+                    "description":"Version of the package to use"
+                },
+                "parameters":{
+                    "type":"array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description":"Additional parameters for parameterized providers"
+                }
+            }
+        },
         "pluginOptions":{
             "title":"PluginOptions",
             "type":"object",

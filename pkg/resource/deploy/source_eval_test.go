@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,24 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/blang/semver"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -36,7 +43,103 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
+
+//
+// Mock resource monitor.
+//
+
+type mockResmon struct {
+	AddressF func() string
+
+	CancelF func() error
+
+	InvokeF func(ctx context.Context,
+		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+
+	CallF func(ctx context.Context,
+		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
+
+	ReadResourceF func(ctx context.Context,
+		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
+
+	RegisterResourceF func(ctx context.Context,
+		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
+
+	RegisterResourceOutputsF func(ctx context.Context,
+		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
+
+	AbortChanF func() <-chan bool
+}
+
+var _ SourceResourceMonitor = (*mockResmon)(nil)
+
+func (rm *mockResmon) AbortChan() <-chan bool {
+	if rm.AbortChanF != nil {
+		return rm.AbortChanF()
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Address() string {
+	if rm.AddressF != nil {
+		return rm.AddressF()
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Cancel() error {
+	if rm.CancelF != nil {
+		return rm.CancelF()
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Invoke(ctx context.Context,
+	req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
+	if rm.InvokeF != nil {
+		return rm.InvokeF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) Call(ctx context.Context,
+	req *pulumirpc.ResourceCallRequest,
+) (*pulumirpc.CallResponse, error) {
+	if rm.CallF != nil {
+		return rm.CallF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) ReadResource(ctx context.Context,
+	req *pulumirpc.ReadResourceRequest,
+) (*pulumirpc.ReadResourceResponse, error) {
+	if rm.ReadResourceF != nil {
+		return rm.ReadResourceF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) RegisterResource(ctx context.Context,
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	if rm.RegisterResourceF != nil {
+		return rm.RegisterResourceF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
+	req *pulumirpc.RegisterResourceOutputsRequest,
+) (*emptypb.Empty, error) {
+	if rm.RegisterResourceOutputsF != nil {
+		return rm.RegisterResourceOutputsF(ctx, req)
+	}
+	panic("not implemented")
+}
 
 type testRegEvent struct {
 	goal   *resource.Goal
@@ -60,7 +163,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		for _, s := range steps {
 			g := s.Goal()
-			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, deploytest.ResourceOptions{
+			resp, err := resmon.RegisterResource(g.Type, g.Name, g.Custom, deploytest.ResourceOptions{
 				Parent:       g.Parent,
 				Protect:      g.Protect,
 				Dependencies: g.Dependencies,
@@ -71,10 +174,14 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 			if err != nil {
 				return err
 			}
+			var protect bool
+			if g.Protect != nil {
+				protect = *g.Protect
+			}
 			s.Done(&RegisterResult{
-				State: resource.NewState(g.Type, urn, g.Custom, false, id, g.Properties, outs, g.Parent, g.Protect,
-					false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
-					"", false, "", nil, nil, ""),
+				State: resource.NewState(g.Type, resp.URN, g.Custom, false, resp.ID, g.Properties, resp.Outputs, g.Parent,
+					protect, false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
+					"", false, "", nil, nil, "", nil, nil),
 			})
 		}
 		return nil
@@ -120,7 +227,8 @@ func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent reso
 	}
 	goal := &resource.Goal{
 		Type:       providers.MakeProviderType(tokens.Package(pkg)),
-		Name:       tokens.QName(name),
+		ID:         "id",
+		Name:       name,
 		Custom:     true,
 		Properties: inputs,
 		Parent:     parent,
@@ -153,8 +261,11 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -162,7 +273,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, name)
 	}
 
 	newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -183,29 +294,29 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		newProviderEvent("pkgA", "providerA", nil, ""),
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", nil,
+				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		// Register a couple resources using provider A.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:index:typA", "res1", true, resource.PropertyMap{}, componentURN, false, nil,
-				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal("pkgA:index:typA", "res1", true, resource.PropertyMap{}, componentURN, nil, nil,
+				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgA:index:typA", "res2", true, resource.PropertyMap{}, componentURN, false, nil,
-				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal("pkgA:index:typA", "res2", true, resource.PropertyMap{}, componentURN, nil, nil,
+				providerARef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		// Register two more providers.
 		newProviderEvent("pkgA", "providerB", nil, ""),
 		newProviderEvent("pkgC", "providerC", nil, componentURN),
 		// Register a few resources that use the new providers.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:index:typB", "res3", true, resource.PropertyMap{}, "", false, nil,
-				providerBRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal("pkgB:index:typB", "res3", true, resource.PropertyMap{}, "", nil, nil,
+				providerBRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:index:typC", "res4", true, resource.PropertyMap{}, "", false, nil,
-				providerCRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal("pkgB:index:typC", "res4", true, resource.PropertyMap{}, "", nil, nil,
+				providerCRef.String(), []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 	}
 
@@ -213,13 +324,13 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), &testProviderSource{})
+	assert.NoError(t, err)
 
 	processed := 0
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 
 		if event == nil {
 			break
@@ -231,15 +342,19 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		if providers.IsProviderType(goal.Type) {
 			assert.NotEqual(t, "default", goal.Name)
 		}
-		urn := newURN(goal.Type, string(goal.Name), goal.Parent)
+		urn := newURN(goal.Type, goal.Name, goal.Parent)
 		id := resource.ID("")
 		if goal.Custom {
 			id = "id"
 		}
+		var protect bool
+		if goal.Protect != nil {
+			protect = *goal.Protect
+		}
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-				false, nil, nil, nil, "", false, "", nil, nil, ""),
+				goal.Parent, protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+				false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 		})
 
 		processed++
@@ -252,8 +367,11 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -261,7 +379,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, name)
 	}
 
 	componentURN := newURN("component", "component", "")
@@ -269,26 +387,26 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	steps := []RegisterResourceEvent{
 		// Register a component resource.
 		&testRegEvent{
-			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal(componentURN.Type(), componentURN.Name(), false, resource.PropertyMap{}, "", nil,
+				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		// Register a couple resources from package A.
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res1", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+				componentURN, nil, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		&testRegEvent{
 			goal: resource.NewGoal("pkgA:m:typA", "res2", true, resource.PropertyMap{},
-				componentURN, false, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+				componentURN, nil, nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		// Register a few resources from other packages.
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal("pkgB:m:typB", "res3", true, resource.PropertyMap{}, "", nil,
+				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 		&testRegEvent{
-			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", false,
-				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, false, "", ""),
+			goal: resource.NewGoal("pkgB:m:typC", "res4", true, resource.PropertyMap{}, "", nil,
+				nil, "", []string{}, nil, nil, nil, nil, nil, "", nil, nil, nil, "", ""),
 		},
 	}
 
@@ -296,13 +414,13 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), &testProviderSource{})
+	assert.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 
 		if event == nil {
 			break
@@ -311,14 +429,14 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		reg := event.(RegisterResourceEvent)
 
 		goal := reg.Goal()
-		urn := newURN(goal.Type, string(goal.Name), goal.Parent)
+		urn := newURN(goal.Type, goal.Name, goal.Parent)
 		id := resource.ID("")
 		if goal.Custom {
 			id = "id"
 		}
 
 		if providers.IsProviderType(goal.Type) {
-			assert.Equal(t, "default", string(goal.Name))
+			assert.Equal(t, "default", goal.Name)
 			ref, err := providers.NewReference(urn, id)
 			assert.NoError(t, err)
 			_, ok := defaults[ref.String()]
@@ -330,10 +448,14 @@ func TestRegisterDefaultProviders(t *testing.T) {
 			assert.True(t, ok)
 		}
 
+		var protect bool
+		if goal.Protect != nil {
+			protect = *goal.Protect
+		}
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-				false, nil, nil, nil, "", false, "", nil, nil, ""),
+				goal.Parent, protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+				false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 		})
 
 		processed++
@@ -346,8 +468,11 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -355,7 +480,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, name)
 	}
 
 	newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -371,9 +496,9 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 
 	invokes := int32(0)
 	noopProvider := &deploytest.Provider{
-		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+		InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 			atomic.AddInt32(&invokes, 1)
-			return resource.PropertyMap{}, nil, nil
+			return plugin.InvokeResponse{}, nil
 		},
 	}
 
@@ -388,18 +513,18 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
-		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "")
+		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "")
+		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "")
+		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", "")
 		assert.NoError(t, perr)
 
-		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "", "")
 		assert.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "")
+		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "", "")
 		assert.NoError(t, perr)
 
 		return nil
@@ -409,23 +534,23 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
+	assert.NoError(t, err)
 
 	reads := 0
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 		if event == nil {
 			break
 		}
 
 		read := event.(ReadResourceEvent)
-		urn := newURN(read.Type(), string(read.Name()), read.Parent())
+		urn := newURN(read.Type(), read.Name(), read.Parent())
 		read.Done(&ReadResult{
 			State: resource.NewState(read.Type(), urn, true, false, read.ID(), read.Properties(),
 				resource.PropertyMap{}, read.Parent(), false, false, read.Dependencies(), nil, read.Provider(), nil,
-				false, nil, nil, nil, "", false, "", nil, nil, ""),
+				false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 		})
 		reads++
 	}
@@ -438,8 +563,11 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	t.Parallel()
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -447,32 +575,32 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, name)
 	}
 
 	invokes := int32(0)
 	noopProvider := &deploytest.Provider{
-		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+		InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 			atomic.AddInt32(&invokes, 1)
-			return resource.PropertyMap{}, nil, nil
+			return plugin.InvokeResponse{}, nil
 		},
 	}
 
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
-		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "")
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "")
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "")
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
 		assert.NoError(t, err)
 
-		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "", "")
 		assert.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "")
+		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
 		assert.NoError(t, err)
 
 		return nil
@@ -484,13 +612,13 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-	assert.Nil(t, res)
+	iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
+	assert.NoError(t, err)
 
 	reads, registers := 0, 0
 	for {
-		event, res := iter.Next()
-		assert.Nil(t, res)
+		event, err := iter.Next()
+		assert.NoError(t, err)
 
 		if event == nil {
 			break
@@ -499,29 +627,34 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 		switch e := event.(type) {
 		case RegisterResourceEvent:
 			goal := e.Goal()
-			urn, id := newURN(goal.Type, string(goal.Name), goal.Parent), resource.ID("id")
+			urn, id := newURN(goal.Type, goal.Name, goal.Parent), resource.ID("id")
 
 			assert.True(t, providers.IsProviderType(goal.Type))
-			assert.Equal(t, "default", string(goal.Name))
+			assert.Equal(t, "default", goal.Name)
 			ref, err := providers.NewReference(urn, id)
 			assert.NoError(t, err)
 			_, ok := providerSource.GetProvider(ref)
 			assert.False(t, ok)
 			providerSource.registerProvider(ref, noopProvider)
 
+			var protect bool
+			if goal.Protect != nil {
+				protect = *goal.Protect
+			}
+
 			e.Done(&RegisterResult{
 				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
-					false, nil, nil, nil, "", false, "", nil, nil, ""),
+					goal.Parent, protect, false, goal.Dependencies, nil, goal.Provider, goal.PropertyDependencies,
+					false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 			})
 			registers++
 
 		case ReadResourceEvent:
-			urn := newURN(e.Type(), string(e.Name()), e.Parent())
+			urn := newURN(e.Type(), e.Name(), e.Parent())
 			e.Done(&ReadResult{
 				State: resource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
 					resource.PropertyMap{}, e.Parent(), false, false, e.Dependencies(), nil, e.Provider(), nil, false,
-					nil, nil, nil, "", false, "", nil, nil, ""),
+					nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 			})
 			reads++
 		}
@@ -579,8 +712,11 @@ func TestDisableDefaultProviders(t *testing.T) {
 			t.Parallel()
 
 			runInfo := &EvalRunInfo{
-				Proj:   &workspace.Project{Name: "test"},
-				Target: &Target{Name: "test"},
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "test"},
+				Target:      &Target{Name: tokens.MustParseStackName("test")},
 			}
 			if tt.disableDefault {
 				disableDefaultProviders(runInfo, "pkgA")
@@ -591,7 +727,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 				if parent != "" {
 					pt = parent.Type()
 				}
-				return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+				return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, name)
 			}
 
 			newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -616,9 +752,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			noopProvider := &deploytest.Provider{
-				InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					atomic.AddInt32(&invokes, 1)
-					return resource.PropertyMap{}, nil, nil
+					return plugin.InvokeResponse{}, nil
 				},
 			}
 
@@ -640,18 +776,18 @@ func TestDisableDefaultProviders(t *testing.T) {
 					aPkgProvider = providerARef.String()
 				}
 				// Perform some reads and invokes with explicit provider references.
-				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "")
+				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "")
+				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", "")
 				assert.NoError(t, perr)
-				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "")
+				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", "")
 				assert.NoError(t, perr)
 
-				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "")
+				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "")
+				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "", "")
 				assert.NoError(t, perr)
-				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "")
+				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
 				assert.NoError(t, perr)
 
 				return nil
@@ -661,30 +797,30 @@ func TestDisableDefaultProviders(t *testing.T) {
 			ctx, err := newTestPluginContext(t, program)
 			assert.NoError(t, err)
 
-			iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-			assert.Nil(t, res)
+			iter, err := NewEvalSource(ctx, runInfo, nil, EvalSourceOptions{}).Iterate(context.Background(), providerSource)
+			assert.NoError(t, err)
 
 			for {
-				event, res := iter.Next()
-				assert.Nil(t, res)
+				event, err := iter.Next()
+				assert.NoError(t, err)
 				if event == nil {
 					break
 				}
 				switch event := event.(type) {
 				case ReadResourceEvent:
-					urn := newURN(event.Type(), string(event.Name()), event.Parent())
+					urn := newURN(event.Type(), event.Name(), event.Parent())
 					event.Done(&ReadResult{
 						State: resource.NewState(event.Type(), urn, true, false, event.ID(), event.Properties(),
 							resource.PropertyMap{}, event.Parent(), false, false, event.Dependencies(), nil, event.Provider(), nil,
-							false, nil, nil, nil, "", false, "", nil, nil, ""),
+							false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 					})
 					reads++
 				case RegisterResourceEvent:
-					urn := newURN(event.Goal().Type, string(event.Goal().Name), event.Goal().Parent)
+					urn := newURN(event.Goal().Type, event.Goal().Name, event.Goal().Parent)
 					event.Done(&RegisterResult{
-						State: resource.NewState(event.Goal().Type, urn, true, false, event.Goal().ID, event.Goal().Properties,
+						State: resource.NewState(event.Goal().Type, urn, true, false, "id", event.Goal().Properties,
 							resource.PropertyMap{}, event.Goal().Parent, false, false, event.Goal().Dependencies, nil,
-							event.Goal().Provider, nil, false, nil, nil, nil, "", false, "", nil, nil, ""),
+							event.Goal().Provider, nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil),
 					})
 					registers++
 				default:
@@ -722,8 +858,11 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 	}
 
 	runInfo := &EvalRunInfo{
-		Proj:   &workspace.Project{Name: "test"},
-		Target: &Target{Name: "test"},
+		ProjectRoot: "/",
+		Pwd:         "/",
+		Program:     ".",
+		Proj:        &workspace.Project{Name: "test"},
+		Target:      &Target{Name: tokens.MustParseStackName("test")},
 	}
 
 	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
@@ -731,7 +870,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, name)
 	}
 
 	// Used when we need a *bool.
@@ -784,7 +923,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 				DeleteBeforeReplace: &trueValue,
 			},
 			want: plugin.ConstructOptions{
-				DeleteBeforeReplace: true,
+				DeleteBeforeReplace: &trueValue,
 			},
 		},
 		{
@@ -793,7 +932,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 				DeleteBeforeReplace: &falseValue,
 			},
 			want: plugin.ConstructOptions{
-				DeleteBeforeReplace: false,
+				DeleteBeforeReplace: &falseValue,
 			},
 		},
 		{
@@ -817,10 +956,10 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 		{
 			desc: "Protect",
 			give: deploytest.ResourceOptions{
-				Protect: true,
+				Protect: &trueValue,
 			},
 			want: plugin.ConstructOptions{
-				Protect: true,
+				Protect: &trueValue,
 			},
 		},
 		{
@@ -835,10 +974,10 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 		{
 			desc: "RetainOnDelete",
 			give: deploytest.ResourceOptions{
-				RetainOnDelete: true,
+				RetainOnDelete: &trueValue,
 			},
 			want: plugin.ConstructOptions{
-				RetainOnDelete: true,
+				RetainOnDelete: &trueValue,
 			},
 		},
 	}
@@ -851,14 +990,14 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			give := tt.give
 			give.Remote = true
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
-				_, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
+				_, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
 				require.NoError(t, err, "register resource")
 				return nil
 			}
 			pluginCtx, err := newTestPluginContext(t, program)
 			require.NoError(t, err, "build plugin context")
 
-			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false)
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, EvalSourceOptions{})
 			defer func() {
 				assert.NoError(t, evalSource.Close(), "close eval source")
 			}()
@@ -866,28 +1005,26 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			var got plugin.ConstructOptions
 			provider := &deploytest.Provider{
 				ConstructF: func(
-					mon *deploytest.ResourceMonitor,
-					typ, name string,
-					parent resource.URN,
-					inputs resource.PropertyMap,
-					options plugin.ConstructOptions,
-				) (plugin.ConstructResult, error) {
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
 					// To keep test cases above simple,
 					// nil out properties that are empty when unset.
-					nilIfEmpty(&options.Aliases)
-					nilIfEmpty(&options.Dependencies)
-					nilIfEmpty(&options.PropertyDependencies)
-					nilIfEmpty(&options.Providers)
+					nilIfEmpty(&req.Options.Aliases)
+					nilIfEmpty(&req.Options.Dependencies)
+					nilIfEmpty(&req.Options.PropertyDependencies)
+					nilIfEmpty(&req.Options.Providers)
 
-					got = options
-					return plugin.ConstructResult{
-						URN: newURN(tokens.Type(typ), name, parent),
+					got = req.Options
+					return plugin.ConstructResponse{
+						URN: newURN(req.Type, req.Name, req.Parent),
 					}, nil
 				},
 			}
 
 			ctx := context.Background()
-			iter, res := evalSource.Iterate(ctx, Options{}, &testProviderSource{defaultProvider: provider})
+			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider})
 			require.Nil(t, res, "iterate eval source")
 
 			for ev, res := iter.Next(); ev != nil; ev, res = iter.Next() {
@@ -895,12 +1032,16 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 				switch ev := ev.(type) {
 				case RegisterResourceEvent:
 					goal := ev.Goal()
+					id := goal.ID
+					if id == "" {
+						id = "id"
+					}
 					ev.Done(&RegisterResult{
 						State: &resource.State{
 							Type:         goal.Type,
-							URN:          newURN(goal.Type, string(goal.Name), goal.Parent),
+							URN:          newURN(goal.Type, goal.Name, goal.Parent),
 							Custom:       goal.Custom,
-							ID:           goal.ID,
+							ID:           id,
 							Inputs:       goal.Properties,
 							Parent:       goal.Parent,
 							Dependencies: goal.Dependencies,
@@ -922,6 +1063,9 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // for #2753.
 // func TestReadResourceAndInvokeVersion(t *testing.T) {
 // 	runInfo := &EvalRunInfo{
+//      ProjectRoot: "/",
+// 		Pwd:         "/",
+// 		Program:     ".",
 // 		Proj:   &workspace.Project{Name: "test"},
 // 		Target: &Target{Name: "test"},
 // 	}
@@ -973,12 +1117,12 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 
 // 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-// 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-// 	assert.Nil(t, res)
+// 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+// 	assert.NoError(t, err)
 // 	registrations, reads := 0, 0
 // 	for {
-// 		event, res := iter.Next()
-// 		assert.Nil(t, res)
+// 		event, err := iter.Next()
+// 		assert.NoError(t, err)
 
 // 		if event == nil {
 // 			break
@@ -987,11 +1131,11 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 		switch e := event.(type) {
 // 		case RegisterResourceEvent:
 // 			goal := e.Goal()
-// 			urn, id := newURN(goal.Type, string(goal.Name), goal.Parent), resource.ID("id")
+// 			urn, id := newURN(goal.Type, goal.Name, goal.Parent), resource.ID("id")
 
 // 			assert.True(t, providers.IsProviderType(goal.Type))
 // 			// The name of the provider resource is derived from the version requested.
-// 			assert.Equal(t, "default_0_18_0", string(goal.Name))
+// 			assert.Equal(t, "default_0_18_0", goal.Name)
 // 			ref, err := providers.NewReference(urn, id)
 // 			assert.NoError(t, err)
 // 			_, ok := providerSource.GetProvider(ref)
@@ -1042,17 +1186,17 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	//  2. Provider pkgC, version 0.18.0
 // 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 // 		// Triggers pkgA, v0.18.1.
-// 		_, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+// 		_, err := resmon.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.1", nil)
 // 		assert.NoError(t, err)
 
 // 		// Re-uses pkgA's already-instantiated provider.
-// 		_, _, _, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
+// 		_, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.1", nil)
 // 		assert.NoError(t, err)
 
 // 		// Triggers pkgA, v0.18.2
-// 		_, _, _, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
+// 		_, err = resmon.RegisterResource("pkgA:m:typA", "resB", true, "", false, nil, "",
 // 			resource.PropertyMap{}, nil, false, "0.18.2", nil)
 // 		assert.NoError(t, err)
 // 		return nil
@@ -1063,12 +1207,12 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 
 // 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-// 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
-// 	assert.Nil(t, res)
+// 	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+// 	assert.NoError(t, err)
 // 	registered181, registered182 := false, false
 // 	for {
-// 		event, res := iter.Next()
-// 		assert.Nil(t, res)
+// 		event, err := iter.Next()
+// 		assert.NoError(t, err)
 
 // 		if event == nil {
 // 			break
@@ -1077,7 +1221,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 		switch e := event.(type) {
 // 		case RegisterResourceEvent:
 // 			goal := e.Goal()
-// 			urn, id := newURN(goal.Type, string(goal.Name), goal.Parent), resource.ID("id")
+// 			urn, id := newURN(goal.Type, goal.Name, goal.Parent), resource.ID("id")
 
 // 			if providers.IsProviderType(goal.Type) {
 // 				switch goal.Name {
@@ -1239,40 +1383,67 @@ func TestRequestFromNodeJS(t *testing.T) {
 
 func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	t.Parallel()
+
+	sptr := func(s string) *string {
+		return &s
+	}
+
+	bptr := func(b bool) *bool {
+		return &b
+	}
+
+	makeAlias := func(parent *string, noParent *bool, name string) *pulumirpc.Alias {
+		spec := &pulumirpc.Alias_Spec{
+			Name: name,
+		}
+		if parent != nil {
+			spec.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: *parent}
+		}
+		if noParent != nil {
+			spec.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: *noParent}
+		}
+
+		return &pulumirpc.Alias{
+			Alias: &pulumirpc.Alias_Spec_{
+				Spec: spec,
+			},
+		}
+	}
+
 	tests := []struct {
 		name     string
-		input    resource.Alias
-		expected resource.Alias
+		input    *pulumirpc.Alias
+		expected *pulumirpc.Alias
 	}{
 		{
 			name:     `{Parent: "", NoParent: true} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: true},
-			expected: resource.Alias{Parent: "", NoParent: false},
+			input:    makeAlias(nil, bptr(true), ""),
+			expected: makeAlias(nil, nil, ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: false},
-			expected: resource.Alias{Parent: "", NoParent: true},
+			input:    makeAlias(sptr(""), nil, ""),
+			expected: makeAlias(nil, bptr(true), ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: false, Name: "name"},
-			expected: resource.Alias{Parent: "", NoParent: true, Name: "name"},
+			input:    makeAlias(sptr(""), nil, "name"),
+			expected: makeAlias(nil, bptr(true), "name"),
 		},
 		{
 			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
-			input:    resource.Alias{Parent: "", NoParent: true, Name: "name"},
-			expected: resource.Alias{Parent: "", NoParent: false, Name: "name"},
+			input:    makeAlias(nil, bptr(true), "name"),
+			expected: makeAlias(nil, nil, "name"),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false} (no transform)`,
-			input:    resource.Alias{Parent: "foo", NoParent: false},
-			expected: resource.Alias{Parent: "foo", NoParent: false},
+			input:    makeAlias(sptr("foo"), nil, ""),
+			expected: makeAlias(sptr("foo"), nil, ""),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
-			input:    resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
-			expected: resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
+			input:    makeAlias(sptr("foo"), nil, "name"),
+			expected: makeAlias(sptr("foo"), nil, "name"),
 		},
 	}
 	for _, tt := range tests {
@@ -1280,6 +1451,1780 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := transformAliasForNodeJSCompat(tt.input)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+type providerSourceMock struct {
+	Provider plugin.Provider
+}
+
+func (ps *providerSourceMock) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
+	return ps.Provider, ps.Provider != nil
+}
+
+var _ ProviderSource = (*providerSourceMock)(nil)
+
+type decrypterMock struct {
+	DecryptValueF func(
+		ctx context.Context, ciphertext string) (string, error)
+	BatchDecryptF func(
+		ctx context.Context, ciphertexts []string) ([]string, error)
+}
+
+var _ config.Decrypter = (*decrypterMock)(nil)
+
+func (d *decrypterMock) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	if d.DecryptValueF != nil {
+		return d.DecryptValueF(ctx, ciphertext)
+	}
+	panic("unimplemented")
+}
+
+func (d *decrypterMock) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	if d.BatchDecryptF != nil {
+		return d.BatchDecryptF(ctx, ciphertexts)
+	}
+	panic("unimplemented")
+}
+
+func TestEvalSource(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Stack", func(t *testing.T) {
+		t.Parallel()
+		src := &evalSource{
+			runinfo: &EvalRunInfo{
+				Target: &Target{
+					Name: tokens.MustParseStackName("target-name"),
+				},
+			},
+		}
+		assert.Equal(t, tokens.MustParseStackName("target-name"), src.Stack())
+	})
+	t.Run("Iterate", func(t *testing.T) {
+		t.Parallel()
+		t.Run("config decrypt value error", func(t *testing.T) {
+			t.Parallel()
+			var decrypterCalled bool
+			src := &evalSource{
+				plugctx: &plugin.Context{
+					Diag: &deploytest.NoopSink{},
+				},
+
+				runinfo: &EvalRunInfo{
+					ProjectRoot: "/",
+					Pwd:         "/",
+					Program:     ".",
+					Proj:        &workspace.Project{Name: "proj"},
+					Target: &Target{
+						Name: tokens.MustParseStackName("target-name"),
+						Config: config.Map{
+							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
+						},
+						Decrypter: &decrypterMock{
+							DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
+								decrypterCalled = true
+								return "", errors.New("expected fail")
+							},
+						},
+					},
+				},
+			}
+			_, err := src.Iterate(context.Background(), &providerSourceMock{})
+			assert.ErrorContains(t, err, "failed to decrypt config")
+			assert.True(t, decrypterCalled)
+		})
+		t.Run("failed to convert config to map", func(t *testing.T) {
+			t.Parallel()
+
+			var called int
+			var decrypterCalled bool
+			src := &evalSource{
+				plugctx: &plugin.Context{
+					Diag: &deploytest.NoopSink{},
+				},
+				runinfo: &EvalRunInfo{
+					ProjectRoot: "/",
+					Pwd:         "/",
+					Program:     ".",
+					Target: &Target{
+						Config: config.Map{
+							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
+						},
+						Decrypter: &decrypterMock{
+							DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
+								decrypterCalled = true
+								if called == 0 {
+									// Will cause the next invocation to fail.
+									called++
+									return "", nil
+								}
+								return "", errors.New("expected fail")
+							},
+						},
+					},
+				},
+			}
+			_, err := src.Iterate(context.Background(), &providerSourceMock{})
+			assert.ErrorContains(t, err, "failed to convert config to map")
+			assert.True(t, decrypterCalled)
+		})
+	})
+}
+
+func TestResmonCancel(t *testing.T) {
+	t.Parallel()
+	done := make(chan error)
+	rm := &resmon{
+		cancel: make(chan bool, 10),
+		done:   done,
+	}
+	err := errors.New("my error")
+
+	go func() {
+		// This ensures that cancel doesn't hang.
+		done <- err
+	}()
+
+	// Cancel always returns nil or a joinErrors.
+	assert.Equal(t, errors.Join(err), rm.Cancel())
+}
+
+func TestSourceEvalServeOptions(t *testing.T) {
+	t.Parallel()
+	assert.Len(t,
+		sourceEvalServeOptions(nil, opentracing.SpanFromContext(context.Background()), "" /* logFile */),
+		2,
+	)
+
+	assert.Len(t,
+		sourceEvalServeOptions(&plugin.Context{
+			DebugTraceMutex: &sync.Mutex{},
+		}, opentracing.SpanFromContext(context.Background()), "logFile.log"),
+		4,
+	)
+}
+
+func TestEvalSourceIterator(t *testing.T) {
+	t.Parallel()
+	t.Run("Close", func(t *testing.T) {
+		t.Parallel()
+		var called bool
+		iter := &evalSourceIterator{
+			mon: &mockResmon{
+				CancelF: func() error {
+					called = true
+					return nil
+				},
+			},
+		}
+		iter.Close()
+		assert.True(t, called)
+	})
+	t.Run("ResourceMonitor", func(t *testing.T) {
+		t.Parallel()
+		var called bool
+		mon := &mockResmon{
+			CancelF: func() error { called = true; return nil },
+		}
+		iter := &evalSourceIterator{
+			mon: mon,
+		}
+		iter.Close()
+		assert.Equal(t, mon, iter.ResourceMonitor())
+		assert.True(t, called)
+	})
+	t.Run("Next", func(t *testing.T) {
+		t.Parallel()
+		t.Run("iter.done", func(t *testing.T) {
+			t.Parallel()
+			iter := &evalSourceIterator{
+				done: true,
+			}
+			evt, err := iter.Next()
+			assert.Nil(t, evt)
+			assert.NoError(t, err)
+		})
+	})
+	t.Run("Abort", func(t *testing.T) {
+		t.Parallel()
+		abortChan := make(chan bool)
+		iter := &evalSourceIterator{
+			mon: &resmon{
+				abortChan: abortChan,
+			},
+		}
+		go func() {
+			abortChan <- true
+		}()
+		evt, err := iter.Next()
+		assert.ErrorContains(t, err, "EvalSourceIterator aborted")
+		assert.Nil(t, evt)
+
+		evt, err = iter.Next()
+		assert.ErrorContains(t, err, "EvalSourceIterator aborted")
+		assert.Nil(t, evt)
+	})
+}
+
+func TestParseSourcePosition(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name        string
+		input       *pulumirpc.SourcePosition
+		expected    string
+		errContains string
+	}{
+		{
+			name:        "NilInput",
+			input:       nil,
+			expected:    "",
+			errContains: "",
+		},
+		{
+			name:        "InvalidLine",
+			input:       &pulumirpc.SourcePosition{Line: 0},
+			expected:    "",
+			errContains: "invalid line number 0",
+		},
+		{
+			name:        "InvalidColumn",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: -1},
+			expected:    "",
+			errContains: "invalid column number -1",
+		},
+		{
+			name:        "InvalidURI",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: 1, Uri: ":invalid-uri:"},
+			expected:    "",
+			errContains: `parse ":invalid-uri:": missing protocol scheme`,
+		},
+		{
+			name:        "UnrecognizedScheme",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: 1, Uri: "http://example.com/file.txt"},
+			expected:    "",
+			errContains: "unrecognized scheme \"http\"",
+		},
+		{
+			name:        "NonAbsolutePath",
+			input:       &pulumirpc.SourcePosition{Line: 1, Column: 1, Uri: "file:relative/path/file.txt"},
+			expected:    "",
+			errContains: "source positions must include absolute paths",
+		},
+	}
+
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := &sourcePositions{
+				projectRoot: "/absolute/path/",
+			}
+			result, err := s.parseSourcePosition(tt.input)
+
+			assert.Equal(t, tt.expected, result)
+			if tt.errContains != "" {
+				assert.ErrorContains(t, err, tt.errContains, result)
+				assert.Equal(t, tt.expected, result)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+type configSourceMock struct {
+	GetPackageConfigF func(pkg tokens.Package) (resource.PropertyMap, error)
+}
+
+var _ plugin.ConfigSource = (*configSourceMock)(nil)
+
+func (c *configSourceMock) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
+	if c.GetPackageConfigF != nil {
+		return c.GetPackageConfigF(pkg)
+	}
+	panic("unimplemented")
+}
+
+func TestDefaultProviders(t *testing.T) {
+	t.Parallel()
+	t.Run("normalizeProviderRequest", func(t *testing.T) {
+		t.Parallel()
+		t.Run("use defaultProvider", func(t *testing.T) {
+			t.Parallel()
+			v1 := semver.MustParse("0.1.0")
+			d := &defaultProviders{
+				defaultProviderInfo: map[tokens.Package]workspace.PackageDescriptor{
+					tokens.Package("pkg"): {
+						PluginSpec: workspace.PluginSpec{
+							Version:           &v1,
+							PluginDownloadURL: "github://owner/repo",
+							Checksums:         map[string][]byte{"key": []byte("expected-checksum-value")},
+						},
+					},
+				},
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return resource.PropertyMap{}, nil
+					},
+				},
+			}
+			req := d.normalizeProviderRequest(providers.NewProviderRequest(tokens.Package("pkg"), nil, "", nil, nil))
+			assert.NotNil(t, req)
+			assert.Equal(t, &v1, req.Version())
+			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
+			assert.Equal(t, map[string][]byte{"key": []byte("expected-checksum-value")}, req.PluginChecksums())
+		})
+	})
+	t.Run("newRegisterDefaultProviderEvent", func(t *testing.T) {
+		t.Parallel()
+		t.Run("error in GetPackageConfig()", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := errors.New("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, expectedErr
+					},
+				},
+			}
+			_, _, err := d.newRegisterDefaultProviderEvent(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+	})
+	t.Run("handleRequest", func(t *testing.T) {
+		t.Parallel()
+		t.Run("error in shouldDenyRequest", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := errors.New("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, expectedErr
+					},
+				},
+			}
+			_, err := d.handleRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("error in newRegisterDefaultProviderEvent", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := errors.New("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						if pkg == "pulumi" {
+							// Enables shouldDenyRequest(req) to succeed as it always calls using
+							// "pulumi".
+							return nil, nil
+						}
+						return nil, expectedErr
+					},
+				},
+			}
+			_, err := d.handleRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("error due to cancel before registration", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+			cancel <- true
+			d := &defaultProviders{
+				cancel: cancel,
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			}
+			_, err := d.handleRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, context.Canceled)
+		})
+		t.Run("error cancel after registration, but before registration result", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+
+			providerRegChan := make(chan *registerResourceEvent, 1)
+			d := &defaultProviders{
+				cancel:          cancel,
+				providerRegChan: providerRegChan,
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			}
+			go func() {
+				// Cancel after reading the registration.
+				<-providerRegChan
+				cancel <- true
+			}()
+			_, err := d.handleRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, context.Canceled)
+		})
+	})
+	t.Run("shouldDenyRequest", func(t *testing.T) {
+		t.Parallel()
+		t.Run("GetPackageConfigErr", func(t *testing.T) {
+			t.Parallel()
+
+			expectedErr := errors.New("expected error")
+			d := &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, expectedErr
+					},
+				},
+			}
+			_, err := d.shouldDenyRequest(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("disable-default-providers", func(t *testing.T) {
+			t.Parallel()
+			t.Run("invalid value", func(t *testing.T) {
+				t.Parallel()
+				d := &defaultProviders{
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return resource.PropertyMap{
+								"disable-default-providers": resource.NewNumberProperty(100),
+							}, nil
+						},
+					},
+				}
+				_, err := d.shouldDenyRequest(providers.ProviderRequest{})
+				assert.ErrorContains(t, err, "Unexpected encoding of pulumi:disable-default-providers")
+			})
+			t.Run("empty value", func(t *testing.T) {
+				t.Parallel()
+				d := &defaultProviders{
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return resource.PropertyMap{
+								"disable-default-providers": resource.NewStringProperty(""),
+							}, nil
+						},
+					},
+				}
+				res, err := d.shouldDenyRequest(providers.ProviderRequest{})
+				assert.NoError(t, err)
+				assert.False(t, res)
+			})
+			t.Run("invalid list", func(t *testing.T) {
+				t.Run("bad json", func(t *testing.T) {
+					t.Parallel()
+					d := &defaultProviders{
+						config: &configSourceMock{
+							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+								return resource.PropertyMap{
+									"disable-default-providers": resource.NewStringProperty("[[["),
+								}, nil
+							},
+						},
+					}
+					res, err := d.shouldDenyRequest(providers.ProviderRequest{})
+					assert.ErrorContains(t, err, "Failed to parse [[[")
+					assert.True(t, res)
+				})
+				t.Run("mixed list values", func(t *testing.T) {
+					t.Parallel()
+					d := &defaultProviders{
+						config: &configSourceMock{
+							GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+								return resource.PropertyMap{
+									"disable-default-providers": resource.NewStringProperty(`["foo", 2, 3]`),
+								}, nil
+							},
+						},
+					}
+					res, err := d.shouldDenyRequest(providers.ProviderRequest{})
+					assert.ErrorContains(t, err, "must be a string")
+					assert.True(t, res)
+				})
+			})
+		})
+	})
+	t.Run("Cancel", func(t *testing.T) {
+		t.Parallel()
+		t.Run("serve respects cancel", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+			cancel <- true
+			d := &defaultProviders{
+				cancel: cancel,
+			}
+			d.serve()
+		})
+		t.Run("getDefaultProviderRef respects cancel", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+			cancel <- true
+			d := &defaultProviders{
+				cancel: cancel,
+			}
+			_, err := d.getDefaultProviderRef(providers.ProviderRequest{})
+			assert.ErrorIs(t, err, context.Canceled)
+		})
+	})
+}
+
+func TestParseProviderRequest(t *testing.T) {
+	t.Parallel()
+	t.Run("bad version", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseProviderRequest("", "bad-version", "", nil, nil)
+		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
+	})
+}
+
+func TestInvoke(t *testing.T) {
+	t.Parallel()
+	t.Run("bad version", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{}
+		_, err := rm.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+			Tok:     "pkgA:index:func",
+			Version: "bad-version",
+		})
+		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
+	})
+	t.Run("error in invoke", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		var called bool
+		expectedErr := errors.New("expected error")
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					called = true
+					return plugin.InvokeResponse{}, expectedErr
+				},
+			},
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		_, err = mon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+			Tok:     "pkgA:index:func",
+			Version: "1.0.0",
+		})
+		assert.ErrorContains(t, err, "returned an error")
+		// Ensure the channel is read from.
+		wg.Wait()
+		assert.True(t, called)
+	})
+	t.Run("error in invoke", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		var called bool
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				InvokeF: func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					called = true
+					return plugin.InvokeResponse{
+						Failures: []plugin.CheckFailure{
+							{
+								Property: "some-property",
+								Reason:   "expect failure",
+							},
+						},
+					}, nil
+				},
+			},
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		res, err := mon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+			Tok:     "pkgA:index:func",
+			Version: "1.0.0",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, "some-property", res.Failures[0].Property)
+		assert.Equal(t, "expect failure", res.Failures[0].Reason)
+		// Ensure the channel is read from.
+		wg.Wait()
+		assert.True(t, called)
+	})
+}
+
+func TestCall(t *testing.T) {
+	t.Parallel()
+	t.Run("bad version", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{}
+		_, err := rm.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+			Tok:     "pkgA:index:func",
+			Version: "bad-version",
+		})
+		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
+	})
+	t.Run("error in call", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		var called bool
+		expectedErr := errors.New("expected error")
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
+					called = true
+					return plugin.CallResponse{}, expectedErr
+				},
+			},
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		abortChan := make(chan bool)
+		cancel := make(chan bool)
+		mon.abortChan = abortChan
+		mon.cancel = cancel
+
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
+		}()
+
+		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+			Tok:     "pkgA:index:func",
+			Version: "1.0.0",
+		})
+		assert.ErrorContains(t, err, "returned an error")
+		// Ensure the channel is read from.
+		wg.Wait()
+		assert.True(t, called)
+	})
+	t.Run("handles args and arg dependencies", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		wg := &sync.WaitGroup{}
+		defer wg.Wait()
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+		var called bool
+		expectedErr := errors.New("expected error")
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				CallF: func(
+					_ context.Context,
+					req plugin.CallRequest,
+					_ *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
+					assert.Equal(t,
+						resource.PropertyMap{
+							"test": resource.NewStringProperty("test-value"),
+						},
+						req.Args)
+					require.Equal(t, 1, len(req.Options.ArgDependencies))
+					assert.ElementsMatch(t,
+						[]resource.URN{
+							"urn:pulumi:stack::project::type::dep1",
+							"urn:pulumi:stack::project::type::dep2",
+							"urn:pulumi:stack::project::type::dep3",
+						},
+						req.Options.ArgDependencies["test"])
+					called = true
+					return plugin.CallResponse{}, expectedErr
+				},
+			},
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		abortChan := make(chan bool)
+		cancel := make(chan bool)
+		mon.abortChan = abortChan
+		mon.cancel = cancel
+
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
+		}()
+
+		args, err := plugin.MarshalProperties(resource.PropertyMap{
+			"test": resource.NewStringProperty("test-value"),
+		}, plugin.MarshalOptions{})
+		require.NoError(t, err)
+
+		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+			Tok:     "pkgA:index:func",
+			Version: "1.0.0",
+			Args:    args,
+			ArgDependencies: map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies{
+				"test": {
+					Urns: []string{
+						"urn:pulumi:stack::project::type::dep1",
+						"urn:pulumi:stack::project::type::dep2",
+						"urn:pulumi:stack::project::type::dep3",
+					},
+				},
+			},
+		})
+		assert.ErrorContains(t, err, "returned an error")
+		// Ensure the channel is read from.
+		assert.True(t, called)
+	})
+	t.Run("catch invalid arg dependencies", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		wg := &sync.WaitGroup{}
+		defer wg.Wait()
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
+					assert.Fail(t, "Call should not be called")
+					return plugin.CallResponse{}, nil
+				},
+			},
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		args, err := plugin.MarshalProperties(resource.PropertyMap{
+			"test": resource.NewStringProperty("test-value"),
+		}, plugin.MarshalOptions{})
+		require.NoError(t, err)
+
+		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+			Tok:     "pkgA:index:func",
+			Version: "1.0.0",
+			Args:    args,
+			ArgDependencies: map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies{
+				"test": {
+					Urns: []string{
+						"invalid urn",
+					},
+				},
+			},
+		})
+		assert.ErrorContains(t, err, "invalid dependency")
+	})
+	t.Run("catch invalid arg dependencies", func(t *testing.T) {
+		t.Parallel()
+
+		plugctx, err := plugin.NewContext(
+			&deploytest.NoopSink{}, &deploytest.NoopSink{},
+			deploytest.NewPluginHostF(nil, nil, nil)(),
+			nil, "", nil, false, nil)
+		require.NoError(t, err)
+
+		providerRegChan := make(chan *registerResourceEvent, 1)
+		wg := &sync.WaitGroup{}
+		defer wg.Wait()
+		wg.Add(1)
+		// Needed so defaultProviders.handleRequest() doesn't hang.
+		go func() {
+			evt := <-providerRegChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{
+					ID:  "b2562429-e255-4b8f-904b-2bd239301ff2",
+					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				},
+			}
+			wg.Done()
+		}()
+
+		mon, err := newResourceMonitor(&evalSource{
+			runinfo: &EvalRunInfo{
+				ProjectRoot: "/",
+				Pwd:         "/",
+				Program:     ".",
+				Proj:        &workspace.Project{Name: "proj"},
+				Target: &Target{
+					Name: tokens.MustParseStackName("stack"),
+				},
+			},
+			plugctx: plugctx,
+		}, &providerSourceMock{
+			Provider: &deploytest.Provider{
+				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
+					return plugin.CallResponse{
+						Return: resource.PropertyMap{
+							"result": resource.NewNumberProperty(100),
+						},
+						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
+							"prop": {
+								"urn:pulumi:stack::project::type::dep1",
+								"urn:pulumi:stack::project::type::dep2",
+								"urn:pulumi:stack::project::type::dep3",
+							},
+						},
+						Failures: []plugin.CheckFailure{
+							{
+								Property: "some-prop",
+								Reason:   "expected failure",
+							},
+						},
+					}, nil
+				},
+			},
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		require.NoError(t, err)
+
+		args, err := plugin.MarshalProperties(resource.PropertyMap{
+			"test": resource.NewStringProperty("test-value"),
+		}, plugin.MarshalOptions{})
+		require.NoError(t, err)
+
+		res, err := mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+			Tok:     "pkgA:index:func",
+			Version: "1.0.0",
+			Args:    args,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t,
+			map[string]interface{}{
+				"result": float64(100),
+			}, res.Return.AsMap())
+		assert.Equal(t,
+			[]string{
+				"urn:pulumi:stack::project::type::dep1",
+				"urn:pulumi:stack::project::type::dep2",
+				"urn:pulumi:stack::project::type::dep3",
+			}, res.ReturnDependencies["prop"].Urns)
+		assert.Equal(t, &pulumirpc.CheckFailure{
+			Property: "some-prop",
+			Reason:   "expected failure",
+		}, res.Failures[0])
+	})
+}
+
+func TestReadResource(t *testing.T) {
+	t.Parallel()
+	t.Run("bad parent", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{}
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:   "foo:bar:some-type",
+			Parent: "invalid-parent",
+		})
+		assert.ErrorContains(t, err, "invalid parent URN")
+	})
+	t.Run("handles error from parseProviderRequest", func(t *testing.T) {
+		t.Parallel()
+		cancel := make(chan bool, 1)
+		cancel <- true
+		rm := &resmon{
+			defaultProviders: &defaultProviders{
+				cancel: cancel,
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+		}
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:    "foo:bar:some-type",
+			Version: "1.0.0",
+		})
+		assert.ErrorIs(t, err, context.Canceled)
+	})
+	t.Run("handles invalid dependencies", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{
+			defaultProviders: &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+		}
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:    "pulumi:providers:fake-provider",
+			Version: "1.0.0",
+			Dependencies: []string{
+				"urn:pulumi:stack::project::type::dep1",
+				"urn:pulumi:stack::project::type::dep2",
+				"invalidURN",
+			},
+		})
+		assert.ErrorContains(t, err, "invalid URN")
+	})
+	t.Run("handles invalid dependencies", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{
+			defaultProviders: &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+		}
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:    "pulumi:providers:fake-provider",
+			Version: "1.0.0",
+			Dependencies: []string{
+				"urn:pulumi:stack::project::type::dep1",
+				"urn:pulumi:stack::project::type::dep2",
+				"invalidURN",
+			},
+		})
+		assert.ErrorContains(t, err, "invalid URN")
+	})
+	t.Run("handles additional secret outputs", func(t *testing.T) {
+		t.Parallel()
+		regReadChan := make(chan *readResourceEvent, 1)
+		rm := &resmon{
+			regReadChan: regReadChan,
+			defaultProviders: &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+		}
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			evt := <-regReadChan
+			assert.Equal(t, []resource.PropertyKey{"foo"}, evt.additionalSecretOutputs)
+			evt.done <- &ReadResult{
+				State: &resource.State{},
+			}
+			wg.Done()
+		}()
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:                    "pulumi:providers:fake-provider",
+			Version:                 "1.0.0",
+			AdditionalSecretOutputs: []string{"foo"},
+		})
+		assert.NoError(t, err)
+		wg.Wait()
+	})
+	t.Run("resource monitor shut down while sending resource registration", func(t *testing.T) {
+		t.Parallel()
+		cancel := make(chan bool, 1)
+		rm := &resmon{
+			cancel: cancel,
+			defaultProviders: &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+		}
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			cancel <- true
+			wg.Done()
+		}()
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:    "pulumi:providers:fake-provider",
+			Version: "1.0.0",
+		})
+		assert.ErrorContains(t, err, "resource monitor shut down while sending resource registration")
+		wg.Wait()
+	})
+	t.Run("resource monitor shut down while waiting on step's done channel", func(t *testing.T) {
+		t.Parallel()
+		// requests := make(chan
+		cancel := make(chan bool, 1)
+		regReadChan := make(chan *readResourceEvent, 1)
+		rm := &resmon{
+			regReadChan: regReadChan,
+			cancel:      cancel,
+			defaultProviders: &defaultProviders{
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+		}
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			<-regReadChan
+			cancel <- true
+			wg.Done()
+		}()
+		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+			Type:    "pulumi:providers:fake-provider",
+			Version: "1.0.0",
+		})
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		wg.Wait()
+	})
+}
+
+func TestRegisterResource(t *testing.T) {
+	t.Parallel()
+	t.Run("gracefully handle cancellation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("resource monitor shut down while sending resource registration", func(t *testing.T) {
+			t.Parallel()
+			cancel := make(chan bool, 1)
+			cancel <- true
+			rm := &resmon{
+				cancel: cancel,
+			}
+			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
+			assert.ErrorContains(t, err, "resource monitor shut down while sending resource registration")
+		})
+		t.Run("resource monitor shut down while waiting on step's done channel", func(t *testing.T) {
+			t.Parallel()
+			regChan := make(chan *registerResourceEvent, 1)
+			cancel := make(chan bool, 1)
+			go func() {
+				<-regChan
+				cancel <- true
+			}()
+
+			rm := &resmon{
+				regChan: regChan,
+				cancel:  cancel,
+			}
+			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		})
+		t.Run("resource monitor shut down while waiting on step's done channel", func(t *testing.T) {
+			t.Parallel()
+			regChan := make(chan *registerResourceEvent, 1)
+			cancel := make(chan bool, 1)
+			go func() {
+				<-regChan
+				cancel <- true
+			}()
+
+			rm := &resmon{
+				regChan: regChan,
+				cancel:  cancel,
+			}
+			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		})
+	})
+	t.Run("remote handles improper version", func(t *testing.T) {
+		t.Parallel()
+		regChan := make(chan *registerResourceEvent, 1)
+		go func() {
+			evt := <-regChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{},
+			}
+		}()
+		rm := &resmon{}
+		req := &pulumirpc.RegisterResourceRequest{
+			Type:    "foo:bar:some-type",
+			Version: "improper-version",
+			Remote:  true,
+		}
+		_, err := rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
+	})
+	t.Run("custom handles improper version", func(t *testing.T) {
+		t.Parallel()
+		regChan := make(chan *registerResourceEvent, 1)
+		go func() {
+			evt := <-regChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{},
+			}
+		}()
+		rm := &resmon{}
+		req := &pulumirpc.RegisterResourceRequest{
+			Type:    "foo:bar:some-type",
+			Version: "improper-version",
+			Custom:  true,
+		}
+		require.False(t, providers.IsProviderType(tokens.Type(req.GetType())))
+		_, err := rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
+	})
+	t.Run("custom provider handles improper version", func(t *testing.T) {
+		t.Parallel()
+		regChan := make(chan *registerResourceEvent, 1)
+		go func() {
+			evt := <-regChan
+			evt.done <- &RegisterResult{
+				State: &resource.State{},
+			}
+		}()
+		rm := &resmon{}
+		req := &pulumirpc.RegisterResourceRequest{
+			Type:    "pulumi:providers:some-type",
+			Version: "improper-version",
+			Custom:  true,
+		}
+		require.True(t, providers.IsProviderType(tokens.Type(req.GetType())))
+		_, err := rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "passed invalid version")
+	})
+	t.Run("invalid alias URN", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{}
+		req := &pulumirpc.RegisterResourceRequest{
+			Type: "pulumi:providers:some-type",
+			AliasURNs: []string{
+				"invalid-urn",
+			},
+		}
+		_, err := rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "invalid alias URN")
+	})
+	t.Run("invalid dependency on property", func(t *testing.T) {
+		t.Parallel()
+		rm := &resmon{
+			defaultProviders: &defaultProviders{
+				defaultProviderInfo: map[tokens.Package]workspace.PackageDescriptor{},
+			},
+		}
+		req := &pulumirpc.RegisterResourceRequest{
+			Type:    "pulumi:providers:some-type",
+			Version: "1.0.0",
+			PropertyDependencies: map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{
+				"invalid-urn": {
+					Urns: []string{"bad-urn"},
+				},
+			},
+		}
+		_, err := rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "invalid dependency on property")
+	})
+	t.Run("remote resource", func(t *testing.T) {
+		t.Parallel()
+		t.Run("invalid provider in providers", func(t *testing.T) {
+			t.Parallel()
+			requests := make(chan defaultProviderRequest, 1)
+			go func() {
+				evt := <-requests
+				ref, err := providers.NewReference(
+					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+					"b2562429-e255-4b8f-904b-2bd239301ff2")
+				require.NoError(t, err)
+				evt.response <- defaultProviderResponse{
+					ref: ref,
+				}
+			}()
+			rm := &resmon{
+				defaultProviders: &defaultProviders{
+					requests: requests,
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return nil, nil
+						},
+					},
+				},
+			}
+			req := &pulumirpc.RegisterResourceRequest{
+				Version: "1.0.0",
+				Type:    "pulumi:providers:some-type",
+				Remote:  true,
+				Providers: map[string]string{
+					"name": "not-an-urn::id",
+				},
+			}
+			_, err := rm.RegisterResource(context.Background(), req)
+			assert.ErrorContains(t, err, "could not parse provider reference")
+		})
+		t.Run("catch denied default provider", func(t *testing.T) {
+			t.Parallel()
+			requests := make(chan defaultProviderRequest, 1)
+			go func() {
+				evt := <-requests
+				ref, err := providers.NewReference(
+					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+					"denydefaultprovider")
+				require.NoError(t, err)
+				evt.response <- defaultProviderResponse{
+					ref: ref,
+				}
+			}()
+			rm := &resmon{
+				defaultProviders: &defaultProviders{
+					requests: requests,
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return nil, nil
+						},
+					},
+				},
+				providers: &providerSourceMock{
+					Provider: &deploytest.Provider{},
+				},
+			}
+			req := &pulumirpc.RegisterResourceRequest{
+				Version: "1.0.0",
+				Type:    "pulumi:providers:some-type",
+				Remote:  true,
+				Providers: map[string]string{
+					"missing": "urn:pulumi:stack::project::pulumi:providers:aws::prov-1::uuid",
+				},
+			}
+			_, err := rm.RegisterResource(context.Background(), req)
+			assert.ErrorContains(t, err,
+				"Default provider for 'pulumi' disabled. 'pulumi:providers:some-type' must use an explicit provider.")
+		})
+		t.Run("unknown provider", func(t *testing.T) {
+			t.Parallel()
+			requests := make(chan defaultProviderRequest, 1)
+			go func() {
+				evt := <-requests
+				ref, err := providers.NewReference(
+					"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+					"b2562429-e255-4b8f-904b-2bd239301ff2")
+				require.NoError(t, err)
+				evt.response <- defaultProviderResponse{
+					ref: ref,
+				}
+			}()
+			rm := &resmon{
+				defaultProviders: &defaultProviders{
+					requests: requests,
+					config: &configSourceMock{
+						GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+							return nil, nil
+						},
+					},
+				},
+				providers: &providerSourceMock{},
+			}
+			req := &pulumirpc.RegisterResourceRequest{
+				Version: "1.0.0",
+				Type:    "pulumi:providers:some-type",
+				Remote:  true,
+				Providers: map[string]string{
+					"missing": "urn:pulumi:stack::project::pulumi:providers:aws::prov-1::uuid",
+				},
+			}
+			_, err := rm.RegisterResource(context.Background(), req)
+			assert.ErrorContains(t, err, "unknown provider")
+		})
+	})
+	t.Run("output dependencies", func(t *testing.T) {
+		t.Parallel()
+		requests := make(chan defaultProviderRequest, 1)
+		go func() {
+			evt := <-requests
+			ref, err := providers.NewReference(
+				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				"b2562429-e255-4b8f-904b-2bd239301ff2")
+			require.NoError(t, err)
+			evt.response <- defaultProviderResponse{
+				ref: ref,
+			}
+		}()
+		rm := &resmon{
+			defaultProviders: &defaultProviders{
+				requests: requests,
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+			providers: &providerSourceMock{
+				Provider: &deploytest.Provider{
+					DialMonitorF: func(
+						ctx context.Context, endpoint string,
+					) (*deploytest.ResourceMonitor, error) {
+						return nil, nil
+					},
+					ConstructF: func(
+						context.Context,
+						plugin.ConstructRequest,
+						*deploytest.ResourceMonitor,
+					) (plugin.ConstructResponse, error) {
+						return plugin.ConstructResponse{
+							OutputDependencies: map[resource.PropertyKey][]resource.URN{
+								"expected-key-1": {
+									"untrusted-urn-1",
+								},
+								"expected-key-2": {
+									"untrusted-urn-1",
+									"untrusted-urn-2",
+								},
+							},
+						}, nil
+					},
+				},
+			},
+		}
+		req := &pulumirpc.RegisterResourceRequest{
+			Version: "1.0.0",
+			Type:    "pulumi:providers:some-type",
+			Remote:  true,
+		}
+		res, err := rm.RegisterResource(context.Background(), req)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{
+			"untrusted-urn-1",
+		}, res.PropertyDependencies["expected-key-1"].Urns)
+		assert.Equal(t, []string{
+			"untrusted-urn-1",
+			"untrusted-urn-2",
+		}, res.PropertyDependencies["expected-key-2"].Urns)
+	})
+	t.Run("not remote resource", func(t *testing.T) {
+		t.Parallel()
+		t.Run("additional secret keys", func(t *testing.T) {
+			t.Parallel()
+			regChan := make(chan *registerResourceEvent, 1)
+			go func() {
+				evt := <-regChan
+				evt.done <- &RegisterResult{
+					State: &resource.State{},
+				}
+			}()
+			rm := &resmon{
+				regChan: regChan,
+				componentProviders: map[resource.URN]map[string]string{
+					"urn:pulumi:stack::project::type::foo": {
+						"urn:pulumi:stack::project::type::prov1": "",
+						"urn:pulumi:stack::project::type::prov2": "expected-value",
+					},
+				},
+			}
+			req := &pulumirpc.RegisterResourceRequest{
+				Provider: "urn:pulumi:stack::project::type::bar",
+				Parent:   "urn:pulumi:stack::project::type::foo",
+				AdditionalSecretOutputs: []string{
+					"a",
+					"b",
+					"c",
+				},
+			}
+			_, err := rm.RegisterResource(context.Background(), req)
+			assert.NoError(t, err)
+			assert.Equal(t,
+				[]string{"a", "b", "c"},
+				req.AdditionalSecretOutputs)
+		})
+		t.Run("handle invalid custom timeouts", func(t *testing.T) {
+			t.Parallel()
+			t.Run("Create", func(t *testing.T) {
+				t.Parallel()
+				regChan := make(chan *registerResourceEvent, 1)
+				go func() {
+					evt := <-regChan
+					evt.done <- &RegisterResult{
+						State: &resource.State{},
+					}
+				}()
+				rm := &resmon{
+					regChan:            regChan,
+					componentProviders: map[resource.URN]map[string]string{},
+				}
+				req := &pulumirpc.RegisterResourceRequest{
+					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+						Create: "invalid",
+					},
+				}
+				_, err := rm.RegisterResource(context.Background(), req)
+				assert.ErrorContains(t, err, "unable to parse customTimeout Value")
+			})
+			t.Run("Delete", func(t *testing.T) {
+				t.Parallel()
+				regChan := make(chan *registerResourceEvent, 1)
+				go func() {
+					evt := <-regChan
+					evt.done <- &RegisterResult{
+						State: &resource.State{},
+					}
+				}()
+				rm := &resmon{
+					regChan:            regChan,
+					componentProviders: map[resource.URN]map[string]string{},
+				}
+				req := &pulumirpc.RegisterResourceRequest{
+					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+						Delete: "invalid",
+					},
+				}
+				_, err := rm.RegisterResource(context.Background(), req)
+				assert.ErrorContains(t, err, "unable to parse customTimeout Value")
+			})
+			t.Run("Update", func(t *testing.T) {
+				t.Parallel()
+				regChan := make(chan *registerResourceEvent, 1)
+				go func() {
+					evt := <-regChan
+					evt.done <- &RegisterResult{
+						State: &resource.State{},
+					}
+				}()
+				rm := &resmon{
+					regChan:            regChan,
+					componentProviders: map[resource.URN]map[string]string{},
+				}
+				req := &pulumirpc.RegisterResourceRequest{
+					CustomTimeouts: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+						Update: "invalid",
+					},
+				}
+				_, err := rm.RegisterResource(context.Background(), req)
+				assert.ErrorContains(t, err, "unable to parse customTimeout Value")
+			})
+		})
+	})
+}
+
+func TestValidationFailures(t *testing.T) {
+	t.Parallel()
+
+	s, _ := status.Newf(codes.InvalidArgument, "bad request").WithDetails(
+		&pulumirpc.InputPropertiesError{
+			Errors: []*pulumirpc.InputPropertiesError_PropertyError{
+				{
+					Reason:       "missing",
+					PropertyPath: "testproperty",
+				},
+				{
+					Reason:       "nested property error",
+					PropertyPath: "nested[0]",
+				},
+			},
+		},
+	)
+	badRequestError := s.Err()
+
+	cases := []struct {
+		name           string
+		err            error
+		expectedStderr string
+	}{
+		{
+			name:           "regular error",
+			err:            errors.New("test error"),
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: test error\n",
+		},
+		{
+			name: "bad request",
+			err:  badRequestError,
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
+				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n",
+		},
+	}
+	for _, c := range cases {
+		cancel := make(chan bool)
+		abortChan := make(chan bool)
+		go func() {
+			// the resource monitor should send a true value to the abort channel to indicate that the
+			// iterator should shut down.
+			val, ok := <-abortChan
+			assert.True(t, ok)
+			assert.True(t, val)
+			close(cancel)
+		}()
+		requests := make(chan defaultProviderRequest, 1)
+		go func() {
+			evt := <-requests
+			ref, err := providers.NewReference(
+				"urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
+				"b2562429-e255-4b8f-904b-2bd239301ff2")
+			require.NoError(t, err)
+			evt.response <- defaultProviderResponse{
+				ref: ref,
+			}
+		}()
+		var stdout, stderr bytes.Buffer
+		rm := &resmon{
+			diagnostics: diagtest.MockSink(&stdout, &stderr),
+			cancel:      cancel,
+			abortChan:   abortChan,
+			defaultProviders: &defaultProviders{
+				requests: requests,
+				config: &configSourceMock{
+					GetPackageConfigF: func(pkg tokens.Package) (resource.PropertyMap, error) {
+						return nil, nil
+					},
+				},
+			},
+			providers: &providerSourceMock{
+				Provider: &deploytest.Provider{
+					DialMonitorF: func(
+						ctx context.Context, endpoint string,
+					) (*deploytest.ResourceMonitor, error) {
+						return nil, nil
+					},
+					ConstructF: func(ctx context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+					) (plugin.ConstructResult, error) {
+						return plugin.ConstructResult{}, c.err
+					},
+				},
+			},
+		}
+
+		props := resource.PropertyMap{
+			"testproperty": resource.NewPropertyValue("testvalue"),
+			"nested": resource.NewArrayProperty(
+				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
+			),
+		}
+
+		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})
+		assert.NoError(t, err)
+
+		req := &pulumirpc.RegisterResourceRequest{
+			Version: "1.0.0",
+			Type:    "pulumi:providers:some-type",
+			Name:    "some-name",
+			Remote:  true,
+			Object:  marshalledProps,
+		}
+		_, err = rm.RegisterResource(context.Background(), req)
+		assert.ErrorContains(t, err, "resource monitor shut down")
+		assert.Equal(t, c.expectedStderr, stderr.String())
+		assert.Equal(t, "", stdout.String())
+	}
+}
+
+func TestDowngradeOutputValues(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		input    resource.PropertyMap
+		expected resource.PropertyMap
+	}{
+		{
+			"plain",
+			resource.PropertyMap{
+				"foo": resource.NewStringProperty("hello"),
+				"bar": resource.NewNumberProperty(42),
+			},
+			resource.PropertyMap{
+				"foo": resource.NewStringProperty("hello"),
+				"bar": resource.NewNumberProperty(42),
+			},
+		},
+		{
+			"secret",
+			resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			},
+			resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			},
+		},
+		{
+			"output",
+			resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("hello"),
+					Known:   true,
+				}),
+			},
+			resource.PropertyMap{
+				"foo": resource.NewStringProperty("hello"),
+			},
+		},
+		{
+			"secret output",
+			resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("hello"),
+					Known:   true,
+					Secret:  true,
+				}),
+			},
+			resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewStringProperty("hello")),
+			},
+		},
+		{
+			"unknown output",
+			resource.PropertyMap{
+				"foo": resource.NewOutputProperty(resource.Output{}),
+			},
+			resource.PropertyMap{
+				"foo": resource.MakeComputed(resource.NewStringProperty("")),
+			},
+		},
+		{
+			"unknown resource reference",
+			resource.PropertyMap{
+				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+					URN: "urn:pulumi:stack::project::package:module:resource::name",
+					ID:  resource.NewOutputProperty(resource.Output{}),
+				}),
+			},
+			resource.PropertyMap{
+				"foo": resource.NewResourceReferenceProperty(resource.ResourceReference{
+					URN: "urn:pulumi:stack::project::package:module:resource::name",
+					ID:  resource.MakeComputed(resource.NewStringProperty("")),
+				}),
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := downgradeOutputValues(tt.input)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}

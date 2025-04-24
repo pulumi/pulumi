@@ -14,12 +14,20 @@
 import functools
 from pulumi import CustomResource, Output, ResourceOptions
 
+
 class MyResource(CustomResource):
     def __init__(self, name, args, opts=None):
-        CustomResource.__init__(self, "test:index:MyResource", name, props={
-            **args,
-            "outprop": None,
-        }, opts=opts)
+        CustomResource.__init__(
+            self,
+            "test:index:MyResource",
+            name,
+            props={
+                **args,
+                "outprop": None,
+            },
+            opts=opts,
+        )
+
 
 resA = MyResource("resA", {})
-resB = MyResource("resB", {}, ResourceOptions(depends_on=[ 1 ]))
+resB = MyResource("resB", {}, ResourceOptions(depends_on=[1]))

@@ -1,0 +1,100 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "types": {
+    "example::Object": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ObjectInput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ExampleEnum": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::ExampleEnumInput": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::Resource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "example::ResourceType": {
+      "type": "string",
+      "enum": [
+        {"value":  "haha"},
+        {"value":  "business"}
+      ]
+    }
+  },
+  "resources": {
+    "example::Resource": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      }
+    },
+    "example:mod:Component": {
+      "component": true,
+      "inputProperties": {
+        "main": {
+          "$ref": "#/resources/example::MainComponent"
+        },
+        "local": {
+          "$ref": "#/resources/example:mod:Component2"
+        }
+      }
+    },
+    "example:mod:Component2": {
+      "component": true
+    },
+    "example::MainComponent": {
+      "component": true
+    },
+    "example::ResourceInput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "functions": {},
+  "language": {
+    "go": {
+      "importBasePath": "naming-collisions/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

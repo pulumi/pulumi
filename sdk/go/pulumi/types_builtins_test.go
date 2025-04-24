@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,7 +35,7 @@ func TestOutputApply(t *testing.T) {
 	// Test that resolved outputs lead to applies being run.
 	{
 		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
+		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 		var ranApp bool
 		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
@@ -42,14 +43,14 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 	}
 	// Test that resolved, but unknown outputs, skip the running of applies.
 	{
 		out := newIntOutput()
-		go func() { out.resolve(42, false, false, nil) }()
+		go func() { internal.ResolveOutput(out, 42, false, false, nil) }()
 		var ranApp bool
 		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
@@ -57,13 +58,13 @@ func TestOutputApply(t *testing.T) {
 		})
 		_, known, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.False(t, known)
 	}
 	// Test that rejected outputs do not run the apply, and instead flow the error.
 	{
 		out := newIntOutput()
-		go func() { out.reject(errors.New("boom")) }()
+		go func() { internal.RejectOutput(out, errors.New("boom")) }()
 		var ranApp bool
 		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
@@ -71,13 +72,13 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
 	{
 		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
+		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 		var ranApp bool
 		app := out.ApplyT(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput()
@@ -87,7 +88,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
@@ -99,14 +100,14 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, known, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, v, 44)
 	}
 	// Test that an an apply that reject an output returns the rejection of that output, not the output itself.
 	{
 		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
+		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 		var ranApp bool
 		app := out.ApplyT(func(v int) (interface{}, error) {
 			other, _, rejectOther := NewOutput()
@@ -116,7 +117,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 
 		app = out.ApplyT(func(v int) (interface{}, error) {
@@ -127,13 +128,13 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.NotNil(t, err)
+		assert.Error(t, err)
 		assert.Nil(t, v)
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
 	{
 		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
+		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 
 		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveOutput", func(t *testing.T) {
@@ -544,6 +545,14 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		//nolint:paralleltest // uses shared state with parent
+		t.Run("ApplyT::StringMapMapMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]string {
+				return *new(map[string]map[string]map[string]string)
+			}).(StringMapMapMapOutput)
+			assert.True(t, ok)
+		})
+
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 			assert.True(t, ok)
@@ -600,10 +609,10 @@ func TestOutputApply(t *testing.T) {
 		}
 
 		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
+		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 
-		out2 := StringOutput{newOutputState(nil, reflect.TypeOf(""))}
-		go func() { out2.resolve("hello", true, false, nil) }()
+		out2 := StringOutput{internal.NewOutputState(nil, reflect.TypeOf(""))}
+		go func() { internal.ResolveOutput(out2, "hello", true, false, nil) }()
 
 		res := out.
 			ApplyT(func(v int) myStructType {
@@ -666,7 +675,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err := await(res)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"qux", "zed"}, v)
 
@@ -674,7 +683,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res2)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, []string{"foo", "bar"}, v)
 
@@ -682,7 +691,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res3)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed", v)
 
@@ -690,12 +699,12 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, ok)
 
 		v, known, _, _, err = await(res4)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
 
 		v, known, _, _, err = await(res5)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
 	}
@@ -2056,6 +2065,26 @@ func TestToOutputStringArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(StringArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputStringMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToOutput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	_, ok := out.(StringMapMapMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(StringMapMapMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -4259,6 +4288,36 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToStringArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	in := StringMapMapMapInput(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+
+	out := in.ToStringMapMapMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringMapMapMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToStringMapMapMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToStringMapMapMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7492,6 +7551,58 @@ func TestTopLevelToStringMapMapOutput(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
 }
 
+func TestStringMapMapMapIndex(t *testing.T) {
+	t.Parallel()
+
+	out := (StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}}).ToStringMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToStringMapMapMap(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapMap(map[string]map[string]map[string]string{"baz": {"baz": {"baz": "foo"}}}).ToStringMapMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+}
+
+func TestTopLevelToStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	out := ToStringMapMapMapOutput(map[string]StringMapMapOutput{"baz": ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}}).(StringMapMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]map[string]string)["baz"], iv)
+}
+
 func TestURNMapIndex(t *testing.T) {
 	t.Parallel()
 
@@ -8794,6 +8905,23 @@ func TestAnyOutputAsStringArrayArrayOutput(t *testing.T) {
 
 	anyout := Any(StringArrayArray{StringArray{String("foo")}})
 	out := anyout.AsStringArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMapMapMap{"baz": StringMapMap{"baz": StringMap{"baz": String("foo")}}})
+	out := anyout.AsStringMapMapMapOutput()
 
 	ev, known, _, _, err := await(anyout)
 	assert.True(t, known)

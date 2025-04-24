@@ -19,21 +19,21 @@ import unittest
 
 from pulumi._utils import is_empty_function, lazy_import
 
+
 # Function with return value based on input, called in the non_empty function
 # bodies below.
 def compute(val: int) -> str:
     return f"{val} + {1} = {val + 1}"
 
-class Foo:
-    def empty_a(self) -> str:
-        ...
 
-    def empty_b(self) -> str:
+class Foo:
+    def empty_a(self) -> str: ...  # type: ignore
+
+    def empty_b(self) -> str:  # type: ignore
         """A docstring."""
         ...
 
-    def empty_c(self, value: str):
-        ...
+    def empty_c(self, value: str): ...
 
     def non_empty_a(self) -> str:
         return "hello"
@@ -65,6 +65,7 @@ non_empty_lambda_c = lambda: compute(41)
 non_empty_lambda_d = lambda: compute(41)
 non_empty_lambda_d.__doc__ = """A docstring."""
 
+
 class IsEmptyFunctionTests(unittest.TestCase):
     def test_is_empty(self):
         f = Foo()
@@ -95,10 +96,15 @@ class IsEmptyFunctionTests(unittest.TestCase):
 
 
 def test_lazy_import():
-    sys.path.append(os.path.join(os.path.dirname(__file__), 'data'))
-    x = lazy_import('lazy_import_test.x')
-    test = lazy_import('lazy_import_test')
+    sys.path.append(os.path.join(os.path.dirname(__file__), "data"))
+    x = lazy_import("lazy_import_test.x")
+    y = lazy_import("lazy_import_test.y")
+    test = lazy_import("lazy_import_test")
 
-    assert test.x.foo() == 'foo'
-    assert x.foo() == 'foo'
+    assert test.x.foo() == "foo"
+    assert x.foo() == "foo"
     assert id(x) == id(test.x)
+
+    assert test.y.foo == "foo"
+    assert y.foo == "foo"
+    assert id(y) == id(test.y)

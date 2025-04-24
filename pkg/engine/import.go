@@ -15,33 +15,32 @@
 package engine
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Import,
 	dryRun bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events <- NewCancelEvent() }()
 
 	info, err := newDeploymentContext(u, "import", ctx.ParentSpan)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer emitter.Close()
 
-	return update(ctx, info, deploymentOptions{
+	return update(ctx, info, &deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
@@ -49,5 +48,6 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 		StatusDiag:    newEventSink(emitter, true),
 		isImport:      true,
 		imports:       imports,
-	}, dryRun)
+		DryRun:        dryRun,
+	})
 }

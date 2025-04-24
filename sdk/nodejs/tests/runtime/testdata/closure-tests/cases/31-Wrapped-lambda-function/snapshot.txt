@@ -1,0 +1,15 @@
+exports.handler = __f0;
+const os = require("os");
+
+function __f0(__0, __1, __2) {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return (a, b, c) => {
+    const v = os;
+    return { v };
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

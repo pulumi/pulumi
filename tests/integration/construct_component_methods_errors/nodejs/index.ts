@@ -4,3 +4,4 @@ import { Component } from "./component"
 
 const component = new Component("component");
 const result = component.getMessage({ echo: "hello" });
+export const message = result.message;

@@ -1,0 +1,7 @@
+name: pulumi-python-mypy
+description: A simple Python Pulumi program that type checks with mypy.
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+    typechecker: mypy

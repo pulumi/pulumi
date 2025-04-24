@@ -12,242 +12,386 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { PulumiCommand } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
+import { ListOptions, RemoveOptions } from "./localWorkspace";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
 import { TagMap } from "./tag";
 
 /**
- * Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
- * Workspaces are used to manage the execution environment, providing various utilities such as plugin
- * installation, environment configuration ($PULUMI_HOME), and creation, deletion, and listing of Stacks.
+ * {@link Workspace} is the execution context containing a single Pulumi
+ * project, a program, and multiple {@link Stack}s. Workspaces are used to
+ * manage the execution environment, providing various utilities such as plugin
+ * installation, environment configuration (`$PULUMI_HOME`), and creation,
+ * deletion, and listing of Stacks.
  *
  * @alpha
  */
 export interface Workspace {
     /**
-     * The working directory to run Pulumi CLI commands
+     * The working directory to run Pulumi CLI commands.
      */
     readonly workDir: string;
+
     /**
-     * The directory override for CLI metadata if set.
-     * This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+     * The directory override for CLI metadata if set. This customizes the
+     * location of `$PULUMI_HOME` where metadata is stored and plugins are
+     * installed.
      */
     readonly pulumiHome?: string;
+
     /**
-     * The secrets provider to use for encryption and decryption of stack secrets.
-     * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
+     * The secrets provider to use for encryption and decryption of stack
+     * secrets.
+     *
+     * @see https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     readonly secretsProvider?: string;
+
     /**
-     * The version of the underlying Pulumi CLI/Engine.
+     * The version of the underlying Pulumi CLI/engine.
      */
     readonly pulumiVersion: string;
+
     /**
-     *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
-     *  If none is specified, the stack will refer to ProjectSettings for this information.
+     * The underlying Pulumi CLI.
+     */
+    readonly pulumiCommand: PulumiCommand;
+
+    /**
+     * The inline program {@link PulumiFn} to be used for preview/update
+     * operations, if any. If none is specified, the stack will refer to {@link
+     * ProjectSettings} for this information.
      */
     program?: PulumiFn;
+
     /**
-     * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
+     * Environment values scoped to the current workspace. These will be
+     * supplied to every Pulumi command.
      */
     envVars: { [key: string]: string };
+
     /**
-     * Returns the settings object for the current project if any.
+     * Returns the settings object for the current project, if any.
      */
     projectSettings(): Promise<ProjectSettings>;
 
     /**
-     * Overwrites the settings object in the current project.
-     * There can only be a single project per workspace. Fails is new project name does not match old.
+     * Overwrites the settings object in the current project. There can only be
+     * a single project per workspace. Fails if the new project name does not
+     * match the old one.
      *
-     * @param settings The settings object to save.
+     * @param settings
+     *  The settings object to save.
      */
     saveProjectSettings(settings: ProjectSettings): Promise<void>;
+
     /**
-     * Returns the settings object for the stack matching the specified stack name if any.
+     * Returns the settings object for the stack matching the specified stack
+     * name, if any.
      *
-     * @param stackName The name of the stack.
+     * @param stackName
+     *  The name of the stack.
      */
     stackSettings(stackName: string): Promise<StackSettings>;
+
     /**
-     * overwrites the settings object for the stack matching the specified stack name.
+     * Overwrites the settings object for the stack matching the specified stack
+     * name.
      *
-     * @param stackName The name of the stack to operate on.
-     * @param settings The settings object to save.
+     * @param stackName
+     *  The name of the stack to operate on.
+     * @param settings
+     *  The settings object to save.
      */
     saveStackSettings(stackName: string, settings: StackSettings): Promise<void>;
+
     /**
-     * serializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
-     * Provided with stack name,
-     * returns a list of args to append to an invoked command ["--config=...", ]
-     * LocalWorkspace does not utilize this extensibility point.
+     * A hook to provide additional arguments to every CLI command before they
+     * are executed. Provided with the stack name, this should return a list of
+     * arguments to append to an invoked command (e.g. `["--config=...", ...]`).
      */
     serializeArgsForOp(stackName: string): Promise<string[]>;
+
     /**
-     * postCommandCallback is a hook executed after every command. Called with the stack name.
-     * An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml)
-     * LocalWorkspace does not utilize this extensibility point.
+     * A hook executed after every command. Called with the stack name. An
+     * extensibility point to perform workspace cleanup (CLI operations may
+     * create/modify a `Pulumi.stack.yaml`)
      */
     postCommandCallback(stackName: string): Promise<void>;
+
+    /**
+     * Adds environments to the end of a stack's import list. Imported
+     * environments are merged in order per the ESC merge rules. The list of
+     * environments behaves as if it were the import list in an anonymous
+     * environment.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param environments
+     *  The names of the environments to add to the stack's configuration
+     */
+    addEnvironments(stackName: string, ...environments: string[]): Promise<void>;
+
+    /**
+     * Returns the list of environments associated with the specified stack
+     * name.
+     *
+     * @param stackName
+     *  The stack to operate on
+     */
+    listEnvironments(stackName: string): Promise<string[]>;
+
+    /**
+     * Removes an environment from a stack's import list.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param environment
+     *  The name of the environment to remove from the stack's configuration
+     */
+    removeEnvironment(stackName: string, environment: string): Promise<void>;
+
     /**
      * Returns the value associated with the specified stack name and key,
      * scoped to the Workspace.
      *
-     * @param stackName The stack to read config from
-     * @param key The key to use for the config lookup
+     * @param stackName
+     *  The stack to read config from
+     * @param key
+     *  The key to use for the config lookup
+     * @param path
+     *  The key contains a path to a property in a map or list to get
      */
-    getConfig(stackName: string, key: string): Promise<ConfigValue>;
+    getConfig(stackName: string, key: string, path?: boolean): Promise<ConfigValue>;
+
     /**
-     * Returns the config map for the specified stack name, scoped to the current Workspace.
+     * Returns the config map for the specified stack name, scoped to the
+     * current Workspace.
      *
-     * @param stackName The stack to read config from
+     * @param stackName
+     *  The stack to read config from
      */
     getAllConfig(stackName: string): Promise<ConfigMap>;
+
     /**
      * Sets the specified key-value pair on the provided stack name.
      *
-     * @param stackName The stack to operate on
-     * @param key The config key to set
-     * @param value The value to set
+     * @param stackName
+     *  The stack to operate on
+     * @param key
+     *  The config key to set
+     * @param value
+     *  The value to set
+     * @param path
+     *  The key contains a path to a property in a map or list to set
      */
-    setConfig(stackName: string, key: string, value: ConfigValue): Promise<void>;
+    setConfig(stackName: string, key: string, value: ConfigValue, path?: boolean): Promise<void>;
+
     /**
      * Sets all values in the provided config map for the specified stack name.
      *
-     * @param stackName The stack to operate on
-     * @param config The `ConfigMap` to upsert against the existing config.
+     * @param stackName
+     *  The stack to operate on
+     * @param config
+     *  The {@link ConfigMap} to upsert against the existing config
+     * @param path
+     *  The keys contain a path to a property in a map or list to set
      */
-    setAllConfig(stackName: string, config: ConfigMap): Promise<void>;
+    setAllConfig(stackName: string, config: ConfigMap, path?: boolean): Promise<void>;
+
     /**
      * Removes the specified key-value pair on the provided stack name.
      *
-     * @param stackName The stack to operate on
-     * @param key The config key to remove
+     * @param stackName
+     *  The stack to operate on
+     * @param key
+     *  The config key to remove
+     * @param path
+     *  The key contains a path to a property in a map or list to remove
      */
-    removeConfig(stackName: string, key: string): Promise<void>;
+    removeConfig(stackName: string, key: string, path?: boolean): Promise<void>;
+
     /**
-     *
      * Removes all values in the provided key list for the specified stack name.
      *
-     * @param stackName The stack to operate on
-     * @param keys The list of keys to remove from the underlying config
+     * @param stackName
+     *  The stack to operate on
+     * @param keys
+     *  The list of keys to remove from the underlying config
+     * @param path
+     *  The keys contain a path to a property in a map or list to remove
      */
-    removeAllConfig(stackName: string, keys: string[]): Promise<void>;
+    removeAllConfig(stackName: string, keys: string[], path?: boolean): Promise<void>;
+
     /**
-     * Gets and sets the config map used with the last update for Stack matching stack name.
+     * Gets and sets the config map used with the last update for Stack matching
+     * stack name.
      *
-     * @param stackName The stack to refresh
+     * @param stackName
+     *  The stack to refresh
      */
     refreshConfig(stackName: string): Promise<ConfigMap>;
+
     /**
      * Returns the value associated with the specified stack name and key,
-     * scoped to the Workspace.
+     * scoped to the {@link Workspace}.
      *
-     * @param stackName The stack to read tag metadata from.
-     * @param key The key to use for the tag lookup.
+     * @param stackName
+     *  The stack to read tag metadata from.
+     * @param key
+     *  The key to use for the tag lookup.
      */
     getTag(stackName: string, key: string): Promise<string>;
+
     /**
      * Sets the specified key-value pair on the provided stack name.
      *
-     * @param stackName The stack to operate on.
-     * @param key The tag key to set.
-     * @param value The tag value to set.
+     * @param stackName
+     *  The stack to operate on.
+     * @param key
+     *  The tag key to set.
+     * @param value
+     *  The tag value to set.
      */
     setTag(stackName: string, key: string, value: string): Promise<void>;
+
     /**
      * Removes the specified key-value pair on the provided stack name.
      *
-     * @param stackName The stack to operate on.
-     * @param key The tag key to remove.
+     * @param stackName
+     *  The stack to operate on.
+     * @param key
+     *  The tag key to remove.
      */
     removeTag(stackName: string, key: string): Promise<void>;
+
     /**
-     * Returns the tag map for the specified tag name, scoped to the current Workspace.
+     * Returns the tag map for the specified tag name, scoped to the current
+     * {@link Workspace.}
      *
-     * @param stackName The stack to read tag metadata from.
+     * @param stackName
+     *  The stack to read tag metadata from.
      */
     listTags(stackName: string): Promise<TagMap>;
+
     /**
-     * Returns the currently authenticated user.
+     * Returns information about the currently authenticated user.
      */
     whoAmI(): Promise<WhoAmIResult>;
+
     /**
      * Returns a summary of the currently selected stack, if any.
      */
     stack(): Promise<StackSummary | undefined>;
+
     /**
-     * Creates and sets a new stack with the stack name, failing if one already exists.
+     * Creates and sets a new stack with the stack name, failing if one already
+     * exists.
      *
-     * @param stackName The stack to create.
+     * @param stackName
+     *  The stack to create.
      */
     createStack(stackName: string): Promise<void>;
+
     /**
-     * Selects and sets an existing stack matching the stack name, failing if none exists.
+     * Selects and sets an existing stack matching the stack name, failing if
+     * none exists.
      *
-     * @param stackName The stack to select.
+     * @param stackName
+     *  The stack to select.
      */
     selectStack(stackName: string): Promise<void>;
     /**
      * Deletes the stack and all associated configuration and history.
      *
-     * @param stackName The stack to remove
+     * @param stackName
+     *  The stack to remove
      */
-    removeStack(stackName: string): Promise<void>;
+    removeStack(stackName: string, opts?: RemoveOptions): Promise<void>;
     /**
-     * Returns all Stacks created under the current Project.
-     * This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-     */
-    listStacks(): Promise<StackSummary[]>;
-    /**
-     * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+     * Returns all stacks from the underlying backend based on the provided
+     * options. This queries backend and may return stacks not present in the
+     * {@link Workspace} as `Pulumi.<stack>.yaml` files.
      *
-     * @param name the name of the plugin.
-     * @param version the version of the plugin e.g. "v1.0.0".
-     * @param kind the kind of plugin e.g. "resource"
+     * @param opts
+     *  Options to customize the behavior of the list.
+     */
+    listStacks(opts?: ListOptions): Promise<StackSummary[]>;
+
+    /**
+     * Installs a plugin in the workspace, for example to use cloud providers
+     * like AWS or GCP.
+     *
+     * @param name
+     *  The name of the plugin.
+     * @param version
+     *  The version of the plugin e.g. "v1.0.0".
+     * @param server
+     *  The server to install the plugin into
      */
     installPluginFromServer(name: string, version: string, server: string): Promise<void>;
+
     /**
-     * Installs a plugin in the Workspace from a remote server, for example a third party plugin.
+     * Installs a plugin in the workspace from a remote server, for example a
+     * third-party plugin.
      *
-     * @param name the name of the plugin.
-     * @param version the version of the plugin e.g. "v1.0.0".
-     * @param server the server to install the plugin into
+     * @param name
+     *  The name of the plugin.
+     * @param version
+     *  The version of the plugin e.g. "v1.0.0".
+     * @param kind
+     *  The kind of plugin e.g. "resource"
      */
     installPlugin(name: string, version: string, kind?: string): Promise<void>;
+
     /**
-     * Removes a plugin from the Workspace matching the specified name and version.
+     * Removes a plugin from the workspace matching the specified name and
+     * version.
      *
-     * @param name the optional name of the plugin.
-     * @param versionRange optional semver range to check when removing plugins matching the given name
-     *  e.g. "1.0.0", ">1.0.0".
-     * @param kind he kind of plugin e.g. "resource"
+     * @param name
+     *  The optional name of the plugin.
+     * @param versionRange
+     *  An optional semver range to check when removing plugins matching the
+     *  given name e.g. "1.0.0", ">1.0.0".
+     * @param kind
+     *  The kind of plugin e.g. "resource"
      */
     removePlugin(name?: string, versionRange?: string, kind?: string): Promise<void>;
+
     /**
-     * Returns a list of all plugins installed in the Workspace.
+     * Returns a list of all plugins installed in the workspace.
      */
     listPlugins(): Promise<PluginInfo[]>;
+
     /**
-     * exportStack exports the deployment state of the stack.
-     * This can be combined with Workspace.importStack to edit a stack's state (such as recovery from failed deployments).
+     * Exports the deployment state of the stack. This can be combined with
+     * {@link Workspace.importStack} to edit a stack's state (such as recovery
+     * from failed deployments).
      *
      * @param stackName the name of the stack.
      */
     exportStack(stackName: string): Promise<Deployment>;
+
     /**
-     * importStack imports the specified deployment state into a pre-existing stack.
-     * This can be combined with Workspace.exportStack to edit a stack's state (such as recovery from failed deployments).
+     * Imports the specified deployment state into a pre-existing stack. This
+     * can be combined with {@link Workspace.exportStack} to edit a stack's
+     * state (such as recovery from failed deployments).
      *
-     * @param stackName the name of the stack.
-     * @param state the stack state to import.
+     * @param stackName
+     *  The name of the stack.
+     * @param state
+     *  The stack state to import.
      */
     importStack(stackName: string, state: Deployment): Promise<void>;
+
     /**
-     * Gets the current set of Stack outputs from the last Stack.up().
-     * @param stackName the name of the stack.
+     * Gets the current set of Stack outputs from the last {@link Stack.up}.
+     *
+     * @param stackName
+     *  The name of the stack.
      */
     stackOutputs(stackName: string): Promise<OutputMap>;
 }
@@ -259,7 +403,7 @@ export interface StackSummary {
     name: string;
     current: boolean;
     lastUpdate?: string;
-    updateInProgress: boolean;
+    updateInProgress?: boolean;
     resourceCount?: number;
     url?: string;
 }
@@ -272,6 +416,7 @@ export interface Deployment {
      * Version indicates the schema of the encoded deployment.
      */
     version: number;
+
     /**
      * The pulumi deployment.
      */
@@ -285,12 +430,22 @@ export interface Deployment {
 export type PulumiFn = () => Promise<Record<string, any> | void>;
 
 /**
+ * The currently logged-in Pulumi access token.
+ */
+export interface TokenInfomation {
+    name: string;
+    organization?: string;
+    team?: string;
+}
+
+/**
  * The currently logged-in Pulumi identity.
  */
 export interface WhoAmIResult {
     user: string;
     url?: string;
     organizations?: string[];
+    tokenInformation?: TokenInfomation;
 }
 
 export interface PluginInfo {

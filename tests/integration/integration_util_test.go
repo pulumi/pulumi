@@ -47,36 +47,6 @@ import (
 
 const WindowsOS = "windows"
 
-// assertPerfBenchmark implements the integration.TestStatsReporter interface, and reports test
-// failures when a scenario exceeds the provided threshold.
-type assertPerfBenchmark struct {
-	T                  *testing.T
-	MaxPreviewDuration time.Duration
-	MaxUpdateDuration  time.Duration
-}
-
-func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
-	var maxDuration *time.Duration
-	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
-		maxDuration = &t.MaxPreviewDuration
-	}
-	if strings.HasPrefix(stats.StepName, "pulumi-update") {
-		maxDuration = &t.MaxUpdateDuration
-	}
-
-	if maxDuration != nil && *maxDuration != 0 {
-		if stats.ElapsedSeconds < maxDuration.Seconds() {
-			t.T.Logf(
-				"Test step %q was under threshold. %.2fs (max %.2fs)",
-				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-		} else {
-			t.T.Errorf(
-				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
-				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
-		}
-	}
-}
-
 func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
 	return integration.LocalDependency{
 		Package: "testcomponent",
@@ -85,8 +55,6 @@ func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
 }
 
 func testComponentProviderSchema(t *testing.T, path string) {
-	t.Parallel()
-
 	runComponentSetup(t, "component_provider_schema")
 
 	tests := []struct {
@@ -134,7 +102,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
-			conn, err := grpc.Dial(
+			conn, err := grpc.NewClient(
 				"127.0.0.1:"+port,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				rpcutil.GrpcChannelOptions(),
@@ -145,8 +113,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			// Call GetSchema and verify the results.
 			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
 			if test.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), test.expectedError)
+				assert.ErrorContains(t, err, test.expectedError)
 			} else {
 				assert.Equal(t, test.expected, resp.GetSchema())
 			}
@@ -156,8 +123,6 @@ func testComponentProviderSchema(t *testing.T, path string) {
 
 // Test remote component inputs properly handle unknowns.
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_unknown"
 	runComponentSetup(t, testDir)
 
@@ -197,8 +162,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 
 // Test methods properly handle unknowns.
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_unknown"
 	runComponentSetup(t, testDir)
 	tests := []struct {
@@ -345,8 +308,6 @@ func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
 
 // Test methods that create resources.
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_resources"
 	runComponentSetup(t, testDir)
 
@@ -380,7 +341,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 					var hasExpectedResource bool
 					var result string
 					for _, res := range stackInfo.Deployment.Resources {
-						if res.URN.Name().String() == "myrandom" {
+						if res.URN.Name() == "myrandom" {
 							hasExpectedResource = true
 							result = res.Outputs["result"].(string)
 							assert.Equal(t, float64(10), res.Inputs["length"])
@@ -397,8 +358,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 
 // Test failures returned from methods are observed.
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
-
 	const testDir = "construct_component_methods_errors"
 	runComponentSetup(t, testDir)
 
@@ -440,9 +399,48 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	}
 }
 
-func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
-	t.Parallel()
+// Tests methods work when there is an explicit provider for another provider set on the component.
+func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_provider"
+	runComponentSetup(t, testDir)
 
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			testProvider := integration.LocalDependency{
+				Package: "testprovider", Path: filepath.Join("..", "testprovider"),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider, testProvider},
+				Quick:          true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message1"])
+					assert.Equal(t, "Hi There, Bob!", stackInfo.Outputs["message2"])
+				},
+			})
+		})
+	}
+}
+
+func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_output_values"
 	runComponentSetup(t, testDir)
 
@@ -523,4 +521,151 @@ func testConstructProviderExplicit(t *testing.T, lang string, dependencies []str
 			assert.Equal(t, "hello world", stackInfo.Outputs["nestedMessage"])
 		},
 	})
+}
+
+func testConstructComponentConfigureProviderCommonOptions() integration.ProgramTestOptions {
+	const testDir = "construct_component_configure_provider"
+	localProvider := integration.LocalDependency{
+		Package: "metaprovider", Path: filepath.Join(testDir, "testcomponent-go"),
+	}
+	return integration.ProgramTestOptions{
+		NoParallel: true,
+		Config: map[string]string{
+			"proxy": "FromEnv",
+		},
+		LocalProviders:           []integration.LocalDependency{localProvider},
+		Quick:                    false, // intentional, need to test preview here
+		AllowEmptyPreviewChanges: true,  // Pulumi will warn that provider has unknowns in its config
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Contains(t, stackInfo.Outputs, "keyAlgo")
+			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo"])
+			assert.Contains(t, stackInfo.Outputs, "keyAlgo2")
+			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo2"])
+
+			var providerURNID string
+			for _, r := range stackInfo.Deployment.Resources {
+				if strings.Contains(string(r.URN), "PrivateKey") {
+					providerURNID = r.Provider
+				}
+			}
+			require.NotEmptyf(t, providerURNID, "Did not find the provider of PrivateKey resource")
+			var providerFromEnvSetting *bool
+			for _, r := range stackInfo.Deployment.Resources {
+				if fmt.Sprintf("%s::%s", r.URN, r.ID) == providerURNID {
+					providerFromEnvSetting = new(bool)
+
+					proxy, ok := r.Inputs["proxy"]
+					require.Truef(t, ok, "expected %q Inputs to contain 'proxy'", providerURNID)
+
+					proxyMap, ok := proxy.(map[string]any)
+					require.Truef(t, ok, "expected %q Inputs 'proxy' to be of type map[string]any", providerURNID)
+
+					fromEnv, ok := proxyMap["fromEnv"]
+					require.Truef(t, ok, "expected %q Inputs 'proxy' to contain 'fromEnv'", providerURNID)
+
+					fromEnvB, ok := fromEnv.(bool)
+					require.Truef(t, ok, "expected %q Inputs 'proxy.fromEnv' to have type bool", providerURNID)
+
+					*providerFromEnvSetting = fromEnvB
+				}
+			}
+			require.NotNilf(t, providerFromEnvSetting,
+				"Did not find the inputs of the provider PrivateKey was provisioned with")
+			require.Truef(t, *providerFromEnvSetting,
+				"Expected PrivateKey to be provisioned with a provider with fromEnv=true")
+
+			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife"],
+				"Expected meaningOfLife output to be set to the integer 42")
+			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife2"],
+				"Expected meaningOfLife2 output to be set to the integer 42")
+		},
+	}
+}
+
+// Test failures returned from construct.
+func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_failures"
+	runComponentSetup(t, testDir)
+
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason
+    		- property foo with value '{bar}' has a problem: the failure reason`
+
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				Stderr:         stderr,
+				ExpectFailure:  true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
+
+// Test failures returned from call.
+func testCallFailures(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "call_component_failures"
+	runComponentSetup(t, testDir)
+
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := `error: call to function 'testcomponent:index:Component/getMessage' failed:
+    		- property foo has a problem: the failure reason`
+
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				Stderr:         stderr,
+				ExpectFailure:  true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
 }

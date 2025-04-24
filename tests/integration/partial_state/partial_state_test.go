@@ -1,4 +1,17 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2018-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build (nodejs || all) && !xplatform_acceptance
 
 package ints
@@ -17,6 +30,8 @@ import (
 //
 // The setup of this test uses a dynamic provider that will partially fail if a resource's state
 // value is the number 4.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialState(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",
@@ -35,7 +50,7 @@ func TestPartialState(t *testing.T) {
 			a := stackInfo.Deployment.Resources[2]
 
 			// We should still have persisted the resource and its outputs to the snapshot
-			assert.Equal(t, "doomed", string(a.URN.Name()))
+			assert.Equal(t, "doomed", a.URN.Name())
 			assert.Equal(t, 4.0, a.Outputs["state"].(float64))
 			assert.Equal(t, []string{"state can't be 4"}, a.InitErrors)
 		},
@@ -64,7 +79,7 @@ func TestPartialState(t *testing.T) {
 					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
 
 					a := stackInfo.Deployment.Resources[2]
-					assert.Equal(t, "not-doomed", string(a.URN.Name()))
+					assert.Equal(t, "not-doomed", a.URN.Name())
 					assert.Equal(t, 5.0, a.Outputs["state"].(float64))
 					assert.Nil(t, nil)
 				},
@@ -86,7 +101,7 @@ func TestPartialState(t *testing.T) {
 
 					// We should have persisted the updated resource's new outputs
 					// to the snapshot.
-					assert.Equal(t, "not-doomed", string(a.URN.Name()))
+					assert.Equal(t, "not-doomed", a.URN.Name())
 					assert.Equal(t, 4.0, a.Outputs["state"].(float64))
 					assert.Equal(t, []string{"state can't be 4"}, a.InitErrors)
 				},

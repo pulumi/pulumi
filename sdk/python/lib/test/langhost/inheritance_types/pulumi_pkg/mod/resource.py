@@ -22,12 +22,12 @@ class MyResource(pulumi.CustomResource):
         @pulumi.input_type
         class Args:
             pass
+
         props = Args()
         props.__dict__["foo"] = None
         super().__init__("test:index:MyResource", name, props)
 
     @property
     @pulumi.getter
-    def foo(self) -> pulumi.Output['outputs.MyResourceFoo']:
+    def foo(self) -> pulumi.Output["outputs.MyResourceFoo"]:
         return pulumi.get(self, "foo")
-

@@ -1,0 +1,6 @@
+name: pulumi-python-poetry-parent
+description: A simple Python Pulumi program that uses Poetry, with the pyproject.toml file in a parent folder
+runtime:
+  name: python
+  options:
+    toolchain: poetry

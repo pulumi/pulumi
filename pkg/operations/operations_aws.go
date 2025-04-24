@@ -25,7 +25,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go/service/sts"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -54,8 +56,19 @@ func AWSOperationsProvider(
 	awsAccessKey := config[accessKey]
 	awsSecretKey := config[secretKey]
 	awsToken := config[token]
+	awsProfile := config[profile]
 
-	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken)
+	// If there is an explicit provider - instead use the configuration on that provider
+	if component.Provider != nil {
+		outputs := component.Provider.State.Outputs
+		awsRegion = getPropertyMapStringValue(outputs, "region")
+		awsAccessKey = getPropertyMapStringValue(outputs, "accessKey")
+		awsSecretKey = getPropertyMapStringValue(outputs, "secretKey")
+		awsToken = getPropertyMapStringValue(outputs, "token")
+		awsProfile = getPropertyMapStringValue(outputs, "profile")
+	}
+
+	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile, true)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +84,17 @@ func AWSOperationsProvider(
 	return prov, nil
 }
 
+func getPropertyMapStringValue(m resource.PropertyMap, k resource.PropertyKey) string {
+	v, ok := m[k]
+	if !ok {
+		return ""
+	}
+	if !v.IsString() {
+		return ""
+	}
+	return v.StringValue()
+}
+
 type awsOpsProvider struct {
 	awsConnection *awsConnection
 	component     *Resource
@@ -84,6 +108,7 @@ var (
 	accessKey = config.MustMakeKey("aws", "accessKey")
 	secretKey = config.MustMakeKey("aws", "secretKey")
 	token     = config.MustMakeKey("aws", "token")
+	profile   = config.MustMakeKey("aws", "profile")
 )
 
 const (
@@ -95,6 +120,7 @@ const (
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	//exhaustive:ignore
 	switch state.Type {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
@@ -104,7 +130,9 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.StartTime,
 			query.EndTime,
 		)
-		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		sort.SliceStable(logResult, func(i, j int) bool {
+			return logResult[i].Timestamp < logResult[j].Timestamp
+		})
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	case awsLogGroupType:
@@ -115,7 +143,9 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.StartTime,
 			query.EndTime,
 		)
-		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		sort.SliceStable(logResult, func(i, j int) bool {
+			return logResult[i].Timestamp < logResult[j].Timestamp
+		})
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	default:
@@ -130,33 +160,54 @@ type awsConnection struct {
 }
 
 var (
-	awsDefaultSession      *session.Session
+	awsDefaultSessions     map[string]*session.Session = map[string]*session.Session{}
 	awsDefaultSessionMutex sync.Mutex
 )
 
-func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*session.Session, error) {
+// getSession gets or creates a Session instance to use for making AWS SDK calls using the provided credentials
+// and configuration.  If `validated` is true, it also uses the credentials to make an AWS call to get the caller
+// identity to ensure they are valid, and return an error if not.
+func getAWSSession(
+	awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile string,
+	validate bool,
+) (*session.Session, error) {
 	// AWS SDK for Go documentation: "Sessions should be cached when possible"
 	// We keep a default session around and then make cheap copies of it.
 	awsDefaultSessionMutex.Lock()
 	defer awsDefaultSessionMutex.Unlock()
 
-	if awsDefaultSession == nil {
-		sess, err := session.NewSession()
+	key := awsRegion + awsAccessKey + awsSecretKey + awsToken + awsProfile
+	awsDefaultSession, ok := awsDefaultSessions[key]
+	if !ok {
+		config := aws.Config{
+			Region: aws.String(awsRegion),
+		}
+		if awsAccessKey != "" || awsSecretKey != "" || awsToken != "" {
+			config.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, awsToken)
+		}
+
+		sess, err := session.NewSessionWithOptions(session.Options{
+			Profile:           awsProfile,
+			SharedConfigState: session.SharedConfigEnable,
+			Config:            config,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 
+		if validate {
+			// Make a call to STS to ensure the session is valid and fail early if not
+			stsSvc := sts.New(sess)
+			_, err = stsSvc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		awsDefaultSession = sess
+		awsDefaultSessions[key] = sess
 	}
-
-	extraConfig := aws.NewConfig()
-	extraConfig.Region = aws.String(awsRegion)
-
-	if awsAccessKey != "" || awsSecretKey != "" || token != "" {
-		extraConfig.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, token)
-	}
-
-	return awsDefaultSession.Copy(extraConfig), nil
+	return awsDefaultSession, nil
 }
 
 func (p *awsConnection) getLogsForLogGroupsConcurrently(

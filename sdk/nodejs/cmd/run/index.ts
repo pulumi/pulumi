@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Enable source map support so we get good stack traces.
+import "source-map-support/register";
+
 import * as log from "../../log";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
@@ -47,7 +50,7 @@ const uncaughtHandler = (err: Error) => {
 //
 // 32 was picked so as to be very unlikely to collide with any of the error codes documented by
 // nodejs here:
-// https://github.com/nodejs/node-v0.x-archive/blob/master/doc/api/process.markdown#exit-codes
+// https://nodejs.org/api/process.html#process_exit_codes
 /** @internal */
 export const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
 
@@ -91,10 +94,10 @@ function usage(): void {
     console.error(`    where [flags] may include`);
     console.error(`        --organization=o    set the organization name to o`);
     console.error(`        --project=p         set the project name to p`);
+    console.error(`        --root-directory=p  set the project root directory (location of Pulumi.yaml) to p`);
     console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
-    console.error(`        --query-mode        true to run pulumi in query mode`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
@@ -115,9 +118,19 @@ function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     const argv: minimist.ParsedArgs = minimist(args, {
         // eslint-disable-next-line id-blacklist
-        boolean: ["dry-run", "query-mode"],
+        boolean: ["dry-run"],
         // eslint-disable-next-line id-blacklist
-        string: ["organization", "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing"],
+        string: [
+            "organization",
+            "project",
+            "root-directory",
+            "stack",
+            "parallel",
+            "pwd",
+            "monitor",
+            "engine",
+            "tracing",
+        ],
         unknown: (arg: string) => {
             return true;
         },
@@ -150,9 +163,9 @@ function main(args: string[]): void {
     // Config is already an environment variaible set by the language plugin.
     addToEnvIfDefined("PULUMI_NODEJS_ORGANIZATION", argv["organization"]);
     addToEnvIfDefined("PULUMI_NODEJS_PROJECT", argv["project"]);
+    addToEnvIfDefined("PULUMI_NODEJS_ROOT_DIRECTORY", argv["root-directory"]);
     addToEnvIfDefined("PULUMI_NODEJS_STACK", argv["stack"]);
     addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
-    addToEnvIfDefined("PULUMI_NODEJS_QUERY_MODE", argv["query-mode"]);
     addToEnvIfDefined("PULUMI_NODEJS_PARALLEL", argv["parallel"]);
     addToEnvIfDefined("PULUMI_NODEJS_MONITOR", argv["monitor"]);
     addToEnvIfDefined("PULUMI_NODEJS_ENGINE", argv["engine"]);

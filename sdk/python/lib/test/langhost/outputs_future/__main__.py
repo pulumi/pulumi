@@ -15,9 +15,11 @@ import asyncio
 import pulumi
 from pulumi.runtime import invoke
 
+
 async def do_invoke():
     await asyncio.sleep(0)
     value = invoke("test:index:MyFunction", props={"value": 41}).value
     return value["value"]
+
 
 pulumi.export("value", do_invoke())

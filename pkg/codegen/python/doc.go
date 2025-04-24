@@ -47,16 +47,17 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, modNam
 
 	var path string
 	var fqdnTypeName string
+	packageName := PyPack(pkg.Namespace, pkg.Name)
 	switch {
 	case pkg.Name != "" && modName != "":
-		path = fmt.Sprintf("pulumi_%s/%s", pkg.Name, modName)
-		fqdnTypeName = fmt.Sprintf("pulumi_%s.%s.%s", pkg.Name, modName, typeName)
+		path = fmt.Sprintf("%s/%s", packageName, modName)
+		fqdnTypeName = fmt.Sprintf("%s.%s.%s", packageName, modName, typeName)
 	case pkg.Name == "" && modName != "":
 		path = modName
 		fqdnTypeName = fmt.Sprintf("%s.%s", modName, typeName)
 	case pkg.Name != "" && modName == "":
-		path = fmt.Sprintf("pulumi_%s", pkg.Name)
-		fqdnTypeName = fmt.Sprintf("pulumi_%s.%s", pkg.Name, typeName)
+		path = packageName
+		fqdnTypeName = fmt.Sprintf("%s.%s", packageName, typeName)
 	}
 
 	return fmt.Sprintf("/docs/reference/pkg/python/%s/#%s", path, fqdnTypeName)
@@ -80,7 +81,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		mod:         moduleName,
 		typeDetails: typeDetails,
 	}
-	typeName := mod.typeString(t, input, false /*acceptMapping*/)
+	typeName := mod.typeString(t, input, false /*acceptMapping*/, false /*forDict*/)
 
 	// Remove any package qualifiers from the type name.
 	if !input {
@@ -125,7 +126,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 				mod:         modName,
 				typeDetails: typeDetails,
 			}
-			return mod.typeString(returnType.Properties[0].Type, false, false)
+			return mod.typeString(returnType.Properties[0].Type, false, false, false /*forDict*/)
 		}
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
@@ -143,17 +144,4 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 		name = e.Name
 	}
 	return makeSafeEnumName(name, typeName)
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = pyPack(pkg.Name)
-	} else {
-		displayName = fmt.Sprintf("%s/%s", pyPack(pkg.Name), strings.ToLower(modName))
-	}
-	link = fmt.Sprintf("/docs/reference/pkg/python/%s", displayName)
-	return displayName, link
 }

@@ -50,7 +50,7 @@ type UpdateOptions struct {
 	LocalPolicyPackPaths []string            `json:"localPolicyPackPaths"`
 	Color                colors.Colorization `json:"color"`
 	DryRun               bool                `json:"dryRun"`
-	Parallel             int                 `json:"parallel"`
+	Parallel             int32               `json:"parallel"`
 	ShowConfig           bool                `json:"showConfig"`
 	ShowReplacementSteps bool                `json:"showReplacementSteps"`
 	ShowSames            bool                `json:"showNames"`
@@ -70,6 +70,12 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
+// EscEnvironmentMetadata describes the ESC Environments used in an update.
+type EscEnvironmentMetadata struct {
+	// This will be in the format of "[project/]name[@tag/version]"
+	ID string `json:"id"`
+}
+
 type MessageSeverity string
 
 const (
@@ -86,6 +92,10 @@ type Message struct {
 	Message string `json:"message"`
 }
 
+type AISettingsForUpdate struct {
+	CopilotIsEnabled bool `json:"copilotIsEnabled"`
+}
+
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
@@ -97,6 +107,8 @@ type UpdateProgramResponse struct {
 
 	// Messages is a list of messages that should be displayed to the user.
 	Messages []Message `json:"messages,omitempty"`
+
+	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.

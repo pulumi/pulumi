@@ -1,0 +1,10 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=180b8876-5154-4b37-9ece-6ca4687916dc]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ input_prop: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>old<{%reset%}><{%reset%}> inputs<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>new<{%reset%}><{%reset%}> inputs<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

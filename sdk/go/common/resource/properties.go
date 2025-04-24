@@ -20,6 +20,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -28,9 +31,6 @@ import (
 
 // PropertyKey is the name of a property.
 type PropertyKey tokens.Name
-
-// PropertySet is a simple set keyed by property name.
-type PropertySet map[PropertyKey]bool
 
 // PropertyMap is a simple map keyed by property name with "JSON-like" values.
 type PropertyMap map[PropertyKey]PropertyValue
@@ -129,6 +129,18 @@ func (ref ResourceReference) IDString() (value string, hasID bool) {
 	}
 }
 
+func (ref ResourceReference) Equal(other ResourceReference) bool {
+	if ref.URN != other.URN {
+		return false
+	}
+
+	vid, oid := ref.ID, other.ID
+	if vid.IsComputed() && oid.IsComputed() {
+		return true
+	}
+	return vid.DeepEquals(oid)
+}
+
 type ReqError struct {
 	K PropertyKey
 }
@@ -212,13 +224,25 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 	return sorted
 }
 
+// PropertyValueType enumerates the actual types that may be stored in a PropertyValue.
+//
+//nolint:lll
+type PropertyValueType interface {
+	bool | float64 | string | *asset.Asset | *archive.Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
+}
+
+// NewProperty creates a new PropertyValue.
+func NewProperty[T PropertyValueType](v T) PropertyValue {
+	return PropertyValue{v}
+}
+
 func NewNullProperty() PropertyValue                                 { return PropertyValue{nil} }
 func NewBoolProperty(v bool) PropertyValue                           { return PropertyValue{v} }
 func NewNumberProperty(v float64) PropertyValue                      { return PropertyValue{v} }
 func NewStringProperty(v string) PropertyValue                       { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue               { return PropertyValue{v} }
-func NewAssetProperty(v *Asset) PropertyValue                        { return PropertyValue{v} }
-func NewArchiveProperty(v *Archive) PropertyValue                    { return PropertyValue{v} }
+func NewAssetProperty(v *asset.Asset) PropertyValue                  { return PropertyValue{v} }
+func NewArchiveProperty(v *archive.Archive) PropertyValue            { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue                  { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue                   { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue                       { return PropertyValue{v} }
@@ -226,20 +250,20 @@ func NewSecretProperty(v *Secret) PropertyValue                      { return Pr
 func NewResourceReferenceProperty(v ResourceReference) PropertyValue { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
-	return NewComputedProperty(Computed{Element: v})
+	return NewProperty(Computed{Element: v})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {
-	return NewOutputProperty(Output{Element: v})
+	return NewProperty(Output{Element: v})
 }
 
 func MakeSecret(v PropertyValue) PropertyValue {
-	return NewSecretProperty(&Secret{Element: v})
+	return NewProperty(&Secret{Element: v})
 }
 
 // MakeComponentResourceReference creates a reference to a component resource.
 func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
-	return NewResourceReferenceProperty(ResourceReference{
+	return NewProperty(ResourceReference{
 		URN:            urn,
 		PackageVersion: packageVersion,
 	})
@@ -248,12 +272,12 @@ func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValu
 // MakeCustomResourceReference creates a reference to a custom resource. If the resource's ID is the empty string, it
 // will be treated as unknown.
 func MakeCustomResourceReference(urn URN, id ID, packageVersion string) PropertyValue {
-	idProp := NewStringProperty(string(id))
+	idProp := NewProperty(string(id))
 	if id == "" {
-		idProp = MakeComputed(NewStringProperty(""))
+		idProp = MakeComputed(NewProperty(""))
 	}
 
-	return NewResourceReferenceProperty(ResourceReference{
+	return NewProperty(ResourceReference{
 		ID:             idProp,
 		URN:            urn,
 		PackageVersion: packageVersion,
@@ -285,41 +309,44 @@ func NewPropertyValueRepl(v interface{},
 	// Else, check for some known primitive types.
 	switch t := v.(type) {
 	case bool:
-		return NewBoolProperty(t)
+		return NewProperty(t)
 	case int:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case int32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case int64:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint64:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case float32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case float64:
-		return NewNumberProperty(t)
+		return NewProperty(t)
 	case string:
-		return NewStringProperty(t)
-	case *Asset:
-		return NewAssetProperty(t)
-	case *Archive:
-		return NewArchiveProperty(t)
+		return NewProperty(t)
+	case *asset.Asset:
+		return NewProperty(t)
+	case *archive.Archive:
+		return NewProperty(t)
 	case Computed:
-		return NewComputedProperty(t)
+		return NewProperty(t)
 	case Output:
-		return NewOutputProperty(t)
+		return NewProperty(t)
 	case *Secret:
-		return NewSecretProperty(t)
+		return NewProperty(t)
 	case ResourceReference:
-		return NewResourceReferenceProperty(t)
+		return NewProperty(t)
+	case PropertyValue:
+		return t
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
 	rv := reflect.ValueOf(v)
+	//nolint:exhaustive // We intentionally only handle some types here.
 	switch rk := rv.Type().Kind(); rk {
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.
@@ -328,7 +355,7 @@ func NewPropertyValueRepl(v interface{},
 			elem := rv.Index(i)
 			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
 		}
-		return NewArrayProperty(arr)
+		return NewProperty(arr)
 	case reflect.Ptr:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
@@ -355,17 +382,16 @@ func NewPropertyValueRepl(v interface{},
 			pv := NewPropertyValueRepl(val, replk, replv)
 			obj[pk] = pv
 		}
-		return NewObjectProperty(obj)
+		return NewProperty(obj)
 	case reflect.String:
-		return NewStringProperty(rv.String())
+		return NewProperty(rv.String())
 	case reflect.Struct:
 		obj := NewPropertyMapRepl(v, replk, replv)
-		return NewObjectProperty(obj)
+		return NewProperty(obj)
 	default:
 		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
+		return NewNullProperty()
 	}
-
-	return NewNullProperty()
 }
 
 // HasValue returns true if a value is semantically meaningful.
@@ -427,10 +453,10 @@ func (v PropertyValue) StringValue() string { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 
 // AssetValue fetches the underlying asset value (panicking if it isn't an asset).
-func (v PropertyValue) AssetValue() *Asset { return v.V.(*Asset) }
+func (v PropertyValue) AssetValue() *asset.Asset { return v.V.(*asset.Asset) }
 
 // ArchiveValue fetches the underlying archive value (panicking if it isn't an archive).
-func (v PropertyValue) ArchiveValue() *Archive { return v.V.(*Archive) }
+func (v PropertyValue) ArchiveValue() *archive.Archive { return v.V.(*archive.Archive) }
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
@@ -476,15 +502,15 @@ func (v PropertyValue) IsArray() bool {
 	return is
 }
 
-// IsAsset returns true if the underlying value is an object.
+// IsAsset returns true if the underlying value is an asset.
 func (v PropertyValue) IsAsset() bool {
-	_, is := v.V.(*Asset)
+	_, is := v.V.(*asset.Asset)
 	return is
 }
 
-// IsArchive returns true if the underlying value is an object.
+// IsArchive returns true if the underlying value is an archive.
 func (v PropertyValue) IsArchive() bool {
-	_, is := v.V.(*Archive)
+	_, is := v.V.(*archive.Archive)
 	return is
 }
 
@@ -626,7 +652,7 @@ type Property struct {
 
 // SigKey is sometimes used to encode type identity inside of a map.  This is required when flattening into ordinary
 // maps, like we do when performing serialization, to ensure recoverability of type identities later on.
-const SigKey = "4dabf18193072939515e22adb298388d"
+const SigKey = sig.Key
 
 // HasSig checks to see if the given property map contains the specific signature match.
 func HasSig(obj PropertyMap, match string) bool {
@@ -637,13 +663,13 @@ func HasSig(obj PropertyMap, match string) bool {
 }
 
 // SecretSig is the unique secret signature.
-const SecretSig = "1b47061264138c4ac30d75fd1eb44270"
+const SecretSig = sig.Secret
 
 // ResourceReferenceSig is the unique resource reference signature.
-const ResourceReferenceSig = "5cf8f73096256a8f31e491e813e4eb8e"
+const ResourceReferenceSig = sig.ResourceReference
 
 // OutputValueSig is the unique output value signature.
-const OutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
+const OutputValueSig = sig.OutputValue
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

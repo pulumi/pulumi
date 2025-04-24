@@ -87,7 +87,7 @@ type Constant struct {
 	typ Type
 }
 
-// Tracerse attempts to traverse the constant's value.
+// Traverse attempts to traverse the constant's value.
 func (c *Constant) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	v, diags := traverser.TraversalStep(c.ConstantValue)
 	return &Constant{ConstantValue: v}, diags

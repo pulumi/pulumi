@@ -1,0 +1,52 @@
+{
+  "name": "nestedTypes",
+  "version": "1.0.0",
+  "types": {
+    "nestedTypes:index:NestedType": {
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }, 
+        "nestedMaps": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "resources": {
+    "nestedTypes:index:Resource": {
+      "properties": {
+        "nested": {
+          "$ref": "#/types/nestedTypes:index:NestedType"
+        }
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "regress-go-15478/nestedTypes"
+    }
+  }
+}

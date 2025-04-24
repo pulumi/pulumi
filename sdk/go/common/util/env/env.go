@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,8 +28,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Store holds a collection of key, value? pairs.
@@ -103,6 +101,14 @@ func (v Var) Name() string {
 	return v.options.name(v.name)
 }
 
+// The alternative name of an environmental variable.
+func (v Var) Alternative() string {
+	if v.options.alternative == "" {
+		return ""
+	}
+	return v.options.name(v.options.alternative)
+}
+
 // The list of variables that a must be truthy for `v` to be set.
 func (v Var) Requires() []BoolValue { return v.options.prerequs }
 
@@ -121,8 +127,10 @@ func Variables() []Var {
 type Option func(*options)
 
 type options struct {
-	prerequs []BoolValue
-	noPrefix bool
+	prerequs    []BoolValue
+	noPrefix    bool
+	secret      bool
+	alternative string
 }
 
 func (o options) name(underlying string) string {
@@ -132,16 +140,28 @@ func (o options) name(underlying string) string {
 	return Prefix + underlying
 }
 
-// Indicate that a variable can only be set if `val` is truthy.
+// Needs indicates that a variable can only be set if `val` is truthy.
 func Needs(val BoolValue) Option {
 	return func(o *options) {
 		o.prerequs = append(o.prerequs, val)
 	}
 }
 
-// Indicate that a variable should not have the default prefix applied.
+// NoPrefix indicates that a variable should not have the default prefix applied.
 func NoPrefix(opts *options) {
 	opts.noPrefix = true
+}
+
+// Secret indicates that the value should not be displayed in plaintext.
+func Secret(opts *options) {
+	opts.secret = true
+}
+
+// Alternative indicates that the variable has an alternative name. This is generally used for backwards compatibility.
+func Alternative(name string) Option {
+	return func(opts *options) {
+		opts.alternative = name
+	}
 }
 
 // The value of a environmental variable.
@@ -211,7 +231,17 @@ func (v value) Underlying() (string, bool) {
 	if s == nil {
 		s = Global
 	}
-	return s.Raw(v.Var().Name())
+	raw, has := s.Raw(v.Var().Name())
+	if has {
+		return raw, true
+	}
+
+	alt := v.Var().Alternative()
+	if alt != "" {
+		return s.Raw(alt)
+	}
+
+	return "", false
 }
 
 func (v value) missingPrerequs() string {
@@ -229,6 +259,9 @@ type StringValue struct{ *value }
 func (StringValue) Type() string { return "string" }
 
 func (s StringValue) formattedValue() string {
+	if s.variable.options.secret {
+		return "[secret]"
+	}
 	return fmt.Sprintf("%#v", s.Value())
 }
 
@@ -278,7 +311,7 @@ func (b BoolValue) Value() bool {
 	if !ok {
 		return false
 	}
-	return cmdutil.IsTruthy(v)
+	return v == "1" || strings.EqualFold(v, "true")
 }
 
 // An integer retrieved from the environment.

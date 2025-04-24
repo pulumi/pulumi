@@ -1,0 +1,6 @@
+name: cancel
+description: A simple Python Pulumi program that sleeps for 30 seconds so we can test cancellation signals
+runtime:
+  name: python
+  options:
+    virtualenv: venv

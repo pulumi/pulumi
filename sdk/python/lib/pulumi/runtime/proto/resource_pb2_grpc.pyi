@@ -16,11 +16,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import abc
-import collections.abc
 import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
 import typing
+import pulumi.callback_pb2
 import pulumi.provider_pb2
 import pulumi.resource_pb2
 
@@ -36,12 +36,8 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.ResourceInvokeRequest,
         pulumi.provider_pb2.InvokeResponse,
     ]
-    StreamInvoke: grpc.UnaryStreamMultiCallable[
-        pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
-    ]
     Call: grpc.UnaryUnaryMultiCallable[
-        pulumi.provider_pb2.CallRequest,
+        pulumi.resource_pb2.ResourceCallRequest,
         pulumi.provider_pb2.CallResponse,
     ]
     ReadResource: grpc.UnaryUnaryMultiCallable[
@@ -56,6 +52,23 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.RegisterResourceOutputsRequest,
         google.protobuf.empty_pb2.Empty,
     ]
+    RegisterStackTransform: grpc.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register a resource transform for the stack"""
+    RegisterStackInvokeTransform: grpc.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """Register an invoke transform for the stack"""
+    RegisterPackage: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.RegisterPackageRequest,
+        pulumi.resource_pb2.RegisterPackageResponse,
+    ]
+    """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+    Multiple requests are idempotent and guaranteed to return the same result.
+    """
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
@@ -73,15 +86,9 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.InvokeResponse: ...
     
-    def StreamInvoke(
-        self,
-        request: pulumi.resource_pb2.ResourceInvokeRequest,
-        context: grpc.ServicerContext,
-    ) -> collections.abc.Iterator[pulumi.provider_pb2.InvokeResponse]: ...
-    
     def Call(
         self,
-        request: pulumi.provider_pb2.CallRequest,
+        request: pulumi.resource_pb2.ResourceCallRequest,
         context: grpc.ServicerContext,
     ) -> pulumi.provider_pb2.CallResponse: ...
     
@@ -102,5 +109,28 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.RegisterResourceOutputsRequest,
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty: ...
+    
+    def RegisterStackTransform(
+        self,
+        request: pulumi.callback_pb2.Callback,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty:
+        """Register a resource transform for the stack"""
+    
+    def RegisterStackInvokeTransform(
+        self,
+        request: pulumi.callback_pb2.Callback,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty:
+        """Register an invoke transform for the stack"""
+    
+    def RegisterPackage(
+        self,
+        request: pulumi.resource_pb2.RegisterPackageRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.resource_pb2.RegisterPackageResponse:
+        """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+        Multiple requests are idempotent and guaranteed to return the same result.
+        """
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

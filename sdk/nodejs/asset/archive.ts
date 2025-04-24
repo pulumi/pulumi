@@ -16,19 +16,21 @@ import * as utils from "../utils";
 import { Asset } from "./asset";
 
 /**
- * An Archive represents a collection of named assets.
+ * An {@link Archive} represents a collection of named assets.
  */
 export abstract class Archive {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
+     *
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiArchive: boolean = true;
 
     /**
-     * Returns true if the given object is an instance of an Archive.  This is designed to work even when
-     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an {@link Archive}. This is designed
+     * to work even when multiple copies of the Pulumi SDK have been loaded into
+     * the same process.
      */
     public static isInstance(obj: any): obj is Archive {
         return utils.isInstance<Archive>(obj, "__pulumiArchive");
@@ -36,12 +38,13 @@ export abstract class Archive {
 }
 
 /**
- * AssetMap is a map of assets.
+ * A map of assets.
  */
 export type AssetMap = { [name: string]: Asset | Archive };
 
 /**
- * An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
+ * An {@link AssetArchive} is an archive created from an in-memory collection of
+ * named assets or other archives.
  */
 export class AssetArchive extends Archive {
     /**
@@ -56,8 +59,9 @@ export class AssetArchive extends Archive {
 }
 
 /**
- * A FileArchive is a file-based archive, or a collection of file-based assets.  This can be a raw directory or a
- * single archive file in one of the supported formats (.tar, .tar.gz, or .zip).
+ * A {@link FileArchive} is a file-based archive, or a collection of file-based
+ * assets. This can be a raw directory or a single archive file in one of the
+ * supported formats (`.tar`, `.tar.gz`, or `.zip`).
  */
 export class FileArchive extends Archive {
     /**
@@ -72,9 +76,11 @@ export class FileArchive extends Archive {
 }
 
 /**
- * A RemoteArchive is a file-based archive fetched from a remote location.  The URI's scheme dictates the
- * protocol for fetching the archive's contents: `file://` is a local file (just like a FileArchive), `http://` and
- * `https://` specify HTTP and HTTPS, respectively, and specific providers may recognize custom schemes.
+ * A {@link RemoteArchive} is a file-based archive fetched from a remote
+ * location. The URI's scheme dictates the protocol for fetching the archive's
+ * contents: `file://` is a local file (just like a {@link FileArchive}),
+ * `http://` and `https://` specify HTTP and HTTPS, respectively, and specific
+ * providers may recognize custom schemes.
  */
 export class RemoteArchive extends Archive {
     /**

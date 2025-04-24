@@ -60,12 +60,13 @@ const (
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	//exhaustive:ignore
 	switch state.Type {
 	case cloudFunctionType:
 		// We get the aws:lambda/function:Function child and request it's logs, parsing out the
 		// user-visible content from those logs to project into our own log output, but leaving out
 		// explicit Lambda metadata.
-		name := string(state.URN.Name())
+		name := state.URN.Name()
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
@@ -94,7 +95,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// centrally archived into the log collector. As a result, we will combine reading these logs with reading the
 		// live Lambda logs from individual functions, de-duplicating the results, to piece together the full set of
 		// logs.
-		name := string(state.URN.Name())
+		name := state.URN.Name()
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
@@ -142,7 +143,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only
 		// populated by user code within containers, so we can safely project these logs back unmodified.
 		urn := state.URN
-		name := string(urn.Name())
+		name := urn.Name()
 		logGroup, ok := ops.component.GetChild(awsLogGroupTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLogGroupTypeName, name)
@@ -191,16 +192,24 @@ var (
 	// Used prior to pulumi-terraform@1307256eeeefdd87ffd76581cd3ab73c3d7cfd4a
 	oldFunctionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
 	// Extract Lambda log parts from Lambda log format
-	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t((?s).*)\n")
+	// * Starts with a timestamp
+	// * Then a tab
+	// * Then either (a) `undefined` or (b) a UUID like `25e0d1e0-cbd6-11e7-9808-c7085dfe5723`
+	// * Then a tab
+	// * Then the message
+	// * Finally a newline
+	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-z0-9\\-]+\t((?s).*)\n")
 )
 
 // extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
-// metadata.  In particular, only the second line below is extracter, and it is extracted with the recorded timestamp.
+// metadata.  In particular, only the second and third line below is extracted, and it is extracted with the
+// recorded timestamp.
 //
 // ```
 //
 //	START RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723 Version: $LATEST
 //	2017-11-17T20:30:27.736Z	25e0d1e0-cbd6-11e7-9808-c7085dfe5723	GET /todo
+//	2017-11-17T20:31:52.126Z	undefined	ERROR	Uncaught Exception 	{}
 //	END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723
 //	REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	<snip>
 //

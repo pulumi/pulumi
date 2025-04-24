@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
@@ -49,29 +50,37 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 
 	c := &cancellationScope{
 		context: cancelContext,
-		sigint:  make(chan os.Signal),
-		done:    make(chan bool),
+		// The channel for signal.Notify should be buffered https://pkg.go.dev/os/signal#Notify
+		sigint: make(chan os.Signal, 1),
+		done:   make(chan bool),
 	}
 
 	go func() {
-		for range c.sigint {
-			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
-			// func.
+		for sig := range c.sigint {
+			// If we haven't yet received a SIGINT or SIGTERM, call the cancellation func. Otherwise call the
+			// termination func.
 			if cancelContext.CancelErr() == nil {
 				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
+				if sig == syscall.SIGTERM {
+					message = "SIGTERM received; cancelling. If you would like to terminate immediately, send SIGTERM again.\n"
+				}
 				if !isPreview {
 					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
 						"and other inconsistencies.\n" + colors.Reset
 				}
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				events <- engine.NewEvent(engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
 
 				cancelSource.Cancel()
 			} else {
-				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				sigdisplay := "^C"
+				if sig == syscall.SIGTERM {
+					sigdisplay = "SIGTERM"
+				}
+				message := colors.BrightRed + sigdisplay + " received; terminating" + colors.Reset
+				events <- engine.NewEvent(engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
@@ -81,7 +90,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 		}
 		close(c.done)
 	}()
-	signal.Notify(c.sigint, os.Interrupt)
+	signal.Notify(c.sigint, os.Interrupt, syscall.SIGTERM)
 
 	return c
 }

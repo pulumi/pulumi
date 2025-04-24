@@ -1,0 +1,5 @@
+name: l2-provider-grpc-config-secret
+runtime:
+  name: nodejs
+  options:
+    typescript: false

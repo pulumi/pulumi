@@ -1,0 +1,14 @@
+<{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::newResource]
+<{%reset%}><{%reset%}><{%fg 2%}>+ component: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::component::parent]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::component$pkgA:m:typA::child]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

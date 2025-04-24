@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
@@ -109,10 +123,21 @@ var pypiDev = regexp.MustCompile("^dev[0-9]+$")
 // A valid post tag for pypi
 var pypiPost = regexp.MustCompile("^post[0-9]+$")
 
-// pypiVersion translates semver 2.0 into pypi's versioning scheme:
+// Transforms 0.0.1-alpha.18 to 0.0.1-alpha18; our users want to be able to use the previous form but semver.Version
+// parses it into two Pre segments ["alpha", "18"] which trips up translation. The same treatment is given beta and rc
+// versions.
+func normPypiVersion(v semver.Version) semver.Version {
+	s := v.String()
+	s = regexp.MustCompile(`(alpha|beta|rc)[.](\d+)`).ReplaceAllString(s, `$1$2`)
+	return semver.MustParse(s)
+}
+
+// PypiVersion translates semver 2.0 into pypi's versioning scheme:
 // Details can be found here: https://www.python.org/dev/peps/pep-0440/#version-scheme
 // [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
-func pypiVersion(v semver.Version) string {
+func PypiVersion(v semver.Version) string {
+	v = normPypiVersion(v)
+
 	localList := slice.Prealloc[string](len(pypiReleaseTranslations))
 
 	getRelease := func(maybeRelease string) string {

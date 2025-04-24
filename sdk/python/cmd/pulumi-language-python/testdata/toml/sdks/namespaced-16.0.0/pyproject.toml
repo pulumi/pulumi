@@ -1,0 +1,15 @@
+[project]
+  name = "a_namespace_namespaced"
+  dependencies = ["parver>=0.2.1", "pulumi>=3.142.0,<4.0.0", "pulumi_component>=13.3.7", "semver>=2.8.1", "typing-extensions>=4.11,<5; python_version < \"3.11\""]
+  readme = "README.md"
+  requires-python = ">=3.9"
+  version = "16.0.0"
+
+[build-system]
+  requires = ["setuptools>=61.0"]
+  build-backend = "setuptools.build_meta"
+
+[tool]
+  [tool.setuptools]
+    [tool.setuptools.package-data]
+      a_namespace_namespaced = ["py.typed", "pulumi-plugin.json"]

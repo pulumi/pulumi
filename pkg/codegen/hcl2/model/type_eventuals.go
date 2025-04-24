@@ -125,82 +125,51 @@ func ResolvePromises(t Type) Type {
 
 // ContainsEventuals returns true if the input type contains output or promise types.
 func ContainsEventuals(t Type) (containsOutputs, containsPromises bool) {
-	return containsEventualsImpl(t, map[Type]struct{}{})
+	containsOutputs = ContainsOutputs(t)
+	containsPromises = ContainsPromises(t)
+	return containsOutputs, containsPromises
 }
 
-func containsEventualsImpl(t Type, seen map[Type]struct{}) (containsOutputs, containsPromises bool) {
+// ContainsOutputs returns true if the input type contains output types.
+func ContainsOutputs(t Type) bool {
+	seenTypes := map[Type]struct{}{}
+	return containsOutputsImpl(t, seenTypes)
+}
+
+func containsOutputsImpl(t Type, seen map[Type]struct{}) bool {
 	if _, ok := seen[t]; ok {
-		return false, false
+		return false
 	}
 	seen[t] = struct{}{}
 
 	switch t := t.(type) {
 	case *OutputType:
-		return true, false
-	case *PromiseType:
-		return ContainsOutputs(t.ElementType), true
-	case *MapType:
-		return containsEventualsImpl(t.ElementType, seen)
-	case *ListType:
-		return containsEventualsImpl(t.ElementType, seen)
-	case *SetType:
-		return containsEventualsImpl(t.ElementType, seen)
-	case *UnionType:
-		for _, t := range t.ElementTypes {
-			outputs, promises := containsEventualsImpl(t, seen)
-			containsOutputs = outputs || containsOutputs
-			containsPromises = promises || containsPromises
-		}
-		return
-	case *ObjectType:
-		for _, t := range t.Properties {
-			outputs, promises := containsEventualsImpl(t, seen)
-			containsOutputs = outputs || containsOutputs
-			containsPromises = promises || containsPromises
-		}
-		return
-	case *TupleType:
-		for _, t := range t.ElementTypes {
-			outputs, promises := containsEventualsImpl(t, seen)
-			containsOutputs = outputs || containsOutputs
-			containsPromises = promises || containsPromises
-		}
-		return
-	default:
-		return false, false
-	}
-}
-
-// ContainsOutputs returns true if the input type contains output types.
-func ContainsOutputs(t Type) bool {
-	switch t := t.(type) {
-	case *OutputType:
 		return true
 	case *PromiseType:
-		return ContainsOutputs(t.ElementType)
+		return containsOutputsImpl(t.ElementType, seen)
 	case *MapType:
-		return ContainsOutputs(t.ElementType)
+		return containsOutputsImpl(t.ElementType, seen)
 	case *ListType:
-		return ContainsOutputs(t.ElementType)
+		return containsOutputsImpl(t.ElementType, seen)
 	case *SetType:
-		return ContainsOutputs(t.ElementType)
+		return containsOutputsImpl(t.ElementType, seen)
 	case *UnionType:
 		for _, t := range t.ElementTypes {
-			if ContainsOutputs(t) {
+			if containsOutputsImpl(t, seen) {
 				return true
 			}
 		}
 		return false
 	case *ObjectType:
 		for _, t := range t.Properties {
-			if ContainsOutputs(t) {
+			if containsOutputsImpl(t, seen) {
 				return true
 			}
 		}
 		return false
 	case *TupleType:
 		for _, t := range t.ElementTypes {
-			if ContainsOutputs(t) {
+			if containsOutputsImpl(t, seen) {
 				return true
 			}
 		}
@@ -212,32 +181,44 @@ func ContainsOutputs(t Type) bool {
 
 // ContainsPromises returns true if the input type contains promise types.
 func ContainsPromises(t Type) bool {
+	seenTypes := map[Type]struct{}{}
+	return containsPromisesImpl(t, seenTypes)
+}
+
+func containsPromisesImpl(t Type, seen map[Type]struct{}) bool {
+	if _, ok := seen[t]; ok {
+		return false
+	}
+	seen[t] = struct{}{}
+
 	switch t := t.(type) {
 	case *PromiseType:
 		return true
+	case *OutputType:
+		return containsPromisesImpl(t.ElementType, seen)
 	case *MapType:
-		return ContainsPromises(t.ElementType)
+		return containsPromisesImpl(t.ElementType, seen)
 	case *ListType:
-		return ContainsPromises(t.ElementType)
+		return containsPromisesImpl(t.ElementType, seen)
 	case *SetType:
-		return ContainsPromises(t.ElementType)
+		return containsPromisesImpl(t.ElementType, seen)
 	case *UnionType:
 		for _, t := range t.ElementTypes {
-			if ContainsPromises(t) {
+			if containsPromisesImpl(t, seen) {
 				return true
 			}
 		}
 		return false
 	case *ObjectType:
 		for _, t := range t.Properties {
-			if ContainsPromises(t) {
+			if containsPromisesImpl(t, seen) {
 				return true
 			}
 		}
 		return false
 	case *TupleType:
 		for _, t := range t.ElementTypes {
-			if ContainsPromises(t) {
+			if containsPromisesImpl(t, seen) {
 				return true
 			}
 		}

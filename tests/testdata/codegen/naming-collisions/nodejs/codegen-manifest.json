@@ -1,0 +1,20 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "index.ts",
+    "mainComponent.ts",
+    "mod/component.ts",
+    "mod/component2.ts",
+    "mod/index.ts",
+    "package.json",
+    "provider.ts",
+    "resource.ts",
+    "resourceInput.ts",
+    "tsconfig.json",
+    "types/enums/index.ts",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

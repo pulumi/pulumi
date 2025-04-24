@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package executable
 
 import (
@@ -17,7 +31,7 @@ const unableToFindProgramTemplate = "unable to find program: %s"
 // filesystem, eventually resorting to searching in $PATH.
 func FindExecutable(program string) (string, error) {
 	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") {
-		program = fmt.Sprintf("%s.exe", program)
+		program = program + ".exe"
 	}
 	// look in the same directory
 	cwd, err := os.Getwd()
@@ -26,7 +40,11 @@ func FindExecutable(program string) (string, error) {
 	}
 
 	cwdProgram := filepath.Join(cwd, program)
-	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
+	fileInfo, err := os.Stat(cwdProgram)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	if err == nil && !fileInfo.Mode().IsDir() {
 		logging.V(5).Infof("program %s found in CWD", program)
 		return cwdProgram, nil
 	}

@@ -15,10 +15,13 @@
 """
 Runtime settings and configuration.
 """
+
 from __future__ import annotations
 
 import asyncio
 import os
+import threading
+from collections import deque
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -27,6 +30,7 @@ import grpc
 from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
+from ._callbacks import _CallbackServicer
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
@@ -56,11 +60,15 @@ class Settings:
         dry_run: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
         organization: Optional[str] = None,
+        root_directory: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
+        self.outputs = deque()
+        self.lock = threading.Lock()
 
         # Save the metadata information.
         self.project = project
+        self.root_directory = root_directory
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
@@ -93,53 +101,63 @@ class Settings:
         else:
             self.engine = None
 
+        self.callbacks = None
+
     @contextproperty
     def rpc_manager(self) -> RPCManager:  # type: ignore
         # The contextproperty decorator will fill the body of this method in, but mypy doesn't know that.
         ...
 
     @contextproperty
-    def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
-        ...
+    def lock(self) -> threading.Lock: ...  # type: ignore
 
     @contextproperty
-    def engine(self) -> Optional[engine_pb2_grpc.EngineStub]:
-        ...
+    def outputs(self) -> deque[asyncio.Task]: ...  # type: ignore
 
     @contextproperty
-    def organization(self) -> Optional[str]:
-        ...
+    def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]: ...
 
     @contextproperty
-    def project(self) -> Optional[str]:
-        ...
+    def engine(self) -> Optional[engine_pb2_grpc.EngineStub]: ...
 
     @contextproperty
-    def stack(self) -> Optional[str]:
-        ...
+    def organization(self) -> Optional[str]: ...
 
     @contextproperty
-    def parallel(self) -> Optional[bool]:
-        ...
+    def project(self) -> Optional[str]: ...
 
     @contextproperty
-    def dry_run(self) -> Optional[bool]:
-        ...
+    def root_directory(self) -> Optional[str]: ...
 
     @contextproperty
-    def legacy_apply_enabled(self) -> Optional[bool]:
-        ...
+    def stack(self) -> Optional[str]: ...
 
     @contextproperty
-    def feature_support(self) -> Optional[dict]:
-        ...
+    def parallel(self) -> Optional[bool]: ...
+
+    @contextproperty
+    def dry_run(self) -> Optional[bool]: ...
+
+    @contextproperty
+    def legacy_apply_enabled(self) -> Optional[bool]: ...
+
+    @contextproperty
+    def feature_support(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def callbacks(self) -> Optional[_CallbackServicer]: ...
 
     def __repr__(self):
         return f"<class Settings[engine={self.engine.__repr__()} monitor={self.monitor.__repr__()} project={self.project.__repr__()} stack={self.stack.__repr__()}>"
 
 
 # default to "empty" settings.
-SETTINGS = Settings(stack="stack", project="project", organization="organization")
+SETTINGS = Settings(
+    stack="stack",
+    project="project",
+    root_directory="root_directory",
+    organization="organization",
+)
 
 
 def configure(settings: Settings):
@@ -148,8 +166,9 @@ def configure(settings: Settings):
     """
     if not settings or not isinstance(settings, Settings):
         raise TypeError("Settings is expected to be non-None and of type Settings")
-    global SETTINGS  # pylint: disable=global-statement
-    SETTINGS = settings
+    # The properties of SETTINGS are contextvars but SETTINGS itself isn't.
+    for key, value in settings.__dict__.items():
+        setattr(SETTINGS, key, value)
 
 
 def is_dry_run() -> bool:
@@ -181,6 +200,13 @@ def get_project() -> str:
     Returns the current project name.
     """
     return SETTINGS.project
+
+
+def get_root_directory() -> str:
+    """
+    Returns the project root, the location of Pulumi.yaml.
+    """
+    return SETTINGS.root_directory
 
 
 def _set_project(v: Optional[str]):
@@ -225,6 +251,30 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
+async def _get_callbacks() -> Optional[_CallbackServicer]:
+    """
+    Returns the current callbacks for RPC communications.
+    """
+    callbacks = SETTINGS.callbacks
+    if callbacks is not None:
+        return callbacks
+
+    monitor = SETTINGS.monitor
+    if monitor is None or not isinstance(
+        monitor, resource_pb2_grpc.ResourceMonitorStub
+    ):
+        return None
+
+    callbacks = _CallbackServicer(monitor)
+    await callbacks.serve()
+    SETTINGS.callbacks = callbacks
+    return callbacks
+
+
+async def _shutdown_callbacks():
+    await _CallbackServicer.shutdown()
+
+
 def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
@@ -248,21 +298,7 @@ async def monitor_supports_feature(feature: str) -> bool:
         if not monitor:
             return False
 
-        req = resource_pb2.SupportsFeatureRequest(id=feature)
-
-        def do_rpc_call():
-            try:
-                resp = monitor.SupportsFeature(req)
-                return resp.hasSupport
-            except grpc.RpcError as exn:
-                if (
-                    exn.code()  # pylint: disable=no-member
-                    != grpc.StatusCode.UNIMPLEMENTED
-                ):
-                    handle_grpc_error(exn)
-                return False
-
-        result = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        result = await _monitor_supports_feature(monitor, feature)
         SETTINGS.feature_support[feature] = result
 
     return SETTINGS.feature_support[feature]
@@ -275,7 +311,6 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     #
     # Neither pylint nor I are the only ones who find this confusing:
     # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-    # pylint: disable=no-member
     if exn.code() == grpc.StatusCode.UNAVAILABLE:
         # If the monitor is unavailable, it is in the process of
         # shutting down or has already shut down.
@@ -309,9 +344,22 @@ async def monitor_supports_alias_specs() -> bool:
     return await monitor_supports_feature("aliasSpecs")
 
 
+def _sync_monitor_supports_transforms() -> bool:
+    return SETTINGS.feature_support.get("transforms", False)
+
+
+def _sync_monitor_supports_invoke_transforms() -> bool:
+    return SETTINGS.feature_support.get("invokeTransforms", False)
+
+
+def _sync_monitor_supports_parameterization() -> bool:
+    return SETTINGS.feature_support.get("parameterization", False)
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
+    root_directory: Optional[str] = None,
     parallel: Optional[int] = None,
     engine_address: Optional[str] = None,
     monitor_address: Optional[str] = None,
@@ -328,8 +376,40 @@ def reset_options(
             monitor=monitor_address,
             engine=engine_address,
             stack=stack,
+            root_directory=root_directory,
             parallel=parallel,
             dry_run=preview,
             organization=organization,
         )
+    )
+
+
+async def _monitor_supports_feature(
+    monitor: resource_pb2_grpc.ResourceMonitorStub, feature: str
+) -> bool:
+    req = resource_pb2.SupportsFeatureRequest(id=feature)
+
+    def do_rpc_call():
+        try:
+            resp = monitor.SupportsFeature(req)
+            return resp.hasSupport
+        except grpc.RpcError as exn:
+            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
+                handle_grpc_error(exn)
+            return False
+
+    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+
+
+async def _load_monitor_feature_support():
+    # Prime the feature support cache.
+    await asyncio.gather(
+        monitor_supports_feature("secrets"),
+        monitor_supports_feature("resourceReferences"),
+        monitor_supports_feature("outputValues"),
+        monitor_supports_feature("deletedWith"),
+        monitor_supports_feature("aliasSpecs"),
+        monitor_supports_feature("transforms"),
+        monitor_supports_feature("invokeTransforms"),
+        monitor_supports_feature("parameterization"),
     )

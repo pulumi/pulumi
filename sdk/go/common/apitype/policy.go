@@ -125,6 +125,9 @@ const (
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"
 
+	// Remediate is an enforcement level that fixes policy issues instead of issuing diagnostics.
+	Remediate EnforcementLevel = "remediate"
+
 	// Disabled is an enforcement level that disables the policy from being enforced.
 	Disabled EnforcementLevel = "disabled"
 )
@@ -132,7 +135,7 @@ const (
 // IsValid returns true if the EnforcementLevel is a valid value.
 func (el EnforcementLevel) IsValid() bool {
 	switch el {
-	case Advisory, Mandatory, Disabled:
+	case Advisory, Mandatory, Remediate, Disabled:
 		return true
 	}
 	return false
@@ -211,6 +214,7 @@ type PolicyGroupSummary struct {
 	Name                  string `json:"name"`
 	IsOrgDefault          bool   `json:"isOrgDefault"`
 	NumStacks             int    `json:"numStacks"`
+	NumAccounts           int    `json:"numAccounts,omitempty"`
 	NumEnabledPolicyPacks int    `json:"numEnabledPolicyPacks"`
 }
 

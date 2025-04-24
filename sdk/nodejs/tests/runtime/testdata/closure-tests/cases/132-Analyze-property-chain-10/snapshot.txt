@@ -1,0 +1,23 @@
+exports.handler = __f0;
+
+var __o = {b: __f1};
+
+function __f1() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return function () { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o, this: undefined, arguments: undefined }) {
+
+return function () { console.log(o.b.name); console.log(o.b()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

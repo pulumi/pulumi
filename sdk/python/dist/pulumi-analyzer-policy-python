@@ -1,15 +1,18 @@
 #!/bin/sh
 
-# Parse the -virtualenv command line argument.
+# Parse the -virtualenv command line argument and recreate %@ without it.
 virtualenv=""
-for arg in "$@"
-do
-    case $arg in
-        -virtualenv=*)
-        virtualenv="${arg#*=}"
-        break
-        ;;
-    esac
+for arg do
+  case $arg in
+    -virtualenv=*)
+      virtualenv="${arg#*=}"
+      shift
+      ;;
+    *)
+      set -- "$@" "$arg"
+      shift
+      ;;
+  esac
 done
 
 if [ -n "${virtualenv:-}" ] ; then
@@ -32,7 +35,7 @@ if [ -n "${virtualenv:-}" ] ; then
         fi
 
         # Run python from the virtual environment.
-        "$virtualenv/bin/python" -u -m pulumi.policy "$1" "$2"
+        "$virtualenv/bin/python" -u -m pulumi.policy "$@"
     else
         if [ -d "$virtualenv" ]; then
             1>&2 echo "The 'virtualenv' option in PulumiPolicy.yaml is set to \"$virtualenv\", but \"$virtualenv\" doesn't appear to be a virtual environment."
@@ -48,5 +51,5 @@ if [ -n "${virtualenv:-}" ] ; then
     fi
 else
     # Otherwise, run either PULUMI_PYTHON_CMD (if set) or python3.
-    "${PULUMI_PYTHON_CMD:-python3}" -u -m pulumi.policy "$1" "$2"
+    "${PULUMI_PYTHON_CMD:-python3}" -u -m pulumi.policy "$@"
 fi

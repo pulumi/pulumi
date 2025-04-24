@@ -18,20 +18,19 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // hostServer is the server side of the host RPC machinery.
 type hostServer struct {
-	lumirpc.UnsafeEngineServer // opt out of forward compat
+	pulumirpc.UnsafeEngineServer // opt out of forward compat
 
 	host   Host         // the host for this RPC server.
 	ctx    *Context     // the associated plugin context.
@@ -56,7 +55,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: engine.cancel,
 		Init: func(srv *grpc.Server) error {
-			lumirpc.RegisterEngineServer(srv, engine)
+			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
@@ -87,19 +86,19 @@ func (eng *hostServer) Cancel() error {
 }
 
 // Log logs a global message in the engine, including errors and warnings.
-func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbempty.Empty, error) {
+func (eng *hostServer) Log(ctx context.Context, req *pulumirpc.LogRequest) (*emptypb.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
-	case lumirpc.LogSeverity_DEBUG:
+	case pulumirpc.LogSeverity_DEBUG:
 		sev = diag.Debug
-	case lumirpc.LogSeverity_INFO:
+	case pulumirpc.LogSeverity_INFO:
 		sev = diag.Info
-	case lumirpc.LogSeverity_WARNING:
+	case pulumirpc.LogSeverity_WARNING:
 		sev = diag.Warning
-	case lumirpc.LogSeverity_ERROR:
+	case pulumirpc.LogSeverity_ERROR:
 		sev = diag.Error
 	default:
-		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
+		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
 	if req.Ephemeral {
@@ -107,15 +106,15 @@ func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbemp
 	} else {
 		eng.host.Log(sev, resource.URN(req.Urn), req.Message, req.StreamId)
 	}
-	return &pbempty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 // GetRootResource returns the current root resource's URN, which will serve as the parent of resources that are
 // otherwise left unparented.
 func (eng *hostServer) GetRootResource(ctx context.Context,
-	req *lumirpc.GetRootResourceRequest,
-) (*lumirpc.GetRootResourceResponse, error) {
-	var response lumirpc.GetRootResourceResponse
+	req *pulumirpc.GetRootResourceRequest,
+) (*pulumirpc.GetRootResourceResponse, error) {
+	var response pulumirpc.GetRootResourceResponse
 	response.Urn = eng.rootUrn.Load().(string)
 	return &response, nil
 }
@@ -123,9 +122,29 @@ func (eng *hostServer) GetRootResource(ctx context.Context,
 // SetRootResource sets the current root resource's URN. Generally only called on startup when the Stack resource is
 // registered.
 func (eng *hostServer) SetRootResource(ctx context.Context,
-	req *lumirpc.SetRootResourceRequest,
-) (*lumirpc.SetRootResourceResponse, error) {
-	var response lumirpc.SetRootResourceResponse
+	req *pulumirpc.SetRootResourceRequest,
+) (*pulumirpc.SetRootResourceResponse, error) {
+	var response pulumirpc.SetRootResourceResponse
 	eng.rootUrn.Store(req.GetUrn())
 	return &response, nil
+}
+
+func (eng *hostServer) StartDebugging(ctx context.Context,
+	req *pulumirpc.StartDebuggingRequest,
+) (*emptypb.Empty, error) {
+	// fire an engine event to start the debugger
+	info := DebuggingInfo{
+		Config: req.Config.AsMap(),
+	}
+	// log a status message
+	eng.host.LogStatus(
+		diag.Info, resource.URN(""),
+		fmt.Sprintf("Waiting for debugger to attach (%v)...", req.GetMessage()), 0)
+
+	err := eng.host.StartDebugging(info)
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }

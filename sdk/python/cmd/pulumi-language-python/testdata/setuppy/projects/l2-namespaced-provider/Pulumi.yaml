@@ -1,0 +1,7 @@
+name: l2-namespaced-provider
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

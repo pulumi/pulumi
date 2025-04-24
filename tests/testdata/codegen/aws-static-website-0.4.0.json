@@ -1,0 +1,204 @@
+{
+  "name": "aws-static-website",
+  "displayName": "AWS Static Website",
+  "version": "0.4.0",
+  "description": "A Pulumi component to deploy a static website to AWS",
+  "keywords": [
+    "pulumi",
+    "aws",
+    "category/cloud",
+    "kind/component",
+    "web"
+  ],
+  "homepage": "https://pulumi.com",
+  "repository": "https://github.com/pulumi/pulumi-aws-static-website",
+  "publisher": "Pulumi",
+  "meta": {
+    "moduleFormat": "(.*)"
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.*",
+        "Pulumi.Aws": "5.*"
+      }
+    },
+    "go": {
+      "generateResourceContainerTypes": true,
+      "importBasePath": "github.com/pulumi/pulumi-aws-static-website/sdk/go/aws-static-website"
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/aws": "^5.0.0",
+        "@pulumi/pulumi": "^3.37.0"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {
+      "requires": {
+        "pulumi": "\u003e=3.0.0,\u003c4.0.0",
+        "pulumi-aws": "\u003e=5.0.0,\u003c6.0.0"
+      }
+    }
+  },
+  "config": {},
+  "types": {
+    "aws-static-website:index:CDNArgs": {
+      "properties": {
+        "cloudfrontFunctionAssociations": {
+          "type": "array",
+          "items": {
+            "$ref": "/aws/v5.16.2/schema.json#/types/aws:cloudfront%2FDistributionOrderedCacheBehaviorFunctionAssociation:DistributionOrderedCacheBehaviorFunctionAssociation"
+          },
+          "description": "A config block that triggers a cloudfront\nfunction with specific actions.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "forwardedValues": {
+          "$ref": "/aws/v5.16.2/schema.json#/types/aws:cloudfront%2FDistributionDefaultCacheBehaviorForwardedValues:DistributionDefaultCacheBehaviorForwardedValues",
+          "description": "The forwarded values configuration that specifies how CloudFront handles query strings, cookies and headers."
+        },
+        "lambdaFunctionAssociations": {
+          "type": "array",
+          "items": {
+            "$ref": "/aws/v5.16.2/schema.json#/types/aws:cloudfront%2FDistributionOrderedCacheBehaviorLambdaFunctionAssociation:DistributionOrderedCacheBehaviorLambdaFunctionAssociation"
+          },
+          "description": "A config block that triggers a lambda\nfunction with specific actions.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "provider": {
+    "type": "object"
+  },
+  "resources": {
+    "aws-static-website:index:PublicBucketPolicy": {
+      "properties": {
+        "ownershipControls": {
+          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2FbucketOwnershipControls:BucketOwnershipControls"
+        },
+        "publicAccessBlock": {
+          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2FbucketPublicAccessBlock:BucketPublicAccessBlock"
+        }
+      },
+      "type": "object",
+      "required": [
+        "ownershipControls",
+        "publicAccessBlock"
+      ],
+      "inputProperties": {
+        "bucket": {
+          "$ref": "/aws/v5.16.2/schema.json#/resources/aws:s3%2Fbucket:Bucket",
+          "description": "The bucket to apply the public policy to."
+        }
+      },
+      "requiredInputs": [
+        "bucket"
+      ],
+      "isComponent": true
+    },
+    "aws-static-website:index:Website": {
+      "properties": {
+        "bucketName": {
+          "type": "string",
+          "description": "The name of the s3 bucket containing the website contents."
+        },
+        "bucketWebsiteURL": {
+          "type": "string",
+          "description": "The website URL for the s3 bucket."
+        },
+        "cdnDomainName": {
+          "type": "string",
+          "description": "The domain name for the CDN."
+        },
+        "cdnURL": {
+          "type": "string",
+          "description": "The URL for the CDN"
+        },
+        "logsBucketName": {
+          "type": "string",
+          "description": "The name of the s3 bucket containing the access logs."
+        },
+        "websiteURL": {
+          "type": "string",
+          "description": "The URL to access the website"
+        }
+      },
+      "type": "object",
+      "required": [
+        "bucketName",
+        "bucketWebsiteURL",
+        "websiteURL"
+      ],
+      "inputProperties": {
+        "addWebsiteVersionHeader": {
+          "type": "boolean",
+          "description": "Enable a cache control header to be attached to every request from an Cloudfront Function."
+        },
+        "atomicDeployments": {
+          "type": "boolean",
+          "description": "Provision a new bucket on each deployment."
+        },
+        "cacheTTL": {
+          "type": "number",
+          "description": "TTL in seconds for cached objects. "
+        },
+        "cdnArgs": {
+          "$ref": "#/types/aws-static-website:index:CDNArgs",
+          "description": "Optional arguments used to configure the CDN."
+        },
+        "certificateARN": {
+          "type": "string",
+          "description": "The ARN of the ACM certificate to use for serving HTTPS. If one is not provided, a certificate will be created during the provisioning process."
+        },
+        "error404": {
+          "type": "string",
+          "description": "default 404 page"
+        },
+        "indexHTML": {
+          "type": "string",
+          "description": "The default document for the site. Defaults to index.html"
+        },
+        "priceClass": {
+          "type": "string",
+          "description": "The price class to use for the CloudFront configuration. Defaults to 100 if not specified. Valid values are `all`, `100`, and `200`"
+        },
+        "sitePath": {
+          "type": "string",
+          "description": "The root directory containing the website's contents."
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "An optional subdomain that can be used to serve the content. This can typically be used to provision a www alias or if a deeply nested subdomain is needed (e.g. foo.bar.baz.com)."
+        },
+        "targetDomain": {
+          "type": "string",
+          "description": "The domain used to serve the content. A Route53 hosted zone must exist for this domain."
+        },
+        "withCDN": {
+          "type": "boolean",
+          "description": "Provision CloudFront CDN to serve content."
+        },
+        "withLogs": {
+          "type": "boolean",
+          "description": "Provision a bucket to hold access logs."
+        }
+      },
+      "requiredInputs": [
+        "sitePath"
+      ],
+      "isComponent": true
+    }
+  }
+}

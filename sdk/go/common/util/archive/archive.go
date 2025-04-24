@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,6 +87,10 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		}
 
 		// Expand files into the target directory.
+		if header.Mode > math.MaxUint32 {
+			return fmt.Errorf("unexpected file mode %v for %s", header.Mode, header.Name)
+		}
+		//nolint:gosec // int64 -> uint32 conversion guarded above
 		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
 			return fmt.Errorf("opening file %s for extraction: %w", path, err)

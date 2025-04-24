@@ -23,19 +23,18 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -43,7 +42,7 @@ const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
-	diag, statusDiag diag.Sink, disableProviderPreview bool,
+	diag, statusDiag diag.Sink, debugging plugin.DebugEventEmitter, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
@@ -56,7 +55,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 
 	// Create a context for plugins.
 	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config)
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
+		projinfo.Proj.GetPackageSpecs(), config, debugging)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -134,30 +134,42 @@ type deploymentOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc deploymentSourceFunc
 
-	DOT        bool         // true if we should print the DOT file for this deployment.
-	Events     eventEmitter // the channel to write events from the engine to.
-	Diag       diag.Sink    // the sink to use for diag'ing.
-	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
+	// true if we should print the DOT file for this deployment.
+	DOT bool
+	// the channel to write events from the engine to.
+	Events eventEmitter
+	// the sink to use for diag'ing.
+	Diag diag.Sink
+	// the sink to use for diag'ing status messages.
+	StatusDiag diag.Sink
 
-	isImport bool            // True if this is an import.
-	imports  []deploy.Import // Resources to import, if this is an import.
+	// True if this is an import operation.
+	isImport bool
+	// Resources to import, if this is an import.
+	imports []deploy.Import
 
-	// true if we're executing a refresh.
+	// true if this deployment is (only) a refresh operation. This should not be
+	// confused with UpdateOptions.Refresh, which will be true whenever a refresh
+	// is happening as part of an operation (e.g. `up --refresh`).
 	isRefresh bool
 
-	// true if we should trust the dependency graph reported by the language host. Not all Pulumi-supported languages
-	// correctly report their dependencies, in which case this will be false.
-	trustDependencies bool
+	// true if this deployment is a dry run, such as a preview action or a preview
+	// operation preceding e.g. a refresh or destroy.
+	DryRun bool
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
 type deploymentSourceFunc func(
-	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
+	ctx context.Context,
+	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
+	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
-func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	dryRun bool,
+func newDeployment(
+	ctx *Context,
+	info *deploymentContext,
+	actions runActions,
+	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
 	contract.Assertf(info.Update != nil, "update info cannot be nil")
@@ -176,17 +188,30 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
 
+	// Create a context for plugins.
+	debuggingEventEmitter := newDebuggingEventEmitter(opts.Events)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, debuggingEventEmitter, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
-	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
 
-	opts.trustDependencies = proj.TrustResourceDependencies()
+	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
+	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
+
+	// Set up a goroutine that will signal cancellation to the source if the caller context
+	// is cancelled.
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	go func() {
+		<-ctx.Cancel.Canceled()
+		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
+		cancelFunc()
+	}()
+
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
-	source, err := opts.SourceFunc(ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx, dryRun)
+	source, err := opts.SourceFunc(
+		cancelCtx, ctx.BackendClient, opts, proj, pwd, main, projinfo.Root, target, plugctx)
 	if err != nil {
 		contract.IgnoreClose(plugctx)
 		return nil, err
@@ -194,36 +219,98 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
+	deplOpts := &deploy.Options{
+		ParallelDiff:              opts.ParallelDiff,
+		DryRun:                    opts.DryRun,
+		Parallel:                  opts.Parallel,
+		Refresh:                   opts.Refresh,
+		RefreshOnly:               opts.isRefresh,
+		RefreshProgram:            opts.RefreshProgram,
+		DestroyProgram:            opts.DestroyProgram,
+		ReplaceTargets:            opts.ReplaceTargets,
+		Targets:                   opts.Targets,
+		Excludes:                  opts.Excludes,
+		TargetDependents:          opts.TargetDependents,
+		ExcludeDependents:         opts.ExcludeDependents,
+		UseLegacyDiff:             opts.UseLegacyDiff,
+		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
+		DisableResourceReferences: opts.DisableResourceReferences,
+		DisableOutputValues:       opts.DisableOutputValues,
+		GeneratePlan:              opts.UpdateOptions.GeneratePlan,
+		ContinueOnError:           opts.ContinueOnError,
+		Autonamer:                 opts.Autonamer,
+	}
+
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, opts.Plan, source,
-			localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
+			localPolicyPackPaths, ctx.BackendClient)
 	} else {
-		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
-			false /*returnInstallErrors*/)
+		_, defaultProviderInfo, pluginErr := installPlugins(
+			cancelCtx,
+			proj,
+			pwd,
+			main,
+			target,
+			opts,
+			plugctx,
+			false, /*returnInstallErrors*/
+		)
 		if pluginErr != nil {
 			return nil, pluginErr
 		}
 		for i := range opts.imports {
 			imp := &opts.imports[i]
-			_, err := tokens.ParseTypeToken(imp.Type.String())
-			if err != nil {
-				return nil, fmt.Errorf("import type %q is not a valid resource type token. "+
-					"Type tokens must be of the format <package>:<module>:<type> - "+
-					"refer to the import section of the provider resource documentation.", imp.Type.String())
+			if imp.Component {
+				if imp.ID != "" {
+					return nil, fmt.Errorf("import %s cannot specify an ID as it's a component", imp.Name)
+				}
 			}
-			if imp.Provider == "" {
+
+			if !imp.Component || imp.Remote {
+				_, err := tokens.ParseTypeToken(imp.Type.String())
+				if err != nil {
+					return nil, fmt.Errorf("import type %q is not a valid resource type token. "+
+						"Type tokens must be of the format <package>:<module>:<type> - "+
+						"refer to the import section of the provider resource documentation.", imp.Type.String())
+				}
+			}
+
+			if imp.Provider == "" && (!imp.Component || imp.Remote) {
 				if imp.Version == nil {
-					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
+					dpi := defaultProviderInfo[imp.Type.Package()]
+					imp.Version = dpi.Version
+					if dpi.Parameterization != nil {
+						imp.Version = &dpi.Parameterization.Version
+					}
 				}
 				if imp.PluginDownloadURL == "" {
 					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
 				}
+				if imp.PluginChecksums == nil {
+					imp.PluginChecksums = defaultProviderInfo[imp.Type.Package()].Checksums
+				}
+				if imp.Parameterization == nil {
+					dpi := defaultProviderInfo[imp.Type.Package()]
+
+					if dpi.Parameterization != nil {
+						if dpi.Version == nil {
+							return nil, fmt.Errorf("no version specified for provider %q", dpi.Name)
+						}
+
+						imp.Parameterization = &deploy.Parameterization{
+							PluginName:    tokens.Package(dpi.Name),
+							PluginVersion: *dpi.Version,
+							Value:         dpi.Parameterization.Value,
+						}
+					}
+				}
 			}
 		}
 
-		depl, err = deploy.NewImportDeployment(plugctx, target, proj.Name, opts.imports, dryRun)
+		depl, err = deploy.NewImportDeployment(
+			plugctx, deplOpts, actions, target, proj.Name, opts.imports)
 	}
 
 	if err != nil {
@@ -234,17 +321,27 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 		Ctx:        info,
 		Plugctx:    plugctx,
 		Deployment: depl,
+		Actions:    actions,
 		Options:    opts,
 	}, nil
 }
 
 type deployment struct {
-	Ctx        *deploymentContext // deployment context information.
-	Plugctx    *plugin.Context    // the context containing plugins and their state.
-	Deployment *deploy.Deployment // the deployment created by this command.
-	Options    deploymentOptions  // the options used while deploying.
+	// deployment context information.
+	Ctx *deploymentContext
+	// the context containing plugins and their state.
+	Plugctx *plugin.Context
+	// the deployment created by this command.
+	Deployment *deploy.Deployment
+	// the actions to run during the deployment.
+	Actions runActions
+	// the options used while deploying.
+	Options *deploymentOptions
 }
 
+// runActions represents a set of actions to run as part of a deployment,
+// including callbacks that will be used to emit events at various points in the
+// deployment process.
 type runActions interface {
 	deploy.Events
 
@@ -253,16 +350,7 @@ type runActions interface {
 }
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
-func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
-	// Change into the plugin context's working directory.
-	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
-	if err != nil {
-		return nil, nil, result.FromError(err)
-	}
-	defer chdir()
-
+func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.ResourceChanges, error) {
 	// Create a new context for cancellation and tracing.
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -272,30 +360,17 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	}
 
 	// Emit an appropriate prelude event.
-	deployment.Options.Events.preludeEvent(preview, deployment.Ctx.Update.GetTarget().Config)
+	deployment.Options.Events.preludeEvent(
+		deployment.Options.DryRun, deployment.Ctx.Update.GetTarget().Config)
 
 	// Execute the deployment.
 	start := time.Now()
 
 	done := make(chan bool)
 	var newPlan *deploy.Plan
-	var walkResult result.Result
+	var walkError error
 	go func() {
-		opts := deploy.Options{
-			Events:                    actions,
-			Parallel:                  deployment.Options.Parallel,
-			Refresh:                   deployment.Options.Refresh,
-			RefreshOnly:               deployment.Options.isRefresh,
-			ReplaceTargets:            deployment.Options.ReplaceTargets,
-			Targets:                   deployment.Options.Targets,
-			TargetDependents:          deployment.Options.TargetDependents,
-			TrustDependencies:         deployment.Options.trustDependencies,
-			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
-			DisableResourceReferences: deployment.Options.DisableResourceReferences,
-			DisableOutputValues:       deployment.Options.DisableOutputValues,
-			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
-		}
-		newPlan, walkResult = deployment.Deployment.Execute(ctx, opts, preview)
+		newPlan, walkError = deployment.Deployment.Execute(ctx)
 		close(done)
 	}()
 
@@ -310,23 +385,36 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 		}
 	}()
 
+	var err error
 	// Wait for the deployment to finish executing or for the user to terminate the run.
-	var res result.Result
 	select {
 	case <-cancelCtx.Cancel.Terminated():
-		res = result.WrapIfNonNil(cancelCtx.Cancel.TerminateErr())
+		err = cancelCtx.Cancel.TerminateErr()
 
 	case <-done:
-		res = walkResult
+		err = walkError
 	}
 
 	duration := time.Since(start)
-	changes := actions.Changes()
+	changes := deployment.Actions.Changes()
+
+	// Refresh and Import do not execute Policy Packs.
+	policies := map[string]string{}
+	if !deployment.Options.isRefresh && !deployment.Options.isImport {
+		for _, p := range deployment.Options.RequiredPolicies {
+			policies[p.Name()] = p.Version()
+		}
+		for _, pack := range deployment.Options.LocalPolicyPacks {
+			packName := pack.NameForEvents()
+			policies[packName] = pack.Version
+		}
+	}
 
 	// Emit a summary event.
-	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks)
+	deployment.Options.Events.summaryEvent(
+		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies)
 
-	return newPlan, changes, res
+	return newPlan, changes, err
 }
 
 func (deployment *deployment) Close() error {
@@ -342,18 +430,23 @@ func isDefaultProviderStep(step deploy.Step) bool {
 	return providers.IsDefaultProvider(step.URN())
 }
 
-func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
-	if !targetUrns.IsConstrained() {
+func checkTargets(targetUrns deploy.UrnTargets, excludeUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
+	if !targetUrns.IsConstrained() && !excludeUrns.IsConstrained() {
 		return nil
 	}
 	if snap == nil {
-		return fmt.Errorf("targets specified, but snapshot was nil")
+		return errors.New("targets specified, but snapshot was nil")
 	}
 	urns := map[resource.URN]struct{}{}
 	for _, res := range snap.Resources {
 		urns[res.URN] = struct{}{}
 	}
 	for _, target := range targetUrns.Literals() {
+		if _, ok := urns[target]; !ok {
+			return fmt.Errorf("no resource named '%s' found", target)
+		}
+	}
+	for _, target := range excludeUrns.Literals() {
 		if _, ok := urns[target]; !ok {
 			return fmt.Errorf("no resource named '%s' found", target)
 		}

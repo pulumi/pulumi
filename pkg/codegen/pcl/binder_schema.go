@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -175,6 +176,41 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 	return schema, nil
 }
 
+func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	loader schema.Loader,
+	descriptor *schema.PackageDescriptor,
+) (*packageSchema, error) {
+	version := ""
+
+	descriptorVersion := descriptor.PackageVersion()
+	if descriptorVersion != nil {
+		version = descriptorVersion.String()
+	}
+
+	pkgInfo := PackageInfo{
+		name:    descriptor.PackageName(),
+		version: version,
+	}
+
+	if s, ok := c.getPackageSchema(pkgInfo); ok {
+		return s, nil
+	}
+
+	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	if err != nil {
+		return nil, err
+	}
+
+	schema := newPackageSchema(pkg)
+
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	c.entries[pkgInfo] = schema
+
+	return schema, nil
+}
+
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
 func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
@@ -273,7 +309,13 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 			continue
 		}
 
-		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+		var pkg *packageSchema
+		var err error
+		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		} else {
+			pkg, err = b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+		}
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
 				continue
@@ -292,6 +334,8 @@ func buildEnumValue(v interface{}) cty.Value {
 	case bool:
 		return cty.BoolVal(v)
 	case int:
+		return cty.NumberIntVal(int64(v))
+	case int32:
 		return cty.NumberIntVal(int64(v))
 	case int64:
 		return cty.NumberIntVal(v)
@@ -447,15 +491,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		schemaArrayTypes[element] = &schema.ArrayType{ElementType: element}
 		return schemaArrayTypes[element], true
 	case *model.ObjectType:
-		if len(t.Annotations) == 0 {
-			return nil, false
-		}
-		for _, a := range t.Annotations {
-			if t, ok := a.(schema.Type); ok {
-				return t, true
-			}
-		}
-		return nil, false
+		return model.GetObjectTypeAnnotation[schema.Type](t)
 	case *model.OutputType:
 		return GetSchemaForType(t.ElementType)
 	case *model.PromiseType:
@@ -566,7 +602,13 @@ func EnumMember(t *model.EnumType, value cty.Value) (*schema.Enum, bool) {
 	case t.Type.Equals(model.IntType):
 		f, _ := value.AsBigFloat().Int64()
 		for _, el := range src.Elements {
-			if el.Value.(int64) == f {
+			valueInt64, ok := el.Value.(int64)
+			if ok && valueInt64 == f {
+				return el, true
+			}
+
+			valueInt32, ok := el.Value.(int32)
+			if ok && int64(valueInt32) == f {
 				return el, true
 			}
 		}

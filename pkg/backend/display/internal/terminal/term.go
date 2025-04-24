@@ -1,3 +1,17 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package terminal
 
 import (
@@ -5,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 
 	"github.com/muesli/cancelreader"
@@ -19,6 +34,7 @@ type Terminal interface {
 
 	ClearLine()
 	ClearEnd()
+	CarriageReturn()
 	CursorUp(count int)
 	CursorDown(count int)
 	HideCursor()
@@ -39,6 +55,8 @@ type terminal struct {
 	in  cancelreader.CancelReader
 }
 
+var _ Terminal = &terminal{}
+
 func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 	type fileLike interface {
 		Fd() uintptr
@@ -48,6 +66,10 @@ func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 	if !ok {
 		return nil, ErrNotATerminal
 	}
+	if outFile.Fd() > math.MaxInt32 {
+		return nil, fmt.Errorf("file descriptor too large: %v", outFile.Fd())
+	}
+	//nolint:gosec // uintptr -> int conversion checked above
 	outFd := int(outFile.Fd())
 
 	width, height, err := term.GetSize(outFd)
@@ -136,6 +158,10 @@ func (t *terminal) ClearLine() {
 
 func (t *terminal) ClearEnd() {
 	t.info.ClearEnd(t.out)
+}
+
+func (t *terminal) CarriageReturn() {
+	t.info.CarriageReturn(t.out)
 }
 
 func (t *terminal) CursorUp(count int) {
@@ -259,6 +285,8 @@ const (
 	KeyCtrlC    = "ctrl+c"
 	KeyCtrlO    = "ctrl+o"
 	KeyDown     = "down"
+	KeyEnd      = "end"
+	KeyHome     = "home"
 	KeyPageDown = "page-down"
 	KeyPageUp   = "page-up"
 	KeyUp       = "up"
@@ -288,8 +316,12 @@ func (t *terminal) ReadKey() (string, error) {
 	switch d.kind {
 	case ansiKey:
 		switch d.final {
+		case 2: // Ctrl+B --- Vim key for page up (page back)
+			return KeyPageUp, nil
 		case 3: // ETX
 			return KeyCtrlC, nil
+		case 6: // Ctrl+F ---- Vim key for page down (page forward)
+			return KeyPageDown, nil
 		case 15: // SI
 			return KeyCtrlO, nil
 		}
@@ -304,9 +336,25 @@ func (t *terminal) ReadKey() (string, error) {
 		case 'B':
 			// CUD - Cursor Down: CSI (Pn) B
 			return KeyDown, nil
+		case 'F':
+			// Some terminals use CSI F for End, other use CSI 4 ~
+			// Historically this is the SCO mapping for a vt220
+			return KeyEnd, nil
+		case 'H':
+			// Some terminals use CSI H for home, other use CSI 1 ~
+			// in VT100 terms this is CUP (Pl; Pc) H
+			return KeyHome, nil
 		case '~':
 			// DECFNK - Function Key: CSI Ps1 (; Ps2) ~
 			switch string(d.params) {
+			case "1":
+				// Some terminals use CSI H for home, other use CSI 1 ~
+				// which is probably a reinterpretation of the DEC Find key
+				return KeyHome, nil
+			case "4":
+				// Some terminals use CSI F for End, other use CSI 4 ~
+				// which is probably a reinterpretation of the DEC Select key
+				return KeyEnd, nil
 			case "5":
 				// Page Up: CSI 5 ~
 				return KeyPageUp, nil
@@ -316,6 +364,8 @@ func (t *terminal) ReadKey() (string, error) {
 			}
 		}
 		return fmt.Sprintf("<control %v>", d.final), nil
+	case ansiError:
+		return "", errors.New("invalid ANSI sequence")
 	default:
 		return "", errors.New("invalid control sequence")
 	}

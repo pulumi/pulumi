@@ -1,0 +1,11 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provB]
+<{%reset%}><{%fg 2%}>    version: <{%reset%}><{%fg 2%}>"2.0.0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 10%}>++pkgA:m:typA: (create-replacement)
+<{%reset%}>    [id=9cc07b4c-8fde-47a2-8657-6fdd055f2e53]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::provA::148e3776-5394-4c65-b309-e8d355bd5e97<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::provB::a8d9d2ad-f56d-4e79-a9c2-c8b2ca05090a<{%reset%}><{%fg 3%}>]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
 package providers
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -23,7 +26,9 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -33,19 +38,101 @@ import (
 )
 
 const (
-	versionKey        resource.PropertyKey = "version"
-	pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+	// These are all internal settings that we use to store information about the provider in the Pulumi state, but
+	// should not clash with existing provider keys. They're all nested under "__internal" to avoid this.
+	internalKey resource.PropertyKey = "__internal"
+
+	parameterizationKey resource.PropertyKey = "parameterization"
+	nameKey             resource.PropertyKey = "name"
+	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
+	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
+
+	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
+	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
+	// put in the root of the property map is the package version, not the plugin version. This means for parameterized
+	// providers we also need the plugin version saved in "__internal".
+	versionKey resource.PropertyKey = "version"
 )
+
+func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
+	internalInputs := inputs[internalKey]
+	if !internalInputs.IsObject() {
+		newMap := resource.PropertyMap{}
+		internalInputs = resource.NewObjectProperty(newMap)
+		inputs[internalKey] = internalInputs
+		return newMap
+	}
+	return internalInputs.ObjectValue()
+}
+
+func getInternal(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	internalInputs := inputs[internalKey]
+	if internalInputs.IsNull() {
+		// __internal is missing, this is probably state from an old engine just fallback to looking in the base
+		// properties.
+		return inputs, nil
+	}
+	if internalInputs.IsObject() {
+		return internalInputs.ObjectValue(), nil
+	}
+	return nil, fmt.Errorf("'%s' must be an object", internalKey)
+}
+
+// SetProviderChecksums sets the provider plugin checksums in the given property map.
+func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) {
+	internalInputs := addOrGetInternal(inputs)
+
+	propMap := make(resource.PropertyMap)
+	for key, checksum := range value {
+		hex := hex.EncodeToString(checksum)
+		propMap[resource.PropertyKey(key)] = resource.NewStringProperty(hex)
+	}
+
+	internalInputs[pluginChecksumsKey] = resource.NewObjectProperty(propMap)
+}
+
+// GetProviderChecksums fetches a provider plugin checksums from the given property map.
+// If the checksums is not set, this function returns nil.
+func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error) {
+	checksums, ok := inputs[pluginChecksumsKey]
+	if !ok {
+		return nil, nil
+	}
+	if !checksums.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", pluginChecksumsKey)
+	}
+	result := make(map[string][]byte)
+	for key, value := range checksums.ObjectValue() {
+		if !value.IsString() {
+			return nil, fmt.Errorf("'%s[%s]' must be a string", pluginChecksumsKey, key)
+		}
+
+		bytes, err := hex.DecodeString(value.StringValue())
+		if err != nil {
+			return nil, fmt.Errorf("'%s[%s]' must be a hexadecimal string", pluginChecksumsKey, key)
+		}
+
+		result[string(key)] = bytes
+	}
+
+	return result, nil
+}
 
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
-	inputs[pluginDownloadKey] = resource.NewStringProperty(value)
+	internalInputs := addOrGetInternal(inputs)
+	internalInputs[pluginDownloadKey] = resource.NewStringProperty(value)
 }
 
 // GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
 // If the server URL is not set, this function returns "".
 func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
-	url, ok := inputs[pluginDownloadKey]
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return "", err
+	}
+
+	url, ok := internalInputs[pluginDownloadKey]
 	if !ok {
 		return "", nil
 	}
@@ -57,12 +144,27 @@ func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
 
 // Sets the provider version in the given property map.
 func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
+	// We add the __internal key here even though we're not going to use it, this is so later checks for "name" etc see
+	// __internal, and don't try and look up the key from the root config where a provider may just have a config key
+	// itself of the same text.
+	addOrGetInternal(inputs)
 	inputs[versionKey] = resource.NewStringProperty(value.String())
 }
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the
 // version property is not present, this function returns nil.
 func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	// If this is a parameterized provider, the version is stored in the internal section.
+	// Else it's on the base properties.
+	if _, has := internalInputs[parameterizationKey]; has {
+		inputs = internalInputs
+	}
+
 	version, ok := inputs[versionKey]
 	if !ok {
 		return nil, nil
@@ -74,9 +176,95 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 
 	sv, err := semver.ParseTolerant(version.StringValue())
 	if err != nil {
-		return nil, fmt.Errorf("could not parse provider version: %v", err)
+		return nil, fmt.Errorf("could not parse provider version: %w", err)
 	}
 	return &sv, nil
+}
+
+// Sets the provider name in the given property map.
+func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
+	internalInputs := addOrGetInternal(inputs)
+	internalInputs[nameKey] = resource.NewStringProperty(name.String())
+}
+
+// GetProviderName fetches and parses a provider name from the given property map. If the
+// name property is not present, this function returns the passed in name.
+func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.Package, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return "", err
+	}
+
+	nameProperty, ok := internalInputs[nameKey]
+	if !ok {
+		return name, nil
+	}
+
+	if !nameProperty.IsString() {
+		return "", fmt.Errorf("'%s' must be a string", nameKey)
+	}
+
+	nameString := nameProperty.StringValue()
+	if nameString == "" {
+		return "", fmt.Errorf("'%s' must not be empty", nameKey)
+	}
+
+	return tokens.Package(nameString), nil
+}
+
+// Sets the provider parameterization in the given property map, this should be called _after_ SetVersion.
+func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
+	internalInputs := addOrGetInternal(inputs)
+
+	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
+	// it, and replace it with our package version.
+	internalInputs[versionKey] = inputs[versionKey]
+	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+	// We don't write name here because we can reconstruct that from the providers type token
+	internalInputs[parameterizationKey] = resource.NewStringProperty(
+		base64.StdEncoding.EncodeToString(value.Value))
+}
+
+// GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
+// parameterization property is not present, this function returns nil.
+func GetProviderParameterization(
+	name tokens.Package, inputs resource.PropertyMap,
+) (*workspace.Parameterization, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return nil, err
+	}
+
+	parameter, ok := internalInputs[parameterizationKey]
+	if !ok {
+		return nil, nil
+	}
+
+	if !parameter.IsString() {
+		return nil, fmt.Errorf("'%s' must be of type string", parameterizationKey)
+	}
+	bytes, err := base64.StdEncoding.DecodeString(parameter.StringValue())
+	if err != nil {
+		return nil, fmt.Errorf("could not decode base64 parameter value: %w", err)
+	}
+
+	version, ok := inputs["version"]
+	if !ok {
+		return nil, errors.New("must have a 'version' field")
+	}
+	if !version.IsString() {
+		return nil, errors.New("must have a 'version' field of type string")
+	}
+	sv, err := semver.Parse(version.StringValue())
+	if err != nil {
+		return nil, fmt.Errorf("could not parse provider version: %w", err)
+	}
+
+	return &workspace.Parameterization{
+		Name:    string(name),
+		Version: sv,
+		Value:   bytes,
+	}, nil
 }
 
 // Registry manages the lifecylce of provider resources and their plugins and handles the resolution of provider
@@ -91,6 +279,8 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 // In order to fit neatly in to the existing infrastructure for managing resources using Pulumi, a provider regidstry
 // itself implements the plugin.Provider interface.
 type Registry struct {
+	plugin.NotForwardCompatibleProvider
+
 	host      plugin.Host
 	isPreview bool
 	providers map[Reference]plugin.Provider
@@ -101,14 +291,24 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
-func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
-	host plugin.Host, builtins plugin.Provider,
+func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
+	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
 	}
 
-	provider, err := host.Provider(pkg, version)
+	descriptor := workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{
+			Kind:              apitype.ResourcePlugin,
+			Name:              string(pkg),
+			Version:           version,
+			PluginDownloadURL: downloadURL,
+			Checksums:         checksums,
+		},
+	}
+
+	provider, err := host.Provider(descriptor)
 	if err == nil {
 		return provider, nil
 	}
@@ -123,27 +323,66 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		return nil, err
 	}
 
-	// Try to install the plugin, we have all the specific information we need to do so here while once we
-	// call into `host.Provider` we no longer have the download URL or checksums.
-	pluginSpec := workspace.PluginSpec{
-		Kind:              workspace.ResourcePlugin,
-		Name:              string(pkg),
-		Version:           version,
-		PluginDownloadURL: downloadURL,
-		Checksums:         checksums,
+	// Try to install the plugin, unless auto plugin installs are turned off, we have all the specific information we
+	// need to do so here while once we call into `host.Provider` we no longer have the download URL or checksums.
+	if env.DisableAutomaticPluginAcquisition.Value() {
+		return nil, err
 	}
 
 	log := func(sev diag.Severity, msg string) {
 		host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginSpec, log)
 	if err != nil {
 		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(pkg, version)
+	return host.Provider(descriptor)
+}
+
+// loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
+func loadParameterizedProvider(
+	ctx context.Context,
+	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
+	parameter *workspace.Parameterization,
+	host plugin.Host, builtins plugin.Provider,
+) (plugin.Provider, error) {
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins)
+	if err != nil {
+		return nil, err
+	}
+
+	if parameter != nil {
+		resp, err := provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{
+				Name:    parameter.Name,
+				Version: parameter.Version,
+				Value:   parameter.Value,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if resp.Name != parameter.Name {
+			return nil, fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, parameter.Name)
+		}
+	}
+	return provider, nil
+}
+
+// FilterProviderConfig filters out the __internal key from provider state so the resulting map can be passed to
+// provider plugins.
+func FilterProviderConfig(inputs resource.PropertyMap) resource.PropertyMap {
+	result := resource.PropertyMap{}
+	for k, v := range inputs {
+		if k == internalKey {
+			continue
+		}
+		result[k] = v
+	}
+	return result
 }
 
 // NewRegistry creates a new provider registry using the given host.
@@ -207,38 +446,54 @@ func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
 
-// GetSchema returns the JSON-serialized schema for the provider.
-func (r *Registry) GetSchema(version int) ([]byte, error) {
-	contract.Failf("GetSchema must not be called on the provider registry")
+func (r *Registry) Handshake(
+	context.Context, plugin.ProviderHandshakeRequest,
+) (*plugin.ProviderHandshakeResponse, error) {
+	contract.Failf("Handshake must not be called on the provider registry")
 
-	return nil, errors.New("the provider registry has no schema")
+	return nil, errors.New("the provider registry does not support handshake")
 }
 
-func (r *Registry) GetMapping(key string) ([]byte, string, error) {
+func (r *Registry) Parameterize(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+	contract.Failf("Parameterize must not be called on the provider registry")
+
+	return plugin.ParameterizeResponse{}, errors.New("the provider registry has no parameters")
+}
+
+// GetSchema returns the JSON-serialized schema for the provider.
+func (r *Registry) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+	contract.Failf("GetSchema must not be called on the provider registry")
+
+	return plugin.GetSchemaResponse{}, errors.New("the provider registry has no schema")
+}
+
+func (r *Registry) GetMapping(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error) {
 	contract.Failf("GetMapping must not be called on the provider registry")
 
-	return nil, "", errors.New("the provider registry has no mappings")
+	return plugin.GetMappingResponse{}, errors.New("the provider registry has no mappings")
+}
+
+func (r *Registry) GetMappings(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error) {
+	contract.Failf("GetMappings must not be called on the provider registry")
+
+	return plugin.GetMappingsResponse{}, errors.New("the provider registry has no mappings")
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (r *Registry) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (r *Registry) CheckConfig(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 	contract.Failf("CheckConfig must not be called on the provider registry")
-	return nil, nil, errors.New("the provider registry is not configurable")
+	return plugin.CheckConfigResponse{}, errors.New("the provider registry is not configurable")
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (r *Registry) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
+func (r *Registry) DiffConfig(context.Context, plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
 	contract.Failf("DiffConfig must not be called on the provider registry")
 	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
 }
 
-func (r *Registry) Configure(props resource.PropertyMap) error {
+func (r *Registry) Configure(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 	contract.Failf("Configure must not be called on the provider registry")
-	return errors.New("the provider registry is not configurable")
+	return plugin.ConfigureResponse{}, errors.New("the provider registry is not configurable")
 }
 
 // Check validates the configuration for a particular provider resource.
@@ -249,49 +504,83 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 //   - we need to keep the newly-loaded provider around in case we need to diff its config
 //   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //     (we would normally configure the provider in Create or Update).
-func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	contract.Requiref(IsProviderType(urn.Type()), "urn", "must be a provider type, got %v", urn.Type())
+func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	contract.Requiref(IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
-	label := fmt.Sprintf("%s.Check(%s)", r.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
 	// Parse the version from the provider properties and load the provider.
-	version, err := GetProviderVersion(news)
+	providerPkg := GetProviderPackage(req.URN.Type())
+	name, err := GetProviderName(providerPkg, req.News)
 	if err != nil {
-		return nil, []plugin.CheckFailure{{Property: "version", Reason: err.Error()}}, nil
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "name", Reason: err.Error(),
+		}}}, nil
 	}
-	downloadURL, err := GetProviderDownloadURL(news)
+	version, err := GetProviderVersion(req.News)
 	if err != nil {
-		return nil, []plugin.CheckFailure{{Property: "pluginDownloadURL", Reason: err.Error()}}, nil
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "version", Reason: err.Error(),
+		}}}, nil
+	}
+	downloadURL, err := GetProviderDownloadURL(req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "pluginDownloadURL", Reason: err.Error(),
+		}}}, nil
+	}
+	parameter, err := GetProviderParameterization(providerPkg, req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "parameter", Reason: err.Error(),
+		}}}, nil
 	}
 	// TODO: We should thread checksums through here.
-	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, downloadURL, nil, r.host, r.builtins)
+	provider, err := loadParameterizedProvider(
+		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
 	if err != nil {
-		return nil, nil, err
+		return plugin.CheckResponse{}, err
 	}
 	if provider == nil {
-		return nil, nil, errors.New("could not find plugin")
+		return plugin.CheckResponse{}, errors.New("could not find plugin")
 	}
 
 	// Check the provider's config. If the check fails, unload the provider.
-	inputs, failures, err := provider.CheckConfig(urn, olds, news, allowUnknowns)
-	if len(failures) != 0 || err != nil {
+	resp, err := provider.CheckConfig(ctx, plugin.CheckConfigRequest{
+		URN:           req.URN,
+		Olds:          FilterProviderConfig(req.Olds),
+		News:          FilterProviderConfig(req.News),
+		AllowUnknowns: true,
+	})
+	if len(resp.Failures) != 0 || err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-		return nil, failures, err
+		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
 
-	// Create a provider reference using the URN and the unknown ID and register the provider.
-	r.setProvider(mustNewReference(urn, UnknownID), provider)
+	// Create a provider reference using the URN and the unconfigured ID and register the provider.
+	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
 
-	return inputs, nil, nil
+	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it
+	// the checked properties returned from the plugin.
+	if resp.Properties == nil {
+		resp.Properties = resource.PropertyMap{}
+	}
+	// Only add __internal back if it was originally in the inputs.
+	if _, has := req.News[internalKey]; has {
+		resp.Properties[internalKey] = req.News[internalKey]
+	}
+
+	return plugin.CheckResponse{Properties: resp.Properties}, nil
 }
 
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list
 // of URNs.
 func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
+	r.m.Lock()
+	defer r.m.Unlock()
+
 	if providerURN != alias {
 		r.aliases[providerURN] = alias
 	}
@@ -299,33 +588,39 @@ func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
 
 // Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
 // previously been loaded by a call to Check.
-func (r *Registry) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	contract.Requiref(id != "", "id", "must not be empty")
+func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+	contract.Requiref(req.ID != "", "id", "must not be empty")
 
-	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), urn, id)
+	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(oldInputs), len(oldOutputs), len(newInputs))
+		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
 
-	// Create a reference using the URN and the unknown ID and fetch the provider.
-	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
+	// Create a reference using the URN and the unconfigured ID and fetch the provider.
+	provider, ok := r.GetProvider(mustNewReference(req.URN, UnconfiguredID))
 	if !ok {
-		// If the provider was not found in the registry under its URN and the Unknown ID, then it must have not have
+		// If the provider was not found in the registry under its URN and the unconfigured ID, then it must have not have
 		// been subject to a call to `Check`. This can happen when we are diffing a provider's inputs as part of
 		// evaluating the fanout of a delete-before-replace operation. In this case, we can just use the old provider
 		// (which we should have loaded during diff search), and we will not unload it.
-		provider, ok = r.GetProvider(mustNewReference(urn, id))
-		contract.Assertf(ok, "Provider must have been registered at some point for DBR Diff (%v::%v)", urn, id)
+		provider, ok = r.GetProvider(mustNewReference(req.URN, req.ID))
+		contract.Assertf(ok, "Provider must have been registered at some point for DBR Diff (%v::%v)", req.URN, req.ID)
 	}
 
 	// Diff the properties.
-	diff, err := provider.DiffConfig(urn, oldInputs, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+	filteredNewInputs := FilterProviderConfig(req.NewInputs)
+	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
+		URN:           req.URN,
+		OldInputs:     FilterProviderConfig(req.OldInputs),
+		OldOutputs:    req.OldOutputs, // OldOutputs is already filtered
+		NewInputs:     filteredNewInputs,
+		AllowUnknowns: req.AllowUnknowns,
+		IgnoreChanges: req.IgnoreChanges,
+	})
 	if err != nil {
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if oldOutputs.DeepEquals(newInputs) {
+		if req.OldOutputs.DeepEquals(filteredNewInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
 			diff.Changes = plugin.DiffSome
@@ -345,7 +640,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 
 // Same executes as part of the "Same" step for a provider that has not changed. It configures the provider
 // instance with the given state and fixes up aliases.
-func (r *Registry) Same(res *resource.State) error {
+func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	urn := res.URN
 	if !IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
@@ -365,29 +660,55 @@ func (r *Registry) Same(res *resource.State) error {
 		return nil
 	}
 
-	providerPkg := GetProviderPackage(urn.Type())
+	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
+	// reuse that instance, but as we're now configuring it remove the unconfigured ID from the provider map
+	// so nothing else tries to use it.
+	provider, ok := r.deleteProvider(mustNewReference(urn, UnconfiguredID))
+	if !ok {
+		// Else we need to load it fresh
+		providerPkg := GetProviderPackage(urn.Type())
 
-	// Parse the provider version, then load, configure, and register the provider.
-	version, err := GetProviderVersion(res.Inputs)
-	if err != nil {
-		return fmt.Errorf("parse version for %v provider '%v': %v", providerPkg, urn, err)
+		// Parse the provider version, then load, configure, and register the provider.
+		name, err := GetProviderName(providerPkg, res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
+		}
+		version, err := GetProviderVersion(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
+		}
+		downloadURL, err := GetProviderDownloadURL(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
+		}
+		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
+		if err != nil {
+			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
+		}
+		// TODO: We should thread checksums through here.
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		if err != nil {
+			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
+		}
+		if provider == nil {
+			return fmt.Errorf("find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
+		}
 	}
-	downloadURL, err := GetProviderDownloadURL(res.Inputs)
-	if err != nil {
-		return fmt.Errorf("parse download URL for %v provider '%v': %v", providerPkg, urn, err)
-	}
-	// TODO: We should thread checksums through here.
-	provider, err := loadProvider(providerPkg, version, downloadURL, nil, r.host, r.builtins)
-	if err != nil {
-		return fmt.Errorf("load plugin for %v provider '%v': %v", providerPkg, urn, err)
-	}
-	if provider == nil {
-		return fmt.Errorf("find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
-	}
-	if err := provider.Configure(res.Inputs); err != nil {
+	contract.Assertf(provider != nil, "provider must not be nil")
+
+	name := urn.Name()
+	typ := urn.Type()
+
+	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
+		URN:    &urn,
+		Name:   &name,
+		Type:   &typ,
+		ID:     &res.ID,
+		Inputs: FilterProviderConfig(res.Inputs),
+	}); err != nil {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
-		return fmt.Errorf("configure provider '%v': %v", urn, err)
+		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
 	logging.V(7).Infof("loaded provider %v", ref)
@@ -397,125 +718,167 @@ func (r *Registry) Same(res *resource.State) error {
 	return nil
 }
 
-// Create coonfigures the provider with the given URN using the indicated configuration, assigns it an ID, and
+// Create configures the provider with the given URN using the indicated configuration, assigns it an ID, and
 // registers it under the assigned (URN, ID).
 //
 // The provider must have been loaded by a prior call to Check.
-func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout float64,
-	preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	label := fmt.Sprintf("%s.Create(%s)", r.label(), urn)
-	logging.V(7).Infof("%s executing (#news=%v)", label, len(news))
+func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+	label := fmt.Sprintf("%s.Create(%s)", r.label(), req.URN)
+	logging.V(7).Infof("%s executing (#news=%v)", label, len(req.Properties))
 
-	// Fetch the unconfigured provider, configure it, and register it under a new ID.
-	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
-	contract.Assertf(ok, "'Check' must be called before 'Create' (%v)", urn)
+	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
+	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
+	provider, ok := r.deleteProvider(mustNewReference(req.URN, UnconfiguredID))
+	if !ok {
+		// The unconfigured provider may have been Same'd after Check and this provider could be a replacement create.
+		// In which case we need to start up a fresh copy.
 
-	if err := provider.Configure(news); err != nil {
-		return "", nil, resource.StatusOK, err
+		providerPkg := GetProviderPackage(req.URN.Type())
+
+		// Parse the provider version, then load, configure, and register the provider.
+		name, err := GetProviderName(providerPkg, req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+		version, err := GetProviderVersion(req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+		downloadURL, err := GetProviderDownloadURL(req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+		parameter, err := GetProviderParameterization(providerPkg, req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+		// TODO: We should thread checksums through here.
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+		if provider == nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("find plugin for %v provider '%v' at version %v", providerPkg, req.URN, version)
+		}
 	}
 
-	var id resource.ID
-	if !preview {
+	id := resource.ID(UnknownID)
+	if !req.Preview {
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
-			return "", nil, resource.StatusOK, err
+			return plugin.CreateResponse{Status: resource.StatusOK}, err
 		}
 		id = resource.ID(uuid.String())
 		contract.Assertf(id != UnknownID, "resource ID must not be unknown")
 	}
 
-	r.setProvider(mustNewReference(urn, id), provider)
-	return id, news, resource.StatusOK, nil
+	name := req.URN.Name()
+	typ := req.URN.Type()
+
+	filteredProperties := FilterProviderConfig(req.Properties)
+	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
+		URN:    &req.URN,
+		Name:   &name,
+		Type:   &typ,
+		ID:     &id,
+		Inputs: filteredProperties,
+	}); err != nil {
+		return plugin.CreateResponse{Status: resource.StatusOK}, err
+	}
+
+	r.setProvider(mustNewReference(req.URN, id), provider)
+	return plugin.CreateResponse{
+		ID:         id,
+		Properties: filteredProperties,
+		Status:     resource.StatusOK,
+	}, nil
 }
 
 // Update configures the provider with the given URN and ID using the indicated configuration and registers it at the
 // reference indicated by the (URN, ID) pair.
 //
-// THe provider must have been loaded by a prior call to Check.
-func (r *Registry) Update(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool,
-) (resource.PropertyMap, resource.Status, error) {
-	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), id, urn)
+// The provider must have been loaded by a prior call to Check.
+func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), req.ID, req.URN)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(oldInputs), len(oldOutputs), len(newInputs))
+		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
 
-	// Fetch the unconfigured provider and configure it.
-	provider, ok := r.GetProvider(mustNewReference(urn, UnknownID))
-	contract.Assertf(ok, "'Check' and 'Diff' must be called before 'Update' (%v)", urn)
+	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
+	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
+	provider, ok := r.deleteProvider(mustNewReference(req.URN, UnconfiguredID))
+	contract.Assertf(ok, "'Check' and 'Diff' must be called before 'Update' (%v)", req.URN)
 
-	if err := provider.Configure(newInputs); err != nil {
-		return nil, resource.StatusUnknown, err
+	name := req.URN.Name()
+	typ := req.URN.Type()
+
+	filteredProperties := FilterProviderConfig(req.NewInputs)
+	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
+		URN:    &req.URN,
+		Name:   &name,
+		Type:   &typ,
+		ID:     &req.ID,
+		Inputs: filteredProperties,
+	})
+	if err != nil {
+		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
 	}
 
 	// Publish the configured provider.
-	r.setProvider(mustNewReference(urn, id), provider)
-	return newInputs, resource.StatusOK, nil
+	r.setProvider(mustNewReference(req.URN, req.ID), provider)
+	return plugin.UpdateResponse{Properties: filteredProperties, Status: resource.StatusOK}, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded
 // this is a no-op.
-func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout float64,
-) (resource.Status, error) {
+func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 	contract.Assertf(!r.isPreview, "Delete must not be called during preview")
 
-	ref := mustNewReference(urn, id)
+	ref := mustNewReference(req.URN, req.ID)
 	provider, has := r.deleteProvider(ref)
 	if !has {
-		return resource.StatusOK, nil
+		return plugin.DeleteResponse{}, nil
 	}
 
 	closeErr := r.host.CloseProvider(provider)
 	contract.IgnoreError(closeErr)
-	return resource.StatusOK, nil
+	return plugin.DeleteResponse{}, nil
 }
 
-func (r *Registry) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("provider resources may not be read")
+func (r *Registry) Read(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+	return plugin.ReadResponse{}, errors.New("provider resources may not be read")
 }
 
-func (r *Registry) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions,
-) (plugin.ConstructResult, error) {
+func (r *Registry) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {
 	return plugin.ConstructResult{}, errors.New("provider resources may not be constructed")
 }
 
-func (r *Registry) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+func (r *Registry) Invoke(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an invoke using the provider
 	// registry.
 	contract.Failf("Invoke must not be called on the provider registry")
-	return nil, nil, errors.New("the provider registry is not invokable")
+	return plugin.InvokeResponse{}, errors.New("the provider registry is not invokable")
 }
 
-func (r *Registry) StreamInvoke(
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error,
-) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("the provider registry does not implement streaming invokes")
-}
-
-func (r *Registry) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
+func (r *Registry) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an call using the provider
 	// registry.
 	contract.Failf("Call must not be called on the provider registry")
 	return plugin.CallResult{}, errors.New("the provider registry is not callable")
 }
 
-func (r *Registry) GetPluginInfo() (workspace.PluginInfo, error) {
+func (r *Registry) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
 	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
 }
 
-func (r *Registry) SignalCancellation() error {
+func (r *Registry) SignalCancellation(context.Context) error {
 	// At the moment there isn't anything reasonable we can do here. In the future, it might be nice to plumb
 	// cancellation through the plugin loader and cancel any outstanding load requests here.
 	return nil

@@ -47,9 +47,10 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
-	asyncMain     bool
-	configCreated bool
-	isComponent   bool
+	asyncMain               bool
+	configCreated           bool
+	isComponent             bool
+	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -149,7 +150,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	for componentDir, component := range program.CollectComponents() {
-		componentName := filepath.Base(componentDir)
+		componentFilename := filepath.Base(componentDir)
+		componentName := component.DeclarationName()
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
@@ -159,13 +161,17 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 		var componentBuffer bytes.Buffer
 		componentGenerator.genComponentResourceDefinition(&componentBuffer, componentName, component)
-		files[componentName+".ts"] = componentBuffer.Bytes()
+		files[componentFilename+".ts"] = componentBuffer.Bytes()
 	}
 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool,
+) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -174,31 +180,65 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return diagnostics
 	}
 
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
 	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	project.Runtime = workspace.NewProjectRuntimeInfo("nodejs", nil)
+	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
+	if forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
 	}
-	files["Pulumi.yaml"] = projectBytes
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
+	}
 
-	// Build the pacakge.json
+	// Build the package.json
 	var packageJSON bytes.Buffer
 	fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"devDependencies": {
-		"@types/node": "^14"
+		"@types/node": "%s"
 	},
 	"dependencies": {
 		"typescript": "^4.0.0",
-		"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
+		`, project.Name.String(), MinimumNodeTypesVersion)
+
+	// Check if pulumi is a local dependency, else add it as a normal range dependency
+	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "%s"`, pulumiArtifact)
+	} else {
+		fmt.Fprintf(&packageJSON, `"@pulumi/pulumi": "^3.0.0"`)
+	}
 
 	// For each package add a dependency line
 	packages, err := program.CollectNestedPackageSnapshots()
 	if err != nil {
 		return err
 	}
-	for _, p := range packages {
+	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
+	// @pulumi/pulumi dependencies are already added above and not sorted.
+	sortedPackageNames := make([]string, 0, len(packages))
+	for k := range packages {
+		sortedPackageNames = append(sortedPackageNames, k)
+	}
+	sort.Strings(sortedPackageNames)
+	for _, k := range sortedPackageNames {
+		p := packages[k]
 		if p.Name == PulumiToken {
 			continue
 		}
@@ -206,7 +246,11 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			return err
 		}
 
-		packageName := "@pulumi/" + p.Name
+		namespace := "@pulumi"
+		if p.Namespace != "" {
+			namespace = "@" + p.Namespace
+		}
+		packageName := namespace + "/" + p.Name
 		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
 		if err != nil {
 			return err
@@ -217,11 +261,16 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = nodeInfo.PackageName
 			}
 		}
+
 		dependencyTemplate := ",\n		\"%s\": \"%s\""
-		if p.Version != nil {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+		if path, has := localDependencies[p.Name]; has {
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
 		} else {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			if p.Version != nil {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			}
 		}
 	}
 	packageJSON.WriteString(`
@@ -253,19 +302,22 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	"files": [
 `)
 
-	fileCounter := 0
+	fileNames := make([]string, 0, len(files))
 	for file := range files {
+		fileNames = append(fileNames, file)
+	}
+	sort.Strings(fileNames)
+
+	for i, file := range fileNames {
 		if strings.HasSuffix(file, ".ts") {
 			tsConfig.WriteString("		\"" + file + "\"")
-			lastFile := fileCounter == len(files)-1
+			lastFile := i == len(files)-1
 			if !lastFile {
 				tsConfig.WriteString(",\n")
 			} else {
 				tsConfig.WriteString("\n")
 			}
 		}
-
-		fileCounter = fileCounter + 1
 	}
 
 	tsConfig.WriteString(`	]
@@ -327,6 +379,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	var componentImports []string
 
 	npmToPuPkgName := make(map[string]string)
+	seenComponentImports := map[string]bool{}
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
@@ -334,7 +387,11 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			if pkg == PulumiToken {
 				continue
 			}
-			pkgName := "@pulumi/" + pkg
+			namespace := "@pulumi"
+			if n.Schema != nil && n.Schema.PackageReference != nil && n.Schema.PackageReference.Namespace() != "" {
+				namespace = "@" + n.Schema.PackageReference.Namespace()
+			}
+			pkgName := namespace + "/" + pkg
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				def, err := n.Schema.PackageReference.Definition()
 				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", n.Schema.Token)
@@ -346,9 +403,13 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			importSet.Add(pkgName)
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
-			componentName := title(componentDir)
-			importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
-			componentImports = append(componentImports, importStatement)
+			componentName := n.DeclarationName()
+			dirAndName := componentDir + "-" + componentName
+			if _, ok := seenComponentImports[dirAndName]; !ok {
+				importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
+				componentImports = append(componentImports, importStatement)
+				seenComponentImports[dirAndName] = true
+			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -357,7 +418,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 						importSet.Add(importPackage)
 					}
 				}
-				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, g.Indent); ok {
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
@@ -421,7 +482,7 @@ func componentElementType(pclType model.Type) string {
 		switch pclType := pclType.(type) {
 		case *model.ListType:
 			elementType := componentElementType(pclType.ElementType)
-			return fmt.Sprintf("%s[]", elementType)
+			return elementType + "[]"
 		case *model.MapType:
 			elementType := componentElementType(pclType.ElementType)
 			return fmt.Sprintf("Record<string, pulumi.Input<%s>>", elementType)
@@ -434,9 +495,8 @@ func componentElementType(pclType model.Type) string {
 				return componentElementType(pclType.ElementTypes[1])
 			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
 				return componentElementType(pclType.ElementTypes[0])
-			} else {
-				return "any"
 			}
+			return "any"
 		default:
 			return "any"
 		}
@@ -495,7 +555,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	configVars := component.Program.ConfigVariables()
 
 	if len(configVars) > 0 {
-		g.Fgenf(w, "interface %sArgs {\n", title(componentName))
+		g.Fgenf(w, "interface %sArgs {\n", componentName)
 		g.Indented(func() {
 			for _, configVar := range configVars {
 				optional := "?"
@@ -511,37 +571,38 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 
 				g.Fgenf(w, "%s", g.Indent)
+				configVarName := makeValidIdentifier(configVar.Name())
 				switch configVarType := configVar.Type().(type) {
 				case *model.ObjectType:
 					// generate {...}
-					g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
+					g.Fgenf(w, "%s%s: ", configVarName, optional)
 					g.genObjectTypedConfig(w, configVarType)
 					g.Fgen(w, ",\n")
 				case *model.ListType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
 						// generate {...}[]
-						g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
+						g.Fgenf(w, "%s%s: ", configVarName, optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, "[],\n")
 					default:
 						typeName := componentInputType(configVar.Type())
-						g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+						g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 					}
 				case *model.MapType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
 						// generate Record<string, {...}>
-						g.Fgenf(w, "%s%s: Record<string, ", configVar.Name(), optional)
+						g.Fgenf(w, "%s%s: Record<string, ", configVarName, optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, ">,\n")
 					default:
 						typeName := componentInputType(configVar.Type())
-						g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+						g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 					}
 				default:
 					typeName := componentInputType(configVar.Type())
-					g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+					g.Fgenf(w, "%s%s: %s,\n", configVarName, optional, typeName)
 				}
 			}
 		})
@@ -550,7 +611,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 
 	outputs := component.Program.OutputVariables()
 
-	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", title(componentName))
+	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", componentName)
 	g.Indented(func() {
 		for _, output := range outputs {
 			var outputType string
@@ -575,10 +636,10 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				outputType = componentOutputType(expr.Type())
 			}
 			g.Fgenf(w, "%s", g.Indent)
-			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
+			g.Fgenf(w, "public %s: %s;\n", makeValidIdentifier(output.Name()), outputType)
 		}
 
-		token := fmt.Sprintf("components:index:%s", title(componentName))
+		token := "components:index:" + componentName
 
 		if len(configVars) == 0 {
 			g.Fgenf(w, "%s", g.Indent)
@@ -589,7 +650,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			})
 		} else {
 			g.Fgenf(w, "%s", g.Indent)
-			argsTypeName := title(componentName) + "Args"
+			argsTypeName := componentName + "Args"
 			g.Fgenf(w, "constructor(name: string, args: %s, opts?: pulumi.ComponentResourceOptions) {\n",
 				argsTypeName)
 			g.Indented(func() {
@@ -605,8 +666,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				if configVar.DefaultValue != nil {
 					g.Fgenf(w, "%sargs.%s = args.%s || %v;\n",
 						g.Indent,
-						configVar.Name(),
-						configVar.Name(),
+						makeValidIdentifier(configVar.Name()),
+						makeValidIdentifier(configVar.Name()),
 						configVar.DefaultValue)
 				}
 			}
@@ -646,7 +707,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			registeredOutputs := &model.ObjectConsExpression{}
 			for _, output := range outputs {
 				// assign the output fields
-				outputProperty := output.Name()
+				outputProperty := makeValidIdentifier(output.Name())
 				switch expr := output.Value.(type) {
 				case *model.ScopeTraversalExpression:
 					_, ok := expr.Parts[0].(*pcl.Resource)
@@ -668,8 +729,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				// add the outputs to abject for registration
 				registeredOutputs.Items = append(registeredOutputs.Items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(output.Name())),
-						Value:  cty.StringVal(output.Name()),
+						Tokens: syntax.NewLiteralValueTokens(cty.StringVal(outputProperty)),
+						Value:  cty.StringVal(outputProperty),
 					},
 					Value: output.Value,
 				})
@@ -781,6 +842,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 		})
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
@@ -798,6 +860,12 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
+	}
+	if opts.DeletedWith != nil {
+		appendOption("deletedWith", opts.DeletedWith)
+	}
+	if opts.ImportID != nil {
+		appendOption("import", opts.ImportID)
 	}
 
 	if object == nil {
@@ -851,13 +919,20 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
+				// Rewrite variable names separate from lowering to avoid rewriting
+				// keywords that are generated elsewhere (e.g. `this` in the case of
+				// setting a resource parent).
+				x, diagnostics := g.RewriteVariableRenames(attr.Value, attr.Value.Type())
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+
 				if r.Schema != nil {
 					destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
 					g.diagnostics = append(g.diagnostics, diagnostics...)
+
 					g.Fgenf(w, fmtString, propertyName,
-						g.lowerExpression(attr.Value, destType.(model.Type)))
+						g.lowerExpression(x, destType.(model.Type)))
 				} else {
-					g.Fgenf(w, fmtString, propertyName, attr.Value)
+					g.Fgenf(w, fmtString, propertyName, x)
 				}
 			}
 		})
@@ -1018,7 +1093,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
-	componentName := title(filepath.Base(component.DirPath()))
+	componentName := component.DeclarationName()
 
 	optionsBag := g.genResourceOptions(component.Options)
 
@@ -1031,6 +1106,37 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	}
 	g.genTrivia(w, component.Definition.Tokens.GetOpenBrace())
 	configVars := component.Program.ConfigVariables()
+	// collect here all the deferred output variables
+	// these must be declared before the component instantiation
+	componentInputs := slice.Prealloc[*model.Attribute](len(component.Inputs))
+	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	for _, attr := range component.Inputs {
+		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
+		componentInputs = append(componentInputs, &model.Attribute{
+			Name:  attr.Name,
+			Value: expr,
+		})
+
+		// add the deferred outputs local to this component
+		componentDeferredOutputVariables = append(componentDeferredOutputVariables, deferredOutputs...)
+		// add the deferred outputs to the global list of the program
+		// such that we can emit the resolution statement at the end
+		// of the component declaration (from which the output is resolved)
+		g.deferredOutputVariables = append(g.deferredOutputVariables, deferredOutputs...)
+	}
+
+	declareDeferredOutputVariables := func() {
+		for _, output := range componentDeferredOutputVariables {
+			outputType := output.Expr.Type()
+			typeParameter := computeConfigTypeParam(outputType)
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgenf(w, "const [%s, resolve%s] = pulumi.deferredOutput<%s>();\n",
+				output.Name,
+				title(output.Name),
+				typeParameter)
+		}
+	}
+
 	instantiate := func(resName string) {
 		if len(configVars) == 0 {
 			g.Fgenf(w, "new %s(%s%s)", componentName, resName, optionsBag)
@@ -1038,23 +1144,23 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 		}
 		g.Fgenf(w, "new %s(%s, {", componentName, resName)
 		indenter := func(f func()) { f() }
-		if len(component.Inputs) > 1 {
+		if len(componentInputs) > 1 {
 			indenter = g.Indented
 		}
 		indenter(func() {
 			fmtString := "%s: %.v"
-			if len(component.Inputs) > 1 {
+			if len(componentInputs) > 1 {
 				fmtString = "\n" + g.Indent + "%s: %.v,"
 			}
 
-			for _, attr := range component.Inputs {
+			for _, attr := range componentInputs {
 				propertyName := attr.Name
 				if !isLegalIdentifier(propertyName) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				g.Fgenf(w, fmtString, propertyName,
-					g.lowerExpression(attr.Value, attr.Value.Type()))
+				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})
 		if len(component.Inputs) > 1 {
@@ -1071,6 +1177,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, componentName)
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
+				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
 				instantiate(g.makeResourceName(name, ""))
 				g.Fgenf(w, ";\n")
@@ -1093,6 +1200,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
+				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
@@ -1100,9 +1208,23 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
+		declareDeferredOutputVariables()
 		g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n")
+	}
+
+	// resolve the deferred output variables from this component
+	for _, output := range g.deferredOutputVariables {
+		if output.SourceComponent.Name() == component.Name() {
+			g.Fgenf(w, "%s", g.Indent)
+			expr := g.lowerExpression(output.Expr, output.Expr.Type())
+			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
+				g.Fgenf(w, "resolve%s(%v);\n", title(output.Name), expr)
+			} else {
+				g.Fgenf(w, "resolve%s(pulumi.output(%v));\n", title(output.Name), expr)
+			}
+		}
 	}
 
 	g.genTrivia(w, component.Definition.Tokens.GetCloseBrace())
@@ -1124,6 +1246,8 @@ func computeConfigTypeParam(configType model.Type) string {
 			return fmt.Sprintf("Array<%s>", computeConfigTypeParam(complexType.ElementType))
 		case *model.MapType:
 			return fmt.Sprintf("Record<string, %s>", computeConfigTypeParam(complexType.ElementType))
+		case *model.OutputType:
+			return computeConfigTypeParam(complexType.ElementType)
 		case *model.ObjectType:
 			if len(complexType.Properties) == 0 {
 				return "any"
@@ -1170,10 +1294,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if getType == "Object" {
 		// compute the type parameter T for the call to config.getObject<T>(...)
 		computedTypeParam := computeConfigTypeParam(v.Type())
-		if computedTypeParam != "any" {
-			// any is redundant
-			typeParam = fmt.Sprintf("<%s>", computedTypeParam)
-		}
+		typeParam = fmt.Sprintf("<%s>", computedTypeParam)
 	}
 
 	getOrRequire := "get"
@@ -1197,8 +1318,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
-	// TODO(pdg): trivia
-	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
+	g.genTrivia(w, v.Definition.Tokens.Name)
+	vName := makeValidIdentifier(v.Name())
+	vValue := g.lowerExpression(v.Definition.Value, v.Type())
+	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, vName, vValue)
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
@@ -1214,7 +1337,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
-	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
+	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary:  message,

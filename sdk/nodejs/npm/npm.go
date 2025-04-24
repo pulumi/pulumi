@@ -1,12 +1,28 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package npm
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,10 +36,16 @@ var _ PackageManager = &npmManager{}
 
 func newNPM() (*npmManager, error) {
 	npmPath, err := exec.LookPath("npm")
-	instance := &npmManager{
-		executable: npmPath,
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return nil, errors.New("Could not find `npm` executable.\n" +
+				"Install npm and make sure it is in your PATH.")
+		}
+		return nil, err
 	}
-	return instance, err
+	return &npmManager{
+		executable: npmPath,
+	}, nil
 }
 
 func (node *npmManager) Name() string {
@@ -67,12 +89,13 @@ func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) 
 	// Next, we try to read the name of the file from stdout.
 	// packfile is the name of the file containing the tarball,
 	// as produced by `npm pack`.
-	packfile := strings.TrimSpace(stdout.String())
+	packFilename := strings.TrimSpace(stdout.String())
+	packfile := filepath.Join(dir, packFilename)
 	defer os.Remove(packfile)
 
 	packTarball, err := os.ReadFile(packfile)
 	if err != nil {
-		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %v", err)
+		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %w", err)
 		return nil, newErr
 	}
 

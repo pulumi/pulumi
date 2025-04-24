@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "localref",
+  "version": "1.0.0",
+  "//": [
+    "Simple schema with a reference to another type and resource"
+  ],
+  "types": {
+    "localref:index/Index:Object": {
+      "type": "object"
+    }
+  },
+  "resources": {
+    "localref:index/Index:Resource": {
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "localref:index/Index:Root": {
+      "properties": {
+        "resource": {
+          "$ref": "#/resources/localref:index/Index:Resource"
+        },
+        "type": {
+          "$ref": "#/types/localref:index/Index:Object"
+        },
+        "overlay": {
+          "$ref": "#/types/localref:index/Index:Overlay"
+        }
+      },
+      "type": "object"
+    }
+  }
+}

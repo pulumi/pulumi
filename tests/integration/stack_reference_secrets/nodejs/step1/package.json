@@ -1,6 +1,0 @@
-{
-    "name": "typescript",
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}

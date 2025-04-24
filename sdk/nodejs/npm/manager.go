@@ -1,3 +1,17 @@
+// Copyright 2023-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package npm
 
 import (
@@ -5,10 +19,19 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+)
+
+type PackageManagerType string
+
+const (
+	// AutoPackageManager automatically choses a packagemanager by looking for environment variables and lockfiles.
+	AutoPackageManager PackageManagerType = "auto"
+	NpmPackageManager  PackageManagerType = "npm"
+	YarnPackageManager PackageManagerType = "yarn"
+	PnpmPackageManager PackageManagerType = "pnpm"
 )
 
 // A `PackageManager` is responsible for installing dependencies,
@@ -31,8 +54,8 @@ type PackageManager interface {
 // tarball and returning it as `[]byte`. `stdout` is ignored for the command, as it does not
 // generate useful data. If the `PULUMI_PREFER_YARN` environment variable is set, `yarn pack` is run
 // instead of `npm pack`.
-func Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	pkgManager, err := ResolvePackageManager(dir)
+func Pack(ctx context.Context, packagemanager PackageManagerType, dir string, stderr io.Writer) ([]byte, error) {
+	pkgManager, err := ResolvePackageManager(packagemanager, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +66,10 @@ func Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 // app located there. If the `PULUMI_PREFER_YARN` environment variable is set, `yarn install` is used
 // instead of `npm install`.
 // The returned string is the name of the package manager used during installation.
-func Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) (string, error) {
-	pkgManager, err := ResolvePackageManager(dir)
+func Install(ctx context.Context, packagemanager PackageManagerType, dir string, production bool,
+	stdout, stderr io.Writer,
+) (string, error) {
+	pkgManager, err := ResolvePackageManager(packagemanager, dir)
 	if err != nil {
 		return "", err
 	}
@@ -56,28 +81,44 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	}
 
 	// Ensure the "node_modules" directory exists.
-	// NB: This is only approperate for certain package managers.
-	//     Yarn with Plug'n'Play enabled won't produce a node_modules directory,
-	//     either for Yarn Classic or Yarn Berry.
-	nodeModulesPath := filepath.Join(dir, "node_modules")
-	if _, err := os.Stat(nodeModulesPath); err != nil {
-		if os.IsNotExist(err) {
-			return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
+	nodeModulesPath, err := searchup(dir, "node_modules")
+	if nodeModulesPath == "" {
+		if err != nil {
+			return name, fmt.Errorf("error while looking for 'node_modules': %w", err)
 		}
-		// If the node_modules dir exists but we can't stat it, we might be able to proceed
-		// without issue, but it's bizarre enough that we should warn.
-		logging.Warningf("failed to read node_modules metadata: %v", err)
+		return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
 	}
 
 	return name, nil
 }
 
 // ResolvePackageManager determines which package manager to use.
-// It inspects the value of "PULUMI_PREFER_YARN" and checks for a yarn.lock file.
-// If neither of those values are enabled or truthy, then it uses NPM over YarnClassic.
-// The argument pwd is the present working directory we're checking for the presence
-// of a lockfile.
-func ResolvePackageManager(pwd string) (PackageManager, error) {
+//
+// If the packagemanager argument is set, and it is not `AutoPackageManager` then, that package
+// manager is used. Otherwise, if the `PULUMI_PREFER_YARN` environment variable is set, or if
+// a yarn.lock file exists, then YarnClassic is used. If a pnpm-lock.yaml file exists, then
+// pnpm is used.  Otherwise npm is used. The argument pwd is the directory  we're checking for
+// the presence of a lockfile.
+func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (PackageManager, error) {
+	// If a package manager is explicitly specified, use it.
+	if packagemanager != "" && packagemanager != AutoPackageManager {
+		switch packagemanager {
+		case AutoPackageManager:
+			// Make the linter for exhaustive switch cases happy, we never get here.
+			break
+		case NpmPackageManager:
+			return newNPM()
+		case YarnPackageManager:
+			return newYarnClassic()
+		case PnpmPackageManager:
+			return newPnpm()
+		default:
+			return nil, fmt.Errorf("unknown package manager: %s", packagemanager)
+		}
+	}
+
+	// No packagemanager specified, try to determine the best one to use.
+
 	// Prefer yarn if PULUMI_PREFER_YARN is truthy, or if yarn.lock exists.
 	if preferYarn() || checkYarnLock(pwd) {
 		yarn, err := newYarnClassic()
@@ -85,9 +126,19 @@ func ResolvePackageManager(pwd string) (PackageManager, error) {
 		if err == nil {
 			return yarn, nil
 		}
-		logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
+		logging.Warningf("could not find yarn on the $PATH, trying pnpm instead: %v", err)
 	}
 
+	// Prefer pnpm if pnpm-lock.yaml exists.
+	if checkPnpmLock(pwd) {
+		pnpm, err := newPnpm()
+		if err == nil {
+			return pnpm, nil
+		}
+		logging.Warningf("could not find pnpm on the $PATH, trying npm instead: %v", err)
+	}
+
+	// Finally, fall back to npm.
 	node, err := newNPM()
 	if err != nil {
 		return nil, fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+

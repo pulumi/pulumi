@@ -23,6 +23,7 @@ import (
 	"fmt"
 	netUrl "net/url"
 	"os"
+	"strings"
 
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
@@ -95,7 +96,17 @@ func newCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, erro
 	if err != nil {
 		return nil, err
 	}
-	plaintextDataKey, err := keeper.Decrypt(context.Background(), encryptedDataKey)
+	// We're emulating gocloud.dev's old behaviour here. Pre v0.28.0 it used to have an inner wrapping, which
+	// we keep for compatibility (see above). However the newer version expects this to be unwrapped, before
+	// it's used, so let's do that here.
+	ciphertext := encryptedDataKey
+	if strings.HasPrefix(url, "azurekeyvault://") {
+		ciphertext, err = base64.RawURLEncoding.DecodeString(string(encryptedDataKey))
+		if err != nil {
+			return nil, err
+		}
+	}
+	plaintextDataKey, err := keeper.Decrypt(context.Background(), ciphertext)
 	if err != nil {
 		return nil, err
 	}
@@ -119,21 +130,58 @@ type Manager struct {
 	crypter config.Crypter
 }
 
-func (m *Manager) Type() string                         { return Type }
-func (m *Manager) State() json.RawMessage               { return m.state }
-func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
-func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
+func (m *Manager) Type() string                { return Type }
+func (m *Manager) State() json.RawMessage      { return m.state }
+func (m *Manager) Encrypter() config.Encrypter { return m.crypter }
+func (m *Manager) Decrypter() config.Decrypter { return m.crypter }
+
+func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
+	info.EncryptionSalt = ""
+
+	var s cloudSecretsManagerState
+	err := json.Unmarshal(state, &s)
+	if err != nil {
+		return fmt.Errorf("unmarshalling cloud state: %w", err)
+	}
+
+	info.SecretsProvider = s.URL
+	info.EncryptedKey = base64.StdEncoding.EncodeToString(s.EncryptedKey)
+	return nil
+}
 
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
 // envelope encryption of secrets values.
 func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s cloudSecretsManagerState
-	if err := json.Unmarshal(state, &s); err != nil {
+	err := json.Unmarshal(state, &s)
+	if err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	return newCloudSecretsManager(s.URL, s.EncryptedKey)
+	// We're emulating gocloud.dev's old behaviour here.  Pre v0.28.0 it used to have an inner wrapping, which
+	// we keep for compatibility (see above). However the newer version expects this to be unwrapped, before
+	// it's used. newCloudSecretsManager will manage that but we need to check here as well to handle the
+	// #15329 regression.
+	dataKey := s.EncryptedKey
+	if strings.HasPrefix(s.URL, "azurekeyvault://") {
+		wrappedKey, err := base64.RawURLEncoding.DecodeString(string(dataKey))
+		if err != nil {
+			// https://github.com/pulumi/pulumi/issues/15329 resulted in some non-encoded keys being written
+			// to state. This checks that case to see if there valid base64 data.
+			firstErr := err
+			_, err := base64.StdEncoding.DecodeString(string(wrappedKey))
+			if err != nil {
+				// Wasn't valid base64 so probably just gibberish, return the first error we saw.
+				return nil, firstErr
+			}
+			// This is a valid base64 string so it's probably just a bad encoding, wrap it as expected and
+			// pass it on to newCloudSecretsManager
+			dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
+		}
+	}
+
+	return newCloudSecretsManager(s.URL, dataKey)
 }
 
 func NewCloudSecretsManager(info *workspace.ProjectStack,
@@ -165,6 +213,13 @@ func NewCloudSecretsManager(info *workspace.ProjectStack,
 		if err != nil {
 			return nil, err
 		}
+		// gocloud.dev versions before v0.28.0 wrapped the
+		// data key in a base64.RawURLEncoding before wrapping
+		// it again in base64.StdEncoding.  We keep emulating
+		// this here for compatibility.
+		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
+			dataKey = []byte(base64.RawURLEncoding.EncodeToString(dataKey))
+		}
 		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
 	}
 	info.SecretsProvider = secretsProvider
@@ -173,6 +228,7 @@ func NewCloudSecretsManager(info *workspace.ProjectStack,
 	if err != nil {
 		return nil, err
 	}
+
 	secretsManager, err = newCloudSecretsManager(secretsProvider, dataKey)
 	if err != nil {
 		return nil, err

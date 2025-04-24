@@ -15,7 +15,6 @@
 package cmdutil
 
 import (
-	"fmt"
 	"os"
 
 	"golang.org/x/term"
@@ -27,17 +26,10 @@ func ReadConsoleNoEcho(prompt string) (string, error) {
 	// error when it tries to disable local echo.
 	//
 	// In this case, just read normally
+	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return ReadConsole(prompt)
+		return readConsolePlain(os.Stdout, os.Stdin, prompt)
 	}
 
-	if prompt != "" {
-		fmt.Print(prompt + ": ")
-	}
-
-	b, err := term.ReadPassword(int(os.Stdin.Fd()))
-
-	fmt.Println() // echo a newline, since the user's keypress did not generate one
-
-	return string(b), err
+	return readConsoleFancy(os.Stdout, os.Stdin, prompt, true /* secret */)
 }

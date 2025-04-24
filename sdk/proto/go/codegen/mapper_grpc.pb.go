@@ -22,7 +22,11 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MapperClient interface {
-	// GetMapping tries to find a mapping for the given provider.
+	// `GetMapping` returns any available mapping data for the given source provider name (so again, this is e.g. the
+	// name of a Terraform provider if converting from Terraform). Callers may pass "hints" that describe a Pulumi
+	// package that is expected to provide the mapping and satisfy the request, which implementations may use to
+	// optimise their efforts to return the best possible mapping. If no matching mapping exists, implementations should
+	// return an empty byte array result.
 	GetMapping(ctx context.Context, in *GetMappingRequest, opts ...grpc.CallOption) (*GetMappingResponse, error)
 }
 
@@ -47,7 +51,11 @@ func (c *mapperClient) GetMapping(ctx context.Context, in *GetMappingRequest, op
 // All implementations must embed UnimplementedMapperServer
 // for forward compatibility
 type MapperServer interface {
-	// GetMapping tries to find a mapping for the given provider.
+	// `GetMapping` returns any available mapping data for the given source provider name (so again, this is e.g. the
+	// name of a Terraform provider if converting from Terraform). Callers may pass "hints" that describe a Pulumi
+	// package that is expected to provide the mapping and satisfy the request, which implementations may use to
+	// optimise their efforts to return the best possible mapping. If no matching mapping exists, implementations should
+	// return an empty byte array result.
 	GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error)
 	mustEmbedUnimplementedMapperServer()
 }

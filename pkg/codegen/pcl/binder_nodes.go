@@ -22,6 +22,37 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// hasReferenceTo returns true if the source node has a reference to the target node.
+// In other words, if the target node is a dependency of the source node.
+func hasReferenceTo(source Node, target Node) bool {
+	for _, dep := range source.getDependencies() {
+		if dep.Name() == target.Name() {
+			return true
+		}
+	}
+	return false
+}
+
+// selfReferencingNode returns true if the given node references itself.
+func selfReferencingNode(node Node) bool {
+	return hasReferenceTo(node, node)
+}
+
+// isComponent returns true if the given node is a component.
+func isComponent(node Node) bool {
+	_, ok := node.(*Component)
+	return ok
+}
+
+// mutuallyDependantComponents returns true if the given nodes are components that reference each other.
+func mutuallyDependantComponents(a Node, b Node) bool {
+	return isComponent(a) &&
+		isComponent(b) &&
+		hasReferenceTo(a, b) &&
+		hasReferenceTo(b, a) &&
+		a.Name() != b.Name()
+}
+
 // bindNode binds a single node in a program. The node's dependencies are bound prior to the node itself; it is an
 // error for a node to depend--directly or indirectly--upon itself.
 func (b *binder) bindNode(node Node) hcl.Diagnostics {
@@ -29,14 +60,19 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 		return nil
 	}
 	if node.isBinding() {
-		// TODO(pdg): print trace
-		rng := node.SyntaxNode().Range()
-		return hcl.Diagnostics{{
-			Severity: hcl.DiagError,
-			Summary:  "circular reference",
-			Subject:  &rng,
-		}}
-
+		// We encountered the same node while binding its dependencies, so we have a circular reference.
+		// However we need to make an exception for nodes of type Component when
+		// - they are not self-referencing
+		// - the circular reference is only between other nodes of type Component
+		if !isComponent(node) || selfReferencingNode(node) {
+			// TODO(pdg): print better trace
+			rng := node.SyntaxNode().Range()
+			return hcl.Diagnostics{{
+				Severity: hcl.DiagError,
+				Summary:  "circular reference",
+				Subject:  &rng,
+			}}
+		}
 	}
 	node.markBinding()
 
@@ -47,6 +83,12 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 
 	// Bind any nodes this node depends on.
 	for _, dep := range deps {
+		if dep.isBinding() && mutuallyDependantComponents(node, dep) {
+			// We encountered a dependant node that is already being bound
+			// usually this is a circular reference, but we need to make an exception for nodes
+			// that are components and reference each other (mutually dependant components)
+			continue
+		}
 		diags := b.bindNode(dep)
 		diagnostics = append(diagnostics, diags...)
 	}
@@ -80,7 +122,7 @@ func (b *binder) getDependencies(node Node) []Node {
 	depSet := codegen.Set{}
 	var deps []Node
 	diags := hclsyntax.VisitAll(node.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
-		depName := ""
+		var depName string
 		switch node := node.(type) {
 		case *hclsyntax.FunctionCallExpr:
 			// TODO(pdg): function scope binds tighter than "normal" scope

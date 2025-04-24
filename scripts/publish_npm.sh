@@ -7,9 +7,9 @@ readonly ROOT=$(dirname "${0}")/..
 echo "Publishing NPM package to NPMjs.com:"
 NPM_TAG="dev"
 
-## We need split the GITHUB_REF into the correct parts
+## We need split the GIT_REF into the correct parts
 ## so that we can test for NPM Tags
-IFS='/' read -ra my_array <<< "${GITHUB_REF:-}"
+IFS='/' read -ra my_array <<< "${GIT_REF:-}"
 last_index=$((${#my_array[@]} - 1))
 BRANCH_NAME="${my_array[last_index]}"
 
@@ -26,20 +26,12 @@ PKG_NAME=$(jq -r .name < "${ROOT}/sdk/nodejs/package.json")
 # shellcheck disable=SC2154 # assigned by release.yml
 PKG_VERSION="${PULUMI_VERSION}"
 
-# If the package doesn't have an alpha tag, use the tag of latest instead of
+# If the package isn't a dev version (includes the git describe output in its
+# version string), use the tag of latest instead of
 # dev. NPM uses this tag as the default version to add, so we want it to mean
 # the newest released version.
 if [[ "${PKG_VERSION}" != *-alpha* ]]; then
     NPM_TAG="latest"
-fi
-
-# we need to set explicit beta and rc tags to ensure that we don't mutate to use the latest tag
-if [[ "${PKG_VERSION}" == *-beta* ]]; then
-    NPM_TAG="beta"
-fi
-
-if [[ "${PKG_VERSION}" == *-rc* ]]; then
-    NPM_TAG="rc"
 fi
 
 # Now, perform the publish. The logic here is a little goofy because npm provides

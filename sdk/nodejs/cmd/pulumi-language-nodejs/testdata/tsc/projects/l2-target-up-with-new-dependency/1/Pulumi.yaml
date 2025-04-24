@@ -1,0 +1,5 @@
+name: l2-target-up-with-new-dependency
+runtime:
+  name: nodejs
+  options:
+    typescript: false

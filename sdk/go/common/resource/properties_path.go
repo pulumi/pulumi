@@ -1,3 +1,17 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package resource
 
 import (
@@ -8,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
@@ -46,16 +61,29 @@ type PropertyPath []interface{}
 // - ["root key with a ."][100]
 // - root.array[*].field
 // - root.array["*"].field
-func ParsePropertyPath(path string) (PropertyPath, error) {
+func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 	// We interpret the grammar above a little loosely in order to keep things simple. Specifically, we will accept
 	// something close to the following:
-	// pathElement := { '.' } ( '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']' | [a-zA-Z_$][a-zA-Z0-9_$] )
-	// path := { pathElement }
+	// pathElement := { '.' } [a-zA-Z_$][a-zA-Z0-9_$]
+	// pathIndex := '[' ( [0-9]+ | '"' ('\' '"' | [^"] )+ '"' ']'
+	// path := { pathElement | pathIndex }
 	var elements []interface{}
+	if len(path) > 0 && path[0] == '.' {
+		return nil, errors.New("expected property path to start with a name or index")
+	}
 	for len(path) > 0 {
 		switch path[0] {
 		case '.':
 			path = path[1:]
+			if len(path) == 0 {
+				return nil, errors.New("expected property path to end with a name or index")
+			}
+			if path[0] == '[' && strict {
+				return nil, errors.New("expected property name after '.'")
+			} else if path[0] == '[' {
+				// We tolerate a '.' followed by a '[', which is not strictly legal, but is common from old providers.
+				logging.V(10).Infof("property path '%s' contains a '.' followed by a '['; this is not strictly legal", path)
+			}
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.
 			var pathElement interface{}
@@ -109,6 +137,14 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 		}
 	}
 	return PropertyPath(elements), nil
+}
+
+func ParsePropertyPath(path string) (PropertyPath, error) {
+	return parsePropertyPath(path, false)
+}
+
+func ParsePropertyPathStrict(path string) (PropertyPath, error) {
+	return parsePropertyPath(path, true)
 }
 
 // Get attempts to get the value located by the PropertyPath inside the given PropertyValue. If any component of the
@@ -301,10 +337,26 @@ func (p PropertyPath) Contains(other PropertyPath) bool {
 	return true
 }
 
-func (p PropertyPath) reset(old, new PropertyValue) bool {
+// unwrapSecrets recursively unwraps any secrets from the given PropertyValue returning true if any secrets were
+// unwrapped.
+func unwrapSecrets(v PropertyValue) (PropertyValue, bool) {
+	if v.IsSecret() {
+		inner, _ := unwrapSecrets(v.SecretValue().Element)
+		return inner, true
+	}
+	return v, false
+}
+
+func (p PropertyPath) reset(old, new PropertyValue, oldIsSecret, newIsSecret bool) bool {
 	if len(p) == 0 {
 		return false
 	}
+
+	// Unwrap any secrets from old & new, we can just go through them for this traversal.
+	old, isSecret := unwrapSecrets(old)
+	oldIsSecret = oldIsSecret || isSecret
+	new, isSecret = unwrapSecrets(new)
+	newIsSecret = newIsSecret || isSecret
 
 	// If this is the last component we want to do the reset, else we want to search for the next component.
 	key := p[0]
@@ -339,6 +391,11 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 			// Otherwise both arrays contain this index and we can reset the value of it in new to what is in
 			// old.
 			v := old.ArrayValue()[key]
+			// If this was a secret value in old, but new isn't currently a secret context then we need to mark this
+			// reset value as secret.
+			if oldIsSecret && !newIsSecret {
+				v = MakeSecret(v)
+			}
 			new.ArrayValue()[key] = v
 			return true
 		}
@@ -356,7 +413,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 		}
 		old = old.ArrayValue()[key]
 		new = new.ArrayValue()[key]
-		return p[1:].reset(old, new)
+		return p[1:].reset(old, new, oldIsSecret, newIsSecret)
 
 	case string:
 		if key == "*" {
@@ -365,6 +422,11 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 					if old.IsObject() {
 						for k := range old.ObjectValue() {
 							v := old.ObjectValue()[k]
+							// If this was a secret value in old, but new isn't currently a secret context then we need
+							// to mark this reset value as secret.
+							if oldIsSecret && !newIsSecret {
+								v = MakeSecret(v)
+							}
 							new.ObjectValue()[k] = v
 						}
 						for k := range new.ObjectValue() {
@@ -376,15 +438,27 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 					return true
 				} else if new.IsArray() {
 					if old.IsArray() {
-						for i := range old.ArrayValue() {
-							v := old.ArrayValue()[i]
-							new.ArrayValue()[i] = v
+						oldArray := old.ArrayValue()
+						newArray := new.ArrayValue()
+						// If arrays are of different length then this is a path failure because we can't
+						// synchronise the two values.
+						if len(oldArray) != len(newArray) {
+							return false
+						}
+
+						for i := range oldArray {
+							v := oldArray[i]
+							// If this was a secret value in old, but new isn't currently a secret context then we need
+							// to mark this reset value as secret.
+							if oldIsSecret && !newIsSecret {
+								v = MakeSecret(v)
+							}
+							newArray[i] = v
 						}
 					}
 					return true
-				} else {
-					return false
 				}
+				return false
 			}
 
 			if old.IsObject() && new.IsObject() {
@@ -399,7 +473,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 						return false
 					}
 
-					if !p[1:].reset(oldValue, newValue) {
+					if !p[1:].reset(oldValue, newValue, oldIsSecret, newIsSecret) {
 						return false
 					}
 				}
@@ -407,70 +481,77 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 			} else if old.IsArray() && new.IsArray() {
 				oldArray := old.ArrayValue()
 				newArray := new.ArrayValue()
+				// If arrays are of different length then this is a path failure because we can't
+				// continue the search of this path down each PropertyValue.
+				if len(oldArray) != len(newArray) {
+					return false
+				}
 
 				for i := range oldArray {
-					if !p[1:].reset(oldArray[i], newArray[i]) {
+					if !p[1:].reset(oldArray[i], newArray[i], oldIsSecret, newIsSecret) {
 						return false
 					}
 				}
 				return true
-			} else {
-				return false
 			}
-		} else {
-			pkey := PropertyKey(key)
-
-			if len(p) == 1 {
-				// This is the leaf path entry, so we want to reset this property in new to it's value in old.
-
-				// Firstly if old doesn't have this key (either because it isn't an object or because it
-				// doesn't have the property) then we want to delete this from new.
-				var v PropertyValue
-				var has bool
-				if old.IsObject() {
-					v, has = old.ObjectValue()[pkey]
-				}
-
-				if has {
-					// If this path exists in old but new isn't an object than return a path error
-					if !new.IsObject() {
-						return false
-					}
-					// Else simply overwrite the value in new with the value from old
-					new.ObjectValue()[pkey] = v
-				} else {
-					// If the path doesn't exist in old then we want to delete it from new, but if new isn't
-					// an object then we can just do nothing we don't consider this a path error. e.g. given
-					// old:{} and new:1 and a path of "a" we can return true because ["a"] in both is the
-					// same (it doesn't exist).
-					if new.IsObject() {
-						delete(new.ObjectValue(), pkey)
-					}
-				}
-				return true
-			}
-
-			if !old.IsObject() || !new.IsObject() {
-				// At least one of old or new is not an object, so we can't keep searching along this path but
-				// we only return an error if both are not objects.
-				return !old.IsObject() && !new.IsObject()
-			}
-
-			new, hasNew := new.ObjectValue()[pkey]
-			old, hasOld := old.ObjectValue()[pkey]
-
-			if hasOld && !hasNew {
-				// Old has this key but new doesn't, but we still searching for the leaf item to set so this
-				// is a path error.
-				return false
-			}
-			if !hasOld && !hasNew {
-				// Neither value contain this path, so we're done.
-				return true
-			}
-
-			return p[1:].reset(old, new)
+			return false
 		}
+		pkey := PropertyKey(key)
+
+		if len(p) == 1 {
+			// This is the leaf path entry, so we want to reset this property in new to it's value in old.
+
+			// Firstly if old doesn't have this key (either because it isn't an object or because it
+			// doesn't have the property) then we want to delete this from new.
+			var v PropertyValue
+			var has bool
+			if old.IsObject() {
+				v, has = old.ObjectValue()[pkey]
+			}
+
+			if has {
+				// If this path exists in old but new isn't an object than return a path error
+				if !new.IsObject() {
+					return false
+				}
+				// Else simply overwrite the value in new with the value from old, if this was a secret value in
+				// old, but new isn't currently a secret context then we need to mark this reset value as secret.
+				if oldIsSecret && !newIsSecret {
+					v = MakeSecret(v)
+				}
+				new.ObjectValue()[pkey] = v
+			} else {
+				// If the path doesn't exist in old then we want to delete it from new, but if new isn't
+				// an object then we can just do nothing we don't consider this a path error. e.g. given
+				// old:{} and new:1 and a path of "a" we can return true because ["a"] in both is the
+				// same (it doesn't exist).
+				if new.IsObject() {
+					delete(new.ObjectValue(), pkey)
+				}
+			}
+			return true
+		}
+
+		if !old.IsObject() || !new.IsObject() {
+			// At least one of old or new is not an object, so we can't keep searching along this path but
+			// we only return an error if both are not objects.
+			return !old.IsObject() && !new.IsObject()
+		}
+
+		new, hasNew := new.ObjectValue()[pkey]
+		old, hasOld := old.ObjectValue()[pkey]
+
+		if hasOld && !hasNew {
+			// Old has this key but new doesn't, but we still searching for the leaf item to set so this
+			// is a path error.
+			return false
+		}
+		if !hasOld && !hasNew {
+			// Neither value contain this path, so we're done.
+			return true
+		}
+
+		return p[1:].reset(old, new, oldIsSecret, newIsSecret)
 	}
 
 	contract.Failf("Invalid property path component type: %T", key)
@@ -482,7 +563,7 @@ func (p PropertyPath) reset(old, new PropertyValue) bool {
 // intermediate locations, it also won't create or delete array locations (because that would change the size
 // of the array).
 func (p PropertyPath) Reset(old, new PropertyMap) bool {
-	return p.reset(NewObjectProperty(old), NewObjectProperty(new))
+	return p.reset(NewObjectProperty(old), NewObjectProperty(new), false, false)
 }
 
 func requiresQuote(c rune) bool {

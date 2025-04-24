@@ -1,0 +1,3 @@
+name: codepaths-nested
+runtime: nodejs
+description: The package json is in a parent directory and we need to discover the node_modules from the parent directory when we compute the codepaths.

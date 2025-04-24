@@ -15,8 +15,8 @@
 from typing import Any, Optional
 import asyncio
 import functools
-import grpc
 import logging
+import grpc
 import pytest
 
 import pulumi
@@ -29,8 +29,10 @@ from .helpers import raises
 @raises(pulumi.RunError)
 @pytest.mark.timeout(10)
 @pulumi.runtime.test
-def test_resource_registration_does_not_hang_when_monitor_unavailable(unavailable_mocks):
-    MyCustom('mycustom', {'inprop': 'hello'})
+def test_resource_registration_does_not_hang_when_monitor_unavailable(
+    unavailable_mocks,
+):
+    MyCustom("mycustom", {"inprop": "hello"})
 
 
 class Unavailable(grpc.RpcError):
@@ -51,10 +53,10 @@ class MyCustom(pulumi.CustomResource):
 
     def __init__(self, resource_name, props: Optional[dict] = None, opts=None) -> None:
         super().__init__("pkg:index:MyCustom", resource_name, props, opts)
-        inprop = (props or {}).get('inprop', None)
+        inprop = (props or {}).get("inprop", None)
         if inprop is None:
             raise TypeError("Missing required property 'inprop'")
-        self.outprop = pulumi.Output.from_input(inprop).apply(lambda x: f'output: {x}')
+        self.outprop = pulumi.Output.from_input(inprop).apply(lambda x: f"output: {x}")
 
 
 @pytest.fixture

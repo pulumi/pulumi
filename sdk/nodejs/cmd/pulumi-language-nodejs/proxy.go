@@ -19,7 +19,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
@@ -154,6 +154,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 
 				// write the 4-byte response length
 				logging.V(10).Infoln("Sync invoke: Writing length to request pipe")
+				//nolint:gosec // Max message size for protobuf is 2GB, so the int -> uint32 conversion is safe.
 				if err := binary.Write(pipes.writer(), binary.BigEndian, uint32(len(resBytes))); err != nil {
 					logging.V(10).Infof("Sync invoke: Error writing length to pipe: %s\n", err)
 					return err
@@ -183,7 +184,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 // perform.
 
 type monitorProxy struct {
-	pulumirpc.UnimplementedResourceMonitorServer
+	pulumirpc.UnsafeResourceMonitorServer
 
 	target pulumirpc.ResourceMonitorClient
 }
@@ -194,31 +195,8 @@ func (p *monitorProxy) Invoke(
 	return p.target.Invoke(ctx, req)
 }
 
-func (p *monitorProxy) StreamInvoke(
-	req *pulumirpc.ResourceInvokeRequest, server pulumirpc.ResourceMonitor_StreamInvokeServer,
-) error {
-	client, err := p.target.StreamInvoke(context.Background(), req)
-	if err != nil {
-		return err
-	}
-
-	for {
-		in, err := client.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := server.Send(in); err != nil {
-			return err
-		}
-	}
-}
-
 func (p *monitorProxy) Call(
-	ctx context.Context, req *pulumirpc.CallRequest,
+	ctx context.Context, req *pulumirpc.ResourceCallRequest,
 ) (*pulumirpc.CallResponse, error) {
 	return p.target.Call(ctx, req)
 }
@@ -242,7 +220,7 @@ func (p *monitorProxy) RegisterResource(
 
 func (p *monitorProxy) RegisterResourceOutputs(
 	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest,
-) (*pbempty.Empty, error) {
+) (*emptypb.Empty, error) {
 	return p.target.RegisterResourceOutputs(ctx, req)
 }
 
@@ -250,4 +228,22 @@ func (p *monitorProxy) SupportsFeature(
 	ctx context.Context, req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
 	return p.target.SupportsFeature(ctx, req)
+}
+
+func (p *monitorProxy) RegisterStackTransform(
+	ctx context.Context, req *pulumirpc.Callback,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterStackTransform(ctx, req)
+}
+
+func (p *monitorProxy) RegisterStackInvokeTransform(
+	ctx context.Context, req *pulumirpc.Callback,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterStackInvokeTransform(ctx, req)
+}
+
+func (p *monitorProxy) RegisterPackage(
+	ctx context.Context, req *pulumirpc.RegisterPackageRequest,
+) (*pulumirpc.RegisterPackageResponse, error) {
+	return p.target.RegisterPackage(ctx, req)
 }

@@ -10,7 +10,7 @@ let inputs = {
     d: undefined,
 };
 
-let res = new pulumi.CustomResource("test:read:resource", "foo", inputs, { id: "abc123" });
+let res = new pulumi.CustomResource("test:read:resource", "foo", inputs, { id: pulumi.secret("abc123") });
 res.id.apply((id) => assert.strictEqual(id, "abc123"));
 res.urn.apply((urn) => assert.strictEqual(urn, "test:read:resource::foo"));
 res.a.apply((a) => assert.strictEqual(a, inputs.a)); // same as input

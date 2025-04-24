@@ -15,22 +15,19 @@
 package backend
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -45,7 +42,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -81,7 +78,7 @@ const (
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -93,12 +90,16 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 	var events []engine.Event
 	go func() {
-		// pull the events from the channel and store them locally
+		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
+			// Don't include internal events in the confirmation stats.
+			if e.Internal() {
+				continue
+			}
 			if e.Type == engine.ResourcePreEvent ||
 				e.Type == engine.ResourceOutputsEvent ||
+				e.Type == engine.PolicyRemediationEvent ||
 				e.Type == engine.SummaryEvent {
-
 				events = append(events, e)
 			}
 		}
@@ -113,10 +114,10 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	plan, changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
-	if res != nil {
+	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	if err != nil {
 		close(eventsChannel)
-		return plan, changes, res
+		return plan, changes, err
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -141,12 +142,8 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Warn user if an update is going to leave untracked resources in the environment.
-	switch kind {
-	case apitype.UpdateUpdate, apitype.PreviewUpdate, apitype.DestroyUpdate:
-		if len(stats.retainedResources) == 0 {
-			// No resources. Skip.
-			break
-		}
+	if (kind == apitype.UpdateUpdate || kind == apitype.PreviewUpdate || kind == apitype.DestroyUpdate) &&
+		len(stats.retainedResources) != 0 {
 		fmt.Printf(
 			"%sThis update will leave %d resource(s) untracked in your environment:\n",
 			infoPrefix, len(stats.retainedResources))
@@ -158,15 +155,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	res, plan = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
+	plan, err = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
 	close(eventsChannel)
-	return plan, changes, res
+	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 	events []engine.Event, plan *deploy.Plan, opts UpdateOptions,
-) (result.Result, *deploy.Plan) {
+) (*deploy.Plan, error) {
 	for {
 		var response string
 
@@ -205,25 +202,27 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, surveyIcons); err != nil {
-			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)), nil
+			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
 
 		if response == string(no) {
-			fmt.Printf("confirmation declined, not proceeding with the %s\n", kind)
-			return result.Bail(), nil
+			return nil, result.FprintBailf(os.Stdout, "confirmation declined, not proceeding with the %s", kind)
 		}
 
 		if response == string(yes) {
 			// If we're in experimental mode always use the plan
 			if opts.Engine.Experimental {
-				return nil, plan
+				return plan, nil
 			}
 			return nil, nil
 		}
 
 		if response == string(details) {
-			diff := createDiff(kind, events, opts.Display)
-			_, err := os.Stdout.WriteString(diff + "\n")
+			diff, err := display.CreateDiff(events, opts.Display)
+			if err != nil {
+				return nil, err
+			}
+			_, err = os.Stdout.WriteString(diff + "\n")
 			contract.IgnoreError(err)
 			continue
 		}
@@ -232,7 +231,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier,
-) (sdkDisplay.ResourceChanges, result.Result) {
+) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
@@ -245,9 +244,9 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
-		if res != nil || kind == apitype.PreviewUpdate {
-			return changes, res
+		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		if err != nil || kind == apitype.PreviewUpdate {
+			return changes, err
 		}
 
 		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
@@ -305,35 +304,4 @@ func computeUpdateStats(events []engine.Event) updateStats {
 		}
 	}
 	return stats
-}
-
-func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
-	buff := &bytes.Buffer{}
-
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-	displayOpts.SummaryDiff = true
-
-	var outputEventsDiff []string
-	for _, e := range events {
-		if e.Type == engine.SummaryEvent {
-			continue
-		}
-		msg := display.RenderDiffEvent(e, seen, displayOpts)
-		if msg == "" {
-			continue
-		}
-		// display output events last
-		if e.Type == engine.ResourceOutputsEvent {
-			outputEventsDiff = append(outputEventsDiff, msg)
-			continue
-		}
-		_, err := buff.WriteString(msg)
-		contract.IgnoreError(err)
-	}
-	for _, msg := range outputEventsDiff {
-		_, err := buff.WriteString(msg)
-		contract.IgnoreError(err)
-	}
-
-	return strings.TrimSpace(buff.String())
 }

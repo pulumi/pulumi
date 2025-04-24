@@ -27,12 +27,13 @@ import pytest
 
 import pulumi
 from pulumi import automation
+from .test_utils import get_test_org
 
 
 class BadResource(pulumi.CustomResource):
-    def __init__(self,
-                 resource_name: str,
-                 opts: typing.Optional[pulumi.ResourceOptions] = None):
+    def __init__(
+        self, resource_name: str, opts: typing.Optional[pulumi.ResourceOptions] = None
+    ):
         if opts is None:
             opts = pulumi.ResourceOptions()
         super().__init__("badprovider::BadResource", resource_name, {}, opts)
@@ -40,9 +41,9 @@ class BadResource(pulumi.CustomResource):
 
 def program():
     config = pulumi.Config()
-    bad = config.get_int('bad') or 0
+    bad = config.get_int("bad") or 0
     if bad == 1:
-        BadResource('bad_resource')
+        BadResource("bad_resource")
 
 
 def ignore(*args, **kw):
@@ -50,19 +51,20 @@ def ignore(*args, **kw):
 
 
 def check_isolation(minimal=False):
-    stack_name = f'isolation-test-{uuid.uuid4()}'
+    stack_name = automation.fully_qualified_stack_name(
+        get_test_org(), "isolation-test", f"isolation-test-{uuid.uuid4()}"
+    )
 
     stack = automation.create_stack(
-        stack_name=stack_name,
-        project_name='isolation-test',
-        program=program)
+        stack_name=stack_name, project_name="isolation-test", program=program
+    )
 
     with pytest.raises(automation.errors.CommandError):
-        stack.set_config('bad', automation.ConfigValue('1'))
+        stack.set_config("bad", automation.ConfigValue("1"))
         stack.up(on_output=ignore)
 
     if not minimal:
-        stack.set_config('bad', automation.ConfigValue('0'))
+        stack.set_config("bad", automation.ConfigValue("0"))
         stack.up(on_output=ignore)
 
     destroy_res = stack.destroy()
@@ -79,29 +81,54 @@ async def async_stack_up(stack):
 async def async_stack_destroy(stack):
     return stack.destroy()
 
-@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
+
 @pytest.mark.asyncio
 async def test_parallel_updates():
-    first_stack_name = f"stack-{uuid.uuid4()}"
-    second_stack_name = f"stack-{uuid.uuid4()}"
-    stacks = [automation.create_stack(stack_name, project_name='test-parallel', program=program) for stack_name in {first_stack_name, second_stack_name}]
-    stack_up_responses = await asyncio.gather(*[async_stack_up(stack) for stack in stacks])
-    assert all({stack_response.summary.result == "succeeded" for stack_response in stack_up_responses})
-    stack_destroy_responses = await asyncio.gather(*[async_stack_destroy(stack) for stack in stacks])
-    assert all({stack_response.summary.result == "succeeded" for stack_response in stack_destroy_responses})
+    first_stack_name = automation.fully_qualified_stack_name(
+        get_test_org(), "test-parallel", f"stack-{uuid.uuid4()}"
+    )
+    second_stack_name = automation.fully_qualified_stack_name(
+        get_test_org(), "test-parallel", f"stack-{uuid.uuid4()}"
+    )
+    stacks = [
+        automation.create_stack(
+            stack_name, project_name="test-parallel", program=program
+        )
+        for stack_name in {first_stack_name, second_stack_name}
+    ]
+    stack_up_responses = await asyncio.gather(
+        *[async_stack_up(stack) for stack in stacks]
+    )
+    assert all(
+        {
+            stack_response.summary.result == "succeeded"
+            for stack_response in stack_up_responses
+        }
+    )
+    stack_destroy_responses = await asyncio.gather(
+        *[async_stack_destroy(stack) for stack in stacks]
+    )
+    assert all(
+        {
+            stack_response.summary.result == "succeeded"
+            for stack_response in stack_destroy_responses
+        }
+    )
 
-@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
+
 @pytest.mark.skipif(
-    sys.platform == 'win32',
-    reason="TODO[pulumi/pulumi#8716] fails on Windows")
+    sys.platform == "win32", reason="TODO[pulumi/pulumi#8716] fails on Windows"
+)
 def test_isolation():
     check_isolation()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     ap = argparse.ArgumentParser()
-    ap.add_argument('--minimal', action='store_true',
-                    help='Minimal test: no sequencing')
+    ap.add_argument(
+        "--minimal", action="store_true", help="Minimal test: no sequencing"
+    )
     args = ap.parse_args()
     check_isolation(minimal=args.minimal)

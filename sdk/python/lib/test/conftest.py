@@ -5,6 +5,7 @@ import pytest
 from pulumi import Config
 from pulumi.runtime.config import set_all_config
 
+
 @pytest.fixture
 def config_settings():
     stack_name = "test-config"
@@ -13,7 +14,7 @@ def config_settings():
         f"{stack_name}:int": "1",
         f"{stack_name}:bool": "False",
         f"{stack_name}:object": json.dumps({"banana": "sundae"}),
-        f"{stack_name}:float": "3.14159"
+        f"{stack_name}:float": "3.14159",
     }
 
 

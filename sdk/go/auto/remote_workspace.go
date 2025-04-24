@@ -104,27 +104,30 @@ func SelectRemoteStackGitSource(
 }
 
 func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalWorkspaceOption, error) {
+	remoteOpts := &remoteWorkspaceOptions{}
+	for _, o := range opts {
+		o.applyOption(remoteOpts)
+	}
+
+	if !remoteOpts.InheritSettings {
+		ifNotSet := " if RemoteInheritSettings(true) is not set"
+		if repo.URL == "" {
+			return nil, errors.New("repo.URL is required" + ifNotSet)
+		}
+		if repo.Branch == "" && repo.CommitHash == "" {
+			return nil, errors.New("either repo.Branch or repo.CommitHash is required" + ifNotSet)
+		}
+	}
 	if repo.Setup != nil {
 		return nil, errors.New("repo.Setup cannot be used with remote workspaces")
 	}
-	if repo.URL == "" {
-		return nil, errors.New("repo.URL is required")
-	}
 	if repo.Branch != "" && repo.CommitHash != "" {
 		return nil, errors.New("repo.Branch and repo.CommitHash cannot both be specified")
-	}
-	if repo.Branch == "" && repo.CommitHash == "" {
-		return nil, errors.New("either repo.Branch or repo.CommitHash is required")
 	}
 	if repo.Auth != nil {
 		if repo.Auth.SSHPrivateKey != "" && repo.Auth.SSHPrivateKeyPath != "" {
 			return nil, errors.New("repo.Auth.SSHPrivateKey and repo.Auth.SSHPrivateKeyPath cannot both be specified")
 		}
-	}
-
-	remoteOpts := &remoteWorkspaceOptions{}
-	for _, o := range opts {
-		o.applyOption(remoteOpts)
 	}
 
 	for k, v := range remoteOpts.EnvVars {
@@ -142,17 +145,36 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 		}
 	}
 
+	if remoteOpts.ExecutorImage != nil {
+		if remoteOpts.ExecutorImage.Image == "" {
+			return nil, errors.New("executorImage.Image cannot be empty")
+		}
+		if remoteOpts.ExecutorImage.Credentials != nil {
+			if remoteOpts.ExecutorImage.Credentials.Username == "" {
+				return nil, errors.New("executorImage.Credentials.Username cannot be empty")
+			}
+			if remoteOpts.ExecutorImage.Credentials.Password == "" {
+				return nil, errors.New("executorImage.Credentials.Password cannot be empty")
+			}
+		}
+	}
+
 	localOpts := []LocalWorkspaceOption{
 		remote(true),
+		remoteInheritSettings(remoteOpts.InheritSettings),
 		remoteEnvVars(remoteOpts.EnvVars),
 		preRunCommands(remoteOpts.PreRunCommands...),
 		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
 		Repo(repo),
+		remoteExecutorImage(remoteOpts.ExecutorImage),
+		remoteAgentPoolID(remoteOpts.AgentPoolID),
 	}
 	return localOpts, nil
 }
 
 type remoteWorkspaceOptions struct {
+	// InheritSettings sets whether to inherit deployment settings from the stack.
+	InheritSettings bool
 	// EnvVars is a map of environment values scoped to the workspace.
 	// These values will be passed to all Workspace and Stack level commands.
 	EnvVars map[string]EnvVarValue
@@ -160,9 +182,23 @@ type remoteWorkspaceOptions struct {
 	PreRunCommands []string
 	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
 	SkipInstallDependencies bool
+	// ExecutorImage is the image to use for the remote executor.
+	ExecutorImage *ExecutorImage
+	// AgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
+	AgentPoolID string
 }
 
-// LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
+type ExecutorImage struct {
+	Image       string
+	Credentials *DockerImageCredentials
+}
+
+type DockerImageCredentials struct {
+	Username string
+	Password string
+}
+
+// RemoteWorkspaceOption is used to customize and configure a RemoteWorkspace at initialization time.
 // See Workdir, Program, PulumiHome, Project, Stacks, and Repo for concrete options.
 type RemoteWorkspaceOption interface {
 	applyOption(*remoteWorkspaceOptions)
@@ -193,6 +229,28 @@ func RemotePreRunCommands(commands ...string) RemoteWorkspaceOption {
 func RemoteSkipInstallDependencies(skipInstallDependencies bool) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.SkipInstallDependencies = skipInstallDependencies
+	})
+}
+
+// RemoteInheritSettings sets whether to inherit deployment settings from the stack.
+func RemoteInheritSettings(inheritSettings bool) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.InheritSettings = inheritSettings
+	})
+}
+
+// RemoteExecutorImage sets the image to use for the remote executor.
+func RemoteExecutorImage(image *ExecutorImage) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.ExecutorImage = image
+	})
+}
+
+// RemoteExecutorImage sets the agent pool (also called deployment runner pool) to use for the
+// remote Pulumi operation.
+func RemoteAgentPoolID(agentPoolID string) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.AgentPoolID = agentPoolID
 	})
 }
 

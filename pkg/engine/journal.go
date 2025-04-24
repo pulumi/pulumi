@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -44,7 +45,9 @@ type JournalEntries []JournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
+	deletes := make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	refreshDeletes := make(map[resource.URN]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
 	for _, e := range entries {
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
@@ -74,12 +77,21 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				doneOps[e.Step.Old()] = true
 			}
+		case JournalEntryOutputs:
+			// We do nothing for outputs, since they don't affect the snapshot.
 		}
 
 		// Now mark resources done as necessary.
 		if e.Kind == JournalEntrySuccess {
 			switch e.Step.Op() {
-			case deploy.OpSame, deploy.OpUpdate:
+			case deploy.OpSame:
+				step, ok := e.Step.(*deploy.SameStep)
+				contract.Assertf(ok, "expected *deploy.SameStep, got %T", e.Step)
+				if !step.IsSkippedCreate() {
+					resources = append(resources, e.Step.New())
+					dones[e.Step.Old()] = true
+				}
+			case deploy.OpUpdate:
 				resources = append(resources, e.Step.New())
 				dones[e.Step.Old()] = true
 			case deploy.OpCreate, deploy.OpCreateReplacement:
@@ -89,6 +101,10 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				}
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
+					op := e.Step.Op()
+					if op == deploy.OpDelete || op == deploy.OpReadDiscard {
+						deletes[old] = true
+					}
 					dones[old] = true
 				}
 			case deploy.OpReplace:
@@ -102,8 +118,30 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				dones[e.Step.Old()] = true
 			case deploy.OpImport, deploy.OpImportReplacement:
 				resources = append(resources, e.Step.New())
-				dones[e.Step.New()] = true
+			case deploy.OpRefresh:
+				step, ok := e.Step.(*deploy.RefreshStep)
+				contract.Assertf(ok, "expected *deploy.RefreshStep, got %T", e.Step)
+				if step.Persisted() {
+					if e.Step.New() != nil {
+						resources = append(resources, e.Step.New())
+					} else {
+						refreshDeletes[e.Step.Old().URN] = true
+					}
+					dones[e.Step.Old()] = true
+				}
 			}
+		}
+	}
+
+	// Filter any resources that had an operation (like same or update) but then were deleted by a later
+	// operations. This can happen from program based destroy operations were we'll see an event come in to
+	// Same/Update/Create a resource and so add it to the `resources` list, but then later see a delete
+	// operation for that same resource. In that case, we want to filter out the resource from the list of
+	// resources before writing the actual snapshot.
+	filteredResources := []*resource.State{}
+	for _, res := range resources {
+		if !deletes[res] {
+			filteredResources = append(filteredResources, res)
 		}
 	}
 
@@ -112,10 +150,12 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	if base != nil {
 		for _, res := range base.Resources {
 			if !dones[res] {
-				resources = append(resources, res)
+				filteredResources = append(filteredResources, res)
 			}
 		}
 	}
+
+	FilterRefreshDeletes(refreshDeletes, filteredResources)
 
 	// Append any pending operations.
 	var operations []resource.Operation
@@ -136,16 +176,18 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		}
 	}
 
-	// If we have a base snapshot, copy over its secrets manager.
+	// If we have a base snapshot, copy over its secrets manager and metadata.
 	var secretsManager secrets.Manager
+	var metadata deploy.SnapshotMetadata
 	if base != nil {
 		secretsManager = base.SecretsManager
+		metadata = base.Metadata
 	}
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations)
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err
@@ -160,7 +202,7 @@ type Journal struct {
 	done    chan bool
 }
 
-func (j *Journal) Entries() []JournalEntry {
+func (j *Journal) Entries() JournalEntries {
 	<-j.done
 
 	return j.entries
@@ -230,4 +272,74 @@ func NewJournal() *Journal {
 		}
 	}()
 	return j
+}
+
+// FilterRefreshDeletes filters out any dependencies and parents from 'resources' that refer to a URN that has
+// been deleted by a refresh operation. This is pretty much the same as `rebuildBaseState` in the deployment
+// executor (see that function for a lot of details about why this is necessary). The main difference is that
+// this function does not mutate the state objects in place instead returning a new state object with the
+// appropriate fields filtered out, note that the slice containing the states is mutated.
+func FilterRefreshDeletes(
+	refreshDeletes map[resource.URN]bool,
+	resources []*resource.State,
+) {
+	availableParents := map[resource.URN]resource.URN{}
+
+	for i, res := range resources {
+		newDeps := []resource.URN{}
+		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+		newDeletedWith := resource.URN("")
+		newParent := resource.URN("")
+		filtered := false
+
+		_, allDeps := res.GetAllDependencies()
+		for _, dep := range allDeps {
+			switch dep.Type {
+			case resource.ResourceParent:
+				if !refreshDeletes[dep.URN] {
+					availableParents[res.URN] = dep.URN
+					newParent = dep.URN
+				} else {
+					// dep.URN might have be gone so look up _its_ parent
+					// Since existing must obey a topological sort, we have already addressed
+					// r.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
+					// exists, we set r.Parent as r.Parent.Parent.
+					newParent = availableParents[res.Parent]
+					availableParents[res.URN] = newParent
+					newParent = dep.URN
+					filtered = true
+				}
+			case resource.ResourceDependency:
+				if !refreshDeletes[dep.URN] {
+					newDeps = append(newDeps, dep.URN)
+				} else {
+					filtered = true
+				}
+			case resource.ResourcePropertyDependency:
+				if !refreshDeletes[dep.URN] {
+					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
+				} else {
+					filtered = true
+				}
+			case resource.ResourceDeletedWith:
+				if !refreshDeletes[dep.URN] {
+					newDeletedWith = dep.URN
+				} else {
+					filtered = true
+				}
+			}
+		}
+
+		if !filtered {
+			continue
+		}
+
+		// If we have filtered out any dependencies, we need to create a new state with the filtered dependencies.
+		newRes := res.Copy()
+		newRes.Dependencies = newDeps
+		newRes.PropertyDependencies = newPropDeps
+		newRes.DeletedWith = newDeletedWith
+		newRes.Parent = newParent
+		resources[i] = newRes
+	}
 }

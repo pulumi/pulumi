@@ -1,0 +1,18 @@
+decrypt:
+  my:outer: '{"inner":true}'
+paths:
+  my:outer:
+    value:
+      inner: true
+    string: '{"inner":true}'
+    redacted: '{"inner":true}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAU/4IRAAEFaW5uZXIEYm9vbAICAAE=
+    secure: false
+    isObject: true
+  my:outer.inner:
+    value: "true"
+    string: "true"
+    redacted: "true"
+    object: ERAABnN0cmluZwwGAAR0cnVl
+    secure: false
+    isObject: false

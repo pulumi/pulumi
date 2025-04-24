@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Invoke is the name of the PCL `invoke` intrinsic, which can be used to invoke provider functions.
 const Invoke = "invoke"
 
 func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) {
@@ -64,7 +65,7 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			}
 
 			// top-level annotation for the type itself
-			arg.Annotations = append(arg.Annotations, schemaType)
+			arg.Annotate(schemaType)
 			// now for each property, annotate it with the associated type from the schema
 			for propertyName, propertyType := range arg.Properties {
 				if associatedType, ok := schemaProperties[propertyName]; ok {
@@ -131,8 +132,8 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
-	var fn *schema.Function
-	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+	fn, tk, ok, err := pkgSchema.LookupFunction(token)
+	if err != nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -144,10 +145,9 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		}
 
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
-	} else {
-		fn = f
-		lit.Value = cty.StringVal(tk)
 	}
+
+	lit.Value = cty.StringVal(tk)
 
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
@@ -169,6 +169,18 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	return sig, nil
 }
 
+func invokeOptionsType() model.Type {
+	return model.NewObjectType(map[string]model.Type{
+		// using dynamic (any) types for expressions expecting a Resource type because
+		// we don't have a way to represent a Resource type in the PCL.
+		"provider":          model.NewOptionalType(model.DynamicType),
+		"parent":            model.NewOptionalType(model.DynamicType),
+		"version":           model.NewOptionalType(model.StringType),
+		"pluginDownloadUrl": model.NewOptionalType(model.StringType),
+		"dependsOn":         model.NewOptionalType(model.NewListType(model.DynamicType)),
+	})
+}
+
 func (b *binder) makeSignature(argsType, returnType model.Type) model.StaticFunctionSignature {
 	return model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
@@ -181,8 +193,8 @@ func (b *binder) makeSignature(argsType, returnType model.Type) model.StaticFunc
 				Type: argsType,
 			},
 			{
-				Name: "provider",
-				Type: model.NewOptionalType(model.StringType),
+				Name: "invokeOptions",
+				Type: model.NewOptionalType(invokeOptionsType()),
 			},
 		},
 		ReturnType: returnType,
@@ -205,13 +217,18 @@ func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (m
 // It decides to return `true` if doing so avoids the need to introduce an `apply` form to
 // accommodate `Output` args (`Promise` args do not count).
 func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
-	if !fn.NeedsOutputVersion() {
+	if fn.ReturnType == nil {
 		// No code emitted for an `fnOutput` form, impossible.
 		return false
 	}
 
 	if b.options.preferOutputVersionedInvokes {
 		return true
+	}
+
+	if fn.Inputs == nil || len(fn.Inputs.Properties) == 0 {
+		// use the output version when there are actual args to use
+		return false
 	}
 
 	outputFormParamType := b.schemaTypeToType(fn.Inputs.InputShape)
@@ -250,8 +267,13 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
-	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
+	// Given `fn.NeedsOutputVersion()==true` `fn.ReturnType != nil`.
+	var argsType model.Type
+	if fn.Inputs != nil {
+		argsType = b.schemaTypeToType(fn.Inputs.InputShape)
+	} else {
+		argsType = model.NewObjectType(map[string]model.Type{})
+	}
 	returnType := b.schemaTypeToType(fn.ReturnType)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }

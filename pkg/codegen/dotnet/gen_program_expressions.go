@@ -20,6 +20,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -39,7 +41,8 @@ func (g *generator) rewriteExpression(expr model.Expression, typ model.Type, rew
 	expr = pcl.RewritePropertyReferences(expr)
 	var diags hcl.Diagnostics
 	if rewriteApplies {
-		expr, diags = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
+		skipToJSONWhenRewritingApplies := true
+		expr, diags = pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncInit, skipToJSONWhenRewritingApplies)
 	}
 
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
@@ -194,7 +197,8 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 }
 
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
-	opstr, precedence := "", g.GetPrecedence(expr)
+	var opstr string
+	precedence := g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpAdd:
 		opstr = "+"
@@ -250,23 +254,53 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		}
 	}
 
-	if expr.Condition != nil {
-		g.Fgenf(w, ".Where(%s => %.v)", expr.ValueVariable.Name, expr.Condition)
-	}
-
-	g.Fgenf(w, ".Select(%s => \n", expr.ValueVariable.Name)
-	g.Fgenf(w, "%s{\n", g.Indent)
-	g.Indented(func() {
-		typeName := ""
-		switch expr.Value.(type) {
-		case *model.ObjectConsExpression:
-			// TODO: handle typed objects
-			typeName = "new Dictionary<string, object?> "
+	switch expr.Type().(type) {
+	case *model.ListType:
+		// the result of the expression is a list
+		if expr.Condition != nil {
+			g.Fgenf(w, ".Where(%s => %.v)", expr.ValueVariable.Name, expr.Condition)
 		}
-		g.Fgenf(w, "%sreturn %s %v;", g.Indent, typeName, expr.Value)
-	})
-	g.Fgen(w, "\n")
-	g.Fgenf(w, "%s})", g.Indent)
+
+		g.Fgenf(w, ".Select(%s => \n", expr.ValueVariable.Name)
+
+		g.Fgenf(w, "%s{\n", g.Indent)
+		g.Indented(func() {
+			g.Fgenf(w, "%sreturn %v;", g.Indent, expr.Value)
+		})
+		g.Fgen(w, "\n")
+		// .ToList() is added so that the expressions returns `List<T>
+		// which can be implicitly converted to InputList<T>
+		g.Fgenf(w, "%s}).ToList()", g.Indent)
+	case *model.MapType:
+		// the result of the expression is a dictionary
+		g.Fgen(w, ".ToDictionary(item => {\n")
+		g.Indented(func() {
+			if expr.KeyVariable != nil && pcl.VariableAccessed(expr.KeyVariable.Name, expr.Key) {
+				g.Fgenf(w, "%svar %s = item.Key;\n", g.Indent, expr.KeyVariable.Name)
+			}
+
+			if expr.ValueVariable != nil && pcl.VariableAccessed(expr.ValueVariable.Name, expr.Key) {
+				g.Fgenf(w, "%svar %s = item.Value;\n", g.Indent, expr.ValueVariable.Name)
+			}
+
+			g.Fgenf(w, "%sreturn %s;\n", g.Indent, expr.Key)
+		})
+
+		g.Fgenf(w, "%s}, item => {\n", g.Indent)
+		g.Indented(func() {
+			if expr.KeyVariable != nil && pcl.VariableAccessed(expr.KeyVariable.Name, expr.Value) {
+				g.Fgenf(w, "%svar %s = item.Key;\n", g.Indent, expr.KeyVariable.Name)
+			}
+
+			if expr.ValueVariable != nil && pcl.VariableAccessed(expr.ValueVariable.Name, expr.Value) {
+				g.Fgenf(w, "%svar %s = item.Value;\n", g.Indent, expr.ValueVariable.Name)
+			}
+
+			g.Fgenf(w, "%sreturn %v;\n", g.Indent, expr.Value)
+		})
+
+		g.Fgenf(w, "%s})", g.Indent)
+	}
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
@@ -337,6 +371,12 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 func enumName(enum *model.EnumType) (string, string) {
 	components := strings.Split(enum.Token, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	modParts := strings.Split(components[1], "/")
+	// if the token has the format {pkg}:{mod}/{name}:{Name}
+	// then we simplify into {pkg}:{mod}:{Name}
+	if len(modParts) == 2 && strings.EqualFold(modParts[1], components[2]) {
+		components[1] = modParts[0]
+	}
 	enumName := tokenToName(enum.Token)
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
@@ -345,7 +385,12 @@ func enumName(enum *model.EnumType) (string, string) {
 	et := e.(*schema.EnumType)
 	def, err := et.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", et.PackageReference.Name())
-	namespaceMap := def.Language["csharp"].(CSharpPackageInfo).Namespaces
+	var namespaceMap map[string]string
+	pkgInfo, ok := def.Language["csharp"].(CSharpPackageInfo)
+	if ok {
+		namespaceMap = pkgInfo.Namespaces
+	}
+
 	namespace := namespaceName(namespaceMap, components[0])
 	if components[1] != "" && components[1] != "index" {
 		namespace += "." + namespaceName(namespaceMap, components[1])
@@ -367,20 +412,22 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 			g.Fgenf(w, "%.v", from)
 			return
 		}
-		var convertFn string
-		switch {
-		case to.Type.Equals(model.StringType):
-			convertFn = fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
-		default:
+
+		convertFn := func() string {
+			if to.Type.Equals(model.StringType) {
+				return fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
+			}
+
 			panic(fmt.Sprintf(
 				"Unsafe enum conversions from type %s not implemented yet: %s => %s",
 				from.Type(), from, to))
 		}
+
 		if isOutput {
-			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
+			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn())
 		} else {
 			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
-				g.Fgenf(w, "%s(%v)", convertFn, from)
+				g.Fgenf(w, "%s(%v)", convertFn(), from)
 			})
 			if diag != nil {
 				g.diagnostics = append(g.diagnostics, diag)
@@ -486,6 +533,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}
 			}
 
+			if len(funcExpr.Args) == 3 {
+				if invokeOptions, ok := funcExpr.Args[2].(*model.ObjectConsExpression); ok {
+					g.Fgen(w, ", new() {\n")
+					g.Indented(func() {
+						for _, item := range invokeOptions.Items {
+							key := pcl.LiteralValueString(item.Key)
+							switch key {
+							case "pluginDownloadUrl":
+								// in .NET SDK the field is PluginDownloadURL so we have to special-case it
+								g.Fgenf(w, "%sPluginDownloadURL = %v,\n", g.Indent, item.Value)
+							default:
+								g.Fgenf(w, "%s%s = %v,\n", g.Indent, Title(key), item.Value)
+							}
+						}
+					})
+					g.Fgenf(w, "%s}", g.Indent)
+				}
+			}
+
 			g.Fprint(w, ")")
 		} else {
 			g.Fgenf(w, "Output.Create(%.v)", expr.Args[0])
@@ -561,6 +627,24 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 		}
 
+		if len(expr.Args) == 3 {
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+				g.Fgen(w, ", new() {\n")
+				g.Indented(func() {
+					for _, item := range invokeOptions.Items {
+						key := pcl.LiteralValueString(item.Key)
+						switch key {
+						case "pluginDownloadUrl":
+							// in .NET SDK the field is PluginDownloadURL so we have to special-case it
+							g.Fgenf(w, "%sPluginDownloadURL = %v,\n", g.Indent, item.Value)
+						default:
+							g.Fgenf(w, "%s%s = %v,\n", g.Indent, Title(key), item.Value)
+						}
+					}
+				})
+				g.Fgenf(w, "%s}", g.Indent)
+			}
+		}
 		g.Fprint(w, ")")
 	case "join":
 		g.Fgenf(w, "string.Join(%v, %v)", expr.Args[0], expr.Args[1])
@@ -588,9 +672,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(%v))", expr.Args[0])
 	case "toJSON":
-		g.Fgen(w, "JsonSerializer.Serialize(")
-		g.genDictionaryOrTuple(w, expr.Args[0])
-		g.Fgen(w, ")")
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgen(w, "Output.JsonSerialize(Output.Create(")
+			g.genDictionaryOrTuple(w, expr.Args[0])
+			g.Fgen(w, "))")
+		} else {
+			g.Fgen(w, "JsonSerializer.Serialize(")
+			g.genDictionaryOrTuple(w, expr.Args[0])
+			g.Fgen(w, ")")
+		}
 	case "sha1":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ComputeSHA1(%v)", expr.Args[0])
@@ -598,8 +688,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "Deployment.Instance.StackName")
 	case "project":
 		g.Fgen(w, "Deployment.Instance.ProjectName")
+	case "organization":
+		g.Fgen(w, "Deployment.Instance.OrganizationName")
 	case "cwd":
 		g.Fgenf(w, "Directory.GetCurrentDirectory()")
+	case "rootDirectory":
+		g.genRootDirectory(w)
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -610,7 +704,12 @@ func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 	case *model.ObjectConsExpression:
 		g.genDictionary(w, expr, "object?")
 	case *model.TupleConsExpression:
-		g.Fgen(w, "new[]\n")
+		if g.isListOfDifferentTypes(expr) {
+			g.Fgen(w, "new object?[]\n")
+		} else {
+			g.Fgen(w, "new[]\n")
+		}
+
 		g.Fgenf(w, "%[1]s{\n", g.Indent)
 		g.Indented(func() {
 			for _, v := range expr.Expressions {
@@ -623,6 +722,10 @@ func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 	default:
 		g.Fgenf(w, "%.v", expr)
 	}
+}
+
+func (g *generator) genRootDirectory(w io.Writer) {
+	g.Fgenf(w, "Pulumi.Deployment.Instance.RootDirectory")
 }
 
 func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression, valueType string) {
@@ -638,6 +741,35 @@ func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression,
 	g.Fgenf(w, "%s}", g.Indent)
 }
 
+func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool {
+	var prevType model.Type
+	for _, v := range expr.Expressions {
+		if prevType == nil {
+			prevType = v.Type()
+			continue
+		}
+
+		_, isObjectType := prevType.(*model.ObjectType)
+		_, isMap := prevType.(*model.MapType)
+
+		if isObjectType || isMap {
+			// don't actually compare object types or maps because these are always
+			// mapped to Dictionary<string, object?> in C# so they will be the same type
+			// even if their contents are different
+			continue
+		}
+
+		conversionFrom := prevType.ConversionFrom(v.Type())
+		conversionTo := v.Type().ConversionFrom(prevType)
+
+		if conversionTo != model.SafeConversion || conversionFrom != model.SafeConversion {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
 	g.Fgenf(w, "%.20v[%.v]", expr.Collection, expr.Key)
 }
@@ -645,6 +777,12 @@ func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression)
 func (g *generator) escapeString(v string, verbatim, expressions bool) string {
 	builder := strings.Builder{}
 	for _, c := range v {
+		if c == '\x00' {
+			// escape NUL bytes
+			builder.WriteString("\u0000")
+			continue
+		}
+
 		if verbatim {
 			if c == '"' {
 				builder.WriteRune('"')
@@ -711,14 +849,12 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
 	switch argType := expr.Type().(type) {
 	case *model.ObjectType:
-		if len(argType.Annotations) > 0 {
-			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
-				fullTypeName := fmt.Sprintf("Components.%sArgs.%s",
-					configMetadata.ComponentName,
-					configMetadata.TypeName)
-				g.genObjectConsExpressionWithTypeName(w, expr, fullTypeName, false, nil)
-				return
-			}
+		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](argType); ok {
+			fullTypeName := fmt.Sprintf("Components.%sArgs.%s",
+				configMetadata.ComponentName,
+				configMetadata.TypeName)
+			g.genObjectConsExpressionWithTypeName(w, expr, fullTypeName, false, nil)
+			return
 		}
 	}
 	g.genObjectConsExpression(w, expr, expr.Type())
@@ -728,6 +864,13 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	if len(expr.Items) == 0 {
 		g.Fgenf(w, "null")
 		return
+	}
+
+	if schemaType, ok := g.toSchemaType(destType); ok {
+		if codegen.ResolvedType(schemaType) == schema.AnyType {
+			g.genDictionaryOrTuple(w, expr)
+			return
+		}
 	}
 
 	destTypeName := g.argumentTypeName(expr, destType)
@@ -770,6 +913,39 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 	return propertyName(property)
 }
 
+func unwrapIntrinsicConvert(expr model.Expression) model.Expression {
+	if call, ok := expr.(*model.FunctionCallExpression); ok && call.Name == pcl.IntrinsicConvert {
+		return call.Args[0]
+	}
+
+	return expr
+}
+
+func isEmptyList(expr model.Expression) bool {
+	expr = unwrapIntrinsicConvert(expr)
+	if list, ok := expr.(*model.TupleConsExpression); ok {
+		return len(list.Expressions) == 0
+	}
+
+	return false
+}
+
+func objectKey(item model.ObjectConsItem) string {
+	switch key := item.Key.(type) {
+	case *model.LiteralValueExpression:
+		return key.Value.AsString()
+	case *model.TemplateExpression:
+		// assume a template expression has one constant part that is a LiteralValueExpression
+		if len(key.Parts) == 1 {
+			if literal, ok := key.Parts[0].(*model.LiteralValueExpression); ok {
+				return literal.Value.AsString()
+			}
+		}
+	}
+
+	return ""
+}
+
 func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
@@ -799,10 +975,13 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		g.Indented(func() {
 			for _, item := range expr.Items {
 				g.Fgenf(w, "%s", g.Indent)
-				lit := item.Key.(*model.LiteralValueExpression)
-				propertyKey := lit.Value.AsString()
+				propertyKey := objectKey(item)
 				g.Fprint(w, resolvePropertyName(propertyKey, propertyNames))
-				g.Fgenf(w, " = %.v,\n", item.Value)
+				if g.usingDefaultListInitializer() && isEmptyList(item.Value) {
+					g.Fgen(w, " = new() { },\n")
+				} else {
+					g.Fgenf(w, " = %.v,\n", item.Value)
+				}
 			}
 		})
 		g.Fgenf(w, "%s}", g.Indent)
@@ -878,7 +1057,27 @@ func (g *generator) withinFunctionInvoke(run func()) {
 	}
 }
 
+func (g *generator) isDeferredOutputVariable(expr *model.ScopeTraversalExpression) bool {
+	if len(expr.Parts) != 1 {
+		return false
+	}
+
+	for _, output := range g.deferredOutputVariables {
+		if output.Name == expr.RootName {
+			_, isOutput := expr.Type().(*model.OutputType)
+			return isOutput
+		}
+	}
+
+	return false
+}
+
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	if g.isDeferredOutputVariable(expr) {
+		g.Fgenf(w, "%s.Output", expr.RootName)
+		return
+	}
+
 	rootName := makeValidIdentifier(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
@@ -888,7 +1087,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		if _, isConfig := configVars[expr.RootName]; isConfig {
 			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
-				rootName = fmt.Sprintf("args.%s", Title(expr.RootName))
+				rootName = "args." + Title(expr.RootName)
 			}
 		}
 	}
@@ -911,7 +1110,6 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		// Assume invokes are returning Output<T> instead of Task<T>
 		g.Fgenf(w, ".Apply(%s => %s", lambdaArg, lambdaArg)
-
 	}
 
 	var objType *schema.ObjectType
@@ -979,7 +1177,7 @@ func removeDuplicates(inputs []string) []string {
 	return distinctInputs
 }
 
-func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool {
+func (g *generator) isListOfDifferentObjectTypes(expr *model.TupleConsExpression) bool {
 	switch expr.Type().(type) {
 	case *model.TupleType:
 		tupleType := expr.Type().(*model.TupleType)
@@ -1002,14 +1200,14 @@ func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool
 func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) {
 	switch len(expr.Expressions) {
 	case 0:
-		g.Fgen(w, "new[] {}")
+		g.Fgenf(w, "%s {}", g.listInitializer)
 	default:
-		if !g.isListOfDifferentTypes(expr) {
-			// only generate this when we don't have a list of union types
-			// list of a union is mapped to InputList<object>
+		if !g.isListOfDifferentObjectTypes(expr) {
+			// only generate a list initializer when we don't have a list of union types
+			// because list of a union is mapped to InputList<object>
 			// which means new[] will not work because type-inference won't
-			// know the type of the array before hand
-			g.Fgen(w, "new[]")
+			// know the type of the array beforehand
+			g.Fgenf(w, "%s", g.listInitializer)
 		}
 
 		g.Fgenf(w, "\n%s{", g.Indent)

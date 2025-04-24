@@ -17,17 +17,24 @@
 package ints
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
@@ -36,34 +43,6 @@ func TestEmptyGo(t *testing.T) {
 		},
 		Quick: true,
 	})
-}
-
-// Tests that stack references work in Go.
-func TestStackReferenceGo(t *testing.T) {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	opts := &integration.ProgramTestOptions{
-		RequireService: true,
-
-		Dir: filepath.Join("stack_reference", "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Quick: true,
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      "step1",
-				Additive: true,
-			},
-			{
-				Dir:      "step2",
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
 }
 
 // Test remote component construction in Go.
@@ -99,6 +78,7 @@ func TestConstructGo(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
@@ -111,6 +91,8 @@ func TestConstructGo(t *testing.T) {
 }
 
 // Test remote component construction in Go.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestNestedConstructGo(t *testing.T) {
 	testDir := "construct_component"
 	runComponentSetup(t, testDir)
@@ -122,7 +104,9 @@ func TestNestedConstructGo(t *testing.T) {
 	integration.ProgramTest(t, optsForConstructGo(t, "construct_nested_component", 18, localProviders))
 }
 
-func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+func optsForConstructGo(
+	t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join(dir, "go"),
@@ -148,7 +132,7 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
-					urns[string(res.URN.Name())] = res.URN
+					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
 					case "child-a":
 						for _, deps := range res.PropertyDependencies {
@@ -171,4 +155,46 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 			}
 		},
 	}
+}
+
+//nolint:paralleltest // Mutates environment variables.
+func TestConstructComponentConfigureProviderGo(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows")
+	}
+
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
+	componentSDK := filepath.Join(pulumiRoot, "tests/testdata/codegen/methods-return-plain-resource/go")
+	sdkPkg := "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go"
+
+	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
+	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "go")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
+	err = cmd.Run()
+	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
+		" test has generated the Go SDK:\n%s\n%s\n",
+		stdout.String(), stderr.String())
+
+	opts := testConstructComponentConfigureProviderCommonOptions()
+	opts = opts.With(integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3=" + pulumiGoSDK,
+			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
+		},
+		NoParallel: true,
+	})
+	integration.ProgramTest(t, &opts)
 }

@@ -1,0 +1,18 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=daa21203-af23-426e-a036-021a3d779360]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=created-id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+<{%reset%}><{%reset%}>    <{%fg 2%}>= pkgA:m:typA: (import)
+<{%reset%}>        [id=actual-id]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%reset%}>        foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 2%}>= 1 imported<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>. 1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

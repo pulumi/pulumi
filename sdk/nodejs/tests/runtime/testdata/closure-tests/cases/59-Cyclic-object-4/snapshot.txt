@@ -1,0 +1,20 @@
+exports.handler = __f0;
+
+var __obj2 = [];
+var __obj2_0 = {};
+var __obj2_0_a = [];
+__obj2_0_a[0] = __obj2_0;
+__obj2_0.a = __obj2_0_a;
+__obj2_0.b = __obj2_0_a;
+__obj2[0] = __obj2_0;
+__obj2[1] = __obj2_0;
+
+function __f0() {
+  return (function() {
+    with({ obj2: __obj2, this: undefined, arguments: undefined }) {
+
+return () => obj2;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

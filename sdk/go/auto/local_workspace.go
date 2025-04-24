@@ -19,14 +19,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -49,17 +52,18 @@ type LocalWorkspace struct {
 	program                       pulumi.RunFunc
 	envvars                       map[string]string
 	secretsProvider               string
-	pulumiVersion                 semver.Version
 	repo                          *GitRepo
 	remote                        bool
 	remoteEnvVars                 map[string]EnvVarValue
 	preRunCommands                []string
 	remoteSkipInstallDependencies bool
+	remoteInheritSettings         bool
+	pulumiCommand                 PulumiCommand
+	remoteExecutorImage           *ExecutorImage
+	remoteAgentPoolID             string
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
-
-var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
 
 // ProjectSettings returns the settings object for the current project if any
 // LocalWorkspace reads settings from the Pulumi.yaml in the workspace.
@@ -131,6 +135,57 @@ func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, stackName stri
 	return nil
 }
 
+// AddEnvironments adds environments to the end of a stack's import list. Imported environments are merged in order
+// per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+// environment.
+func (l *LocalWorkspace) AddEnvironments(ctx context.Context, stackName string, envs ...string) error {
+	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
+		return errors.New("AddEnvironments requires Pulumi CLI version >= 3.95.0")
+	}
+	args := []string{"config", "env", "add"}
+	args = append(args, envs...)
+	args = append(args, "--yes", "--stack", stackName)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to add environments: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
+// ListEnvironments returns the list of environments from the provided stack's configuration.
+func (l *LocalWorkspace) ListEnvironments(ctx context.Context, stackName string) ([]string, error) {
+	// 3.99 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.99.0)
+	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 99}) {
+		return nil, errors.New("ListEnvironments requires Pulumi CLI version >= 3.99.0")
+	}
+	args := []string{"config", "env", "ls", "--stack", stackName, "--json"}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return nil, newAutoError(fmt.Errorf("unable to list environments: %w", err), stdout, stderr, errCode)
+	}
+	var envs []string
+	err = json.Unmarshal([]byte(stdout), &envs)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal environments: %w", err)
+	}
+	return envs, nil
+}
+
+// RemoveEnvironment removes an environment from a stack's configuration.
+func (l *LocalWorkspace) RemoveEnvironment(ctx context.Context, stackName string, env string) error {
+	// 3.95 added this command (https://github.com/pulumi/pulumi/releases/tag/v3.95.0)
+	if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 95}) {
+		return errors.New("RemoveEnvironments requires Pulumi CLI version >= 3.95.0")
+	}
+	args := []string{"config", "env", "rm", env, "--yes", "--stack", stackName}
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to remove environment: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 // GetConfig returns the value associated with the specified stack name and key,
 // scoped to the current workspace. LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetConfig(ctx context.Context, stackName string, key string) (ConfigValue, error) {
@@ -149,6 +204,9 @@ func (l *LocalWorkspace) GetConfigWithOptions(
 		if opts.Path {
 			args = append(args, "--path")
 		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
 	}
 	args = append(args, key, "--json", "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -165,8 +223,27 @@ func (l *LocalWorkspace) GetConfigWithOptions(
 // GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 // LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (ConfigMap, error) {
+	return l.GetAllConfigWithOptions(ctx, stackName, &GetAllConfigOptions{ShowSecrets: true})
+}
+
+// GetAllConfigWithOptions returns the config map for the specified stack name
+// using the optional GetAllConfigOptions, scoped to the current workspace.
+// LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
+func (l *LocalWorkspace) GetAllConfigWithOptions(
+	ctx context.Context, stackName string, opts *GetAllConfigOptions,
+) (ConfigMap, error) {
 	var val ConfigMap
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json", "--stack", stackName)
+	args := []string{"config"}
+	if opts != nil {
+		if opts.ShowSecrets {
+			args = append(args, "--show-secrets")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
+	}
+	args = append(args, "--json", "--stack", stackName)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return val, newAutoError(fmt.Errorf("unable to read config: %w", err), stdout, stderr, errCode)
 	}
@@ -192,6 +269,9 @@ func (l *LocalWorkspace) SetConfigWithOptions(
 	if opts != nil {
 		if opts.Path {
 			args = append(args, "--path")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
 		}
 	}
 	secretArg := "--plaintext"
@@ -223,6 +303,9 @@ func (l *LocalWorkspace) SetAllConfigWithOptions(
 	if opts != nil {
 		if opts.Path {
 			args = append(args, "--path")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
 		}
 	}
 	for k, v := range config {
@@ -256,6 +339,9 @@ func (l *LocalWorkspace) RemoveConfigWithOptions(
 		if opts.Path {
 			args = append(args, "--path")
 		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
+		}
 	}
 	args = append(args, key, "--stack", stackName)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
@@ -281,6 +367,9 @@ func (l *LocalWorkspace) RemoveAllConfigWithOptions(
 	if opts != nil {
 		if opts.Path {
 			args = append(args, "--path")
+		}
+		if opts.ConfigFile != "" {
+			args = append(args, "--config-file", opts.ConfigFile)
 		}
 	}
 	args = append(args, keys...)
@@ -400,6 +489,11 @@ func (l *LocalWorkspace) WorkDir() string {
 	return l.workDir
 }
 
+// PulumiCommand returns the PulumiCommand instance that is used to execute commands.
+func (l *LocalWorkspace) PulumiCommand() PulumiCommand {
+	return l.pulumiCommand
+}
+
 // PulumiHome returns the directory override for CLI metadata if set.
 // This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 func (l *LocalWorkspace) PulumiHome() string {
@@ -408,7 +502,7 @@ func (l *LocalWorkspace) PulumiHome() string {
 
 // PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
 func (l *LocalWorkspace) PulumiVersion() string {
-	return l.pulumiVersion.String()
+	return l.pulumiCommand.Version().String()
 }
 
 // WhoAmI returns the currently authenticated user
@@ -424,7 +518,7 @@ func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 // logged-in Pulumi identity.
 func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error) {
 	// 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
-	if l.pulumiVersion.GTE(semver.Version{Major: 3, Minor: 58}) {
+	if l.pulumiCommand.Version().GTE(semver.Version{Major: 3, Minor: 58}) {
 		var whoAmIDetailedInfo WhoAmIResult
 		stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami", "--json")
 		if err != nil {
@@ -458,6 +552,26 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 		}
 	}
 	return nil, nil
+}
+
+// ChangeStackSecretsProvider edits the secrets provider for the given stack.
+func (l *LocalWorkspace) ChangeStackSecretsProvider(
+	ctx context.Context, stackName, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
+) error {
+	args := []string{"stack", "change-secrets-provider", "--stack", stackName, newSecretsProvider}
+
+	var reader io.Reader
+	if newSecretsProvider == "passphrase" {
+		if opts == nil || opts.NewPassphrase == nil {
+			return errors.New("new passphrase must be provided")
+		}
+		reader = strings.NewReader(*opts.NewPassphrase)
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, reader, nil, nil, args...)
+	if err != nil {
+		return newAutoError(fmt.Errorf("failed to change secrets provider: %w", err), stdout, stderr, errCode)
+	}
+	return nil
 }
 
 // CreateStack creates and sets a new stack with the stack name, failing if one already exists.
@@ -517,15 +631,26 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 
 // ListStacks returns all Stacks created under the current Project.
 // This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.<stack>.yaml files).
-func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error) {
+func (l *LocalWorkspace) ListStacks(ctx context.Context, opts ...optlist.Option) ([]StackSummary, error) {
 	var stacks []StackSummary
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
+	args := []string{"stack", "ls", "--json"}
+
+	optListOpts := &optlist.Options{}
+	for _, o := range opts {
+		o.ApplyOption(optListOpts)
+	}
+
+	if optListOpts.All {
+		args = append(args, "--all")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal config value: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal list stacks value: %w", err)
 	}
 	return stacks, nil
 }
@@ -679,34 +804,44 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 	return res, nil
 }
 
-func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (string, error) {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
+func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) error {
+	stdoutWriters := []io.Writer{}
+	if opts != nil && opts.Stdout != nil {
+		stdoutWriters = append(stdoutWriters, opts.Stdout)
+	}
+	stderrWriters := []io.Writer{}
+	if opts != nil && opts.Stderr != nil {
+		stderrWriters = append(stderrWriters, opts.Stderr)
+	}
+	args := []string{"install"}
+	if opts != nil && opts.UseLanguageVersionTools {
+		// Pulumi 3.130.0 introduced the `--use-language-version-tools` flag.
+		if l.pulumiCommand.Version().LT(semver.Version{Major: 3, Minor: 130}) {
+			return errors.New("UseLanguageVersionTools requires Pulumi CLI version >= 3.130.0")
+		}
+		args = append(args, "--use-language-version-tools")
+	}
+	if opts != nil && opts.NoPlugins {
+		args = append(args, "--no-plugins")
+	}
+	if opts != nil && opts.NoDependencies {
+		args = append(args, "--no-dependencies")
+	}
+	if opts != nil && opts.Reinstall {
+		args = append(args, "--reinstall")
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
 	if err != nil {
-		return "", newAutoError(fmt.Errorf("could not determine pulumi version: %w", err), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
 	}
-	return stdout, nil
+	return nil
 }
 
-//nolint:lll
-func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion string, optOut bool) (semver.Version, error) {
-	version, err := semver.ParseTolerant(currentVersion)
-	if err != nil && !optOut {
-		return semver.Version{}, fmt.Errorf("Unable to parse Pulumi CLI version (skip with %s=true): %w", skipVersionCheckVar, err)
-	}
-	if optOut {
-		return version, nil
-	}
-	if minVersion.Major < version.Major {
-		return semver.Version{}, fmt.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
-	}
-	if minVersion.GT(version) {
-		return semver.Version{}, fmt.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
-	}
-	return version, nil
-}
-
-func (l *LocalWorkspace) runPulumiCmdSync(
+func (l *LocalWorkspace) runPulumiInputCmdSync(
 	ctx context.Context,
+	stdin io.Reader,
+	additionalOutputs []io.Writer,
+	additionalErrorOutputs []io.Writer,
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
@@ -720,13 +855,21 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 			env = append(env, strings.Join(e, "="))
 		}
 	}
-	return runPulumiCommandSync(ctx,
+	return l.PulumiCommand().Run(ctx,
 		l.WorkDir(),
-		nil, /* additionalOutputs */
-		nil, /* additionalErrorOutputs */
+		stdin,
+		additionalOutputs,
+		additionalErrorOutputs,
 		env,
 		args...,
 	)
+}
+
+func (l *LocalWorkspace) runPulumiCmdSync(
+	ctx context.Context,
+	args ...string,
+) (string, string, int, error) {
+	return l.runPulumiInputCmdSync(ctx, nil, nil, nil, args...)
 }
 
 // supportsPulumiCmdFlag runs a command with `--help` to see if the specified flag is found within the resulting
@@ -738,7 +881,7 @@ func (l *LocalWorkspace) supportsPulumiCmdFlag(ctx context.Context, flag string,
 	}
 
 	// Run the command with `--help`, and then we'll look for the flag in the output.
-	stdout, _, _, err := runPulumiCommandSync(ctx, l.WorkDir(), nil, nil, env, append(args, "--help")...)
+	stdout, _, _, err := l.PulumiCommand().Run(ctx, l.WorkDir(), nil, nil, nil, env, append(args, "--help")...)
 	if err != nil {
 		return false, err
 	}
@@ -782,6 +925,22 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		workDir = projDir
 	}
 
+	optOut := env.SkipVersionCheck.Value()
+	if val, ok := lwOpts.EnvVars[env.SkipVersionCheck.Var().Name()]; ok {
+		optOut = optOut || cmdutil.IsTruthy(val)
+	}
+
+	var pulumiCommand PulumiCommand
+	if lwOpts.PulumiCommand != nil {
+		pulumiCommand = lwOpts.PulumiCommand
+	} else {
+		p, err := NewPulumiCommand(&PulumiCommandOptions{SkipVersionCheck: optOut})
+		if err != nil {
+			return nil, err
+		}
+		pulumiCommand = p
+	}
+
 	var program pulumi.RunFunc
 	if lwOpts.Program != nil {
 		program = lwOpts.Program
@@ -795,20 +954,11 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remote:                        lwOpts.Remote,
 		remoteEnvVars:                 lwOpts.RemoteEnvVars,
 		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
+		remoteExecutorImage:           lwOpts.RemoteExecutorImage,
+		remoteAgentPoolID:             lwOpts.RemoteAgentPoolID,
+		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
 		repo:                          lwOpts.Repo,
-	}
-
-	// optOut indicates we should skip the version check.
-	optOut := cmdutil.IsTruthy(os.Getenv(skipVersionCheckVar))
-	if val, ok := lwOpts.EnvVars[skipVersionCheckVar]; ok {
-		optOut = optOut || cmdutil.IsTruthy(val)
-	}
-	currentVersion, err := l.getPulumiVersion(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if l.pulumiVersion, err = parseAndValidatePulumiVersion(minimumVersion, currentVersion, optOut); err != nil {
-		return nil, err
+		pulumiCommand:                 pulumiCommand,
 	}
 
 	// If remote was specified, ensure the CLI supports it.
@@ -878,6 +1028,10 @@ type localWorkspaceOptions struct {
 	// PulumiHome overrides the metadata directory for pulumi commands.
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	PulumiHome string
+	// PulumiCommand is the PulumiCommand instance to use. If none is
+	// supplied, the workspace will create an instance using the PulumiCommand
+	// CLI found in $PATH.
+	PulumiCommand PulumiCommand
 	// Project is the project settings for the workspace.
 	Project *workspace.Project
 	// Stacks is a map of [stackName -> stack settings objects] to seed the workspace.
@@ -897,6 +1051,12 @@ type localWorkspaceOptions struct {
 	PreRunCommands []string
 	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
 	RemoteSkipInstallDependencies bool
+	// RemoteExecutorImage is the image to use for the remote Pulumi operation.
+	RemoteExecutorImage *ExecutorImage
+	// RemoteAgentPoolID is the agent pool (also called deployment runner pool) to use for the remote Pulumi operation.
+	RemoteAgentPoolID string
+	// RemoteInheritSettings sets whether to inherit settings from the remote workspace.
+	RemoteInheritSettings bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -926,6 +1086,8 @@ type GitRepo struct {
 	Setup SetupFn
 	// GitAuth is the different Authentication options for the Git repository
 	Auth *GitAuth
+	// Shallow disables fetching the repo's entire history.
+	Shallow bool
 }
 
 // GitAuth is the authentication details that can be specified for a private Git repo.
@@ -976,6 +1138,15 @@ func Program(program pulumi.RunFunc) LocalWorkspaceOption {
 func PulumiHome(dir string) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.PulumiHome = dir
+	})
+}
+
+// PulumiCommand is the PulumiCommand instance to use. If none is
+// supplied, the workspace will create an instance using the PulumiCommand
+// CLI found in $PATH.
+func Pulumi(pulumi PulumiCommand) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.PulumiCommand = pulumi
 	})
 }
 
@@ -1042,6 +1213,24 @@ func preRunCommands(commands ...string) LocalWorkspaceOption {
 func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.RemoteSkipInstallDependencies = skipInstallDependencies
+	})
+}
+
+func remoteExecutorImage(image *ExecutorImage) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteExecutorImage = image
+	})
+}
+
+func remoteAgentPoolID(agentPoolID string) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteAgentPoolID = agentPoolID
+	})
+}
+
+func remoteInheritSettings(inheritSettings bool) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteInheritSettings = inheritSettings
 	})
 }
 
@@ -1277,7 +1466,7 @@ const pulumiHomeEnv = "PULUMI_HOME"
 
 func readProjectSettingsFromDir(ctx context.Context, workDir string) (*workspace.Project, error) {
 	for _, ext := range settingsExtensions {
-		projectPath := filepath.Join(workDir, fmt.Sprintf("Pulumi%s", ext))
+		projectPath := filepath.Join(workDir, "Pulumi"+ext)
 		if _, err := os.Stat(projectPath); err == nil {
 			proj, err := workspace.LoadProject(projectPath)
 			if err != nil {

@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -36,5 +37,15 @@ type DecryptError struct {
 }
 
 func (d DecryptError) Error() string {
-	return fmt.Sprintf("failed to decrypt configuration key '%s': %s", d.Key, d.Err.Error())
+	return fmt.Sprintf("failed to decrypt configuration key '%s': %s", d.Key, d.Err)
+}
+
+// Returns a tuple in which the second element is true if and only if any error
+// in the given error's tree is a DecryptError. In that case, the first element
+// will be the first DecryptError in the tree. In the event that there is no such
+// DecryptError, the first element will be nil.
+func AsDecryptError(err error) (*DecryptError, bool) {
+	var de *DecryptError
+	ok := errors.As(err, &de)
+	return de, ok
 }

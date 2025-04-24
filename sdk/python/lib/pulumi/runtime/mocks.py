@@ -15,21 +15,26 @@
 """
 Mocks for testing.
 """
+
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from google.protobuf import empty_pb2
 
 from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
 from . import rpc, rpc_manager
-from .settings import Settings, configure, get_project, get_root_resource, get_stack
+from .settings import (
+    Settings,
+    configure,
+    get_project,
+    get_root_resource,
+    get_stack,
+    SETTINGS,
+)
 from .sync_await import _ensure_event_loop, _sync_await
-
-if TYPE_CHECKING:
-    from ..resource import Resource
 
 
 def test(fn):
@@ -40,7 +45,10 @@ def test(fn):
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        from .. import Output  # pylint: disable=import-outside-toplevel
+        from .. import Output
+
+        SETTINGS.rpc_manager.clear()
+        SETTINGS.outputs.clear()
 
         _sync_await(
             run_pulumi_func(
@@ -179,10 +187,13 @@ class MockMonitor:
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
-            (ret, failures) = tup[0], [
-                provider_pb2.CheckFailure(property=failure[0], reason=failure[1])
-                for failure in tup[1]
-            ]
+            (ret, failures) = (
+                tup[0],
+                [
+                    provider_pb2.CheckFailure(property=failure[0], reason=failure[1])
+                    for failure in tup[1]
+                ],
+            )
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
@@ -240,13 +251,12 @@ class MockMonitor:
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
     def RegisterResourceOutputs(self, request):
-        # pylint: disable=unused-argument
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
-        has_support = request.id in {"secrets", "resourceReferences"}
+        has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
 
@@ -270,7 +280,7 @@ class MockEngine:
 # We use this MockSettings class in the case where test setup needs to stub in settings objects
 # Because ContextVars are context-sensitive, asyncio threads lose track of external settings meddling
 class MockSettings(Settings):
-    def __init__(self, *_, **kwargs):  # pylint: disable=super-init-not-called
+    def __init__(self, *_, **kwargs):
         self.rpc_manager = rpc_manager.RPCManager()
         for key, value in kwargs.items():
             setattr(self, key, value)

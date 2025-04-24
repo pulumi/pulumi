@@ -44,6 +44,8 @@ class _EnforcementLevelEnumTypeWrapper(google.protobuf.internal.enum_type_wrappe
     """Stops deployment, cannot be overridden."""
     DISABLED: _EnforcementLevel.ValueType  # 2
     """Disabled policies do not run during a deployment."""
+    REMEDIATE: _EnforcementLevel.ValueType  # 3
+    """Remediated policies actually fixes problems instead of issuing diagnostics."""
 
 class EnforcementLevel(_EnforcementLevel, metaclass=_EnforcementLevelEnumTypeWrapper):
     """EnforcementLevel indicates the severity of a policy violation."""
@@ -54,6 +56,8 @@ MANDATORY: EnforcementLevel.ValueType  # 1
 """Stops deployment, cannot be overridden."""
 DISABLED: EnforcementLevel.ValueType  # 2
 """Disabled policies do not run during a deployment."""
+REMEDIATE: EnforcementLevel.ValueType  # 3
+"""Remediated policies actually fixes problems instead of issuing diagnostics."""
 global___EnforcementLevel = EnforcementLevel
 
 @typing_extensions.final
@@ -210,6 +214,7 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
     ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
     ALIASES_FIELD_NUMBER: builtins.int
     CUSTOMTIMEOUTS_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
     protect: builtins.bool
     """true if the resource should be marked protected."""
     @property
@@ -228,6 +233,8 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
     @property
     def customTimeouts(self) -> global___AnalyzerResourceOptions.CustomTimeouts:
         """a config block that will be used to configure timeouts for CRUD operations."""
+    parent: builtins.str
+    """an optional parent URN that this child resource belongs to."""
     def __init__(
         self,
         *,
@@ -238,9 +245,10 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
         additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
         aliases: collections.abc.Iterable[builtins.str] | None = ...,
         customTimeouts: global___AnalyzerResourceOptions.CustomTimeouts | None = ...,
+        parent: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "ignoreChanges", b"ignoreChanges", "protect", b"protect"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "ignoreChanges", b"ignoreChanges", "parent", b"parent", "protect", b"protect"]) -> None: ...
 
 global___AnalyzerResourceOptions = AnalyzerResourceOptions
 
@@ -372,6 +380,65 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "enforcementLevel", b"enforcementLevel", "message", b"message", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "tags", b"tags", "urn", b"urn"]) -> None: ...
 
 global___AnalyzeDiagnostic = AnalyzeDiagnostic
+
+@typing_extensions.final
+class Remediation(google.protobuf.message.Message):
+    """Remediation is a single resource remediation result."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    POLICYNAME_FIELD_NUMBER: builtins.int
+    POLICYPACKNAME_FIELD_NUMBER: builtins.int
+    POLICYPACKVERSION_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    DIAGNOSTIC_FIELD_NUMBER: builtins.int
+    policyName: builtins.str
+    """Name of the policy that performed the remediation."""
+    policyPackName: builtins.str
+    """Name of the policy pack the transform is in."""
+    policyPackVersion: builtins.str
+    """Version of the policy pack."""
+    description: builtins.str
+    """Description of transform rule. e.g., "auto-tag resources." """
+    @property
+    def properties(self) -> google.protobuf.struct_pb2.Struct:
+        """the transformed properties to use."""
+    diagnostic: builtins.str
+    """an optional warning diagnostic to emit, if a transform failed."""
+    def __init__(
+        self,
+        *,
+        policyName: builtins.str = ...,
+        policyPackName: builtins.str = ...,
+        policyPackVersion: builtins.str = ...,
+        description: builtins.str = ...,
+        properties: google.protobuf.struct_pb2.Struct | None = ...,
+        diagnostic: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "diagnostic", b"diagnostic", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties"]) -> None: ...
+
+global___Remediation = Remediation
+
+@typing_extensions.final
+class RemediateResponse(google.protobuf.message.Message):
+    """RemediateResponse contains a sequence of remediations applied, in order."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REMEDIATIONS_FIELD_NUMBER: builtins.int
+    @property
+    def remediations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Remediation]:
+        """the list of remediations that were applied."""
+    def __init__(
+        self,
+        *,
+        remediations: collections.abc.Iterable[global___Remediation] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["remediations", b"remediations"]) -> None: ...
+
+global___RemediateResponse = RemediateResponse
 
 @typing_extensions.final
 class AnalyzerInfo(google.protobuf.message.Message):

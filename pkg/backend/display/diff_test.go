@@ -1,4 +1,20 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package display
+
+// Note: to regenerate the baselines for these tests, run `go test` with `PULUMI_ACCEPT=true`.
 
 import (
 	"bytes"
@@ -47,7 +63,7 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	// If there are no events or if the event stream does not terminate with a cancel event,
 	// synthesize one here.
 	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
-		events = append(events, engine.NewEvent(engine.CancelEvent, nil))
+		events = append(events, engine.NewCancelEvent())
 	}
 
 	return events, nil
@@ -108,7 +124,6 @@ func TestDiffEvents(t *testing.T) {
 	entries, err := os.ReadDir("testdata/not-truncated")
 	require.NoError(t, err)
 
-	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
@@ -124,7 +139,6 @@ func TestDiffEvents(t *testing.T) {
 	entries, err = os.ReadDir("testdata/truncated")
 	require.NoError(t, err)
 
-	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
@@ -138,50 +152,117 @@ func TestDiffEvents(t *testing.T) {
 	}
 }
 
-func TestHasMandatoryPolicyViolations(t *testing.T) {
+func TestJsonYamlDiff(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		give []engine.PolicyViolationEventPayload
-		want bool
-	}{
-		{
-			name: "no policy violations",
-			give: []engine.PolicyViolationEventPayload{},
-			want: false,
-		},
-		{
-			name: "only advisory violations",
-			give: []engine.PolicyViolationEventPayload{
-				{EnforcementLevel: "advisory"},
-				{EnforcementLevel: "advisory"},
-			},
-			want: false,
-		},
-		{
-			name: "has 1 mandatory violation",
-			give: []engine.PolicyViolationEventPayload{
-				{EnforcementLevel: "mandatory"},
-				{EnforcementLevel: "advisory"},
-			},
-			want: true,
-		},
-		{
-			name: "has no mandatory violation",
-			give: []engine.PolicyViolationEventPayload{
-				{EnforcementLevel: "disabled"},
-				{EnforcementLevel: "advisory"},
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/json-yaml")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/json-yaml", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
-			got := hasMandatoryPolicyViolations(tt.give)
-			assert.Equal(t, tt.want, got)
+			testDiffEvents(t, path, accept, false)
 		})
 	}
+}
+
+func assertExpectedCreateDiff(t *testing.T, path string, accept bool) {
+	events, err := loadEvents(path)
+	require.NoError(t, err)
+
+	expectedPath := path + ".create-diff.txt"
+
+	var expectedDiff []byte
+	if !accept {
+		expectedDiff, err = os.ReadFile(expectedPath)
+		require.NoError(t, err)
+	}
+
+	diff, err := CreateDiff(events, Options{
+		ShowConfig:           true,
+		ShowReplacementSteps: true,
+		ShowSameResources:    true,
+		ShowReads:            true,
+		Color:                colors.Never,
+	})
+	require.NoError(t, err)
+
+	if !accept {
+		assert.Equal(t, string(expectedDiff), diff)
+	} else {
+		err = os.WriteFile(expectedPath, []byte(diff), 0o600)
+		require.NoError(t, err)
+	}
+}
+
+func TestDiffEventsCreateDiff(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			assertExpectedCreateDiff(t, path, accept)
+		})
+	}
+
+	entries, err = os.ReadDir("testdata/truncated")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			assertExpectedCreateDiff(t, path, accept)
+		})
+	}
+}
+
+func TestJsonYamlCreateDiff(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/json-yaml")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/json-yaml", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			assertExpectedCreateDiff(t, path, accept)
+		})
+	}
+}
+
+func TestCreateDiffRequiresColor(t *testing.T) {
+	t.Parallel()
+
+	_, err := CreateDiff([]engine.Event{}, Options{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "color must be specified")
 }

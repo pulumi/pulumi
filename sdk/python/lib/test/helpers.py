@@ -28,7 +28,7 @@ def supress_unobserved_task_logging():
     terminates.
 
     """
-    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
 
 # If calling code imports this module to use `raises`, it probably needs this.
@@ -39,7 +39,6 @@ def raises(exception_type):
     """Decorates a test by wrapping its body in `pytest.raises`."""
 
     def decorator(fn):
-
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             with pytest.raises(exception_type):

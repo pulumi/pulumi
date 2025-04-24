@@ -15,9 +15,9 @@
 package rpcdebug
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,9 +26,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 type DebugInterceptor struct {
@@ -48,7 +48,7 @@ type LogOptions struct {
 // Each LogFile should have a unique instance of DebugInterceptor for proper locking.
 func NewDebugInterceptor(opts DebugInterceptorOptions) (*DebugInterceptor, error) {
 	if opts.LogFile == "" {
-		return nil, fmt.Errorf("logFile cannot be empty")
+		return nil, errors.New("logFile cannot be empty")
 	}
 	i := &DebugInterceptor{logFile: opts.LogFile}
 
@@ -163,12 +163,12 @@ func (i *DebugInterceptor) record(log debugInterceptorLogEntry) error {
 
 	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
-		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %v", i.logFile, err)
+		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %w", i.logFile, err)
 	}
 	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(log); err != nil {
-		return fmt.Errorf("Failed to encode GRPC debug logs: %v", err)
+		return fmt.Errorf("Failed to encode GRPC debug logs: %w", err)
 	}
 	return nil
 }
@@ -200,19 +200,18 @@ func (*DebugInterceptor) transcode(obj interface{}) (json.RawMessage, error) {
 		return json.RawMessage("null"), nil
 	}
 
-	m, ok := obj.(proto.Message)
+	m, ok := obj.(protoreflect.ProtoMessage)
 	if !ok {
 		return json.RawMessage("null"),
-			fmt.Errorf("Failed to decode, expecting proto.Message, got %v",
+			fmt.Errorf("failed to decode, expecting protoreflect.ProtoMessage, got %v",
 				reflect.TypeOf(obj))
 	}
 
-	jsonSer := jsonpb.Marshaler{}
-	buf := bytes.Buffer{}
-	if err := jsonSer.Marshal(&buf, m); err != nil {
+	buf, err := protojson.Marshal(m)
+	if err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return buf, nil
 }
 
 // Wraps grpc.ServerStream with interceptor hooks for SendMsg, RecvMsg.

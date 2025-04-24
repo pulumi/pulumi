@@ -1,22 +1,23 @@
-# Pulumi CrossCode
+(codegen)=
+(crosscode)=
+# Code generation
 
-The `github.com/pulumi/pulumi/pkg/v3/codegen` package defines the core components of Pulumi's [CrossCode](https://www.pulumi.com/crosscode/) technology. CrossCode provides a set of foundational capabilities for working across a variety of programming languages supported by the Pulumi platform.
+Code generation is essential to Pulumi's ability to support both a variety of
+programming languages and a variety of cloud providers. This package defines the
+core components of Pulumi's code generation functionality (known as [Pulumi
+CrossCode](https://www.pulumi.com/crosscode/)). At a high level, code generation
+is used to manage three categories of output: [SDKs](sdkgen),
+[programs](programgen), and [documentation](docsgen). At a lower level, these
+all make use of a number of shared concepts such as [schema](schema) and [Pulumi
+Configuration Language (PCL)](pcl).
 
-The core components of CrossCode in this package are:
+:::{toctree}
+:maxdepth: 1
+:titlesonly:
 
-* __[Schema](./schema)__: The definition of [Pulumi Schema](https://www.pulumi.com/docs/guides/pulumi-packages/schema/), a language-neutral specification of cloud resource models. Pulumi Schema is the interface definition language for all Pulumi Packages, and is used as input to SDK code generation for each supported Pulumi language.
-* __SDK Code Generation for [Node.js](./nodejs/), [Python](./python/), [Go](./go/) and [.NET](./dotnet/)__: These libraries define how to create Pulumi SDKs from a Pulumi Schema definition of a package. The resulting SDKs expose the resource, components and functions from that package into the the Pulumi programming model defined for the given language.
-* __[Docs Generation](./docs/)__: In addition to generating per-language SDKs, CrossCode supports generating language-neutral documentation for a package from it's Pulumi Schema. This documentation is currently hosted in the Pulumi Registry, but can in principle be hosted in other contexts as well.
-* __[Pulumi Configuration Language](./pcl/)__: An internal representation of Pulumi programs which supports all core concepts of the Pulumi programming model in a minimal form. Although not exposed directly to users today, this intermediate representation is used to support a variety of program conversion tasks, from and to various supported Pulumi languages.
-* __Program Generation for [Node.js](./nodejs/gen_program.go), [Python](./python/gen_program.go), [Go](./go/gen_program.go) and [.NET](./dotnet/gen_program.go)__: Support for lowering Pulumi Configuration Language into each of the supported Pulumi languages, such that examples and programs can be generated for the language.
-
-These foundations enable a vast array of features supported in the Pulumi Platform, including:
-
-* __Pulumi support for [Node.js](https://www.pulumi.com/docs/intro/languages/javascript/), [Python](https://www.pulumi.com/docs/intro/languages/python/), [Go](https://www.pulumi.com/docs/intro/languages/go/), [.NET](https://www.pulumi.com/docs/intro/languages/dotnet/), [Java](https://www.pulumi.com/docs/intro/languages/java/) and [YAML](https://www.pulumi.com/docs/intro/languages/yaml/)__: Each Pulumi language is supported by defining a representation of the Pulumi resource model in that language, and then implementing SDK Code Generation and  Program Generation for the language.
-* __[Pulumi Packages](https://www.pulumi.com/docs/guides/pulumi-packages/)__: Pulumi packages define a set of resources using Pulumi Schema, and use the CrossCode SDK Code Generators for every Pulumi language automatically.
-* __[`pulumi import`](https://www.pulumi.com/docs/guides/adopting/import/)__: Cloud infrastructure resources deployed outside of Pulumi can be imported into Pulumi, including generated Pulumi code in your language of choice which defines the infrastructure. This builds on the program generation support from CrossCode.
-* __[tf2pulumi](https://www.pulumi.com/tf2pulumi/), [arm2pulumi](https://www.pulumi.com/arm2pulumi/), [crd2pulumi](https://www.pulumi.com/blog/introducing-crd2pulumi/), [kube2pulumi](https://www.pulumi.com/kube2pulumi/) and [cf2pulumi](https://www.pulumi.com/cf2pulumi/)__: These tools convert the source IaC format into an intermediate Pulumi Configuration Language model, and then use the CrossCode program generation support to convert that ultimately into the language a Pulumi user wants to use for their infrastructure.
-* __[`pulumi convert`](https://www.pulumi.com/docs/cli/commands/pulumi_convert/)__: The `pulumi convert` command allows Pulumi YAML programs to be converted into programs in any other Pulumi language. Because Pulumi YAML is a proper subset of what can be expressed in Pulumi Configuration Language, this conversion from Pulumi YAML to Pulumi Configuration Language and then into each Pulumi language can be done faithfully.
-* __[Pulumi Registry](https://www.pulumi.com/registry/)__: The Pulumi Registry provides discovery and documentation hosting for all Pulumi Packages. It is powered by the Pulumi Schema and CrossCode documentation generation features.
-
-Learn more about Pulumi CrossCode at [https://www.pulumi.com/crosscode/](https://www.pulumi.com/crosscode/).
+/pkg/codegen/sdks.md
+/pkg/codegen/programs.md
+/pkg/codegen/docs/README
+/pkg/codegen/schema/README
+/pkg/codegen/pcl/README
+:::

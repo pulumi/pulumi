@@ -27,11 +27,30 @@ class ComponentResourceListOfProvidersTest(LanghostTest):
     def test_component_resource_list_of_providers(self):
         self.run_test(
             program=path.join(self.base_path(), "component_resource_list_of_providers"),
-            expected_resource_count=240)
+            expected_resource_count=240,
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         if _custom and not ty.startswith("pulumi:providers:"):
             expect_protect = False
             expect_provider_name = ""
@@ -51,7 +70,7 @@ class ComponentResourceListOfProvidersTest(LanghostTest):
                     continue
                 if component in ["r3", "c3"]:
                     # Provider overriden.
-                    expect_provider_name = "/".join(rpath[:i+1]) + "-p"
+                    expect_provider_name = "/".join(rpath[: i + 1]) + "-p"
 
             # r3 explicitly overrides its provider.
             if rpath[-1] == "r3":
@@ -60,8 +79,13 @@ class ComponentResourceListOfProvidersTest(LanghostTest):
             # "provider" is a provider reference. To get the provider name (technically its ID, but this test
             # uses names as IDs), get the first string before the double-colon.
             provider_name = _provider.split("::")[-1]
-            self.assertEqual(f"{name}.protect: {protect}", f"{name}.protect: {expect_protect}")
-            self.assertEqual(f"{name}.provider: {provider_name}", f"{name}.provider: {expect_provider_name}")
+            self.assertEqual(
+                f"{name}.protect: {protect}", f"{name}.protect: {expect_protect}"
+            )
+            self.assertEqual(
+                f"{name}.provider: {provider_name}",
+                f"{name}.provider: {expect_provider_name}",
+            )
 
         return {
             "urn": self.make_urn(ty, name),

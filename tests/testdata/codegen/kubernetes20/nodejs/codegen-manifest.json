@@ -1,0 +1,23 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "core/index.ts",
+    "core/v1/configMap.ts",
+    "core/v1/configMapList.ts",
+    "core/v1/index.ts",
+    "helm/index.ts",
+    "helm/v3/index.ts",
+    "helm/v3/release.ts",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "tsconfig.json",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts",
+    "yaml/index.ts",
+    "yaml/v2/configGroup.ts",
+    "yaml/v2/index.ts"
+  ]
+}

@@ -1,3 +1,17 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pulumi
 
 import (
@@ -65,35 +79,25 @@ func TestStackReference(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, outputs["numf"], numf)
 		_, _, _, _, err = await(ref1.GetFloat64Output(String("foo")))
-		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf(
+		assert.EqualError(t, err, fmt.Sprintf(
 			"getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to float64",
-			outputs["foo"]),
-			err)
+			outputs["foo"]))
 		numi, _, _, _, err := await(ref1.GetIntOutput(String("numi")))
 		assert.NoError(t, err)
 		assert.Equal(t, int(outputs["numi"].(float64)), numi)
 		_, _, _, _, err = await(ref1.GetIntOutput(String("foo")))
-		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf(
+		assert.EqualError(t, err, fmt.Sprintf(
 			"getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to int",
-			outputs["foo"]),
-			err)
+			outputs["foo"]))
 		_, _, _, _, err = await(ref1.GetStringOutput(String("doesnotexist")))
-		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf(
-			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
-			err)
+		assert.EqualError(t, err,
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\"")
 		_, _, _, _, err = await(ref1.GetIntOutput(String("doesnotexist")))
-		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf(
-			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
-			err)
+		assert.EqualError(t, err,
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\"")
 		_, _, _, _, err = await(ref1.GetFloat64Output(String("doesnotexist")))
-		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf(
-			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
-			err)
+		assert.EqualError(t, err,
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\"")
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)

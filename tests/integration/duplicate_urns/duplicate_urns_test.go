@@ -1,6 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
-//go:build (nodejs || all) && !xplatform_acceptance
-
+// Copyright 2018-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build (nodejs || all) && !xplatform_acceptance
+
 package ints
 
 import (
@@ -23,6 +23,8 @@ import (
 )
 
 // Test that the engine does not tolerate duplicate URNs in the same plan.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDuplicateURNs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "step1",

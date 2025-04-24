@@ -16,7 +16,7 @@ import (
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Resource struct {
@@ -169,12 +169,6 @@ func (p *testcomponentProvider) Invoke(ctx context.Context,
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
-func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
-}
-
 func (p *testcomponentProvider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {
@@ -206,18 +200,18 @@ func (p *testcomponentProvider) Update(ctx context.Context,
 	}, nil
 }
 
-func (p *testcomponentProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *testcomponentProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
-func (p *testcomponentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (p *testcomponentProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
 }
 
-func (p *testcomponentProvider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *testcomponentProvider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (p *testcomponentProvider) GetSchema(ctx context.Context,
@@ -226,8 +220,8 @@ func (p *testcomponentProvider) GetSchema(ctx context.Context,
 	return &pulumirpc.GetSchemaResponse{}, nil
 }
 
-func (p *testcomponentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *testcomponentProvider) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (p *testcomponentProvider) GetMapping(

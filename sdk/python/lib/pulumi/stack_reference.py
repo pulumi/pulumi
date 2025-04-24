@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from asyncio import ensure_future
-from typing import Optional, Any, List, Callable
-from copy import deepcopy
+from typing import Optional, Dict, Any, List
 
 from .output import Output, Input
 from .resource import CustomResource, ResourceOptions
@@ -25,13 +24,13 @@ class StackReferenceOutputDetails:
     At most one of the value and secret_value fields will be set.
     """
 
-    value = Optional[Any]
+    value: Optional[Any]
     """
     Output value returned by the StackReference.
     None if the value is a secret or if it does not exist.
     """
 
-    secret_value = Optional[Any]
+    secret_value: Optional[Any]
     """
     Secret value returned by the StackReference.
     None if the value is not a secret or if it does not exist.
@@ -63,7 +62,7 @@ class StackReference(CustomResource):
     The name of the referenced stack.
     """
 
-    outputs: Output[dict]
+    outputs: Output[Dict[str, Any]]
     """
     The outputs of the referenced stack.
     """
@@ -106,7 +105,9 @@ class StackReference(CustomResource):
 
         :param Input[str] name: The name of the stack output to fetch.
         """
-        value: Output[Any] = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1].get(l[0]))  # type: ignore
+        value: Output[Any] = Output.all(Output.from_input(name), self.outputs).apply(
+            lambda l: l[1].get(l[0])
+        )  # type: ignore
         is_secret = ensure_future(self.__is_secret_name(name))
 
         return Output(value.resources(), value.future(), value.is_known(), is_secret)
@@ -119,7 +120,9 @@ class StackReference(CustomResource):
         :param Input[str] name: The name of the stack output to fetch.
         """
 
-        value = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1][l[0]])  # type: ignore
+        value = Output.all(Output.from_input(name), self.outputs).apply(
+            lambda l: l[1][l[0]]
+        )  # type: ignore
         is_secret = ensure_future(self.__is_secret_name(name))
 
         return Output(value.resources(), value.future(), value.is_known(), is_secret)

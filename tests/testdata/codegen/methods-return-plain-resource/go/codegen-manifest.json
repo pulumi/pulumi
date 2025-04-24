@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "metaprovider/configurer.go",
+    "metaprovider/doc.go",
+    "metaprovider/init.go",
+    "metaprovider/internal/pulumiUtilities.go",
+    "metaprovider/internal/pulumiVersion.go",
+    "metaprovider/provider.go",
+    "metaprovider/pulumi-plugin.json"
+  ]
+}

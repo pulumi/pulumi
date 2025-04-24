@@ -6,7 +6,8 @@
         "build": "tsc"
     },
     "devDependencies": {
-        "typescript": "^3.0.0"
+        "typescript": "^3.0.0",
+        "@types/node": "^11.0.0"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

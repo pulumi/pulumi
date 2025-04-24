@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,16 +38,16 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest"
+	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -65,6 +65,7 @@ func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
 // snapshots.
 func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	t.Parallel()
+
 	ctx := context.Background()
 
 	expectationsFile := "testdata/snapshot_test.json"
@@ -101,7 +102,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	stackID := client.StackIdentifier{
 		Owner:   "owner",
 		Project: "project",
-		Stack:   "stack",
+		Stack:   tokens.MustParseStackName("stack"),
 	}
 	updateID := "update-id"
 
@@ -184,14 +185,14 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
 		assert.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
 			StackIdentifier: stackID,
 			UpdateKind:      apitype.UpdateUpdate,
 			UpdateID:        updateID,
-		}, newMockTokenSource(), nil)
+		}, newMockTokenSource())
 		return persister
 	}
 
@@ -267,7 +268,7 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 }
 
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
-	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -298,12 +299,14 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			return nil
 		})
 	})
-	host := deploytest.NewPluginHost(nil, nil, program)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
 
 	var journalEntries engine.JournalEntries
-	p := &lifecycletest.TestPlan{
-		Options: engine.UpdateOptions{Host: host},
-		Steps: []lifecycletest.TestStep{
+	p := &lt.TestPlan{
+		// This test generates big amounts of data so the event streams that would need to be
+		// checked in get too big.  Skip them instead.
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps: []lt.TestStep{
 			{
 				Op:          engine.Update,
 				SkipPreview: true,
@@ -312,8 +315,8 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 					_ deploy.Target,
 					entries engine.JournalEntries,
 					_ []engine.Event,
-					_ result.Result,
-				) result.Result {
+					_ error,
+				) error {
 					journalEntries = entries
 					return nil
 				},
@@ -326,7 +329,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
 		require.NoError(t, err)
-		deployment, err := stack.SerializeDeployment(snap, nil, true)
+		deployment, err := stack.SerializeDeployment(context.Background(), snap, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
 	}
@@ -446,6 +449,7 @@ type dynamicStackCase struct {
 }
 
 func (c dynamicStackCase) getName() string {
+	//nolint:gosec // resourcePayloadBytes is always positive
 	return fmt.Sprintf("%v_x_%v", c.resourceCount, humanize.Bytes(uint64(c.resourcePayloadBytes)))
 }
 
@@ -550,11 +554,13 @@ func BenchmarkDiffStackRecorded(b *testing.B) {
 
 func TestDiffStackRecorded(t *testing.T) {
 	t.Parallel()
+
 	testOrBenchmarkDiffStack(t, testDiffStack, recordedCases)
 }
 
 func TestMarshalDeployment(t *testing.T) {
 	t.Parallel()
+
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, dynamicCases)
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, recordedCases)
 }

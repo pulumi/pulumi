@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { v4 as uuidv4 } from "uuid";
+
 /** @internal */
 export function getTestSuffix() {
-    return Math.floor(100000 + Math.random() * 900000);
+    return uuidv4();
 }
 
 /** @internal */
 export function getTestOrg() {
-    let testOrg = "pulumi-test";
-    if (process.env.PULUMI_TEST_ORG) {
-        testOrg = process.env.PULUMI_TEST_ORG;
+    if (process.env.PULUMI_ACCESS_TOKEN) {
+        if (process.env.PULUMI_TEST_ORG) {
+            return process.env.PULUMI_TEST_ORG;
+        }
+        return "pulumi-test";
     }
-    return testOrg;
+    return "organization";
 }

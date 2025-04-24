@@ -14,7 +14,10 @@
 
 package apitype
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // An APICapability is the name of a capability or feature that a service backend
 // may or may not support.
@@ -27,12 +30,15 @@ const (
 	// DeltaCheckpointUploads is the feature that enables the CLI to upload checkpoints
 	// via the PatchUpdateCheckpointDeltaRequest API to save on network bytes.
 	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
-)
 
-// Deprecated. Use DeltaCheckpointUploadsConfigV2.
-type DeltaCheckpointUploadsConfigV1 struct {
-	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
-}
+	// Indicates that the service backend supports batch encryption.
+	BatchEncrypt APICapability = "batch-encrypt"
+
+	// Indicates whether the service supports a notion of providing an opinion on a
+	// default organization among the user's org memberships, if a default org has
+	// not been explicitly defined.
+	DefaultOrg APICapability = "default-org"
+)
 
 type DeltaCheckpointUploadsConfigV2 struct {
 	// CheckpointCutoffSizeBytes defines the size of a checkpoint file, in bytes,
@@ -52,4 +58,49 @@ type APICapabilityConfig struct {
 // backend and are therefore available for the CLI to integrate against.
 type CapabilitiesResponse struct {
 	Capabilities []APICapabilityConfig `json:"capabilities"`
+}
+
+// Represents the set of features a backend is capable of supporting.
+// This is a user-friendly representation of the CapabilitiesResponse.
+type Capabilities struct {
+	// If non-nil, indicates that delta checkpoint updates are supported.
+	DeltaCheckpointUpdates *DeltaCheckpointUploadsConfigV2
+
+	// Indicates whether the service supports batch encryption.
+	BatchEncryption bool
+
+	// Indicates whether the service supports a notion of providing an opinion on a
+	// default organization among the user's org memberships, if a default org has
+	// not been explicitly defined.
+	DefaultOrg bool
+}
+
+// Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
+func (r CapabilitiesResponse) Parse() (Capabilities, error) {
+	var parsed Capabilities
+	for _, entry := range r.Capabilities {
+		switch entry.Capability {
+		case DeltaCheckpointUploads:
+			var upcfg DeltaCheckpointUploadsConfigV2
+			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
+				return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfig returned %w", err)
+			}
+			parsed.DeltaCheckpointUpdates = &upcfg
+		case DeltaCheckpointUploadsV2:
+			if entry.Version == 2 {
+				var upcfg DeltaCheckpointUploadsConfigV2
+				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
+					return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfigV2 returned %w", err)
+				}
+				parsed.DeltaCheckpointUpdates = &upcfg
+			}
+		case BatchEncrypt:
+			parsed.BatchEncryption = true
+		case DefaultOrg:
+			parsed.DefaultOrg = true
+		default:
+			continue
+		}
+	}
+	return parsed, nil
 }

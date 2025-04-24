@@ -24,24 +24,42 @@ class ChainedFailureTest(LanghostTest):
     test asserts that this does not cause a deadlock (as it previously did, pulumi/pulumi#2189) but instead terminates
     gracefully.
     """
+
     def test_chained_failure(self):
         self.run_test(
             program=path.join(self.base_path(), "chained_failure"),
             expected_bail=True,
-            expected_resource_count=1)
+            expected_resource_count=1,
+        )
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers, source_position):
+    def register_resource(
+        self,
+        _ctx,
+        _dry_run,
+        ty,
+        name,
+        _resource,
+        _dependencies,
+        _parent,
+        _custom,
+        protect,
+        _provider,
+        _property_deps,
+        _delete_before_replace,
+        _ignore_changes,
+        _version,
+        _import,
+        _replace_on_changes,
+        _providers,
+        source_position,
+    ):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
             self.assertDictEqual(_resource, {"inprop": 777})
             return {
                 "urn": self.make_urn(ty, name),
                 "id": name,
-                "object": {
-                    "outprop": 200
-                } 
+                "object": {"outprop": 200},
             }
 
         if ty == "test:index:ResourceB":

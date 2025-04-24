@@ -1,0 +1,18 @@
+decrypt:
+  my:testKey: '["0123456"]'
+paths:
+  my:testKey:
+    value:
+    - "0123456"
+    string: '["0123456"]'
+    redacted: '["0123456"]'
+    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAF/+EFAABBnN0cmluZwwJAAcwMTIzNDU2
+    secure: false
+    isObject: true
+  my:testKey[0]:
+    value: "0123456"
+    string: "0123456"
+    redacted: "0123456"
+    object: FBAABnN0cmluZwwJAAcwMTIzNDU2
+    secure: false
+    isObject: false

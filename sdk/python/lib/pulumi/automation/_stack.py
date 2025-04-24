@@ -20,12 +20,21 @@ import threading
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
+from typing import (
+    Dict,
+    List,
+    Any,
+    Mapping,
+    Optional,
+    Callable,
+    Tuple,
+    TypedDict,
+)
 import grpc
 
-from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
+from ._cmd import CommandResult, OnOutput
 from ._config import ConfigValue, ConfigMap
-from .errors import StackAlreadyExistsError, StackNotFoundError
+from .errors import StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
 from ._server import LanguageServer
@@ -98,6 +107,42 @@ class UpdateSummary:
         )
 
 
+class ImportResource(TypedDict, total=False):
+    """
+    ImportResource represents a resource to import into a stack.
+
+      - id: The import ID of the resource. The format is specific to resource type.
+      - type: The type token of the Pulumi resource
+      - name: The name of the resource
+      - logicalName: The logical name of the resource in the generated program
+      - parent: The name of an optional parent resource
+      - provider: The name of the provider resource
+      - version: The version of the provider plugin, if any is specified
+      - pluginDownloadUrl: The URL to download the provider plugin from
+      - properties: Specified which input properties to import with
+      - component: Whether the resource is a component resource
+      - remote: Whether the resource is a remote resource
+
+    If a resource does not specify any properties the default behaviour is to
+    import using all required properties.
+
+    If the resource is declared as a "component" (and optionally as "remote"). These resources
+    don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.
+    """
+
+    id: str
+    type: str
+    name: str
+    logicalName: str
+    parent: str
+    provider: str
+    version: str
+    pluginDownloadUrl: str
+    properties: str
+    component: bool
+    remote: bool
+
+
 class BaseResult(_Representable):
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
@@ -119,7 +164,22 @@ class UpResult(BaseResult):
         self.summary = summary
 
 
+class ImportResult(BaseResult):
+    def __init__(
+        self, stdout: str, stderr: str, summary: UpdateSummary, generated_code: str
+    ):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+        self.generated_code = generated_code
+
+
 class RefreshResult(BaseResult):
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+
+
+class RenameResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
         super().__init__(stdout, stderr)
         self.summary = summary
@@ -225,6 +285,11 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        continue_on_error: Optional[bool] = None,
+        attach_debugger: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -251,10 +316,13 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
+        :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running up.
         :returns: UpResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["up", "--yes", "--skip-preview"]
@@ -272,9 +340,7 @@ class Stack:
         if program:
             kind = ExecKind.INLINE.value
             server = grpc.server(
-                futures.ThreadPoolExecutor(
-                    max_workers=4
-                ),  # pylint: disable=consider-using-with
+                futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
@@ -286,7 +352,6 @@ class Stack:
             server.start()
 
             def on_exit_fn():
-                language_server.on_pulumi_exit()
                 server.stop(0)
 
             on_exit = on_exit_fn
@@ -343,6 +408,11 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        import_file: Optional[str] = None,
+        attach_debugger: Optional[bool] = None,
+        refresh: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -368,14 +438,21 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
+        :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
         :returns: PreviewResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["preview"]
         args.extend(extra_args)
+
+        if import_file is not None:
+            args.append("--import-file")
+            args.append(import_file)
 
         if plan is not None:
             args.append("--save-plan")
@@ -389,9 +466,7 @@ class Stack:
         if program:
             kind = ExecKind.INLINE.value
             server = grpc.server(
-                futures.ThreadPoolExecutor(
-                    max_workers=4
-                ),  # pylint: disable=consider-using-with
+                futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
             language_server = LanguageServer(program)
@@ -403,7 +478,6 @@ class Stack:
             server.start()
 
             def on_exit_fn():
-                language_server.on_pulumi_exit()
                 server.stop(0)
 
             on_exit = on_exit_fn
@@ -445,8 +519,10 @@ class Stack:
         self,
         parallel: Optional[int] = None,
         message: Optional[str] = None,
+        preview_only: Optional[bool] = None,
         target: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
+        clear_pending_creates: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
@@ -456,6 +532,9 @@ class Stack:
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        run_program: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -464,8 +543,10 @@ class Stack:
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the refresh operation.
+        :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param clear_pending_creates: Clear all pending creates, dropping them from the state.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
@@ -475,14 +556,26 @@ class Stack:
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param run_program: Run the program in the workspace to refresh the stack
         :returns: RefreshResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes", "--skip-preview"]
-        args.extend(extra_args)
+        args = ["refresh", "--yes"]
 
+        if preview_only:
+            args.append("--preview-only")
+        else:
+            args.append("--skip-preview")
+
+        if run_program is not None:
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
+
+        args.extend(extra_args)
         args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
@@ -511,6 +604,36 @@ class Stack:
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
         )
 
+    def rename(
+        self,
+        stack_name: str,
+        on_output: Optional[OnOutput] = None,
+        show_secrets: bool = False,
+    ) -> RenameResult:
+        """
+        Renames the current stack.
+
+        :param stack_name: The new name for the stack.
+        :param on_output: A function to process the stdout stream.
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :returns: RenameResult
+        """
+        extra_args = _parse_extra_args(**locals())
+        args = ["stack", "rename", stack_name]
+        args.extend(extra_args)
+
+        args.extend(self._remote_args())
+        rename_result = self._run_pulumi_cmd_sync(args, on_output)
+
+        if self._remote and show_secrets:
+            raise RuntimeError("can't enable `showSecrets` for remote workspaces")
+
+        summary = self.info(show_secrets and not self._remote)
+        assert summary is not None
+        return RenameResult(
+            stdout=rename_result.stdout, stderr=rename_result.stderr, summary=summary
+        )
+
     def destroy(
         self,
         parallel: Optional[int] = None,
@@ -525,7 +648,15 @@ class Stack:
         log_verbosity: Optional[int] = None,
         log_to_std_err: Optional[bool] = None,
         tracing: Optional[str] = None,
+        exclude_protected: Optional[bool] = None,
         debug: Optional[bool] = None,
+        suppress_outputs: Optional[bool] = None,
+        suppress_progress: Optional[bool] = None,
+        continue_on_error: Optional[bool] = None,
+        remove: Optional[bool] = None,
+        refresh: Optional[bool] = None,
+        preview_only: Optional[bool] = None,
+        run_program: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -543,15 +674,32 @@ class Stack:
         :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param log_to_std_err: Log to stderr instead of to files
         :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param exclude_protected: Do not destroy protected resources. Destroy all other resources.
         :param debug: Print detailed debugging output during resource operations
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param continue_on_error: Continue to perform the destroy operation despite the occurrence of errors
+        :param remove: Remove the stack and its configuration after all resources in the stack have been deleted.
+        :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
+        :param preview_only: Only show a preview of the destroy, but don't perform the destroy itself
+        :param run_program: Run the program in the workspace to destroy the stack
         :returns: DestroyResult
         """
-        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
-        # pylint: disable=unused-argument
         extra_args = _parse_extra_args(**locals())
-        args = ["destroy", "--yes", "--skip-preview"]
-        args.extend(extra_args)
+        args = ["destroy"]
 
+        if preview_only:
+            args.append("--preview-only")
+        else:
+            args.extend(["--skip-preview", "--yes"])
+
+        if run_program is not None:
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
+
+        args.extend(extra_args)
         args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
@@ -576,9 +724,112 @@ class Stack:
         # load the project file.
         summary = self.info(show_secrets and not self._remote)
         assert summary is not None
+
+        # If `remove` was set, remove the stack now. We take this approach
+        # rather than passing `--remove` to `pulumi destroy` because the latter
+        # would make it impossible for us to retrieve a summary of the operation
+        # above for returning to the caller.
+        if remove:
+            self.workspace.remove_stack(self.name)
+
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
+
+    def import_resources(
+        self,
+        message: Optional[str] = None,
+        resources: Optional[List[ImportResource]] = None,
+        name_table: Optional[Dict[str, str]] = None,
+        protect: Optional[bool] = None,
+        generate_code: Optional[bool] = None,
+        converter: Optional[str] = None,
+        converter_args: Optional[List[str]] = None,
+        on_output: Optional[OnOutput] = None,
+        show_secrets: bool = True,
+    ) -> ImportResult:
+        """
+        Imports resources into the stack.
+
+        :param message: Message to associate with the import operation.
+        :param resources: The resources to import.
+        :param nameTable:
+            The name table maps language names to parent and provider URNs.
+            These names are used in the generated definitions,
+            and should match the corresponding declarations
+            in the source program. This table is required if any parents or providers are \
+            specified by the resources to import.
+        :param protect: Whether to protect the imported resources so that they are not deleted
+        :param generate_code: Whether to generate code for the imported resources
+        :param converter: The converter plugin to use for the import operation
+        :param converter_args: Additional arguments to pass to the converter plugin
+        :param on_output: A function to process the stdout stream.
+        :param show_secrets: Include config secrets in the ImportResult summary.
+        """
+        args = ["import", "--yes", "--skip-preview"]
+        if message is not None:
+            args.extend(["--message", message])
+
+        with tempfile.TemporaryDirectory(prefix="pulumi-import-") as temp_dir:
+            if resources is not None:
+                import_file_path = os.path.join(temp_dir, "import.json")
+                with open(import_file_path, mode="w", encoding="utf-8") as import_file:
+                    contents = {"resources": resources, "nameTable": name_table}
+                    json.dump(contents, import_file)
+                    args.extend(["--file", import_file_path])
+
+            if protect is not None:
+                value = "true" if protect else "false"
+                args.append(f"--protect={value}")
+
+            generated_code_path = os.path.join(temp_dir, "generated_code.txt")
+            if generate_code is False:
+                args.append("--generate-code=false")
+            else:
+                args.append(f"--out={generated_code_path}")
+
+            if converter is not None:
+                args.extend(["--from", converter])
+                if converter_args is not None:
+                    args.append("--")
+                    args.extend(converter_args)
+
+            import_result = self._run_pulumi_cmd_sync(args, on_output)
+            summary = self.info(show_secrets and not self._remote)
+            generated_code = ""
+            if generate_code is not False:
+                with open(generated_code_path, mode="r", encoding="utf-8") as codeFile:
+                    generated_code = codeFile.read()
+
+            assert summary is not None
+            return ImportResult(
+                stdout=import_result.stdout,
+                stderr=import_result.stderr,
+                generated_code=generated_code,
+                summary=summary,
+            )
+
+    def add_environments(self, *environment_names: str) -> None:
+        """
+        Adds environments to the end of a stack's import list. Imported environments are merged in order
+        per the ESC merge rules. The list of environments behaves as if it were the import list in an anonymous
+        environment.
+
+        :param environment_names: The names of the environments to add.
+        """
+        return self.workspace.add_environments(self.name, *environment_names)
+
+    def list_environments(self) -> List[str]:
+        """
+        Returns the list of environments specified in a stack's configuration.
+        """
+        return self.workspace.list_environments(self.name)
+
+    def remove_environment(self, environment_name: str) -> None:
+        """
+        Removes an environment from a stack's import list.
+        """
+        return self.workspace.remove_environment(self.name, environment_name)
 
     def get_config(self, key: str, *, path: bool = False) -> ConfigValue:
         """
@@ -721,16 +972,20 @@ class Stack:
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
-                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
-                if "endTime" in summary_json
-                else None,
+                end_time=(
+                    datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
+                    if "endTime" in summary_json
+                    else None
+                ),
                 version=summary_json["version"] if "version" in summary_json else None,
-                deployment=summary_json["Deployment"]
-                if "Deployment" in summary_json
-                else None,
-                resource_changes=summary_json["resourceChanges"]
-                if "resourceChanges" in summary_json
-                else None,
+                deployment=(
+                    summary_json["Deployment"] if "Deployment" in summary_json else None
+                ),
+                resource_changes=(
+                    summary_json["resourceChanges"]
+                    if "resourceChanges" in summary_json
+                    else None
+                ),
             )
             summaries.append(summary)
         return summaries
@@ -751,7 +1006,6 @@ class Stack:
         Cancel stops a stack's currently running update. It returns an error if no update is currently running.
         Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
-        This command is not supported for local backends.
         """
         self._run_pulumi_cmd_sync(["cancel", "--yes"])
 
@@ -786,13 +1040,14 @@ class Stack:
         additional_args = self.workspace.serialize_args_for_op(self.name)
         args.extend(additional_args)
         args.extend(["--stack", self.name])
-        result = _run_pulumi_cmd(args, self.workspace.work_dir, envs, on_output)
+        result = self.workspace.pulumi_command.run(
+            args, self.workspace.work_dir, envs, on_output
+        )
         self.workspace.post_command_callback(self.name)
         return result
 
     @property
     def _remote(self) -> bool:
-        # pylint: disable=import-outside-toplevel
         from pulumi.automation._local_workspace import LocalWorkspace
 
         return (
@@ -802,7 +1057,6 @@ class Stack:
         )
 
     def _remote_args(self) -> List[str]:
-        # pylint: disable=import-outside-toplevel
         from pulumi.automation._local_workspace import LocalWorkspace
 
         return (
@@ -817,6 +1071,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
 
     message: Optional[str] = kwargs.get("message")
     expect_no_changes: Optional[bool] = kwargs.get("expect_no_changes")
+    clear_pending_creates: Optional[bool] = kwargs.get("clear_pending_creates")
     diff: Optional[bool] = kwargs.get("diff")
     replace: Optional[List[str]] = kwargs.get("replace")
     target: Optional[List[str]] = kwargs.get("target")
@@ -829,12 +1084,20 @@ def _parse_extra_args(**kwargs) -> List[str]:
     log_verbosity: Optional[int] = kwargs.get("log_verbosity")
     log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
     tracing: Optional[str] = kwargs.get("tracing")
+    exclude_protected: Optional[bool] = kwargs.get("exclude_protected")
     debug: Optional[bool] = kwargs.get("debug")
+    suppress_outputs: Optional[bool] = kwargs.get("suppress_outputs")
+    suppress_progress: Optional[bool] = kwargs.get("suppress_progress")
+    continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
+    attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
+    refresh: Optional[bool] = kwargs.get("refresh")
 
     if message:
         extra_args.extend(["--message", message])
     if expect_no_changes:
         extra_args.append("--expect-no-changes")
+    if clear_pending_creates:
+        extra_args.append("--clear-pending-creates")
     if diff:
         extra_args.append("--diff")
     if replace:
@@ -863,8 +1126,20 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--logtostderr"])
     if tracing:
         extra_args.extend(["--tracing", tracing])
+    if exclude_protected:
+        extra_args.extend(["--exclude-protected"])
     if debug:
         extra_args.extend(["--debug"])
+    if suppress_outputs:
+        extra_args.extend(["--suppress-outputs"])
+    if suppress_progress:
+        extra_args.extend(["--suppress-progress"])
+    if continue_on_error:
+        extra_args.extend(["--continue-on-error"])
+    if attach_debugger:
+        extra_args.extend(["--attach-debugger"])
+    if refresh:
+        extra_args.extend(["--refresh"])
     return extra_args
 
 
@@ -875,9 +1150,10 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
     Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
 
-    Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
+    Note that legacy diy backends (local file, S3, Azure Blob) do not support stack names in this
     format, and instead only use the stack name without an org/user or project to qualify it.
     See: https://github.com/pulumi/pulumi/issues/2522
+    Non-legacy diy backends do support the org/project/stack format but org must be set to "organization".
 
     :param org: The name of the org or user.
     :param project: The name of the project.
@@ -888,9 +1164,7 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
 
 def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
-    log_dir = tempfile.TemporaryDirectory(  # pylint: disable=consider-using-with
-        prefix=f"automation-logs-{command}-"
-    )
+    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")
     filepath = os.path.join(log_dir.name, "eventlog.txt")
 
     # Open and close the file to ensure it exists before we start polling for logs
@@ -900,6 +1174,7 @@ def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
 
 
 def _watch_logs(filename: str, callback: OnEvent):
+    partial_line = ""
     with open(filename, encoding="utf-8") as f:
         while True:
             line = f.readline()
@@ -908,6 +1183,15 @@ def _watch_logs(filename: str, callback: OnEvent):
             if not line:
                 time.sleep(0.1)
                 continue
+
+            # we don't have a complete line yet.  sleep and try again.
+            if line[-1] != "\n":
+                partial_line += line
+                time.sleep(0.1)
+                continue
+
+            line = partial_line + line
+            partial_line = ""
 
             event = EngineEvent.from_json(json.loads(line))
             callback(event)

@@ -2,6 +2,7 @@
 
 from pulumi import Alias, ComponentResource, ResourceOptions
 
+
 class Resource(ComponentResource):
     def __init__(self, name, opts=None):
         super().__init__("my:module:Resource", name, None, opts)

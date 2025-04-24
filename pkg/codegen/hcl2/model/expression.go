@@ -1050,13 +1050,32 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
-	// Unless the function is already automatically using an
-	// Output-returning version, modify the signature to account
-	// for automatic lifting to Promise or Output.
-	_, isOutput := x.Signature.ReturnType.(*OutputType)
-	if !isOutput {
+	// If any of the inputs are Output<T> but the function only expects T then we need to lift the function into output
+	// space.
+	lift := false
+	for i, arg := range x.Args {
+		var param Parameter
+		if i >= len(x.Signature.Parameters) {
+			if x.Signature.VarargsParameter == nil {
+				// If we get here we must have already generated an error diagnostic above, just break out the loop at
+				// this point.
+				break
+			}
+			param = *x.Signature.VarargsParameter
+		} else {
+			param = x.Signature.Parameters[i]
+		}
+
+		if !param.Type.AssignableFrom(arg.Type()) {
+			lift = true
+			break
+		}
+	}
+
+	if lift {
 		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
 	}
+
 	return diagnostics
 }
 
@@ -1295,7 +1314,7 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 		bf := value.AsBigFloat()
 		i, acc := bf.Int64()
 		if acc == big.Exact {
-			return fmt.Sprintf("%v", i)
+			return strconv.FormatInt(i, 10)
 		}
 		d, _ := bf.Float64()
 		return fmt.Sprintf("%g", d)

@@ -1,9 +1,23 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,7 +28,7 @@ func TestBatches(t *testing.T) {
 	t.Parallel()
 	for _, n := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10} {
 		n := n
-		t.Run(fmt.Sprintf("%d", n), func(t *testing.T) {
+		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			t.Parallel()
 
 			var combined []ProgramTest
@@ -33,7 +47,7 @@ func TestTranspiledExampleTestsCovered(t *testing.T) {
 	// Check that all synced tests from pulumi/yaml are in test list
 	syncDir := filepath.Join("testdata", transpiledExamplesDir)
 	untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiYAMLProgramTests)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Emptyf(t, untestedTranspiledExamples,
 		"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
 }

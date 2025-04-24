@@ -11,8 +11,13 @@ defaults:
 jobs:
   macos-homebrew-install:
     name: Install Pulumi with Homebrew on macOS
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
+      # Workaround for https://github.com/pulumi/pulumi/issues/13938
+      - name: Delete default golang installed on the runner
+        run: |
+          rm /usr/local/bin/go || true
+          rm /usr/local/bin/gofmt || true
       - name: homedate homebrew formulae
         run: brew update
       - name: homebrew install
@@ -20,16 +25,18 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
+          # shellcheck disable=SC2129
           echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
           echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
+          echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version')" >> "${GITHUB_OUTPUT}"
       - name: Error if incorrect version found
-        if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
+        if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version && steps.vars.outputs.previous-version != steps.vars.outputs.installed-version}}
         run: |
           echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
           exit 1
   macOS-direct-install:
     name: Install Pulumi via script on macOS
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
       - run: curl -fsSL https://get.pulumi.com | sh
       - run: echo "/Users/runner/.pulumi/bin" >> "${GITHUB_PATH}"
@@ -46,14 +53,14 @@ jobs:
           exit 1
   macos-verify-download-link:
     name: Verify Direct Download link on macOS
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
       - name: Direct Download
         run: curl -L -o pulumi.tar.gz "https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-darwin-x64.tar.gz"
       - run: ls -la
   linux-direct-install:
     name: Install Pulumi via script on Ubuntu
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Remove existing version
         run: sudo rm /usr/local/bin/pulumi
@@ -72,7 +79,7 @@ jobs:
           exit 1
   linux-verify-download-link:
     name: Verify Direct Download link on Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Direct Download
         run: curl -L -o pulumi.tar.gz "https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-linux-x64.tar.gz"
@@ -83,6 +90,39 @@ jobs:
     steps:
       - name: choco install
         run: choco upgrade pulumi
+      - name: Pulumi Version Details
+        id: vars
+        shell: bash
+        run: |
+          # shellcheck disable=SC2129
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT}"
+          echo "previous-version=$(curl -sS https://raw.githubusercontent.com/pulumi/docs/master/data/versions.json | jq -r '.[1].version')" >> "${GITHUB_OUTPUT}"
+      - name: Error if incorrect version found
+        if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version && steps.vars.outputs.previous-version != steps.vars.outputs.installed-version}}
+        run: |
+          echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
+          exit 1
+  windows-winget-install:
+    name: Install Pulumi with WinGet on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Remove Pre-installed Pulumi
+        shell: bash
+        run: |
+          if command -v "pulumi.exe"; then
+            PULUMI_INSTALL_DIR=$(dirname "$(command -v "pulumi.exe")")
+            echo "Deleting Pulumi"
+            rm -v "$PULUMI_INSTALL_DIR"/pulumi*
+          fi
+      - name: Install winget
+        uses: Cyberboss/install-winget@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Pulumi Using WinGet
+        run: winget install pulumi --disable-interactivity --accept-source-agreements --verbose
+      - run: echo "C:/Program Files (x86)/Pulumi" >> "${GITHUB_PATH}"
+        shell: bash
       - name: Pulumi Version Details
         id: vars
         shell: bash
@@ -144,7 +184,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-11"]
+        os: ["ubuntu-22.04", "windows-latest", "macos-13"]
     steps:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1

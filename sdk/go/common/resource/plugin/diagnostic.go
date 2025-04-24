@@ -17,6 +17,7 @@ package plugin
 import (
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -48,12 +49,21 @@ func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
 	}
 
 	return &codegenrpc.Diagnostic{
+		//nolint:gosec // diag.Seveverity is 0, 1 or 2, the int -> int32 conversion is safe.
 		Severity: codegenrpc.DiagnosticSeverity(diag.Severity),
 		Summary:  diag.Summary,
 		Detail:   diag.Detail,
 		Subject:  subject,
 		Context:  context,
 	}
+}
+
+func HclDiagnosticsToRPCDiagnostics(diags []*hcl.Diagnostic) []*codegenrpc.Diagnostic {
+	rpcDiagnostics := slice.Prealloc[*codegenrpc.Diagnostic](len(diags))
+	for _, diag := range diags {
+		rpcDiagnostics = append(rpcDiagnostics, HclDiagnosticToRPCDiagnostic(diag))
+	}
+	return rpcDiagnostics
 }
 
 func RPCDiagnosticToHclDiagnostic(diag *codegenrpc.Diagnostic) *hcl.Diagnostic {

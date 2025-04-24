@@ -30,17 +30,17 @@ defaults:
 jobs:
   info:
     name: gather
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
       release-notes: "${{ fromJSON(steps.notes.outputs.release-notes) }}"
     env:
-      GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-      GH_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
@@ -61,7 +61,7 @@ jobs:
           fi
 
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '>=1.19.0' # decoupled from version sets, used by changelog tool
           cache: true

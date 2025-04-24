@@ -17,15 +17,20 @@ import { RemoteStack } from "./remoteStack";
 import { Stack } from "./stack";
 
 /**
- * RemoteWorkspace is the execution context containing a single remote Pulumi project.
+ * {@link RemoteWorkspace} is the execution context containing a single remote
+ * Pulumi project.
  */
 export class RemoteWorkspace {
     /**
-     * PREVIEW: Creates a Stack backed by a RemoteWorkspace with source code from the specified Git repository.
-     * Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+     * Creates a stack backed by a {@link RemoteWorkspace} with source code from
+     * the specified Git repository. Pulumi operations on the stack (preview,
+     * update, refresh, and destroy) are performed remotely.
      *
-     * @param args A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
-     * @param opts Additional customizations to be applied to the Workspace.
+     * @param args
+     *  A set of arguments to initialize a {@link RemoteStack} with a remote
+     *  Pulumi program from a Git repository.
+     * @param opts
+     *  Additional customizations to be applied to the Workspace.
      */
     static async createStack(args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions): Promise<RemoteStack> {
         const ws = await createLocalWorkspace(args, opts);
@@ -34,11 +39,15 @@ export class RemoteWorkspace {
     }
 
     /**
-     * PREVIEW: Selects an existing Stack backed by a RemoteWorkspace with source code from the specified Git
-     * repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+     * Selects an existing stack backed by a {@link RemoteWorkspace} with source
+     * code from the specified Git repository. Pulumi operations on the stack
+     * (preview, update, refresh, and destroy) are performed remotely.
      *
-     * @param args A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
-     * @param opts Additional customizations to be applied to the Workspace.
+     * @param args
+     *  A set of arguments to initialize a {@link RemoteStack} with a remote
+     *  Pulumi program from a Git repository.
+     * @param opts
+     *  Additional customizations to be applied to the Workspace.
      */
     static async selectStack(args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions): Promise<RemoteStack> {
         const ws = await createLocalWorkspace(args, opts);
@@ -46,11 +55,14 @@ export class RemoteWorkspace {
         return RemoteStack.create(stack);
     }
     /**
-     * PREVIEW: Creates or selects an existing Stack backed by a RemoteWorkspace with source code from the specified
-     * Git repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+     * Creates or selects an existing stack backed by a {@link RemoteWorkspace}
+     * with source code from the specified Git repository. Pulumi operations on
+     * the stack (preview, update, refresh, and destroy) are performed remotely.
      *
-     * @param args A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
-     * @param opts Additional customizations to be applied to the Workspace.
+     * @param args
+     *  A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+     * @param opts
+     *  Additional customizations to be applied to the Workspace.
      */
     static async createOrSelectStack(args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions): Promise<RemoteStack> {
         const ws = await createLocalWorkspace(args, opts);
@@ -66,22 +78,22 @@ export class RemoteWorkspace {
  */
 export interface RemoteGitProgramArgs {
     /**
-     * The name of the associated Stack
+     * The associated stack name.
      */
     stackName: string;
 
     /**
      * The URL of the repository.
      */
-    url: string;
+    url?: string;
 
     /**
-     * Optional path relative to the repo root specifying location of the Pulumi program.
+     * An optional path relative to the repo root specifying location of the Pulumi program.
      */
     projectPath?: string;
 
     /**
-     * Optional branch to checkout.
+     * An optional branch to checkout.
      */
     branch?: string;
 
@@ -97,59 +109,93 @@ export interface RemoteGitProgramArgs {
 }
 
 /**
- * Authentication options for the repository that can be specified for a private Git repo.
+ * Authentication options that can be specified for a private Git repository.
  * There are three different authentication paths:
- *  - Personal accesstoken
- *  - SSH private key (and its optional password)
- *  - Basic auth username and password
+ *
+ *  - A Personal access token
+ *  - An SSH private key (and its optional passphrase)
+ *  - Username and password (basic authentication)
  *
  * Only one authentication path is valid.
  */
 export interface RemoteGitAuthArgs {
     /**
-     * The absolute path to a private key for access to the git repo.
+     * The absolute path to a private key to be used for access to the Git repository.
      */
     sshPrivateKeyPath?: string;
 
     /**
-     * The (contents) private key for access to the git repo.
+     * A string containing the contents of a private key to be used for access
+     * to the Git repository.
      */
     sshPrivateKey?: string;
 
     /**
-     * The password that pairs with a username or as part of an SSH Private Key.
+     * The password that pairs with a username as part of basic authentication,
+     * or the passphrase to be used with an SSH private key.
      */
     password?: string;
 
     /**
-     * PersonalAccessToken is a Git personal access token in replacement of your password.
+     * A Git personal access token, to be used in replacement of a password.
      */
     personalAccessToken?: string;
 
     /**
-     * Username is the username to use when authenticating to a git repository
+     * The username to use when authenticating to a Git repository with basic
+     * authentication.
      */
     username?: string;
 }
 
 /**
- * Extensibility options to configure a RemoteWorkspace.
+ * Extensibility options to configure a {@link RemoteWorkspace.}
  */
 export interface RemoteWorkspaceOptions {
     /**
-     * Environment values scoped to the remote workspace. These will be passed to remote operations.
+     * Environment values scoped to the remote workspace. These will be passed
+     * to remote operations.
      */
     envVars?: { [key: string]: string | { secret: string } };
 
     /**
-     * An optional list of arbitrary commands to run before a remote Pulumi operation is invoked.
+     * An optional list of arbitrary commands to run before a remote Pulumi
+     * operation is invoked.
      */
     preRunCommands?: string[];
 
     /**
-     * Whether to skip the default dependency installation step. Defaults to false.
+     * Whether to skip the default dependency installation step. Defaults to
+     * false.
      */
     skipInstallDependencies?: boolean;
+
+    /**
+     * Whether to inherit the deployment settings set on the stack. Defaults to
+     * false.
+     */
+    inheritSettings?: boolean;
+
+    /**
+     * The image to use for the remote executor.
+     */
+    executorImage?: ExecutorImage;
+}
+
+/**
+ * Information about the remote execution image.
+ */
+export interface ExecutorImage {
+    image: string;
+    credentials?: DockerImageCredentials;
+}
+
+/**
+ * Credentials for the remote execution Docker image.
+ */
+export interface DockerImageCredentials {
+    username: string;
+    password: string;
 }
 
 async function createLocalWorkspace(
@@ -160,14 +206,14 @@ async function createLocalWorkspace(
         throw new Error(`stack name "${args.stackName}" must be fully qualified.`);
     }
 
-    if (!args.url) {
-        throw new Error("url is required.");
+    if (!args.url && !opts?.inheritSettings) {
+        throw new Error("url is required if inheritSettings is not set.");
     }
     if (args.branch && args.commitHash) {
         throw new Error("branch and commitHash cannot both be specified.");
     }
-    if (!args.branch && !args.commitHash) {
-        throw new Error("either branch or commitHash is required.");
+    if (!args.branch && !args.commitHash && !opts?.inheritSettings) {
+        throw new Error("either branch or commitHash is required if inheritSettings is not set.");
     }
     if (args.auth) {
         if (args.auth.sshPrivateKey && args.auth.sshPrivateKeyPath) {
@@ -181,11 +227,16 @@ async function createLocalWorkspace(
         remoteEnvVars: opts?.envVars,
         remotePreRunCommands: opts?.preRunCommands,
         remoteSkipInstallDependencies: opts?.skipInstallDependencies,
+        remoteInheritSettings: opts?.inheritSettings,
+        remoteExecutorImage: opts?.executorImage,
     };
     return await LocalWorkspace.create(localOpts);
 }
 
-/** @internal exported only so it can be tested */
+/**
+ * @internal
+ *  Exported only so it can be tested.
+ */
 export function isFullyQualifiedStackName(stackName: string): boolean {
     if (!stackName) {
         return false;

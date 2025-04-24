@@ -43,6 +43,31 @@ func TestValidateProjectName(t *testing.T) {
 			give:    "foo bar",
 			wantErr: "project names may only contain alphanumerics, hyphens, underscores, and periods",
 		},
+		{
+			desc:    "Correct Project Name",
+			give:    "SampleProject",
+			wantErr: "",
+		},
+		{
+			desc:    "Project Name with unsupported punctuation",
+			give:    "SampleProject!",
+			wantErr: "project names may only contain alphanumerics, hyphens, underscores, and periods",
+		},
+		{
+			desc:    "Project Name starting with the word Pulumi",
+			give:    "PulumiProject",
+			wantErr: "",
+		},
+		{
+			desc:    "Project Name greater than 100 characters",
+			give:    "cZClTe6xrjgKzH5QS8rFEPqYK1z4bbMeMr6n89n87djq9emSAlznQXXkkCEpBBCaZAFNlCvbfqVcqoifYlfPl11hvekIDjXVIY7m1",
+			wantErr: "project names are limited to 100 characters",
+		},
+		{
+			desc:    "Empty Project Name",
+			give:    "",
+			wantErr: "project names may not be empty",
+		},
 	}
 
 	for _, tt := range tests {

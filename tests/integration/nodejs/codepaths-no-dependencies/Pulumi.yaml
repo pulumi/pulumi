@@ -1,0 +1,3 @@
+name: codepaths-no-dependencies
+runtime: nodejs
+description: Basic test case for codepaths with no dependencies in package.json

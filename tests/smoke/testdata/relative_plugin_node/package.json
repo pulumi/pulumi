@@ -1,0 +1,10 @@
+{
+  "name": "relative_plugin_node",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/node": "^16"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.19.0"
+  }
+}

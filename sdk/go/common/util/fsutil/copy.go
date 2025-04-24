@@ -15,18 +15,17 @@
 package fsutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
 // CopyFile is a braindead simple function that copies a src file to a dst file.  Note that it is not general purpose:
-// it doesn't handle symbolic links, it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
+// it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
 // and it makes no attempt to preserve file permissions.  It is what we need for this utility package, no more, no less.
 func CopyFile(dst string, src string, excl map[string]bool) error {
-	info, err := os.Lstat(src)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
+	info, err := os.Stat(src)
+	if err != nil {
 		return err
 	} else if excl[info.Name()] {
 		return nil
@@ -36,7 +35,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 		// Recursively copy all files in a directory.
 		files, err := os.ReadDir(src)
 		if err != nil {
-			return err
+			return fmt.Errorf("read dir: %w", err)
 		}
 		for _, file := range files {
 			name := file.Name()
@@ -46,10 +45,10 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 			}
 		}
 	} else if info.Mode().IsRegular() {
-		// Copy files by reading and rewriting their contents.  Skip symlinks and other special files.
+		// Copy files by reading and rewriting their contents.  Skip other special files.
 		data, err := os.ReadFile(src)
 		if err != nil {
-			return err
+			return fmt.Errorf("read file: %w", err)
 		}
 		dstdir := filepath.Dir(dst)
 		if err = os.MkdirAll(dstdir, 0o700); err != nil {

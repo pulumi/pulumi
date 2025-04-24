@@ -1,0 +1,92 @@
+{
+    "version": "0.0.1",
+    "name": "example",
+    "types": {
+      "example:index:TypeWithAssets": {
+        "properties": {
+          "plainAsset": {
+            "$ref": "pulumi.json#/Asset",
+            "plain": true
+          },
+          "plainArchive": {
+            "$ref": "pulumi.json#/Archive",
+            "plain": true
+          },
+          "asset": {
+            "$ref": "pulumi.json#/Asset"
+          },
+          "archive": {
+            "$ref": "pulumi.json#/Archive"
+          }
+        },
+        "required": ["asset", "plainArchive"],
+        "type": "object"
+      }
+    },
+    "resources": {
+      "example:index:ResourceWithAssets": {
+        "properties": {
+            "asset": {
+              "$ref": "pulumi.json#/Asset"
+            },
+            "archive": {
+              "$ref": "pulumi.json#/Archive"
+            },
+            "nested": {
+                "$ref": "#/types/example:index:TypeWithAssets"
+            }
+        },
+        "required": ["asset", "archive"],
+        "inputProperties": {
+            "source": {
+                "$ref": "pulumi.json#/Asset"
+            },
+            "archive": {
+                "$ref": "pulumi.json#/Archive"
+            },
+            "nested": {
+                "$ref": "#/types/example:index:TypeWithAssets"
+            }
+        },
+        
+        "requiredInputs": ["source"],
+        "type": "object"
+      }
+    },
+    "functions": {
+      "example::GetAssets": {
+        "inputs": {
+          "properties": {
+            "source": {
+                "$ref": "pulumi.json#/Asset"
+            },
+            "archive": {
+                "$ref": "pulumi.json#/Archive"
+            }
+          },
+          "required": ["source", "archive"],
+          "type": "object"
+        },
+        "outputs": {
+            "type": "object",
+            "required": ["source", "archive"],
+            "properties": {
+                "source": {
+                    "$ref": "pulumi.json#/Asset"
+                },
+                "archive": {
+                    "$ref": "pulumi.json#/Archive"
+                }
+            }
+        }
+      }
+    },
+    "language": {
+      "go": {
+        "importBasePath": "assets-and-archives/example",
+        "generateExtraInputTypes": true,
+        "generics": "none"
+      }
+    }
+  }
+  

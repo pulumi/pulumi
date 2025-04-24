@@ -15,9 +15,6 @@
 syntax = "proto3";
 
 import "pulumi/codegen/hcl.proto";
-import "pulumi/plugin.proto";
-import "google/protobuf/empty.proto";
-import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
@@ -34,8 +31,11 @@ service Converter {
 }
 
 message ConvertStateRequest {
-    // the gRPC address of the mapper service.
+    // the gRPC target of the mapper service.
     string mapper_target = 1;
+    // the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
+    // import from.
+    repeated string args = 2;
 }
 
 // A ResourceImport specifies a resource to import.
@@ -51,11 +51,23 @@ message ResourceImport {
     string version = 4;
     // the provider PluginDownloadURL to use for the resource, if any.
     string pluginDownloadURL = 5;
+
+    // the logical name of the resource.
+    string logical_name = 6;
+
+    // true if this is a component resource.
+    bool is_component = 7;
+    // true if this is a remote resource. Ignored if is_component is false.
+    bool is_remote = 8;
 }
 
 message ConvertStateResponse {
+
     // a list of resources to import.
     repeated ResourceImport resources = 1;
+
+    // any diagnostics from state conversion.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 2;
 }
 
 message ConvertProgramRequest {
@@ -63,8 +75,12 @@ message ConvertProgramRequest {
     string source_directory = 1;
     // a target directory to write the resulting PCL code and project file to.
     string target_directory = 2;
-    // the gRPC address of the mapper service.
+    // the gRPC target of the mapper service.
     string mapper_target = 3;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 4;
+    // the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options.
+    repeated string args = 5;
 }
 
 message ConvertProgramResponse {

@@ -18,5 +18,6 @@ class MyResource(CustomResource):
     def __init__(self, name):
         CustomResource.__init__(self, "test:index:MyResource", name)
 
+
 config = Config("foo")
 MyResource(config.require("name"))

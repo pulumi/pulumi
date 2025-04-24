@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -33,18 +32,13 @@ type cloudSnapshotPersister struct {
 	update              client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
 	tokenSource         tokenSourceCapability   // A token source for interacting with the service.
 	backend             *cloudBackend           // A backend for communicating with the service
-	sm                  secrets.Manager
 	deploymentDiffState *deploymentDiffState
-}
-
-func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
-	return persister.sm
 }
 
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	ctx := persister.context
 
-	deploymentV3, err := stack.SerializeDeployment(snapshot, persister.sm, false /* showSecrets */)
+	deploymentV3, err := stack.SerializeDeployment(ctx, snapshot, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
@@ -106,19 +100,18 @@ func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
 
-func (cb *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
-	tokenSource tokenSourceCapability, sm secrets.Manager,
+func (b *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
+	tokenSource tokenSourceCapability,
 ) *cloudSnapshotPersister {
 	p := &cloudSnapshotPersister{
 		context:     ctx,
 		update:      update,
 		tokenSource: tokenSource,
-		backend:     cb,
-		sm:          sm,
+		backend:     b,
 	}
 
-	caps := cb.capabilities(ctx)
-	deltaCaps := caps.deltaCheckpointUpdates
+	caps := b.Capabilities(ctx)
+	deltaCaps := caps.DeltaCheckpointUpdates
 	if deltaCaps != nil {
 		p.deploymentDiffState = newDeploymentDiffState(deltaCaps.CheckpointCutoffSizeBytes)
 	}

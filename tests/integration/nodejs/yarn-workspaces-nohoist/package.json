@@ -1,0 +1,14 @@
+{
+    "name": "yarn-workspaces-nohoist",
+    "description": "A project that uses yarn workspaces with the nohoist option. `pulumi install` should successfully install dependencies.",
+    "private": true,
+    "workspaces": {
+        "packages": [
+            "packages/*",
+            "infra/"
+        ],
+        "nohoist": [
+            "semver"
+        ]
+    }
+}

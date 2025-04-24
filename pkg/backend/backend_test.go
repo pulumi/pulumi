@@ -76,11 +76,11 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	assert.True(t, exists)
 	assert.True(t, resc1Actual.IsObject())
 
-	resc1Type, exists := resc1Actual.V.(resource.PropertyMap)["type"]
+	resc1Type, exists := resc1Actual.ObjectValue()["type"]
 	assert.True(t, exists)
 	assert.Equal(t, typ, resc1Type.V)
 
-	resc1Outs, exists := resc1Actual.V.(resource.PropertyMap)["outputs"]
+	resc1Outs, exists := resc1Actual.ObjectValue()["outputs"]
 	assert.True(t, exists)
 	assert.True(t, resc1Outs.IsObject())
 
@@ -89,11 +89,11 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	assert.True(t, exists)
 	assert.True(t, resc2Actual.IsObject())
 
-	resc2Type, exists := resc2Actual.V.(resource.PropertyMap)["type"]
+	resc2Type, exists := resc2Actual.ObjectValue()["type"]
 	assert.True(t, exists)
 	assert.Equal(t, typ, resc2Type.V) // Same type.
 
-	resc2Outs, exists := resc2Actual.V.(resource.PropertyMap)["outputs"]
+	resc2Outs, exists := resc2Actual.ObjectValue()["outputs"]
 	assert.True(t, exists)
 	assert.True(t, resc2Outs.IsObject())
 
@@ -107,7 +107,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 //
 
 func testURN(typ, name string) resource.URN {
-	return resource.NewURN("test", "test", "", tokens.Type(typ), tokens.QName(name))
+	return resource.NewURN("test", "test", "", tokens.Type(typ), name)
 }
 
 func deleteState(typ, name string, outs resource.PropertyMap) *resource.State {

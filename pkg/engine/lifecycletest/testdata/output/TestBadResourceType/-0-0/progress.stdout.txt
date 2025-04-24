@@ -1,0 +1,18 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> a:component resB <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> singlename resC <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>an unhandled error occurred: rpc error: code = InvalidArgument desc = Type 'very:bad' is not a valid type token (must have format '*:*:*')<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> a:component resB <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> singlename resC <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>an unhandled error occurred: rpc error: code = InvalidArgument desc = Type 'very:bad' is not a valid type token (must have format '*:*:*')<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

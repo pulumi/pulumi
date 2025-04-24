@@ -283,17 +283,20 @@ from typing import (
     Union,
     cast,
     get_type_hints,
+    overload,
 )
 
 from . import _utils
 
 T = TypeVar("T")
+C = TypeVar("C", bound=Callable)
 
 
 _PULUMI_NAME = "_pulumi_name"
 _PULUMI_INPUT_TYPE = "_pulumi_input_type"
 _PULUMI_OUTPUT_TYPE = "_pulumi_output_type"
 _PULUMI_PYTHON_TO_PULUMI_TABLE = "_pulumi_python_to_pulumi_table"
+_PULUMI_DEPRECATED_CALLABLE = "_pulumi_deprecated_callable"
 _TRANSLATE_PROPERTY = "_translate_property"
 
 
@@ -333,8 +336,7 @@ class _Property:
 
 # This function's return type is deliberately annotated as Any so that type checkers do not
 # complain about assignments that we want to allow like `my_value: str = property("myValue")`.
-# pylint: disable=redefined-builtin
-def property(name: str, *, default: Any = MISSING) -> Any:
+def property(name: str, *, default: Any = MISSING) -> Any:  # noqa: A001 shadowing builtin
     """
     Return an object to identify Pulumi properties.
 
@@ -363,7 +365,8 @@ def _properties_from_annotations(cls: type) -> Dict[str, _Property]:
         return p
 
     return {
-        name: get_property(cls, name, type) for name, type in cls_annotations.items()
+        name: get_property(cls, name, type)
+        for name, type in cls_annotations.items()  #  noqa: A001 shadowing builtin
     }
 
 
@@ -518,7 +521,17 @@ def input_type_to_dict(obj: Any) -> Dict[str, Any]:
     # Build a dictionary of properties to return
     result: Dict[str, Any] = {}
     for _, pulumi_name, prop in _py_properties(cls):
-        value = prop.fget(obj)  # type: ignore
+        fget = prop.fget
+
+        # If the property has a _pulumi_deprecated_callable attribute, use that
+        # as the getter. We do this so as to bypass the warnings which would
+        # otherwise be emitted, which are not appropriate here since the user
+        # has not written code that makes use of a deprecated identifier.
+        deprecated_callable = prop.fget.__dict__.get(_PULUMI_DEPRECATED_CALLABLE)
+        if deprecated_callable is not None:
+            fget = deprecated_callable
+
+        value = fget(obj)  # type: ignore
         # We treat properties with a value of None as if they don't exist.
         if value is not None:
             result[pulumi_name] = value
@@ -559,7 +572,6 @@ def output_type(cls: Type[T]) -> Type[T]:
     # the Python name to the Pulumi name, and then pass the Pulumi name to _translate_property() to
     # convert the Pulumi name to whatever name _translate_property() returns (which, for our
     # provider codegen, will be the translated name from _tables.CAMEL_TO_SNAKE_CASE_TABLE).
-    # pylint: disable=too-many-nested-blocks
     if hasattr(cls, _TRANSLATE_PROPERTY):
         python_to_pulumi_table = None
         for python_name, pulumi_name, _ in _py_properties(cls):
@@ -581,6 +593,10 @@ def output_type_from_dict(cls: Type[T], output: Dict[str, Any]) -> T:
     return cls(**args)  # type: ignore
 
 
+@overload
+def getter(*, name: Optional[str] = None) -> Callable[[C], C]: ...
+@overload
+def getter(_fn: C) -> C: ...
 def getter(_fn=None, *, name: Optional[str] = None):
     """
     Decorator to indicate a function is a Pulumi property getter.
@@ -651,7 +667,6 @@ def get(self, name: str) -> Any:
             return getattr(dict, "get")(self, name)
         return self.__dict__.get(name)
 
-    # pylint: disable=import-outside-toplevel
     from . import Resource
 
     if isinstance(self, Resource):
@@ -688,66 +703,17 @@ def set(self, name: str, value: Any) -> None:
     )
 
 
-# Use the built-in `get_origin` and `get_args` functions on Python 3.8+,
-# otherwise fallback to downlevel implementations.
-if sys.version_info[:2] >= (3, 8):
-    # pylint: disable=no-member
-    get_origin = typing.get_origin  # type: ignore
-    # pylint: disable=no-member
-    get_args = typing.get_args  # type: ignore
-elif sys.version_info[:2] >= (3, 7):
-
-    def get_origin(tp):
-        if isinstance(tp, typing._GenericAlias):  # type: ignore
-            return tp.__origin__
-        return None
-
-    def get_args(tp):
-        if isinstance(tp, typing._GenericAlias):  # type: ignore
-            return tp.__args__
-        return ()
-
-else:
-
-    def get_origin(tp):
-        if hasattr(tp, "__origin__"):
-            return tp.__origin__
-        return None
-
-    def get_args(tp):
-        # Emulate the behavior of get_args for Union on Python 3.6.
-        if _is_union_type(tp) and hasattr(tp, "_subs_tree"):
-            tree = tp._subs_tree()
-            if isinstance(tree, tuple) and len(tree) > 1:
-
-                def _eval(args):
-                    return tuple(
-                        arg if not isinstance(arg, tuple) else arg[0][_eval(arg[1:])]
-                        for arg in args
-                    )
-
-                return _eval(tree[1:])
-        if hasattr(tp, "__args__"):
-            return tp.__args__
-        return ()
-
-
 def _is_union_type(tp):
-    if sys.version_info[:2] >= (3, 7):
-        return (
-            tp is Union
-            or isinstance(tp, typing._GenericAlias)
-            and tp.__origin__ is Union
-        )  # type: ignore
-    # pylint: disable=unidiomatic-typecheck, no-member
-    return type(tp) is typing._Union  # type: ignore
+    return (
+        tp is Union or isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union
+    )
 
 
 def _is_optional_type(tp):
     if tp is type(None):
         return True
     if _is_union_type(tp):
-        return any(_is_optional_type(tt) for tt in get_args(tp))
+        return any(_is_optional_type(tt) for tt in typing.get_args(tp))
     return False
 
 
@@ -770,7 +736,6 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
     """
-    # pylint: disable=import-outside-toplevel
     from . import Output
 
     # We use get_type_hints() below on each Python property to resolve the getter function's
@@ -835,7 +800,6 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     if not props:
         return {}
 
-    # pylint: disable=import-outside-toplevel
     from . import Output
 
     # We want resolved types for just the cls's type annotations (not base classes),
@@ -955,7 +919,7 @@ def unwrap_optional_type(val: type) -> type:
     # and any nested Unions are flattened, so Optional[Union[T, U], None] is Union[T, U, None].
     # We'll only "unwrap" for the common case of a single arg T for Union[T, None].
     if _is_optional_type(val):
-        args = get_args(val)
+        args = typing.get_args(val)
         if len(args) == 2:
             assert args[1] is type(None)
             val = args[0]
@@ -967,14 +931,13 @@ def unwrap_type(val: type) -> type:
     """
     Unwraps the type T in Output[T], Input[T], InputType[T], and Optional[T].
     """
-    # pylint: disable=import-outside-toplevel
     from . import Output
 
-    origin = get_origin(val)
+    origin = typing.get_origin(val)
 
     # If it is an Output[T], extract the T arg.
     if origin is Output:
-        args = get_args(val)
+        args = typing.get_args(val)
         assert len(args) == 1
         val = args[0]
 
@@ -986,17 +949,19 @@ def unwrap_type(val: type) -> type:
             return (
                 is_input_type(args[0])
                 and args[1] is dict
-                or get_origin(args[1]) in [dict, Dict, Mapping, collections.abc.Mapping]
+                or typing.get_origin(args[1])
+                in [dict, Dict, Mapping, collections.abc.Mapping]
             )
 
         def isInput(args, i=1):
             assert len(args) > i + 1
             return (
-                get_origin(args[i]) in {typing.Awaitable, collections.abc.Awaitable}
-                and get_origin(args[i + 1]) is Output
+                typing.get_origin(args[i])
+                in {typing.Awaitable, collections.abc.Awaitable}
+                and typing.get_origin(args[i + 1]) is Output
             )
 
-        args = get_args(val)
+        args = typing.get_args(val)
         if len(args) == 2:
             if isInputType(args):  # InputType[T]
                 return args[0]
@@ -1038,7 +1003,7 @@ def _create_fn(name, args, body, *, globals=None, locals=None):
     txt = f"def __create_fn__({local_vars}):\n{txt}\n return {name}"
 
     ns = {}
-    exec(txt, globals, ns)  # pylint: disable=exec-used
+    exec(txt, globals, ns)  # noqa: S102 exec builtin
     return ns["__create_fn__"](**locals)
 
 

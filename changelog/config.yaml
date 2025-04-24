@@ -4,10 +4,10 @@ types:
   chore: "Miscellaneous"
 scopes:
   auto: [dotnet, go, java, nodejs, python, yaml]
-  backend: [filestate, service]
+  backend: [diy, service]
   build: []
   ci: []
-  cli: [about, config, display, engine, import, new, plugin, package, state]
+  cli: [about, config, display, engine, import, install, new, plugin, package, state]
   components: [dotnet, go, java, nodejs, python, yaml]
   docs: []
   engine: []
@@ -15,5 +15,5 @@ scopes:
   programgen: [dotnet, go, java, nodejs, python, yaml]
   protobuf: []
   sdk: [dotnet, go, java, nodejs, python, yaml]
-  sdkgen: [dotnet, go, java, nodejs, python, yaml]
+  sdkgen: [dotnet, go, java, nodejs, python, yaml, docs]
   yaml: []

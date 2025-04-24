@@ -1,0 +1,8 @@
+<{%reset%}>  component: (same)
+<{%reset%}>    [urn=urn:pulumi:test::test::component::resA]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

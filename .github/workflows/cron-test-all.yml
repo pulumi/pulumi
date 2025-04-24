@@ -1,0 +1,65 @@
+name: Run full language matrix of tests daily
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  schedule:
+    - cron: "27 5 * * *"
+
+jobs:
+  info:
+    name: info
+    uses: ./.github/workflows/ci-info.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      is-snapshot: true
+    secrets: inherit
+
+  ci:
+    name: CI
+    needs: [info]
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+      lint: true
+      # codegen tests are not the fastest, but we want to run them
+      # on PR to get correct coverage numbers.
+      test-codegen: true
+      test-version-sets: 'all'
+      integration-test-platforms: ubuntu-22.04
+      acceptance-test-platforms: 'macos-latest windows-latest'
+      enable-coverage: true
+    secrets: inherit
+
+  performance-gate:
+    name: Performance Gate
+    needs: [info]
+    uses: ./.github/workflows/ci-performance-gate.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+      test-version-sets: 'all'
+      performance-test-platforms: ubuntu-22.04
+    secrets: inherit
+
+  ci-ok:
+    name: ci-ok
+    needs: [ci, performance-gate]
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: CI failed
+        if: ${{ needs.ci.result != 'success' }}
+        run: exit 1
+      - name: CI succeeded
+        run: exit 0

@@ -1,6 +1,7 @@
 import pytest
 from pulumi.runtime.settings import Settings
 
+
 @pytest.mark.asyncio
 async def test_settings():
     default_settings_instance = Settings("project", "stack")

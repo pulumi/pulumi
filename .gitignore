@@ -3,16 +3,22 @@
 **/node_modules/
 **/bin
 **/.vscode/**/*
+!.vscode/launch.json.example
 **/.vs/
 **/.ionide/
 **/.idea/
 **/.DS_Store
 coverage.cov
 *.coverprofile
+*.cov
 **/obj/
 coverage/
+junit/
 venv/
 .envrc
+# Ignore VSCode created solution file
+/pulumi.sln
+.mono
 
 # Ignore user-provided go.work files.
 /go.work
@@ -32,16 +38,16 @@ venv/
 **/command-output/
 
 # Likewise, we don't want to keep the typechecked version of our codegen tests.
-pkg/codegen/testing/test/testdata/*/typecheck/**
+tests/testdata/codegen/*/typecheck/**
 
 # We don't need to keep testing python __pycache__ either either
-pkg/codegen/testing/test/testdata/*-pp/*/*.csproj
-pkg/codegen/testing/test/testdata/*-pp/*/go.mod
-pkg/codegen/testing/test/testdata/*-pp/*/go.sum
-pkg/codegen/testing/test/testdata/*-pp/*/Program.cs
-pkg/codegen/testing/test/testdata/*-pp/*/package.json
-pkg/codegen/testing/test/testdata/*-pp/*/go.sum
-pkg/codegen/testing/test/testdata/*-pp/*/tsconfig.json
+tests/testdata/codegen/*-pp/*/*.csproj
+tests/testdata/codegen/*-pp/*/go.mod
+tests/testdata/codegen/*-pp/*/go.sum
+tests/testdata/codegen/*-pp/*/Program.cs
+tests/testdata/codegen/*-pp/*/package.json
+tests/testdata/codegen/*-pp/*/go.sum
+tests/testdata/codegen/*-pp/*/tsconfig.json
 
 # By default, we don't check in yarn.lock files
 **/yarn.lock
@@ -78,9 +84,13 @@ __pycache__
 .pytest_cache
 
 # File targets for make
-*.phony
+.make
+.*.phony
 
 # Temporary files
 *.tmp
 test-results/
 yarn-error.log
+
+# Local environment settings
+.env

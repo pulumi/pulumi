@@ -16,7 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import builtins
+import collections.abc
 import google.protobuf.descriptor
+import google.protobuf.internal.containers
 import google.protobuf.message
 import sys
 
@@ -44,3 +46,44 @@ class ErrorCause(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["message", b"message", "stackTrace", b"stackTrace"]) -> None: ...
 
 global___ErrorCause = ErrorCause
+
+@typing_extensions.final
+class InputPropertiesError(google.protobuf.message.Message):
+    """An error that can be returned from a component provider and includes details of the
+    error, which can be multiple properties.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class PropertyError(google.protobuf.message.Message):
+        """A single invalid input property."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        PROPERTY_PATH_FIELD_NUMBER: builtins.int
+        REASON_FIELD_NUMBER: builtins.int
+        property_path: builtins.str
+        """The path to the property that is invalid."""
+        reason: builtins.str
+        """The reason the property is invalid."""
+        def __init__(
+            self,
+            *,
+            property_path: builtins.str = ...,
+            reason: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["property_path", b"property_path", "reason", b"reason"]) -> None: ...
+
+    ERRORS_FIELD_NUMBER: builtins.int
+    @property
+    def errors(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___InputPropertiesError.PropertyError]:
+        """The list of invalid input properties."""
+    def __init__(
+        self,
+        *,
+        errors: collections.abc.Iterable[global___InputPropertiesError.PropertyError] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["errors", b"errors"]) -> None: ...
+
+global___InputPropertiesError = InputPropertiesError

@@ -1,4 +1,17 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build !xplatform_acceptance
 
 package ints
@@ -27,11 +40,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	stackName, err := resource.NewUniqueHex("test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
@@ -63,11 +72,7 @@ func TestDeleteManyTargets(t *testing.T) {
 	}
 
 	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
+	defer e.DeleteIfNotFailed()
 
 	// First just spin up the project.
 	projName := "delete_targets_many_deps"
@@ -81,7 +86,7 @@ func TestDeleteManyTargets(t *testing.T) {
 
 	// Create a handy mkURN func to create URNs for dynamic resources in this project/stack.
 	resourceType := tokens.Type("pulumi-nodejs:dynamic:Resource")
-	mkURNStr := func(resourceName tokens.QName, parentType tokens.Type) string {
+	mkURNStr := func(resourceName string, parentType tokens.Type) string {
 		return string(resource.NewURN(
 			tokens.QName(stackName), tokens.PackageName(projName), parentType, resourceType, resourceName))
 	}

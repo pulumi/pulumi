@@ -56,7 +56,7 @@ type Type interface {
 }
 
 var (
-	// NoneType represents the undefined value.
+	// NoneType represents the undefined/null value.
 	NoneType Type = noneType(0)
 	// BoolType represents the set of boolean values.
 	BoolType = NewOpaqueType("boolean")

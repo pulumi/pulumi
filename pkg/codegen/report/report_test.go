@@ -1,3 +1,17 @@
+// Copyright 2022-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package report_test
 
 import (
@@ -11,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/report"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,8 +78,7 @@ func TestReportExample(t *testing.T) {
 				GoErrors: map[string]string{
 					"Might not bind": "error: could not locate a compatible plugin in " +
 						"deploytest, the makefile and & constructor of the plugin host " +
-						"must define the location of the schema: failed " +
-						`to locate compatible plugin: "not"`,
+						"must define the location of the schema",
 				},
 				Files: map[string][]report.File{
 					"Might not bind": {{Name: "Might not bind", Body: "resource foo \"not:a:Resource\" { foo: \"bar\" }"}},

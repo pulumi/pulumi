@@ -172,16 +172,3 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 	}
 	return makeSafeEnumName(name, typeName)
 }
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = fmt.Sprintf("Pulumi.%s", namespaceName(d.Namespaces, pkg.Name))
-	} else {
-		displayName = fmt.Sprintf("Pulumi.%s.%s", namespaceName(d.Namespaces, pkg.Name), modName)
-	}
-	link = d.GetDocLinkForResourceType(pkg, "", displayName)
-	return displayName, link
-}

@@ -44,7 +44,7 @@ func unwrapIterableSourceType(t Type) Type {
 	}
 }
 
-// wrapIterableSourceType adds optional or eventual types to a type intended for iteration per the structure of the
+// wrapIterableResultType adds optional or eventual types to a type intended for iteration per the structure of the
 // source type.
 func wrapIterableResultType(sourceType, iterableType Type) Type {
 	// TODO(pdg): unions

@@ -50,6 +50,12 @@ type GoPackageInfo struct {
 	//
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
 
+	// Defines the pattern for how import paths should be constructed from the base import path and used module
+	// By default, the pattern is "{baseImportPath}/{module}" but can be overridden to support other patterns.
+	// for example you can use "{baseImportPath}/{module}/v2" which will replace {module} with the module name
+	// and {baseImportPath} with the base import path to compute the full path.
+	ImportPathPattern string `json:"importPathPattern,omitempty"`
+
 	// Generate container types (arrays, maps, pointer output types etc.) for each resource.
 	// These are typically used to support external references.
 	GenerateResourceContainerTypes bool `json:"generateResourceContainerTypes,omitempty"`
@@ -69,6 +75,10 @@ type GoPackageInfo struct {
 	// space saving measure.
 	DisableInputTypeRegistrations bool `json:"disableInputTypeRegistrations,omitempty"`
 
+	// When set, the code generator will use this name for the generated internal module
+	// instead of "internal" so that functionality within the module can be used by end users.
+	InternalModuleName string `json:"internalModuleName,omitempty"`
+
 	// Feature flag to disable generating Pulumi object default functions. This is a
 	// space saving measure.
 	DisableObjectDefaults bool `json:"disableObjectDefaults,omitempty"`
@@ -87,6 +97,13 @@ type GoPackageInfo struct {
 	// InternalDependencies are blank imports that are emitted in the SDK so that `go mod tidy` does not remove the
 	// associated module dependencies from the SDK's go.mod.
 	InternalDependencies []string `json:"internalDependencies,omitempty"`
+
+	// Specifies how to handle generating a variant of the SDK that uses generics.
+	// Allowed values are the following:
+	// - "none" (default): do not generate a generics variant of the SDK
+	// - "side-by-side": generate a side-by-side generics variant of the SDK under the x subdirectory
+	// - "only-generics": generate a generics variant of the SDK only
+	Generics string `json:"generics,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

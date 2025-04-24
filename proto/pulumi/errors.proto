@@ -23,3 +23,16 @@ message ErrorCause {
     string stackTrace = 2;
 }
 
+// An error that can be returned from a component provider and includes details of the
+// error, which can be multiple properties.
+message InputPropertiesError {
+    // A single invalid input property.
+    message PropertyError {
+        // The path to the property that is invalid.
+        string property_path = 1;
+	// The reason the property is invalid.
+        string reason = 2;
+    }
+    // The list of invalid input properties.
+    repeated PropertyError errors = 1;
+}

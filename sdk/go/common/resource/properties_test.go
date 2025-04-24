@@ -144,8 +144,8 @@ func TestMapReplComputedOutput(t *testing.T) {
 	t.Parallel()
 
 	m := make(PropertyMap)
-	m["a"] = NewComputedProperty(Computed{Element: NewStringProperty("X")})
-	m["b"] = NewOutputProperty(Output{Element: NewNumberProperty(46)})
+	m["a"] = NewProperty(Computed{Element: NewProperty("X")})
+	m["b"] = NewProperty(Output{Element: NewProperty(46.0)})
 	mm := m.MapRepl(nil, nil)
 	assert.Equal(t, len(m), len(mm))
 	m2 := NewPropertyMapFromMap(mm)
@@ -165,19 +165,19 @@ func TestCopy(t *testing.T) {
 	assert.Equal(t, src["a"], dst["a"])
 	assert.Equal(t, src["b"], dst["b"])
 	src["a"] = NewNullProperty()
-	assert.Equal(t, NewStringProperty("str"), dst["a"])
-	src["c"] = NewNumberProperty(99.99)
+	assert.Equal(t, NewProperty("str"), dst["a"])
+	src["c"] = NewProperty(99.99)
 	assert.Equal(t, 2, len(dst))
 }
 
 func TestSecretUnknown(t *testing.T) {
 	t.Parallel()
 
-	o := NewOutputProperty(Output{Element: NewNumberProperty(46)})
+	o := NewProperty(Output{Element: NewProperty(46.0)})
 	so := MakeSecret(o)
 	assert.True(t, o.ContainsUnknowns())
 	assert.True(t, so.ContainsUnknowns())
-	c := NewComputedProperty(Computed{Element: NewStringProperty("X")})
+	c := NewProperty(Computed{Element: NewProperty("X")})
 	co := MakeSecret(so)
 	assert.True(t, c.ContainsUnknowns())
 	assert.True(t, co.ContainsUnknowns())
@@ -191,27 +191,27 @@ func TestTypeString(t *testing.T) {
 		expected string
 	}{
 		{
-			prop:     MakeComputed(NewStringProperty("")),
+			prop:     MakeComputed(NewProperty("")),
 			expected: "output<string>",
 		},
 		{
-			prop:     MakeSecret(NewStringProperty("")),
+			prop:     MakeSecret(NewProperty("")),
 			expected: "secret<string>",
 		},
 		{
-			prop:     MakeOutput(NewStringProperty("")),
+			prop:     MakeOutput(NewProperty("")),
 			expected: "output<string>",
 		},
 		{
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty(""),
+			prop: NewProperty(Output{
+				Element: NewProperty(""),
 				Known:   true,
 			}),
 			expected: "string",
 		},
 		{
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty(""),
+			prop: NewProperty(Output{
+				Element: NewProperty(""),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -236,27 +236,27 @@ func TestString(t *testing.T) {
 		expected string
 	}{
 		{
-			prop:     MakeComputed(NewStringProperty("")),
+			prop:     MakeComputed(NewProperty("")),
 			expected: "output<string>{}",
 		},
 		{
-			prop:     MakeSecret(NewStringProperty("shh")),
+			prop:     MakeSecret(NewProperty("shh")),
 			expected: "{&{{shh}}}",
 		},
 		{
-			prop:     MakeOutput(NewStringProperty("")),
+			prop:     MakeOutput(NewProperty("")),
 			expected: "output<string>{}",
 		},
 		{
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty("hello"),
+			prop: NewProperty(Output{
+				Element: NewProperty("hello"),
 				Known:   true,
 			}),
 			expected: "{hello}",
 		},
 		{
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty("shh"),
+			prop: NewProperty(Output{
+				Element: NewProperty("shh"),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -283,18 +283,18 @@ func TestContainsUnknowns(t *testing.T) {
 	}{
 		{
 			name:     "computed unknown",
-			prop:     MakeComputed(NewStringProperty("")),
+			prop:     MakeComputed(NewProperty("")),
 			expected: true,
 		},
 		{
 			name:     "output unknown",
-			prop:     MakeOutput(NewStringProperty("")),
+			prop:     MakeOutput(NewProperty("")),
 			expected: true,
 		},
 		{
 			name: "output known",
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty(""),
+			prop: NewProperty(Output{
+				Element: NewProperty(""),
 				Known:   true,
 			}),
 			expected: false,
@@ -320,31 +320,31 @@ func TestContainsSecrets(t *testing.T) {
 	}{
 		{
 			name:     "secret",
-			prop:     MakeSecret(NewStringProperty("")),
+			prop:     MakeSecret(NewProperty("")),
 			expected: true,
 		},
 		{
 			name:     "output unknown",
-			prop:     MakeOutput(NewStringProperty("")),
+			prop:     MakeOutput(NewProperty("")),
 			expected: false,
 		},
 		{
 			name:     "output unknown containing secret",
-			prop:     MakeOutput(MakeSecret(NewStringProperty(""))),
+			prop:     MakeOutput(MakeSecret(NewProperty(""))),
 			expected: true,
 		},
 		{
 			name: "output unknown secret",
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty(""),
+			prop: NewProperty(Output{
+				Element: NewProperty(""),
 				Secret:  true,
 			}),
 			expected: true,
 		},
 		{
 			name: "output known secret",
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty(""),
+			prop: NewProperty(Output{
+				Element: NewProperty(""),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -376,18 +376,18 @@ func TestHasValue(t *testing.T) {
 		},
 		{
 			name:     "string",
-			prop:     NewStringProperty(""),
+			prop:     NewProperty(""),
 			expected: true,
 		},
 		{
 			name:     "output unknown",
-			prop:     MakeOutput(NewStringProperty("")),
+			prop:     MakeOutput(NewProperty("")),
 			expected: false,
 		},
 		{
 			name: "output known",
-			prop: NewOutputProperty(Output{
-				Element: NewStringProperty(""),
+			prop: NewProperty(Output{
+				Element: NewProperty(""),
 				Known:   true,
 			}),
 			expected: true,
@@ -401,4 +401,29 @@ func TestHasValue(t *testing.T) {
 			assert.Equal(t, tt.expected, tt.prop.HasValue())
 		})
 	}
+}
+
+// Test for https://github.com/pulumi/pulumi/issues/16889
+func TestMapFromMapNestedPropertyValues(t *testing.T) {
+	t.Parallel()
+
+	actual := NewPropertyMapFromMap(map[string]interface{}{
+		"prop": NewStringProperty("value"),
+		"nested": map[string]interface{}{
+			"obj": NewObjectProperty(PropertyMap{
+				"k": NewStringProperty("v"),
+			}),
+		},
+	})
+
+	expected := PropertyMap{
+		"prop": NewStringProperty("value"),
+		"nested": NewObjectProperty(PropertyMap{
+			"obj": NewObjectProperty(PropertyMap{
+				"k": NewStringProperty("v"),
+			}),
+		}),
+	}
+
+	assert.Equal(t, expected, actual)
 }

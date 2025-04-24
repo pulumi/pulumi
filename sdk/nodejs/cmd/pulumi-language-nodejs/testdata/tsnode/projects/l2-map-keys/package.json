@@ -1,0 +1,14 @@
+{
+	"name": "l2-map-keys",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/plain": "ROOT/artifacts/pulumi-plain-13.0.0.tgz",
+		"@pulumi/primitive": "ROOT/artifacts/pulumi-primitive-7.0.0.tgz",
+		"@pulumi/primitive-ref": "ROOT/artifacts/pulumi-primitive-ref-11.0.0.tgz",
+		"@pulumi/ref-ref": "ROOT/artifacts/pulumi-ref-ref-12.0.0.tgz"
+	}
+}

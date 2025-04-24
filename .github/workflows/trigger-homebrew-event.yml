@@ -11,14 +11,14 @@ on:
 jobs:
   homebrew:
     name: Bump Homebrew formula
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Add Homebrew to the PATH
         run: |
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "${GITHUB_PATH}"
       - uses: dawidd6/action-homebrew-bump-formula@v3
         with:
-          token: ${{secrets.PULUMI_BOT_TOKEN}}
+          token: ${{secrets.PULUMI_BOT_HOMEBREW_TOKEN}}
           formula: pulumi
           tag: v${{env.VERSION}}
           revision: ${{env.COMMIT_SHA}}

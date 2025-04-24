@@ -16,7 +16,9 @@ package auto
 
 import (
 	"context"
+	"io"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -44,6 +46,12 @@ type Workspace interface {
 	// PostCommandCallback is a hook executed after every command. Called with the stack name.
 	// An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml).
 	PostCommandCallback(context.Context, string) error
+	// AddEnvironments adds the specified environments to the provided stack's configuration.
+	AddEnvironments(context.Context, string, ...string) error
+	// ListEnvironments returns the list of environments from the provided stack's configuration.
+	ListEnvironments(context.Context, string) ([]string, error)
+	// RemoveEnvironment removes the specified environment from the provided stack's configuration.
+	RemoveEnvironment(context.Context, string, string) error
 	// GetConfig returns the value associated with the specified stack name and key,
 	// scoped to the current workspace.
 	GetConfig(context.Context, string, string) (ConfigValue, error)
@@ -53,6 +61,10 @@ type Workspace interface {
 	GetConfigWithOptions(context.Context, string, string, *ConfigOptions) (ConfigValue, error)
 	// GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 	GetAllConfig(context.Context, string) (ConfigMap, error)
+	// GetAllConfigWithOptions returns the config map for the specified stack name
+	// using the optional GetAllConfigOptions,
+	// scoped to the current workspace.
+	GetAllConfigWithOptions(context.Context, string, *GetAllConfigOptions) (ConfigMap, error)
 	// SetConfig sets the specified key-value pair on the provided stack name.
 	SetConfig(context.Context, string, string, ConfigValue) error
 	// SetConfigWithOptions sets the specified key-value pair on the provided stack name
@@ -96,6 +108,8 @@ type Workspace interface {
 	UnsetEnvVar(string)
 	// WorkDir returns the working directory to run Pulumi CLI commands.
 	WorkDir() string
+	// PulumiCommand returns the PulumiCommand instance that is used to run PulumiCommand CLI commands.
+	PulumiCommand() PulumiCommand
 	// PulumiHome returns the directory override for CLI metadata if set.
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	PulumiHome() string
@@ -106,6 +120,10 @@ type Workspace interface {
 	// WhoAmIDetails returns detailed information about the currently
 	// logged-in Pulumi identity.
 	WhoAmIDetails(ctx context.Context) (WhoAmIResult, error)
+	// ChangeStackSecretsProvider edits the secrets provider for the given stack.
+	ChangeStackSecretsProvider(
+		ctx context.Context, stackName, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
+	) error
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
@@ -114,9 +132,9 @@ type Workspace interface {
 	SelectStack(context.Context, string) error
 	// RemoveStack deletes the stack and all associated configuration and history.
 	RemoveStack(context.Context, string, ...optremove.Option) error
-	// ListStacks returns all Stacks created under the current Project.
-	// This queries underlying backend and may return stacks not present in the Workspace.
-	ListStacks(context.Context) ([]StackSummary, error)
+	// ListStacks returns all Stacks from the underlying backend based on the provided options.
+	// This queries the backend service and may return stacks not present in the Workspace.
+	ListStacks(context.Context, ...optlist.Option) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
 	// InstallPluginFromServer acquires the plugin matching the specified name and version.
@@ -138,6 +156,8 @@ type Workspace interface {
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
 	// StackOutputs gets the current set of Stack outputs from the last Stack.Up().
 	StackOutputs(context.Context, string) (OutputMap, error)
+	// Install installs the workspace's dependencies.
+	Install(context.Context, *InstallOptions) error
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.
@@ -148,9 +168,19 @@ type ConfigValue struct {
 }
 
 // ConfigOptions is a configuration option used by a Pulumi program.
-// Allows to use the path flag while getting/setting the configuration.
 type ConfigOptions struct {
+	// Allows to use the path flag while getting/setting the configuration.
 	Path bool
+	// Allows to use the config file flag while getting/setting the configuration.
+	ConfigFile string
+}
+
+// GetAllConfigOptions is a configuration option used by a Pulumi program.
+type GetAllConfigOptions struct {
+	// Allows to use the config file flag while getting/setting the configuration.
+	ConfigFile string
+	// Allows to show secrets while getting the configuration.
+	ShowSecrets bool
 }
 
 // ConfigMap is a map of ConfigValue used by Pulumi programs.
@@ -167,9 +197,41 @@ type StackSummary struct {
 	URL              string `json:"url,omitempty"`
 }
 
+// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
+// will be set, but not both.
+type TokenInformation struct {
+	Name         string `json:"name"`                   // The name of the token.
+	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
+	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
+}
+
 // WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
 type WhoAmIResult struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User             string            `json:"user"`
+	Organizations    []string          `json:"organizations,omitempty"`
+	URL              string            `json:"url"`
+	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+}
+
+type ChangeSecretsProviderOptions struct {
+	// NewPassphrase is the new passphrase when changing to a `passphrase` provider
+	NewPassphrase *string
+}
+
+// InstallOptions are the options that can be passed for the Install command.
+type InstallOptions struct {
+	// Stdout is the optional writer to use for the output during installation.
+	Stdout io.Writer
+	// Stderr is the optional writer to use for the error output during installation.
+	Stderr io.Writer
+	// Use language version tools to setup the language runtime before installing the dependencies.
+	// For Python this will use `pyenv` to install the Python version specified in a
+	// `.python-version` file.
+	UseLanguageVersionTools bool
+	// Skip installing plugins
+	NoPlugins bool
+	// Skip installing dependencies
+	NoDependencies bool
+	// Reinstall plugins even if they already exist
+	Reinstall bool
 }

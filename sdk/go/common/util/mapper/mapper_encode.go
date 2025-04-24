@@ -151,7 +151,14 @@ func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
 	case reflect.Struct:
 		return md.encode(vsrc)
 	case reflect.Interface:
+		if vsrc.IsNil() {
+			return nil, nil
+		}
 		return md.encodeValue(vsrc.Elem())
+	// Cases we don't handle
+	case reflect.Invalid, reflect.Complex64, reflect.Complex128, reflect.Array,
+		reflect.Chan, reflect.Func, reflect.UnsafePointer:
+		contract.Failf("Unrecognized field type '%v' during encoding", k)
 	default:
 		contract.Failf("Unrecognized field type '%v' during encoding", k)
 	}

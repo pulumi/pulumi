@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"golang.org/x/exp/maps"
 )
 
 type treeRenderer struct {
@@ -35,7 +37,8 @@ type treeRenderer struct {
 
 	opts Options
 
-	term terminal.Terminal
+	display *ProgressDisplay
+	term    terminal.Terminal
 
 	permalink string
 
@@ -43,6 +46,7 @@ type treeRenderer struct {
 	rewind int  // The number of lines we need to rewind to redraw the entire screen.
 
 	treeTableRows         []string
+	sames                 int
 	systemMessages        []string
 	statusMessage         string
 	statusMessageDeadline time.Time
@@ -71,7 +75,7 @@ func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Optio
 		keys:      make(chan string),
 		closed:    make(chan bool),
 	}
-	if opts.deterministicOutput {
+	if opts.DeterministicOutput {
 		r.ticker.Stop()
 	}
 	go r.handleEvents()
@@ -84,20 +88,28 @@ func (r *treeRenderer) Close() error {
 	return r.term.Close()
 }
 
-func (r *treeRenderer) tick(display *ProgressDisplay) {
-	r.render(display)
+func (r *treeRenderer) initializeDisplay(display *ProgressDisplay) {
+	r.display = display
 }
 
-func (r *treeRenderer) rowUpdated(display *ProgressDisplay, _ Row) {
-	r.render(display)
+func (r *treeRenderer) tick() {
+	r.markDirty()
 }
 
-func (r *treeRenderer) systemMessage(display *ProgressDisplay, _ engine.StdoutEventPayload) {
-	r.render(display)
+func (r *treeRenderer) rowUpdated(Row) {
+	r.markDirty()
 }
 
-func (r *treeRenderer) done(display *ProgressDisplay) {
-	r.render(display)
+func (r *treeRenderer) systemMessage(engine.StdoutEventPayload) {
+	r.markDirty()
+}
+
+func (r *treeRenderer) progress(engine.ProgressEventPayload, bool) {
+	r.markDirty()
+}
+
+func (r *treeRenderer) done() {
+	r.markDirty()
 
 	r.ticker.Stop()
 	r.closed <- true
@@ -118,7 +130,7 @@ func (r *treeRenderer) print(text string) {
 	contract.IgnoreError(err)
 }
 
-func (r *treeRenderer) println(display *ProgressDisplay, text string) {
+func (r *treeRenderer) println(text string) {
 	r.print(text)
 	r.print("\n")
 }
@@ -133,22 +145,21 @@ func (r *treeRenderer) overln(text string) {
 	r.print("\n")
 }
 
-func (r *treeRenderer) render(display *ProgressDisplay) {
-	r.m.Lock()
-	defer r.m.Unlock()
+func (r *treeRenderer) render(termWidth int) {
+	contract.Assertf(!r.m.TryLock(), "treeRenderer.render() MUST be called from within a locked context")
 
-	if display.headerRow == nil {
+	if r.display.headerRow == nil {
 		return
 	}
 
 	// Render the resource tree table into rows.
-	rootNodes := display.generateTreeNodes()
-	rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
+	rootNodes := r.display.generateTreeNodes()
+	rootNodes = r.display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 	sortNodes(rootNodes)
-	display.addIndentations(rootNodes, true /*isRoot*/, "")
+	r.display.addIndentations(rootNodes, true /*isRoot*/, "")
 
 	maxSuffixLength := 0
-	for _, v := range display.suffixesArray {
+	for _, v := range r.display.suffixesArray {
 		runeCount := utf8.RuneCountInString(v)
 		if runeCount > maxSuffixLength {
 			maxSuffixLength = runeCount
@@ -157,7 +168,7 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 
 	var treeTableRows [][]string
 	var maxColumnLengths []int
-	display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths)
+	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths)
 	removeInfoColumnIfUnneeded(treeTableRows)
 
 	r.treeTableRows = r.treeTableRows[:0]
@@ -166,16 +177,38 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 		r.treeTableRows = append(r.treeTableRows, rendered)
 	}
 
+	// If we are not explicitly showing unchanged resources, we'll display a
+	// count.
+	if !r.opts.ShowSameResources {
+		r.sames = len(r.display.sames)
+	} else {
+		r.sames = 0
+	}
+
 	// Convert system events into lines.
 	r.systemMessages = r.systemMessages[:0]
-	for _, payload := range display.systemEventPayloads {
+	for _, payload := range r.display.systemEventPayloads {
 		msg := payload.Color.Colorize(payload.Message)
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
 	}
 
-	r.dirty = true
-	if r.opts.deterministicOutput {
-		r.frame(true, false)
+	if len(r.systemMessages) == 0 && len(r.display.progressEventPayloads) > 0 {
+		// If we don't have system messages, but we do have progress events, show
+		// the progress. For the most part, we shouldn't have both at the same time,
+		// since the most common system messages refer to cancellation/SIGINT
+		// handling, at which point the program will be terminating. That said, if
+		// we do, we'll give the system messages priority.
+		keys := maps.Keys(r.display.progressEventPayloads)
+		slices.Sort(keys)
+
+		for _, key := range keys {
+			payload := r.display.progressEventPayloads[key]
+			r.systemMessages = append(r.systemMessages, renderProgress(
+				renderUnicodeProgressBar,
+				termWidth-4,
+				payload,
+			))
+		}
 	}
 }
 
@@ -183,7 +216,16 @@ func (r *treeRenderer) markDirty() {
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	if r.display == nil || r.display.headerRow == nil {
+		// Don't mark dirty if there is no display, or
+		// if the display has never been initialized
+		return
+	}
+
 	r.dirty = true
+	if r.opts.DeterministicOutput && r.opts.RenderOnDirty {
+		r.frame(true, false)
+	}
 }
 
 // +--------------------------------------------+
@@ -207,6 +249,9 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	termWidth, termHeight, err := r.term.Size()
 	contract.IgnoreError(err)
+
+	contract.Assertf(r.display != nil, "treeRender.initializeDisplay MUST be called before rendering")
+	r.render(termWidth)
 
 	treeTableRows := r.treeTableRows
 	systemMessages := r.systemMessages
@@ -260,7 +305,14 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
 		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
+		if r.maxTreeTableOffset < 0 {
+			r.maxTreeTableOffset = 0
+		}
 		scrollable := r.maxTreeTableOffset != 0
+
+		if r.treeTableOffset > r.maxTreeTableOffset {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
 
 		if autoscroll {
 			r.treeTableOffset = r.maxTreeTableOffset
@@ -270,7 +322,11 @@ func (r *treeRenderer) frame(locked, done bool) {
 			// Ensure that the treeTableHeight is at least 1 to avoid going out of bounds.
 			treeTableHeight = 1
 		}
-		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		if r.treeTableOffset+treeTableHeight-1 < len(treeTableRows) {
+			treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		} else if r.treeTableOffset < len(treeTableRows) {
+			treeTableRows = treeTableRows[r.treeTableOffset:]
+		}
 
 		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
 
@@ -310,23 +366,42 @@ func (r *treeRenderer) frame(locked, done bool) {
 	}
 
 	// Re-home the cursor.
-	r.print("\r")
-	for ; r.rewind > 0; r.rewind-- {
-		// If there is content that we won't overwrite, clear it.
-		if r.rewind > totalHeight-1 {
-			r.term.ClearEnd()
-		}
-		r.term.CursorUp(1)
+	r.term.CarriageReturn()
+	if r.rewind > 0 {
+		r.term.CursorUp(r.rewind)
 	}
-	r.rewind = totalHeight - 1
 
 	// Render the tree table.
 	r.overln(r.clampLine(treeTableHeader, termWidth))
 	for _, row := range treeTableRows {
 		r.overln(r.clampLine(row, termWidth))
 	}
+
+	// Each time we render, the number of lines we write out may differ. If we
+	// previously rendered more lines than we are about to render, we need to
+	// "rewind" the terminal by the difference, clearing the now-obsolete lines.
+	// To achieve this, we count the number of lines we render and compare it to
+	// the number of lines we rendered last time.
+	lineCount := 1 + len(treeTableRows)
+
 	if treeTableFooter != "" {
 		r.over(treeTableFooter)
+
+		// If the table footer ends with a newline, include that break in the line
+		// count.
+		if strings.HasSuffix(treeTableFooter, "\n") {
+			lineCount++
+		}
+	}
+
+	// Render the count of any unchanged resources if there are any and we aren't
+	// done (at which point we'll have a summary displaying the final count
+	// alongside other statistics).
+	if !done && r.sames != 0 {
+		r.overln("")
+		r.overln(r.clampLine(colors.SpecHeadline+"Resources:"+colors.Reset, termWidth))
+		r.overln(r.clampLine(colors.BrightBlack+fmt.Sprintf("    %d unchanged", r.sames)+colors.Reset, termWidth))
+		lineCount += 3
 	}
 
 	// Render the system messages.
@@ -335,21 +410,38 @@ func (r *treeRenderer) frame(locked, done bool) {
 		r.overln(colors.Yellow + "System Messages" + colors.Reset)
 
 		for _, line := range systemMessages {
-			r.overln("  " + line)
+			r.overln(r.clampLine("  "+line, termWidth))
 		}
+		lineCount += 2 + len(systemMessages)
 	}
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
 		padding := termWidth - colors.MeasureColorizedString(statusMessage)
+		if padding < 0 {
+			padding = 0
+		}
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
+		lineCount++
 	}
 
 	if done && totalHeight > 0 {
 		r.overln("")
+		lineCount++
 	}
+
+	// If we didn't write out as many lines as we did last time, then overwrite
+	// the unwriten lines with empty space.
+	if r.rewind > lineCount {
+		delta := r.rewind - lineCount
+		for i := 0; i < delta; i++ {
+			r.overln("")
+		}
+		r.term.CursorUp(delta)
+	}
+	r.rewind = lineCount
 
 	// Handle the status message timer. We do this at the end to ensure that any message is displayed for at least one
 	// frame.
@@ -376,49 +468,63 @@ func (r *treeRenderer) handleEvents() {
 		case <-r.ticker.C:
 			r.frame(false, false)
 		case key := <-r.keys:
-			switch key {
-			case terminal.KeyCtrlC:
-				sigint()
-			case terminal.KeyCtrlO:
-				if r.permalink != "" {
-					if err := browser.OpenURL(r.permalink); err != nil {
-						r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
-					}
-				}
-			case terminal.KeyUp:
-				if r.treeTableOffset > 0 {
-					r.treeTableOffset--
-				}
-				r.markDirty()
-			case terminal.KeyDown:
-				if r.treeTableOffset < r.maxTreeTableOffset {
-					r.treeTableOffset++
-				}
-				r.markDirty()
-			case terminal.KeyPageUp:
-				_, termHeight, err := r.term.Size()
-				contract.IgnoreError(err)
-
-				if r.treeTableOffset > termHeight {
-					r.treeTableOffset -= termHeight
-				} else {
-					r.treeTableOffset = 0
-				}
-				r.markDirty()
-			case terminal.KeyPageDown:
-				_, termHeight, err := r.term.Size()
-				contract.IgnoreError(err)
-
-				if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
-					r.treeTableOffset += termHeight
-				} else {
-					r.treeTableOffset = r.maxTreeTableOffset
-				}
-				r.markDirty()
-			}
+			r.handleKey(key)
 		case <-r.closed:
 			return
 		}
+	}
+}
+
+func (r *treeRenderer) handleKey(key string) {
+	switch key {
+	case terminal.KeyCtrlC:
+		sigint()
+	case terminal.KeyCtrlO:
+		if r.permalink != "" {
+			if err := browser.OpenURL(r.permalink); err != nil {
+				r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
+			}
+		}
+	case terminal.KeyUp, "k":
+		if r.treeTableOffset > 0 {
+			r.treeTableOffset--
+		}
+		r.markDirty()
+	case terminal.KeyDown, "j":
+		if r.treeTableOffset < r.maxTreeTableOffset {
+			r.treeTableOffset++
+		}
+		r.markDirty()
+	case terminal.KeyPageUp:
+		_, termHeight, err := r.term.Size()
+		contract.IgnoreError(err)
+
+		if r.treeTableOffset > termHeight {
+			r.treeTableOffset -= termHeight
+		} else {
+			r.treeTableOffset = 0
+		}
+		r.markDirty()
+	case terminal.KeyPageDown:
+		_, termHeight, err := r.term.Size()
+		contract.IgnoreError(err)
+
+		if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
+			r.treeTableOffset += termHeight
+		} else {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
+		r.markDirty()
+	case terminal.KeyHome, "g":
+		if r.treeTableOffset > 0 {
+			r.treeTableOffset = 0
+		}
+		r.markDirty()
+	case terminal.KeyEnd, "G":
+		if r.treeTableOffset < r.maxTreeTableOffset {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
+		r.markDirty()
 	}
 }
 

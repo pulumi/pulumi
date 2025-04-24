@@ -1,17 +1,33 @@
+// Copyright 2019-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package display
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -66,6 +82,16 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Ephemeral: p.Ephemeral,
 		}
 
+	case engine.StartDebuggingEvent:
+		p, ok := e.Payload().(engine.StartDebuggingEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+
+		apiEvent.StartDebuggingEvent = &apitype.StartDebuggingEvent{
+			Config: p.Config,
+		}
+
 	case engine.PolicyViolationEvent:
 		p, ok := e.Payload().(engine.PolicyViolationEventPayload)
 		if !ok {
@@ -80,6 +106,31 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			EnforcementLevel:     string(p.EnforcementLevel),
+		}
+
+	case engine.PolicyRemediationEvent:
+		p, ok := e.Payload().(engine.PolicyRemediationEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+
+		// Serialize properties, ignoring errors, as with other event types.
+		ctx := context.TODO()
+		encrypter := config.BlindingCrypter
+		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
+		contract.IgnoreError(err)
+		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
+		contract.IgnoreError(err)
+
+		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
+			ResourceURN:          string(p.ResourceURN),
+			Color:                string(p.Color),
+			PolicyName:           p.PolicyName,
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Before:               before,
+			After:                after,
 		}
 
 	case engine.PreludeEvent:
@@ -108,7 +159,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
 			MaybeCorrupt:    p.MaybeCorrupt,
-			DurationSeconds: int(p.Duration.Seconds()),
+			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 		}
@@ -141,7 +192,24 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		apiEvent.ResOpFailedEvent = &apitype.ResOpFailedEvent{
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Status:   int(p.Status),
-			Steps:    p.Steps,
+			Steps:    int(p.Steps),
+		}
+
+	case engine.PolicyLoadEvent:
+		apiEvent.PolicyLoadEvent = &apitype.PolicyLoadEvent{}
+
+	case engine.ProgressEvent:
+		p, ok := e.Payload().(engine.ProgressEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ProgressEvent = &apitype.ProgressEvent{
+			Type:      apitype.ProgressType(p.Type),
+			ID:        p.ID,
+			Message:   p.Message,
+			Completed: p.Completed,
+			Total:     p.Total,
+			Done:      p.Done,
 		}
 
 	default:
@@ -218,11 +286,12 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		return nil
 	}
 
+	ctx := context.TODO()
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(md.Inputs, encrypter, showSecrets)
+	inputs, err := stack.SerializeProperties(ctx, md.Inputs, encrypter, showSecrets)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(md.Outputs, encrypter, showSecrets)
+	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
@@ -252,18 +321,18 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	switch {
 	case apiEvent.CancelEvent != nil:
-		event = engine.NewEvent(engine.CancelEvent, nil)
+		event = engine.NewCancelEvent()
 
 	case apiEvent.StdoutEvent != nil:
 		p := apiEvent.StdoutEvent
-		event = engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+		event = engine.NewEvent(engine.StdoutEventPayload{
 			Message: p.Message,
 			Color:   colors.Colorization(p.Color),
 		})
 
 	case apiEvent.DiagnosticEvent != nil:
 		p := apiEvent.DiagnosticEvent
-		event = engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+		event = engine.NewEvent(engine.DiagEventPayload{
 			URN:       resource.URN(p.URN),
 			Prefix:    p.Prefix,
 			Message:   p.Message,
@@ -275,7 +344,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.PolicyEvent != nil:
 		p := apiEvent.PolicyEvent
-		event = engine.NewEvent(engine.PolicyViolationEvent, engine.PolicyViolationEventPayload{
+		event = engine.NewEvent(engine.PolicyViolationEventPayload{
 			ResourceURN:       resource.URN(p.ResourceURN),
 			Message:           p.Message,
 			Color:             colors.Colorization(p.Color),
@@ -285,11 +354,32 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
 		})
 
+	case apiEvent.PolicyRemediationEvent != nil:
+		p := apiEvent.PolicyRemediationEvent
+
+		// Deserialize the before and after properties, ignoring serialization
+		// errors as the other event types do (e.g., step events).
+		crypter := config.BlindingCrypter
+		before, err := stack.DeserializeProperties(p.Before, crypter)
+		contract.IgnoreError(err)
+		after, err := stack.DeserializeProperties(p.After, crypter)
+		contract.IgnoreError(err)
+
+		event = engine.NewEvent(engine.PolicyRemediationEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			Color:             colors.Colorization(p.Color),
+			PolicyName:        p.PolicyName,
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Before:            before,
+			After:             after,
+		})
+
 	case apiEvent.PreludeEvent != nil:
 		p := apiEvent.PreludeEvent
 
 		// Convert the config bag.
-		event = engine.NewEvent(engine.PreludeEvent, engine.PreludeEventPayload{
+		event = engine.NewEvent(engine.PreludeEventPayload{
 			Config: p.Config,
 		})
 
@@ -300,7 +390,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		for op, count := range p.ResourceChanges {
 			changes[display.StepOp(op)] = count
 		}
-		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
+		event = engine.NewEvent(engine.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
@@ -309,24 +399,38 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.ResourcePreEvent != nil:
 		p := apiEvent.ResourcePreEvent
-		event = engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+		event = engine.NewEvent(engine.ResourcePreEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOutputsEvent != nil:
 		p := apiEvent.ResOutputsEvent
-		event = engine.NewEvent(engine.ResourceOutputsEvent, engine.ResourceOutputsEventPayload{
+		event = engine.NewEvent(engine.ResourceOutputsEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOpFailedEvent != nil:
 		p := apiEvent.ResOpFailedEvent
-		event = engine.NewEvent(engine.ResourceOperationFailed, engine.ResourceOperationFailedPayload{
+		event = engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
-			Steps:    p.Steps,
+			Steps:    int32(p.Steps), //nolint:gosec // We only ever write int32 sized values to the API.
+		})
+
+	case apiEvent.PolicyLoadEvent != nil:
+		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
+
+	case apiEvent.ProgressEvent != nil:
+		p := apiEvent.ProgressEvent
+		event = engine.NewEvent(engine.ProgressEventPayload{
+			Type:      engine.ProgressType(p.Type),
+			ID:        p.ID,
+			Message:   p.Message,
+			Completed: p.Completed,
+			Total:     p.Total,
+			Done:      p.Done,
 		})
 
 	default:
@@ -408,10 +512,10 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 	}
 
 	crypter := config.BlindingCrypter
-	inputs, err := stack.DeserializeProperties(md.Inputs, crypter, crypter)
+	inputs, err := stack.DeserializeProperties(md.Inputs, crypter)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.DeserializeProperties(md.Outputs, crypter, crypter)
+	outputs, err := stack.DeserializeProperties(md.Outputs, crypter)
 	contract.IgnoreError(err)
 
 	return &engine.StepEventStateMetadata{

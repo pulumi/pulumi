@@ -17,7 +17,7 @@
         "version": {
             "description": "The version of the package. The version must be valid semver.",
             "type": "string",
-            "pattern": "^v?(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+            "pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
         },
         "description": {
             "description": "The description of the package. Descriptions are interpreted as Markdown.",
@@ -58,6 +58,11 @@
             "description": "The name of the person or organization that authored and published the package.",
             "type": "string"
         },
+        "namespace": {
+            "description": "The namespace of the package. Used to disambiguate the package name. Defaults to 'pulumi' when not specified",
+            "type": "string",
+            "pattern": "^([a-z][a-z0-9]*)(-[a-z0-9]+)*$"
+        },
         "meta": {
             "description": "Format metadata about this package.",
             "type": "object",
@@ -66,10 +71,13 @@
                     "description": "A regex that is used by the importer to extract a module name from the module portion of a type token. Packages that use the module format \"namespace1/namespace2/.../namespaceN\" do not need to specify a format. The regex must define one capturing group that contains the module name, which must be formatted as \"namespace1/namespace2/...namespaceN\".",
                     "type": "string",
                     "format": "regex"
+                },
+                "supportPack": {
+                    "description": "Write the package to support the pack command.",
+                    "type": "boolean"
                 }
             },
-            "additionalProperties": false,
-            "required": ["moduleFormat"]
+            "additionalProperties": false
         },
         "config": {
             "description": "The package's configuration variables.",
@@ -102,6 +110,52 @@
                 "$ref": "#/$defs/token"
             }
         },
+        "dependencies": {
+            "description": "A list of package descriptors that describes the set of dependencies for this package.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
+                        "type": "string",
+                        "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
+                    },
+                    "version": {
+                        "description": "The version of the package. The version must be valid semver if present.",
+                        "type": "string",
+                        "pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+                    },
+                    "pluginDownloadURL": {
+                        "description": "The optional URL to use when downloading the provider plugin binary.",
+                        "type": "string"
+                    },
+                    "parameterization": {
+                        "type": "object",
+                        "description": "An optional object to define parameterization for the package.",
+                        "properties": {
+                            "name": {
+                                "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
+                                "type": "string",
+                                "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
+                            },
+                            "version": {
+                                "description": "The version of the package. The version must be valid semver.",
+                                "type": "string",
+                                "pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+                            },
+                            "parameter": {
+                                "description": "The parameter for the provider.",
+                                "type": "string",
+                                "contentEncoding": "base64"
+                            }
+                        },
+                        "required": ["name", "version", "parameter"]
+                    }
+                },
+                "required": ["name"]
+            }
+        },
         "provider": {
             "description": "The provider type for this package.",
             "$ref": "#/$defs/resourceSpec"
@@ -129,12 +183,26 @@
         "language": {
             "description": "Additional language-specific data about the package.",
             "type": "object"
+        },
+        "parameterization": {
+            "description": "An optional object to define parameterization for the package.",
+            "type": "object",
+            "allOf": [
+                {
+                    "$ref": "#/$defs/parameterization"
+                }
+            ]
+        },
+        "allowedPackageNames": {
+            "description": "A list of allowed package names in addition to the name property.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         }
     },
     "additionalProperties": false,
-    "required": [
-        "name"
-    ],
+    "required": ["name"],
     "$defs": {
         "token": {
             "title": "Token",
@@ -146,6 +214,33 @@
             "type": "object",
             "additionalProperties": {
                 "type": "string"
+            }
+        },
+        "parameterization": {
+            "type": "object",
+            "properties": {
+                "baseProvider": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "description": "The unqualified name of the package (e.g. \"aws\", \"azure\", \"gcp\", \"kubernetes\", \"random\")",
+                            "type": "string",
+                            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
+                        },
+                        "version": {
+                            "description": "The version of the package. The version must be valid semver.",
+                            "type": "string",
+                            "pattern": "^v?(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+                        }
+                    },
+                    "required": ["name", "version"],
+                    "additionalProperties": false
+                },
+                "parameter": {
+                    "description": "The parameter for the provider.",
+                    "type": "string",
+                    "contentEncoding": "base64"
+                }
             }
         },
         "typeSpec": {
@@ -261,16 +356,14 @@
                                     "minLength": 1
                                 },
                                 "mapping": {
-                                    "description": "an optional object to hold mappings between payload values and schema names or references",
+                                    "description": "An optional object to hold mappings between payload values and schema names or references",
                                     "type": "object",
                                     "additionalProperties": {
                                         "type": "string"
                                     }
                                 }
                             },
-                            "required": [
-                                "propertyName"
-                            ]
+                            "required": ["propertyName"]
                         },
                         "additionalProperties": false,
                         "items": false,
@@ -285,7 +378,9 @@
             "description": "Describes an object or resource property",
             "type": "object",
             "allOf": [
-                { "$ref": "#/$defs/typeSpec" }
+                {
+                    "$ref": "#/$defs/typeSpec"
+                }
             ],
             "properties": {
                 "description": {
@@ -363,7 +458,9 @@
                     "title": "Object Type Definition",
                     "type": "object",
                     "allOf": [
-                        { "$ref": "#/$defs/objectTypeSpec" }
+                        {
+                            "$ref": "#/$defs/objectTypeSpec"
+                        }
                     ],
                     "properties": {
                         "type": {
@@ -371,7 +468,9 @@
                         }
                     }
                 },
-                { "$ref": "#/$defs/enumTypeSpec" }
+                {
+                    "$ref": "#/$defs/enumTypeSpec"
+                }
             ]
         },
         "objectTypeSpec": {
@@ -379,6 +478,10 @@
             "description": "Describes an object type",
             "type": "object",
             "properties": {
+                "description": {
+                    "description": "The description of the type, if any",
+                    "type": "string"
+                },
                 "properties": {
                     "description": "A map from property name to propertySpec that describes the object's properties.",
                     "type": "object",
@@ -386,11 +489,31 @@
                         "$ref": "#/$defs/propertySpec"
                     }
                 },
+                "type": {
+                    "description": "The type of the object.  Must be 'object' if this is an object type, or the underlying type for an enum.",
+                    "type": "string"
+                },
                 "required": {
                     "description": "A list of the names of an object type's required properties. These properties must be set for inputs and will always be set for outputs.",
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "language": {
+                    "description": "Additional language-specific data about the object type.",
+                    "type": "object"
+                },
+                "isOverlay": {
+                    "description": "indicates whether the type is an overlay provided by the package. Overlay code is generated by the package rather than using the core Pulumi codegen libraries.",
+                    "type": "boolean"
+                },
+                "overlaySupportedLanguages": {
+                    "description": "A list of languages that the overlay supports. This only has an effect if the Resource is an Overlay (isOverlay == true).  Supported values are 'nodejs', 'python', 'go', 'csharp', 'java', 'yaml'.",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["nodejs", "python", "go", "csharp", "java", "yaml"]
                     }
                 }
             }
@@ -399,7 +522,7 @@
             "title": "Enum Type Definition",
             "description": "Describes an enum type",
             "type": "object",
-            "properties" :{
+            "properties": {
                 "type": {
                     "description": "The underlying primitive type of the enum",
                     "type": "string",
@@ -440,7 +563,9 @@
             "description": "Describes a resource or component.",
             "type": "object",
             "allOf": [
-                { "$ref": "#/$defs/objectTypeSpec" }
+                {
+                    "$ref": "#/$defs/objectTypeSpec"
+                }
             ],
             "properties": {
                 "description": {
@@ -462,7 +587,7 @@
                     }
                 },
                 "stateInputs": {
-                    "description": "An optional objectTypeSpec that describes additional inputs that mau be necessary to get an existing resource. If this is unset, only an ID is necessary.",
+                    "description": "An optional objectTypeSpec that describes additional inputs that may be necessary to get an existing resource. If this is unset, only an ID is necessary.",
                     "$ref": "#/$defs/objectTypeSpec"
                 },
                 "aliases": {
@@ -470,16 +595,8 @@
                     "type": "array",
                     "items": {
                         "title": "Alias Definition",
-                        "type": "object",
+                        "type": ["object", "string"],
                         "properties": {
-                            "name": {
-                                "description": "The name portion of the alias, if any",
-                                "type": "string"
-                            },
-                            "project": {
-                                "description": "The project portion of the alias, if any",
-                                "type": "string"
-                            },
                             "type": {
                                 "description": "The type portion of the alias, if any",
                                 "type": "string"
@@ -531,8 +648,23 @@
                 "outputs": {
                     "description": "Specifies the return type of the function definition.",
                     "anyOf": [
-                        { "$ref": "#/$defs/typeSpec" },
-                        { "$ref": "#/$defs/objectTypeSpec" }
+                        {
+                            "$ref": "#/$defs/typeSpec"
+                        },
+                        {
+                            "$ref": "#/$defs/objectTypeSpec"
+                        }
+                    ]
+                },
+                "returnType": {
+                    "description": "Specifies the return type of the function definition.",
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/typeSpec"
+                        },
+                        {
+                            "$ref": "#/$defs/objectTypeSpec"
+                        }
                     ]
                 },
                 "deprecationMessage": {
@@ -546,6 +678,14 @@
                 "isOverlay": {
                     "description": "Indicates that the implementation of the function should not be generated from the schema, and is instead provided out-of-band by the package author",
                     "type": "boolean"
+                },
+                "overlaySupportedLanguages": {
+                    "description": "A list of languages that the overlay supports. This only has an effect if the Resource is an Overlay (isOverlay == true).  Supported values are 'nodejs', 'python', 'go', 'csharp', 'java', 'yaml'.",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["nodejs", "python", "go", "csharp", "java", "yaml"]
+                    }
                 }
             }
         },
@@ -646,7 +786,7 @@
             "type": "object",
             "properties": {
                 "packageName": {
-                    "description": "NPM package name (includes @namespace)",
+                    "description": "The PyPI package name.",
                     "type": "string"
                 },
                 "readme": {

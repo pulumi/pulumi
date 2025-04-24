@@ -17,9 +17,9 @@ package backend
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +44,7 @@ func TestComputeUpdateStats(t *testing.T) {
 }
 
 func makeResourcePreEvent(urn, resType string, op display.StepOp, retainOnDelete bool) engine.Event {
-	event := engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+	event := engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{
 			Op:   op,
 			URN:  resource.URN(urn),

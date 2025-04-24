@@ -42,98 +42,17 @@ env:
 jobs:
   sign:
     name: sign
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.ref }}
-
-      - name: Install b3sum
-        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
-        with:
-          crate: b3sum
-          version: 1.3.0
-
-      - uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # v2.8.1
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v2
-        with:
-          path: artifacts.tmp
-      - name: Rename SDKs
-        # This step must match the rename SDKs step in the "publish" job below.
-        run: |
-          (
-            cd artifacts.tmp/artifacts-python-sdk
-            for file in *.whl ; do
-              mv -vT "$file" "sdk-python-$file"
-            done
-          )
-          (
-            cd artifacts.tmp/artifacts-nodejs-sdk
-            for file in *.tgz ; do
-              mv -vT "$file" "sdk-nodejs-$file"
-            done
-          )
-      - name: Flatten artifact directories
-        run: |
-          mkdir -p ./artifacts
-          mv ./artifacts.tmp/artifacts-*/* ./artifacts
-
-      - name: Create sums.tmp
-        run: mkdir -p ./sums.tmp ./sigs.tmp
-
-        # Each of these commands strips the ./ prefix to match existing (<=3.39) formatting.
-      - name: Checksums with SHA256
-        working-directory: artifacts
-        env:
-          version: ${{ inputs.version }}
-        run: sha256sum ./pulumi-*.{tar.gz,zip} | sed 's/.\///' | tee "../sums.tmp/pulumi-${version}-checksums.txt"
-
-      - name: Checksums with BLAKE3
-        working-directory: artifacts
-        run: b3sum ./* | sed 's/.\///' | tee ../sums.tmp/B3SUMS
-
-      - name: Checksums with SHA512
-        working-directory: artifacts
-        run: sha512sum ./* | sed 's/.\///' | tee ../sums.tmp/SHA512SUMS
-
-      - name: Sign binaries and checksums
-        shell: bash
-        env:
-          version: ${{ inputs.version }}
-        run: |
-          ls -la
-          # Sign all artifacts and checksums:
-          for dir in "artifacts" "sums.tmp"; do
-            pushd "$dir"
-            for file in ./*; do
-                echo "$file"
-                COSIGN_EXPERIMENTAL=1 cosign sign-blob \
-                  --bundle="../sigs.tmp/${file}".sig  \
-                  "${file}"
-            done
-            popd
-          done
-
-          # flatten to a single directory to upload:
-          mv sums.tmp/* sigs.tmp
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: artifacts-signatures
-          retention-days: 1
-          path: |
-            sigs.tmp/*
-          if-no-files-found: error
+    uses: ./.github/workflows/sign.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
 
   publish:
     name: release
     needs: [sign]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Get commit hash
@@ -142,9 +61,13 @@ jobs:
           SHA=$(git rev-parse HEAD)
           ./.github/scripts/set-output sha "$SHA"
       - name: Download all artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts.tmp
+      - name: Remove performance test artifacts
+        run: rm -rf artifacts.tmp/*-perf
+      - name: Remove integration test artifacts
+        run: rm -rf artifacts.tmp/*-integration
       - name: Rename SDKs
         # This step must match the rename SDKs step in the "sign" job above.
         run: |
@@ -166,7 +89,7 @@ jobs:
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
       - uses: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           name: v${{ inputs.version }}
           tag: v${{ inputs.version }}
           commit: "${{ fromJSON(steps.commit-info.outputs.sha) }}"

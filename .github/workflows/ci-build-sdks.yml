@@ -22,7 +22,7 @@ on:
         # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
         default: |
           {
-            "dotnet": "6.0.x",
+            "dotnet": "8.0.x",
             "go": "1.18.x",
             "nodejs": "16.x",
             "python": "3.9.x"
@@ -40,9 +40,9 @@ env:
 jobs:
   build_python_sdk:
     name: python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -50,36 +50,33 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache: pip
-          cache-dependency-path: sdk/python/requirements.txt
       - name: Build Pulumi Python SDK wheel
         run: |
-          # TODO unify with sdk/python/Makefile once that does not use pipenv
-          cp README.md sdk/python/lib
-          cd sdk/python/lib
-          sed -i.bak "s/^VERSION = .*/VERSION = \"$PYPI_VERSION\"/g" setup.py
-          rm setup.py.bak
-          python3 -m venv venv
-          source venv/bin/activate
-          python -m pip install wheel
-          python setup.py build bdist_wheel --python-tag py3
+          cd sdk/python
+          sed -i.bak "s/^version = .*/version = \"${PYPI_VERSION}\"/g" pyproject.toml && rm pyproject.toml.bak
+          make build_package
       - name: Upload pulumi.whl
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: artifacts-python-sdk
-          path: sdk/python/lib/dist/*.whl
+          path: sdk/python/build/*.whl
           retention-days: 1
           if-no-files-found: error
 
   build_node_sdk:
     name: nodejs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -88,7 +85,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
@@ -118,7 +115,7 @@ jobs:
           cd sdk/nodejs/bin
           npm pack
       - name: Upload pulumi-node-sdk.tgz
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: artifacts-nodejs-sdk
           path: sdk/nodejs/bin/*.tgz

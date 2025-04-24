@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /**
- * A description of the Stack's configuration and encryption metadata.
+ * A description of a {@link Stack}'s configuration and encryption metadata.
  */
 export interface StackSettings {
     secretsProvider?: string;
@@ -23,18 +23,20 @@ export interface StackSettings {
 }
 
 /**
- * Stack configuration entry
+ * A stack configuration entry.
  */
 export type StackSettingsConfigValue = string | StackSettingsSecureConfigValue | any;
 
 /**
- * A secret Stack config entry
+ * A secret stack configuration entry.
  */
 export interface StackSettingsSecureConfigValue {
     secure: string;
 }
 
-/** @internal */
+/**
+ * @internal
+ */
 export const stackSettingsSerDeKeys = [
     ["secretsprovider", "secretsProvider"],
     ["encryptedkey", "encryptedKey"],

@@ -1,0 +1,6 @@
+name: l2-resource-asset-archive
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+main: subdir

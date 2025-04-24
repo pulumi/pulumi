@@ -15,13 +15,14 @@
 """
 The config module contains all configuration management functionality.
 """
-import json
-from typing import Any, Callable, Optional
 
-from . import errors, log
+import json
+from typing import Any, Callable, Optional, overload
+
+from . import errors
 from .metadata import get_project
 from .output import Output
-from .runtime.config import get_config, is_config_secret
+from .runtime.config import get_config
 
 
 class Config:
@@ -49,7 +50,6 @@ class Config:
             raise TypeError("Expected name to be a string")
         self.name = name
 
-    # pylint: disable=unused-argument
     def _get(
         self,
         key: str,
@@ -65,6 +65,12 @@ class Config:
         #         f"use `{use.__name__}` instead of `{instead_of.__name__}`")
         return get_config(full_key)
 
+    @overload
+    def get(self, key: str, default: str) -> str: ...
+    @overload
+    def get(self, key: str) -> Optional[str]: ...
+    @overload
+    def get(self, key: str, default: Optional[str] = None) -> Optional[str]: ...
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """
         Returns an optional configuration value by its key,
@@ -79,7 +85,17 @@ class Config:
         config_candidate = self._get(key, self.get_secret, self.get)
         return config_candidate if config_candidate is not None else default
 
-    def get_secret(self, key: str) -> Optional[Output[str]]:
+    @overload
+    def get_secret(self, key: str, default: str) -> Output[str]: ...
+    @overload
+    def get_secret(self, key: str) -> Optional[Output[str]]: ...
+    @overload
+    def get_secret(
+        self, key: str, default: Optional[str] = None
+    ) -> Optional[Output[str]]: ...
+    def get_secret(
+        self, key: str, default: Optional[str] = None
+    ) -> Optional[Output[str]]:
         """
         Returns an optional configuration value by its key, marked as a secret,
         a default value if that key is unset and a default is provided,
@@ -90,11 +106,11 @@ class Config:
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
-        c = self._get(key)
-        if c is None:
+        config_candidate = self._get(key)
+        v = config_candidate if config_candidate is not None else default
+        if v is None:
             return None
-
-        return Output.secret(c)
+        return Output.secret(v)
 
     def _get_bool(
         self,
@@ -111,6 +127,12 @@ class Config:
             return False
         raise ConfigTypeError(self.full_key(key), v, "bool")
 
+    @overload
+    def get_bool(self, key: str, default: bool) -> bool: ...
+    @overload
+    def get_bool(self, key: str) -> Optional[bool]: ...
+    @overload
+    def get_bool(self, key: str, default: Optional[bool] = None) -> Optional[bool]: ...
     def get_bool(self, key: str, default: Optional[bool] = None) -> Optional[bool]:
         """
         Returns an optional configuration value, as a bool, by its key,
@@ -127,6 +149,14 @@ class Config:
         config_candidate = self._get_bool(key, self.get_secret_bool, self.get_bool)
         return config_candidate if config_candidate is not None else default
 
+    @overload
+    def get_secret_bool(self, key: str, default: bool) -> Output[bool]: ...
+    @overload
+    def get_secret_bool(self, key: str) -> Optional[Output[bool]]: ...
+    @overload
+    def get_secret_bool(
+        self, key: str, default: Optional[bool] = None
+    ) -> Optional[Output[bool]]: ...
     def get_secret_bool(
         self, key: str, default: Optional[bool] = None
     ) -> Optional[Output[bool]]:
@@ -162,6 +192,12 @@ class Config:
         except Exception as e:
             raise ConfigTypeError(self.full_key(key), v, "int") from e
 
+    @overload
+    def get_int(self, key: str, default: int) -> int: ...
+    @overload
+    def get_int(self, key: str) -> Optional[int]: ...
+    @overload
+    def get_int(self, key: str, default: Optional[int] = None) -> Optional[int]: ...
     def get_int(self, key: str, default: Optional[int] = None) -> Optional[int]:
         """
         Returns an optional configuration value, as an int, by its key,
@@ -178,6 +214,14 @@ class Config:
         config_candidate = self._get_int(key, self.get_secret_int, self.get_int)
         return config_candidate if config_candidate is not None else default
 
+    @overload
+    def get_secret_int(self, key: str, default: int) -> Output[int]: ...
+    @overload
+    def get_secret_int(self, key: str) -> Optional[Output[int]]: ...
+    @overload
+    def get_secret_int(
+        self, key: str, default: Optional[int] = None
+    ) -> Optional[Output[int]]: ...
     def get_secret_int(
         self, key: str, default: Optional[int] = None
     ) -> Optional[Output[int]]:
@@ -213,6 +257,14 @@ class Config:
         except Exception as e:
             raise ConfigTypeError(self.full_key(key), v, "float") from e
 
+    @overload
+    def get_float(self, key: str, default: float) -> float: ...
+    @overload
+    def get_float(self, key: str) -> Optional[float]: ...
+    @overload
+    def get_float(
+        self, key: str, default: Optional[float] = None
+    ) -> Optional[float]: ...
     def get_float(self, key: str, default: Optional[float] = None) -> Optional[float]:
         """
         Returns an optional configuration value, as a float, by its key, marked as a secret,
@@ -229,6 +281,14 @@ class Config:
         config_candidate = self._get_float(key, self.get_secret_float, self.get_float)
         return config_candidate if config_candidate is not None else default
 
+    @overload
+    def get_secret_float(self, key: str, default: float) -> Output[float]: ...
+    @overload
+    def get_secret_float(self, key: str) -> Optional[Output[float]]: ...
+    @overload
+    def get_secret_float(
+        self, key: str, default: Optional[float] = None
+    ) -> Optional[Output[float]]: ...
     def get_secret_float(
         self, key: str, default: Optional[float] = None
     ) -> Optional[Output[float]]:
@@ -264,6 +324,12 @@ class Config:
         except Exception as e:
             raise ConfigTypeError(self.full_key(key), v, "JSON object") from e
 
+    @overload
+    def get_object(self, key: str, default: Any) -> Any: ...
+    @overload
+    def get_object(self, key: str) -> Optional[Any]: ...
+    @overload
+    def get_object(self, key: str, default: Optional[Any] = None) -> Optional[Any]: ...
     def get_object(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         """
         Returns an optional configuration value, as an object, by its key,
@@ -282,6 +348,14 @@ class Config:
         )
         return config_candidate if config_candidate is not None else default
 
+    @overload
+    def get_secret_object(self, key: str, default: Any) -> Output[Any]: ...
+    @overload
+    def get_secret_object(self, key: str) -> Optional[Output[Any]]: ...
+    @overload
+    def get_secret_object(
+        self, key: str, default: Optional[Any] = None
+    ) -> Optional[Output[Any]]: ...
     def get_secret_object(
         self, key: str, default: Optional[Any] = None
     ) -> Optional[Output[Any]]:

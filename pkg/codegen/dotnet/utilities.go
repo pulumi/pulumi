@@ -16,6 +16,7 @@ package dotnet
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
@@ -125,24 +126,29 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) {
 	switch functionName {
 	case "filebase64":
-		return `private static string ReadFileBase64(string path) {
-		return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path)));
-	}`, true
+		return fmt.Sprintf(`
+%sstring ReadFileBase64(string path) 
+%s{
+%s    return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)));
+%s}`, indent, indent, indent, indent), true
 	case "filebase64sha256":
-		return `private static string ComputeFileBase64Sha256(string path) {
-		var fileData = System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path));
-		var hashData = SHA256.Create().ComputeHash(fileData);
-		return Convert.ToBase64String(hashData);
-	}`, true
+		return fmt.Sprintf(`
+%sstring ComputeFileBase64Sha256(string path) 
+%s{
+%s    var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
+%s    var hashData = SHA256.Create().ComputeHash(fileData);
+%s    return Convert.ToBase64String(hashData);
+%s}`, indent, indent, indent, indent, indent, indent), true
 	case "sha1":
-		return `private static string ComputeSHA1(string input) {
-		return BitConverter.ToString(
-			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
-		).Replace("-","").ToLowerInvariant());
-	}`, true
+		return fmt.Sprintf(`
+%sstring ComputeSHA1(string input) 
+%s{
+%s    var hash = SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input));
+%s    return BitConverter.ToString(hash).Replace("-","").ToLowerInvariant();
+%s}`, indent, indent, indent, indent, indent), true
 	case "notImplemented":
 		return fmt.Sprintf(`
-%sstatic object NotImplemented(string errorMessage) 
+%sobject NotImplemented(string errorMessage) 
 %s{
 %s    throw new System.NotImplementedException(errorMessage);
 %s}`, indent, indent, indent, indent), true
@@ -159,4 +165,19 @@ func LowerCamelCase(s string) string {
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
+}
+
+func extractNugetPackageNameAndVersion(nugetFilePath string) (string, string, bool) {
+	filename := filepath.Base(nugetFilePath)
+	parts := strings.Split(filename, ".")
+	if len(parts) >= 5 {
+		patch := parts[len(parts)-2]
+		minor := parts[len(parts)-3]
+		major := parts[len(parts)-4]
+		version := fmt.Sprintf("%s.%s.%s", major, minor, patch)
+		pkg := strings.TrimSuffix(filename, fmt.Sprintf(".%s.nupkg", version))
+		return pkg, version, true
+	}
+
+	return "", "", false
 }

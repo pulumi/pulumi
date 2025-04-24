@@ -21,33 +21,34 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/mapper"
 )
 
 type complexBag struct {
-	asset   resource.Asset
-	archive resource.Archive
+	asset   asset.Asset
+	archive archive.Archive
 
-	optionalAsset   *resource.Asset
-	optionalArchive *resource.Archive
+	optionalAsset   *asset.Asset
+	optionalArchive *archive.Archive
 }
 
 func TestAssetsAndArchives(t *testing.T) {
 	t.Parallel()
 
-	newAsset := func(s string) *resource.Asset {
-		a, err := resource.NewTextAsset(s)
+	newAsset := func(s string) *asset.Asset {
+		a, err := asset.FromText(s)
 		require.NoError(t, err, "creating asset %s", s)
 		return a
 	}
-	newArchive := func(m map[string]interface{}) *resource.Archive {
-		a, err := resource.NewAssetArchive(m)
+	newArchive := func(m map[string]interface{}) *archive.Archive {
+		a, err := archive.FromAssets(m)
 		require.NoError(t, err, "creating asset %#v", m)
 		return a
 	}
 
-	bigArchive := func() *resource.Archive {
+	bigArchive := func() *archive.Archive {
 		return newArchive(map[string]interface{}{
 			"asset1": newAsset("asset1"),
 			"archive1": newArchive(map[string]interface{}{
@@ -68,18 +69,18 @@ func TestAssetsAndArchives(t *testing.T) {
 
 	t.Run("asset", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "asset", &bag.asset, false)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	})
 	t.Run("optionalAsset", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalAsset", &bag.optionalAsset, false)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	})
 	t.Run("archive", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "archive", &bag.archive, false)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	})
 	t.Run("optionalArchive", func(t *testing.T) { //nolint:parallelTest
 		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalArchive", &bag.optionalArchive, false)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	})
 }

@@ -1,0 +1,7 @@
+name: l2-failed-create-continue-on-error
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

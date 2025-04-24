@@ -28,8 +28,10 @@ import * as vm from "vm";
 import * as v8Hooks from "./v8Hooks";
 
 /**
- * Given a function, returns the file, line and column number in the file where this function was
- * defined. Returns { "", 0, 0 } if the location cannot be found or if the given function has no Script.
+ * Given a function, returns the file, line and column number in the file where
+ * this function was defined. Returns `{ "", 0, 0 }` if the location cannot be
+ * found or if the given function has no script.
+ *
  * @internal
  */
 export async function getFunctionLocationAsync(func: Function) {
@@ -57,14 +59,21 @@ export async function getFunctionLocationAsync(func: Function) {
 }
 
 /**
- * Given a function and a free variable name, lookupCapturedVariableValue looks up the value of that free variable
- * in the scope chain of the provided function. If the free variable is not found, `throwOnFailure` indicates
- * whether or not this function should throw or return `undefined.
+ * Given a function and a free variable name, looks up the value of that free
+ * variable in the scope chain of the provided function. If the free variable is
+ * not found, `throwOnFailure` indicates whether or not this function should
+ * throw or return `undefined`.
  *
- * @param func The function whose scope chain is to be analyzed
- * @param freeVariable The name of the free variable to inspect
- * @param throwOnFailure If true, throws if the free variable can't be found.
- * @returns The value of the free variable. If `throwOnFailure` is false, returns `undefined` if not found.
+ * @param func
+ *  The function whose scope chain is to be analyzed
+ * @param freeVariable
+ *  The name of the free variable to inspect
+ * @param throwOnFailure
+ *  If true, throws if the free variable can't be found.
+ * @returns
+ *  The value of the free variable. If `throwOnFailure` is false, returns
+ *  `undefined` if not found.
+ *
  * @internal
  */
 export async function lookupCapturedVariableValueAsync(
@@ -121,7 +130,7 @@ export async function lookupCapturedVariableValueAsync(
 }
 
 // We want to call util.promisify on inspector.Session.post. However, due to all the overloads of
-// that method, promisify gets confused.  To prevent this, we cast our session object down to an
+// that method, promisify gets confused. To prevent this, we cast our session object down to an
 // interface containing only the single overload we care about.
 type PostSession<TMethod, TParams, TReturn> = {
     post(method: TMethod, params?: TParams, callback?: (err: Error | null, params: TReturn) => void): void;
@@ -159,6 +168,7 @@ type InflightContext = {
     calls: Record<string, any>;
     currentCallId: number;
 };
+
 // Isolated singleton context accessible from the inspector.
 // Used instead of `global` object to support executions with multiple V8 vm contexts as, e.g., done by Jest.
 let inflightContextCache: Promise<InflightContext> | undefined;
@@ -169,6 +179,7 @@ function inflightContext() {
     inflightContextCache = createContext();
     return inflightContextCache;
 }
+
 async function createContext(): Promise<InflightContext> {
     const context: InflightContext = {
         contextId: 0,
@@ -306,4 +317,28 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
     delete context.calls[tableId];
 
     return val;
+}
+
+export async function getBoundFunction(
+    func: Function,
+): Promise<{ targetFunctionText: string; boundThisValue: any; boundArgsValues: any[] }> {
+    const functionId = await getRuntimeIdForFunctionAsync(func);
+    const { internalProperties } = await runtimeGetPropertiesAsync(functionId, /*ownProperties:*/ false);
+
+    const desc = internalProperties.find((p) => p.name === "[[TargetFunction]]");
+    const targetFunctionText = desc?.value?.description;
+    if (!targetFunctionText) {
+        throw new Error("function is not a bound function");
+    }
+
+    const boundThisValue = internalProperties.find((p) => p.name === "[[BoundThis]]")?.value?.value;
+
+    const boundArgsObjectId = internalProperties.find((p) => p.name === "[[BoundArgs]]")?.value?.objectId;
+    let boundArgsValues: any[] = [];
+    if (boundArgsObjectId) {
+        const { properties } = await runtimeGetPropertiesAsync(boundArgsObjectId, /*ownProperties:*/ false);
+        boundArgsValues = properties.filter((p) => p.enumerable).map((p) => p.value?.value);
+    }
+
+    return { targetFunctionText, boundThisValue, boundArgsValues };
 }

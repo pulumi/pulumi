@@ -1,0 +1,10 @@
+decrypt:
+  my:0: testValue
+paths:
+  my:0:
+    value: testValue
+    string: testValue
+    redacted: testValue
+    object: FhAABnN0cmluZwwLAAl0ZXN0VmFsdWU=
+    secure: false
+    isObject: false

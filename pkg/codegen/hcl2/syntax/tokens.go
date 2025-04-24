@@ -1,9 +1,24 @@
+// Copyright 2020-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package syntax
 
 import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"strconv"
 	"unicode"
 	"unicode/utf8"
 
@@ -207,6 +222,7 @@ type TemplateDelimiter struct {
 // template delimiter, this function will panic.
 func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
 	var s string
+	//nolint:exhaustive // Only some tokens are template delimiters.
 	switch typ {
 	case hclsyntax.TokenTemplateInterp:
 		s = "${"
@@ -860,7 +876,7 @@ func rawLiteralValueToken(value cty.Value) hclsyntax.Token {
 		bf := value.AsBigFloat()
 		i, acc := bf.Int64()
 		if acc == big.Exact {
-			rawText = fmt.Sprintf("%v", i)
+			rawText = strconv.FormatInt(i, 10)
 		} else {
 			d, _ := bf.Float64()
 			rawText = fmt.Sprintf("%g", d)

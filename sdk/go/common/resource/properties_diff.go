@@ -391,6 +391,15 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		return vo.Element.DeepEquals(oo.Element)
 	}
 
+	if v.IsComputed() {
+		if !other.IsComputed() {
+			return false
+		}
+		vc := v.Input().Element
+		oc := other.Input().Element
+		return vc.DeepEquals(oc)
+	}
+
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
 }
@@ -615,15 +624,7 @@ func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {
 		vr := v.ResourceReferenceValue()
 		or := other.ResourceReferenceValue()
 
-		if vr.URN != or.URN {
-			return false
-		}
-
-		vid, oid := vr.ID, or.ID
-		if vid.IsComputed() || oid.IsComputed() {
-			return true
-		}
-		return vid.DeepEqualsIncludeUnknowns(oid)
+		return vr.Equal(or)
 	}
 
 	// Outputs are equal if each of their fields is deeply equal.

@@ -1,0 +1,14 @@
+<{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=bee00bb9-438f-4c49-8864-c3ba9f197034]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::487726bd-c700-4105-ba46-39225b2857b9]
+<{%reset%}><{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=487726bd-c700-4105-ba46-39225b2857b9]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::provA]
+<{%reset%}><{%fg 1%}>    pluginDownloadURL: <{%reset%}><{%fg 1%}>"get.pulumi.com/${VERSION}"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - pluginDownloadURL: <{%reset%}><{%fg 1%}>"get.pulumi.com/${VERSION}"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

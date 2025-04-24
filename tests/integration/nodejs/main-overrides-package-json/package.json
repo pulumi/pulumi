@@ -1,0 +1,9 @@
+{
+    "name": "main-overrides-package-json",
+    "license": "Apache-2.0",
+    "type": "module",
+    "main": "index.js",
+    "dependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

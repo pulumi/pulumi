@@ -15,15 +15,17 @@
 package display
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -85,22 +87,21 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
 		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
 		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts,
-		s.ImportID, s.RetainOnDelete, s.DeletedWith, s.Created, s.Modified, s.SourcePosition)
+		s.ImportID, s.RetainOnDelete, s.DeletedWith, s.Created, s.Modified, s.SourcePosition, s.IgnoreChanges,
+		s.ReplaceOnChanges)
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
-func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowJSONEvents(events <-chan engine.StampedEvent, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
-	sequence := 0
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetEscapeHTML(false)
 	for e := range events {
-		if err := logJSONEvent(encoder, e, opts, sequence); err != nil {
+		if err := logJSONEvent(encoder, e, opts); err != nil {
 			logging.V(7).Infof("failed to log event: %v", err)
 		}
-		sequence++
 
 		// In the event of cancellation, break out of the loop.
 		if e.Type == engine.CancelEvent {
@@ -117,6 +118,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+
 	// Now loop and accumulate our digest until the event stream is closed, or we hit a cancellation.
 	var digest display.PreviewDigest
 	for e := range events {
@@ -127,6 +130,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
+		case engine.CancelEvent:
+			// Pacify the linter here, this is already handled beforehand
 		// Events occurring early:
 		case engine.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
@@ -143,6 +148,10 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					Severity: p.Severity,
 				})
 			}
+		case engine.StartDebuggingEvent:
+			// We don't want to display debugging events in the JSON output.
+			continue
+
 		case engine.StdoutColorEvent:
 			// Append stdout events as informational messages, and elide all colorization.
 			p := e.Payload().(engine.StdoutEventPayload)
@@ -151,56 +160,41 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 				Severity: diag.Info,
 			})
 		case engine.ResourcePreEvent:
-			// Create the detailed metadata for this step and the initial state of its resource. Later,
-			// if new outputs arrive, we'll search for and swap in those new values.
+			// Create the detailed metadata for this step and the initial state of its
+			// resource. Later, if new outputs arrive that we want to incorporate,
+			// we'll search for and swap in those new values.
 			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
-				var detailedDiff map[string]display.PropertyDiff
-				if m.DetailedDiff != nil {
-					detailedDiff = make(map[string]display.PropertyDiff)
-					for k, v := range m.DetailedDiff {
-						detailedDiff[k] = display.PropertyDiff{
-							Kind:      v.Kind.String(),
-							InputDiff: v.InputDiff,
+				seen[m.URN] = m
+				step := getPreviewMetadataStep(m, opts)
+				digest.Steps = append(digest.Steps, step)
+			}
+		case engine.ResourceOutputsEvent:
+			// When performing JSON serialisation, we want to include outputs that
+			// occur as the results of a refresh operation. When the output event
+			// arrives, these will have been rewritten to be updates or deletes, so we
+			// use the `seen` map to confirm the original operation.
+			if m := e.Payload().(engine.ResourceOutputsEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+				refresh := false
+				if preM, has := seen[m.URN]; has && preM.Op == deploy.OpRefresh {
+					refresh = true
+				}
+
+				if refresh && ((m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete) {
+					step := getPreviewMetadataStep(m, opts)
+					for i, s := range digest.Steps {
+						if s.URN == m.URN {
+							digest.Steps[i] = step
 						}
 					}
 				}
-
-				step := &display.PreviewStep{
-					Op:             m.Op,
-					URN:            m.URN,
-					Provider:       m.Provider,
-					DiffReasons:    m.Diffs,
-					ReplaceReasons: m.Keys,
-					DetailedDiff:   detailedDiff,
-				}
-
-				if m.Old != nil {
-					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
-					if err == nil {
-						step.OldState = &res
-					} else {
-						logging.V(7).Infof("not adding old state as there was an error serializing: %s", err)
-					}
-				}
-				if m.New != nil {
-					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
-					if err == nil {
-						step.NewState = &res
-					} else {
-						logging.V(7).Infof("not adding new state as there was an error serializing: %s", err)
-					}
-				}
-
-				digest.Steps = append(digest.Steps, step)
 			}
-		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:
-		// Because we are only JSON serializing previews, we don't need to worry about outputs
-		// resolving or operations failing.
+		case engine.ResourceOperationFailed:
+			// Because we are only JSON serializing previews, we don't need to worry
+			// about operations failing.
+			continue
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent:
+		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
 		case engine.SummaryEvent:
@@ -209,6 +203,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			digest.Duration = p.Duration
 			digest.ChangeSummary = p.ResourceChanges
 			digest.MaybeCorrupt = p.MaybeCorrupt
+		case engine.ProgressEvent:
+			// Progress events are ephemeral and should be skipped.
+			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
 		}
@@ -217,4 +214,53 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 	out, err := json.MarshalIndent(&digest, "", "    ")
 	contract.Assertf(err == nil, "unexpected JSON error: %v", err)
 	fmt.Println(string(out))
+}
+
+// getPreviewMetadataStep constructs a preview step that can be rendered to JSON
+// from the given metadata and options.
+func getPreviewMetadataStep(
+	m engine.StepEventMetadata,
+	opts Options,
+) *display.PreviewStep {
+	var detailedDiff map[string]display.PropertyDiff
+	if m.DetailedDiff != nil {
+		detailedDiff = make(map[string]display.PropertyDiff)
+		for k, v := range m.DetailedDiff {
+			detailedDiff[k] = display.PropertyDiff{
+				Kind:      v.Kind.String(),
+				InputDiff: v.InputDiff,
+			}
+		}
+	}
+
+	step := &display.PreviewStep{
+		Op:             m.Op,
+		URN:            m.URN,
+		Provider:       m.Provider,
+		DiffReasons:    m.Diffs,
+		ReplaceReasons: m.Keys,
+		DetailedDiff:   detailedDiff,
+	}
+
+	ctx := context.TODO()
+	if m.Old != nil {
+		oldState := stateForJSONOutput(m.Old.State, opts)
+		res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
+		if err == nil {
+			step.OldState = &res
+		} else {
+			logging.V(7).Infof("not adding old state as there was an error serializing: %s", err)
+		}
+	}
+	if m.New != nil {
+		newState := stateForJSONOutput(m.New.State, opts)
+		res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
+		if err == nil {
+			step.NewState = &res
+		} else {
+			logging.V(7).Infof("not adding new state as there was an error serializing: %s", err)
+		}
+	}
+
+	return step
 }

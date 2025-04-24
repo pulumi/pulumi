@@ -7,12 +7,7 @@ permissions:
   id-token: write
 
 on:
-  push:
-    branches:
-      - staging
-      - trying
-    tags-ignore:
-      - "*"
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,6 +32,8 @@ jobs:
     name: CI
     needs: [info]
     uses: ./.github/workflows/ci.yml
+    strategy:
+      fail-fast: true
     permissions:
       contents: read
       # To sign artifacts.
@@ -44,11 +41,31 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
+      enable-coverage: true
+      fail-fast: true
+      test-retries: 2
+      acceptance-test-platforms: 'macos-latest'
+    secrets: inherit
+
+  performance-gate:
+    name: Performance Gate
+    needs: [info]
+    uses: ./.github/workflows/ci-performance-gate.yml
+    strategy:
+      fail-fast: true
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+      test-version-sets: 'minimum current'
+      fail-fast: true
+      test-retries: 2
+      performance-test-platforms: ubuntu-22.04
     secrets: inherit
 
   prepare-release:
     name: prepare
-    if: ${{ github.ref_name == 'staging' }} # only on real merges
     needs: [info, ci]
     uses: ./.github/workflows/ci-prepare-release.yml
     permissions:
@@ -62,10 +79,17 @@ jobs:
       project: ${{ github.repository }}
     secrets: inherit
 
-  bors-ok:
-    name: bors-ok
-    needs: [prepare-release]
-    runs-on: ubuntu-latest
+  ci-ok:
+    name: ci-ok
+    needs: [ci, performance-gate, prepare-release]
+    if: always() # always report a status
+    runs-on: ubuntu-22.04
     steps:
+      - name: CI failed
+        if: ${{ needs.ci.result != 'success' }}
+        run: exit 1
+      - name: Release failed
+        if: ${{ needs.prepare-release.result != 'success' }}
+        run: exit 1
       - name: CI succeeded
         run: exit 0

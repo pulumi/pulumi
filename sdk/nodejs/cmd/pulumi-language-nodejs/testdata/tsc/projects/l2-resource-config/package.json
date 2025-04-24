@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-config",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/config": "ROOT/artifacts/pulumi-config-9.0.0.tgz"
+	}
+}

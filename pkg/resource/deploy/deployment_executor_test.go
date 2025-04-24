@@ -1,4 +1,5 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,94 +18,172 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
 )
 
-// Note: the only valid way to add a resource to the node list is via the `add` method.
-// This ensures that the `sorted` method works correctly.
-type nodeList []*resource.State
+func TestRebuildBaseStateDanglingParentsSimple(t *testing.T) {
+	t.Parallel()
 
-func (nl *nodeList) Add(urn string, delete bool, children ...*resource.State) *resource.State {
-	n := &resource.State{URN: resource.URN(urn), Delete: delete}
-	for _, child := range children {
-		child.Parent = n.URN
-	}
-	*nl = append(*nl, n)
-	return n
+	// Arrange.
+	steps, ex := makeStepsAndExecutor(
+		&resource.State{URN: "A", Delete: true},
+		&resource.State{URN: "B", Parent: "A"},
+	)
+
+	// Act.
+	ex.rebuildBaseState(steps)
+
+	// Assert.
+	assert.EqualValues(t, map[resource.URN]*resource.State{
+		"B": {URN: "B"},
+	}, ex.deployment.olds)
 }
 
-func (nl *nodeList) AsRefreshSteps() map[*resource.State]Step {
-	m := make(map[*resource.State]Step, len(*nl))
-	for _, r := range *nl {
-		m[r] = &RefreshStep{
-			old: r,
-			new: r,
-		}
-	}
-	return m
+func TestRebuildBaseStateDanglingParentsTree(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	steps, ex := makeStepsAndExecutor(
+		&resource.State{URN: "A"},
+		&resource.State{URN: "C", Parent: "A", Delete: true},
+		&resource.State{URN: "F", Parent: "A"},
+
+		&resource.State{URN: "D", Parent: "A"},
+		&resource.State{URN: "G", Parent: "D"},
+		&resource.State{URN: "H", Parent: "D", Delete: true},
+
+		&resource.State{URN: "B", Delete: true},
+		&resource.State{URN: "E", Parent: "B", Delete: true},
+		&resource.State{URN: "I", Parent: "E"},
+	)
+
+	// Act.
+	ex.rebuildBaseState(steps)
+
+	// Assert.
+	assert.EqualValues(t, map[resource.URN]*resource.State{
+		"A": {URN: "A"},
+		"I": {URN: "I"},
+		"F": {URN: "F", Parent: "A"},
+		"G": {URN: "G", Parent: "D"},
+		"D": {URN: "D", Parent: "A"},
+	}, ex.deployment.olds)
 }
 
-func (nl *nodeList) sorted() []*resource.State {
-	// Since we add elements before we add their parents, we are guaranteed a reverse
-	// topological sort. We can retrieve a topological sort by reversing the list.
-	l := slice.Prealloc[*resource.State](len(*nl))
-	for i := len(*nl) - 1; i >= 0; i-- {
-		l = append(l, (*nl)[i])
-	}
-	return l
+func TestRebuildBaseStateDependencies(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	steps, ex := makeStepsAndExecutor(
+		// "A" is missing.
+		&resource.State{URN: "B", Dependencies: []resource.URN{"A"}},
+		&resource.State{URN: "C", Dependencies: []resource.URN{"A"}},
+
+		// "D" is missing.
+
+		&resource.State{URN: "E"},
+		// "F" is missing.
+		&resource.State{URN: "G", Parent: "E", Dependencies: []resource.URN{"F"}},
+	)
+
+	// Act.
+	ex.rebuildBaseState(steps)
+
+	// Assert.
+	assert.EqualValues(t, map[resource.URN]*resource.State{
+		"B": {URN: "B", Dependencies: []resource.URN{}},
+		"C": {URN: "C", Dependencies: []resource.URN{}},
+
+		"E": {URN: "E"},
+		"G": {URN: "G", Parent: "E", Dependencies: []resource.URN{}},
+	}, ex.deployment.olds)
 }
 
-func (nl *nodeList) Executor() *deploymentExecutor {
-	return &deploymentExecutor{
+func TestRebuildBaseStateDeletedWith(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	steps, ex := makeStepsAndExecutor(
+		// "A" is missing.
+		&resource.State{URN: "B", DeletedWith: "A"},
+		&resource.State{URN: "C", DeletedWith: "A"},
+
+		// "D" is missing.
+
+		&resource.State{URN: "E"},
+		// "F" is missing.
+		&resource.State{URN: "G", Parent: "E", DeletedWith: "F"},
+	)
+
+	// Act.
+	ex.rebuildBaseState(steps)
+
+	// Assert.
+	assert.EqualValues(t, map[resource.URN]*resource.State{
+		"B": {URN: "B"},
+		"C": {URN: "C"},
+
+		"E": {URN: "E"},
+		"G": {URN: "G", Parent: "E"},
+	}, ex.deployment.olds)
+}
+
+func TestRebuildBaseStatePropertyDependencies(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	steps, ex := makeStepsAndExecutor(
+		// "A" is missing.
+		&resource.State{URN: "B", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			"propB1": {"A"},
+		}},
+
+		&resource.State{URN: "C", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			"propC1": {"A"},
+			"propC2": {"B"},
+		}},
+
+		// "D" is missing.
+
+		&resource.State{URN: "E"},
+		// "F" is missing.
+		&resource.State{URN: "G", Parent: "E", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			"propG1": {"F"},
+			"propG2": {"E"},
+			"propG3": {"F"},
+		}},
+	)
+
+	// Act.
+	ex.rebuildBaseState(steps)
+
+	// Assert.
+	assert.EqualValues(t, map[resource.URN]*resource.State{
+		"B": {URN: "B", PropertyDependencies: map[resource.PropertyKey][]resource.URN{}},
+		"C": {URN: "C", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			"propC2": {"B"},
+		}},
+
+		"E": {URN: "E"},
+		"G": {URN: "G", Parent: "E", PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			"propG2": {"E"},
+		}},
+	}, ex.deployment.olds)
+}
+
+func makeStepsAndExecutor(states ...*resource.State) (map[*resource.State]Step, *deploymentExecutor) {
+	steps := make(map[*resource.State]Step, len(states))
+	for _, state := range states {
+		steps[state] = &RefreshStep{old: state, new: state}
+	}
+
+	ex := &deploymentExecutor{
 		deployment: &Deployment{
 			prev: &Snapshot{
-				Resources: nl.sorted(),
+				Resources: states,
 			},
 		},
 	}
-}
 
-func TestRebuildBaseState(t *testing.T) {
-	t.Parallel()
-
-	t.Run("simple-deps", func(t *testing.T) {
-		t.Parallel()
-		nl := &nodeList{}
-		nl.Add("A", true, nl.Add("B", false))
-
-		ex := nl.Executor()
-
-		ex.rebuildBaseState(nl.AsRefreshSteps(), true)
-
-		assert.EqualValues(t, map[resource.URN]*resource.State{
-			"B": {URN: "B"},
-		}, ex.deployment.olds)
-	})
-
-	t.Run("tree", func(t *testing.T) {
-		t.Parallel()
-		nl := &nodeList{}
-		nl.Add("A", false,
-			nl.Add("C", true,
-				nl.Add("F", false)),
-			nl.Add("D", false,
-				nl.Add("G", false),
-				nl.Add("H", true)))
-		nl.Add("B", true,
-			nl.Add("E", true,
-				nl.Add("I", false)))
-
-		ex := nl.Executor()
-
-		ex.rebuildBaseState(nl.AsRefreshSteps(), true)
-
-		assert.EqualValues(t, map[resource.URN]*resource.State{
-			"A": {URN: "A"},
-			"I": {URN: "I"},
-			"F": {URN: "F", Parent: "A"},
-			"G": {URN: "G", Parent: "D"},
-			"D": {URN: "D", Parent: "A"},
-		}, ex.deployment.olds)
-	})
+	return steps, ex
 }

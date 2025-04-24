@@ -1,9 +1,25 @@
+// Copyright 2023-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 // The specification for the pyproject.toml file can be found here.
 // https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
 type PyprojectSchema struct {
-	Project *Project `toml:"project,omitempty" json:"project,omitempty"`
+	Project     *Project               `toml:"project,omitempty" json:"project,omitempty"`
+	BuildSystem *BuildSystem           `toml:"build-system,omitempty" json:"build-system,omitempty"`
+	Tool        map[string]interface{} `toml:"tool,omitempty" json:"tool,omitempty"`
 }
 
 // Project is a view layer for a pyproject.toml file.
@@ -32,6 +48,11 @@ type Project struct {
 	URLs map[string]string `toml:"urls,omitempty" json:"urls,omitempty"`
 	// Version is the package version.
 	Version *string `toml:"version,omitempty" json:"version,omitempty"`
+}
+
+type BuildSystem struct {
+	Requires     []string `toml:"requires,omitempty" json:"requires,omitempty"`
+	BuildBackend string   `toml:"build-backend,omitempty" json:"build-backend,omitempty"`
 }
 
 // Contact references someone associated with the project, including

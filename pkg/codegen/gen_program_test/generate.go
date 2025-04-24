@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 // Split codegen tests into separate packages to extract greater parallelism, breaking up the
 // slowest set(s) of tests.
 func main() {
-	template := `// Copyright 2016-2022, Pulumi Corporation.
+	template := `// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,16 +44,23 @@ func main() {
 package %s
 
 import (
-  "os"
-  "testing"
+	"os"
+	"path/filepath"
+	"testing"
 
-  codegen "github.com/pulumi/pulumi/pkg/v3/codegen/%s"
-  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/stretchr/testify/require"
+
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/%s"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
-  os.Chdir("../../../%[2]s") // chdir into codegen/%[2]s
-  codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(%d, %d))
+	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
+	require.NoError(t, err)
+
+	// Change into pkg/codegen/%[2]s
+	os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "%[2]s"))
+	test.GenerateProgramBatchTest("%[2]s")(t, rootDir, codegen.GenerateProgram, test.ProgramTestBatch(%d, %d))
 }`
 
 	n := 6

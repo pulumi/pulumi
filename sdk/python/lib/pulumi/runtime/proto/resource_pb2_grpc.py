@@ -3,6 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from . import callback_pb2 as pulumi_dot_callback__pb2
 from . import provider_pb2 as pulumi_dot_provider__pb2
 from . import resource_pb2 as pulumi_dot_resource__pb2
 
@@ -27,14 +28,9 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
-        self.StreamInvoke = channel.unary_stream(
-                '/pulumirpc.ResourceMonitor/StreamInvoke',
-                request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
-                )
         self.Call = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Call',
-                request_serializer=pulumi_dot_provider__pb2.CallRequest.SerializeToString,
+                request_serializer=pulumi_dot_resource__pb2.ResourceCallRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.CallResponse.FromString,
                 )
         self.ReadResource = channel.unary_unary(
@@ -52,6 +48,21 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.RegisterStackTransform = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterStackTransform',
+                request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.RegisterStackInvokeTransform = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterStackInvokeTransform',
+                request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.RegisterPackage = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterPackage',
+                request_serializer=pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
+                )
 
 
 class ResourceMonitorServicer(object):
@@ -65,12 +76,6 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Invoke(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def StreamInvoke(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -100,6 +105,28 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RegisterStackTransform(self, request, context):
+        """Register a resource transform for the stack
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RegisterStackInvokeTransform(self, request, context):
+        """Register an invoke transform for the stack
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RegisterPackage(self, request, context):
+        """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
+        Multiple requests are idempotent and guaranteed to return the same result.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -113,14 +140,9 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
-            'StreamInvoke': grpc.unary_stream_rpc_method_handler(
-                    servicer.StreamInvoke,
-                    request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
-            ),
             'Call': grpc.unary_unary_rpc_method_handler(
                     servicer.Call,
-                    request_deserializer=pulumi_dot_provider__pb2.CallRequest.FromString,
+                    request_deserializer=pulumi_dot_resource__pb2.ResourceCallRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.CallResponse.SerializeToString,
             ),
             'ReadResource': grpc.unary_unary_rpc_method_handler(
@@ -137,6 +159,21 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     servicer.RegisterResourceOutputs,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'RegisterStackTransform': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterStackTransform,
+                    request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'RegisterStackInvokeTransform': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterStackInvokeTransform,
+                    request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'RegisterPackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterPackage,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterPackageRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.RegisterPackageResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -184,23 +221,6 @@ class ResourceMonitor(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def StreamInvoke(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceMonitor/StreamInvoke',
-            pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.InvokeResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
     def Call(request,
             target,
             options=(),
@@ -212,7 +232,7 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/Call',
-            pulumi_dot_provider__pb2.CallRequest.SerializeToString,
+            pulumi_dot_resource__pb2.ResourceCallRequest.SerializeToString,
             pulumi_dot_provider__pb2.CallResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -265,5 +285,56 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceOutputs',
             pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RegisterStackTransform(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterStackTransform',
+            pulumi_dot_callback__pb2.Callback.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RegisterStackInvokeTransform(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterStackInvokeTransform',
+            pulumi_dot_callback__pb2.Callback.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RegisterPackage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterPackage',
+            pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
+            pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

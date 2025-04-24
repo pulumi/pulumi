@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -35,8 +36,19 @@ func (c *testConverter) Close() error {
 func (c *testConverter) ConvertState(
 	ctx context.Context, req *ConvertStateRequest,
 ) (*ConvertStateResponse, error) {
-	if req.MapperAddress != "localhost:1234" {
-		return nil, fmt.Errorf("unexpected MapperAddress: %s", req.MapperAddress)
+	if !reflect.DeepEqual(req.Args, []string{"arg1", "arg2"}) {
+		return nil, fmt.Errorf("unexpected Args: %v", req.Args)
+	}
+	if req.MapperTarget != "localhost:1234" {
+		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
+	}
+
+	diags := hcl.Diagnostics{
+		{
+			Severity: hcl.DiagError,
+			Summary:  "test:summary",
+			Detail:   "test:detail",
+		},
 	}
 
 	return &ConvertStateResponse{
@@ -47,16 +59,20 @@ func (c *testConverter) ConvertState(
 				ID:                "test:id",
 				Version:           "test:version",
 				PluginDownloadURL: "test:pluginDownloadURL",
+				LogicalName:       "test:logicalName",
+				IsRemote:          true,
+				IsComponent:       true,
 			},
 		},
+		Diagnostics: diags,
 	}, nil
 }
 
 func (c *testConverter) ConvertProgram(
 	ctx context.Context, req *ConvertProgramRequest,
 ) (*ConvertProgramResponse, error) {
-	if req.MapperAddress != "localhost:1234" {
-		return nil, fmt.Errorf("unexpected MapperAddress: %s", req.MapperAddress)
+	if req.MapperTarget != "localhost:1234" {
+		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
 	if req.SourceDirectory != "src" {
 		return nil, fmt.Errorf("unexpected SourceDirectory: %s", req.SourceDirectory)
@@ -84,6 +100,7 @@ func TestConverterServer_State(t *testing.T) {
 	server := NewConverterServer(&testConverter{})
 
 	resp, err := server.ConvertState(context.Background(), &pulumirpc.ConvertStateRequest{
+		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
 	})
 
@@ -96,6 +113,14 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, "test:id", res.Id)
 	assert.Equal(t, "test:version", res.Version)
 	assert.Equal(t, "test:pluginDownloadURL", res.PluginDownloadURL)
+	assert.Equal(t, "test:logicalName", res.LogicalName)
+	assert.Equal(t, true, res.IsRemote)
+	assert.Equal(t, true, res.IsComponent)
+
+	diag := resp.Diagnostics[0]
+	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)
+	assert.Equal(t, "test:summary", diag.Summary)
+	assert.Equal(t, "test:detail", diag.Detail)
 }
 
 func TestConverterServer_Program(t *testing.T) {
@@ -105,8 +130,10 @@ func TestConverterServer_Program(t *testing.T) {
 
 	resp, err := server.ConvertProgram(context.Background(), &pulumirpc.ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
+		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
+		Args:            []string{"arg1", "arg2"},
 	})
 
 	require.NoError(t, err)

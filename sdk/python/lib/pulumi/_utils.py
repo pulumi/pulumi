@@ -15,15 +15,16 @@
 
 from contextvars import ContextVar
 import importlib
+import importlib.abc
 import sys
+import types
 import typing
 
 
 # Empty function definitions.
 
 
-def _empty():
-    ...
+def _empty(): ...
 
 
 def _empty_doc():
@@ -108,7 +109,7 @@ def lazy_import(fullname):
     if m is not None:
         return m
 
-    loader = importlib.util.LazyLoader(spec.loader)
+    loader = _LazyLoader(spec.loader)
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
 
@@ -236,6 +237,12 @@ class ContextProperty:
     def __getitem__(self, key):
         return self.fget()[key]
 
+    def get(self, key, default=None):
+        data = self.fget()
+        if not isinstance(data, dict):
+            raise TypeError("Can't get key values on non-dict variables.")
+        return data.get(key, default)
+
     def __contains__(self, element):
         return element in self.fget()
 
@@ -250,3 +257,92 @@ class ContextProperty:
     def deleter(self, fdel):
         prop = type(self)(self.fget, self.fset, fdel, name=self._name, doc=self.__doc__)
         return prop
+
+
+# Python 3.11.9 and 3.12.3 introduced a regression that broke lazy loading of
+# `config` modules in generated provider SDKs.
+# See https://github.com/python/cpython/pull/117185#issuecomment-2060851286.
+# To workaround, use a private copy of _LazyModule and LazyLoader (renamed
+# _LazyLoader) from the Python stdlib, which don't have the regression,
+# as suggested by the Python maintainers.
+class _LazyModule(types.ModuleType):
+    """A subclass of the module type which triggers loading upon attribute access."""
+
+    def __getattribute__(self, attr):
+        """Trigger the load of the module and return the attribute."""
+        # All module metadata must be garnered from __spec__ in order to avoid
+        # using mutated values.
+        # Stop triggering this method.
+        self.__class__ = types.ModuleType
+        # Get the original name to make sure no object substitution occurred
+        # in sys.modules.
+        original_name = self.__spec__.name
+        # Figure out exactly what attributes were mutated between the creation
+        # of the module and now.
+        attrs_then = self.__spec__.loader_state["__dict__"]
+        attrs_now = self.__dict__
+        attrs_updated = {}
+        for key, value in attrs_now.items():
+            # Code that set the attribute may have kept a reference to the
+            # assigned object, making identity more important than equality.
+            if key not in attrs_then:
+                attrs_updated[key] = value
+            elif id(attrs_now[key]) != id(attrs_then[key]):
+                attrs_updated[key] = value
+        self.__spec__.loader.exec_module(self)
+        # If exec_module() was used directly there is no guarantee the module
+        # object was put into sys.modules.
+        if original_name in sys.modules:
+            if id(self) != id(sys.modules[original_name]):
+                raise ValueError(
+                    f"module object for {original_name!r} "
+                    "substituted in sys.modules during a lazy "
+                    "load"
+                )
+        # Update after loading since that's what would happen in an eager
+        # loading situation.
+        self.__dict__.update(attrs_updated)
+        return getattr(self, attr)
+
+    def __delattr__(self, attr):
+        """Trigger the load and then perform the deletion."""
+        # To trigger the load and raise an exception if the attribute
+        # doesn't exist.
+        self.__getattribute__(attr)
+        delattr(self, attr)
+
+
+class _LazyLoader(importlib.abc.Loader):
+    """A loader that creates a module which defers loading until attribute access."""
+
+    @staticmethod
+    def __check_eager_loader(loader):
+        if not hasattr(loader, "exec_module"):
+            raise TypeError("loader must define exec_module()")
+
+    @classmethod
+    def factory(cls, loader):
+        """Construct a callable which returns the eager loader made lazy."""
+        cls.__check_eager_loader(loader)
+        return lambda *args, **kwargs: cls(loader(*args, **kwargs))
+
+    def __init__(self, loader):
+        self.__check_eager_loader(loader)
+        self.loader = loader
+
+    def create_module(self, spec):
+        return self.loader.create_module(spec)
+
+    def exec_module(self, module):
+        """Make the module load lazily."""
+        module.__spec__.loader = self.loader
+        module.__loader__ = self.loader
+        # Don't need to worry about deep-copying as trying to set an attribute
+        # on an object would have triggered the load,
+        # e.g. ``module.__spec__.loader = None`` would trigger a load from
+        # trying to access module.__spec__.
+        loader_state = {}
+        loader_state["__dict__"] = module.__dict__.copy()
+        loader_state["__class__"] = module.__class__
+        module.__spec__.loader_state = loader_state
+        module.__class__ = _LazyModule

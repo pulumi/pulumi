@@ -21,6 +21,7 @@ class MyResource(pulumi.CustomResource):
         @pulumi.input_type
         class Args:
             pass
+
         props = Args()
         props.__dict__["some_value"] = None
         props.__dict__["another_value"] = None
@@ -39,13 +40,17 @@ class MyResource(pulumi.CustomResource):
 
 class MyResourceSubclass(MyResource):
     combined_values: pulumi.Output[str]
+
     def __init__(self, name):
         super().__init__(name)
-        self.combined_values = pulumi.Output.concat(self.some_value, " ", self.another_value)
+        self.combined_values = pulumi.Output.concat(
+            self.some_value, " ", self.another_value
+        )
 
 
 class MyResourceSubclassSubclass(MyResourceSubclass):
     new_value: pulumi.Output[str]
+
     def __init__(self, name):
         super().__init__(name)
         self.new_value = pulumi.Output.concat(self.combined_values, "!")
@@ -54,7 +59,7 @@ class MyResourceSubclassSubclass(MyResourceSubclass):
 class MyLegacyTranslationResource(pulumi.CustomResource):
     def __init__(self, name):
         # Pass a regular dict to use the old translation behavior.
-        props = dict()
+        props = {}
         props["some_value"] = None
         props["another_value"] = None
         super().__init__("test:index:MyResource", name, props)
@@ -84,13 +89,17 @@ class MyLegacyTranslationResource(pulumi.CustomResource):
 
 class MyLegacyTranslationResourceSubclass(MyLegacyTranslationResource):
     combined_values: pulumi.Output[str]
+
     def __init__(self, name):
         super().__init__(name)
-        self.combined_values = pulumi.Output.concat(self.some_value, " ", self.another_value)
+        self.combined_values = pulumi.Output.concat(
+            self.some_value, " ", self.another_value
+        )
 
 
 class MyLegacyTranslationResourceSubclassSubclass(MyLegacyTranslationResourceSubclass):
     new_value: pulumi.Output[str]
+
     def __init__(self, name):
         super().__init__(name)
         self.new_value = pulumi.Output.concat(self.combined_values, "!")

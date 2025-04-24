@@ -15,8 +15,8 @@
 package backend
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -96,6 +96,9 @@ const (
 	// UpdatePlan ("true", "false") indicates if an explicit update plan was used for the update (either
 	// saving one, or constraining to one).
 	UpdatePlan = "updatePlan"
+
+	// StackEnvironments indicates the list of ESC environments imported by the stack being updated.
+	StackEnvironments = "stack.environments"
 )
 
 // UpdateInfo describes a previous update.

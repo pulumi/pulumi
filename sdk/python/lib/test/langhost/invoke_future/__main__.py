@@ -15,8 +15,10 @@ import asyncio
 from pulumi import export
 from pulumi.runtime import invoke
 
+
 async def await_invoke():
     return await invoke("test:index:MyFunction", {})
+
 
 export("f1", asyncio.ensure_future(await_invoke()))
 export("f2", asyncio.ensure_future(await_invoke()))

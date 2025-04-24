@@ -8,6 +8,12 @@ from pulumi.codegen import mapper_pb2 as pulumi_dot_codegen_dot_mapper__pb2
 class MapperStub(object):
     """Mapper is a service for getting mappings from other ecosystems to Pulumi.
     This is currently unstable and experimental.
+
+    Mapper provides methods for retrieving mappings that describe how to map names in some source "provider" (e.g. a
+    Terraform provider, if we are converting from Terraform) to names in appropriate Pulumi packages. So when converting
+    a Terraform program containing code like `resource "aws_s3_bucket" "b" {}`, for instance, we need to know (among
+    other things) that the `aws_s3_bucket` Terraform resource type corresponds to the Pulumi type `aws:s3/bucket:Bucket`,
+    and thus lives in the `aws` package. This is the kind of information that a Mapper provides.
     """
 
     def __init__(self, channel):
@@ -26,10 +32,20 @@ class MapperStub(object):
 class MapperServicer(object):
     """Mapper is a service for getting mappings from other ecosystems to Pulumi.
     This is currently unstable and experimental.
+
+    Mapper provides methods for retrieving mappings that describe how to map names in some source "provider" (e.g. a
+    Terraform provider, if we are converting from Terraform) to names in appropriate Pulumi packages. So when converting
+    a Terraform program containing code like `resource "aws_s3_bucket" "b" {}`, for instance, we need to know (among
+    other things) that the `aws_s3_bucket` Terraform resource type corresponds to the Pulumi type `aws:s3/bucket:Bucket`,
+    and thus lives in the `aws` package. This is the kind of information that a Mapper provides.
     """
 
     def GetMapping(self, request, context):
-        """GetMapping tries to find a mapping for the given provider.
+        """`GetMapping` returns any available mapping data for the given source provider name (so again, this is e.g. the
+        name of a Terraform provider if converting from Terraform). Callers may pass "hints" that describe a Pulumi
+        package that is expected to provide the mapping and satisfy the request, which implementations may use to
+        optimise their efforts to return the best possible mapping. If no matching mapping exists, implementations should
+        return an empty byte array result.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -53,6 +69,12 @@ def add_MapperServicer_to_server(servicer, server):
 class Mapper(object):
     """Mapper is a service for getting mappings from other ecosystems to Pulumi.
     This is currently unstable and experimental.
+
+    Mapper provides methods for retrieving mappings that describe how to map names in some source "provider" (e.g. a
+    Terraform provider, if we are converting from Terraform) to names in appropriate Pulumi packages. So when converting
+    a Terraform program containing code like `resource "aws_s3_bucket" "b" {}`, for instance, we need to know (among
+    other things) that the `aws_s3_bucket` Terraform resource type corresponds to the Pulumi type `aws:s3/bucket:Bucket`,
+    and thus lives in the `aws` package. This is the kind of information that a Mapper provides.
     """
 
     @staticmethod

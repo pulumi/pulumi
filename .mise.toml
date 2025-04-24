@@ -1,0 +1,25 @@
+[env]
+PULUMI_ROOT = "{{config_root}}/.root"
+
+_.path = [
+  "{{env.PULUMI_ROOT}}/bin",
+]
+
+[tools]
+github-cli = "latest"
+"go:github.com/go-delve/delve/cmd/dlv" = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
+go = "1.24"
+gofumpt = "latest"
+golangci-lint = "1.64.2"
+jq = "latest"
+node = "20"
+"npm:pnpm" = "latest"
+"npm:typescript" = "latest"
+"npm:typescript-language-server" = "latest"
+"npm:yarn" = "latest"
+python = '3.11'
+uv = "latest"
+"go:github.com/mitranim/gow" = "latest"
+
+[plugins]

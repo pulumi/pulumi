@@ -1,0 +1,23 @@
+exports.handler = __f0;
+
+Object.setPrototypeOf(__f0, __f1);
+
+function __f0() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return () => { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ this: undefined, arguments: undefined }) {
+
+return () => { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}

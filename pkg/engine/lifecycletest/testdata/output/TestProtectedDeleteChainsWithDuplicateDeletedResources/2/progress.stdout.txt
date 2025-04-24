@@ -1,0 +1,23 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:modA:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:modA:typA resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test-stack::test-project::pkgA:modA:typA::resB" cannot be deleted
+ <{%fg 1%}>- <{%reset%}> pkgA:modA:typA resB <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test-stack::test-project::pkgA:modA:typA::resB" cannot be deleted
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:modA:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
+ <{%fg 9%}>--<{%reset%}> pkgA:modA:typA resA <{%fg 9%}>deleted original<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pkgA:modA:typA (resB):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>resource "urn:pulumi:test-stack::test-project::pkgA:modA:typA::resB" cannot be deleted
+    because it is protected. To unprotect the resource, either remove the `protect` flag from the resource in your Pulumi program and run `pulumi up`, or use the command:
+    `pulumi state unprotect 'urn:pulumi:test-stack::test-project::pkgA:modA:typA::resB'`<{%reset%}>
+
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

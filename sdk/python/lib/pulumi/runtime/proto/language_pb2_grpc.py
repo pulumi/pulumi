@@ -8,8 +8,9 @@ from . import plugin_pb2 as pulumi_dot_plugin__pb2
 
 
 class LanguageRuntimeStub(object):
-    """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
-    for confguring and creating resource objects.
+    """The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
+    language runtime provides the ability to execute programs, install and query dependencies, and generate code for a
+    specific language.
     """
 
     def __init__(self, channel):
@@ -18,10 +19,20 @@ class LanguageRuntimeStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Handshake',
+                request_serializer=pulumi_dot_language__pb2.LanguageHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.LanguageHandshakeResponse.FromString,
+                )
         self.GetRequiredPlugins = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
                 request_serializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsResponse.FromString,
+                )
+        self.GetRequiredPackages = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/GetRequiredPackages',
+                request_serializer=pulumi_dot_language__pb2.GetRequiredPackagesRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.GetRequiredPackagesResponse.FromString,
                 )
         self.Run = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/Run',
@@ -38,9 +49,14 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
                 )
+        self.RuntimeOptionsPrompts = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts',
+                request_serializer=pulumi_dot_language__pb2.RuntimeOptionsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.RuntimeOptionsResponse.FromString,
+                )
         self.About = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/About',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                request_serializer=pulumi_dot_language__pb2.AboutRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.AboutResponse.FromString,
                 )
         self.GetProgramDependencies = channel.unary_unary(
@@ -68,78 +84,154 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.GeneratePackageRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.GeneratePackageResponse.FromString,
                 )
+        self.Pack = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Pack',
+                request_serializer=pulumi_dot_language__pb2.PackRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.PackResponse.FromString,
+                )
 
 
 class LanguageRuntimeServicer(object):
-    """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
-    for confguring and creating resource objects.
+    """The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
+    language runtime provides the ability to execute programs, install and query dependencies, and generate code for a
+    specific language.
     """
 
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made by the engine to a language host. It is used to pass the engine's address to
+        the language host so that it may establish its own connections back, and to establish protocol configuration that
+        will be used to communicate between the two parties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetRequiredPlugins(self, request, context):
-        """GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+        """`GetRequiredPlugins` computes the complete set of anticipated [plugins](plugins) required by a Pulumi program.
+        Among other things, it is intended to be used to pre-install plugins before running a program with
+        [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+        registrations](resource-registration) sent back from the running program to the engine.
+
+        :::{important}
+        The use of `GetRequiredPlugins` is deprecated in favour of [](pulumirpc.LanguageRuntime.GetRequiredPackages),
+        which returns more granular information about which plugins are required by which packages.
+        :::
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetRequiredPackages(self, request, context):
+        """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
+        by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
+        to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
+        back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
+        determine which plugins are required to service the import of a given resource, since given the presence of
+        [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
+        with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+        providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
+        provide multiple packages.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Run(self, request, context):
-        """Run executes a program and returns its result.
+        """`Run` executes a Pulumi program, returning information about whether or not the program produced an error.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetPluginInfo(self, request, context):
-        """GetPluginInfo returns generic information about this plugin, like its version.
+        """`GetPluginInfo` returns information about the [plugin](plugins) implementing this language runtime.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def InstallDependencies(self, request, context):
-        """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+        """`InstallDependencies` accepts a request specifying a Pulumi project and program that can be executed with
+        [](pulumirpc.LanguageRuntime.Run) and installs the dependencies for that program (e.g. by running `npm install`
+        for NodeJS, or `pip install` for Python). Since dependency installation could take a while, and callers may wish
+        to report on its progress, this method returns a stream of [](pulumirpc.InstallDependenciesResponse) messages
+        containing information about standard error and output.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RuntimeOptionsPrompts(self, request, context):
+        """`RuntimeOptionsPrompts` accepts a request specifying a Pulumi project and returns a list of additional prompts to
+        ask during `pulumi new`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def About(self, request, context):
-        """About returns information about the runtime for this language.
+        """`About` returns information about the language runtime being used.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetProgramDependencies(self, request, context):
-        """GetProgramDependencies returns the set of dependencies required by the program.
+        """`GetProgramDependencies` computes the set of language-level dependencies (e.g. NPM packages for NodeJS, or Maven
+        libraries for Java) required by a program.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def RunPlugin(self, request, context):
-        """RunPlugin executes a plugin program and returns its result asynchronously.
+        """`RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
+        [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+        expected to terminate until instructed/for a long time, this method returns a stream of
+        [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
+        exit code of the plugin when it does terminate.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GenerateProgram(self, request, context):
-        """GenerateProgram generates a given PCL program into a program for this language.
+        """`GenerateProgram` generates code in this host's language that implements the given [PCL](pcl) program. Unlike
+        [](pulumirpc.LanguageRuntime.GenerateProject), this method *only* generates program code, and does not e.g.
+        generate a `package.json` for a NodeJS project that details how to run that code.
+        [](pulumirpc.LanguageRuntime.GenerateProject), this method underpins ["programgen"](programgen) and the main
+        functionality powering `pulumi convert`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GenerateProject(self, request, context):
-        """GenerateProject generates a given PCL program into a project for this language.
+        """`GenerateProject` generates code in this host's language that implements the given [PCL](pcl) program and wraps
+        it in some language-specific notion of a "project", where a project is a buildable or runnable artifact. In this
+        sense, `GenerateProject`'s output is a superset of that of [](pulumirpc.LanguageRuntime.GenerateProgram). For
+        instance, when generating a NodeJS project, this method might generate a corresponding `package.json` file, as
+        well as the relevant NodeJS program code. Along with [](pulumirpc.LanguageRuntime.GenerateProgram), this method
+        underpins ["programgen"](programgen) and the main functionality powering `pulumi convert`.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GeneratePackage(self, request, context):
-        """GeneratePackage generates a given pulumi package into a package for this language.
+        """`GeneratePackage` generates code in this host's language that implements an [SDK](sdkgen) ("sdkgen") for the
+        given Pulumi package, as specified by a [schema](schema).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Pack(self, request, context):
+        """`Pack` accepts a request specifying a generated SDK package and packs it into a language-specific artifact. For
+        instance, in the case of Java, it might produce a JAR file from a list of `.java` sources; in the case of NodeJS,
+        a `.tgz` file might be produced from a list of `.js` sources; and so on. Presently, `Pack` is primarily used in
+        [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
+        to standardise e.g. provider publishing workflows.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -148,10 +240,20 @@ class LanguageRuntimeServicer(object):
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_language__pb2.LanguageHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.LanguageHandshakeResponse.SerializeToString,
+            ),
             'GetRequiredPlugins': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRequiredPlugins,
                     request_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.GetRequiredPluginsResponse.SerializeToString,
+            ),
+            'GetRequiredPackages': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRequiredPackages,
+                    request_deserializer=pulumi_dot_language__pb2.GetRequiredPackagesRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.GetRequiredPackagesResponse.SerializeToString,
             ),
             'Run': grpc.unary_unary_rpc_method_handler(
                     servicer.Run,
@@ -168,9 +270,14 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_language__pb2.InstallDependenciesRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.InstallDependenciesResponse.SerializeToString,
             ),
+            'RuntimeOptionsPrompts': grpc.unary_unary_rpc_method_handler(
+                    servicer.RuntimeOptionsPrompts,
+                    request_deserializer=pulumi_dot_language__pb2.RuntimeOptionsRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.RuntimeOptionsResponse.SerializeToString,
+            ),
             'About': grpc.unary_unary_rpc_method_handler(
                     servicer.About,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    request_deserializer=pulumi_dot_language__pb2.AboutRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.AboutResponse.SerializeToString,
             ),
             'GetProgramDependencies': grpc.unary_unary_rpc_method_handler(
@@ -198,6 +305,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_language__pb2.GeneratePackageRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.GeneratePackageResponse.SerializeToString,
             ),
+            'Pack': grpc.unary_unary_rpc_method_handler(
+                    servicer.Pack,
+                    request_deserializer=pulumi_dot_language__pb2.PackRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.PackResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'pulumirpc.LanguageRuntime', rpc_method_handlers)
@@ -206,9 +318,27 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class LanguageRuntime(object):
-    """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
-    for confguring and creating resource objects.
+    """The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
+    language runtime provides the ability to execute programs, install and query dependencies, and generate code for a
+    specific language.
     """
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Handshake',
+            pulumi_dot_language__pb2.LanguageHandshakeRequest.SerializeToString,
+            pulumi_dot_language__pb2.LanguageHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetRequiredPlugins(request,
@@ -224,6 +354,23 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
             pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
             pulumi_dot_language__pb2.GetRequiredPluginsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetRequiredPackages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetRequiredPackages',
+            pulumi_dot_language__pb2.GetRequiredPackagesRequest.SerializeToString,
+            pulumi_dot_language__pb2.GetRequiredPackagesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -279,6 +426,23 @@ class LanguageRuntime(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def RuntimeOptionsPrompts(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/RuntimeOptionsPrompts',
+            pulumi_dot_language__pb2.RuntimeOptionsRequest.SerializeToString,
+            pulumi_dot_language__pb2.RuntimeOptionsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def About(request,
             target,
             options=(),
@@ -290,7 +454,7 @@ class LanguageRuntime(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/About',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_language__pb2.AboutRequest.SerializeToString,
             pulumi_dot_language__pb2.AboutResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -377,5 +541,22 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GeneratePackage',
             pulumi_dot_language__pb2.GeneratePackageRequest.SerializeToString,
             pulumi_dot_language__pb2.GeneratePackageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Pack(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Pack',
+            pulumi_dot_language__pb2.PackRequest.SerializeToString,
+            pulumi_dot_language__pb2.PackResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

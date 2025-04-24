@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs,python
-  description: Support explicit providers for packaged components

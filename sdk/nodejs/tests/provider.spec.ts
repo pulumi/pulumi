@@ -17,7 +17,7 @@ import * as assert from "assert";
 import * as pulumi from "..";
 import * as internals from "../provider/internals";
 
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
 class TestResource extends pulumi.CustomResource {
     constructor(name: string, opts?: pulumi.CustomResourceOptions) {
@@ -495,7 +495,8 @@ describe("provider", () => {
             it(`deserializes '${test.name}' correctly`, async () => {
                 pulumi.runtime.setMocks(new TestMocks(), "project", "stack", true);
                 pulumi.runtime.registerResourceModule("test", "index", new TestModule());
-                new TestResource("name"); // Create an instance so it can be deserialized.
+                const res = new TestResource("name"); // Create an instance so it can be deserialized.
+                await res.urn.promise();
 
                 const inputs = { value: test.input };
                 const inputsStruct = gstruct.Struct.fromJavaScript(inputs);

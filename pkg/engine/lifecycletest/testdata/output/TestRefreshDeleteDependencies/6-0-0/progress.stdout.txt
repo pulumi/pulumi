@@ -1,0 +1,22 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resB <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA resC <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typA resC <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    4 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

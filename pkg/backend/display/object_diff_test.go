@@ -43,6 +43,7 @@ func Test_decodeValue(t *testing.T) {
 		{repr: "[] bar"},
 		{repr: "{} bar"},
 		{repr: "[] \n not yaml"},
+		{repr: "---\n'hello'\n...\n---\ngoodbye\n...\n"},
 
 		// Positive cases
 		{
@@ -107,9 +108,10 @@ func Test_PrintObject(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		object   resource.PropertyMap
-		expected string
+		name       string
+		object     resource.PropertyMap
+		expected   string
+		showSecret bool
 	}{
 		{
 			"numbers",
@@ -124,6 +126,43 @@ func Test_PrintObject(t *testing.T) {
 <{%reset%}><{%reset%}>large_float: <{%reset%}><{%reset%}>1.2345671234567e+06<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>large_int  : <{%reset%}><{%reset%}>1234567<{%reset%}><{%reset%}>
 <{%reset%}>`,
+			false,
+		},
+		{
+			"secret_noshow",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("secrets")}),
+				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
+					"super_secret": resource.NewSecretProperty(&resource.Secret{
+						Element: resource.NewStringProperty("super_secret"),
+					}),
+				}),
+			}),
+			`<{%reset%}>nested_secret: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>    super_secret: <{%reset%}><{%reset%}>[secret]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>}<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>secret       : <{%reset%}><{%reset%}>[secret]<{%reset%}><{%reset%}>
+<{%reset%}>`,
+			false,
+		},
+		{
+			"secrets_show",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"secret": resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("my_secret")}),
+				"nested_secret": resource.NewPropertyMapFromMap(map[string]interface{}{
+					"super_secret": resource.NewSecretProperty(&resource.Secret{
+						Element: resource.NewStringProperty("my_super_secret"),
+					}),
+				}),
+			}),
+			`<{%reset%}>nested_secret: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>    super_secret: <{%reset%}><{%reset%}>"my_super_secret"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>}<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>secret       : <{%reset%}><{%reset%}>"my_secret"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>
+<{%reset%}>`,
+			true,
 		},
 	}
 
@@ -133,7 +172,7 @@ func Test_PrintObject(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
-			PrintObject(&buf, c.object, false, 0, deploy.OpSame, false, false, false)
+			PrintObject(&buf, c.object, false, 0, deploy.OpSame, false, false, false, c.showSecret)
 			assert.Equal(t, c.expected, buf.String())
 		})
 	}

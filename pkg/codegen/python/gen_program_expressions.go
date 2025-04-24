@@ -1,3 +1,17 @@
+// Copyright 2020-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
@@ -7,6 +21,7 @@ import (
 	"io"
 	"math/big"
 	"strings"
+	"unicode"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -28,7 +43,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	skipToJSONWhenRewritingApplies := true
+	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
@@ -86,14 +102,15 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 		if i > 0 {
 			g.Fgen(w, ",")
 		}
-		g.Fgenf(w, " %s", p.Name)
+		g.Fgenf(w, " %s", PyName(p.Name))
 	}
 
 	g.Fgenf(w, ": %.v", expr.Body)
 }
 
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
-	opstr, precedence := "", g.GetPrecedence(expr)
+	var opstr string
+	precedence := g.GetPrecedence(expr)
 	switch expr.Operation {
 	case hclsyntax.OpAdd:
 		opstr = "+"
@@ -167,14 +184,20 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.Fgenf(w, "%.16v.apply(%.v)", applyArgs[0], then)
 	} else {
 		// Otherwise, generate a call to `pulumi.all([]).apply()`.
-		g.Fgen(w, "pulumi.Output.all(")
-		for i, o := range applyArgs {
-			if i > 0 {
-				g.Fgen(w, ", ")
+		g.Fgen(w, "pulumi.Output.all(\n")
+		g.Indented(func() {
+			for i, arg := range applyArgs {
+				argName := then.Signature.Parameters[i].Name
+				g.Fgenf(w, "%s%s=%v", g.Indent, argName, arg)
+				if i < len(applyArgs)-1 {
+					g.Fgen(w, ",")
+				}
+				g.Fgen(w, "\n")
 			}
-			g.Fgenf(w, "%.v", o)
-		}
-		g.Fgenf(w, ").apply(%.v)", then)
+		})
+		g.Fgen(w, ").apply(lambda resolved_outputs: ")
+		rewrittenLambdaBody := rewriteApplyLambdaBody(then, "resolved_outputs")
+		g.Fgenf(w, "%.v)\n", rewrittenLambdaBody)
 	}
 }
 
@@ -195,6 +218,7 @@ var functionImports = map[string][]string{
 	"fileAsset":        {"pulumi"},
 	"stringAsset":      {"pulumi"},
 	"remoteAsset":      {"pulumi"},
+	"rootDirectory":    {"pulumi"},
 	"filebase64":       {"base64"},
 	"filebase64sha256": {"base64", "hashlib"},
 	"readDir":          {"os"},
@@ -204,7 +228,9 @@ var functionImports = map[string][]string{
 	"sha1":             {"hashlib"},
 	"stack":            {"pulumi"},
 	"project":          {"pulumi"},
+	"organization":     {"pulumi"},
 	"cwd":              {"os"},
+	"mimeType":         {"mimetypes"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -238,13 +264,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 			var moduleNameOverrides map[string]string
 			if pkg, err := enum.(*schema.EnumType).PackageReference.Definition(); err == nil {
-				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
+				if pkgInfo, ok := pkg.Language["python"].(PackageInfo); ok {
+					moduleNameOverrides = pkgInfo.ModuleNameOverrides
+				}
 			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
-			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
-				pkg += "." + m
-			}
 			enumName := tokenToName(to.Token)
+			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
+				modParts := strings.Split(m, "/")
+				if len(modParts) == 2 && strings.EqualFold(modParts[1], enumName) {
+					m = modParts[0]
+				}
+				pkg += "." + strings.ReplaceAll(m, "/", ".")
+			}
 
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
@@ -271,7 +303,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			default:
 				g.Fgenf(w, "%.v", expr.Args[0])
 			}
-
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
@@ -290,7 +321,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "stringAsset":
 		g.Fgenf(w, "pulumi.StringAsset(%.v)", expr.Args[0])
 	case "remoteAsset":
-		g.Fgenf(w, "pulumi.remoteAsset(%.v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
 	case "filebase64sha256":
@@ -300,6 +331,49 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
+	case "mimeType":
+		g.Fgenf(w, "mimetypes.guess_type(%v)[0]", expr.Args[0])
+	case pcl.Call:
+		self := expr.Args[0]
+		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+
+		if expr.Signature.MultiArgumentInputs {
+			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for method '%s'", method)
+			panic(err)
+		}
+
+		validMethod := PyName(method)
+		g.Fgenf(w, "%v.%s(", self, validMethod)
+
+		var args *model.ObjectConsExpression
+		if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[2]); converted {
+			args = objectArgs
+		} else {
+			args = expr.Args[2].(*model.ObjectConsExpression)
+		}
+		if len(args.Items) > 0 {
+			indenter := func(f func()) { f() }
+			if len(args.Items) > 1 {
+				indenter = g.Indented
+			}
+			indenter(func() {
+				for i, item := range args.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+					keyVal := PyName(key.Value.AsString())
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		g.Fprint(w, ")")
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
@@ -316,7 +390,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
-			name = fmt.Sprintf("%s_output", name)
+			name = name + "_output"
 		}
 
 		if len(expr.Args) == 1 {
@@ -327,7 +401,23 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		optionsBag := ""
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+				if isOut {
+					g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
+				} else {
+					g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
+				}
+				for i, item := range invokeOptions.Items {
+					last := i == len(invokeOptions.Items)-1
+					key := PyName(pcl.LiteralValueString(item.Key))
+					g.Fgenf(&buf, "%s=%v", key, item.Value)
+					if !last {
+						g.Fgen(&buf, ", ")
+					}
+				}
+				g.Fgen(&buf, ")")
+			}
+
 			optionsBag = buf.String()
 		}
 
@@ -401,15 +491,33 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "fromBase64":
 		g.Fgenf(w, "base64.b64decode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
-		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgenf(w, "pulumi.Output.json_dumps(%.v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+		}
 	case "sha1":
 		g.Fgenf(w, "hashlib.sha1(%v.encode()).hexdigest()", expr.Args[0])
 	case "project":
 		g.Fgen(w, "pulumi.get_project()")
 	case "stack":
 		g.Fgen(w, "pulumi.get_stack()")
+	case "organization":
+		g.Fgen(w, "pulumi.get_organization()")
 	case "cwd":
 		g.Fgen(w, "os.getcwd()")
+	case "getOutput":
+		g.Fgenf(w, "%v.get_output(%v)", expr.Args[0], expr.Args[1])
+	case "try":
+		g.genTry(w, expr.Args)
+	case "can":
+		g.genCan(w, expr.Args)
+	case "rootDirectory":
+		g.genRootDirectory(w)
+	case "pulumiResourceName":
+		g.Fgenf(w, "%v.pulumi_resource_name", expr.Args[0])
+	case "pulumiResourceType":
+		g.Fgenf(w, "%v.pulumi_resource_type", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
@@ -417,6 +525,44 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.genNYI(w, "FunctionCallExpression: %v (%v)", expr.Name, rng)
 	}
+}
+
+// genTry generates code for a `try` expression. Each argument is transformed into a closure to prevent its evaluation
+// (which may fail) from happening until the `try_` utility function chooses. This results in an expression of the form:
+//
+//	try_(
+//	    lambda: <arg1>,
+//	    lambda: <arg2>,
+//	    ...
+//	)
+func (g *generator) genTry(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) > 0, "expected at least one argument to try")
+
+	g.Fprintf(w, "try_(")
+	for i, arg := range args {
+		g.Indented(func() {
+			g.Fgenf(w, "\n%slambda: %v", g.Indent, arg)
+		})
+		if i < len(args)-1 {
+			g.Fgen(w, ",")
+		} else {
+			g.Fgen(w, "\n")
+		}
+	}
+	g.Fprintf(w, "%s)", g.Indent)
+}
+
+// genCan generates code for a `can` expression. The argument is transformed into a closure to prevent its evaluation
+// (which may fail) from happening until the `can_` utility function chooses. This results in an expression of the form:
+//
+//	can_(lambda: <arg>)
+func (g *generator) genCan(w io.Writer, args []model.Expression) {
+	contract.Assertf(len(args) == 1, "expected exactly one argument to can")
+	g.Fgenf(w, "can_(lambda: %v)", args[0])
+}
+
+func (g *generator) genRootDirectory(w io.Writer) {
+	g.Fgen(w, "pulumi.runtime.get_root_directory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -427,6 +573,15 @@ type runeWriter interface {
 	WriteRune(c rune) (int, error)
 }
 
+func escapeRune(c rune) string {
+	if c < 0xFF {
+		return fmt.Sprintf("\\x%02x", c)
+	} else if c < 0xFFFF {
+		return fmt.Sprintf("\\u%04x", c)
+	}
+	return fmt.Sprintf("\\U%08x", c)
+}
+
 //nolint:errcheck
 func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, escapeBraces bool) {
 	for _, c := range v {
@@ -434,18 +589,35 @@ func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, esc
 		case '\n':
 			if escapeNewlines {
 				w.WriteRune('\\')
-				c = 'n'
+				w.WriteRune('n')
+			} else {
+				w.WriteRune(c)
 			}
+			continue
 		case '"', '\\':
 			if escapeNewlines {
 				w.WriteRune('\\')
+				w.WriteRune(c)
+				continue
 			}
 		case '{', '}':
 			if escapeBraces {
 				w.WriteRune(c)
+				w.WriteRune(c)
+				continue
 			}
 		}
-		w.WriteRune(c)
+
+		if unicode.IsPrint(c) {
+			w.WriteRune(c)
+			continue
+		}
+
+		// This is a non-printable character. We'll emit a Python escape sequence for it.
+		codepoint := escapeRune(c)
+		for _, r := range codepoint {
+			w.WriteRune(r)
+		}
 	}
 }
 
@@ -496,10 +668,29 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	g.genObjectConsExpression(w, expr, expr.Type())
 }
 
+func objectKey(item model.ObjectConsItem) string {
+	switch key := item.Key.(type) {
+	case *model.LiteralValueExpression:
+		return key.Value.AsString()
+	case *model.TemplateExpression:
+		// assume a template expression has one constant part that is a LiteralValueExpression
+		if len(key.Parts) == 1 {
+			if literal, ok := key.Parts[0].(*model.LiteralValueExpression); ok {
+				return literal.Value.AsString()
+			}
+		}
+	}
+
+	return ""
+}
+
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
-	typeName := g.argumentTypeName(expr, destType) // Example: aws.s3.BucketLoggingArgs
-	if typeName != "" {
-		// If a typeName exists, treat this as an Input Class e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
+	targetType := pcl.LowerConversion(expr, destType)
+	typeName := g.argumentTypeName(expr, targetType) // Example: aws.s3.BucketLoggingArgs
+	td := g.typedDictEnabled(expr, targetType)
+	if typeName != "" && !td {
+		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class
+		// e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
 		if len(expr.Items) == 0 {
 			g.Fgenf(w, "%s()", typeName)
 		} else {
@@ -507,22 +698,29 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 			g.Indented(func() {
 				for _, item := range expr.Items {
 					g.Fgenf(w, "%s", g.Indent)
-					lit := item.Key.(*model.LiteralValueExpression)
-					g.Fprint(w, PyName(lit.Value.AsString()))
+					propertyKey := objectKey(item)
+					g.Fprint(w, PyName(propertyKey))
 					g.Fgenf(w, "=%.v,\n", item.Value)
 				}
 			})
 			g.Fgenf(w, "%s)", g.Indent)
 		}
 	} else {
-		// Otherwise treat this as an untyped dictionary e.g. {"key": "value", "foo": "bar", ...}
+		// Otherwise treat this as a typed or untyped dictionary e.g. {"key": "value", "foo": "bar", ...}
 		if len(expr.Items) == 0 {
 			g.Fgen(w, "{}")
 		} else {
 			g.Fgen(w, "{")
 			g.Indented(func() {
 				for _, item := range expr.Items {
-					g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
+					if td {
+						// If we're inside a typedDict, use the PyName of the key.
+						propertyKey := objectKey(item)
+						key := PyName(propertyKey)
+						g.Fgenf(w, "\n%s%q: %.v,", g.Indent, key, item.Value)
+					} else {
+						g.Fgenf(w, "\n%s%.v: %.v,", g.Indent, item.Key, item.Value)
+					}
 				}
 			})
 			g.Fgenf(w, "\n%s}", g.Indent)

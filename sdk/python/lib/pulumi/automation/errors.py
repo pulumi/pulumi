@@ -49,7 +49,7 @@ class InlineSourceRuntimeError(CommandError):
         self.name = "InlineSourceRuntimeError"
 
 
-class RuntimeError(CommandError):  # pylint: disable=redefined-builtin
+class RuntimeError(CommandError):
     def __init__(self, command_result: "CommandResult"):
         super().__init__(command_result)
         self.name = "RuntimeError"
@@ -68,7 +68,7 @@ class InvalidVersionError(Exception):
 not_found_regex = re.compile("no stack named.*found")
 already_exists_regex = re.compile("stack.*already exists")
 conflict_text = "[409] Conflict: Another update is currently in progress."
-local_backend_conflict_text = "the stack is currently locked by"
+diy_backend_conflict_text = "the stack is currently locked by"
 inline_source_error_text = "python inline source runtime error"
 runtime_error_regex = re.compile(
     "failed with an unhandled exception|panic: runtime error|an unhandled error occurred:"
@@ -87,7 +87,7 @@ def create_command_error(command_result: "CommandResult") -> CommandError:
         return StackAlreadyExistsError(command_result)
     if conflict_text in stderr:
         return ConcurrentUpdateError(command_result)
-    if local_backend_conflict_text in stderr:
+    if diy_backend_conflict_text in stderr:
         return ConcurrentUpdateError(command_result)
     if compilation_error_regex.search(stdout):
         return CompilationError(command_result)

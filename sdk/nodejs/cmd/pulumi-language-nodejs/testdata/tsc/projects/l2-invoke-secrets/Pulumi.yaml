@@ -1,0 +1,5 @@
+name: l2-invoke-secrets
+runtime:
+  name: nodejs
+  options:
+    typescript: false

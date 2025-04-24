@@ -15,7 +15,7 @@ on:
         description: "Version to produce"
         type: string
       platform:
-        description: "OS to run tests on, e.g.: ubuntu-latest"
+        description: "OS to run tests on, e.g.: ubuntu-22.04"
         required: true
         type: string
 
@@ -32,11 +32,21 @@ on:
         required: false
         default: false
         type: boolean
+      is-performance-test:
+        description: Whether to download and install build artifacts for performance tests
+        required: false
+        default: false
+        type: boolean
       enable-coverage:
         description: "Collects coverage stats; requires cov-enabled builds"
         default: false
         required: false
         type: boolean
+      test-retries:
+        description: "How often tests are retried"
+        default: 0
+        required: false
+        type: number
 
       version-set:
         required: false
@@ -45,7 +55,7 @@ on:
         # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
         default: |
           {
-            "dotnet": "6.0.x",
+            "dotnet": "8.0.x",
             "go": "1.18.x",
             "nodejs": "16.x",
             "python": "3.9.x"
@@ -56,25 +66,24 @@ on:
         default: false
         type: boolean
 
-
 defaults:
   run:
     shell: bash
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_VERSION: ${{ inputs.version }}
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
-  PULUMI_TEST_PYTHON_SHARED_VENV: "true"
+  # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
+  PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
   PYTHON: python
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
   GO_TEST_SHUFFLE: off
-  PULUMI_TEST_RETRIES: 2
+  PULUMI_TEST_RETRIES: ${{ inputs.test-retries }}
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
@@ -88,9 +97,25 @@ jobs:
 
     runs-on: ${{ inputs.platform }}
 
-    timeout-minutes: 60
+    timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        with:
+          tool-cache: false
+          swap-storage: false
+          large-packages: false
+          dotnet: false
+
+      # Create a coverage file to register a testing job was started.
+      # This artifact will be overwritten with "OK" at the end of the job.
+      - name: Write test started file
+        shell: bash
+        run: |
+          HASH=$(echo '${{ inputs.test-name }}-${{ inputs.is-integration-test && 'integration' || 'unit' }}' | git hash-object --literally --stdin | awk '{ print $1 }')
+          echo "TEST_HASH_ID=${HASH}" >> "$GITHUB_ENV"
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
@@ -108,10 +133,17 @@ jobs:
       - name: Reduce Windows test parallelism
         if: ${{ runner.os == 'Windows' }}
         run: |
-          echo "GO_TEST_PARALLELISM=4" >> "$GITHUB_ENV"
-          echo "GO_TEST_PKG_PARALLELISM=1" >> "$GITHUB_ENV"
+          {
+            echo "GO_TEST_PARALLELISM=4"
+            echo "GO_TEST_PKG_PARALLELISM=1"
+            echo "GO_TEST_RACE=false"
+          } >> "$GITHUB_ENV"
           # For debugging:
           ps aux
+      - name: Install tsc on windows and macos
+        if: ${{ runner.os == 'windows' || runner.os == 'macOS' }}
+        run: |
+          npm install typescript -g
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
         run: |
@@ -120,7 +152,7 @@ jobs:
           echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
           command -v bash
           bash --version
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
       - name: Setup versioning env vars
@@ -133,50 +165,64 @@ jobs:
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
           # Post integration test coverage to a temporary directory.
-          # This will be merged at a later step.
-          echo "GOCOVERDIR=$(mktemp -d)" >> "$GITHUB_ENV"
+          # This will be merged at a later step. Note that we can't
+          # use $GOCOVERDIR here, because Go overwrites that env
+          # variable when the '-cover' flag is used. Use
+          # $PULUMI_GOCOVERDIR instead, which the integration tests
+          # then turn into $GOCOVERDIR.  See also https://github.com/golang/go/issues/66225.
+          coverdir="$(mktemp -d)"
+          echo "PULUMI_GOCOVERDIR=$coverdir" >> "$GITHUB_ENV"
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         id: setup-go
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
           cache: true
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
       - name: Prime Go cache
-        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
+        if: ${{ ! steps.setup-go.outputs.cache-hit }}
         # Compile every test to ensure we populate a good cache entry.
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
+      - name: Install delve
+        run: |
+          go install github.com/go-delve/delve/cmd/dlv@latest
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
-          cache: pip
-          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
           dotnet-quality: ga
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
           cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Set up JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2.4.2
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
@@ -186,12 +232,14 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
-      - name: Install yarn
+      - name: Install yarn and pnpm
         run: |
-          npm install -g yarn
+          npm install -g yarn pnpm
       - name: Install Python deps
         run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet build
+      - name: Install Poetry
+        run: python -m pip install poetry
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -199,31 +247,24 @@ jobs:
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.42
-          cache: enable
       - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo: gotestyourself/gotestsum
           tag: v1.8.1
           cache: enable
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        uses: jaxxstorm/action-install-gh-release@v1.11.0
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          repo: t0yv0/goteststats
+          repo: pulumi/goteststats
           tag: v0.0.7
           cache: enable
       - name: Generate artifact name
+        if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         id: goenv
         shell: bash
         run: |
@@ -246,15 +287,21 @@ jobs:
             rm -v "$PULUMI_INSTALL_DIR"/pulumi*
           fi
 
-      # Integration test only steps:
+      # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
+          path: artifacts/cli
+      - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
+        if: ${{ inputs.is-performance-test }}
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
           path: artifacts/cli
       - name: Install Pulumi Go Binaries
-        if: ${{ inputs.is-integration-test }}
+        if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         run: |
           echo "Checking contents of $PWD/artifacts/cli"
           find "$PWD/artifacts/cli"
@@ -280,7 +327,7 @@ jobs:
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo "$LOCAL_PATH" >> "$GITHUB_PATH"
 
-        # /end integration test steps
+        # /end integration and performance test steps
       - name: Verify Pulumi Version
         run: |
           command -v pulumi || echo "no pulumi"
@@ -306,34 +353,57 @@ jobs:
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
-      - name: run tests
+      - name: Create GCP service account key file
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+      - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}
         env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
+          AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
           cd sdk/nodejs
-          if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
+          if [ -e .nyc_output ]; then
+            UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
+            COVERAGE_PATH="${PULUMI_TEST_COVERAGE_PATH:-./coverage}"
+            yarn run nyc report -r cobertura --report-dir "$COVERAGE_PATH"
+            mv "$COVERAGE_PATH/cobertura-coverage.xml" "$COVERAGE_PATH/cobertura-coverage-$UUID.xml"
+          fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
         run: |
           # Merge coverage data from coverage-instrumented binaries
           # if available.
-          if [ -n "$(ls -A "$GOCOVERDIR")" ]; then
+          if [ -n "$(ls -A "$PULUMI_GOCOVERDIR")" ]; then
             # Cross-platform way to get milliseconds since Unix epoch.
-            TS=$(python -c 'import time; print(int(time.time() * 1000))')
-            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$TS.cov"
+            UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
+            go tool covdata textfmt -i="$PULUMI_GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration-$UUID.cov"
           fi
       - name: Upload code coverage
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.enable-coverage }}
-        uses: codecov/codecov-action@v3
         with:
-          directory: coverage
-          files: "*,!.gitkeep"
+          name: coverage-${{ env.TEST_HASH_ID }}
+          path: |
+            coverage/*
+            !coverage/.gitkeep
+      - name: Upload codecov test results
+        uses: codecov/test-results-action@v1
+        with:
+          directory: junit/
           fail_ci_if_error: false
+          override_branch: ${{ github.event_name == 'merge_group' && 'master' || github.head_ref }}
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Summarize Test Time by Package
@@ -359,7 +429,7 @@ jobs:
                       if [[ $? -eq 141 ]]; then true; else exit $?; fi
       - name: Upload artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: gotestsum-test-results
+          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
           path: test-results/*.json

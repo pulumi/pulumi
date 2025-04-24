@@ -1,0 +1,5 @@
+name: l2-resource-option-deleted-with
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -32,11 +32,11 @@ type Manager interface {
 	// deployment into a snapshot.
 	State() json.RawMessage
 	// Encrypter returns a `config.Encrypter` that can be used to encrypt values when serializing a snapshot into a
-	// deployment, or an error if one can not be constructed.
-	Encrypter() (config.Encrypter, error)
+	// deployment.
+	Encrypter() config.Encrypter
 	// Decrypter returns a `config.Decrypter` that can be used to decrypt values when deserializing a snapshot from a
-	// deployment, or an error if one can not be constructed.
-	Decrypter() (config.Decrypter, error)
+	// deployment.
+	Decrypter() config.Decrypter
 }
 
 // AreCompatible returns true if the two Managers are of the same type and have the same state.

@@ -22,36 +22,44 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
-	"path"
+	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/buildutil"
+	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -59,10 +67,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+// The preferred debug port.  Chosen arbitrarily.
+const preferredDebugPort = 57134
+
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
-func compileProgram(programDirectory string, outfile string) (string, error) {
+func compileProgram(programDirectory string, outfile string, withDebugFlags bool) (string, error) {
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
@@ -86,12 +97,24 @@ func compileProgram(programDirectory string, outfile string) (string, error) {
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
-	buildCmd := exec.Command(gobin, "build", "-o", outfile)
+	args := []string{"build", "-o", outfile}
+	if withDebugFlags {
+		args = append(args, "-gcflags", "all=-N -l")
+	}
+	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
 
 	if err := buildCmd.Run(); err != nil {
 		return "", fmt.Errorf("unable to run `go build`: %w", err)
+	}
+
+	isExecutable, err := executable.IsExecutable(outfile)
+	if err != nil {
+		return "", fmt.Errorf("unable to check if go program is executable: %w", err)
+	}
+	if !isExecutable {
+		return "", errors.New("go program is not executable, does your program have a 'main' package?")
 	}
 
 	return outfile, nil
@@ -100,9 +123,6 @@ func compileProgram(programDirectory string, outfile string) (string, error) {
 // runParams defines the command line arguments accepted by this program.
 type runParams struct {
 	tracing       string
-	binary        string
-	buildTarget   string
-	root          string
 	engineAddress string
 }
 
@@ -111,24 +131,21 @@ type runParams struct {
 func parseRunParams(flag *flag.FlagSet, args []string) (*runParams, error) {
 	var p runParams
 	flag.StringVar(&p.tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.StringVar(&p.binary, "binary", "", "Look on path for a binary executable with this name")
-	flag.StringVar(&p.buildTarget, "buildTarget", "", "Path to use to output the compiled Pulumi Go program")
-	flag.StringVar(&p.root, "root", "", "Project root path to use")
+	flag.String("binary", "", "[obsolete] Look on path for a binary executable with this name")
+	flag.String("buildTarget", "", "[obsolete] Path to use to output the compiled Pulumi Go program")
+	flag.String("root", "", "[obsolete] Project root path to use")
 
 	if err := flag.Parse(args); err != nil {
 		return nil, err
 	}
 
-	if p.binary != "" && p.buildTarget != "" {
-		return nil, errors.New("binary and buildTarget cannot both be specified")
-	}
-
 	// Pluck out the engine so we can do logging, etc.
 	args = flag.Args()
 	if len(args) == 0 {
-		return nil, errors.New("missing required engine RPC address argument")
+		fmt.Fprintln(os.Stderr, "Warning: launching without arguments, only for debugging")
+	} else {
+		p.engineAddress = args[0]
 	}
-	p.engineAddress = args[0]
 
 	return &p, nil
 }
@@ -171,23 +188,27 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
+		cancel() // deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
-	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
-	if err != nil {
-		return fmt.Errorf("could not start health check host RPC server: %w", err)
+	if p.engineAddress != "" {
+		// We must be debugging, wait to be informed of the engine address.
+		err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
+		if err != nil {
+			return fmt.Errorf("could not start health check host RPC server: %w", err)
+		}
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(p.engineAddress, cwd, p.tracing, p.binary, p.buildTarget)
+			host := newLanguageHost(p.engineAddress, cwd, p.tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -215,18 +236,61 @@ type goLanguageHost struct {
 	cwd           string
 	engineAddress string
 	tracing       string
-	binary        string
-	buildTarget   string
 }
 
-func newLanguageHost(engineAddress, cwd, tracing, binary, buildTarget string) pulumirpc.LanguageRuntimeServer {
+type goOptions struct {
+	// Look on path for a binary executable with this name.
+	binary string
+	// Path to use to output the compiled Pulumi Go program.
+	buildTarget string
+}
+
+func parseOptions(root string, options map[string]interface{}) (goOptions, error) {
+	var goOptions goOptions
+	if binary, ok := options["binary"]; ok {
+		if binary, ok := binary.(string); ok {
+			goOptions.binary = binary
+		} else {
+			return goOptions, errors.New("binary option must be a string")
+		}
+	}
+
+	if buildTarget, ok := options["buildTarget"]; ok {
+		if args, ok := buildTarget.(string); ok {
+			goOptions.buildTarget = args
+		} else {
+			return goOptions, errors.New("buildTarget option must be a string")
+		}
+	}
+
+	if goOptions.binary != "" && goOptions.buildTarget != "" {
+		return goOptions, errors.New("binary and buildTarget cannot both be specified")
+	}
+
+	return goOptions, nil
+}
+
+func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		cwd:           cwd,
 		tracing:       tracing,
-		binary:        binary,
-		buildTarget:   buildTarget,
 	}
+}
+
+func (host *goLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
+	conn, err := grpc.NewClient(
+		host.engineAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("language host could not make connection to engine: %w", err)
+	}
+
+	// Make a client around that connection.
+	engineClient := pulumirpc.NewEngineClient(conn)
+	return engineClient, conn, nil
 }
 
 // modInfo is the useful portion of the output from
@@ -385,7 +449,7 @@ func goListModules(ctx context.Context, gobin, dir string, modulePaths []string)
 	args = append(args, modulePaths...)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx,
-		fmt.Sprintf("%s list -m json", gobin),
+		gobin+" list -m json",
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
@@ -428,7 +492,7 @@ func goModDownload(ctx context.Context, gobin, dir string, modulePaths []string)
 	args = append(args, modulePaths...)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx,
-		fmt.Sprintf("%s mod download -json", gobin),
+		gobin+" mod download -json",
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
@@ -486,6 +550,9 @@ func (m *modInfo) readPulumiPluginJSON(moduleRoot string) (*plugin.PulumiPluginJ
 	if path, err := filepath.Glob(filepath.Join(dir, "go", "*", "pulumi-plugin.json")); err == nil {
 		paths = append(paths, path...)
 	}
+	if path, err := filepath.Glob(filepath.Join(dir, "*", "pulumi-plugin.json")); err == nil {
+		paths = append(paths, path...)
+	}
 
 	for _, path := range paths {
 		plugin, err := plugin.LoadPulumiPluginJSON(path)
@@ -525,11 +592,11 @@ func normalizeVersion(version string) (string, error) {
 	return version, nil
 }
 
-// getPlugin loads information about this plugin.
+// getPackage loads information about this package.
 //
-// moduleRoot is the root directory of the Go module that imports this plugin.
+// moduleRoot is the root directory of the Go module that imports this package.
 // It must hold the go.mod file and the vendor directory (if any).
-func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, error) {
+func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, error) {
 	pulumiPlugin, err := m.readPulumiPluginJSON(moduleRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
@@ -559,17 +626,25 @@ func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, err
 	}
 
 	var server string
-
+	var parameterization *pulumirpc.PackageParameterization
 	if pulumiPlugin != nil {
-		// There is no way to specify server without using `pulumi-plugin.json`.
+		// There is no way to specify server or parameterization without using `pulumi-plugin.json`.
 		server = pulumiPlugin.Server
+		if pulumiPlugin.Parameterization != nil {
+			parameterization = &pulumirpc.PackageParameterization{
+				Name:    pulumiPlugin.Parameterization.Name,
+				Version: pulumiPlugin.Parameterization.Version,
+				Value:   pulumiPlugin.Parameterization.Value,
+			}
+		}
 	}
 
-	plugin := &pulumirpc.PluginDependency{
-		Name:    name,
-		Version: version,
-		Kind:    "resource",
-		Server:  server,
+	plugin := &pulumirpc.PackageDependency{
+		Name:             name,
+		Version:          version,
+		Kind:             "resource",
+		Server:           server,
+		Parameterization: parameterization,
 	}
 
 	return plugin, nil
@@ -594,6 +669,9 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 	//
 	// See 'go help list' for the full definition.
 	cmd := exec.Command(gobin, "list", "-m", "-f", "{{.GoMod}}")
+	// Disable GOWORK, we only want the one module found in this (or a parent) directory. Workspaces being
+	// enabled will cause "list -m" to list every module in the workspace.
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	cmd.Dir = programDir
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
@@ -613,7 +691,7 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 		return "", nil, err
 	}
 
-	f, err := modfile.ParseLax(modPath, body, nil)
+	f, err := modfile.Parse(modPath, body, nil)
 	if err != nil {
 		return "", nil, fmt.Errorf("parse: %w", err)
 	}
@@ -621,15 +699,15 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 	return filepath.Dir(modPath), f, nil
 }
 
-// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+// GetRequiredPackages computes the complete set of anticipated packages required by a program.
 // We're lenient here as this relies on the `go list` command and the use of modules.
 // If the consumer insists on using some other form of dependency management tool like
 // dep or glide, the list command fails with "go list -m: not using modules".
 // However, we do enforce that go 1.14.0 or higher is installed.
-func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest,
-) (*pulumirpc.GetRequiredPluginsResponse, error) {
-	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
+func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
+	req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
@@ -640,11 +718,11 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	moduleDir, gomod, err := host.loadGomod(gobin, req.Pwd)
+	moduleDir, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)
 	if err != nil {
 		// Don't fail if not using Go modules.
-		logging.V(5).Infof("GetRequiredPlugins: Error reading go.mod: %v", err)
-		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		logging.V(5).Infof("GetRequiredPackages: Error reading go.mod: %v", err)
+		return &pulumirpc.GetRequiredPackagesResponse{}, nil
 	}
 
 	modulePaths := slice.Prealloc[string](len(gomod.Require))
@@ -654,37 +732,40 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	modInfos, err := findModuleSources(ctx, gobin, moduleDir, modulePaths)
 	if err != nil {
-		logging.V(5).Infof("GetRequiredPlugins: Error finding module sources: %v", err)
-		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		logging.V(5).Infof("GetRequiredPackages: Error finding module sources: %v", err)
+		return &pulumirpc.GetRequiredPackagesResponse{}, nil
 	}
 
-	plugins := []*pulumirpc.PluginDependency{}
+	packages := []*pulumirpc.PackageDependency{}
 	for _, m := range modInfos {
-		plugin, err := m.getPlugin(moduleDir)
+		pkg, err := m.getPackage(moduleDir)
 		if err != nil {
 			logging.V(5).Infof(
-				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
+				"GetRequiredPackages: Ignoring dependency: %s, version: %s, error: %s",
 				m.Path,
 				m.Version,
-				err.Error(),
+				err,
 			)
 			continue
 		}
 
-		logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
-		plugins = append(plugins, plugin)
+		logging.V(5).Infof("GetRequiredPackages: Found package name: %s, version: %s", pkg.Name, pkg.Version)
+		packages = append(packages, pkg)
 	}
 
-	return &pulumirpc.GetRequiredPluginsResponse{
-		Plugins: plugins,
+	return &pulumirpc.GetRequiredPackagesResponse{
+		Packages: packages,
 	}, nil
 }
 
-func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
-	cmd.Env = env
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
+}
 
-	err := cmd.Run()
+func runCmdStatus(runF func() error) (int, error) {
+	err := runF()
 	// The returned error is nil if the command runs, has no problems copying stdin, stdout, and stderr, and
 	// exits with a zero exit status.
 	if err == nil {
@@ -706,10 +787,139 @@ func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
 	return status.ExitStatus(), nil
 }
 
-func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
-	cmd := exec.Command(bin)
+type debugger struct {
+	Host    string
+	Port    int64
+	LogDest string
+}
+
+// WaitForReady waits for Delve to be ready to accept connections.
+// Returns an error if the context is canceled or the log file is unable to be tailed.
+func (c *debugger) WaitForReady(ctx context.Context) error {
+	t, err := tail.File(c.LogDest, tail.Config{
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		contract.IgnoreError(t.Stop())
+		t.Cleanup()
+	}()
+	for line := range t.Lines {
+		if line.Err != nil {
+			continue
+		}
+		if addr, ok := strings.CutPrefix(line.Text, "API server listening at: "); ok {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return err
+			}
+			c.Host = host
+			p, err := strconv.ParseInt(port, 10, 32)
+			if err != nil {
+				return err
+			}
+			c.Port = p
+			break
+		}
+	}
+	return nil
+}
+
+func (c *debugger) Cleanup() {
+	contract.IgnoreError(os.Remove(c.LogDest))
+}
+
+func debugCommand(bin string) (*exec.Cmd, *debugger, error) {
+	godlv, err := executable.FindExecutable("dlv")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to find 'dlv' executable: %w", err)
+	}
+	logFile, err := os.CreateTemp("", "pulumi-go-dlv-")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to allocate tmp file: %w", err)
+	}
+	contract.IgnoreClose(logFile)
+	args := []string{"--headless=true", "--api-version=2"}
+	args = append(args, "--log", "--log-dest", logFile.Name())
+	port, err := netutil.FindNextAvailablePort(preferredDebugPort)
+	if err == nil {
+		args = append(args, "--listen=127.0.0.1:"+strconv.Itoa(port))
+	}
+	args = append(args, "exec", bin)
+	dlvCmd := exec.Command(godlv, args...)
+	return dlvCmd, &debugger{Host: "127.0.0.1", LogDest: logFile.Name()}, nil
+}
+
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, dbg *debugger) error {
+	// wait for the debugger to be ready
+	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
+	defer cancel()
+	err := dbg.WaitForReady(ctx)
+	if err != nil {
+		return err
+	}
+
+	debugConfig, err := structpb.NewStruct(map[string]interface{}{
+		"name":    "Pulumi: Program (Go)",
+		"type":    "go",
+		"request": "attach",
+		"mode":    "remote",
+		"host":    dbg.Host,
+		"port":    dbg.Port,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+		Config:  debugConfig,
+		Message: "on port " + strconv.FormatInt(dbg.Port, 10),
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start debugging: %w", err)
+	}
+
+	return nil
+}
+
+func runProgram(
+	ctx context.Context,
+	engineClient pulumirpc.EngineClient,
+	req *pulumirpc.RunRequest,
+	pwd, bin string,
+	env []string,
+) *pulumirpc.RunResponse {
+	var err error
+	var dbg *debugger
+	var cmd *exec.Cmd
+	if req.GetAttachDebugger() {
+		cmd, dbg, err = debugCommand(bin)
+		if err != nil {
+			return &pulumirpc.RunResponse{
+				Error: err.Error(),
+			}
+		}
+		defer dbg.Cleanup()
+		// create a sub-context to cancel the startDebugging operation when the process exits.
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go func() {
+			err := startDebugging(ctx, engineClient, dbg)
+			if err != nil {
+				// kill the program if we can't start debugging.
+				logging.Errorf("Unable to start debugging: %v", err)
+				contract.IgnoreError(cmd.Process.Kill())
+			}
+		}()
+	} else {
+		cmd = exec.Command(bin)
+	}
 	cmd.Dir = pwd
-	status, err := runCmdStatus(cmd, env)
+	cmd.Env = env
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	status, err := runCmdStatus(cmd.Run)
 	if err != nil {
 		return &pulumirpc.RunResponse{
 			Error: err.Error(),
@@ -738,6 +948,21 @@ func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if host.engineAddress == "" {
+		return nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
+	}
+
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(closer)
+
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
 	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
 	env, err := host.constructEnv(req)
@@ -747,12 +972,12 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
-	if host.binary != "" {
-		bin, err := executable.FindExecutable(host.binary)
+	if opts.binary != "" {
+		bin, err := executable.FindExecutable(opts.binary)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find '%s' executable: %w", host.binary, err)
+			return nil, fmt.Errorf("unable to find '%s' executable: %w", opts.binary, err)
 		}
-		return runProgram(req.Pwd, bin, env), nil
+		return runProgram(ctx, engineClient, req, req.Pwd, bin, env), nil
 	}
 
 	// feature flag to enable deprecated old behavior and use `go run`
@@ -762,9 +987,11 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			return nil, fmt.Errorf("unable to find 'go' executable: %w", err)
 		}
 
-		cmd := exec.Command(gobin, "run", req.Program)
+		cmd := exec.Command(gobin, "run", req.Info.ProgramDirectory)
 		cmd.Dir = host.cwd
-		status, err := runCmdStatus(cmd, env)
+		cmd.Env = env
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		status, err := runCmdStatus(cmd.Run)
 		if err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
@@ -786,16 +1013,16 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(req.Program, host.buildTarget)
+	program, err := compileProgram(req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger())
 	if err != nil {
-		return nil, fmt.Errorf("error in compiling Go: %w", err)
+		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
-	if host.buildTarget == "" {
+	if opts.buildTarget == "" {
 		// If there is no specified buildTarget, delete the temporary program after running it.
 		defer os.Remove(program)
 	}
 
-	return runProgram(req.Pwd, program, env), nil
+	return runProgram(ctx, engineClient, req, req.Pwd, program, env), nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
@@ -819,11 +1046,12 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 
 	maybeAppendEnv(pulumi.EnvOrganization, req.GetOrganization())
 	maybeAppendEnv(pulumi.EnvProject, req.GetProject())
+	maybeAppendEnv(pulumi.EnvPulumiRootDirectory, req.GetInfo().RootDirectory)
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
 	maybeAppendEnv(pulumi.EnvConfigSecretKeys, configSecretKeys)
-	maybeAppendEnv(pulumi.EnvDryRun, fmt.Sprintf("%v", req.GetDryRun()))
-	maybeAppendEnv(pulumi.EnvParallel, fmt.Sprint(req.GetParallel()))
+	maybeAppendEnv(pulumi.EnvDryRun, strconv.FormatBool(req.GetDryRun()))
+	maybeAppendEnv(pulumi.EnvParallel, strconv.Itoa(int(req.GetParallel())))
 	maybeAppendEnv(pulumi.EnvMonitor, req.GetMonitorAddress())
 	maybeAppendEnv(pulumi.EnvEngine, host.engineAddress)
 
@@ -861,7 +1089,7 @@ func (host *goLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest)
 	return string(configSecretKeysJSON), nil
 }
 
-func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
@@ -889,7 +1117,7 @@ func (host *goLanguageHost) InstallDependencies(
 	}
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
-	cmd.Dir = req.Directory
+	cmd.Dir = req.Info.ProgramDirectory
 	cmd.Env = os.Environ()
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
@@ -902,7 +1130,13 @@ func (host *goLanguageHost) InstallDependencies(
 	return closer.Close()
 }
 
-func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+func (host *goLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
+	req *pulumirpc.RuntimeOptionsRequest,
+) (*pulumirpc.RuntimeOptionsResponse, error) {
+	return &pulumirpc.RuntimeOptionsResponse{}, nil
+}
+
+func (host *goLanguageHost) About(ctx context.Context, req *pulumirpc.AboutRequest) (*pulumirpc.AboutResponse, error) {
 	getResponse := func(execString string, args ...string) (string, string, error) {
 		ex, err := executable.FindExecutable(execString)
 		if err != nil {
@@ -940,17 +1174,27 @@ func (host *goLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("couldn't find go binary: %w", err)
 	}
 
-	_, gomod, err := host.loadGomod(gobin, req.Pwd)
+	_, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("load go.mod: %w", err)
+	}
+
+	// If a module is locally replaced it doesn't really have a version anymore.
+	replaced := make(map[string]bool)
+	for _, r := range gomod.Replace {
+		replaced[strings.TrimRight(r.Old.Path, "/")] = true
 	}
 
 	result := slice.Prealloc[*pulumirpc.DependencyInfo](len(gomod.Require))
 	for _, d := range gomod.Require {
 		if !d.Indirect || req.TransitiveDependencies {
+			version := d.Mod.Version
+			if replaced[strings.TrimRight(d.Mod.Path, "/")] {
+				version = ""
+			}
 			datum := pulumirpc.DependencyInfo{
 				Name:    d.Mod.Path,
-				Version: d.Mod.Version,
+				Version: version,
 			}
 			result = append(result, &datum)
 		}
@@ -963,11 +1207,11 @@ func (host *goLanguageHost) GetProgramDependencies(
 func (host *goLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
+	logging.V(5).Infof("Attempting to run go plugin in %s", req.Info.ProgramDirectory)
 
-	program, err := compileProgram(req.Program, "")
+	program, err := compileProgram(req.Info.ProgramDirectory, "", false)
 	if err != nil {
-		return fmt.Errorf("error in compiling Go: %w", err)
+		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
 	defer os.Remove(program)
 
@@ -987,6 +1231,7 @@ func (host *goLanguageHost) RunPlugin(
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				err = server.Send(&pulumirpc.RunPluginResponse{
+					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
 			} else {
@@ -1007,38 +1252,30 @@ func (host *goLanguageHost) RunPlugin(
 func (host *goLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-
-	extraOptions := make([]pcl.BindOption, 0)
+	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, schema.NewCachedLoader(loader), extraOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
-
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
 		return &pulumirpc.GenerateProjectResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error: program was nil")
+		return nil, errors.New("internal error: program was nil")
 	}
 
 	var project workspace.Project
@@ -1046,7 +1283,7 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -1059,13 +1296,11 @@ func (host *goLanguageHost) GenerateProject(
 func (host *goLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
@@ -1080,34 +1315,26 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
 	if err != nil {
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range pdiags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
-
-	if pdiags.HasErrors() {
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
 		return &pulumirpc.GenerateProgramResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
 	}
 	if program == nil {
-		return nil, fmt.Errorf("internal error: program was nil")
+		return nil, errors.New("internal error: program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
+	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
 		Source:      files,
@@ -1122,13 +1349,11 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, errors.New("overlays are not supported for Go")
 	}
 
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
+	defer loader.Close()
 
 	var spec schema.PackageSpec
 	err = json.Unmarshal([]byte(req.Schema), &spec)
@@ -1136,22 +1361,23 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
-	pkg, diags, err := schema.BindSpec(spec, loader)
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 	if diags.HasErrors() {
-		return nil, diags
+		return &pulumirpc.GeneratePackageResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
-	files, err := codegen.GeneratePackage("pulumi-language-go", pkg)
+	files, err := codegen.GeneratePackage("pulumi-language-go", pkg, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}
 
 	for filename, data := range files {
-		outPath := path.Join(req.Directory, filename)
-
+		outPath := filepath.Join(req.Directory, filename)
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {
 			return nil, fmt.Errorf("could not create output directory %s: %w", filepath.Dir(filename), err)
@@ -1163,5 +1389,58 @@ func (host *goLanguageHost) GeneratePackage(
 		}
 	}
 
-	return &pulumirpc.GeneratePackageResponse{}, nil
+	return &pulumirpc.GeneratePackageResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
+}
+
+func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	// Go is very simple, there's nothing it can do to pack so it just copies the source to the target.
+
+	// First read the modfile in the package directory to decide the folder name.
+	data, err := os.ReadFile(filepath.Join(req.PackageDirectory, "go.mod"))
+	if err != nil {
+		return nil, fmt.Errorf("read go.mod: %w", err)
+	}
+	mod, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("parse go.mod: %w", err)
+	}
+
+	// The folder name is the module name, made into a valid directory name.
+	folderName := strings.ReplaceAll(mod.Module.Mod.Path, "/", "_")
+	artifactPath := filepath.Join(req.DestinationDirectory, folderName)
+
+	err = fsutil.CopyFile(artifactPath, req.PackageDirectory, nil)
+	if err != nil {
+		return nil, fmt.Errorf("copy package: %w", err)
+	}
+
+	return &pulumirpc.PackResponse{
+		ArtifactPath: artifactPath,
+	}, nil
+}
+
+func (host *goLanguageHost) Handshake(
+	ctx context.Context,
+	req *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	if req == nil || req.EngineAddress == "" {
+		return nil, errors.New("Must contain address in request")
+	}
+	host.engineAddress = req.EngineAddress
+
+	ctx, cancel := context.WithCancel(ctx)
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		cancel() // deregister handler so we don't catch another interrupt
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
+	}
+
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }

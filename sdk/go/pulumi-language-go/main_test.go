@@ -41,8 +41,7 @@ func TestParseRunParams(t *testing.T) {
 		wantErr string // non-empty if we expect an error
 	}{
 		{
-			desc:    "no arguments",
-			wantErr: "missing required engine RPC address argument",
+			desc: "no arguments",
 		},
 		{
 			desc: "no options",
@@ -50,11 +49,6 @@ func TestParseRunParams(t *testing.T) {
 			want: runParams{
 				engineAddress: "localhost:1234",
 			},
-		},
-		{
-			desc:    "binary buildTarget exclusivity",
-			give:    []string{"-binary", "foo", "-buildTarget=bar"},
-			wantErr: "binary and buildTarget cannot both be specified",
 		},
 		{
 			desc: "tracing",
@@ -68,7 +62,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "binary",
 			give: []string{"-binary", "foo", "localhost:1234"},
 			want: runParams{
-				binary:        "foo",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -76,7 +69,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "buildTarget",
 			give: []string{"-buildTarget", "foo", "localhost:1234"},
 			want: runParams{
-				buildTarget:   "foo",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -84,7 +76,6 @@ func TestParseRunParams(t *testing.T) {
 			desc: "root",
 			give: []string{"-root", "path/to/root", "localhost:1234"},
 			want: runParams{
-				root:          "path/to/root",
 				engineAddress: "localhost:1234",
 			},
 		},
@@ -119,16 +110,16 @@ func TestParseRunParams(t *testing.T) {
 	}
 }
 
-func TestGetPlugin(t *testing.T) {
+func TestGetPackage(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		Name      string
-		Mod       *modInfo
-		Expected  *pulumirpc.PluginDependency
-		ShouldErr bool
-		JSON      *plugin.PulumiPluginJSON
-		JSONPath  string
+		Name          string
+		Mod           *modInfo
+		Expected      *pulumirpc.PackageDependency
+		ExpectedError string
+		JSON          *plugin.PulumiPluginJSON
+		JSONPath      string
 	}{
 		{
 			Name: "valid-pulumi-mod",
@@ -136,7 +127,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
 			},
@@ -147,7 +138,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v1.29.1-0.20200403140640-efb5e2a48a86",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v1.29.0",
 			},
@@ -158,7 +149,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/moolumi/pulumi-aws/sdk",
 				Version: "v1.29.0",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "invalid-version-module",
@@ -166,7 +157,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "42-42-42",
 			},
-			ShouldErr: true,
+			ExpectedError: "module does not have semver compatible version",
 		},
 		{
 			Name: "pulumi-pulumi-mod",
@@ -174,7 +165,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi/sdk",
 				Version: "v1.14.0",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "beta-pulumi-module",
@@ -182,7 +173,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-aws/sdk",
 				Version: "v2.0.0-beta.1",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "aws",
 				Version: "v2.0.0-beta.1",
 			},
@@ -192,7 +183,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/pulumi/pulumi-kubernetes/sdk",
 				Version: "v1.5.8",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "kubernetes",
 				Version: "v1.5.8",
 			},
@@ -203,7 +194,7 @@ func TestGetPlugin(t *testing.T) {
 				Path:    "github.com/me/myself/i",
 				Version: "invalid-Version",
 			},
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "thing1",
 				Version: "v1.2.3",
 				Server:  "myserver.com",
@@ -216,9 +207,9 @@ func TestGetPlugin(t *testing.T) {
 			},
 		},
 		{
-			Name:      "non-resource",
-			Mod:       &modInfo{},
-			ShouldErr: true,
+			Name:          "non-resource",
+			Mod:           &modInfo{},
+			ExpectedError: "module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Resource: false,
 			},
@@ -228,7 +219,7 @@ func TestGetPlugin(t *testing.T) {
 			Mod: &modInfo{
 				Dir: "/not/real",
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 			JSON: &plugin.PulumiPluginJSON{
 				Name:    "thing2",
 				Version: "v1.2.3",
@@ -245,7 +236,7 @@ func TestGetPlugin(t *testing.T) {
 				Resource: true,
 			},
 			JSONPath: "go",
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "name",
 				Version: "v1.2.3",
 			},
@@ -261,7 +252,7 @@ func TestGetPlugin(t *testing.T) {
 				Resource: true,
 			},
 			JSONPath: filepath.Join("go", "name"),
-			Expected: &pulumirpc.PluginDependency{
+			Expected: &pulumirpc.PackageDependency{
 				Name:    "name",
 				Version: "v1.2.3",
 			},
@@ -277,7 +268,7 @@ func TestGetPlugin(t *testing.T) {
 				Name:     "name",
 				Resource: true,
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 		{
 			Name: "nested-wrong-folder",
@@ -290,7 +281,7 @@ func TestGetPlugin(t *testing.T) {
 				Name:     "name",
 				Resource: true,
 			},
-			ShouldErr: true,
+			ExpectedError: "module is not a pulumi provider",
 		},
 	}
 
@@ -313,9 +304,9 @@ func TestGetPlugin(t *testing.T) {
 				assert.NoError(t, err, "Failed to write pulumi-plugin.json")
 			}
 
-			actual, err := c.Mod.getPlugin(t.TempDir())
-			if c.ShouldErr {
-				assert.Error(t, err)
+			actual, err := c.Mod.getPackage(t.TempDir())
+			if c.ExpectedError != "" {
+				assert.EqualError(t, err, c.ExpectedError)
 			} else {
 				// Kind must be resource. We can thus exclude it from the test.
 				if c.Expected.Kind == "" {
@@ -406,24 +397,38 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 
 		testPluginsAndDependencies(t, progDir)
 	})
+
+	t.Run("gowork", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		require.NoError(t,
+			fsutil.CopyFile(root, filepath.Join("testdata", "sample"), nil),
+			"copy test data")
+
+		testPluginsAndDependencies(t, filepath.Join(root, "prog-gowork", "prog"))
+	})
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
-	host := newLanguageHost("0.0.0.0:0", progDir, "", "", "")
-	ctx := context.Background()
+	host := newLanguageHost("0.0.0.0:0", progDir, "")
+	ctx := t.Context()
 
-	t.Run("GetRequiredPlugins", func(t *testing.T) {
+	t.Run("GetRequiredPackages", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{
-			Project: "prog",
-			Pwd:     progDir,
+		res, err := host.GetRequiredPackages(ctx, &pulumirpc.GetRequiredPackagesRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    progDir,
+				ProgramDirectory: progDir,
+				EntryPoint:       ".",
+			},
 		})
 		require.NoError(t, err)
 
-		require.Len(t, res.Plugins, 1)
-		plug := res.Plugins[0]
+		require.Len(t, res.Packages, 1)
+		plug := res.Packages[0]
 
 		assert.Equal(t, "example", plug.Name, "plugin name")
 		assert.Equal(t, "v1.2.3", plug.Version, "plugin version")
@@ -436,9 +441,14 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		defer cancel()
 
 		res, err := host.GetProgramDependencies(ctx, &pulumirpc.GetProgramDependenciesRequest{
-			Project:                "prog",
+			Project:                "deprecated",
 			Pwd:                    progDir,
 			TransitiveDependencies: true,
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    progDir,
+				ProgramDirectory: progDir,
+				EntryPoint:       ".",
+			},
 		})
 		require.NoError(t, err)
 
@@ -448,9 +458,9 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		}
 
 		assert.Equal(t, map[string]string{
-			"example.com/plugin":          "v1.2.3",
-			"example.com/dep":             "v1.5.0",
-			"example.com/indirect-dep/v2": "v2.1.0",
+			"github.com/pulumi/go-dependency-testdata/plugin":          "v1.2.3",
+			"github.com/pulumi/go-dependency-testdata/dep":             "v1.6.0",
+			"github.com/pulumi/go-dependency-testdata/indirect-dep/v2": "v2.1.0",
 		}, gotDeps)
 	})
 }
