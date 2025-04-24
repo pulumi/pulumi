@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Add the ability to configure a remote executor image
