@@ -51,10 +51,8 @@ class Example_resourceArgs:
         pulumi.set(self, "request__http", value)
 
 
+@_utilities.pulumi_type("legacy_names:index:example_resource")
 class Example_resource(pulumi.CustomResource):
-
-    pulumi_type = "legacy_names:index:example_resource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

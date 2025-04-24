@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from .. import _utilities
 
 __all__ = [
     'MyEnum',
 ]
 
 
+@_utilities.pulumi_type("example:local:MyEnum")
 class MyEnum(builtins.float, Enum):
     PI = 3.1415
     SMALL = 1e-07

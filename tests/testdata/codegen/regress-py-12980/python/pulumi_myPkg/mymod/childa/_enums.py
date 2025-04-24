@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from ... import _utilities
 
 __all__ = [
     'EnumA',
 ]
 
 
+@_utilities.pulumi_type("myPkg:myMod/childA:EnumA")
 class EnumA(builtins.str, Enum):
     A1 = "a1"
     A2 = "a2"

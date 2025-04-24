@@ -96,10 +96,8 @@ class ComponentArgs:
         pulumi.set(self, "metadata_map", value)
 
 
+@_utilities.pulumi_type("example::Component")
 class Component(pulumi.CustomResource):
-
-    pulumi_type = "example::Component"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

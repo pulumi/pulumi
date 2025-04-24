@@ -26,10 +26,8 @@ class MainComponentArgs:
         pass
 
 
+@_utilities.pulumi_type("example::MainComponent")
 class MainComponent(pulumi.CustomResource):
-
-    pulumi_type = "example::MainComponent"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'MyEnum',
 ]
 
 
+@_utilities.pulumi_type("my8110::MyEnum")
 class MyEnum(builtins.str, Enum):
     ONE = "one"
     TWO = "two"

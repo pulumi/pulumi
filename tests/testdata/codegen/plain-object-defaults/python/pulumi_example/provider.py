@@ -42,10 +42,8 @@ class ProviderArgs:
         pulumi.set(self, "helm_release_settings", value)
 
 
+@_utilities.pulumi_type("pulumi:providers:example")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:example"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

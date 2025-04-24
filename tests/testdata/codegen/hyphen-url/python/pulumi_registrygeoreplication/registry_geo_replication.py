@@ -41,10 +41,8 @@ class RegistryGeoReplicationArgs:
         pulumi.set(self, "resource_group", value)
 
 
+@_utilities.pulumi_type("registrygeoreplication:index:RegistryGeoReplication")
 class RegistryGeoReplication(pulumi.ComponentResource):
-
-    pulumi_type = "registrygeoreplication:index:RegistryGeoReplication"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

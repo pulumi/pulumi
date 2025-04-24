@@ -5,6 +5,7 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'CloudAuditOptionsLogName',
@@ -14,6 +15,7 @@ __all__ = [
 ]
 
 
+@_utilities.pulumi_type("plant::CloudAuditOptionsLogName")
 class CloudAuditOptionsLogName(builtins.str, Enum):
     """
     The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
@@ -37,11 +39,13 @@ class CloudAuditOptionsLogName(builtins.str, Enum):
     CLOUD_AUDIT_OPTIONS_LOG_NAME_N_O_NAME = "_NO_NAME"
 
 
+@_utilities.pulumi_type("plant::ContainerBrightness")
 class ContainerBrightness(builtins.float, Enum):
     ZERO_POINT_ONE = 0.1
     ONE = 1
 
 
+@_utilities.pulumi_type("plant::ContainerColor")
 class ContainerColor(builtins.str, Enum):
     """
     plant container colors
@@ -51,6 +55,7 @@ class ContainerColor(builtins.str, Enum):
     YELLOW = "yellow"
 
 
+@_utilities.pulumi_type("plant::ContainerSize")
 class ContainerSize(builtins.int, Enum):
     """
     plant container sizes

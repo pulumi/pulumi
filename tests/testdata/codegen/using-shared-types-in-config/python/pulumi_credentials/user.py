@@ -37,10 +37,8 @@ class UserArgs:
         pulumi.set(self, "shared", value)
 
 
+@_utilities.pulumi_type("credentials:index:User")
 class User(pulumi.CustomResource):
-
-    pulumi_type = "credentials:index:User"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

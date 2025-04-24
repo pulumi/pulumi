@@ -38,10 +38,8 @@ class ExampleServerArgs:
         pulumi.set(self, "properties_collection", value)
 
 
+@_utilities.pulumi_type("example:index:ExampleServer")
 class ExampleServer(pulumi.CustomResource):
-
-    pulumi_type = "example:index:ExampleServer"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

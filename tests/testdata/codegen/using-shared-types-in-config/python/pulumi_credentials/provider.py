@@ -86,10 +86,8 @@ class ProviderArgs:
         pulumi.set(self, "password", value)
 
 
+@_utilities.pulumi_type("pulumi:providers:credentials")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:credentials"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

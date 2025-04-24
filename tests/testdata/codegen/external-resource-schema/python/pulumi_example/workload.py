@@ -27,10 +27,8 @@ class WorkloadArgs:
         pass
 
 
+@_utilities.pulumi_type("example::Workload")
 class Workload(pulumi.CustomResource):
-
-    pulumi_type = "example::Workload"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

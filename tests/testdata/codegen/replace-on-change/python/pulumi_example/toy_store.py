@@ -29,10 +29,8 @@ class ToyStoreArgs:
         pass
 
 
+@_utilities.pulumi_type("example::ToyStore")
 class ToyStore(pulumi.CustomResource):
-
-    pulumi_type = "example::ToyStore"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -38,10 +38,8 @@ class ConfigurerArgs:
         pulumi.set(self, "tls_proxy", value)
 
 
+@_utilities.pulumi_type("metaprovider:index:Configurer")
 class Configurer(pulumi.ComponentResource):
-
-    pulumi_type = "metaprovider:index:Configurer"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

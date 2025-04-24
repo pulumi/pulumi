@@ -27,10 +27,8 @@ class GodArgs:
         pass
 
 
+@_utilities.pulumi_type("example::God")
 class God(pulumi.CustomResource):
-
-    pulumi_type = "example::God"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -31,10 +31,8 @@ class MemberB2Args:
         pass
 
 
+@_utilities.pulumi_type("myPkg:myMod/childB:MemberB2")
 class MemberB2(pulumi.ComponentResource):
-
-    pulumi_type = "myPkg:myMod/childB:MemberB2"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

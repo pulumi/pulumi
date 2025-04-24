@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'Enum_XYZ',
 ]
 
 
+@_utilities.pulumi_type("legacy_names:index:enum_XYZ")
 class Enum_XYZ(builtins.str, Enum):
     PLAIN = "A"
     SNAKE_CASE = "B"

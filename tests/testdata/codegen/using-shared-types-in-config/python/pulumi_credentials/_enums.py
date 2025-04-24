@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'HashKind',
 ]
 
 
+@_utilities.pulumi_type("credentials:index:HashKind")
 class HashKind(builtins.str, Enum):
     ADLER32 = "Adler32"
     """

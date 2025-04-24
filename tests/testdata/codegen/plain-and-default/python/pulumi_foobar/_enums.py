@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'EnumThing',
 ]
 
 
+@_utilities.pulumi_type("foobar::EnumThing")
 class EnumThing(builtins.int, Enum):
     FOUR = 4
     SIX = 6

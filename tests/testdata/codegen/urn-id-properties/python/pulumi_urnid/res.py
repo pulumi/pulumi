@@ -50,10 +50,8 @@ class ResArgs:
         pulumi.set(self, "urn", value)
 
 
+@_utilities.pulumi_type("urnid:index:Res")
 class Res(pulumi.CustomResource):
-
-    pulumi_type = "urnid:index:Res"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

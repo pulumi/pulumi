@@ -5,6 +5,7 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'OutputOnlyEnumType',
@@ -12,11 +13,13 @@ __all__ = [
 ]
 
 
+@_utilities.pulumi_type("example::OutputOnlyEnumType")
 class OutputOnlyEnumType(builtins.str, Enum):
     FOO = "foo"
     BAR = "bar"
 
 
+@_utilities.pulumi_type("example::RubberTreeVariety")
 class RubberTreeVariety(builtins.str, Enum):
     """
     types of rubber trees

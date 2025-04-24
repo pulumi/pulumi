@@ -61,10 +61,8 @@ class ProviderArgs:
         pulumi.set(self, "secret_sandwiches", value)
 
 
+@_utilities.pulumi_type("pulumi:providers:configstation")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:configstation"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

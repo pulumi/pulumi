@@ -50,10 +50,8 @@ class OtherResourceArgs:
         pulumi.set(self, "foo", value)
 
 
+@_utilities.pulumi_type("example::OtherResource")
 class OtherResource(pulumi.ComponentResource):
-
-    pulumi_type = "example::OtherResource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

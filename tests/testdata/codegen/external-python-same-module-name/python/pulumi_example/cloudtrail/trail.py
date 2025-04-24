@@ -50,10 +50,8 @@ class TrailArgs:
         pulumi.set(self, "trail", value)
 
 
+@_utilities.pulumi_type("example:cloudtrail:Trail")
 class Trail(pulumi.ComponentResource):
-
-    pulumi_type = "example:cloudtrail:Trail"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

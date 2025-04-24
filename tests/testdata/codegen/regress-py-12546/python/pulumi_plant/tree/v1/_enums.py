@@ -5,6 +5,7 @@
 import builtins
 import builtins
 from enum import Enum
+from ... import _utilities
 
 __all__ = [
     'Diameter',
@@ -14,16 +15,19 @@ __all__ = [
 ]
 
 
+@_utilities.pulumi_type("other:tree/v1:Diameter")
 class Diameter(builtins.float, Enum):
     SIXINCH = 6
     TWELVEINCH = 12
 
 
+@_utilities.pulumi_type("plant:tree/v1:Farm")
 class Farm(builtins.str, Enum):
     PULUMI_PLANTERS_INC_ = "Pulumi Planters Inc."
     PLANTS_R_US = "Plants'R'Us"
 
 
+@_utilities.pulumi_type("plant:tree/v1:RubberTreeVariety")
 class RubberTreeVariety(builtins.str, Enum):
     """
     types of rubber trees
@@ -42,6 +46,7 @@ class RubberTreeVariety(builtins.str, Enum):
     """
 
 
+@_utilities.pulumi_type("plant:tree/v1:TreeSize")
 class TreeSize(builtins.str, Enum):
     SMALL = "small"
     MEDIUM = "medium"

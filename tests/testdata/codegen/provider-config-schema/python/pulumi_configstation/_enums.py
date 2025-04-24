@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'Color',
 ]
 
 
+@_utilities.pulumi_type("configstation:index:color")
 class Color(builtins.str, Enum):
     BLUE = "blue"
     RED = "red"

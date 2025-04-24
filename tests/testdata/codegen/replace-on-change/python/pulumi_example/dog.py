@@ -26,10 +26,8 @@ class DogArgs:
         pass
 
 
+@_utilities.pulumi_type("example::Dog")
 class Dog(pulumi.CustomResource):
-
-    pulumi_type = "example::Dog"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -5,12 +5,14 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'SupportedFilterTypes',
 ]
 
 
+@_utilities.pulumi_type("myedgeorder::SupportedFilterTypes")
 class SupportedFilterTypes(builtins.str, Enum):
     """
     Type of product filter.

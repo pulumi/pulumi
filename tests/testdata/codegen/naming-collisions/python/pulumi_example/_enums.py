@@ -5,6 +5,7 @@
 import builtins
 import builtins
 from enum import Enum
+from . import _utilities
 
 __all__ = [
     'ExampleEnum',
@@ -13,16 +14,19 @@ __all__ = [
 ]
 
 
+@_utilities.pulumi_type("example::ExampleEnum")
 class ExampleEnum(builtins.str, Enum):
     ONE = "one"
     TWO = "two"
 
 
+@_utilities.pulumi_type("example::ExampleEnumInput")
 class ExampleEnumInput(builtins.str, Enum):
     ONE = "one"
     TWO = "two"
 
 
+@_utilities.pulumi_type("example::ResourceType")
 class ResourceType(builtins.str, Enum):
     HAHA = "haha"
     BUSINESS = "business"
