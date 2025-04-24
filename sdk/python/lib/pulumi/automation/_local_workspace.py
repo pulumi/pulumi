@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
+
 class DockerImageCredentials:
     """
     Credentials for the remote execution Docker image.
@@ -59,6 +60,7 @@ class DockerImageCredentials:
         self.username = username
         self.password = password
 
+
 class ExecutorImage:
     """
     Information about the remote execution image.
@@ -67,7 +69,11 @@ class ExecutorImage:
     image: Optional[str]
     credentials: Optional[DockerImageCredentials]
 
-    def __init__(self, image: Optional[str] = None, credentials: Optional[DockerImageCredentials] = None):
+    def __init__(
+        self,
+        image: Optional[str] = None,
+        credentials: Optional[DockerImageCredentials] = None,
+    ):
         self.image = image
         self.credentials = credentials
 
@@ -76,6 +82,7 @@ class Secret(str):
     """
     Represents a secret value.
     """
+
 
 class LocalWorkspaceOptions:
     work_dir: Optional[str] = None
@@ -694,11 +701,19 @@ class LocalWorkspace(Workspace):
 
         if self._remote_executor_image:
             if self._remote_executor_image.image:
-                args.append("--remote-executor-image=" + self._remote_executor_image.image)
+                args.append(
+                    "--remote-executor-image=" + self._remote_executor_image.image
+                )
 
             if self._remote_executor_image.credentials:
-                args.append("--remote-executor-image-username=" + self._remote_executor_image.credentials.username)
-                args.append("--remote-executor-image-password=" + self._remote_executor_image.credentials.password)
+                args.append(
+                    "--remote-executor-image-username="
+                    + self._remote_executor_image.credentials.username
+                )
+                args.append(
+                    "--remote-executor-image-password="
+                    + self._remote_executor_image.credentials.password
+                )
 
         if self._remote_inherit_settings:
             args.append("--remote-inherit-settings")

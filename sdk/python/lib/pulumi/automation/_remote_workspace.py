@@ -18,6 +18,7 @@ from pulumi.automation._local_workspace import ExecutorImage, LocalWorkspace, Se
 from pulumi.automation._remote_stack import RemoteStack
 from pulumi.automation._stack import Stack
 
+
 class RemoteWorkspaceOptions:
     """
     Extensibility options to configure a RemoteWorkspace.
@@ -43,6 +44,7 @@ class RemoteWorkspaceOptions:
         self.skip_install_dependencies = skip_install_dependencies
         self.executor_image = executor_image
         self.inherit_settings = inherit_settings
+
 
 class RemoteGitAuth:
     """
