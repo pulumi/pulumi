@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet
+  description: Update dotnet to v3.79.0
