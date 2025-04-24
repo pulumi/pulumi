@@ -17,7 +17,7 @@ from pulumi.resource import Resource
 from pulumi.type_token import get_type_token, type_token
 
 
-def test_pulumi_type():
+def test_type_token():
     class MyResourceWithoutToken(Resource): ...
 
     assert get_type_token(MyResourceWithoutToken) is None
