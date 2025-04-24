@@ -16,6 +16,7 @@ package display
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"

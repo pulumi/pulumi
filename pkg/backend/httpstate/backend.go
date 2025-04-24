@@ -1335,32 +1335,32 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		return
 	}
 
+	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	// No output, bit strange.
 	if len(output) == 0 {
 		err := errors.New("no output from preview")
-		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display)
+		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display, permalink)
 		return
 	}
 
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display)
+		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display, permalink)
 		return
 	}
 
 	orgName := stackID.Owner
 
-	model := opts.CopilotSummaryModel
-	maxSummaryLen := opts.CopilotSummaryMaxLen
+	model := op.Opts.Display.CopilotSummaryModel
+	maxSummaryLen := op.Opts.Display.CopilotSummaryMaxLen
 
 	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, output, model, maxSummaryLen)
-	elapsedMs := time.Since(startTime).Milliseconds()
 
 	// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 	// if we can't generate a summary.
 	display.RenderCopilotErrorSummary(&display.CopilotErrorSummaryMetadata{
-		Summary:   summary,
-	}, err, op.Opts.Display)
+		Summary: summary,
+	}, err, op.Opts.Display, permalink)
 }
 
 type updateMetadata struct {
