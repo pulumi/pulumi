@@ -32,10 +32,8 @@ class ProviderArgs:
         pulumi.set(self, "text", value)
 
 
+@_utilities.pulumi_type("pulumi:providers:subpackage")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:subpackage"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

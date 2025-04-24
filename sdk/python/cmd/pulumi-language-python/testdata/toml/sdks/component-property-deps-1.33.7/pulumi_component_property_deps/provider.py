@@ -26,10 +26,8 @@ class ProviderArgs:
         pass
 
 
+@_utilities.pulumi_type("pulumi:providers:component-property-deps")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:component-property-deps"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

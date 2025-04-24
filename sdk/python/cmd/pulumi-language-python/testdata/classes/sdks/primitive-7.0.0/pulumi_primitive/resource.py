@@ -86,10 +86,8 @@ class ResourceArgs:
         pulumi.set(self, "string", value)
 
 
+@_utilities.pulumi_type("primitive:index:Resource")
 class Resource(pulumi.CustomResource):
-
-    pulumi_type = "primitive:index:Resource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -26,10 +26,8 @@ class HelloWorldComponentArgs:
         pass
 
 
+@_utilities.pulumi_type("subpackage:index:HelloWorldComponent")
 class HelloWorldComponent(pulumi.ComponentResource):
-
-    pulumi_type = "subpackage:index:HelloWorldComponent"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -54,10 +54,8 @@ class ComponentArgs:
         pulumi.set(self, "resource_map", value)
 
 
+@_utilities.pulumi_type("component-property-deps:index:Component")
 class Component(pulumi.ComponentResource):
-
-    pulumi_type = "component-property-deps:index:Component"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

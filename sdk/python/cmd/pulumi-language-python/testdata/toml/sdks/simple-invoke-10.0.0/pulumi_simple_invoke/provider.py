@@ -26,10 +26,8 @@ class ProviderArgs:
         pass
 
 
+@_utilities.pulumi_type("pulumi:providers:simple-invoke")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:simple-invoke"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

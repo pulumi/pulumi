@@ -26,10 +26,8 @@ class ProviderArgs:
         pass
 
 
+@_utilities.pulumi_type("pulumi:providers:secret")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:secret"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

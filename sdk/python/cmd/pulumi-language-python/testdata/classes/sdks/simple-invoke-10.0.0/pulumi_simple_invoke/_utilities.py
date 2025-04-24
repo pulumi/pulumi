@@ -24,7 +24,7 @@ from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
 
 C = typing.TypeVar("C", bound=typing.Callable)
-
+T = typing.TypeVar("T", bound=type)
 
 def get_env(*args):
     for v in args:
@@ -321,6 +321,18 @@ def deprecated(message: str) -> typing.Callable[[C], C]:
 
         deprecated_fn.__dict__["_pulumi_deprecated_callable"] = fn
         return typing.cast(C, deprecated_fn)
+
+    return decorator
+
+
+def pulumi_type(type_token: str) -> typing.Callable[[T], T]:
+    """
+    Decorate a class representing a Pulumi type like a resource, but also enums,
+    with its type token.
+    """
+    def decorator(klass: T) -> T:
+        setattr(klass, "pulumi_type", type_token)
+        return klass
 
     return decorator
 

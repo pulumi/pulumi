@@ -36,10 +36,8 @@ class CustomArgs:
         pulumi.set(self, "value", value)
 
 
+@_utilities.pulumi_type("component:index:Custom")
 class Custom(pulumi.CustomResource):
-
-    pulumi_type = "component:index:Custom"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

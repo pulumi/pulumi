@@ -37,10 +37,8 @@ class ComponentCustomRefOutputArgs:
         pulumi.set(self, "value", value)
 
 
+@_utilities.pulumi_type("component:index:ComponentCustomRefOutput")
 class ComponentCustomRefOutput(pulumi.ComponentResource):
-
-    pulumi_type = "component:index:ComponentCustomRefOutput"
-
     @overload
     def __init__(__self__,
                  resource_name: str,
