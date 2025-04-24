@@ -148,7 +148,7 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	propLangName := strings.Title(p.Name)
 
 	if raw, ok := p.Language["csharp"].(json.RawMessage); ok {
-		val, err := Importer.ImportPropertySpec(p, raw)
+		val, err := Importer.ImportPropertySpec(raw)
 		if err != nil {
 			return "", err
 		}

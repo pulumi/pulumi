@@ -32,11 +32,11 @@ type typeTestCase struct {
 
 type typeTestImporter int
 
-func (typeTestImporter) ImportDefaultSpec(def *schema.DefaultValue, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportDefaultSpec(bytes json.RawMessage) (interface{}, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportPropertySpec(property *schema.Property, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportPropertySpec(bytes json.RawMessage) (interface{}, error) {
 	var test typeTestCase
 	if err := json.Unmarshal([]byte(bytes), &test); err != nil {
 		return nil, err
@@ -44,19 +44,19 @@ func (typeTestImporter) ImportPropertySpec(property *schema.Property, bytes json
 	return &test, nil
 }
 
-func (typeTestImporter) ImportObjectTypeSpec(object *schema.ObjectType, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportObjectTypeSpec(bytes json.RawMessage) (interface{}, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportResourceSpec(resource *schema.Resource, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportResourceSpec(bytes json.RawMessage) (interface{}, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportFunctionSpec(function *schema.Function, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportFunctionSpec(bytes json.RawMessage) (interface{}, error) {
 	return bytes, nil
 }
 
-func (typeTestImporter) ImportPackageSpec(pkg *schema.Package, bytes json.RawMessage) (interface{}, error) {
+func (typeTestImporter) ImportPackageSpec(bytes json.RawMessage) (interface{}, error) {
 	return bytes, nil
 }
 
