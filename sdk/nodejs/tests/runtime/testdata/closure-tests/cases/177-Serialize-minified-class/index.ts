@@ -1,0 +1,22 @@
+// Copyright 2024-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+export const description = "Serialize minified class";
+
+// important thing for this case is that spaces are not required, e.g after class
+export const func = () => {
+    // minified JS example obviously triggers a lot of TS complains, which we have to ignore
+    // @ts-ignore
+    let h=class{_fns;constructor(){this._fns=[];}clear(){this._fns=[];}exists(r){return this._fns.indexOf(r)!==-1}eject(r){let e=this._fns.indexOf(r);e!==-1&&(this._fns=[...this._fns.slice(0,e),...this._fns.slice(e+1)]);}use(r){this._fns=[...this._fns,r];}}
+}
