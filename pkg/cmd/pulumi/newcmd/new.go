@@ -441,7 +441,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
-		contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
+		contract.IgnoreError(state.SetCurrentStack(s.Ref().FullyQualifiedName().String()))
 	}
 
 	// Install dependencies.
