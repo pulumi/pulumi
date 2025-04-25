@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -133,18 +134,11 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
-	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
+	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
-
-	// Keep track of any config keys that have secure values.
-	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
-
-	configMap, err := src.runinfo.Target.Config.AsDecryptedPropertyMap(ctx, src.runinfo.Target.Decrypter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert config to map: %w", err)
-	}
+	config := resource.FromResourcePropertyMap(configMap)
 
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
@@ -152,7 +146,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	regReadChan := make(chan *readResourceEvent)
 
 	mon, err := newResourceMonitor(
-		src, providers, regChan, regOutChan, regReadChan, config, configSecretKeys, tracingSpan)
+		src, providers, regChan, regOutChan, regReadChan, config, tracingSpan)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
@@ -178,7 +172,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(config, configSecretKeys, configMap)
+	iter.forkRun(config)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -252,9 +246,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 // forkRun performs the evaluation from a distinct goroutine. This function blocks until it's our turn to go.
 func (iter *evalSourceIterator) forkRun(
-	config map[config.Key]string,
-	configSecretKeys []config.Key,
-	configPropertyMap resource.PropertyMap,
+	config property.Map,
 ) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
@@ -278,20 +270,18 @@ func (iter *evalSourceIterator) forkRun(
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress:    iter.mon.Address(),
-				Stack:             iter.src.runinfo.Target.Name.String(),
-				Project:           string(iter.src.runinfo.Proj.Name),
-				Pwd:               iter.src.runinfo.Pwd,
-				Args:              iter.src.runinfo.Args,
-				Config:            config,
-				ConfigSecretKeys:  configSecretKeys,
-				ConfigPropertyMap: configPropertyMap,
-				DryRun:            iter.src.opts.DryRun,
-				Parallel:          iter.src.opts.Parallel,
-				Organization:      string(iter.src.runinfo.Target.Organization),
-				Info:              programInfo,
-				LoaderAddress:     iter.loaderServer.Addr(),
-				AttachDebugger:    iter.src.opts.AttachDebugger,
+				MonitorAddress: iter.mon.Address(),
+				Stack:          iter.src.runinfo.Target.Name.String(),
+				Project:        string(iter.src.runinfo.Proj.Name),
+				Pwd:            iter.src.runinfo.Pwd,
+				Args:           iter.src.runinfo.Args,
+				Config:         config,
+				DryRun:         iter.src.opts.DryRun,
+				Parallel:       iter.src.opts.Parallel,
+				Organization:   string(iter.src.runinfo.Target.Organization),
+				Info:           programInfo,
+				LoaderAddress:  iter.loaderServer.Addr(),
+				AttachDebugger: iter.src.opts.AttachDebugger,
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
@@ -673,8 +663,7 @@ func newResourceMonitor(
 	regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
-	config map[config.Key]string,
-	configSecretKeys []config.Key,
+	configMap property.Map,
 	tracingSpan opentracing.Span,
 ) (*resmon, error) {
 	abortChan := make(chan bool)
@@ -727,11 +716,29 @@ func newResourceMonitor(
 		return nil, err
 	}
 
+	configValues, configSecretKeys := plugin.PropertyMapToConfig(configMap)
+	constructConfig := make(map[config.Key]string, len(configValues))
+	constructConfigSecretKeys := make([]config.Key, 0, len(configSecretKeys))
+	for k, v := range configValues {
+		key, err := config.ParseKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config key %q: %w", k, err)
+		}
+		constructConfig[key] = v
+	}
+	for _, k := range configSecretKeys {
+		key, err := config.ParseKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config key %q: %w", k, err)
+		}
+		constructConfigSecretKeys = append(constructConfigSecretKeys, key)
+	}
+
 	resmon.constructInfo = plugin.ConstructInfo{
 		Project:          string(src.runinfo.Proj.Name),
 		Stack:            src.runinfo.Target.Name.String(),
-		Config:           config,
-		ConfigSecretKeys: configSecretKeys,
+		Config:           constructConfig,
+		ConfigSecretKeys: constructConfigSecretKeys,
 		DryRun:           src.opts.DryRun,
 		Parallel:         src.opts.Parallel,
 		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),

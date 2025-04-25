@@ -801,14 +801,12 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 
 // constructConfig JSON-serializes the configuration data.
 func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
-	if opts == nil || opts.Config == nil {
+	if opts == nil || opts.Config.Len() == 0 {
 		return "", nil
 	}
 
-	config := make(map[string]string)
-	for k, v := range opts.Config {
-		config[k.String()] = v
-	}
+	// We get rich property values here, but the envvar interface just expects JSON-like strings.
+	config, _ := PropertyMapToConfig(opts.Config)
 
 	configJSON, err := json.Marshal(config)
 	if err != nil {
