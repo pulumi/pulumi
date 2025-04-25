@@ -129,6 +129,11 @@ func TestIsLocalPluginPath(t *testing.T) {
 			path:     "github.com/pulumi/home",
 			expected: false,
 		},
+		{
+			name:     "non-existent repo URL",
+			path:     "example.com/no-repo-exists/here",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
