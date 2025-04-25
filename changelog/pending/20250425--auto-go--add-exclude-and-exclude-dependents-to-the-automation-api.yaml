@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Add `--exclude` and `--exclude-dependents` to the Automation API
