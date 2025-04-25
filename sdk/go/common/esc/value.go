@@ -73,17 +73,21 @@ func NewSecret[T ValueType](v T) Value {
 }
 
 func (v Value) MakeSecret() Value {
-	switch v := v.Value.(type) {
+	switch vv := v.Value.(type) {
+	case nil:
+		copy := v
+		copy.Secret = true
+		return copy
 	case bool:
-		return NewSecret(v)
+		return NewSecret(vv)
 	case json.Number:
-		return NewSecret(v)
+		return NewSecret(vv)
 	case string:
-		return NewSecret(v)
+		return NewSecret(vv)
 	case []Value:
-		return NewSecret(v)
+		return NewSecret(vv)
 	case map[string]Value:
-		return NewSecret(v)
+		return NewSecret(vv)
 	default:
 		panic("invalid value")
 	}
