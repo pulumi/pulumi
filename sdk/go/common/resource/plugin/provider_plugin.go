@@ -727,6 +727,17 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
+	mPrivateState, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(req.URN),
 		Name:          req.URN.Name(),
@@ -735,6 +746,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		Olds:          mOldOutputs,
 		News:          mNewInputs,
 		IgnoreChanges: req.IgnoreChanges,
+		PrivateState:  mPrivateState,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -792,6 +804,17 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
 		label, changes, replaces, stables, deleteBeforeReplace, diffs)
 
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
 	return DiffResult{
 		Changes:             DiffChanges(changes),
 		ReplaceKeys:         replaces,
@@ -799,6 +822,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		ChangedKeys:         diffs,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
+		PrivateState:        privateState,
 	}, nil
 }
 
@@ -971,7 +995,9 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			p.configSource.MustFulfill(pluginConfig{
 				known: false,
 			})
-			return ConfigureResponse{}, nil
+			return ConfigureResponse{
+				PrivateState: req.PrivateState,
+			}, nil
 		}
 
 		mapped := removeSecrets(v)
@@ -1002,59 +1028,84 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		return ConfigureResponse{}, err
 	}
 
-	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
-	// want to make forward progress, even as the configure call is happening.
-	go func() {
-		var urn, typ, id *string
-		if req.URN != nil {
-			urnVal := string(*req.URN)
-			urn = &urnVal
-		}
-		if req.ID != nil {
-			idVal := string(*req.ID)
-			id = &idVal
-		}
-		if req.Type != nil {
-			typVal := string(*req.Type)
-			typ = &typVal
-		}
+	mprivatestate, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		err := fmt.Errorf("marshaling provider private state: %w", err)
+		p.configSource.MustReject(err)
+		return ConfigureResponse{}, err
+	}
 
-		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			Urn:                    urn,
-			Name:                   req.Name,
-			Type:                   typ,
-			Id:                     id,
-			AcceptSecrets:          true,
-			AcceptResources:        true,
-			SendsOldInputs:         true,
-			SendsOldInputsToDelete: true,
-			Variables:              config,
-			Args:                   minputs,
-		})
-		if err != nil {
-			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-			err = createConfigureError(rpcError)
-			p.configSource.MustReject(err)
-			return
+	var urn, typ, id *string
+	if req.URN != nil {
+		urnVal := string(*req.URN)
+		urn = &urnVal
+	}
+	if req.ID != nil {
+		idVal := string(*req.ID)
+		id = &idVal
+	}
+	if req.Type != nil {
+		typVal := string(*req.Type)
+		typ = &typVal
+	}
+
+	resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+		Urn:                    urn,
+		Name:                   req.Name,
+		Type:                   typ,
+		Id:                     id,
+		AcceptSecrets:          true,
+		AcceptResources:        true,
+		SendsOldInputs:         true,
+		SendsOldInputsToDelete: true,
+		Variables:              config,
+		Args:                   minputs,
+		PrivateState:           mprivatestate,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		err = createConfigureError(rpcError)
+		p.configSource.MustReject(err)
+		return ConfigureResponse{}, err
+	}
+
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		err := fmt.Errorf("unmarshaling provider private state: %w", err)
+		p.configSource.MustReject(err)
+		return ConfigureResponse{}, err
+	}
+
+	if p.protocol == nil {
+		p.protocol = &pluginProtocol{
+			acceptSecrets:                   resp.GetAcceptSecrets(),
+			acceptResources:                 resp.GetAcceptResources(),
+			supportsPreview:                 resp.GetSupportsPreview(),
+			acceptOutputs:                   resp.GetAcceptOutputs(),
+			supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
 		}
+	}
 
-		if p.protocol == nil {
-			p.protocol = &pluginProtocol{
-				acceptSecrets:                   resp.GetAcceptSecrets(),
-				acceptResources:                 resp.GetAcceptResources(),
-				supportsPreview:                 resp.GetSupportsPreview(),
-				acceptOutputs:                   resp.GetAcceptOutputs(),
-				supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
-			}
-		}
+	p.configSource.MustFulfill(pluginConfig{
+		known: true,
+	})
 
-		p.configSource.MustFulfill(pluginConfig{
-			known: true,
-		})
-	}()
-
-	return ConfigureResponse{}, nil
+	return ConfigureResponse{
+		PrivateState: privateState,
+	}, nil
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
@@ -1169,8 +1220,19 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return CheckResponse{}, err
+	}
+
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckResponse{Properties: inputs, Failures: failures}, nil
+	return CheckResponse{Properties: inputs, Failures: failures, PrivateState: privateState}, nil
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -1345,12 +1407,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
 		if !pcfg.known {
 			if p.legacyPreview {
-				return CreateResponse{Properties: req.Properties}, nil
+				return CreateResponse{Properties: req.Properties, PrivateState: req.PrivateState}, nil
 			}
 			return CreateResponse{}, nil
 		}
 		if !protocol.supportsPreview || p.disableProviderPreview {
-			return CreateResponse{Properties: req.Properties}, nil
+			return CreateResponse{Properties: req.Properties, PrivateState: req.PrivateState}, nil
 		}
 	}
 
@@ -1367,17 +1429,29 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		return CreateResponse{}, err
 	}
 
+	mprivatestate, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return CreateResponse{}, err
+	}
+
 	var id resource.ID
 	var liveObject *structpb.Struct
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
-		Urn:        string(req.URN),
-		Name:       req.URN.Name(),
-		Type:       req.URN.Type().String(),
-		Properties: mprops,
-		Timeout:    req.Timeout,
-		Preview:    req.Preview,
+		Urn:          string(req.URN),
+		Name:         req.URN.Name(),
+		Type:         req.URN.Type().String(),
+		Properties:   mprops,
+		Timeout:      req.Timeout,
+		Preview:      req.Preview,
+		PrivateState: mprivatestate,
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, resourceError = parseError(err)
@@ -1408,6 +1482,17 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		return CreateResponse{Status: resourceStatus}, err
 	}
 
+	state, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return CreateResponse{Status: resourceStatus}, err
+	}
+
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
@@ -1417,9 +1502,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 	return CreateResponse{
-		ID:         id,
-		Properties: outs,
-		Status:     resourceStatus,
+		ID:           id,
+		Properties:   outs,
+		Status:       resourceStatus,
+		PrivateState: state,
 	}, resourceError
 }
 
@@ -1474,6 +1560,17 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		return ReadResponse{Status: resource.StatusUnknown}, err
 	}
 
+	mPrivateState, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return ReadResponse{Status: resource.StatusUnknown}, err
+	}
+
 	// Now issue the read request over RPC, blocking until it finished.
 	var readID resource.ID
 	var liveObject *structpb.Struct
@@ -1481,12 +1578,13 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
-		Id:         string(req.ID),
-		Urn:        string(req.URN),
-		Name:       req.URN.Name(),
-		Type:       req.URN.Type().String(),
-		Properties: mstate,
-		Inputs:     minputs,
+		Id:           string(req.ID),
+		Urn:          string(req.URN),
+		Name:         req.URN.Name(),
+		Type:         req.URN.Type().String(),
+		Properties:   mstate,
+		Inputs:       minputs,
+		PrivateState: mPrivateState,
 	})
 	if err != nil {
 		resourceStatus, readID, liveObject, liveInputs, resourceError = parseError(err)
@@ -1644,6 +1742,16 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
+	mPrivatestate, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return UpdateResponse{Status: resource.StatusOK}, err
+	}
 
 	var liveObject *structpb.Struct
 	var resourceError error
@@ -1659,6 +1767,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		IgnoreChanges: req.IgnoreChanges,
 		Preview:       req.Preview,
 		OldInputs:     mOldInputs,
+		PrivateState:  mPrivatestate,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)
@@ -1683,6 +1792,17 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		return UpdateResponse{Status: resourceStatus}, err
 	}
 
+	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return UpdateResponse{Status: resourceStatus}, err
+	}
+
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
@@ -1691,7 +1811,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
-	return UpdateResponse{Properties: outs, Status: resourceStatus}, resourceError
+	return UpdateResponse{Properties: outs, Status: resourceStatus, PrivateState: privateState}, resourceError
 }
 
 // Delete tears down an existing resource.
@@ -1738,17 +1858,29 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		return DeleteResponse{}, err
 	}
 
+	mstate, err := MarshalProperties(req.PrivateState, MarshalOptions{
+		Label:            label + ".privateState",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return DeleteResponse{}, err
+	}
+
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
-		Id:         string(req.ID),
-		Urn:        string(req.URN),
-		Name:       req.URN.Name(),
-		Type:       req.URN.Type().String(),
-		Properties: moutputs,
-		Timeout:    req.Timeout,
-		OldInputs:  minputs,
+		Id:           string(req.ID),
+		Urn:          string(req.URN),
+		Name:         req.URN.Name(),
+		Type:         req.URN.Type().String(),
+		Properties:   moutputs,
+		Timeout:      req.Timeout,
+		OldInputs:    minputs,
+		PrivateState: mstate,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcErr)

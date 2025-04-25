@@ -2065,7 +2065,7 @@ func TestPrivateState(t *testing.T) {
 	t.Parallel()
 
 	// First time round this will be empty, then it will be "configure"
-	var expectedCheckConfig resource.PropertyMap
+	expectedCheckConfig := resource.PropertyMap{}
 	expectedDiffConfig := resource.PropertyMap{
 		"value": resource.NewStringProperty("check"),
 	}
@@ -2073,7 +2073,7 @@ func TestPrivateState(t *testing.T) {
 	expectedConfigure := expectedDiffConfig
 
 	// Likewise first time round this will be empty, then updated for create/update.
-	var expectedCheck resource.PropertyMap
+	expectedCheck := resource.PropertyMap{}
 	expectedDiff := resource.PropertyMap{
 		"value": resource.NewStringProperty("check"),
 	}
@@ -2181,7 +2181,7 @@ func TestPrivateState(t *testing.T) {
 					}, nil
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	inputs := resource.PropertyMap{

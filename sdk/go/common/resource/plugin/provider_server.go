@@ -280,6 +280,9 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	}
 
 	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
 		URN:           urn,
@@ -414,13 +417,24 @@ func (p *providerServer) Configure(ctx context.Context,
 		typ = &typVal
 	}
 
-	_, err := p.provider.Configure(ctx, ConfigureRequest{
-		URN:    urn,
-		Name:   req.Name,
-		Type:   typ,
-		ID:     id,
-		Inputs: inputs,
+	state, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Configure(ctx, ConfigureRequest{
+		URN:          urn,
+		Name:         req.Name,
+		Type:         typ,
+		ID:           id,
+		Inputs:       inputs,
+		PrivateState: state,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	mstate, err := MarshalProperties(resp.PrivateState, p.marshalOptions("privateState"))
 	if err != nil {
 		return nil, err
 	}
@@ -434,6 +448,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		SupportsPreview: true,
 		AcceptResources: true,
 		AcceptOutputs:   true,
+		PrivateState:    mstate,
 	}, nil
 }
 
@@ -464,6 +479,11 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	var autonaming *AutonamingOptions
 	if req.Autonaming != nil {
 		autonaming = &AutonamingOptions{
@@ -481,6 +501,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
 		Autonaming:    autonaming,
+		PrivateState:  privateState,
 	})
 	if err != nil {
 		return nil, err
@@ -496,7 +517,12 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	mPrivateState, err := MarshalProperties(resp.PrivateState, p.marshalOptions("privateState"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures, PrivateState: mPrivateState}, nil
 }
 
 func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
@@ -534,6 +560,12 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	diff, err := p.provider.Diff(ctx, DiffRequest{
 		URN:           urn,
 		Name:          req.Name,
@@ -544,6 +576,7 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		NewInputs:     newInputs,
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
+		PrivateState:  privateState,
 	})
 	if err != nil {
 		return nil, err
@@ -576,14 +609,19 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	if err != nil {
 		return nil, err
 	}
+	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := p.provider.Create(ctx, CreateRequest{
-		URN:        urn,
-		Name:       req.Name,
-		Type:       tokens.Type(req.Type),
-		Properties: inputs,
-		Timeout:    req.GetTimeout(),
-		Preview:    req.GetPreview(),
+		URN:          urn,
+		Name:         req.Name,
+		Type:         tokens.Type(req.Type),
+		Properties:   inputs,
+		Timeout:      req.GetTimeout(),
+		Preview:      req.GetPreview(),
+		PrivateState: privateState,
 	})
 	if err != nil {
 		return nil, err
@@ -594,9 +632,15 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
+	rpcPrivateState, err := MarshalProperties(resp.PrivateState, p.marshalOptions("privateState"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.CreateResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
+		Id:           string(resp.ID),
+		Properties:   rpcState,
+		PrivateState: rpcPrivateState,
 	}, nil
 }
 
@@ -627,13 +671,19 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := p.provider.Read(ctx, ReadRequest{
-		URN:    urn,
-		Name:   req.Name,
-		Type:   tokens.Type(req.Type),
-		ID:     requestID,
-		Inputs: inputs,
-		State:  state,
+		URN:          urn,
+		Name:         req.Name,
+		Type:         tokens.Type(req.Type),
+		ID:           requestID,
+		Inputs:       inputs,
+		State:        state,
+		PrivateState: privateState,
 	})
 	if err != nil {
 		return nil, err
@@ -649,10 +699,16 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
+	rpcPrivateState, err := MarshalProperties(resp.PrivateState, p.marshalOptions("privateState"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.ReadResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
-		Inputs:     rpcInputs,
+		Id:           string(resp.ID),
+		Properties:   rpcState,
+		Inputs:       rpcInputs,
+		PrivateState: rpcPrivateState,
 	}, nil
 }
 
@@ -691,6 +747,12 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := p.provider.Update(ctx, UpdateRequest{
 		URN:           urn,
 		Name:          req.Name,
@@ -702,6 +764,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		Timeout:       req.GetTimeout(),
 		IgnoreChanges: req.GetIgnoreChanges(),
 		Preview:       req.GetPreview(),
+		PrivateState:  privateState,
 	})
 	if err != nil {
 		return nil, err
@@ -712,7 +775,12 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
+	rpcPrivateState, err := MarshalProperties(resp.PrivateState, p.marshalOptions("privateState"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.UpdateResponse{Properties: rpcState, PrivateState: rpcPrivateState}, nil
 }
 
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
@@ -742,14 +810,20 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
+	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err = p.provider.Delete(ctx, DeleteRequest{
-		URN:     urn,
-		Name:    req.Name,
-		Type:    tokens.Type(req.Type),
-		ID:      id,
-		Inputs:  inputs,
-		Outputs: outputs,
-		Timeout: req.GetTimeout(),
+		URN:          urn,
+		Name:         req.Name,
+		Type:         tokens.Type(req.Type),
+		ID:           id,
+		Inputs:       inputs,
+		Outputs:      outputs,
+		Timeout:      req.GetTimeout(),
+		PrivateState: privateState,
 	}); err != nil {
 		return nil, err
 	}
