@@ -61,6 +61,15 @@ another paragraph`,
 								Ref: "#/types/test:index:EnumType",
 							},
 						},
+						"mapProp": {
+							Description: "this is a map property",
+							TypeSpec: schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
 					},
 					Required: []string{"prop1"},
 				},
@@ -190,5 +199,6 @@ Inputs marked with '*' are required
 (All input properties are implicitly available as output properties)
  - \x1b[1marrayProp\x1b[0m (\x1b[4m[]TestType\x1b[0m\x1b[4m\x1b[0m): this is an array property
  - \x1b[1menumProp\x1b[0m (\x1b[4menum(string){EnumValue1, value2}\x1b[0m\x1b[4m\x1b[0m): this is an enum property
+ - \x1b[1mmapProp\x1b[0m (\x1b[4mmap[string]string\x1b[0m\x1b[4m\x1b[0m): this is a map property
 `, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
 }
