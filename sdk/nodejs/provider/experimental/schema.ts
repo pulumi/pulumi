@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ComponentDefinition, TypeDefinition, PropertyDefinition } from "./analyzer";
+import { ComponentDefinition, TypeDefinition, PropertyDefinition, Dependency } from "./analyzer";
 
 export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
 
@@ -84,7 +84,7 @@ export function generateSchema(
     description: string,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
-    packageReferences: Record<string, string>,
+    dependencies: Dependency[],
     namespace?: string,
 ): PackageSpec {
     const result: PackageSpec = {
@@ -115,7 +115,7 @@ export function generateSchema(
                 respectSchemaVersion: true,
             },
         },
-        dependencies: [],
+        dependencies,
     };
 
     for (const [name, component] of Object.entries(components)) {
@@ -136,10 +136,6 @@ export function generateSchema(
             properties: type.properties,
             required: required(type.properties),
         };
-    }
-
-    for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
-        result.dependencies?.push({ name: packageName, version: packageVersion });
     }
 
     return result;

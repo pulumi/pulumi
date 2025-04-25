@@ -36,7 +36,7 @@ export type ComponentResourceConstructor = {
     // The ComponentResource base class has a 4 argument constructor, but
     // the user defined component has a 3 argument constructor without the
     // typestring.
-    new (name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
+    new(name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
 };
 
 /**
@@ -169,14 +169,14 @@ export class ComponentProvider implements Provider {
             this.packageJSON,
             new Set(Object.keys(this.componentConstructors)),
         );
-        const { components, typeDefinitions, packageReferences } = analyzer.analyze();
+        const { components, typeDefinitions, dependencies } = analyzer.analyze();
         const schema = generateSchema(
             this.name,
             this.version,
             this.packageJSON.description,
             components,
             typeDefinitions,
-            packageReferences,
+            dependencies,
             this.namespace,
         );
         this.cachedSchema = JSON.stringify(schema);
