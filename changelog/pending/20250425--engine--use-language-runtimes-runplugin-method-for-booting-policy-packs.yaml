@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Use language runtimes `RunPlugin` method for booting policy packs
