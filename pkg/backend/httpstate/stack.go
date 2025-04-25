@@ -118,12 +118,14 @@ type cloudStack struct {
 	tags map[apitype.StackTagName]string
 }
 
-func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
+func newStack(apistack apitype.Stack, b *cloudBackend) (Stack, error) {
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
 
 	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
-	contract.AssertNoErrorf(err, "unable to look up default org")
+	if err != nil {
+		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
+	}
 
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
@@ -139,7 +141,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		tags:             apistack.Tags,
 		b:                b,
 		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
-	}
+	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }

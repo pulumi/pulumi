@@ -945,7 +945,7 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 		return nil, err
 	}
 
-	return newStack(stack, b), nil
+	return newStack(stack, b)
 }
 
 // Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
@@ -1008,10 +1008,12 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'\n", stack.Ref())
+	stack, err := newStack(apistack, b)
+	if err != nil {
+		fmt.Printf("Created stack '%s'\n", stack.Ref())
+	}
 
-	return stack, nil
+	return stack, err
 }
 
 func (b *cloudBackend) ListStacks(
