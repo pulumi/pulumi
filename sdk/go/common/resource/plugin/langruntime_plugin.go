@@ -669,6 +669,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		Args: info.Args,
 		Env:  info.Env,
 		Info: minfo,
+		Kind: info.Kind,
 	})
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering
