@@ -177,7 +177,7 @@
                 "$ref": "#/$defs/functionSpec"
             },
             "propertyNames": {
-                "$ref": "#/$defs/token"
+                "$ref": "#/$defs/functionToken"
             }
         },
         "language": {
@@ -209,6 +209,12 @@
             "type": "string",
             "$comment": "In the regex below, the 'module' portion of the token is optional. However, a missing module component creates a '::', which breaks URNs ('::' is the URN delimiter). We have many test schemas that use an empty module component successfully, as they never create URNs; while these are _probably_ the only places that need updating, it might be possible that there are module-less type tokens in the wild elsewhere and we may need to remain compatible with those tokens.",
             "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/]*$"
+        },
+        "functionToken": {
+            "title": "Function Token",
+            "type": "string",
+            "$comment": "Some functions, such as provider methods, may have hyphens, for example in the case of a hyphenated provider name, which becomes part of the function name. This regex is the same as for Token but allows for a hyphen.",
+            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$"
         },
         "schemaStringMap": {
             "type": "object",
