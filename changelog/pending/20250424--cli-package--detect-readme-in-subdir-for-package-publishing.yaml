@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Detect readme in subdir for package publishing

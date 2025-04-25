@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Change default registry source to private

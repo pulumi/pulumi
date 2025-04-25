@@ -247,6 +247,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	for _, tURN := range preOpts.Target {
 		sharedArgs = append(sharedArgs, "--target="+tURN)
 	}
+	for _, eURN := range preOpts.Exclude {
+		sharedArgs = append(sharedArgs, "--exclude="+eURN)
+	}
 	for _, pack := range preOpts.PolicyPacks {
 		sharedArgs = append(sharedArgs, "--policy-pack="+pack)
 	}
@@ -255,6 +258,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
+	}
+	if preOpts.ExcludeDependents {
+		sharedArgs = append(sharedArgs, "--exclude-dependents")
 	}
 	if preOpts.Parallel > 0 {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
@@ -386,6 +392,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	for _, tURN := range upOpts.Target {
 		sharedArgs = append(sharedArgs, "--target="+tURN)
 	}
+	for _, eURN := range upOpts.Exclude {
+		sharedArgs = append(sharedArgs, "--exclude="+eURN)
+	}
 	for _, pack := range upOpts.PolicyPacks {
 		sharedArgs = append(sharedArgs, "--policy-pack="+pack)
 	}
@@ -394,6 +403,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
+	}
+	if upOpts.ExcludeDependents {
+		sharedArgs = append(sharedArgs, "--exclude-dependents")
 	}
 	if upOpts.Parallel > 0 {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
@@ -755,6 +767,15 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) []string 
 	for _, tURN := range o.Target {
 		args = append(args, "--target="+tURN)
 	}
+	for _, eURN := range o.Exclude {
+		args = append(args, "--exclude="+eURN)
+	}
+	if o.TargetDependents {
+		args = append(args, "--target-dependents")
+	}
+	if o.ExcludeDependents {
+		args = append(args, "--exclude-dependents")
+	}
 	if o.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", o.Parallel))
 	}
@@ -1002,8 +1023,14 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 	for _, tURN := range destroyOpts.Target {
 		args = append(args, "--target="+tURN)
 	}
+	for _, eURN := range destroyOpts.Exclude {
+		args = append(args, "--exclude="+eURN)
+	}
 	if destroyOpts.TargetDependents {
 		args = append(args, "--target-dependents")
+	}
+	if destroyOpts.ExcludeDependents {
+		args = append(args, "--exclude-dependents")
 	}
 	if destroyOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))

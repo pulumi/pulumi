@@ -1,5 +1,81 @@
 # Changelog
 
+## 3.165.0 (2025-04-25)
+
+
+### Features
+
+- [cli] Add PULUMI_RUN_PROGRAM environment variable to globally set --run-program
+  [#19293](https://github.com/pulumi/pulumi/pull/19293)
+
+- [auto/{go,nodejs,python}] Add --run-program to automation api for destroy and refresh
+  [#19218](https://github.com/pulumi/pulumi/pull/19218)
+
+- [auto/nodejs] Add the ability to configure a remote executor image
+  [#19286](https://github.com/pulumi/pulumi/pull/19286)
+
+- [programgen] Support provider resources in generatehcl2definition
+  [#19192](https://github.com/pulumi/pulumi/pull/19192)
+
+- [sdk/dotnet] Update dotnet to v3.79.0
+  [#19302](https://github.com/pulumi/pulumi/pull/19302)
+
+- [cli/package] Change default registry source to private
+
+- [sdk/nodejs] Add resourceName and resourceType to get the runtime name and type token for resources
+  [#18842](https://github.com/pulumi/pulumi/pull/18842)
+
+- [sdk/nodejs] Add `--exclude` and `--exclude-dependents` to the NodeJS Automation API
+  [#19270](https://github.com/pulumi/pulumi/pull/19270)
+
+- [sdk/python] Add bootstrap-less mode for Python component providers
+  [#19198](https://github.com/pulumi/pulumi/pull/19198)
+
+- [sdk/python] Add pulumi.type_token decorator
+  [#19309](https://github.com/pulumi/pulumi/pull/19309)
+
+
+### Bug Fixes
+
+- [engine] Fix ImportID being lost from state during update operations
+  [#19314](https://github.com/pulumi/pulumi/pull/19314)
+
+- [pkg] Update Dependencies in the JSON schema
+  [#19282](https://github.com/pulumi/pulumi/pull/19282)
+
+- [cli/import] Fix an error when importing a resource that already exists with the matching ID
+  [#19290](https://github.com/pulumi/pulumi/pull/19290)
+
+- [cli/install] Handle local plugin paths with a version number
+  [#19254](https://github.com/pulumi/pulumi/pull/19254)
+
+- [cli/package] Detect readme in subdir for package publishing
+  [#19298](https://github.com/pulumi/pulumi/pull/19298)
+
+- [programgen] Fix generation of ImportID when building programs from state
+  [#19237](https://github.com/pulumi/pulumi/pull/19237)
+
+- [sdk/go] Make log message for "Hiding logs" less visible
+  [#19261](https://github.com/pulumi/pulumi/pull/19261)
+
+- [sdk/go] Improve output when plugin crashes
+  [#19305](https://github.com/pulumi/pulumi/pull/19305)
+
+- [components/nodejs] Fix component construct when the there's a namespace in the `name` field in `package.json
+  [#19242](https://github.com/pulumi/pulumi/pull/19242)
+
+- [sdk/nodejs] Don't discard non-outputty component outputs
+  [#19228](https://github.com/pulumi/pulumi/pull/19228)
+
+- [sdk/nodejs] Use PackageSpec.Dependencies for component provider dependencies
+  [#19236](https://github.com/pulumi/pulumi/pull/19236)
+
+
+### Miscellaneous
+
+- [sdk/{nodejs,python}] Don’t install python/nodejs runtimes during make build
+  [#19250](https://github.com/pulumi/pulumi/pull/19250)
+
 ## 3.163.0 (2025-04-16)
 
 

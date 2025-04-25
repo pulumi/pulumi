@@ -76,6 +76,12 @@ func TestImportOption(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: req.NewInputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					assert.Equal(t, expectedInputs, req.Inputs)
 					assert.Equal(t, expectedState, req.State)
@@ -94,6 +100,7 @@ func TestImportOption(t *testing.T) {
 	}
 
 	readID, importID, inputs := resource.ID(""), resource.ID("id"), resource.PropertyMap{}
+	var expectedOutputs resource.PropertyMap
 	expectedID := resource.ID("imported-id")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if readID != "" {
@@ -106,6 +113,7 @@ func TestImportOption(t *testing.T) {
 			})
 			assert.NoError(t, err)
 			assert.Equal(t, expectedID, resp.ID)
+			assert.Equal(t, expectedOutputs, resp.Outputs)
 		}
 		return nil
 	})
@@ -125,6 +133,7 @@ func TestImportOption(t *testing.T) {
 
 	// Run a second update after fixing the inputs. The import should succeed.
 	inputs["foo"] = resource.NewStringProperty("bar")
+	expectedOutputs = readOutputs
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -167,6 +176,7 @@ func TestImportOption(t *testing.T) {
 
 	// Change a property value and run a third update. The update should succeed.
 	inputs["foo"] = resource.NewStringProperty("rab")
+	expectedOutputs = inputs
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -256,6 +266,7 @@ func TestImportOption(t *testing.T) {
 	// a delete-replaced.
 	importID = "id"
 	expectedID = resource.ID("imported-id")
+	expectedOutputs = readOutputs
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {

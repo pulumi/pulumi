@@ -17,9 +17,13 @@ package plugin
 import (
 	"context"
 	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -186,4 +190,24 @@ func TestHealthCheck(t *testing.T) {
 			server.Stop()
 		})
 	}
+}
+
+func TestStartupFailure(t *testing.T) {
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	pluginPath, err := filepath.Abs("./testdata/provider-language")
+	require.NoError(t, err)
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
+
+	// Check exec.LookPath finds the plugin
+	file, err := exec.LookPath("pulumi-language-test")
+	require.NoError(t, err)
+	require.Contains(t, file, "pulumi-language-test")
+
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin", "test-plugin"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin/test-plugin]: not implemented")
 }

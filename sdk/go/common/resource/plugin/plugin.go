@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -345,12 +346,19 @@ func newPlugin[T any](
 				return nil, nil, errRunPolicyModuleNotFound
 			}
 
+			var errMsg string
+			detailed, ok := rpcerror.FromError(readerr)
+			if ok {
+				errMsg = detailed.Error()
+			} else {
+				errMsg = readerr.Error()
+			}
 			// Fall back to a generic, opaque error.
 			if portString == "" {
-				return nil, nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
+				return nil, nil, fmt.Errorf("could not read plugin [%v]: %s", bin, errMsg)
 			}
-			return nil, nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
-				bin, portString, readerr)
+			return nil, nil, fmt.Errorf("failure reading plugin [%v] (read '%v'): %s",
+				bin, portString, errMsg)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
