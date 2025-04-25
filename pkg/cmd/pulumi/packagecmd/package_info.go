@@ -72,10 +72,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return showProviderInfo(spec, args, stdout)
 			} else if resource == "" {
 				return showModuleInfo(spec, module, stdout)
-			} else {
-				return showResourceInfo(spec, module, resource, stdout)
 			}
-			return nil
+			return showResourceInfo(spec, module, resource, stdout)
 		},
 	}
 
