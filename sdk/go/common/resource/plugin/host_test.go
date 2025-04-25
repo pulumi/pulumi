@@ -124,6 +124,11 @@ func TestIsLocalPluginPath(t *testing.T) {
 			path:     "", // Can't be a valid plugin name
 			expected: true,
 		},
+		{
+			name:     "private github URL",
+			path:     "github.com/pulumi/home",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
