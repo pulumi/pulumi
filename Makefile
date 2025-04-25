@@ -152,6 +152,9 @@ lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
+format:: ensure
+	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 

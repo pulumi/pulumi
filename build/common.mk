@@ -249,7 +249,6 @@ format::
 		-path "./*/compilation_error/*" -or \
 		-path "./*/testdata/*" \
 	\) | xargs gofumpt -w
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
 
 .SECONDEXPANSION: # Needed by .make/ensure/% and .make/ensure/__%.
 
