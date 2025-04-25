@@ -89,6 +89,8 @@ type SameStep struct {
 var _ Step = (*SameStep)(nil)
 
 func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
+	contract.Requiref(old != new, "old and new", "must not be the same")
+
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is custom")
@@ -98,7 +100,7 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
-	contract.Requiref(new == old || new.ID == "", "new", "must not have an ID")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
 	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
 		"new", "must have or be a provider if it is a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")

@@ -1324,7 +1324,9 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					}
 				}
 
-				rootStep := NewSameStep(sg.deployment, event, old, old)
+				new := old.Copy()
+				new.ID = ""
+				rootStep := NewSameStep(sg.deployment, event, old, new)
 				steps = append(steps, rootStep)
 				return steps, nil
 			}

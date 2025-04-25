@@ -63,22 +63,22 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
-	secretsManager   secrets.Manager          // The default secrets manager to use
-	resources        []*resource.State        // The list of resources operated upon by this plan
-	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
-	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
+	persister      SnapshotPersister    // The persister responsible for invalidating and persisting the snapshot
+	baseSnapshot   *deploy.Snapshot     // The base snapshot for this plan
+	secretsManager secrets.Manager      // The default secrets manager to use
+	resources      []*resource.State    // The list of resources operated upon by this plan
+	operations     []resource.Operation // The set of operations known to be outstanding in this plan
+
+	// The set of resources that have been operated upon already by this plan. These resources could also have
+	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
+	dones map[*resource.State]bool
+
 	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
 
 	refreshDeletes map[resource.URN]bool // The set of resources that have been deleted by a refresh in this plan.
-
-	// The set of resources that have been deleted. These resources could also have been added to `resources`
-	// by other operations but need to be filtered out before writing the snapshot.
-	deletes map[*resource.State]bool
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -444,19 +444,6 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 				step.Old().Protect, step.Op())
 
 			if !step.Old().PendingReplacement {
-				// If this is a delete-replace operation, we don't want to mark the resource as deleted
-				// because we want to keep the new resource. If this is a normal delete/discard operation we
-				// need to add the resource to the "deletes" set so that we can filter it out when writing the
-				// snapshot.
-				op := step.Op()
-				contract.Assertf(
-					op == deploy.OpDiscardReplaced || op == deploy.OpReadDiscard ||
-						op == deploy.OpDeleteReplaced || op == deploy.OpDelete,
-					"unexpected step.Op(): %q", op)
-
-				if op == deploy.OpDelete || op == deploy.OpReadDiscard {
-					dsm.manager.deletes[step.Old()] = true
-				}
 				dsm.manager.markDone(step.Old())
 			}
 		}
@@ -651,9 +638,10 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// Start with a copy of the resources produced during the evaluation of the current plan.
 	resources := make([]*resource.State, 0, len(sm.resources))
 
-	// if any resources have been deleted we need to filter them out here
+	// If any resources are "done", we need to filter them out here. These could be resources that have been later
+	// deleted, or had some other operation performed on them such as an import then an update.
 	for _, res := range sm.resources {
-		if !sm.deletes[res] {
+		if !sm.dones[res] {
 			resources = append(resources, res)
 		}
 	}
@@ -826,7 +814,6 @@ func NewSnapshotManager(
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
-		deletes:          make(map[*resource.State]bool),
 		refreshDeletes:   make(map[resource.URN]bool),
 	}
 

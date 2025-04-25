@@ -45,7 +45,6 @@ type JournalEntries []JournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
-	deletes := make(map[*resource.State]bool)
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	refreshDeletes := make(map[resource.URN]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
@@ -101,10 +100,6 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				}
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 				if old := e.Step.Old(); !old.PendingReplacement {
-					op := e.Step.Op()
-					if op == deploy.OpDelete || op == deploy.OpReadDiscard {
-						deletes[old] = true
-					}
 					dones[old] = true
 				}
 			case deploy.OpReplace:
@@ -140,7 +135,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// resources before writing the actual snapshot.
 	filteredResources := []*resource.State{}
 	for _, res := range resources {
-		if !deletes[res] {
+		if !dones[res] {
 			filteredResources = append(filteredResources, res)
 		}
 	}
