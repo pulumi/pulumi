@@ -66,6 +66,8 @@ type CreateStackRequest struct {
 
 	// An optional state to initialize the stack with.
 	State *UntypedDeployment `json:"state,omitempty"`
+
+	Config *StackConfig `json:"config,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.

@@ -405,7 +405,10 @@ func (c *backendClient) GetStackResourceOutputs(
 
 // ErrTeamsNotSupported is returned by backends
 // which do not support the teams feature.
-var ErrTeamsNotSupported = errors.New("teams are not supported")
+var (
+	ErrTeamsNotSupported  = errors.New("teams are not supported")
+	ErrConfigNotSupported = errors.New("remote config is not supported")
+)
 
 // CreateStackOptions provides options for stack creation.
 // At present, options only apply to the Service.
@@ -418,6 +421,10 @@ type CreateStackOptions struct {
 	// The backend may return ErrTeamsNotSupported
 	// if Teams is specified but not supported.
 	Teams []string
+
+	// Config is the optional cloud stack config to use instead of reading from a local file on disk.
+	// This is only used by the Service backend.
+	Config *apitype.StackConfig
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

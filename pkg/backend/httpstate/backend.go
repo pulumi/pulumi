@@ -991,7 +991,7 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
