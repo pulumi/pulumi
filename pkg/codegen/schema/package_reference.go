@@ -459,7 +459,7 @@ func (p *PartialPackage) bindConfig() ([]*Property, error) {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
 	}
 
-	config, diags, err := bindConfig(spec, p.types, SchemaValidationOptions{})
+	config, diags, err := bindConfig(spec, p.types, ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +479,7 @@ func (p *PartialPackage) Provider() (*Resource, error) {
 		return p.def.Provider, nil
 	}
 
-	provider, diags, err := p.types.bindResourceDef("pulumi:providers:"+p.spec.Name, SchemaValidationOptions{})
+	provider, diags, err := p.types.bindResourceDef("pulumi:providers:"+p.spec.Name, ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -566,19 +566,19 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	}
 
 	var diags hcl.Diagnostics
-	provider, resources, resourceDiags, err := p.types.finishResources(sortedKeys(p.spec.Resources), SchemaValidationOptions{})
+	provider, resources, resourceDiags, err := p.types.finishResources(sortedKeys(p.spec.Resources), ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
 	diags = diags.Extend(resourceDiags)
 
-	functions, functionDiags, err := p.types.finishFunctions(sortedKeys(p.spec.Functions), SchemaValidationOptions{})
+	functions, functionDiags, err := p.types.finishFunctions(sortedKeys(p.spec.Functions), ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
 	diags = diags.Extend(functionDiags)
 
-	typeList, typeDiags, err := p.types.finishTypes(sortedKeys(p.spec.Types), SchemaValidationOptions{})
+	typeList, typeDiags, err := p.types.finishTypes(sortedKeys(p.spec.Types), ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -652,7 +652,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 		return functions[i].Token < functions[j].Token
 	})
 
-	typeList, diags, err := p.types.finishTypes(nil, SchemaValidationOptions{})
+	typeList, diags, err := p.types.finishTypes(nil, ValidationOptions{})
 	contract.AssertNoErrorf(err, "error snapshotting types")
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
@@ -705,7 +705,7 @@ func (p partialPackageTypes) Get(token string) (Type, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	typ, diags, err := p.types.bindTypeDef(token, SchemaValidationOptions{})
+	typ, diags, err := p.types.bindTypeDef(token, ValidationOptions{})
 	if err != nil {
 		return nil, false, err
 	}
@@ -748,7 +748,7 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	res, diags, err := p.types.bindResourceDef(token, SchemaValidationOptions{})
+	res, diags, err := p.types.bindResourceDef(token, ValidationOptions{})
 	if err != nil {
 		return nil, false, err
 	}
@@ -762,7 +762,7 @@ func (p partialPackageResources) GetType(token string) (*ResourceType, bool, err
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	typ, diags, err := p.types.bindResourceTypeDef(token, SchemaValidationOptions{})
+	typ, diags, err := p.types.bindResourceTypeDef(token, ValidationOptions{})
 	if err != nil {
 		return nil, false, err
 	}
@@ -805,7 +805,7 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	fn, diags, err := p.types.bindFunctionDef(token, SchemaValidationOptions{})
+	fn, diags, err := p.types.bindFunctionDef(token, ValidationOptions{})
 	if err != nil {
 		return nil, false, err
 	}

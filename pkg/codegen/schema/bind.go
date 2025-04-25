@@ -142,7 +142,7 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //     diagnostic error that is appropriately tagged with a JSON pointer.
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	validate bool,
-	options SchemaValidationOptions,
+	options ValidationOptions,
 ) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
@@ -327,13 +327,13 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 }
 
 // Options that affect the validation of the packgae schema.
-type SchemaValidationOptions struct {
+type ValidationOptions struct {
 	AllowDanglingReferences bool
 }
 
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
-func BindSpec(spec PackageSpec, loader Loader, options SchemaValidationOptions) (*Package, hcl.Diagnostics, error) {
+func BindSpec(spec PackageSpec, loader Loader, options ValidationOptions) (*Package, hcl.Diagnostics, error) {
 	return bindSpec(spec, nil, loader, true, options)
 }
 
@@ -341,7 +341,7 @@ func BindSpec(spec PackageSpec, loader Loader, options SchemaValidationOptions) 
 // input against the Pulumi package metaschema. ImportSpec should only be used to load packages that are assumed to be
 // well-formed (e.g. packages referenced for program code generation or by a root package being used for SDK
 // generation). BindSpec should be used to load and validate a package spec prior to generating its SDKs.
-func ImportSpec(spec PackageSpec, languages map[string]Language, options SchemaValidationOptions) (*Package, error) {
+func ImportSpec(spec PackageSpec, languages map[string]Language, options ValidationOptions) (*Package, error) {
 	// Call the internal implementation that includes a loader parameter.
 	pkg, diags, err := bindSpec(spec, languages, nil, false, options)
 	if err != nil {
@@ -737,7 +737,7 @@ func (t *types) newUnionType(
 	return union
 }
 
-func (t *types) bindTypeDef(token string, options SchemaValidationOptions) (Type, hcl.Diagnostics, error) {
+func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.Diagnostics, error) {
 	// Check to see if this type has already been bound.
 	if typ, ok := t.typeDefs[token]; ok {
 		return typ, nil, nil
@@ -779,7 +779,7 @@ func (t *types) bindTypeDef(token string, options SchemaValidationOptions) (Type
 	return enum, diags, nil
 }
 
-func (t *types) bindResourceTypeDef(token string, options SchemaValidationOptions) (*ResourceType, hcl.Diagnostics, error) {
+func (t *types) bindResourceTypeDef(token string, options ValidationOptions) (*ResourceType, hcl.Diagnostics, error) {
 	if typ, ok := t.resources[token]; ok {
 		return typ, nil, nil
 	}
@@ -796,7 +796,12 @@ func (t *types) bindResourceTypeDef(token string, options SchemaValidationOption
 	return typ, diags, nil
 }
 
-func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool, options SchemaValidationOptions) (Type, hcl.Diagnostics, error) {
+func (t *types) bindTypeSpecRef(
+	path string,
+	spec TypeSpec,
+	inputShape bool,
+	options ValidationOptions,
+) (Type, hcl.Diagnostics, error) {
 	path = path + "/$ref"
 
 	// Explicitly handle built-in types so that we don't have to handle this type of path during ref parsing.
@@ -906,7 +911,12 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool, opt
 	}
 }
 
-func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool, options SchemaValidationOptions) (Type, hcl.Diagnostics, error) {
+func (t *types) bindTypeSpecOneOf(
+	path string,
+	spec TypeSpec,
+	inputShape bool,
+	options ValidationOptions,
+) (Type, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 	if len(spec.OneOf) < 2 {
 		diags = diags.Append(errorf(path+"/oneOf", "oneOf should list at least two types"))
@@ -945,7 +955,12 @@ func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool, o
 	return t.newUnionType(elements, defaultType, discriminator, mapping), diags, nil
 }
 
-func (t *types) bindTypeSpec(path string, spec TypeSpec, inputShape bool, options SchemaValidationOptions) (result Type, diags hcl.Diagnostics, err error) {
+func (t *types) bindTypeSpec(
+	path string,
+	spec TypeSpec,
+	inputShape bool,
+	options ValidationOptions,
+) (result Type, diags hcl.Diagnostics, err error) {
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
 	// `plainProperty`.
@@ -989,7 +1004,12 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec, inputShape bool, option
 		contract.Assertf(err == nil, "error binding type spec")
 
 		if spec.AdditionalProperties != nil {
-			et, elementDiags, err := t.bindTypeSpec(path+"/additionalProperties", *spec.AdditionalProperties, inputShape, options)
+			et, elementDiags, err := t.bindTypeSpec(
+				path+"/additionalProperties",
+				*spec.AdditionalProperties,
+				inputShape,
+				options,
+			)
 			diags = diags.Extend(elementDiags)
 			if err != nil {
 				return nil, diags, err
@@ -1124,7 +1144,7 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
 func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
-	inputShape bool, options SchemaValidationOptions,
+	inputShape bool, options ValidationOptions,
 ) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
@@ -1197,7 +1217,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string,
 	spec ObjectTypeSpec,
-	options SchemaValidationOptions,
+	options ValidationOptions,
 ) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
@@ -1247,7 +1267,12 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 // bindAnonymousObjectType is used for binding object types that do not appear as part of a package's defined types.
 // This includes state inputs for resources that have them and function inputs and outputs.
 // Object types defined by a package are bound by bindTypeDef.
-func (t *types) bindAnonymousObjectType(path, token string, spec ObjectTypeSpec, options SchemaValidationOptions) (*ObjectType, hcl.Diagnostics, error) {
+func (t *types) bindAnonymousObjectType(
+	path,
+	token string,
+	spec ObjectTypeSpec,
+	options ValidationOptions,
+) (*ObjectType, hcl.Diagnostics, error) {
 	obj := &ObjectType{}
 	obj.InputShape = &ObjectType{PlainShape: obj}
 	obj.IsOverlay = spec.IsOverlay
@@ -1301,7 +1326,7 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}, diags
 }
 
-func (t *types) finishTypes(tokens []string, options SchemaValidationOptions) ([]Type, hcl.Diagnostics, error) {
+func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Ensure all of the types defined by the package are bound.
@@ -1391,7 +1416,13 @@ func checkDuplicates(
 	return diags
 }
 
-func bindMethods(path, resourceToken string, methods map[string]string, types *types, options SchemaValidationOptions) ([]*Method, hcl.Diagnostics, error) {
+func bindMethods(
+	path,
+	resourceToken string,
+	methods map[string]string,
+	types *types,
+	options ValidationOptions,
+) ([]*Method, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	names := slice.Prealloc[string](len(methods))
@@ -1468,7 +1499,7 @@ func bindParameterization(spec *ParameterizationSpec) (*Parameterization, hcl.Di
 	}, nil
 }
 
-func bindConfig(spec ConfigSpec, types *types, options SchemaValidationOptions) ([]*Property, hcl.Diagnostics, error) {
+func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Property, hcl.Diagnostics, error) {
 	properties, _, diags, err := types.bindProperties("#/config/variables", spec.Variables,
 		"#/config/defaults", spec.Required, false, options)
 
@@ -1482,7 +1513,10 @@ func bindConfig(spec ConfigSpec, types *types, options SchemaValidationOptions) 
 	return properties, diags, err
 }
 
-func (t *types) bindResourceDef(token string, options SchemaValidationOptions) (res *Resource, diags hcl.Diagnostics, err error) {
+func (t *types) bindResourceDef(
+	token string,
+	options ValidationOptions,
+) (res *Resource, diags hcl.Diagnostics, err error) {
 	if res, ok := t.resourceDefs[token]; ok {
 		return res, nil, nil
 	}
@@ -1507,7 +1541,12 @@ func (t *types) bindResourceDef(token string, options SchemaValidationOptions) (
 	return res, diags, nil
 }
 
-func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl *Resource, options SchemaValidationOptions) (hcl.Diagnostics, error) {
+func (t *types) bindResourceDetails(
+	path,
+	token string,
+	spec ResourceSpec,
+	decl *Resource, options ValidationOptions,
+) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	if len(spec.Plain) > 0 {
@@ -1595,7 +1634,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	return diags, nil
 }
 
-func (t *types) bindProvider(decl *Resource, options SchemaValidationOptions) (hcl.Diagnostics, error) {
+func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Diagnostics, error) {
 	spec, ok, err := t.spec.GetResourceSpec("pulumi:providers:" + t.pkg.Name)
 	if err != nil {
 		return nil, err
@@ -1639,7 +1678,10 @@ func (t *types) bindProvider(decl *Resource, options SchemaValidationOptions) (h
 	return diags, nil
 }
 
-func (t *types) finishResources(tokens []string, options SchemaValidationOptions) (*Resource, []*Resource, hcl.Diagnostics, error) {
+func (t *types) finishResources(
+	tokens []string,
+	options ValidationOptions,
+) (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:"+t.pkg.Name, options)
@@ -1665,7 +1707,7 @@ func (t *types) finishResources(tokens []string, options SchemaValidationOptions
 	return provider.Resource, resources, diags, nil
 }
 
-func (t *types) bindFunctionDef(token string, options SchemaValidationOptions) (*Function, hcl.Diagnostics, error) {
+func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Function, hcl.Diagnostics, error) {
 	if fn, ok := t.functionDefs[token]; ok {
 		return fn, nil, nil
 	}
@@ -1755,7 +1797,12 @@ func (t *types) bindFunctionDef(token string, options SchemaValidationOptions) (
 		// compute the return type from the spec
 		if spec.ReturnType.ObjectTypeSpec != nil {
 			// bind as an object type
-			outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.ReturnType.ObjectTypeSpec, options)
+			outs, outDiags, err := t.bindAnonymousObjectType(
+				path+"/outputs",
+				token+"Result",
+				*spec.ReturnType.ObjectTypeSpec,
+				options,
+			)
 			diags = diags.Extend(outDiags)
 			if err != nil {
 				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
@@ -1809,7 +1856,7 @@ func (t *types) bindFunctionDef(token string, options SchemaValidationOptions) (
 	return fn, diags, nil
 }
 
-func (t *types) finishFunctions(tokens []string, options SchemaValidationOptions) ([]*Function, hcl.Diagnostics, error) {
+func (t *types) finishFunctions(tokens []string, options ValidationOptions) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	functions := slice.Prealloc[*Function](len(tokens))

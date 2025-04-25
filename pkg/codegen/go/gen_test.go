@@ -210,7 +210,7 @@ func readSchemaFile(file string) *schema.Package {
 		panic(err)
 	}
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.SchemaValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -233,7 +233,7 @@ func readYamlSchemaFile(file string) *schema.Package {
 		panic(err)
 	}
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.SchemaValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{})
 	if err != nil {
 		panic(err)
 	}
@@ -460,7 +460,7 @@ func TestTokenToResource(t *testing.T) {
 }
 
 func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
-	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{}, schema.SchemaValidationOptions{})
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{}, schema.ValidationOptions{})
 	assert.NoError(t, err)
 	return importedPkg
 }
@@ -587,7 +587,7 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	}
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.SchemaValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{})
 	require.NoError(t, err)
 	t.Logf("%v", diags)
 	require.False(t, diags.HasErrors())

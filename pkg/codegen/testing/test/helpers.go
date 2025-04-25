@@ -58,7 +58,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 	}
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.SchemaValidationOptions{})
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{})
 	if err != nil {
 		return nil, err
 	} else if diags.HasErrors() {

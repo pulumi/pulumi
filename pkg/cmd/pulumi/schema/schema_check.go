@@ -75,7 +75,7 @@ func newSchemaCheckCommand() *cobra.Command {
 				return fmt.Errorf("failed to unmarshal schema: %w", err)
 			}
 
-			_, diags, err := schema.BindSpec(pkgSpec, nil, schema.SchemaValidationOptions{
+			_, diags, err := schema.BindSpec(pkgSpec, nil, schema.ValidationOptions{
 				AllowDanglingReferences: schemaCheckArgs.allowDanglingReferences,
 			})
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
