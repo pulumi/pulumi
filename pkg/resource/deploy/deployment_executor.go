@@ -529,6 +529,14 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		if async {
 			ex.asyncEventsExpected++
 		}
+	case ContinueResourceImportEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceImportEvent")
+		ex.asyncEventsExpected--
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromImport(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
 	case ContinueResourceDiffEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
 		ex.asyncEventsExpected--
