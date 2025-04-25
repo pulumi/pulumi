@@ -130,7 +130,7 @@ func TestGetFunctionName(t *testing.T) {
 			"pkg:index:getSomeFunction": {},
 			"pkg:conflict:newResource":  {},
 		},
-	}, nil)
+	}, nil, schema.ValidationOptions{})
 	require.NoError(t, err)
 	d := DocLanguageHelper{}
 	d.GeneratePackagesMap(pkg, "test", GoPackageInfo{})
@@ -163,7 +163,7 @@ func TestGetFunctionNameWithoutPackageMapDoesNotPanic(t *testing.T) {
 		Functions: map[string]schema.FunctionSpec{
 			"pkg:index:getSomeFunction": {},
 		},
-	}, nil)
+	}, nil, schema.ValidationOptions{})
 	require.NoError(t, err)
 	d := DocLanguageHelper{}
 
