@@ -197,13 +197,13 @@ func TestStartupFailure(t *testing.T) {
 	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
-	pluginPath, err := filepath.Abs("./testdata/language")
+	pluginPath, err := filepath.Abs("./testdata/provider-language")
 	require.NoError(t, err)
 
 	path := os.Getenv("PATH")
 	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
 
-	// Check exec.LookPath finds the analyzer
+	// Check exec.LookPath finds the plugin
 	file, err := exec.LookPath("pulumi-language-test")
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
