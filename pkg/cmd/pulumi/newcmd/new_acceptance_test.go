@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -88,6 +89,8 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
+
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
@@ -101,7 +104,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
+	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, stackName)
 }
 
@@ -118,6 +121,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	// instead of a constant.
 	unixTsNanos := time.Now().UnixNano()
 	numericProjectName := strconv.Itoa(int(unixTsNanos))
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), numericProjectName, stackName)
 
 	args := newArgs{
 		interactive:       false,
@@ -137,7 +141,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 
 	assert.Equal(t, p.Name.String(), numericProjectName)
 
-	assert.Equal(t, stackName, loadStackName(t))
+	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, stackName)
 }
 
@@ -149,6 +153,8 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
+
 	args := newArgs{
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, stackName),
@@ -159,7 +165,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
+	assert.Equal(t, fullStackName, loadStackName(t))
 	removeStack(t, tempdir, stackName)
 }
 
