@@ -61,6 +61,12 @@ type PackageReference interface {
 	// Functions returns the package's functions.
 	Functions() PackageFunctions
 
+	// The language specific metadata for a given language.
+	//
+	// The package must have been originally bound with a matching [Language]
+	// importer.
+	Language(string) (any, error)
+
 	// TokenToModule extracts a package member's module name from its token.
 	TokenToModule(token string) string
 
@@ -206,6 +212,10 @@ func (p packageDefRef) Resources() PackageResources {
 
 func (p packageDefRef) Functions() PackageFunctions {
 	return packageDefFunctions{p.pkg}
+}
+
+func (p packageDefRef) Language(language string) (any, error) {
+	return p.pkg.Language[language], nil
 }
 
 func (p packageDefRef) TokenToModule(token string) string {
@@ -497,6 +507,39 @@ func (p *PartialPackage) Functions() PackageFunctions {
 		return packageDefFunctions{p.def}
 	}
 	return partialPackageFunctions{p}
+}
+
+func (p *PartialPackage) Language(language string) (any, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		if l, ok := p.def.Language[language]; ok {
+			return l, nil
+		}
+	}
+
+	val, ok := p.spec.Language[language]
+	if !ok {
+		return nil, nil
+	}
+	importer, ok := p.languages[language]
+	if !ok {
+		return nil, nil
+	}
+	imported, err := importer.ImportPackageSpec(json.RawMessage(val))
+	if err != nil {
+		return nil, err
+	}
+	if p.def == nil {
+		p.def = new(Package)
+	}
+	if p.def.Language == nil {
+		p.def.Language = map[string]any{}
+	}
+	p.def.Language[language] = imported
+
+	return imported, nil
 }
 
 func (p *PartialPackage) TokenToModule(token string) string {
