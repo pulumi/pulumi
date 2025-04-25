@@ -52,6 +52,20 @@ func TargetDependents() Option {
 	})
 }
 
+// Exclude specifies an exclusive list of resource URNs to ignore
+func Exclude(urns []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Exclude = urns
+	})
+}
+
+// ExcludeDependents allows ignoring of dependent targets discovered but not specified in the Exclude list
+func ExcludeDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExcludeDependents = true
+	})
+}
+
 // ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
@@ -169,6 +183,10 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// Specify an exclusive list of resource URNs to ignore
+	Exclude []string
+	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
+	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
