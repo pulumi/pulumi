@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/python
-  description: Add pulumi.type_token decorator

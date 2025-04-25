@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Fix an error when importing a resource that already exists with the matching ID
