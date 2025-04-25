@@ -95,7 +95,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 		Config:       resource.FromResourcePropertyMap(configDecrypted),
 	}
 
-	pluginPath, err := filepath.Abs("./testdata/language")
+	pluginPath, err := filepath.Abs("./testdata/analyzer-language")
 	require.NoError(t, err)
 
 	path := os.Getenv("PATH")
