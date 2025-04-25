@@ -535,18 +535,21 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 	case "aarch64":
 		arch = "arm64"
 	default:
-		panic(fmt.Sprintf("unsupported architecture: %s", runtime.GOARCH))
+		return "", fmt.Errorf("unsupported architecture: %s", runtime.GOARCH)
 	}
 	tgzFile := fmt.Sprintf("pulumi-v%s-%s-%s.tar.gz", version, runtime.GOOS, arch)
 
 	downloadURL := fmt.Sprintf("https://github.com/pulumi/pulumi/releases/download/v%s/", version)
 	if isDevVersion(version) {
-		downloadURL = fmt.Sprintf("https://get.pulumi.com/releases/sdk/")
+		downloadURL = "https://get.pulumi.com/releases/sdk/"
 	}
 
 	downloadURL = fmt.Sprintf("%s/%s", downloadURL, tgzFile)
 
-	os.MkdirAll(filepath.Join(homeDir, "tmp"), 0o700)
+	err = os.MkdirAll(filepath.Join(homeDir, "tmp"), 0o700)
+	if err != nil {
+		return "", err
+	}
 	tmpFile := filepath.Join(homeDir, "tmp", tgzFile)
 	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 	if err != nil {
@@ -585,8 +588,11 @@ func doDownload(ctx context.Context, version semver.Version) (string, error) {
 	return tmpFile, nil
 }
 
-func isUpgradeable() bool {
+func isUpgradeable(version semver.Version) bool {
 	if runtime.GOOS == "windows" {
+		return false
+	}
+	if !isDevVersion(version) {
 		return false
 	}
 	homeDir, err := workspace.GetPulumiHomeDir()
@@ -696,7 +702,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	}
 
 	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
-		if os.Getenv("PULUMI_AUTO_UPDATE_CLI") == "true" && isUpgradeable() {
+		if os.Getenv("PULUMI_AUTO_UPDATE_CLI") == "true" && isUpgradeable(curVer) {
 			version := devVer
 			if !isDevVersion {
 				version = latestVer
@@ -997,89 +1003,3 @@ func isDevVersion(s semver.Version) bool {
 	devRegex := regexp.MustCompile(`\d*-g[0-9a-f]*$`)
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
 }
-
-const windowsScript = `
-param(
-    [Parameter(Mandatory=$true)]
-    [int]$ProcessId,
-
-    [Parameter(Mandatory=$true)]
-    [string]$SourceFolder,
-
-    [Parameter(Mandatory=$true)]
-    [string]$DestinationFolder
-)
-
-# Display script information
-Write-Host "Process Monitor and File Mover"
-Write-Host "Monitoring process ID: $ProcessId"
-Write-Host "Will move files from: $SourceFolder"
-Write-Host "To: $DestinationFolder"
-Write-Host "Waiting for process to exit..."
-
-# Check if source and destination folders exist
-if (-not (Test-Path -Path $SourceFolder)) {
-    Write-Error "Source folder does not exist: $SourceFolder"
-    exit 1
-}
-
-if (-not (Test-Path -Path $DestinationFolder)) {
-    Write-Host "Destination folder does not exist. Creating it now."
-    New-Item -ItemType Directory -Path $DestinationFolder | Out-Null
-}
-
-# Function to check if process is running
-function Test-ProcessRunningById {
-    param (
-        [int]$Id
-    )
-
-    $process = Get-Process -Id $Id -ErrorAction SilentlyContinue
-    return $null -ne $process
-}
-
-# Wait for the process to exit if it's running
-try {
-    if (Test-ProcessRunningById -Id $ProcessId) {
-        $processInfo = Get-Process -Id $ProcessId
-        Write-Host "Process ID $ProcessId ($($processInfo.ProcessName)) is running. Waiting for it to exit..."
-
-        do {
-            Start-Sleep -Seconds 1
-        } while (Test-ProcessRunningById -Id $ProcessId)
-
-        Write-Host "Process ID $ProcessId has exited."
-    } else {
-        Write-Host "Process ID $ProcessId is not currently running or doesn't exist."
-        exit 1
-    }
-} catch {
-    Write-Error "Error checking process status: $_"
-    exit 1
-}
-
-# Move files from source to destination
-Write-Host "Moving files from $SourceFolder to $DestinationFolder"
-
-$files = Get-ChildItem -Path $SourceFolder -File
-
-if ($files.Count -eq 0) {
-    Write-Host "No files found in source folder."
-} else {
-    foreach ($file in $files) {
-        $destinationPath = Join-Path -Path $DestinationFolder -ChildPath $file.Name
-
-        # Move the file
-        try {
-            Move-Item -Path $file.FullName -Destination $destinationPath -Force
-            Write-Host "Moved: $($file.Name)"
-        } catch {
-            Write-Error "Failed to move file $($file.Name): $_"
-        }
-    }
-
-    Write-Host "File moving complete. Moved $($files.Count) files."
-}
-
-Write-Host "Script execution complete."
-`
