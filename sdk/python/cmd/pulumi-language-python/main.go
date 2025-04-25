@@ -1309,6 +1309,10 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	return &pulumirpc.AboutResponse{
 		Executable: info.Executable,
 		Version:    info.Version,
+		Metadata: map[string]string{
+			"toolchain":   toolchain.Name(opts.Toolchain),
+			"typechecker": toolchain.TypeCheckerName(opts.Typechecker),
+		},
 	}, nil
 }
 

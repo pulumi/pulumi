@@ -1172,9 +1172,19 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		return nil, err
 	}
 
+	opts, err := parseOptions(req.Info.Options.AsMap())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse options: %w", err)
+	}
+
 	return &pulumirpc.AboutResponse{
 		Executable: node,
 		Version:    version,
+		Metadata: map[string]string{
+			"packagemanager": string(opts.packagemanager),
+			"typescript":     fmt.Sprintf("%t", opts.typescript),
+			"nodeargs":       opts.nodeargs,
+		},
 	}, nil
 }
 

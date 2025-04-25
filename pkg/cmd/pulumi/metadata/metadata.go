@@ -31,20 +31,24 @@ import (
 	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // GetUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
 func GetUpdateMetadata(
-	msg, root, execKind, execAgent string, updatePlan bool, cfg backend.StackConfiguration, flags *pflag.FlagSet,
+	msg, root, execKind, execAgent string, updatePlan bool, cfg backend.StackConfiguration,
+	flags *pflag.FlagSet, proj *workspace.Project,
 ) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
@@ -65,7 +69,36 @@ func GetUpdateMetadata(
 
 	addEscMetadataToEnvironment(m.Environment, cfg.EnvironmentImports)
 
+	if err := addRuntimeMetadataToEnvironment(m.Environment, root, proj); err != nil {
+		logging.V(3).Infof("errors detecting runtime metadata: %s", err)
+	}
+
 	return m, nil
+}
+
+func addRuntimeMetadataToEnvironment(env map[string]string, root string, proj *workspace.Project) error {
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, main, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer pctx.Close()
+
+	programInfo := plugin.NewProgramInfo(root, pwd, main, proj.Runtime.Options())
+	lang, err := pctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	res, err := lang.About(programInfo)
+	if err != nil {
+		return err
+	}
+
+	env["runtime.name"] = proj.Runtime.Name()
+	env["runtime.executable"] = res.Executable
+	env["runtime.version"] = res.Version
+	for k, v := range res.Metadata {
+		env["runtime.metadata."+k] = v
+	}
+
+	return nil
 }
 
 // addPulumiCLIMetadataToEnvironment enriches updates with metadata to provide context about

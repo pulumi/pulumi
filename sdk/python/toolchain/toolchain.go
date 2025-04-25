@@ -109,6 +109,17 @@ func Name(tc toolchain) string {
 	}
 }
 
+func TypeCheckerName(tc typeChecker) string {
+	switch tc {
+	case TypeCheckerMypy:
+		return "Mypy"
+	case TypeCheckerPyright:
+		return "Pyright"
+	default:
+		return "None"
+	}
+}
+
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	if options.Toolchain == Poetry {
 		dir := options.ProgramDir

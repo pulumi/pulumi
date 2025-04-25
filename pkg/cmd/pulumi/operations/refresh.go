@@ -208,7 +208,7 @@ func NewRefreshCmd() *cobra.Command {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
-			m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, false, cfg, cmd.Flags())
+			m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, false, cfg, cmd.Flags(), proj)
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
