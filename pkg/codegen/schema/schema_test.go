@@ -2076,6 +2076,70 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	assert.NotNil(t, pkg)
 }
 
+func TestResourceWithKeynameOverlapFunction(t *testing.T) {
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{},
+		},
+		Functions: map[string]FunctionSpec{
+			"xyz:index:pulumi": {},
+		},
+	}
+
+	_, diags, err := BindSpec(pkgSpec, loader)
+	require.ErrorContains(t, err, "function name pulumi is reserved")
+	assert.Len(t, diags, 1)
+}
+
+func TestResourceWithKeynameOverlapResource(t *testing.T) {
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{},
+		},
+		Resources: map[string]ResourceSpec{
+			"xyz:index:pulumi": {},
+		},
+	}
+
+	_, diags, _ := BindSpec(pkgSpec, loader)
+	assert.Len(t, diags, 1)
+	assert.Contains(t, diags[0].Summary, "is a reserved name")
+}
+
+func TestResourceWithKeynameOverlapType(t *testing.T) {
+	t.Parallel()
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"xyz:index:pulumi": {},
+		},
+	}
+
+	_, diags, _ := BindSpec(pkgSpec, loader)
+	assert.Len(t, diags, 2)
+	assert.Contains(t, diags[0].Summary, "is a reserved name")
+	assert.Contains(t, diags[1].Summary, "unknown primitive type")
+}
+
 func TestRoundtripAliasesJSON(t *testing.T) {
 	t.Parallel()
 
