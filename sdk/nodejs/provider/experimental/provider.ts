@@ -36,7 +36,7 @@ export type ComponentResourceConstructor = {
     // The ComponentResource base class has a 4 argument constructor, but
     // the user defined component has a 3 argument constructor without the
     // typestring.
-    new(name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
+    new (name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
 };
 
 /**

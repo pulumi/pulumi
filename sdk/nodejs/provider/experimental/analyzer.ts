@@ -472,7 +472,7 @@ Please ensure these components are properly imported to your package's entry poi
 
         if (isResourceReference(type, this.checker)) {
             const { dependency, pulumiType } = this.getResourceType(context, type);
-            if (!this.dependencies.find(dep => dep.name === dependency.name && dep.version === dependency.version)) {
+            if (!this.dependencies.find((dep) => dep.name === dependency.name && dep.version === dependency.version)) {
                 this.dependencies.push(dependency);
             }
             return makeProp({
