@@ -82,8 +82,8 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 	t.Parallel()
 
 	pkg := getTestPackage(t)
-
-	d := DocLanguageHelper{
+	var d DocLanguageHelper
+	pkg.Language["csharp"] = CSharpPackageInfo{
 		Namespaces: map[string]string{
 			"s3": "S3",
 		},
