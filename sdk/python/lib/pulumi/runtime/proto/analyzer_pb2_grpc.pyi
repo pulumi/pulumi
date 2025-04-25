@@ -68,6 +68,14 @@ class AnalyzerStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Configure configures the analyzer, passing configuration properties for each policy."""
+    Handshake: grpc.UnaryUnaryMultiCallable[
+        pulumi.analyzer_pb2.AnalyzerHandshakeRequest,
+        pulumi.analyzer_pb2.AnalyzerHandshakeResponse,
+    ]
+    """`Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+    analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+    used to communicate between the two parties.
+    """
 
 class AnalyzerServicer(metaclass=abc.ABCMeta):
     """Analyzer provides a pluggable interface for checking resource definitions against some number of
@@ -125,5 +133,15 @@ class AnalyzerServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty:
         """Configure configures the analyzer, passing configuration properties for each policy."""
+    
+    def Handshake(
+        self,
+        request: pulumi.analyzer_pb2.AnalyzerHandshakeRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.analyzer_pb2.AnalyzerHandshakeResponse:
+        """`Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+        analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+        used to communicate between the two parties.
+        """
 
 def add_AnalyzerServicer_to_server(servicer: AnalyzerServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
