@@ -1003,6 +1003,8 @@ type PluginSpec struct {
 	Checksums map[string][]byte
 }
 
+type PluginVersionNotFoundError error
+
 func NewPluginSpec(
 	source string,
 	kind apitype.PluginKind,
@@ -1052,7 +1054,13 @@ func NewPluginSpec(
 				var err error
 				version, err = gitutil.GetLatestTagOrHash(context.Background(), url)
 				if err != nil {
-					return PluginSpec{}, err
+					return PluginSpec{
+						Name:              name,
+						Kind:              kind,
+						Version:           version,
+						PluginDownloadURL: pluginDownloadURL,
+						Checksums:         checksums,
+					}, PluginVersionNotFoundError(err)
 				}
 			}
 		}
