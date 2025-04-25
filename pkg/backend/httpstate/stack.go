@@ -44,11 +44,15 @@ type Stack interface {
 }
 
 type cloudBackendReference struct {
-	name       tokens.StackName
-	project    tokens.Name
+	name    tokens.StackName
+	project tokens.Name
+	owner   string
+	b       *cloudBackend
+
+	// defaultOrg is the user's default organization, either configured by the user or determined otherwise.
+	// If unset, will assume that there is no default organization configured and fall back to referencing
+	// the user's individual org.
 	defaultOrg string
-	owner      string
-	b          *cloudBackend
 }
 
 func (c cloudBackendReference) String() string {
@@ -64,10 +68,9 @@ func (c cloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := c.getDefaultOrg()
-		if err == nil && defaultOrg != "" {
+		if c.defaultOrg != "" {
 			// The default owner is the org
-			if c.owner == defaultOrg {
+			if c.owner == c.defaultOrg {
 				return c.name.String()
 			}
 		} else {
@@ -98,15 +101,6 @@ func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
 	return tokens.IntoQName(fmt.Sprintf("%v/%v/%v", c.owner, c.project, c.name.String()))
 }
 
-// Returns configured default org, if configured..
-// If unset, will fallback to requesting default org from the backend, which may involve an additional API call.
-func (c cloudBackendReference) getDefaultOrg() (string, error) {
-	if c.defaultOrg != "" {
-		return c.defaultOrg, nil
-	}
-	return backend.GetDefaultOrg(context.TODO(), c.b, c.b.currentProject)
-}
-
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
@@ -128,13 +122,17 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
 
+	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	contract.AssertNoErrorf(err, "unable to look up default org")
+
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
-			owner:   apistack.OrgName,
-			project: tokens.Name(apistack.ProjectName),
-			name:    stackName,
-			b:       b,
+			owner:      apistack.OrgName,
+			project:    tokens.Name(apistack.ProjectName),
+			defaultOrg: defaultOrg,
+			name:       stackName,
+			b:          b,
 		},
 		orgName:          apistack.OrgName,
 		currentOperation: apistack.CurrentOperation,

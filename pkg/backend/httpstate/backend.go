@@ -770,16 +770,16 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, err
 	}
 
+	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	if err != nil {
+		return nil, err
+	}
+
 	// If the provided stack name didn't include the Owner or Project, infer them from the
 	// local environment.
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
-		if err != nil {
-			return nil, err
-		}
-
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
@@ -805,10 +805,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	}
 
 	return cloudBackendReference{
-		owner:   qualifiedName.Owner,
-		project: tokens.Name(qualifiedName.Project),
-		name:    parsedName,
-		b:       b,
+		owner:      qualifiedName.Owner,
+		defaultOrg: defaultOrg,
+		project:    tokens.Name(qualifiedName.Project),
+		name:       parsedName,
+		b:          b,
 	}, nil
 }
 
