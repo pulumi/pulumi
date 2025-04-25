@@ -87,7 +87,7 @@ func PrintCopilotLink(out io.Writer, opts Options, permalink string) {
 	fmt.Fprintln(out)
 }
 
-// RenderCopilotThinking displays an "Thinking..." message.
+// RenderCopilotThinking displays a "Thinking..." message.
 func RenderCopilotThinking(opts Options) {
 	stdout := opts.Stdout
 	if stdout == nil {

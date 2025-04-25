@@ -1329,38 +1329,45 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		kind,
 	)
 	renderer.ProcessEventSlice(events)
-	output := renderer.Output()
-
-	if !renderer.OutputIncludesFailure() {
-		return
-	}
 
 	permalink := b.getPermalink(update, updateMeta.version, dryRun)
-	// No output, bit strange.
-	if len(output) == 0 {
-		err := errors.New("no output from preview")
-		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display, permalink)
-		return
+	if renderer.OutputIncludesFailure() {
+		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
+		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
+		// if we can't generate a summary.
+		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
+	}
+}
+
+func (b *cloudBackend) summarizeErrorWithCopilot(
+	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+) (*display.CopilotErrorSummaryMetadata, error) {
+	if len(pulumiOutput) == 0 {
+		return nil, nil
 	}
 
-	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
-		display.RenderCopilotErrorSummary(nil, err, op.Opts.Display, permalink)
-		return
+		return nil, err
 	}
-
 	orgName := stackID.Owner
 
-	model := op.Opts.Display.CopilotSummaryModel
-	maxSummaryLen := op.Opts.Display.CopilotSummaryMaxLen
+	model := opts.CopilotSummaryModel
+	maxSummaryLen := opts.CopilotSummaryMaxLen
 
-	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, output, model, maxSummaryLen)
+	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
+	if err != nil {
+		return nil, err
+	}
 
-	// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
-	// if we can't generate a summary.
-	display.RenderCopilotErrorSummary(&display.CopilotErrorSummaryMetadata{
+	if summary == "" {
+		// Summarization did not return output, this is not an error.
+		return nil, nil
+	}
+
+	return &display.CopilotErrorSummaryMetadata{
 		Summary: summary,
-	}, err, op.Opts.Display, permalink)
+	}, nil
 }
 
 type updateMetadata struct {

@@ -186,7 +186,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		choices := []string{string(yes), string(no)}
 
 		// explain is down here instead of with the other choices so we can optionally emit an emoji
-		explain := "explain " + cmdutil.EmojiOr("✨", "")
+		explainChoice := "explain " + cmdutil.EmojiOr("✨", "")
 
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
@@ -194,7 +194,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
 			if explainer != nil && explainer.IsEnabledForProject(op.Proj.Name, opts.Display) {
-				choices = append(choices, explain)
+				choices = append(choices, explainChoice)
 			}
 		}
 
@@ -245,7 +245,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			continue
 		}
 
-		if response == explain {
+		if response == explainChoice {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
 			explanation, err := explainer.Explain(stack.Ref(), op, events, opts.Display)
 			if err != nil {
