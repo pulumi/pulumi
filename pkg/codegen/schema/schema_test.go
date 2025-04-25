@@ -2112,7 +2112,6 @@ func TestFunctionToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Create a minimal package spec with the function token
 			spec := PackageSpec{
 				Name: "test",
@@ -2129,7 +2128,7 @@ func TestFunctionToken(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, diags)
 
-			//Test marshaling
+			// Test marshaling
 			newSpec, err := pkg.MarshalSpec()
 			require.NoError(t, err)
 			require.NotNil(t, newSpec)
@@ -2144,5 +2143,4 @@ func TestFunctionToken(t *testing.T) {
 			assert.True(t, exists)
 		})
 	}
-
 }
