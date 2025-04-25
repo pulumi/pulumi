@@ -634,7 +634,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		}
 	}
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -804,7 +804,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
 		label, changes, replaces, stables, deleteBeforeReplace, diffs)
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1076,7 +1076,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		return ConfigureResponse{}, err
 	}
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1220,7 +1220,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1345,7 +1345,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1482,7 +1482,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		return CreateResponse{Status: resourceStatus}, err
 	}
 
-	state, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	state, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1629,7 +1629,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		}
 	}
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1792,7 +1792,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		return UpdateResponse{Status: resourceStatus}, err
 	}
 
-	privateState, err := UnmarshalProperties(resp.PrivateState, MarshalOptions{
+	privateState, err := UnmarshalProperties(resp.GetPrivateState(), MarshalOptions{
 		Label:            label + ".privateState",
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
