@@ -1048,12 +1048,13 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	var initErrors []string
 	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
-		URN:    s.old.URN,
-		Name:   s.old.URN.Name(),
-		Type:   s.old.URN.Type(),
-		ID:     resourceID,
-		Inputs: s.old.Inputs,
-		State:  s.old.Outputs,
+		URN:          s.old.URN,
+		Name:         s.old.URN.Name(),
+		Type:         s.old.URN.Type(),
+		ID:           resourceID,
+		Inputs:       s.old.Inputs,
+		State:        s.old.Outputs,
+		PrivateState: s.old.PrivateState,
 	})
 	if err != nil {
 		if refreshed.Status != resource.StatusPartialFailure {
@@ -1093,29 +1094,27 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
 			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
-			s.old.SourcePosition, s.old.IgnoreChanges, s.old.ReplaceOnChanges, s.old.PrivateState,
+			s.old.SourcePosition, s.old.IgnoreChanges, s.old.ReplaceOnChanges, refreshed.PrivateState,
 		)
 		var inputsChange, outputsChange bool
-		if s.old != nil {
-			// There are two cases in which we'll diff only resource outputs on a
-			// refresh:
-			//
-			// * The resource is external, that is, it is not managed by Pulumi.
-			//   In these cases, we care somewhat equally about inputs and outputs, but
-			//   the Diff contract we currently support forces us to bias one side
-			//   (typically inputs). Moreover, some providers might not support
-			//   diff/handle diffing correctly for external resources. This can lead to
-			//   surprising results, so for now we sidestep the issue by only looking at
-			//   outputs.
-			// * The user has explicitly opted into this legacy behaviour by setting
-			//   the `UseLegacyRefreshDiff` option to true.
-			if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
-				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
-			} else {
-				inputsChange = !inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !outputs.DeepEquals(s.old.Outputs)
-			}
+		// There are two cases in which we'll diff only resource outputs on a
+		// refresh:
+		//
+		// * The resource is external, that is, it is not managed by Pulumi.
+		//   In these cases, we care somewhat equally about inputs and outputs, but
+		//   the Diff contract we currently support forces us to bias one side
+		//   (typically inputs). Moreover, some providers might not support
+		//   diff/handle diffing correctly for external resources. This can lead to
+		//   surprising results, so for now we sidestep the issue by only looking at
+		//   outputs.
+		// * The user has explicitly opted into this legacy behaviour by setting
+		//   the `UseLegacyRefreshDiff` option to true.
+		if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
+			inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
+			outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+		} else {
+			inputsChange = !inputs.DeepEquals(s.old.Inputs)
+			outputsChange = !outputs.DeepEquals(s.old.Outputs)
 		}
 
 		// Only update the Modified timestamp if refresh provides new values that differ

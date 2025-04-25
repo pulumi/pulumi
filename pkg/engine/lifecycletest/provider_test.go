@@ -2084,9 +2084,12 @@ func TestPrivateState(t *testing.T) {
 	expectedUpdate := resource.PropertyMap{
 		"value": resource.NewStringProperty("diff"),
 	}
-	// We won't have called check or diff for update
-	expectedDelete := resource.PropertyMap{
+	// We won't have called check or diff for read and delete
+	expectedRead := resource.PropertyMap{
 		"value": resource.NewStringProperty("update"),
+	}
+	expectedDelete := resource.PropertyMap{
+		"value": resource.NewStringProperty("read"),
 	}
 
 	loaders := []*deploytest.ProviderLoader{
@@ -2115,6 +2118,19 @@ func TestPrivateState(t *testing.T) {
 					}
 					return plugin.ConfigureResponse{
 						PrivateState: expectedCheckConfig,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					assert.Equal(t, expectedRead, req.PrivateState)
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						PrivateState: resource.PropertyMap{
+							"value": resource.NewStringProperty("read"),
+						},
 					}, nil
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
@@ -2212,12 +2228,25 @@ func TestPrivateState(t *testing.T) {
 	assert.Equal(t, resource.NewStringProperty("configure"), snap.Resources[0].PrivateState["value"])
 	assert.Equal(t, resource.NewStringProperty("update"), snap.Resources[1].PrivateState["value"])
 
-	// Run another update to check that delete gets the private state from the provider,
-	inputs = nil
-	// This will same the provider directly from state so its private state will be "configure" not "diff"
+	// The following operations will same the provider directly from state so its private state will be "configure" not
+	// "diff"
 	expectedConfigure = resource.PropertyMap{
 		"value": resource.NewStringProperty("configure"),
 	}
+	// Refresh is going to call diff "backwards" on the existing state so it will expect to see 'update'
+	expectedDiff = resource.PropertyMap{
+		"value": resource.NewStringProperty("update"),
+	}
+
+	// Run a refresh operation to check Read sees the private state from update and can write private state back out
+	snap, err = lt.TestOp(Refresh).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Assert the private state has the result of read and configure
+	assert.Equal(t, resource.NewStringProperty("configure"), snap.Resources[0].PrivateState["value"])
+	assert.Equal(t, resource.NewStringProperty("read"), snap.Resources[1].PrivateState["value"])
+
+	// Run another update to check that delete gets the private state from the provider,
+	inputs = nil
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 	assert.Len(t, snap.Resources, 0)
