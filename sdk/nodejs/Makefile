@@ -74,7 +74,7 @@ unit_tests:: $(TEST_ALL_DEPS)
 	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc --no-clean -s mocha --timeout 300000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc --no-clean -s mocha --parallel --jobs 4 --timeout 300000 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
