@@ -854,7 +854,11 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 
 	// Publish the configured provider.
 	r.setProvider(mustNewReference(req.URN, req.ID), provider, resp.PrivateState)
-	return plugin.UpdateResponse{Properties: filteredProperties, PrivateState: resp.PrivateState, Status: resource.StatusOK}, nil
+	return plugin.UpdateResponse{
+		Properties:   filteredProperties,
+		PrivateState: resp.PrivateState,
+		Status:       resource.StatusOK,
+	}, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded

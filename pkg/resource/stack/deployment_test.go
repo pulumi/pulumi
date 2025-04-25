@@ -543,6 +543,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 				Parent:       "",
 				Protect:      false,
 				Dependencies: nil,
+				PrivateState: resource.PropertyMap{},
 			},
 		},
 		PendingOperations: nil,

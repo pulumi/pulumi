@@ -2282,7 +2282,8 @@ func (sg *stepGenerator) diff(
 	if !sg.deployment.opts.ParallelDiff {
 		// If parallel diff isn't enabled just do the diff directly.
 		diff, err := diffResource(
-			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges, new.PrivateState)
+			urn, old.ID, oldInputs, old.Outputs, newInputs,
+			prov, sg.deployment.opts.DryRun, goal.IgnoreChanges, new.PrivateState)
 		return diff, nil, err
 	}
 
@@ -2640,7 +2641,9 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := diffResource(r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges, r.PrivateState)
+		diff, err := diffResource(
+			r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff,
+			prov, true, r.IgnoreChanges, r.PrivateState)
 		if err != nil {
 			return false, nil, err
 		}

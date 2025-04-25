@@ -279,7 +279,8 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
-	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +418,8 @@ func (p *providerServer) Configure(ctx context.Context,
 		typ = &typVal
 	}
 
-	state, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	state, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +481,8 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +612,8 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	if err != nil {
 		return nil, err
 	}
-	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
@@ -671,7 +675,8 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
@@ -810,7 +815,8 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
-	privateState, err := UnmarshalProperties(req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
+	privateState, err := UnmarshalProperties(
+		req.GetPrivateState(), p.unmarshalOptions("privateState", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}

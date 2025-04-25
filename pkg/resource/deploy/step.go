@@ -1781,7 +1781,8 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	diff, err := diffResource(
-		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges, s.new.PrivateState)
+		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs,
+		prov, s.deployment.opts.DryRun, s.ignoreChanges, s.new.PrivateState)
 	if err != nil {
 		s.pcs.Reject(err)
 		return resource.StatusOK, nil, nil
