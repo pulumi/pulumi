@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/install
-  description: Handle local plugin paths with a version number
