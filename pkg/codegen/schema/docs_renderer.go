@@ -47,6 +47,12 @@ type Renderer struct {
 	refRenderer ReferenceRenderer
 }
 
+func NewRenderer() *Renderer {
+	return &Renderer{
+		md: &markdown.Renderer{},
+	}
+}
+
 // MarkdownRenderer returns the underlying Markdown renderer used by the Renderer.
 func (r *Renderer) MarkdownRenderer() *markdown.Renderer {
 	return r.md
