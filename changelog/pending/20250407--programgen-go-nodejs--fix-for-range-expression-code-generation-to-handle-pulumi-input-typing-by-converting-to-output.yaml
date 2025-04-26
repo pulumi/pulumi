@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go,nodejs
+  description: Fix for range expression code generation to handle pulumi.Input typing by converting to output

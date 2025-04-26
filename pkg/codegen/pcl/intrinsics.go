@@ -77,6 +77,10 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 	}
 }
 
+func NewConvertToOutputCall(arg model.Expression) *model.FunctionCallExpression {
+	return NewConvertCall(arg, model.NewOutputType(arg.Type()))
+}
+
 // ParseApplyCall extracts the apply arguments and the continuation from a call to the apply intrinsic.
 func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expression,
 	then *model.AnonymousFunctionExpression,
