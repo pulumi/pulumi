@@ -27,6 +27,8 @@ import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
+import { SemVer } from "semver";
+import { PulumiCommand } from "./automation";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -1169,6 +1171,21 @@ export class ComponentResource<TData = any> extends Resource {
     public readonly __data: Promise<TData>;
 
     /**
+      * A private field of the minimum cli version for this ComponentResource
+      *
+      * @internal
+    */
+    public readonly __minCliVersion?: SemVer;
+
+
+    /**
+      * A promise that when awaited will throw if the cli version check fails.
+      *
+      * @internal
+    */
+    public readonly __pulumiCliVersionCheck: Promise<null>;
+
+    /**
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
@@ -1215,6 +1232,7 @@ export class ComponentResource<TData = any> extends Resource {
         opts: ComponentResourceOptions = {},
         remote: boolean = false,
         packageRef?: Promise<string | undefined>,
+        minCliVersion?: SemVer,
     ) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
@@ -1237,15 +1255,30 @@ export class ComponentResource<TData = any> extends Resource {
         this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+
+        this.__minCliVersion = minCliVersion;
+        this.__pulumiCliVersionCheck = remote || minCliVersion ? PulumiCommand.get({ version: minCliVersion }).then((_) => null) : Promise.resolve(null);
     }
 
     /**
      * @internal
      */
     private async initializeAndRegisterOutputs(args: Inputs) {
-        const data = await this.initialize(args);
+        const data = await this.initializeInternal(args);
         this.registerOutputs();
         return data;
+    }
+
+    private async initializeInternal(args: Inputs): Promise<TData> {
+        try {
+            if (this.__minCliVersion) {
+                await this.__pulumiCliVersionCheck;
+            }
+        } catch(e) {
+            throw new Error(`Expected a minimum version of ${this.__minCliVersion} for ComponentResource: ` + e);
+        }
+
+        return await this.initialize(args);
     }
 
     /**
