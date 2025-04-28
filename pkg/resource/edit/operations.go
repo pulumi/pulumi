@@ -125,9 +125,15 @@ search:
 	return nil
 }
 
-// UnprotectResource unprotects a resource.
+// UnprotectResource unprotects a resource, allowing it to be deleted.
 func UnprotectResource(_ *deploy.Snapshot, res *resource.State) error {
 	res.Protect = false
+	return nil
+}
+
+// ProtectResource protects a resource, preventing it from being deleted.
+func ProtectResource(_ *deploy.Snapshot, res *resource.State) error {
+	res.Protect = true
 	return nil
 }
 

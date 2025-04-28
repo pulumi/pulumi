@@ -706,6 +706,50 @@ func TestExcludeProtected(t *testing.T) {
 	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")
 }
 
+func TestUnprotect(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("protect_resources/step1")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+}
+
+func TestUnprotectReprotect(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("protect_resources/step1")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "state", "reprotect", "--all", "--yes")
+
+	e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--yes")
+}
+
 func TestInvalidPluginError(t *testing.T) {
 	t.Parallel()
 
