@@ -2638,7 +2638,7 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 }
 
 // pyType returns the expected runtime type for the given variable.  Of course, being a dynamic language, this
-// check is not exhaustive, but it should be good eonugh to catch 80% of the cases early on.
+// check is not exhaustive, but it should be good enough to catch 80% of the cases early on.
 func (mod *modContext) pyType(typ schema.Type) string {
 	switch typ := typ.(type) {
 	case *schema.OptionalType:
