@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -721,13 +722,19 @@ func TestUnprotect(t *testing.T) {
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
-	e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--yes")
+	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
 }
 
-func TestUnprotectReprotect(t *testing.T) {
+func TestUnprotectProtect(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -742,12 +749,24 @@ func TestUnprotectReprotect(t *testing.T) {
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
-	e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--yes")
+	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
-	e.RunCommand("pulumi", "state", "reprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "state", "protect", "--all", "--yes")
 
-	e.RunCommandExpectError("pulumi", "destroy", "--skip-preview", "--yes")
+	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
 }
 
 func TestInvalidPluginError(t *testing.T) {

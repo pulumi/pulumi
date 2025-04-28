@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,22 +32,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newStateReprotectCommand() *cobra.Command {
+const protectMessage = "This will protect by modifying the stack state directly.\n" +
+	"If your program does not also set the 'protect' resource option, Pulumi will unprotect the \n" +
+	"resource the next time your program runs (e.g. as part of a `pulumi up`)\n" +
+	"Confirm?"
+
+func newStateProtectCommand() *cobra.Command {
 	var protectAll bool
 	var stack string
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "reprotect [resource URN]",
-		Short: "Re-protect (undo a `pulumi protect`) resources in a stack's state",
-		Long: `Re-Protect resource in a stack's state
+		Use:   "protect [resource URN]",
+		Short: "protect resource in a stack's state",
+		Long: `Protect resource in a stack's state
 
-This command sets the 'protect' bit on one or more resources, preventing those resources to be deleted.
+This command sets the 'protect' bit on one or more resources, preventing those resources from being deleted.
 
-Caution: This is will not protect resources that were not marked as ` + "`protect`" + ` in the program.
-In the case that the resource is not protected in the program, the next ` + "`pulumi up`" + ` would 
-overwrite the protection (eg when you deploy via pulumi deployments). Instead use this only to re-enable
-protect on resources which were unprotected with ` + "`pulumi unprotect`" + `.
+Caution: this command is a low-level operation that directly modifies your stack's state.
+Setting the 'protect' bit on a resource in your stack's state is not sufficient to protect it in
+all cases. If your program does not also set the 'protect' resource option, Pulumi will
+unprotect the resource the next time your program runs (e.g. as part of a ` + "`pulumi up`" + `).
+
+See https://www.pulumi.com/docs/iac/concepts/options/protect/ for more information on
+the 'protect' resource option and how it can be used to protect resources in your program.
+
+To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
@@ -59,7 +69,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			showPrompt := !yes
 
 			if protectAll {
-				return reprotectAllResources(ctx, ws, stack, showPrompt)
+				return protectAllResources(ctx, ws, stack, showPrompt)
 			}
 
 			var urn resource.URN
@@ -76,7 +86,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			} else {
 				urn = resource.URN(args[0])
 			}
-			return reprotectResource(ctx, ws, stack, urn, showPrompt)
+			return protectResource(ctx, ws, stack, urn, showPrompt)
 		},
 	}
 
@@ -89,8 +99,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 	return cmd
 }
 
-func reprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
-	err := runTotalStateEdit(
+func protectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
+	err := runTotalStateEditWithPrompt(
 		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 			// Protects against Panic when a user tries to protect non-existing resources
 			if snap == nil {
@@ -103,7 +113,7 @@ func reprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 			}
 
 			return nil
-		})
+		}, protectMessage)
 	if err != nil {
 		return err
 	}
@@ -111,10 +121,19 @@ func reprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 	return nil
 }
 
-func reprotectResource(
+func protectResource(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn, edit.ProtectResource)
+	err := runStateEditWithPrompt(
+		ctx,
+		ws,
+		backend.DefaultLoginManager,
+		stackName,
+		showPrompt,
+		urn,
+		edit.ProtectResource,
+		protectMessage,
+	)
 	if err != nil {
 		return err
 	}

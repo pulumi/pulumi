@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Add pulumi state reprotect

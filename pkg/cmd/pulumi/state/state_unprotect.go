@@ -40,11 +40,9 @@ func newStateUnprotectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN]",
 		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resource in a stack's state for debugging purposes
+		Long: `Unprotect resources in a stack's state
 
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
-
-To undo this operation, use ` + "`pulumi reprotect`" + `on the resource URN.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),

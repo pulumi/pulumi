@@ -181,6 +181,12 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 
 // RunCommandExpectError runs the command expecting a non-zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
+	stdout, stderr, _ := e.RunCommandReturnExpectedError(cmd, args...)
+	return stdout, stderr
+}
+
+// Same as RunCommandExpectError but returns the error.
+func (e *Environment) RunCommandReturnExpectedError(cmd string, args ...string) (string, string, error) {
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err == nil {
@@ -188,7 +194,7 @@ func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string,
 		e.Logf("STDOUT: %v", stdout)
 		e.Logf("STDERR: %v", stderr)
 	}
-	return stdout, stderr
+	return stdout, stderr, err
 }
 
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
