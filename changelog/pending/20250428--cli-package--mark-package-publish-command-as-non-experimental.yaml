@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/package
+  description: Mark package publish command as non-experimental

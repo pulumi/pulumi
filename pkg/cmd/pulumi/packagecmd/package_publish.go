@@ -85,7 +85,6 @@ func newPackagePublishCmd() *cobra.Command {
 			"When <schema> is a path to a local file with a '.json', '.yml' or '.yaml' " +
 			"extension, Pulumi package schema is read from it directly:\n\n" +
 			"  pulumi package publish ./my/schema.json --readme ./README.md",
-		Hidden: !env.Experimental.Value(),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			pkgPublishCmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
