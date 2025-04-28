@@ -2527,7 +2527,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 type typeStringOpts struct {
 	// Whether the type is an input
 	input bool
-	// Whether we should try to use the UnionType directy and avoid the InputType wrapper if possible
+	// Whether we should try to use the UnionType directly and avoid the InputType wrapper if possible
 	acceptMapping bool
 	// Whether the object is a dict or not
 	forDict bool
