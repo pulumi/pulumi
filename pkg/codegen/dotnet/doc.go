@@ -68,10 +68,13 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetTypeName(pkg *schema.Package, t schema.Type, input bool, relativeToModule string) string {
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
+	var info CSharpPackageInfo
+	if a, err := pkg.Language("csharp"); err == nil {
+		info, _ = a.(CSharpPackageInfo)
+	}
 	mod := &modContext{
-		pkg:           pkg.Reference(),
+		pkg:           pkg,
 		mod:           relativeToModule,
 		typeDetails:   map[*schema.ObjectType]*typeDetails{},
 		namespaces:    info.Namespaces,
@@ -99,17 +102,18 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+	a, _ := pkg.Language("csharp")
+	info, _ := a.(CSharpPackageInfo)
 	var returnType *schema.ObjectType
 	if m.Function.ReturnType != nil {
 		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok {
 			returnType = objectType
 		} else {
 			mod := &modContext{
-				pkg:           pkg.Reference(),
+				pkg:           pkg,
 				mod:           modName,
 				typeDetails:   map[*schema.ObjectType]*typeDetails{},
 				namespaces:    info.Namespaces,
@@ -121,7 +125,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 
 	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
 		mod := &modContext{
-			pkg:           pkg.Reference(),
+			pkg:           pkg,
 			mod:           modName,
 			typeDetails:   map[*schema.ObjectType]*typeDetails{},
 			namespaces:    info.Namespaces,

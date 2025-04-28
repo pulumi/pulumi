@@ -133,7 +133,7 @@ func TestGetFunctionName(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 	d := DocLanguageHelper{}
-	d.GeneratePackagesMap(pkg, "test", GoPackageInfo{})
+	d.GeneratePackagesMap(pkg.Reference(), "test", GoPackageInfo{})
 
 	names := map[string]string{}
 	for _, f := range pkg.Functions {

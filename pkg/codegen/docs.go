@@ -59,7 +59,7 @@ type DocLanguageHelper interface {
 	//
 	//	qualifiedName := python.GetTypeName(pkg, prop.Type, false, "")
 	//	fmt.Println(qualifiedName) // Prints "my_module.TheType"
-	GetTypeName(pkg *schema.Package, typ schema.Type, input bool, relativeToModule string) string
+	GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string
 	GetFunctionName(f *schema.Function) string
 
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
@@ -68,7 +68,7 @@ type DocLanguageHelper interface {
 
 	// Methods
 	GetMethodName(m *schema.Method) string
-	GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource, m *schema.Method) string
+	GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource, m *schema.Method) string
 
 	// Doc links
 	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string

@@ -270,8 +270,6 @@ func TestGetLanguageTypeString(t *testing.T) {
 	// [schema.Package].
 	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			def, err := tt.schema.Definition()
-			require.NoError(t, err)
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
 				var name string
@@ -287,10 +285,10 @@ func TestGetLanguageTypeString(t *testing.T) {
 					helper = func() codegen.DocLanguageHelper {
 						h := golang_codegen.DocLanguageHelper{}
 						var info golang_codegen.GoPackageInfo
-						if i, ok := def.Language["go"].(golang_codegen.GoPackageInfo); ok {
-							info = i
+						if i, err := tt.schema.Language("go"); err == nil && i != nil {
+							info = i.(golang_codegen.GoPackageInfo)
 						}
-						h.GeneratePackagesMap(def, "test", info)
+						h.GeneratePackagesMap(tt.schema, "test", info)
 						return h
 					}
 					name = "go"
@@ -304,13 +302,13 @@ func TestGetLanguageTypeString(t *testing.T) {
 				t.Run(name, func(t *testing.T) {
 					if tt.input == nil || *tt.input {
 						t.Run("input", func(t *testing.T) {
-							actual := helper().GetTypeName(def, tt.typ, true, tt.module)
+							actual := helper().GetTypeName(tt.schema, tt.typ, true, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
 					if tt.input == nil || !*tt.input {
 						t.Run("output", func(t *testing.T) {
-							actual := helper().GetTypeName(def, tt.typ, false, tt.module)
+							actual := helper().GetTypeName(tt.schema, tt.typ, false, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
