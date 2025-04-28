@@ -19,7 +19,7 @@ from typing import Optional
 
 from ...resource import ComponentResource
 from ...provider import main
-from .provider import ComponentProvider
+from .component import ComponentProvider
 
 is_hosting = False
 

@@ -38,7 +38,7 @@ from pulumi.provider.experimental.analyzer import (
     unwrap_input,
     unwrap_output,
 )
-from pulumi.provider.experimental.component import (
+from pulumi.provider.experimental.analyzer import (
     ComponentDefinition,
     EnumValueDefinition,
     PropertyDefinition,
