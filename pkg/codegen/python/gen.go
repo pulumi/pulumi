@@ -1372,15 +1372,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Produce a class definition with optional """ comment.
+	fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", res.Token)
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
-
-	fmt.Fprintln(w)
-	fmt.Fprintf(w, "    pulumi_type = \"%s\"\n", res.Token)
-	fmt.Fprintln(w)
 
 	// Determine if all inputs are optional.
 	allOptionalInputs := true
@@ -2130,8 +2127,8 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	// Header
 	mod.genHeader(w, false /*needsSDK*/, nil)
 
+	fmt.Fprintf(w, "import pulumi\n")
 	// Enum import
-	fmt.Fprintf(w, "import builtins\n")
 	fmt.Fprintf(w, "from enum import Enum\n\n")
 
 	// Export only the symbols we want exported.
@@ -2159,6 +2156,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 
 	switch enum.ElementType {
 	case schema.StringType, schema.IntType, schema.NumberType:
+		fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", enum.Token)
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
 		printComment(w, enum.Comment, indent)
 		for _, e := range enum.Elements {
@@ -3432,7 +3430,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 }
 
 // Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion = ">=3.142.0,<4.0.0"
+var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies

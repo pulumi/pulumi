@@ -3,7 +3,7 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import builtins
-import builtins
+import pulumi
 from enum import Enum
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
 ]
 
 
+@pulumi.type_token("plant::CloudAuditOptionsLogName")
 class CloudAuditOptionsLogName(builtins.str, Enum):
     """
     The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
@@ -36,11 +37,13 @@ class CloudAuditOptionsLogName(builtins.str, Enum):
     """
 
 
+@pulumi.type_token("plant::ContainerBrightness")
 class ContainerBrightness(builtins.float, Enum):
     ZERO_POINT_ONE = 0.1
     ONE = 1
 
 
+@pulumi.type_token("plant::ContainerColor")
 class ContainerColor(builtins.str, Enum):
     """
     plant container colors
@@ -50,6 +53,7 @@ class ContainerColor(builtins.str, Enum):
     YELLOW = "yellow"
 
 
+@pulumi.type_token("plant::ContainerSize")
 class ContainerSize(builtins.int, Enum):
     """
     plant container sizes

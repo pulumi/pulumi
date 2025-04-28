@@ -39,10 +39,8 @@ class ComponentArgs:
         pulumi.set(self, "my_type", value)
 
 
+@pulumi.type_token("typedDictExample:index:Component")
 class Component(pulumi.ComponentResource):
-
-    pulumi_type = "typedDictExample:index:Component"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

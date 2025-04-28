@@ -51,10 +51,8 @@ class ComponentArgs:
         pulumi.set(self, "pod", value)
 
 
+@pulumi.type_token("foo:index:Component")
 class Component(pulumi.ComponentResource):
-
-    pulumi_type = "foo:index:Component"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

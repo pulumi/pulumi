@@ -27,10 +27,8 @@ class FooArgs:
         pass
 
 
+@pulumi.type_token("repro:index:Foo")
 class Foo(pulumi.CustomResource):
-
-    pulumi_type = "repro:index:Foo"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

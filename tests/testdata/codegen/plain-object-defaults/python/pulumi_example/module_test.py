@@ -52,10 +52,8 @@ class ModuleTestArgs:
         pulumi.set(self, "val", value)
 
 
+@pulumi.type_token("example:index:moduleTest")
 class ModuleTest(pulumi.CustomResource):
-
-    pulumi_type = "example:index:moduleTest"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

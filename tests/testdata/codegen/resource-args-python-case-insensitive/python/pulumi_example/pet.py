@@ -37,10 +37,8 @@ class PetInitArgs:
         pulumi.set(self, "name", value)
 
 
+@pulumi.type_token("example::Pet")
 class Pet(pulumi.CustomResource):
-
-    pulumi_type = "example::Pet"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

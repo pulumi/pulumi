@@ -26,10 +26,8 @@ class ProviderArgs:
         pass
 
 
+@pulumi.type_token("pulumi:providers:gcp")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:gcp"
-
     @overload
     def __init__(__self__,
                  resource_name: str,
