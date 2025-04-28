@@ -729,12 +729,14 @@ Please ensure these components are properly imported to your package's entry poi
         }
 
         const packageJson = JSON.parse(ts.sys.readFile(packageJsonPath)!);
-        let packageVersion = packageJson.version;
-        if (packageVersion.startsWith("v")) {
-            packageVersion = packageVersion.slice(1);
+        let packageJsonVersion = packageJson.version;
+        if (packageJsonVersion.startsWith("v")) {
+            packageJsonVersion = packageJsonVersion.slice(1);
         }
         const dependency: Dependency = {
-            version: packageVersion,
+            // Older SDKs don't write the version to the `pulumi` section, fall
+            // back to `version` from the package.json.
+            version: packageJson.pulumi.version || packageJsonVersion,
             name: packageJson.pulumi.name,
         };
         if (packageJson.pulumi.server) {

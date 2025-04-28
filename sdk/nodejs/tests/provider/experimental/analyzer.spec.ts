@@ -341,7 +341,7 @@ describe("Analyzer", function () {
                         optional: true,
                     },
                     outputParameterized: {
-                        $ref: "/terraform-provider/v0.2.2/schema.json#/resources/netlify:index%2FdeployKey:DeployKey",
+                        $ref: "/terraform-provider/v0.10.0/schema.json#/resources/netlify:index%2FdeployKey:DeployKey",
                     },
                 },
             },
@@ -355,7 +355,7 @@ describe("Analyzer", function () {
                 },
                 {
                     name: "terraform-provider",
-                    version: "0.2.2",
+                    version: "0.10.0",
                     parameterization: {
                         name: "netlify",
                         value: "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
