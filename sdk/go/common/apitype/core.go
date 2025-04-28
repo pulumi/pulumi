@@ -461,13 +461,13 @@ type StackConfig struct {
 	// Reference to ESC environment to use as stack configuration.
 	Environment string `json:"environment"`
 	// SecretsProvider is this stack's secrets provider.
-	SecretsProvider string `json:"secretsprovider,omitempty"`
+	SecretsProvider string `json:"secretsProvider,omitempty"`
 	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
 	// Only used for cloud-based secrets providers.
-	EncryptedKey string `json:"encryptedkey,omitempty"`
+	EncryptedKey string `json:"encryptedKey,omitempty"`
 	// EncryptionSalt is this stack's base64 encoded encryption salt. Only used for
 	// passphrase-based secrets providers.
-	EncryptionSalt string `json:"encryptionsalt,omitempty"`
+	EncryptionSalt string `json:"encryptionSalt,omitempty"`
 }
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.
