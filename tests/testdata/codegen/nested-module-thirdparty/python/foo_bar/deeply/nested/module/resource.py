@@ -37,10 +37,8 @@ class ResourceArgs:
         pulumi.set(self, "baz", value)
 
 
+@pulumi.type_token("foo-bar:deeply/nested/module:Resource")
 class Resource(pulumi.CustomResource):
-
-    pulumi_type = "foo-bar:deeply/nested/module:Resource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

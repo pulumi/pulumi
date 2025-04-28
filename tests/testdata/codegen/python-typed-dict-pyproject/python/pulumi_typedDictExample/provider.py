@@ -26,10 +26,8 @@ class ProviderArgs:
         pass
 
 
+@pulumi.type_token("pulumi:providers:typedDictExample")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:typedDictExample"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

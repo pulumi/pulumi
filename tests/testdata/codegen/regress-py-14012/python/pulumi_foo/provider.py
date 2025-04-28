@@ -38,10 +38,8 @@ class ProviderArgs:
         pulumi.set(self, "certmanager", value)
 
 
+@pulumi.type_token("pulumi:providers:foo")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:foo"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

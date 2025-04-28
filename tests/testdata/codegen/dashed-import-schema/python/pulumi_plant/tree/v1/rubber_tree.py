@@ -117,10 +117,8 @@ class _RubberTreeState:
         pulumi.set(self, "farm", value)
 
 
+@pulumi.type_token("plant:tree/v1:RubberTree")
 class RubberTree(pulumi.CustomResource):
-
-    pulumi_type = "plant:tree/v1:RubberTree"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

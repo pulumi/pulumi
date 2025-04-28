@@ -51,10 +51,8 @@ class PersonArgs:
         pulumi.set(self, "pets", value)
 
 
+@pulumi.type_token("example::Person")
 class Person(pulumi.CustomResource):
-
-    pulumi_type = "example::Person"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

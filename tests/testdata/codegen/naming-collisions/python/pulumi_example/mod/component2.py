@@ -26,10 +26,8 @@ class Component2Args:
         pass
 
 
+@pulumi.type_token("example:mod:Component2")
 class Component2(pulumi.CustomResource):
-
-    pulumi_type = "example:mod:Component2"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

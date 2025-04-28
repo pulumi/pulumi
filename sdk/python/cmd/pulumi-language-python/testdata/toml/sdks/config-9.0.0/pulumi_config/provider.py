@@ -48,10 +48,8 @@ class ProviderArgs:
         pulumi.set(self, "plugin_download_url", value)
 
 
+@pulumi.type_token("pulumi:providers:config")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:config"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

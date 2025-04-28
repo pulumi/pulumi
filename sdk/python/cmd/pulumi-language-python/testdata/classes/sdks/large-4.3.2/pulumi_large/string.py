@@ -31,10 +31,8 @@ class StringArgs:
         pulumi.set(self, "value", value)
 
 
+@pulumi.type_token("large:index:String")
 class String(pulumi.CustomResource):
-
-    pulumi_type = "large:index:String"
-
     @overload
     def __init__(__self__,
                  resource_name: str,
