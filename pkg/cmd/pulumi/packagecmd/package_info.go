@@ -153,7 +153,7 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 }
 
 func summaryFromDescription(description string) string {
-	// The description of a resource is markdown formatted.  We only want to provide aa
+	// The description of a resource is markdown formatted.  We only want to provide a
 	// short summary of the description, so we will only show the first paragraph. Note
 	// that an empty newline denotes the end of the paragraph, but a regular newline might
 	// still be part of the first paragraph, and may be in the middle of a sentence.
