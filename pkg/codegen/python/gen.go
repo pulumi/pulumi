@@ -2529,6 +2529,8 @@ type typeStringOpts struct {
 	acceptMapping bool
 	// Whether the object is a dict or not
 	forDict bool
+	// Whether these types are going to be used in the docs
+	forDocs bool
 }
 
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
@@ -2612,15 +2614,22 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 		}
 		return fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
 	default:
+		builtin := func(name string, forDocs bool) string {
+			if forDocs {
+				return name
+			}
+			return "builtins." + name
+		}
+
 		switch t {
 		case schema.BoolType:
-			return "builtins.bool"
+			return builtin("bool", opts.forDocs)
 		case schema.IntType:
-			return "builtins.int"
+			return builtin("int", opts.forDocs)
 		case schema.NumberType:
-			return "builtins.float"
+			return builtin("float", opts.forDocs)
 		case schema.StringType:
-			return "builtins.str"
+			return builtin("str", opts.forDocs)
 		case schema.ArchiveType:
 			return "pulumi.Archive"
 		case schema.AssetType:

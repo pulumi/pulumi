@@ -88,7 +88,7 @@ func TestGetLanguageTypeString(t *testing.T) {
 			expected: map[language]string{
 				golang: "string",
 				nodejs: "string",
-				python: "builtins.str", // TODO[https://github.com/pulumi/pulumi/issues/19272]
+				python: "str",
 				dotnet: "string",
 			},
 		},
@@ -100,7 +100,7 @@ func TestGetLanguageTypeString(t *testing.T) {
 			expected: map[language]string{
 				golang: "map[string]float64",
 				nodejs: "{[key: string]: number}",
-				python: "Mapping[str, builtins.float]", // TODO[https://github.com/pulumi/pulumi/issues/19272]
+				python: "Mapping[str, float]",
 				dotnet: "Dictionary<string, double>",
 			},
 		},
@@ -112,7 +112,7 @@ func TestGetLanguageTypeString(t *testing.T) {
 			expected: map[language]string{
 				golang: "[]bool",
 				nodejs: "boolean[]",
-				python: "Sequence[builtins.bool]", // TODO[https://github.com/pulumi/pulumi/issues/19272]
+				python: "Sequence[bool]",
 				dotnet: "List<bool>",
 			},
 		},
