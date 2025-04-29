@@ -83,7 +83,9 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{})
+	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 }
@@ -1888,7 +1890,9 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				},
 				functionDefs: map[string]*Function{},
 			}
-			fn, diags, err := ts.bindFunctionDef("token", ValidationOptions{})
+			fn, diags, err := ts.bindFunctionDef("token", ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			require.NoError(t, err)
 			require.False(t, diags.HasErrors())
 			require.Equal(t, tc.fn, fn)
@@ -2050,7 +2054,9 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
