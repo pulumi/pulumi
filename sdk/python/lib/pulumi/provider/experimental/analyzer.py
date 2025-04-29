@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import ast
+import builtins
 import collections
+from dataclasses import dataclass
 from enum import Enum
 import inspect
 import sys
@@ -39,13 +41,6 @@ from typing import (  # type: ignore
 from ...asset import Archive, Asset
 from ...output import Output
 from ...resource import ComponentResource, Resource
-from .component import (
-    ComponentDefinition,
-    EnumValueDefinition,
-    PropertyDefinition,
-    PropertyType,
-    TypeDefinition,
-)
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
@@ -60,6 +55,62 @@ _GenericAliasT = (  # type: ignore
     _SpecialGenericAlias,
     GenericAlias,
 )
+
+
+class PropertyType(Enum):
+    STRING = "string"
+    INTEGER = "integer"
+    NUMBER = "number"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    ARRAY = "array"
+
+
+@dataclass
+class EnumValueDefinition:
+    name: str
+    value: Union[str, float, int, bool]
+    description: Optional[str] = None
+
+
+@dataclass
+class PropertyDefinition:
+    optional: bool = False
+    type: Optional[PropertyType] = None
+    ref: Optional[str] = None
+    description: Optional[str] = None
+    items: Optional["PropertyDefinition"] = None
+    additional_properties: Optional["PropertyDefinition"] = None
+    plain: Optional[Literal[True]] = None
+
+
+@dataclass
+class TypeDefinition:
+    name: str
+    type: PropertyType
+    properties: dict[str, PropertyDefinition]
+    properties_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    module: str
+    """The Python module where this type is defined."""
+    python_type: builtins.type
+    """The Python type from which we derived this type definition."""
+    description: Optional[str] = None
+    enum: Optional[list[EnumValueDefinition]] = None
+
+
+@dataclass
+class ComponentDefinition:
+    name: str
+    inputs: dict[str, PropertyDefinition]
+    outputs: dict[str, PropertyDefinition]
+    inputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    outputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    module: Optional[str]
+    """The Python module where this component is defined."""
+    description: Optional[str] = None
 
 
 class TypeNotFoundError(Exception):

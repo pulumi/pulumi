@@ -15,7 +15,7 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
-from .component import (
+from .analyzer import (
     ComponentDefinition,
     EnumValueDefinition,
     PropertyDefinition,
