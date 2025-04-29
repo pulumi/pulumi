@@ -118,11 +118,11 @@ type cloudStack struct {
 	tags map[apitype.StackTagName]string
 }
 
-func newStack(apistack apitype.Stack, b *cloudBackend) (Stack, error) {
+func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
 
-	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
 	if err != nil {
 		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
 	}
@@ -235,8 +235,12 @@ func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
 // an apitype.StackSummary struct.
 type cloudStackSummary struct {
-	summary    apitype.StackSummary
-	b          *cloudBackend
+	summary apitype.StackSummary
+	b       *cloudBackend
+	// defaultOrg passes a cached value for what the default org should be, through to
+	// `cloudBackendReference` where it may be used to qualify the stack name when stringified.
+	// If unset, `cloudBackendReference` will refer to the individual org rather than manage
+	// an explicit lookup.
 	defaultOrg string
 }
 

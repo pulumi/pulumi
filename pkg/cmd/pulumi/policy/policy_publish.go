@@ -165,14 +165,13 @@ func loginToCloudBackend(
 	return lm.Login(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/, displayOptions.Color)
 }
 
+// requirePolicyPack attempts to log into the cloud backend and retrieves the requested policy
+// pack.
 func requirePolicyPack(
 	ctx context.Context,
 	policyPack string,
 	lm cmdBackend.LoginManager,
 ) (backend.PolicyPack, error) {
-	//
-	// Attempt to log into cloud backend.
-	//
 	b, err := loginToCloudBackend(ctx, lm)
 	if err != nil {
 		return nil, err
@@ -181,14 +180,12 @@ func requirePolicyPack(
 	return requirePolicyPackForBackend(ctx, policyPack, b)
 }
 
+// requirePolicyPackForBackend retrieves a requested policy pack against a provided backend.
 func requirePolicyPackForBackend(
 	ctx context.Context,
 	policyPack string,
 	b backend.Backend,
 ) (backend.PolicyPack, error) {
-	//
-	// Obtain PolicyPackReference.
-	//
 	policy, err := b.GetPolicyPack(ctx, policyPack, cmdutil.Diag())
 	if err != nil {
 		return nil, err

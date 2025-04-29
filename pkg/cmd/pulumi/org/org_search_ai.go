@@ -64,11 +64,11 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	currBackend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	currentBe, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}
-	cloudBackend, isCloud := currBackend.(httpstate.Backend)
+	cloudBackend, isCloud := currentBe.(httpstate.Backend)
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
