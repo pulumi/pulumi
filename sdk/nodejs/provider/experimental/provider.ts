@@ -169,14 +169,14 @@ export class ComponentProvider implements Provider {
             this.packageJSON,
             new Set(Object.keys(this.componentConstructors)),
         );
-        const { components, typeDefinitions, packageReferences } = analyzer.analyze();
+        const { components, typeDefinitions, dependencies } = analyzer.analyze();
         const schema = generateSchema(
             this.name,
             this.version,
             this.packageJSON.description,
             components,
             typeDefinitions,
-            packageReferences,
+            dependencies,
             this.namespace,
         );
         this.cachedSchema = JSON.stringify(schema);
