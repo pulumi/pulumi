@@ -76,7 +76,9 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 	pkg, err := schema.ImportSpec(
 		pkgSpec,
 		map[string]schema.Language{"test": typeTestImporter(0)},
-		schema.ValidationOptions{},
+		schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		},
 	)
 
 	require.NoError(t, err)

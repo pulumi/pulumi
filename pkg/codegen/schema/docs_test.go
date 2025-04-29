@@ -164,7 +164,9 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil, ValidationOptions{})
+			pkg, err := ImportSpec(spec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if err != nil {
 				t.Fatalf("could not import package: %v", err)
 			}

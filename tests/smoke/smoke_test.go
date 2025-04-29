@@ -253,7 +253,9 @@ func TestPackageGetSchema(t *testing.T) {
 		err := json.Unmarshal([]byte(schemaJson), &schemaSpec)
 		require.NoError(t, err, "Unmarshalling schema specs from %s should work", pkg)
 		require.NotNil(t, schemaSpec, "Specification should be non-nil")
-		schema, diags, err := schema.BindSpec(*schemaSpec, nil, schema.ValidationOptions{})
+		schema, diags, err := schema.BindSpec(*schemaSpec, nil, schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		require.NoError(t, err, "Binding the schema spec should work")
 		require.False(t, diags.HasErrors(), "Binding schema spec should have no errors")
 		require.NotNil(t, schema)

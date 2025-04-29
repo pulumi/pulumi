@@ -73,7 +73,9 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
@@ -93,7 +95,9 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("localref-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
@@ -101,7 +105,9 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{})
+	_, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 }
@@ -126,7 +132,9 @@ func TestRoundtripEnum(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("enum-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertEnum(t, pkg)
@@ -136,7 +144,9 @@ func TestRoundtripEnum(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	pkg, diags, err = BindSpec(*newSpec, loader, ValidationOptions{})
+	pkg, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertEnum(t, pkg)
@@ -234,7 +244,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertPlainnessFromType(t, pkg)
@@ -245,7 +257,9 @@ func TestRoundtripPlainProperties(t *testing.T) {
 	require.NotNil(t, newSpec)
 
 	// Try and bind again
-	pkg, diags, err = BindSpec(*newSpec, loader, ValidationOptions{})
+	pkg, diags, err = BindSpec(*newSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	assertPlainnessFromType(t, pkg)
@@ -258,7 +272,9 @@ func TestImportSpec(t *testing.T) {
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("kubernetes-3.7.2.json")
 
-	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		t.Errorf("ImportSpec() error = %v", err)
 	}
@@ -423,7 +439,9 @@ func TestInvalidTypes(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			_, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+			_, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			assert.ErrorContains(t, err, tt.expected)
 		})
 	}
@@ -439,7 +457,9 @@ func TestEnums(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if tt.shouldError {
 				assert.Error(t, err)
 			} else {
@@ -583,7 +603,9 @@ func TestRejectDuplicateNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)), ValidationOptions{})
+			_, diags, err := BindSpec(tt.spec, NewPluginLoader(utils.NewHost(testdataPath)), ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.expected, diags)
@@ -667,7 +689,9 @@ func TestImportResourceRef(t *testing.T) {
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			assert.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -845,7 +869,9 @@ func TestUsingUrnInResourcePropertiesEmitsWarning(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	// No error as binding should work fine even with warnings
 	assert.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
@@ -878,7 +904,9 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	// No error as binding should work fine even with warnings
 	assert.NoError(t, err)
 	assert.NotNil(t, pkg)
@@ -899,7 +927,9 @@ func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 		Resources: map[string]ResourceSpec{},
 	}
 
-	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
+	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	assert.Len(t, diags, 1)
 	assert.Equal(t, diags[0].Severity, hcl.DiagError)
 	assert.Contains(t, diags[0].Summary, "version must be provided when package supports packing")
@@ -927,7 +957,9 @@ func TestUsingIdInComponentResourcePropertiesEmitsNoWarning(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	assert.NoError(t, err)
 	assert.Empty(t, diags)
 	assert.NotNil(t, pkg)
@@ -1043,7 +1075,9 @@ func TestMethods(t *testing.T) {
 
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if tt.expectedError != "" {
 				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
@@ -1066,7 +1100,9 @@ func TestIsOverlay(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			t.Error(err)
 		}
@@ -1107,7 +1143,9 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay-supported-languages.json"))
 
-		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+		pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			t.Error(err)
 		}
@@ -1182,7 +1220,9 @@ func TestBindingOutputsPopulatesReturnType(t *testing.T) {
 		},
 	}
 
-	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+	pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		t.Error(err)
 	}
@@ -1262,7 +1302,9 @@ func TestReplaceOnChanges(t *testing.T) {
 			sort.Strings(tt.errors)
 			pkgSpec := readSchemaFile(
 				filepath.Join("schema", tt.filePath))
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{})
+			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			assert.NoError(t, err, "Import should be successful")
 			resource, found := pkg.GetResource(tt.resource)
 			assert.True(t, found, "The resource should exist")
@@ -1947,7 +1989,9 @@ func TestProviderVersionIsAnError(t *testing.T) {
 		},
 	}
 
-	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/config/variables/version: version is a reserved configuration key")
@@ -1967,7 +2011,9 @@ func TestProviderVersionIsAnError(t *testing.T) {
 		},
 	}
 
-	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{})
+	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved property name")
@@ -1990,7 +2036,9 @@ func TestProviderVersionIsAnError(t *testing.T) {
 		},
 	}
 
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors())
 	assert.NotNil(t, pkg)
@@ -2024,7 +2072,9 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
-	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
 	newSpec, err := pkg.MarshalSpec()
