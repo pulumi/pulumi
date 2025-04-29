@@ -80,3 +80,61 @@ func TestGetDefaultOrg(t *testing.T) {
 		assert.Equal(t, "", org)
 	})
 }
+
+func TestGetLegacyDefaultOrgFallback(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns empty string for backends that do not support orgs", func(t *testing.T) {
+		t.Parallel()
+
+		testBackend := &MockBackend{
+			SupportsOrganizationsF: func() bool {
+				return false
+			},
+		}
+		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
+			return "", nil
+		}
+
+		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		assert.NoError(t, err)
+		assert.Empty(t, org)
+	})
+
+	t.Run("returns empty string if user has default org configured", func(t *testing.T) {
+		t.Parallel()
+
+		testBackend := &MockBackend{
+			SupportsOrganizationsF: func() bool {
+				return true
+			},
+		}
+		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
+			return "some-configured-org", nil
+		}
+
+		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		assert.NoError(t, err)
+		assert.Empty(t, org)
+	})
+
+	t.Run("returns user org as legacy fallback behavior", func(t *testing.T) {
+		t.Parallel()
+		user := "test-user"
+		testBackend := &MockBackend{
+			SupportsOrganizationsF: func() bool {
+				return true
+			},
+			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+				return user, nil, nil, nil
+			},
+		}
+		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
+			return "", nil
+		}
+
+		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		assert.NoError(t, err)
+		assert.Equal(t, user, org)
+	})
+}
