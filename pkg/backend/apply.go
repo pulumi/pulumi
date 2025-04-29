@@ -46,12 +46,13 @@ type ApplierOptions struct {
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 
-// Explainer provides a function that explains the changes that will be made to the stack.
+// Explainer provides a contract for explaining changes that will be made to the stack.
 // For Pulumi Cloud, this is a Copilot explainer.
-type Explainer struct {
-	Explain func(stackRef StackReference, op UpdateOperation, events []engine.Event,
-		opts display.Options) (string, error)
-	IsEnabledForProject func(projectName tokens.PackageName, opts display.Options) bool
+type Explainer interface {
+	// Explain returns a human-readable explanation of the changes that will be made to the stack.
+	Explain(stackRef StackReference, op UpdateOperation, events []engine.Event, opts display.Options) (string, error)
+	// IsEnabledForProject returns whether the explainer is enabled for the given project.
+	IsEnabledForProject(projectName tokens.PackageName, opts display.Options) bool
 }
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
@@ -87,7 +88,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, explainer *Explainer,
+	op UpdateOperation, apply Applier, explainer Explainer,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -172,7 +173,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, events []engine.Event, plan *deploy.Plan, opts UpdateOptions, explainer *Explainer,
+	op UpdateOperation, events []engine.Event, plan *deploy.Plan, opts UpdateOptions, explainer Explainer,
 ) (*deploy.Plan, error) {
 	for {
 		var response string
@@ -259,7 +260,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, explainer *Explainer,
+	op UpdateOperation, apply Applier, explainer Explainer,
 ) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
 	if !op.Opts.SkipPreview {
