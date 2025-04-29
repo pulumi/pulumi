@@ -180,6 +180,7 @@ func simplifyModuleName(resourceName string) (string, error) {
 
 func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer) error {
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
+	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
 	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
 
@@ -189,11 +190,12 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 		if err != nil {
 			return err
 		}
+		fullModuleName := strings.Split(res, ":")[1]
 		split := strings.Split(simplifiedName, ":")
 		if len(split) < 3 {
 			return fmt.Errorf("invalid resource name %q", res)
 		}
-		if split[1] != moduleName {
+		if fullModuleName != moduleName && split[1] != moduleName {
 			continue
 		}
 		resources[split[2]] = spec

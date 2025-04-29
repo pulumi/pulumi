@@ -164,6 +164,7 @@ func TestModuleInfo(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, `\x1b[1mName\x1b[0m: test
+\x1b[1mModule\x1b[0m: index
 \x1b[1mVersion\x1b[0m: 0.0.1
 \x1b[1mDescription\x1b[0m: test description markdown formatted
 \x1b[1mResources\x1b[0m: 2
