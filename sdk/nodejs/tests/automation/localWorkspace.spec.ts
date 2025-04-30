@@ -707,6 +707,65 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`listens for error output`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program: async () => {} },
+            withTestBackend({}, "inline_node"),
+        );
+
+        let error = ""
+
+        // pulumi up
+        try {
+          await stack.up({ plan: "halloumi", onError: e => { error += e } });
+        } catch (e) {}
+
+        assert.strictEqual(error, "error: open halloumi: no such file or directory\n")
+        error = ""
+
+        const upRes = await stack.up();
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        try {
+          await stack.preview({ parallel: 1.1, onError: e => { error += e } });
+        } catch (e) {}
+
+        assert.strictEqual(error, 'error: invalid argument "1.1" for "-p, --parallel" flag: strconv.ParseInt: parsing "1.1": invalid syntax\n')
+        error = ""
+
+        const preRes = await stack.preview({ userAgent });
+        assert.strictEqual(preRes.changeSummary.same, 1);
+
+        // pulumi refresh
+        try {
+          await stack.refresh({ parallel: 2.2, onError: e => { error += e } });
+        } catch (e) {}
+
+        assert.strictEqual(error, 'error: invalid argument "2.2" for "-p, --parallel" flag: strconv.ParseInt: parsing "2.2": invalid syntax\n')
+        error = ""
+
+        const refRes = await stack.refresh({ userAgent });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        try {
+          await stack.destroy({ parallel: 3.3, onError: e => { error += e } });
+        } catch (e) {}
+
+        assert.strictEqual(error, 'error: invalid argument "3.3" for "-p, --parallel" flag: strconv.ParseInt: parsing "3.3": invalid syntax\n')
+        error = ""
+
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`runs through the stack lifecycle with an inline program, testing removing without destroying`, async () => {
         const program = async () => {
             class MyResource extends ComponentResource {

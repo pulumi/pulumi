@@ -277,7 +277,7 @@ Event: ${line}\n${e.toString()}`);
 
         let upResult: CommandResult;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -425,7 +425,7 @@ Event: ${line}\n${e.toString()}`);
 
         let previewResult: CommandResult;
         try {
-            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -521,7 +521,7 @@ Event: ${line}\n${e.toString()}`);
 
         let refResult: CommandResult;
         try {
-            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } finally {
             await cleanUp(logFile, await logPromise);
         }
@@ -618,7 +618,7 @@ Event: ${line}\n${e.toString()}`);
 
         let desResult: CommandResult;
         try {
-            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } finally {
             await cleanUp(logFile, await logPromise);
         }
@@ -651,7 +651,7 @@ Event: ${line}\n${e.toString()}`);
 
         applyGlobalOpts(options, args);
 
-        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.onError, options?.signal);
 
         if (this.isRemote && options?.showSecrets) {
             throw new Error("can't enable `showSecrets` for remote workspaces");
@@ -975,6 +975,7 @@ Event: ${line}\n${e.toString()}`);
     private async runPulumiCmd(
         args: string[],
         onOutput?: (out: string) => void,
+        onError?: (err: string) => void,
         signal?: AbortSignal,
     ): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
@@ -990,7 +991,7 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, signal);
+        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, onError, signal);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -1419,7 +1420,12 @@ export interface UpOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1534,9 +1540,14 @@ export interface PreviewOptions extends GlobalOpts {
     program?: PulumiFn;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
      */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
+     */
+    onError?: (err: string) => void;
 
     /**
      * A callback to be executed when the operation yields an event.
@@ -1614,7 +1625,12 @@ export interface RefreshOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1683,7 +1699,12 @@ export interface DestroyOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1737,7 +1758,12 @@ export interface RenameOptions extends GlobalOpts {
     stackName: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
