@@ -240,9 +240,10 @@ type CreateRequest struct {
 }
 
 type CreateResponse struct {
-	ID         resource.ID
-	Properties resource.PropertyMap
-	Status     resource.Status
+	ID                  resource.ID
+	Properties          resource.PropertyMap
+	Status              resource.Status
+	RefreshBeforeUpdate bool
 }
 
 type ReadRequest struct {
@@ -270,8 +271,9 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
-	Status     resource.Status
+	Properties          resource.PropertyMap
+	Status              resource.Status
+	RefreshBeforeUpdate bool
 }
 
 type DeleteRequest struct {
