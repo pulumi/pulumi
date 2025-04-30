@@ -19,4 +19,6 @@ type CLIVersionResponse struct {
 	LatestVersion        string `json:"latestVersion"`
 	OldestWithoutWarning string `json:"oldestWithoutWarning"`
 	LatestDevVersion     string `json:"latestDevVersion"`
+	// CacheMS is the time in milliseconds the response should be cached by the CLI.
+	CacheMS int64 `json:"cacheMS"`
 }
