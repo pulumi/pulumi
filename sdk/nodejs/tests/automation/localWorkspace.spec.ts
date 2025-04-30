@@ -711,7 +711,13 @@ describe("LocalWorkspace", () => {
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
-            { stackName, projectName, program: async () => {} },
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
             withTestBackend({}, "inline_node"),
         );
 
@@ -719,15 +725,22 @@ describe("LocalWorkspace", () => {
         // produce error output. These are the least elaborate ideas I could
         // come up with.
 
-        let error = ""
+        let error = "";
 
         // pulumi up
         try {
-          await stack.up({ plan: "halloumi", onError: e => { error += e } });
-        } catch (e) {}
+            await stack.up({
+                plan: "halloumi",
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
 
-        assert.strictEqual(error, "error: open halloumi: no such file or directory\n")
-        error = ""
+        assert.strictEqual(error, "error: open halloumi: no such file or directory\n");
+        error = "";
 
         const upRes = await stack.up();
         assert.strictEqual(upRes.summary.kind, "update");
@@ -735,22 +748,42 @@ describe("LocalWorkspace", () => {
 
         // pulumi preview
         try {
-          await stack.preview({ parallel: 1.1, onError: e => { error += e } });
-        } catch (e) {}
+            await stack.preview({
+                parallel: 1.1,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
 
-        assert.strictEqual(error, 'error: invalid argument "1.1" for "-p, --parallel" flag: strconv.ParseInt: parsing "1.1": invalid syntax\n')
-        error = ""
+        assert.strictEqual(
+            error,
+            'error: invalid argument "1.1" for "-p, --parallel" flag: strconv.ParseInt: parsing "1.1": invalid syntax\n',
+        );
+        error = "";
 
         const preRes = await stack.preview({ userAgent });
         assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
         try {
-          await stack.refresh({ parallel: 2.2, onError: e => { error += e } });
-        } catch (e) {}
+            await stack.refresh({
+                parallel: 2.2,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
 
-        assert.strictEqual(error, 'error: invalid argument "2.2" for "-p, --parallel" flag: strconv.ParseInt: parsing "2.2": invalid syntax\n')
-        error = ""
+        assert.strictEqual(
+            error,
+            'error: invalid argument "2.2" for "-p, --parallel" flag: strconv.ParseInt: parsing "2.2": invalid syntax\n',
+        );
+        error = "";
 
         const refRes = await stack.refresh({ userAgent });
         assert.strictEqual(refRes.summary.kind, "refresh");
@@ -758,11 +791,21 @@ describe("LocalWorkspace", () => {
 
         // pulumi destroy
         try {
-          await stack.destroy({ parallel: 3.3, onError: e => { error += e } });
-        } catch (e) {}
+            await stack.destroy({
+                parallel: 3.3,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
 
-        assert.strictEqual(error, 'error: invalid argument "3.3" for "-p, --parallel" flag: strconv.ParseInt: parsing "3.3": invalid syntax\n')
-        error = ""
+        assert.strictEqual(
+            error,
+            'error: invalid argument "3.3" for "-p, --parallel" flag: strconv.ParseInt: parsing "3.3": invalid syntax\n',
+        );
+        error = "";
 
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");

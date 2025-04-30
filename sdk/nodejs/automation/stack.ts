@@ -991,7 +991,14 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, onError, signal);
+        const result = await this.workspace.pulumiCommand.run(
+            args,
+            this.workspace.workDir,
+            envs,
+            onOutput,
+            onError,
+            signal,
+        );
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
