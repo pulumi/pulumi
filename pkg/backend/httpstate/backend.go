@@ -1181,7 +1181,9 @@ func (b *cloudBackend) explain(
 	renderer := display.NewCaptureProgressEvents(
 		stackRef.Name(),
 		op.Proj.Name,
-		display.Options{},
+		display.Options{
+			ShowResourceChanges: true,
+		},
 		true, /* isPreview */
 		kind,
 	)
