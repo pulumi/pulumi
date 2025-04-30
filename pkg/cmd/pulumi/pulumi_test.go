@@ -17,7 +17,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -87,7 +86,8 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(`{
 				"latestVersion": "v1.2.3",
-				"oldestWithoutWarning": "v1.2.0"
+				"oldestWithoutWarning": "v1.2.0",
+				"cacheMS": 86400000
 			}`))
 			if !assert.NoError(t, err) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -104,7 +104,7 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	defer cancel()
 
 	// Act.
-	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx, srv.URL, nil)
+	latestVer, oldestAllowedVer, devVer, cacheMS, err := getCLIVersionInfo(ctx, srv.URL, nil)
 
 	// Assert.
 	assert.NoError(t, err)
@@ -112,6 +112,7 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	assert.Equal(t, "1.2.3", latestVer.String())
 	assert.Equal(t, "1.2.0", oldestAllowedVer.String())
 	assert.Equal(t, "0.0.0", devVer.String())
+	assert.Equal(t, int64(86400000), cacheMS)
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -171,7 +172,7 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	defer cancel()
 
 	// Act.
-	_, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
+	_, _, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
 
 	// Assert.
 	assert.NoError(t, err)
@@ -237,7 +238,7 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	defer cancel()
 
 	// Act.
-	_, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
+	_, _, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
 
 	// Assert.
 	assert.NoError(t, err)
@@ -387,6 +388,60 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 }
 
 //nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_RespectsServerCache(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0",
+				"cacheMS": 1000
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	assert.Equal(t, 1, callCount, "should respect the cache on the 2nd call")
+
+	// Arrange.
+	time.Sleep(1500 * time.Millisecond) // Wait for the cache to expire
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	assert.Equal(t, 2, callCount, "the cache should have expired")
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	assert.Equal(t, 2, callCount, "should respect the cache")
+}
+
+//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	// Arrange.
 	realVersion := version.Version
@@ -427,11 +482,12 @@ func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	cached := checkForUpdate(ctx, srv.URL, nil)
 	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
 
-	versionCachePath, err := workspace.GetCachedVersionFilePath()
-	require.NoError(t, err)
-
+	// Store an expired last prompt timesamp
 	expiredTime := time.Now().Add(-25 * time.Hour)
-	require.NoError(t, os.Chtimes(versionCachePath, expiredTime, expiredTime))
+	info, err := readVersionInfo()
+	require.NoError(t, err)
+	info.LastPromptTimeStampMS = expiredTime.UnixMilli()
+	require.NoError(t, cacheVersionInfo(info))
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
 
@@ -522,11 +578,12 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	cached := checkForUpdate(ctx, srv.URL, nil)
 	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
 
-	versionCachePath, err := workspace.GetCachedVersionFilePath()
+	// Store an expired last prompt timesamp
+	expiredTime := time.Now().Add(-2 * time.Hour)
+	info, err := readVersionInfo()
 	require.NoError(t, err)
-
-	expiredTime := time.Now().Add(-25 * time.Hour)
-	require.NoError(t, os.Chtimes(versionCachePath, expiredTime, expiredTime))
+	info.LastPromptTimeStampMS = expiredTime.UnixMilli()
+	require.NoError(t, cacheVersionInfo(info))
 
 	expired := checkForUpdate(ctx, srv.URL, nil)
 
