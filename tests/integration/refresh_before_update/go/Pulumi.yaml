@@ -1,0 +1,7 @@
+name: refresh-before-update
+runtime: go
+description: A minimal Go Pulumi program to test-drive a provider that opts into refreshing before update
+plugins:
+  providers:
+    - name: provider-go
+      path: ../provider-go

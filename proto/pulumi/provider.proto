@@ -806,6 +806,9 @@ message CreateResponse {
     // The resource's output properties. Typically this will be a union of the resource's input properties and any
     // additional values that were computed or made available during creation.
     google.protobuf.Struct properties = 2;
+
+    // Provider indicates that this resource should always be refreshed when updating.
+    bool refreshBeforeUpdate = 3;
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -854,6 +857,9 @@ message ReadResponse {
     // Output-derived input properties for the resource. These are returned as they would be returned from a
     // [](pulumirpc.ResourceProvider.Check) call with the same values.
     google.protobuf.Struct inputs = 3;
+
+    // Provider indicates that this resource should always be refreshed when updating.
+    bool refreshBeforeUpdate = 4;
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -907,6 +913,9 @@ message UpdateResponse {
     // An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
     // additional values that were computed or made available during the update.
     google.protobuf.Struct properties = 1;
+
+    // Provider indicates that this resource should always be refreshed when updating.
+    bool refreshBeforeUpdate = 2;
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
