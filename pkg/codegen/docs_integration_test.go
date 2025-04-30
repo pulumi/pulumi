@@ -255,6 +255,8 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 		"nodejs": nodejs_codegen.Importer,
 		"python": python_codegen.Importer,
 		"dotnet": dotnet_codegen.Importer,
+	}, schema.ValidationOptions{
+		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
 	return pkg.Reference()
