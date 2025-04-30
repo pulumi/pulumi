@@ -2112,6 +2112,7 @@ func TestFunctionToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Create a minimal package spec with the function token
 			spec := PackageSpec{
 				Name: "test",

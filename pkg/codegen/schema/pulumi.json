@@ -213,7 +213,7 @@
         "functionToken": {
             "title": "Function Token",
             "type": "string",
-            "$comment": "Some functions, such as provider methods, may have hyphens, for example in the case of a hyphenated provider name, which becomes part of the function name. This regex is the same as for Token but allows for a hyphen.",
+            "$comment": "Some functions, such as provider methods, may have hyphens, for example in the case of a hyphenated provider name. This becomes part of the function name and so this regex is the same as for Token but allows for hyphens.",
             "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$"
         },
         "schemaStringMap": {
