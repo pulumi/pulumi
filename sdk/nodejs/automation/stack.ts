@@ -456,12 +456,12 @@ Event: ${line}\n${e.toString()}`);
      *  Options to customize the behavior of the refresh.
      */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
-        const args = ["refresh", "--yes"];
+        const args = ["refresh"];
 
         if (opts?.previewOnly) {
-          args.push("--skip-preview", "--yes");
-        } else {
           args.push("--preview-only");
+        } else {
+          args.push("--skip-preview", "--yes");
         }
 
         args.push(...this.remoteArgs());

@@ -620,7 +620,7 @@ describe("LocalWorkspace", () => {
 
         // pulumi refresh
         const refRes = await stack.refresh({ userAgent, previewOnly: true });
-        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.kind, "update");
         assert.strictEqual(refRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
