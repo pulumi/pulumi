@@ -529,7 +529,7 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-func (d *Deployment) SameProvider(res *resource.State) error {
+func (d *Deployment) SameProvider(res *resource.State) (resource.PropertyMap, error) {
 	var ctx context.Context
 	if d.ctx == nil {
 		ctx = context.Background()
@@ -564,7 +564,7 @@ func (d *Deployment) EnsureProvider(provider string) error {
 			return fmt.Errorf("could not find provider %v", providerRef)
 		}
 
-		err := d.SameProvider(providerResource)
+		_, err := d.SameProvider(providerResource)
 		if err != nil {
 			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
 		}

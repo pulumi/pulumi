@@ -330,6 +330,14 @@ func SerializeResource(
 		}
 		outputs = soutp
 	}
+	var state map[string]interface{}
+	if statep := res.PrivateState; statep != nil {
+		sstatep, err := SerializeProperties(ctx, statep, enc, showSecrets)
+		if err != nil {
+			return apitype.ResourceV3{}, err
+		}
+		state = sstatep
+	}
 
 	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
@@ -356,6 +364,7 @@ func SerializeResource(
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
 		IgnoreChanges:           res.IgnoreChanges,
+		PrivateState:            state,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -504,6 +513,10 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 	if err != nil {
 		return nil, err
 	}
+	state, err := DeserializeProperties(res.PrivateState, dec)
+	if err != nil {
+		return nil, err
+	}
 
 	if res.URN == "" {
 		return nil, errors.New("resource missing required 'urn' field")
@@ -522,7 +535,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
 		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified, res.SourcePosition, res.IgnoreChanges,
-		res.ReplaceOnChanges,
+		res.ReplaceOnChanges, state,
 	), nil
 }
 

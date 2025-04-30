@@ -376,7 +376,9 @@ func TestEngineDiff(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
+			diff, err := diffResource(
+				urn, id, c.oldInputs, oldOutputs, c.newInputs,
+				&provider, allowUnknowns, c.ignoreChanges, nil)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)

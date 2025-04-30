@@ -24,6 +24,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setProgramDirectory(value: string): ProviderHandshakeRequest;
     getConfigureWithUrn(): boolean;
     setConfigureWithUrn(value: boolean): ProviderHandshakeRequest;
+    getSupportsPrivateState(): boolean;
+    setSupportsPrivateState(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -41,6 +43,7 @@ export namespace ProviderHandshakeRequest {
         rootDirectory?: string,
         programDirectory?: string,
         configureWithUrn: boolean,
+        supportsPrivateState: boolean,
     }
 }
 
@@ -270,6 +273,11 @@ export class ConfigureRequest extends jspb.Message {
     getType(): string | undefined;
     setType(value: string): ConfigureRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): ConfigureRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConfigureRequest): ConfigureRequest.AsObject;
@@ -293,6 +301,7 @@ export namespace ConfigureRequest {
         urn?: string,
         name?: string,
         type?: string,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -307,6 +316,11 @@ export class ConfigureResponse extends jspb.Message {
     setAcceptoutputs(value: boolean): ConfigureResponse;
     getSupportsAutonamingConfiguration(): boolean;
     setSupportsAutonamingConfiguration(value: boolean): ConfigureResponse;
+
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): ConfigureResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureResponse.AsObject;
@@ -325,6 +339,7 @@ export namespace ConfigureResponse {
         acceptresources: boolean,
         acceptoutputs: boolean,
         supportsAutonamingConfiguration: boolean,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -599,6 +614,11 @@ export class CheckRequest extends jspb.Message {
     getAutonaming(): CheckRequest.AutonamingOptions | undefined;
     setAutonaming(value?: CheckRequest.AutonamingOptions): CheckRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): CheckRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CheckRequest): CheckRequest.AsObject;
@@ -618,6 +638,7 @@ export namespace CheckRequest {
         name: string,
         type: string,
         autonaming?: CheckRequest.AutonamingOptions.AsObject,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 
 
@@ -664,6 +685,11 @@ export class CheckResponse extends jspb.Message {
     setFailuresList(value: Array<CheckFailure>): CheckResponse;
     addFailures(value?: CheckFailure, index?: number): CheckFailure;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): CheckResponse;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckResponse.AsObject;
     static toObject(includeInstance: boolean, msg: CheckResponse): CheckResponse.AsObject;
@@ -678,6 +704,7 @@ export namespace CheckResponse {
     export type AsObject = {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         failuresList: Array<CheckFailure.AsObject>,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -733,6 +760,11 @@ export class DiffRequest extends jspb.Message {
     getType(): string;
     setType(value: string): DiffRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): DiffRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DiffRequest.AsObject;
     static toObject(includeInstance: boolean, msg: DiffRequest): DiffRequest.AsObject;
@@ -753,6 +785,7 @@ export namespace DiffRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         name: string,
         type: string,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -812,6 +845,11 @@ export class DiffResponse extends jspb.Message {
     getHasdetaileddiff(): boolean;
     setHasdetaileddiff(value: boolean): DiffResponse;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): DiffResponse;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DiffResponse.AsObject;
     static toObject(includeInstance: boolean, msg: DiffResponse): DiffResponse.AsObject;
@@ -832,6 +870,7 @@ export namespace DiffResponse {
 
         detaileddiffMap: Array<[string, PropertyDiff.AsObject]>,
         hasdetaileddiff: boolean,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 
     export enum DiffChanges {
@@ -859,6 +898,11 @@ export class CreateRequest extends jspb.Message {
     getType(): string;
     setType(value: string): CreateRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): CreateRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CreateRequest): CreateRequest.AsObject;
@@ -877,6 +921,7 @@ export namespace CreateRequest {
         preview: boolean,
         name: string,
         type: string,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -888,6 +933,11 @@ export class CreateResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): CreateResponse;
+
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): CreateResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateResponse.AsObject;
@@ -903,6 +953,7 @@ export namespace CreateResponse {
     export type AsObject = {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -926,6 +977,11 @@ export class ReadRequest extends jspb.Message {
     getType(): string;
     setType(value: string): ReadRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): ReadRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ReadRequest): ReadRequest.AsObject;
@@ -944,6 +1000,7 @@ export namespace ReadRequest {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         name: string,
         type: string,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -961,6 +1018,11 @@ export class ReadResponse extends jspb.Message {
     getInputs(): google_protobuf_struct_pb.Struct | undefined;
     setInputs(value?: google_protobuf_struct_pb.Struct): ReadResponse;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): ReadResponse;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResponse.AsObject;
     static toObject(includeInstance: boolean, msg: ReadResponse): ReadResponse.AsObject;
@@ -976,6 +1038,7 @@ export namespace ReadResponse {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -1012,6 +1075,11 @@ export class UpdateRequest extends jspb.Message {
     getType(): string;
     setType(value: string): UpdateRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): UpdateRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateRequest.AsObject;
     static toObject(includeInstance: boolean, msg: UpdateRequest): UpdateRequest.AsObject;
@@ -1034,6 +1102,7 @@ export namespace UpdateRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         name: string,
         type: string,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -1043,6 +1112,11 @@ export class UpdateResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): UpdateResponse;
+
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): UpdateResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateResponse.AsObject;
@@ -1057,6 +1131,7 @@ export class UpdateResponse extends jspb.Message {
 export namespace UpdateResponse {
     export type AsObject = {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -1082,6 +1157,11 @@ export class DeleteRequest extends jspb.Message {
     getType(): string;
     setType(value: string): DeleteRequest;
 
+    hasPrivateState(): boolean;
+    clearPrivateState(): void;
+    getPrivateState(): google_protobuf_struct_pb.Struct | undefined;
+    setPrivateState(value?: google_protobuf_struct_pb.Struct): DeleteRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DeleteRequest.AsObject;
     static toObject(includeInstance: boolean, msg: DeleteRequest): DeleteRequest.AsObject;
@@ -1101,6 +1181,7 @@ export namespace DeleteRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         name: string,
         type: string,
+        privateState?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

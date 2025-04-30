@@ -332,12 +332,13 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				URN: urn,
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:         string(id),
-				Urn:        string(urn),
-				Name:       "qux",
-				Type:       "pulumi:provider:aws",
-				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
-				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Id:           string(id),
+				Urn:          string(urn),
+				Name:         "qux",
+				Type:         "pulumi:provider:aws",
+				OldInputs:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties:   &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				PrivateState: &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
 		},
 		{
@@ -359,7 +360,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 						"foo": {Kind: &structpb.Value_StringValue{StringValue: "bar"}},
 					},
 				},
-				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties:   &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				PrivateState: &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
 		},
 		{
@@ -382,6 +384,7 @@ func TestProvider_DeleteRequests(t *testing.T) {
 						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
 					},
 				},
+				PrivateState: &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
 		},
 		{
@@ -392,13 +395,14 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				Timeout: 30,
 			},
 			want: &pulumirpc.DeleteRequest{
-				Id:         string(id),
-				Urn:        string(urn),
-				Name:       "qux",
-				Type:       "pulumi:provider:aws",
-				OldInputs:  &structpb.Struct{Fields: map[string]*structpb.Value{}},
-				Properties: &structpb.Struct{Fields: map[string]*structpb.Value{}},
-				Timeout:    30,
+				Id:           string(id),
+				Urn:          string(urn),
+				Name:         "qux",
+				Type:         "pulumi:provider:aws",
+				OldInputs:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Properties:   &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				PrivateState: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Timeout:      30,
 			},
 		},
 		{
@@ -429,7 +433,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 						"baz": {Kind: &structpb.Value_StringValue{StringValue: "quux"}},
 					},
 				},
-				Timeout: 30,
+				PrivateState: &structpb.Struct{Fields: map[string]*structpb.Value{}},
+				Timeout:      30,
 			},
 		},
 	}
@@ -755,6 +760,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			props,
 			props,
 			1000,
+			resource.PropertyMap{},
 		})
 		assert.NoError(t, err, "Delete failed")
 	}()
@@ -893,6 +899,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{},
 		false,
 		nil,
+		resource.PropertyMap{},
 	})
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
@@ -907,6 +914,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{},
 		false,
 		nil,
+		resource.PropertyMap{},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, DiffUnknown, diff.Changes)
@@ -922,6 +930,7 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.PropertyMap{},
 		false,
 		nil,
+		resource.PropertyMap{},
 	})
 	assert.ErrorContains(t, err, "some other error")
 }

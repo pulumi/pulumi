@@ -108,6 +108,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		"",
 		nil,
 		nil,
+		nil,
 	)
 
 	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
@@ -542,6 +543,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 				Parent:       "",
 				Protect:      false,
 				Dependencies: nil,
+				PrivateState: resource.PropertyMap{},
 			},
 		},
 		PendingOperations: nil,
