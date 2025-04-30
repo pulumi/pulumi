@@ -739,7 +739,7 @@ describe("LocalWorkspace", () => {
             assert.notStrictEqual(error, "");
         }
 
-        assert.strictEqual(error, /error: open halloumi/);
+        assert.match(error, /error: open halloumi/);
         error = "";
 
         const upRes = await stack.up();
