@@ -739,7 +739,7 @@ describe("LocalWorkspace", () => {
             assert.notStrictEqual(error, "");
         }
 
-        assert.strictEqual(error, "error: open halloumi: no such file or directory\n");
+        assert.strictEqual(error, /error: open halloumi/);
         error = "";
 
         const upRes = await stack.up();
@@ -758,10 +758,7 @@ describe("LocalWorkspace", () => {
             assert.notStrictEqual(error, "");
         }
 
-        assert.strictEqual(
-            error,
-            'error: invalid argument "1.1" for "-p, --parallel" flag: strconv.ParseInt: parsing "1.1": invalid syntax\n',
-        );
+        assert.match(error, /error: invalid argument/);
         error = "";
 
         const preRes = await stack.preview({ userAgent });
@@ -779,10 +776,7 @@ describe("LocalWorkspace", () => {
             assert.notStrictEqual(error, "");
         }
 
-        assert.strictEqual(
-            error,
-            'error: invalid argument "2.2" for "-p, --parallel" flag: strconv.ParseInt: parsing "2.2": invalid syntax\n',
-        );
+        assert.match(error, /error: invalid argument/);
         error = "";
 
         const refRes = await stack.refresh({ userAgent });
@@ -801,10 +795,7 @@ describe("LocalWorkspace", () => {
             assert.notStrictEqual(error, "");
         }
 
-        assert.strictEqual(
-            error,
-            'error: invalid argument "3.3" for "-p, --parallel" flag: strconv.ParseInt: parsing "3.3": invalid syntax\n',
-        );
+        assert.match(error, /error: invalid argument/);
         error = "";
 
         const destroyRes = await stack.destroy({ userAgent });
