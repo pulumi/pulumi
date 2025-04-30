@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix error message when trying to load plugins in private repositories with no authentication

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: Introduce `pulumi package info` to show information about a package
