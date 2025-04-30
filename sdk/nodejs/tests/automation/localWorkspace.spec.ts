@@ -715,6 +715,10 @@ describe("LocalWorkspace", () => {
             withTestBackend({}, "inline_node"),
         );
 
+        // We need to come up with some creative ways to make these commands
+        // produce error output. These are the least elaborate ideas I could
+        // come up with.
+
         let error = ""
 
         // pulumi up
