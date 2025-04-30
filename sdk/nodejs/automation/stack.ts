@@ -458,7 +458,12 @@ Event: ${line}\n${e.toString()}`);
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
         const args = ["refresh", "--yes"];
 
-        args.push(opts?.previewOnly ? "--preview-only" : "--skip-preview");
+        if (opts?.previewOnly) {
+          args.push("--skip-preview", "--yes");
+        } else {
+          args.push("--preview-only");
+        }
+
         args.push(...this.remoteArgs());
 
         if (opts) {
