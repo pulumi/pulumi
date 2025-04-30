@@ -70,6 +70,29 @@ func TestMapSet(t *testing.T) {
 	})
 }
 
+func TestMapDelete(t *testing.T) {
+	t.Parallel()
+	m := NewMap(map[string]Value{
+		"a": New("alpha"),
+		"b": New("beta"),
+		"c": New("gamma"),
+	})
+
+	assert.Equal(t, NewMap(map[string]Value{
+		"a": New("alpha"),
+		"b": New("beta"),
+	}), m.Delete("c"))
+
+	assert.Equal(t, NewMap(map[string]Value{
+		"a": New("alpha"),
+		"b": New("beta"),
+	}), m.Delete("c", "d"))
+
+	assert.Equal(t, m, m.Delete("d"))
+
+	assert.Equal(t, 3, m.Len())
+}
+
 func TestMapLen(t *testing.T) {
 	t.Parallel()
 
