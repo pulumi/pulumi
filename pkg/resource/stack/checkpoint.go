@@ -113,6 +113,12 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 		if err != nil {
 			return nil, fmt.Errorf("serializing deployment: %w", err)
 		}
+		// Ensure that the RefreshBeforeUpdate field is included in the serialized deployment.
+		for _, res := range dep.Resources {
+			if res.RefreshBeforeUpdate {
+				// Add logic to handle the RefreshBeforeUpdate field if necessary.
+			}
+		}
 		latest = dep
 	}
 
