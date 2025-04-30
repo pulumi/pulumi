@@ -609,7 +609,13 @@ describe("LocalWorkspace", () => {
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
-            { stackName, projectName, program: async () => {} },
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
             withTestBackend({}, "inline_node"),
         );
 

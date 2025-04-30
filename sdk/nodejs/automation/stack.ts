@@ -459,9 +459,9 @@ Event: ${line}\n${e.toString()}`);
         const args = ["refresh"];
 
         if (opts?.previewOnly) {
-          args.push("--preview-only");
+            args.push("--preview-only");
         } else {
-          args.push("--skip-preview", "--yes");
+            args.push("--skip-preview", "--yes");
         }
 
         args.push(...this.remoteArgs());
