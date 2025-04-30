@@ -16,20 +16,15 @@ package state
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // mutates environment variables
 func TestCurrentStack(t *testing.T) {
 	ctx := context.Background()
 
@@ -75,7 +70,7 @@ func TestCurrentStack(t *testing.T) {
 		t.Run("`$stack` qualifies with individual org if default org not configured", func(t *testing.T) {
 			individualOrgQualifiedName := fmt.Sprintf("%s/%s", user, stack)
 			t.Setenv("PULUMI_STACK", stack)
-			tempdir := tempProjectDir(t)
+			tempdir := t.TempDir()
 			t.Setenv("PULUMI_CREDENTIALS_PATH", tempdir)
 			backendURL := "test-backend-url"
 			t.Setenv("PULUMI_BACKEND_URL", backendURL)
@@ -101,7 +96,7 @@ func TestCurrentStack(t *testing.T) {
 
 		t.Run("`$stack` does not qualify with org if default org configured", func(t *testing.T) {
 			t.Setenv("PULUMI_STACK", stack)
-			tempdir := tempProjectDir(t)
+			tempdir := t.TempDir()
 			t.Setenv("PULUMI_CREDENTIALS_PATH", tempdir)
 			backendURL := "test-backend-url"
 			t.Setenv("PULUMI_BACKEND_URL", backendURL)
@@ -150,22 +145,4 @@ func TestCurrentStack(t *testing.T) {
 
 func writeConfig(t *testing.T, dir string, config []byte) {
 	assert.NoError(t, os.WriteFile(dir+"/config.json", config, 0o600))
-}
-
-func tempProjectDir(t *testing.T) string {
-	t.Helper()
-
-	dir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(dir, 0o700))
-	return dir
-}
-
-func genUniqueName(t *testing.T) string {
-	t.Helper()
-
-	var bs [8]byte
-	_, err := rand.Read(bs[:])
-	require.NoError(t, err)
-
-	return "test-" + hex.EncodeToString(bs[:])
 }
