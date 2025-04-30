@@ -42,6 +42,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
     CONFIGURE_WITH_URN_FIELD_NUMBER: builtins.int
+    SUPPORTS_VIEWS_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -59,6 +60,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     """
     configure_with_urn: builtins.bool
     """If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration."""
+    supports_views: builtins.bool
+    """If true the engine supports views and can send the address of a [](pulumirpc.ResourceStatus) service which can be
+    used to e.g. create or update view resources.
+    """
     def __init__(
         self,
         *,
@@ -66,9 +71,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
         configure_with_urn: builtins.bool = ...,
+        supports_views: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_views", b"supports_views"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
     @typing.overload
@@ -1159,6 +1165,8 @@ class CreateRequest(google.protobuf.message.Message):
     PREVIEW_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the resource being created."""
     @property
@@ -1180,6 +1188,10 @@ class CreateRequest(google.protobuf.message.Message):
     """The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
     that providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    resource_status_address: builtins.str
+    """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
+    resource_status_token: builtins.str
+    """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
     def __init__(
         self,
         *,
@@ -1189,9 +1201,11 @@ class CreateRequest(google.protobuf.message.Message):
         preview: builtins.bool = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        resource_status_address: builtins.str = ...,
+        resource_status_token: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "preview", b"preview", "properties", b"properties", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["name", b"name", "preview", b"preview", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CreateRequest = CreateRequest
 
@@ -1235,6 +1249,9 @@ class ReadRequest(google.protobuf.message.Message):
     INPUTS_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
+    OLD_VIEWS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource to read."""
     urn: builtins.str
@@ -1255,6 +1272,15 @@ class ReadRequest(google.protobuf.message.Message):
     """The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
     providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    resource_status_address: builtins.str
+    """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
+    resource_status_token: builtins.str
+    """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
+    @property
+    def old_views(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___View]:
+        """The old views for the resource being read. These will only be populated when the
+        [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+        """
     def __init__(
         self,
         *,
@@ -1264,9 +1290,12 @@ class ReadRequest(google.protobuf.message.Message):
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        resource_status_address: builtins.str = ...,
+        resource_status_token: builtins.str = ...,
+        old_views: collections.abc.Iterable[global___View] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "properties", b"properties", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ReadRequest = ReadRequest
 
@@ -1319,6 +1348,9 @@ class UpdateRequest(google.protobuf.message.Message):
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
+    OLD_VIEWS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource being updated."""
     urn: builtins.str
@@ -1351,6 +1383,13 @@ class UpdateRequest(google.protobuf.message.Message):
     """The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
     that providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    resource_status_address: builtins.str
+    """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
+    resource_status_token: builtins.str
+    """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
+    @property
+    def old_views(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___View]:
+        """The old views for the resource being updated."""
     def __init__(
         self,
         *,
@@ -1364,9 +1403,12 @@ class UpdateRequest(google.protobuf.message.Message):
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        resource_status_address: builtins.str = ...,
+        resource_status_token: builtins.str = ...,
+        old_views: collections.abc.Iterable[global___View] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "olds", b"olds", "preview", b"preview", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "old_views", b"old_views", "olds", b"olds", "preview", b"preview", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___UpdateRequest = UpdateRequest
 
@@ -1405,6 +1447,9 @@ class DeleteRequest(google.protobuf.message.Message):
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
+    RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
+    OLD_VIEWS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource to delete."""
     urn: builtins.str
@@ -1427,6 +1472,13 @@ class DeleteRequest(google.protobuf.message.Message):
     """The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
     that providers do not have to implement URN parsing in order to extract the type of the resource.
     """
+    resource_status_address: builtins.str
+    """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
+    resource_status_token: builtins.str
+    """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
+    @property
+    def old_views(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___View]:
+        """The old views for the resource being read."""
     def __init__(
         self,
         *,
@@ -1437,9 +1489,12 @@ class DeleteRequest(google.protobuf.message.Message):
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        resource_status_address: builtins.str = ...,
+        resource_status_token: builtins.str = ...,
+        old_views: collections.abc.Iterable[global___View] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["old_inputs", b"old_inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "old_inputs", b"old_inputs", "properties", b"properties", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "name", b"name", "old_inputs", b"old_inputs", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___DeleteRequest = DeleteRequest
 
@@ -1920,3 +1975,44 @@ class GetMappingsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["providers", b"providers"]) -> None: ...
 
 global___GetMappingsResponse = GetMappingsResponse
+
+@typing_extensions.final
+class View(google.protobuf.message.Message):
+    """`View` represents the state of a view resource."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    PARENT_TYPE_FIELD_NUMBER: builtins.int
+    PARENT_NAME_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    """The type of the view resource."""
+    name: builtins.str
+    """The name of the view resource."""
+    parent_type: builtins.str
+    """An optional type of the parent view resource."""
+    parent_name: builtins.str
+    """An optional name of the parent view resource."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The view resource's inputs."""
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The view resource's outputs."""
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+        name: builtins.str = ...,
+        parent_type: builtins.str = ...,
+        parent_name: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "name", b"name", "outputs", b"outputs", "parent_name", b"parent_name", "parent_type", b"parent_type", "type", b"type"]) -> None: ...
+
+global___View = View

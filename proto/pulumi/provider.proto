@@ -258,6 +258,10 @@ message ProviderHandshakeRequest {
 
     // If true the engine will send URN, Name, Type, and ID to the provider as part of the configuration.
     bool configure_with_urn = 4;
+
+    // If true the engine supports views and can send the address of a [](pulumirpc.ResourceStatus) service which can be
+    // used to e.g. create or update view resources.
+    bool supports_views = 5;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -785,6 +789,12 @@ message CreateRequest {
     // The type of the resource being created. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 6;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 7;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 8;
 }
 
 // `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
@@ -820,6 +830,16 @@ message ReadRequest {
     // The type of the resource being read. This must match the type specified by the `urn` field, and is passed so that
     // providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 6;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 7;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 8;
+
+    // The old views for the resource being read. These will only be populated when the
+    // [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
+    repeated View old_views = 9;
 }
 
 // `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
@@ -871,6 +891,15 @@ message UpdateRequest {
     // The type of the resource being updated. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 10;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 11;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 12;
+
+    // The old views for the resource being updated.
+    repeated View old_views = 13;
 }
 
 // `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
@@ -904,6 +933,15 @@ message DeleteRequest {
     // The type of the resource being deleted. This must match the type specified by the `urn` field, and is passed so
     // that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 7;
+
+    // The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources.
+    string resource_status_address = 8;
+
+    // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
+    string resource_status_token = 9;
+
+    // The old views for the resource being read.
+    repeated View old_views = 10;
 }
 
 // `ConstructRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Construct) call. A
@@ -1109,4 +1147,25 @@ message GetMappingsResponse {
     // The set of *source provider keys* this provider can supply mappings for. For example the Pulumi provider
     // `terraform-template` would return `["template"]` for this.
     repeated string providers = 1;
+}
+
+// `View` represents the state of a view resource.
+message View {
+    // The type of the view resource.
+    string type = 1;
+
+    // The name of the view resource.
+    string name = 2;
+
+    // An optional type of the parent view resource.
+    string parent_type = 3;
+
+    // An optional name of the parent view resource.
+    string parent_name = 4;
+
+    // The view resource's inputs.
+    google.protobuf.Struct inputs = 5;
+
+    // The view resource's outputs.
+    google.protobuf.Struct outputs = 6;
 }
