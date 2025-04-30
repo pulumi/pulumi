@@ -1770,3 +1770,85 @@ func TestErrorNoMainPackage(t *testing.T) {
 		},
 	})
 }
+
+// Test that providers can request refresh before update on certain resources and this is respected.
+//
+// While the feature is flagged cannot conveniently run t.Parallel() here.
+//
+//nolint:paralleltest
+func TestRefreshBeforeUpdate(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	e.Setenv("PULUMI_ENABLE_PROVIDER_REFRESH_BEFORE_UPDATE", "true")
+
+	sdkPath, err := filepath.Abs("../../sdk/")
+	require.NoError(t, err)
+
+	pkgPath, err := filepath.Abs("../../pkg/")
+	require.NoError(t, err)
+
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("refresh_before_update"))
+
+	stdout, _, _ := e.GetCommandResults("which", "pulumi")
+	t.Logf("%s", stdout)
+
+	checkState := func(when string) {
+		stdout, _, err := e.GetCommandResults("pulumi", "stack", "export")
+		require.NoError(t, err)
+		t.Logf("%s", stdout)
+		require.Containsf(t, stdout, `"refreshBeforeUpdate": true`,
+			"Expected the Pulumi state to contain a refreshBeforeUpdate marker "+when)
+	}
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.CWD = filepath.Join(e.RootPath, "provider-go")
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/pkg/v3="+pkgPath)
+	e.RunCommand("go", "mod", "tidy")
+
+	e.CWD = filepath.Join(e.RootPath, "go")
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/pkg/v3="+pkgPath)
+	e.RunCommand("go", "mod", "tidy")
+
+	e.RunCommand("pulumi", "stack", "init", "refreshbeforeupdate-test")
+	e.RunCommand("pulumi", "stack", "select", "refreshbeforeupdate-test")
+
+	t.Logf("testing create")
+
+	e.RunCommand("pulumi", "config", "set", "input", "value-1")
+	e.RunCommand("pulumi", "preview")
+	e.RunCommand("pulumi", "up", "--skip-preview")
+
+	checkState("after create")
+
+	t.Logf("testing udpate")
+
+	e.RunCommand("pulumi", "config", "set", "input", "value-2")
+	previewing, previewingErr, err := e.GetCommandResults("pulumi", "preview", "--diff")
+	require.NoError(t, err)
+	t.Logf("pulumi preview --diff: %s", previewing+previewingErr)
+
+	updating, updatingErr, err := e.GetCommandResults("pulumi", "up", "--skip-preview")
+	t.Logf("pulumi up --skip-preview: %s", updating+updatingErr)
+	require.NoError(t, err)
+
+	checkState("after update")
+
+	result, _, err := e.GetCommandResults("pulumi", "stack", "output", "result")
+	require.NoError(t, err)
+	assert.Equal(t, "value-2", strings.TrimSpace(result))
+
+	t.Logf("testing refresh")
+
+	e.RunCommand("pulumi", "refresh", "--yes")
+	checkState("after refresh")
+
+	t.Logf("testing import")
+
+	// Clean up for an empty slate to test import
+	e.RunCommand("pulumi", "destroy", "--yes")
+	e.RunCommand("pulumi", "import", "provider-go:index:MyResource", "r2", "r2id", "--yes")
+	checkState("after import")
+}
