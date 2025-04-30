@@ -7400,7 +7400,8 @@ proto.pulumirpc.CreateResponse.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    refreshbeforeupdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -7446,6 +7447,10 @@ proto.pulumirpc.CreateResponse.deserializeBinaryFromReader = function(msg, reade
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRefreshbeforeupdate(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7488,6 +7493,13 @@ proto.pulumirpc.CreateResponse.serializeBinaryToWriter = function(message, write
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getRefreshbeforeupdate();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
     );
   }
 };
@@ -7545,6 +7557,24 @@ proto.pulumirpc.CreateResponse.prototype.clearProperties = function() {
  */
 proto.pulumirpc.CreateResponse.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional bool refreshBeforeUpdate = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.CreateResponse.prototype.getRefreshbeforeupdate = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.setRefreshbeforeupdate = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 
@@ -8024,7 +8054,8 @@ proto.pulumirpc.ReadResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    refreshbeforeupdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -8074,6 +8105,10 @@ proto.pulumirpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader)
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setInputs(value);
+      break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRefreshbeforeupdate(value);
       break;
     default:
       reader.skipField();
@@ -8125,6 +8160,13 @@ proto.pulumirpc.ReadResponse.serializeBinaryToWriter = function(message, writer)
       3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getRefreshbeforeupdate();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
     );
   }
 };
@@ -8219,6 +8261,24 @@ proto.pulumirpc.ReadResponse.prototype.clearInputs = function() {
  */
 proto.pulumirpc.ReadResponse.prototype.hasInputs = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional bool refreshBeforeUpdate = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResponse.prototype.getRefreshbeforeupdate = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ReadResponse} returns this
+ */
+proto.pulumirpc.ReadResponse.prototype.setRefreshbeforeupdate = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -8856,7 +8916,8 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
  */
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    refreshbeforeupdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -8898,6 +8959,10 @@ proto.pulumirpc.UpdateResponse.deserializeBinaryFromReader = function(msg, reade
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRefreshbeforeupdate(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -8933,6 +8998,13 @@ proto.pulumirpc.UpdateResponse.serializeBinaryToWriter = function(message, write
       1,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getRefreshbeforeupdate();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
     );
   }
 };
@@ -8972,6 +9044,24 @@ proto.pulumirpc.UpdateResponse.prototype.clearProperties = function() {
  */
 proto.pulumirpc.UpdateResponse.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional bool refreshBeforeUpdate = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.UpdateResponse.prototype.getRefreshbeforeupdate = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.setRefreshbeforeupdate = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

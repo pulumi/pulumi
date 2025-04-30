@@ -1219,6 +1219,7 @@ class CreateResponse(google.protobuf.message.Message):
 
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
+    REFRESHBEFOREUPDATE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the created resource."""
     @property
@@ -1226,14 +1227,17 @@ class CreateResponse(google.protobuf.message.Message):
         """The resource's output properties. Typically this will be a union of the resource's input properties and any
         additional values that were computed or made available during creation.
         """
+    refreshBeforeUpdate: builtins.bool
+    """Provider indicates that this resource should always be refreshed when updating."""
     def __init__(
         self,
         *,
         id: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
+        refreshBeforeUpdate: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "properties", b"properties"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "properties", b"properties", "refreshBeforeUpdate", b"refreshBeforeUpdate"]) -> None: ...
 
 global___CreateResponse = CreateResponse
 
@@ -1310,6 +1314,7 @@ class ReadResponse(google.protobuf.message.Message):
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
+    REFRESHBEFOREUPDATE_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the read resource."""
     @property
@@ -1320,15 +1325,18 @@ class ReadResponse(google.protobuf.message.Message):
         """Output-derived input properties for the resource. These are returned as they would be returned from a
         [](pulumirpc.ResourceProvider.Check) call with the same values.
         """
+    refreshBeforeUpdate: builtins.bool
+    """Provider indicates that this resource should always be refreshed when updating."""
     def __init__(
         self,
         *,
         id: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        refreshBeforeUpdate: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "refreshBeforeUpdate", b"refreshBeforeUpdate"]) -> None: ...
 
 global___ReadResponse = ReadResponse
 
@@ -1419,18 +1427,22 @@ class UpdateResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PROPERTIES_FIELD_NUMBER: builtins.int
+    REFRESHBEFOREUPDATE_FIELD_NUMBER: builtins.int
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """An updated set of resource output properties. Typically this will be a union of the resource's inputs and any
         additional values that were computed or made available during the update.
         """
+    refreshBeforeUpdate: builtins.bool
+    """Provider indicates that this resource should always be refreshed when updating."""
     def __init__(
         self,
         *,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
+        refreshBeforeUpdate: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["properties", b"properties", "refreshBeforeUpdate", b"refreshBeforeUpdate"]) -> None: ...
 
 global___UpdateResponse = UpdateResponse
 
