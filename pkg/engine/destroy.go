@@ -17,6 +17,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -44,7 +45,7 @@ func Destroy(
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, []UpdateInfo{u})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -58,12 +59,13 @@ func Destroy(
 	}
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newDestroySource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
+		UpdateOptions:   opts,
+		SourceFunc:      newDestroySource,
+		Events:          emitter,
+		Diag:            newEventSink(emitter, false),
+		StatusDiag:      newEventSink(emitter, true),
+		debugTraceMutex: &sync.Mutex{},
+		DryRun:          dryRun,
 	})
 }
 
@@ -127,7 +129,7 @@ func newDestroySource(
 
 	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
 	// engine to destroy the entire existing state.
-	return deploy.NewNullSource(proj.Name), nil
+	return deploy.NewNullSource(), nil
 }
 
 // DestroyV2 is a version of Destroy that uses the normal update source (i.e. it runs the user program) and
@@ -149,7 +151,7 @@ func DestroyV2(
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, []UpdateInfo{u})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,11 +168,12 @@ func DestroyV2(
 	}
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
+		UpdateOptions:   opts,
+		SourceFunc:      newUpdateSource,
+		Events:          emitter,
+		Diag:            newEventSink(emitter, false),
+		StatusDiag:      newEventSink(emitter, true),
+		debugTraceMutex: &sync.Mutex{},
+		DryRun:          dryRun,
 	})
 }

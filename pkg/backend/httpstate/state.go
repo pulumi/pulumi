@@ -182,6 +182,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 
 	return &deploy.Target{
 		Name:         stackID.Stack,
+		Project:      tokens.PackageName(stackID.Project),
 		Organization: tokens.Name(stackID.Owner),
 		Config:       cfg,
 		Decrypter:    dec,

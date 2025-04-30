@@ -17,6 +17,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -44,7 +45,7 @@ func Refresh(
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, []UpdateInfo{u})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -61,13 +62,14 @@ func Refresh(
 	}
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newRefreshSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		isRefresh:     true,
-		DryRun:        dryRun,
+		UpdateOptions:   opts,
+		SourceFunc:      newRefreshSource,
+		Events:          emitter,
+		Diag:            newEventSink(emitter, false),
+		StatusDiag:      newEventSink(emitter, true),
+		debugTraceMutex: &sync.Mutex{},
+		isRefresh:       true,
+		DryRun:          dryRun,
 	})
 }
 
@@ -122,7 +124,7 @@ func newRefreshSource(
 	}
 
 	// Just return an error source. Refresh doesn't use its source.
-	return deploy.NewErrorSource(proj.Name), nil
+	return deploy.NewErrorSource(), nil
 }
 
 // RefreshV2 is a version of Refresh that uses the normal update source (i.e. it runs the user program) and
@@ -144,7 +146,7 @@ func RefreshV2(
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, []UpdateInfo{u})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -162,12 +164,13 @@ func RefreshV2(
 	}
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		isRefresh:     true,
-		DryRun:        dryRun,
+		UpdateOptions:   opts,
+		SourceFunc:      newUpdateSource,
+		Events:          emitter,
+		Diag:            newEventSink(emitter, false),
+		StatusDiag:      newEventSink(emitter, true),
+		debugTraceMutex: &sync.Mutex{},
+		isRefresh:       true,
+		DryRun:          dryRun,
 	})
 }

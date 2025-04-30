@@ -139,7 +139,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		select {
 		case <-callerCtx.Done():
 			logging.V(4).Infof("deploymentExecutor.Execute(...): signalling cancellation to providers...")
-			cancelErr := ex.deployment.ctx.Host.SignalCancellation()
+			cancelErr := ex.deployment.plugctxs.SignalCancellation()
 			if cancelErr != nil {
 				logging.V(4).Infof("deploymentExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
 			}

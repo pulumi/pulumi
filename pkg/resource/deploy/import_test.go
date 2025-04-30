@@ -78,12 +78,7 @@ func TestImporter(t *testing.T) {
 							Type: "::",
 						},
 					},
-					target: &Target{
-						Name: tokens.MustParseStackName("stack-name"),
-					},
-					source: &nullSource{
-						project: "project-name",
-					},
+					source: &nullSource{},
 				},
 			}
 			_, _, err := i.registerProviders(context.Background())
@@ -95,11 +90,8 @@ func TestImporter(t *testing.T) {
 			expectedErr := errors.New("expected error")
 			i := &importer{
 				deployment: &Deployment{
-					goals: &gsync.Map[urn.URN, *resource.Goal]{},
-					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
-					target: &Target{
-						Name: tokens.MustParseStackName("stack-name"),
-					},
+					goals:  &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
 					source: &nullSource{},
 					providers: providers.NewRegistry(&plugin.MockHost{
 						ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
@@ -148,7 +140,6 @@ func TestImporter(t *testing.T) {
 						},
 						goals:  &gsync.Map[urn.URN, *resource.Goal]{},
 						source: &nullSource{},
-						target: &Target{},
 						imports: []Import{
 							{},
 						},
@@ -169,9 +160,6 @@ func TestImporter(t *testing.T) {
 					},
 					deployment: &Deployment{
 						source: &nullSource{},
-						target: &Target{
-							Name: tokens.MustParseStackName("stack-name"),
-						},
 						imports: []Import{
 							{},
 						},
@@ -198,9 +186,6 @@ func TestImporter(t *testing.T) {
 						// goals is left nil as nothing should be added to it.
 						goals:  nil,
 						source: &nullSource{},
-						target: &Target{
-							Name: tokens.MustParseStackName("stack-name"),
-						},
 						imports: []Import{
 							{},
 						},
@@ -243,11 +228,8 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
-			goals: &gsync.Map[urn.URN, *resource.Goal]{},
-			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
-			target: &Target{
-				Name: tokens.MustParseStackName("stack-name"),
-			},
+			goals:  &gsync.Map[urn.URN, *resource.Goal]{},
+			ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
 			source: &nullSource{},
 			providers: providers.NewRegistry(&plugin.MockHost{
 				ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {

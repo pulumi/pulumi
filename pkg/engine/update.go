@@ -228,7 +228,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, []UpdateInfo{u})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -240,12 +240,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
+		UpdateOptions:   opts,
+		SourceFunc:      newUpdateSource,
+		Events:          emitter,
+		Diag:            newEventSink(emitter, false),
+		StatusDiag:      newEventSink(emitter, true),
+		debugTraceMutex: &sync.Mutex{},
+		DryRun:          dryRun,
 	})
 }
 
@@ -512,7 +513,7 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+	return deploy.NewEvalSource(opts.debugTraceMutex, plugctx, &deploy.EvalRunInfo{
 		Proj:        proj,
 		Pwd:         pwd,
 		Program:     main,
@@ -533,16 +534,7 @@ func update(
 	info *deploymentContext,
 	opts *deploymentOptions,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	// Create an appropriate set of event listeners.
-	var actions runActions
-	if opts.DryRun {
-		actions = newPreviewActions(opts)
-	} else {
-		actions = newUpdateActions(ctx, info.Update, opts)
-	}
-
-	// Initialize our deployment object with the context and options.
-	deployment, err := newDeployment(ctx, info, actions, opts)
+	deployment, err := newDeployment(ctx, info, opts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -585,18 +577,16 @@ type updateActions struct {
 	Ops     map[display.StepOp]int
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
-	Update  UpdateInfo
 	Opts    *deploymentOptions
 
 	maybeCorrupt bool
 }
 
-func newUpdateActions(context *Context, u UpdateInfo, opts *deploymentOptions) *updateActions {
+func newUpdateActions(context *Context, opts *deploymentOptions) *updateActions {
 	return &updateActions{
 		Context: context,
 		Ops:     make(map[display.StepOp]int),
 		Seen:    make(map[resource.URN]deploy.Step),
-		Update:  u,
 		Opts:    opts,
 	}
 }

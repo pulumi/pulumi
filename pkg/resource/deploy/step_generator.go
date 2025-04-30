@@ -219,16 +219,19 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
 func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...interface{}) error {
-	sg.deployment.Diag().Errorf(diag, args...)
+	sg.deployment.diag.Errorf(diag, args...)
 	return result.BailErrorf(diag.Message, args...)
 }
 
 // generateURN generates a URN for a new resource and confirms we haven't seen it before in this deployment.
 func (sg *stepGenerator) generateURN(
-	parent resource.URN, ty tokens.Type, name string,
+	stackReference resource.RelativeStackReference,
+	parent resource.URN,
+	ty tokens.Type,
+	name string,
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
-	urn := sg.deployment.generateURN(parent, ty, name)
+	urn := sg.deployment.generateURN(stackReference, parent, ty, name)
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
@@ -246,7 +249,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		return nil, err
 	}
 
-	urn, err := sg.generateURN(parent, event.Type(), event.Name())
+	urn, err := sg.generateURN(event.StackReference().Relative(), parent, event.Type(), event.Name())
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +436,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 				// application run.
 				d := diag.GetResourceWillBeCreatedButWasNotSpecifiedInTargetList(step.URN())
 
-				sg.deployment.Diag().Errorf(d, step.URN(), urn)
+				sg.deployment.diag.Errorf(d, step.URN(), urn)
 				sg.sawError = true
 
 				if !sg.deployment.opts.DryRun {
@@ -485,11 +488,11 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 
 	project := alias.Project
 	if project == "" {
-		project = sg.deployment.source.Project().String()
+		project = goal.StackReference.Project
 	}
 	stack := alias.Stack
 	if stack == "" {
-		stack = sg.deployment.Target().Name.String()
+		stack = goal.StackReference.Stack
 	}
 
 	return resource.CreateURN(n, t, parent, project, stack)
@@ -499,6 +502,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 // parent. This may involve changing the name of the resource in cases where the resource has a named derived
 // from the name of the parent, and the parent name changed.
 func (sg *stepGenerator) inheritedChildAlias(
+	stackReference resource.RelativeStackReference,
 	childType tokens.Type,
 	childName, parentName string,
 	parentAlias resource.URN,
@@ -521,8 +525,8 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName = parentAlias.Name() + strings.TrimPrefix(childName, parentName)
 	}
 	return resource.NewURN(
-		sg.deployment.Target().Name.Q(),
-		sg.deployment.source.Project(),
+		tokens.QName(stackReference.Stack),
+		tokens.PackageName(stackReference.Project),
 		parentAlias.QualifiedType(),
 		childType,
 		aliasName)
@@ -546,12 +550,12 @@ func (sg *stepGenerator) generateAliases(goal *resource.Goal) []resource.URN {
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
 		if parentAlias, has := sg.aliases[goal.Parent]; has {
-			addAlias(sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
+			addAlias(sg.inheritedChildAlias(goal.StackReference.Relative(), goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
 			for _, alias := range goal.Aliases {
 				childAlias := sg.collapseAliasToUrn(goal, alias)
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
-				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
+				inheritedAlias := sg.inheritedChildAlias(goal.StackReference.Relative(), aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
 				addAlias(inheritedAlias)
 			}
 		}
@@ -572,7 +576,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	}
 	goal.Parent = parent
 
-	urn, err := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	urn, err := sg.generateURN(goal.StackReference.Relative(), goal.Parent, goal.Type, goal.Name)
 	if err != nil {
 		return nil, false, err
 	}
@@ -585,7 +589,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	if previousAliasURN, alreadyAliased := sg.aliased[urn]; alreadyAliased {
 		// This resource is claiming to be X but we've already seen another resource claim that via aliases
 		invalid = true
-		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasedError(urn), urn, previousAliasURN)
+		sg.deployment.diag.Errorf(diag.GetDuplicateResourceAliasedError(urn), urn, previousAliasURN)
 	}
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
@@ -603,12 +607,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 				if _, alreadySeen := sg.urns[urnOrAlias]; alreadySeen {
 					// This resource is claiming to X but we've already seen that urn created
 					invalid = true
-					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, urn)
+					sg.deployment.diag.Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, urn)
 				}
 				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
 					// This resource is claiming to be X but we've already seen another resource claim that
 					invalid = true
-					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+					sg.deployment.diag.Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
 				}
 				sg.aliased[urnOrAlias] = urn
 
@@ -1112,7 +1116,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
 	// remediations, and *then* we do analysis, since we want analyzers to run on the final resource states.
-	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
+	analyzers := sg.deployment.plugctxs.GetHostByURN(new.URN).ListAnalyzers()
 	for _, remediate := range []bool{true, false} {
 		for _, analyzer := range analyzers {
 			r := plugin.AnalyzerResource{
@@ -1579,7 +1583,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	// report the message contained in the error.
 	if _, ok := err.(plugin.DiffUnavailableError); ok {
 		diff = plugin.DiffResult{Changes: plugin.DiffSome}
-		sg.deployment.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
+		sg.deployment.diag.Warningf(diag.RawMessage(urn, err.Error()))
 	} else if err != nil {
 		return nil, err
 	}
@@ -1609,7 +1613,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					"as it is currently marked for protection. To unprotect the resource, "+
 					"remove the `protect` flag from the resource in your Pulumi "+
 					"program and run `pulumi up`", urn)
-				sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+				sg.deployment.diag.Errorf(diag.StreamMessage(urn, message, 0))
 				sg.sawError = true
 				// In Preview, we mark the deployment as Error but continue to next steps,
 				// so that the preview is shown to the user and they can see the diff causing it.
@@ -1627,7 +1631,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				const message = "previously-imported resources that still specify an ID may not be replaced; " +
 					"please remove the `import` declaration from your program"
 				if sg.deployment.opts.DryRun {
-					sg.deployment.ctx.Diag.Warningf(diag.StreamMessage(urn, message, 0))
+					sg.deployment.diag.Warningf(diag.StreamMessage(urn, message, 0))
 				} else {
 					return nil, errors.New(message)
 				}
@@ -1734,7 +1738,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 								"program and run `pulumi up`, or use the command:\n"+
 								"`pulumi state unprotect %q`",
 								dependentResource.URN, urn, dependentResource.URN)
-							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+							sg.deployment.diag.Errorf(diag.StreamMessage(urn, message, 0))
 							sg.sawError = true
 							return nil, result.BailErrorf("%s", message)
 						}
@@ -2045,7 +2049,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 			// re-running the operation.
 			//
 			// Mark that step generation entered an error state so that the entire app run fails.
-			sg.deployment.Diag().Errorf(d, urn)
+			sg.deployment.diag.Errorf(d, urn)
 			sg.sawError = true
 
 			deletingUnspecifiedTarget = true
@@ -2479,7 +2483,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+	return issueCheckFailures(deployment.diag.Errorf, new, urn, failures)
 }
 
 // issueCheckErrors prints any check errors to the given printer function.
@@ -2806,117 +2810,117 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {
-	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
+	var err error
+	var resourcesByStack map[resource.AbsoluteStackReference][]plugin.AnalyzerStackResource
+	sg.deployment.news.Range(func(urn resource.URN, v *resource.State) bool {
+		goal, ok := sg.deployment.goals.Load(urn)
 
-	var resources []plugin.AnalyzerStackResource
-	// Don't bother building the resources slice if there are no analyzers.
-	if len(analyzers) != 0 {
-		var err error
-		sg.deployment.news.Range(func(urn resource.URN, v *resource.State) bool {
-			goal, ok := sg.deployment.goals.Load(urn)
-			// It's possible that we might not have a goal for this resource, e.g. if it was resource never
-			// registered, but also skipped from deletion by --targets or --excludes. In that case we won't
-			// have a goal, but the resource is still in the stack.
-			var deleteBeforeReplace *bool
-			if ok {
-				deleteBeforeReplace = goal.DeleteBeforeReplace
-			}
-
-			res := plugin.AnalyzerStackResource{
-				AnalyzerResource: plugin.AnalyzerResource{
-					URN:  v.URN,
-					Type: v.Type,
-					Name: v.URN.Name(),
-					// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
-					// to verify the final stack is in a compliant state.
-					Properties: v.Outputs,
-					Options: plugin.AnalyzerResourceOptions{
-						Protect:                 v.Protect,
-						IgnoreChanges:           v.IgnoreChanges,
-						DeleteBeforeReplace:     deleteBeforeReplace,
-						AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-						Aliases:                 v.GetAliases(),
-						CustomTimeouts:          v.CustomTimeouts,
-						Parent:                  v.Parent,
-					},
-				},
-				Parent:               v.Parent,
-				Dependencies:         v.Dependencies,
-				PropertyDependencies: v.PropertyDependencies,
-			}
-			// N.B. This feels very unideal but I can't find a better way to check this. When we get here
-			// there is a chance that we'll have a resource in `news` but _won't_ have it's matching provider.
-			// This can happen in a targeted run where the untargeted resource is removed from the program
-			// and is the only resource using the given provider (common case is where every other resource is
-			// using a new version of the provider).
-			// See https://github.com/pulumi/pulumi/issues/19879 for a case of this.
-			var providerResource *resource.State
-			if v.Provider != "" {
-				var ref providers.Reference
-				ref, err = providers.ParseReference(v.Provider)
-				contract.AssertNoErrorf(err, "failed to parse provider reference")
-				var has bool
-				providerResource, has = sg.providers[ref.URN()]
-				if !has {
-					// This provider hasn't been registered yet. This happens when a user changes the default
-					// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15732
-					// for more information.
-					providerResource = sg.deployment.olds[ref.URN()]
-					if providerResource != nil && providerResource.ID != ref.ID() {
-						// If it's the wrong ID then don't report a match
-						providerResource = nil
-					}
-					if providerResource == nil {
-						// Return a more friendly error to the user explaining this isn't supported.
-						err = fmt.Errorf("provider %s for resource %s has not been registered yet, this is "+
-							"due to a change of providers mixed with --target. "+
-							"Change your program back to the original providers", ref, urn)
-						return false
-					}
-				}
-			}
-
-			if providerResource != nil {
-				res.Provider = &plugin.AnalyzerProviderResource{
-					URN:        providerResource.URN,
-					Type:       providerResource.Type,
-					Name:       providerResource.URN.Name(),
-					Properties: providerResource.Inputs,
-				}
-			}
-			resources = append(resources, res)
-			return true
-		})
-		if err != nil {
-			return err
+		// It's possible that we might not have a goal for this resource, e.g. if it was resource never
+		// registered, but also skipped from deletion by --targets or --excludes. In that case we won't
+		// have a goal, but the resource is still in the stack.
+		var deleteBeforeReplace *bool
+		if ok {
+			deleteBeforeReplace = goal.DeleteBeforeReplace
 		}
+
+		res := plugin.AnalyzerStackResource{
+			AnalyzerResource: plugin.AnalyzerResource{
+				URN:  v.URN,
+				Type: v.Type,
+				Name: v.URN.Name(),
+				// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
+				// to verify the final stack is in a compliant state.
+				Properties: v.Outputs,
+				Options: plugin.AnalyzerResourceOptions{
+					Protect:                 v.Protect,
+					IgnoreChanges:           v.IgnoreChanges,
+					DeleteBeforeReplace:     deleteBeforeReplace,
+					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
+					Aliases:                 v.GetAliases(),
+					CustomTimeouts:          v.CustomTimeouts,
+					Parent:                  v.Parent,
+				},
+			},
+			Parent:               v.Parent,
+			Dependencies:         v.Dependencies,
+			PropertyDependencies: v.PropertyDependencies,
+		}
+		// N.B. This feels very unideal but I can't find a better way to check this. When we get here
+		// there is a chance that we'll have a resource in `news` but _won't_ have it's matching provider.
+		// This can happen in a targeted run where the untargeted resource is removed from the program
+		// and is the only resource using the given provider (common case is where every other resource is
+		// using a new version of the provider).
+		// See https://github.com/pulumi/pulumi/issues/19879 for a case of this.
+		var providerResource *resource.State
+		if v.Provider != "" {
+			var ref providers.Reference
+			ref, err = providers.ParseReference(v.Provider)
+			contract.AssertNoErrorf(err, "failed to parse provider reference")
+			var has bool
+			providerResource, has = sg.providers[ref.URN()]
+			if !has {
+				// This provider hasn't been registered yet. This happens when a user changes the default
+				// provider version in a targeted update. See https://github.com/pulumi/pulumi/issues/15732
+				// for more information.
+				providerResource = sg.deployment.olds[ref.URN()]
+				if providerResource != nil && providerResource.ID != ref.ID() {
+					// If it's the wrong ID then don't report a match
+					providerResource = nil
+				}
+				if providerResource == nil {
+					// Return a more friendly error to the user explaining this isn't supported.
+					err = fmt.Errorf("provider %s for resource %s has not been registered yet, this is "+
+						"due to a change of providers mixed with --target. "+
+						"Change your program back to the original providers", ref, urn)
+					return false
+				}
+			}
+		}
+
+		if providerResource != nil {
+			res.Provider = &plugin.AnalyzerProviderResource{
+				URN:        providerResource.URN,
+				Type:       providerResource.Type,
+				Name:       providerResource.URN.Name(),
+				Properties: providerResource.Inputs,
+			}
+		}
+		resourcesByStack[goal.StackReference] = append(resourcesByStack[goal.StackReference], res)
+		return true
+	})
+	if err != nil {
+		return err
 	}
 
-	for _, analyzer := range analyzers {
-		diagnostics, err := analyzer.AnalyzeStack(resources)
-		if err != nil {
-			return err
-		}
-		for _, d := range diagnostics {
-			if d.EnforcementLevel == apitype.Remediate {
-				// Stack policies cannot be remediated, so treat the level as mandatory.
-				d.EnforcementLevel = apitype.Mandatory
+	for stackRef, resources := range resourcesByStack {
+		analyzers := sg.deployment.plugctxs.GetHostByStackReference(stackRef).ListAnalyzers()
+		for _, analyzer := range analyzers {
+			diagnostics, err := analyzer.AnalyzeStack(resources)
+			if err != nil {
+				return err
 			}
-
-			sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
-			// If a URN was provided and it is a URN associated with a resource in the stack, use it.
-			// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
-			// the default root stack URN.
-			var urn resource.URN
-			if d.URN != "" {
-				if _, ok := sg.deployment.news.Load(d.URN); ok {
-					urn = d.URN
+			for _, d := range diagnostics {
+				if d.EnforcementLevel == apitype.Remediate {
+					// Stack policies cannot be remediated, so treat the level as mandatory.
+					d.EnforcementLevel = apitype.Mandatory
 				}
+
+				sg.sawError = sg.sawError || (d.EnforcementLevel == apitype.Mandatory)
+				// If a URN was provided and it is a URN associated with a resource in the stack, use it.
+				// Otherwise, if the URN is empty or is not associated with a resource in the stack, use
+				// the default root stack URN.
+				var urn resource.URN
+				if d.URN != "" {
+					if _, ok := sg.deployment.news.Load(d.URN); ok {
+						urn = d.URN
+					}
+				}
+				if urn == "" {
+					// TODO(multistack) work this out
+					urn = "" // resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
+				}
+				sg.deployment.events.OnPolicyViolation(urn, d)
 			}
-			if urn == "" {
-				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
-			}
-			sg.deployment.events.OnPolicyViolation(urn, d)
 		}
 	}
 

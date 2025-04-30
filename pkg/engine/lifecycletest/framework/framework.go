@@ -608,7 +608,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 }
 
 func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
-	stack, _, _ := p.getNames()
+	stack, project, _ := p.getNames()
 
 	cfg := p.Config
 	if cfg == nil {
@@ -616,6 +616,7 @@ func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
 	}
 
 	return deploy.Target{
+		Project:   project,
 		Name:      stack,
 		Config:    cfg,
 		Decrypter: p.Decrypter,

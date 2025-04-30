@@ -2838,3 +2838,51 @@ func TestNodeCanConstructNamespacedComponent(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
+
+func TestNodeMultistack(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	repoRoot, err := filepath.Abs(filepath.Join(cwd, "..", ".."))
+	require.NoError(t, err)
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	top := e.CWD
+
+	e.ImportDirectory("multistack/nodejs")
+
+	goModBytes, err := os.ReadFile("../go.mod")
+	require.NoError(t, err)
+
+	goMod := string(goModBytes)
+	goMod = strings.ReplaceAll(goMod, "../pkg", repoRoot+"/pkg")
+	goMod = strings.ReplaceAll(goMod, "../sdk", repoRoot+"/sdk")
+	e.WriteTestFile("testprovider/go.mod", goMod)
+
+	goSumBytes, err := os.ReadFile("../go.sum")
+	require.NoError(t, err)
+
+	e.WriteTestFile("testprovider/go.sum", string(goSumBytes))
+
+	e.CWD = filepath.Join(top, "testprovider")
+	e.ImportDirectory("../testprovider")
+
+	e.CWD = filepath.Join(top, "b")
+	e.RunCommand("pulumi", "package", "add", "../testprovider")
+	e.RunCommand("pulumi", "stack", "select", "organization/multistack-b/dev", "--create")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+
+	e.CWD = filepath.Join(top, "a")
+	e.RunCommand("pulumi", "package", "add", "../testprovider")
+	e.RunCommand("pulumi", "stack", "select", "organization/multistack-a/dev", "--create")
+	e.RunCommand("pulumi", "install")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
+}

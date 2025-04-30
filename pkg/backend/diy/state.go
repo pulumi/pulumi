@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 
 	"gocloud.dev/blob"
@@ -83,6 +84,7 @@ func (b *diyBackend) getTarget(
 	}
 	return &deploy.Target{
 		Name:         ref.Name(),
+		Project:      tokens.PackageName(ref.project),
 		Organization: "organization", // diy has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,

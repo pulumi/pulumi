@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -42,7 +43,9 @@ const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
-	diag, statusDiag diag.Sink, debugging plugin.DebugContext, disableProviderPreview bool,
+	diag, statusDiag diag.Sink,
+	debugTraceMutex *sync.Mutex,
+	debugging plugin.DebugContext, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
@@ -64,7 +67,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
 			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
+			Mutex:   debugTraceMutex,
 		})
 		if err != nil {
 			return "", "", nil, err
@@ -141,6 +144,8 @@ type deploymentOptions struct {
 	// the sink to use for diag'ing status messages.
 	StatusDiag diag.Sink
 
+	debugTraceMutex *sync.Mutex
+
 	// True if this is an import operation.
 	isImport bool
 	// Resources to import, if this is an import.
@@ -162,15 +167,150 @@ type deploymentSourceFunc func(
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
 
+type deploymentBuilder struct {
+	opts         *deploymentOptions // the options to use for the deployment.
+	debugContext plugin.DebugContext
+	cancelCtx    context.Context                                     // the context to use for cancellation.
+	cancelFunc   context.CancelFunc                                  // the function to call to cancel the deployment.
+	plugctxs     map[resource.AbsoluteStackReference]*plugin.Context // the plugin contexts for each stack reference.
+	sources      []deploy.Source                                     // the sources that have been created for this deployment.
+}
+
+func newDeploymentBuilder(
+	opts *deploymentOptions,
+) (*deploymentBuilder, error) {
+	contract.Assertf(!opts.isImport, "deploymentBuilder cannot be used for imports")
+	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
+
+	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
+
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+
+	return &deploymentBuilder{
+		opts:         opts,
+		debugContext: debugContext,
+		cancelCtx:    cancelCtx,
+		cancelFunc:   cancelFunc,
+	}, nil
+}
+
+func (b *deploymentBuilder) enqueue(
+	ctx *Context,
+	info *deploymentContext,
+) (*deploymentBuilder, error) {
+	contract.Assertf(info != nil, "a deployment context must be provided")
+
+	// First, load the package metadata and the deployment target in preparation for executing the package's program
+	// and creating resources.  This includes fetching its pwd and main overrides.
+	proj, target := info.Update.Project, info.Update.Target
+	contract.Assertf(proj != nil, "update project cannot be nil")
+	contract.Assertf(target != nil, "update target cannot be nil")
+	projinfo := &Projinfo{Proj: proj, Root: info.Update.Root}
+
+	// Decrypt the configuration.
+	config, err := target.Config.Decrypt(target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt config: %w", err)
+	}
+
+	// Create a context for plugins.
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, b.opts.Host,
+		b.opts.Diag, b.opts.StatusDiag,
+		b.opts.debugTraceMutex,
+		b.debugContext, b.opts.DisableProviderPreview, info.TracingSpan, config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
+	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
+
+	// Set up a goroutine that will signal cancellation to the source if the caller context
+	// is cancelled.
+	go func() {
+		<-ctx.Cancel.Canceled()
+		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
+		b.cancelFunc()
+	}()
+
+	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
+	// for example, loading any plugins which will be required to execute a program, among other things.
+	source, err := b.opts.SourceFunc(
+		b.cancelCtx, ctx.BackendClient, b.opts, proj, pwd, main, projinfo.Root, target, plugctx)
+	if err != nil {
+		contract.IgnoreClose(plugctx)
+		return nil, err
+	}
+
+	b.plugctxs[target.StackReference()] = plugctx
+	b.sources = append(b.sources, source)
+	return b, nil
+}
+
+func (b *deploymentBuilder) build() (*deployment, error) {
+	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(b.opts.LocalPolicyPacks)
+
+	deplOpts := &deploy.Options{
+		ParallelDiff:              b.opts.ParallelDiff,
+		DryRun:                    b.opts.DryRun,
+		Parallel:                  b.opts.Parallel,
+		Refresh:                   b.opts.Refresh,
+		RefreshOnly:               b.opts.isRefresh,
+		RefreshProgram:            b.opts.RefreshProgram,
+		DestroyProgram:            b.opts.DestroyProgram,
+		ReplaceTargets:            b.opts.ReplaceTargets,
+		Targets:                   b.opts.Targets,
+		Excludes:                  b.opts.Excludes,
+		TargetDependents:          b.opts.TargetDependents,
+		ExcludeDependents:         b.opts.ExcludeDependents,
+		UseLegacyDiff:             b.opts.UseLegacyDiff,
+		UseLegacyRefreshDiff:      b.opts.UseLegacyRefreshDiff,
+		DisableResourceReferences: b.opts.DisableResourceReferences,
+		DisableOutputValues:       b.opts.DisableOutputValues,
+		GeneratePlan:              b.opts.GeneratePlan,
+		ContinueOnError:           b.opts.ContinueOnError,
+		Autonamer:                 b.opts.Autonamer,
+	}
+
+	plugctxs := plugin.NewContexts(b.plugctxs)
+
+	depl, err := deploy.NewDeployment(
+		b.opts.Diag,
+		b.opts.debugTraceMutex,
+		plugctxs,
+		deplOpts, actions, target.Snapshot, opts.Plan, source,
+		localPolicyPackPaths, ctx.BackendClient)
+	if err != nil {
+		contract.IgnoreClose(plugctxs)
+		return nil, err
+	}
+
+	return &deployment{
+		Ctx:        info,
+		Plugctx:    plugctx,
+		Deployment: depl,
+		Actions:    actions,
+		Options:    opts,
+	}, nil
+}
+
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(
 	ctx *Context,
 	info *deploymentContext,
-	actions runActions,
 	opts *deploymentOptions,
 ) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
+	contract.Assertf(info.Update != nil, "update info cannot be nil")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
+
+	// Create an appropriate set of event listeners.
+	var actions runActions
+	if opts.DryRun {
+		actions = newPreviewActions(opts)
+	} else {
+		actions = newUpdateActions(ctx, opts)
+	}
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
@@ -188,13 +328,16 @@ func newDeployment(
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, opts.debugTraceMutex, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
 	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Terminated())
+	plugctxs := plugin.NewContexts(map[resource.StackReference]*plugin.Context{
+		target.StackReference(): plugctx,
+	})
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
@@ -241,7 +384,8 @@ func newDeployment(
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
+			opts.Diag, opts.debugTraceMutex, plugctxs,
+			deplOpts, actions, target.Snapshot, opts.Plan, source,
 			localPolicyPackPaths, ctx.BackendClient)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(
@@ -307,6 +451,7 @@ func newDeployment(
 		}
 
 		depl, err = deploy.NewImportDeployment(
+			opts.debugTraceMutex,
 			plugctx, deplOpts, actions, target, proj.Name, opts.imports)
 	}
 

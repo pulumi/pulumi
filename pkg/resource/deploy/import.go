@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -97,6 +98,7 @@ type ImportOptions struct {
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
 func NewImportDeployment(
+	debugTraceMutex *sync.Mutex,
 	ctx *plugin.Context,
 	opts *Options,
 	events Events,
@@ -108,7 +110,7 @@ func NewImportDeployment(
 	contract.Requiref(target != nil, "target", "must not be nil")
 
 	prev := target.Snapshot
-	source := NewErrorSource(projectName)
+	source := NewErrorSource()
 	if err := migrateProviders(target, prev, source); err != nil {
 		return nil, err
 	}
@@ -130,14 +132,18 @@ func NewImportDeployment(
 	)
 
 	// Create a new provider registry.
-	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
+	plugctxs := plugin.NewContexts(map[resource.AbsoluteStackReference]*plugin.Context{
+		target.StackReference(): ctx,
+	})
+	reg := providers.NewRegistry(plugctxs, opts.DryRun, builtins)
 
 	// Return the prepared deployment.
 	return &Deployment{
-		ctx:                             ctx,
+		diag:                            ctx.Diag,
+		debugTraceMutex:                 debugTraceMutex,
+		plugctxs:                        plugctxs,
 		opts:                            opts,
 		events:                          events,
-		target:                          target,
 		prev:                            prev,
 		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
 		olds:                            olds,
@@ -146,7 +152,7 @@ func NewImportDeployment(
 		imports:                         imports,
 		isImport:                        true,
 		schemaLoader:                    schema.NewPluginLoader(ctx.Host),
-		source:                          NewErrorSource(projectName),
+		source:                          NewErrorSource(),
 		providers:                       reg,
 		newPlans:                        newResourcePlan(target.Config),
 		news:                            &gsync.Map[resource.URN, *resource.State]{},
@@ -167,6 +173,7 @@ func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.Propert
 func (noopOutputsEvent) Done()                         {}
 
 type importer struct {
+	target     *Target
 	deployment *Deployment
 	executor   *stepExecutor
 }
@@ -216,7 +223,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		}
 	}
 
-	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
+	projectName, stackName := i.target.Project, i.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
@@ -269,7 +276,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		req := providers.NewProviderRequest(
 			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
-		urn := i.deployment.generateURN("", typ, name)
+		urn := i.deployment.generateURN(i.target.StackReference().Relative(), "", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
 			contract.AssertNoErrorf(err,
@@ -298,10 +305,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
-		urn := i.deployment.generateURN("", typ, name)
+		urn := i.deployment.generateURN(i.target.StackReference().Relative(), "", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
+		inputs, err := i.target.GetPackageConfig(req.Package())
 		if err != nil {
 			return nil, false, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
@@ -382,7 +389,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		if parent == "" {
 			parent = stackURN
 		}
-		urn := i.deployment.generateURN(parent, imp.Type, imp.Name)
+		urn := i.deployment.generateURN(i.target.StackReference().Relative(), parent, imp.Type, imp.Name)
 
 		// Check for duplicate imports.
 		if _, has := urns[urn]; has {
@@ -414,7 +421,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			req := providers.NewProviderRequest(
 				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
 			typ, name := providers.MakeProviderType(req.Package()), req.DefaultName()
-			providerURN = i.deployment.generateURN("", typ, name)
+			providerURN = i.deployment.generateURN(i.target.StackReference().Relative(), "", typ, name)
 		}
 
 		var provider string

@@ -23,7 +23,7 @@ import {
     registerResourceOutputs,
     SourcePosition,
 } from "./runtime/resource";
-import { unknownValue } from "./runtime/rpc";
+import { unknownValue, SerializationOptions } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
@@ -1276,13 +1276,13 @@ export class ComponentResource<TData = any> extends Resource {
      * strictly necessary as this will automatically be called after the {@link
      * initialize} method completes.
      */
-    protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>): void {
+    protected registerOutputs(outputs?: Inputs | Promise<Inputs> | Output<Inputs>, opts?: SerializationOptions): void {
         if (this.__registered) {
             return;
         }
 
         this.__registered = true;
-        registerResourceOutputs(this, outputs || {});
+        registerResourceOutputs(this, outputs || {}, opts);
     }
 }
 

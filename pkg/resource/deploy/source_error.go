@@ -16,24 +16,18 @@ package deploy
 
 import (
 	"context"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // NewErrorSource creates a source that panics if it is iterated. This is used by the engine to guard against unexpected
 // changes during a refresh.
-
-func NewErrorSource(project tokens.PackageName) Source {
-	return &errorSource{project: project}
+func NewErrorSource() Source {
+	return &errorSource{}
 }
 
 // A errorSource errors when iterated.
-type errorSource struct {
-	project tokens.PackageName
-}
+type errorSource struct{}
 
-func (src *errorSource) Close() error                { return nil }
-func (src *errorSource) Project() tokens.PackageName { return src.project }
+func (src *errorSource) Close() error { return nil }
 
 func (src *errorSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
 	panic("internal error: unexpected call to errorSource.Iterate")

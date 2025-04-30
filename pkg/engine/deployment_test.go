@@ -78,12 +78,6 @@ func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 	return ctx
 }
 
-func (ctx *testContext) makeEventEmitter(t testing.TB) eventEmitter {
-	emitter, err := makeQueryEventEmitter(ctx.events)
-	assert.NoError(t, err)
-	return emitter
-}
-
 func (ctx *testContext) Close() error {
 	contract.IgnoreClose(ctx.journal)
 	close(ctx.events)
@@ -146,7 +140,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 		DryRun:     false,
 	}
 
-	_, err = newDeployment(&ctx.Context, info, nil, opts)
+	_, err = newDeployment(&ctx.Context, info, opts)
 	if !assert.ErrorIs(t, err, context.Canceled) {
 		t.FailNow()
 	}

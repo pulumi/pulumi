@@ -45,6 +45,8 @@ var providerSchema = pschema.PackageSpec{
 	Name:        "testprovider",
 	Description: "A test provider.",
 	DisplayName: "testprovider",
+	Version:     version,
+	Meta:        &pschema.MetadataSpec{SupportPack: true},
 
 	Config: pschema.ConfigSpec{},
 

@@ -409,7 +409,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 	// A computed value marks something that will be determined at a later time. (e.g. the result of
 	// a computation that we don't perform during a preview operation.) We serialize a magic constant
 	// to record its existence.
-	if prop.IsComputed() || prop.IsOutput() {
+	if prop.IsComputed() || (prop.IsOutput() && !prop.OutputValue().Known) {
 		return computedValuePlaceholder, nil
 	}
 
@@ -437,6 +437,17 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		return prop.AssetValue().Serialize(), nil
 	} else if prop.IsArchive() {
 		return prop.ArchiveValue().Serialize(), nil
+	}
+
+	if prop.IsOutput() {
+		out := prop.OutputValue()
+		serialized := map[string]interface{}{
+			resource.SigKey: resource.OutputValueSig,
+			"value":         out.Element,
+			"dependencies":  out.Dependencies,
+			"secret":        out.Secret,
+		}
+		return serialized, nil
 	}
 
 	// We serialize resource references using a map-based representation similar to assets, archives, and secrets.
@@ -641,6 +652,47 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					}
 
 					return prop, nil
+				case resource.OutputValueSig:
+					value, ok := objmap["value"]
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed output value: missing value")
+					}
+
+					secret, ok := objmap["secret"].(bool)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed output value: missing secret flag")
+					}
+
+					dependencies, ok := objmap["dependencies"].([]interface{})
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed output value: missing dependencies")
+					}
+
+					depURNs := make([]resource.URN, len(dependencies))
+					for i, dep := range dependencies {
+						depURN, ok := dep.(string)
+						if !ok {
+							return resource.PropertyValue{}, errors.New("malformed output value: invalid dependency")
+						}
+						depURNs[i] = resource.URN(depURN)
+					}
+
+					// Deserialize the value.
+					desValue, err := DeserializePropertyValue(value, dec)
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+
+					// Create the output value.
+					outValue := resource.NewOutputProperty(resource.Output{
+						Element:      desValue,
+						Dependencies: depURNs,
+						Secret:       secret,
+						Known:        true,
+					})
+
+					return outValue, nil
+
 				case resource.ResourceReferenceSig:
 					var packageVersion string
 					if packageVersionV, ok := objmap["packageVersion"]; ok {

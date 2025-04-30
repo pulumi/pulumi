@@ -108,7 +108,7 @@ func newResourceStatusServer(deployment *Deployment) (*resourceStatusServer, err
 			pulumirpc.RegisterResourceStatusServer(srv, rs)
 			return nil
 		},
-		Options: resourceStatusServeOptions(deployment.ctx, env.DebugGRPC.Value()),
+		Options: resourceStatusServeOptions(deployment.debugTraceMutex, env.DebugGRPC.Value()),
 	})
 	if err != nil {
 		return nil, err
@@ -122,12 +122,12 @@ func newResourceStatusServer(deployment *Deployment) (*resourceStatusServer, err
 }
 
 // resourceStatusServeOptions returns the gRPC server options for the resource status server.
-func resourceStatusServeOptions(ctx *plugin.Context, logFile string) []grpc.ServerOption {
+func resourceStatusServeOptions(debugTraceMutex *sync.Mutex, logFile string) []grpc.ServerOption {
 	var serveOpts []grpc.ServerOption
 	if logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
 			LogFile: logFile,
-			Mutex:   ctx.DebugTraceMutex,
+			Mutex:   debugTraceMutex,
 		})
 		if err != nil {
 			// ignoring
@@ -164,7 +164,11 @@ func (rs *resourceStatusServer) Address() string {
 }
 
 // ReserveToken reserves a token for a resource status operation.
-func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh, persisted bool) (string, error) {
+func (rs *resourceStatusServer) ReserveToken(
+	urn resource.URN,
+	refresh bool,
+	persisted bool,
+) (string, error) {
 	if rs == nil {
 		return "", nil
 	}
@@ -173,7 +177,11 @@ func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh, persiste
 }
 
 // reserveToken reserves a token for a resource status operation, and returns the token and tokenInfo.
-func (rs *resourceStatusServer) reserveToken(urn resource.URN, refresh, persisted bool) (string, *tokenInfo, error) {
+func (rs *resourceStatusServer) reserveToken(
+	urn resource.URN,
+	refresh bool,
+	persisted bool,
+) (string, *tokenInfo, error) {
 	if rs == nil {
 		return "", nil, nil
 	}
@@ -263,7 +271,7 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 
 	// Unmarshal the steps.
 	steps, err := slice.MapError(req.Steps, func(step *pulumirpc.ViewStep) (Step, error) {
-		return rs.unmarshalViewStep(viewOf, step, info.refresh, info.persisted)
+		return rs.unmarshalViewStep(viewOf, step, info)
 	})
 	if err != nil {
 		logging.V(5).Infof("ResourceStatus: error unmarshaling steps: %v", err)
@@ -320,7 +328,7 @@ func (rs *resourceStatusServer) publishViewSteps(info *tokenInfo, steps []Step) 
 }
 
 func (rs *resourceStatusServer) unmarshalViewStep(
-	viewOf resource.URN, step *pulumirpc.ViewStep, refresh bool, persisted bool,
+	viewOf resource.URN, step *pulumirpc.ViewStep, info *tokenInfo,
 ) (Step, error) {
 	status, err := rs.unmarshalStepStatus(step.GetStatus())
 	if err != nil {
@@ -332,7 +340,7 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 		return nil, err
 	}
 
-	old, err := rs.unmarshalViewStepState(viewOf, step.GetOld())
+	old, err := rs.unmarshalViewStepState(viewOf, step.GetOld(), info)
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +358,7 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 		old.Outputs = publishedOld.Outputs
 	}
 
-	new, err := rs.unmarshalViewStepState(viewOf, step.GetNew())
+	new, err := rs.unmarshalViewStepState(viewOf, step.GetNew(), info)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +376,7 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 	detailedDiff := rs.unmarshalDetailedDiff(step)
 
 	var resultOp display.StepOp
-	if refresh {
+	if info.refresh {
 		// If this is a refresh step, we need to set the result operation to the same as the original operation.
 		resultOp = op
 		op = OpRefresh
@@ -376,7 +384,7 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 
 	return NewViewStep(
 		rs.deployment, op, status, step.GetError(),
-		old, new, keys, diffs, detailedDiff, resultOp, persisted), nil
+		old, new, keys, diffs, detailedDiff, resultOp, info.persisted), nil
 }
 
 // unmarshalDetailedDiff unmarshals the detailed diff from a ViewStep.
@@ -417,13 +425,16 @@ func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) 
 // unmarshalViewStepState unmarshals a ViewStepState into a resource.State.
 func (rs *resourceStatusServer) unmarshalViewStepState(
 	viewOf resource.URN, state *pulumirpc.ViewStepState,
+	info *tokenInfo,
 ) (*resource.State, error) {
 	if state == nil {
 		return nil, nil
 	}
 
+	stackRef := resource.RelativeStackReferenceFromURN(viewOf)
+
 	stateType := tokens.Type(state.GetType())
-	stateURN := rs.deployment.generateURN(viewOf, stateType, state.GetName())
+	stateURN := rs.deployment.generateURN(stackRef, viewOf, stateType, state.GetName())
 
 	// TODO[pulumi/pulumi#19704]: Implement parenting.
 

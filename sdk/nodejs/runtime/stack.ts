@@ -76,13 +76,13 @@ export class Stack extends ComponentResource<Inputs> {
         let outputs: Inputs | undefined;
         try {
             const inputs = await args.init();
-            outputs = await massage(undefined, inputs, []);
+            outputs = inputs // await massage(undefined, inputs, []);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(outputs);
+            super.registerOutputs(outputs, { keepOutputValues: true });
         }
 
         return outputs!;

@@ -44,9 +44,6 @@ type ProviderSource interface {
 type Source interface {
 	io.Closer
 
-	// Project returns the package name of the Pulumi project we are obtaining resources from.
-	Project() tokens.PackageName
-
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
 	Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error)
 }
@@ -135,6 +132,8 @@ type ReadResourceEvent interface {
 	AdditionalSecretOutputs() []resource.PropertyKey
 	// The source position of the resource read
 	SourcePosition() string
+
+	StackReference() resource.AbsoluteStackReference
 }
 
 type ReadResult struct {

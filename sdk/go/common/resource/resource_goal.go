@@ -44,6 +44,33 @@ type Goal struct {
 	// if specified resource is being deleted as well.
 	DeletedWith    URN
 	SourcePosition string // If set, the source location of the resource registration
+
+	StackReference AbsoluteStackReference
+}
+
+type AbsoluteStackReference struct {
+	Organization string
+	Project      string
+	Stack        string
+}
+
+func (a AbsoluteStackReference) Relative() RelativeStackReference {
+	return RelativeStackReference{
+		Project: a.Project,
+		Stack:   a.Stack,
+	}
+}
+
+type RelativeStackReference struct {
+	Project string
+	Stack   string
+}
+
+func RelativeStackReferenceFromURN(urn URN) RelativeStackReference {
+	return RelativeStackReference{
+		Project: urn.Project().String(),
+		Stack:   urn.Stack().String(),
+	}
 }
 
 // NewGoal allocates a new resource goal state.
@@ -52,6 +79,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
 	replaceOnChanges []string, retainOnDelete *bool, deletedWith URN, sourcePosition string,
+	stackReference AbsoluteStackReference,
 ) *Goal {
 	g := &Goal{
 		Type:                    t,
@@ -73,6 +101,7 @@ func NewGoal(t tokens.Type, name string, custom bool, props PropertyMap,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             deletedWith,
 		SourcePosition:          sourcePosition,
+		StackReference:          stackReference,
 	}
 
 	if customTimeouts != nil {

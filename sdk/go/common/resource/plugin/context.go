@@ -45,8 +45,6 @@ type Context struct {
 	// metadata describing the plugin.
 	DialOptions func(pluginInfo interface{}) []grpc.DialOption
 
-	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
-
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 
 	cancelFuncs []context.CancelFunc
@@ -103,15 +101,14 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	pctx := &Context{
-		Diag:            d,
-		StatusDiag:      statusD,
-		Host:            host,
-		Pwd:             pwd,
-		Root:            root,
-		tracingSpan:     parentSpan,
-		DebugTraceMutex: &sync.Mutex{},
-		cancelLock:      &sync.Mutex{},
-		baseContext:     ctx,
+		Diag:        d,
+		StatusDiag:  statusD,
+		Host:        host,
+		Pwd:         pwd,
+		Root:        root,
+		tracingSpan: parentSpan,
+		cancelLock:  &sync.Mutex{},
+		baseContext: ctx,
 	}
 	if host == nil {
 		h, err := NewDefaultHost(

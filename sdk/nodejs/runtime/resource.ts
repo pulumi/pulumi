@@ -47,6 +47,7 @@ import {
     serializeResourceProperties,
     suppressUnhandledGrpcRejections,
     transferProperties,
+    SerializationOptions,
 } from "./rpc";
 import {
     awaitStackRegistrations,
@@ -1031,7 +1032,7 @@ async function resolveOutputs(
  * Completes a resource registration, attaching an optional set of computed
  * outputs.
  */
-export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>) {
+export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>, opts?: SerializationOptions) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
@@ -1045,7 +1046,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                 // The registration could very well still be taking place, so we will need to wait for its URN.
                 // Additionally, the output properties might have come from other resources, so we must await those too.
                 const urn = await res.urn.promise();
-                const resolved = await serializeProperties(opLabel, { outputs });
+                const resolved = await serializeProperties(opLabel, { outputs }, opts);
                 const outputsObj = gstruct.Struct.fromJavaScript(resolved.outputs);
                 log.debug(
                     `RegisterResourceOutputs RPC prepared: urn=${urn}` +

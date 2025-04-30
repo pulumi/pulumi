@@ -15,6 +15,8 @@
 package engine
 
 import (
+	"sync"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -33,20 +35,21 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events, []UpdateInfo{u})
 	if err != nil {
 		return nil, nil, err
 	}
 	defer emitter.Close()
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newRefreshSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		isImport:      true,
-		imports:       imports,
-		DryRun:        dryRun,
+		UpdateOptions:   opts,
+		SourceFunc:      newRefreshSource,
+		Events:          emitter,
+		Diag:            newEventSink(emitter, false),
+		StatusDiag:      newEventSink(emitter, true),
+		debugTraceMutex: &sync.Mutex{},
+		isImport:        true,
+		imports:         imports,
+		DryRun:          dryRun,
 	})
 }

@@ -360,6 +360,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
 				operations.NewUpCmd(),
+				operations.NewUpAllCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
 				cancel.NewCancelCmd(),

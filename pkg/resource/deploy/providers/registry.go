@@ -281,7 +281,7 @@ func GetProviderParameterization(
 type Registry struct {
 	plugin.NotForwardCompatibleProvider
 
-	host      plugin.Host
+	plugctxs  *plugin.Contexts
 	isPreview bool
 	providers map[Reference]plugin.Provider
 	builtins  plugin.Provider
@@ -386,9 +386,9 @@ func FilterProviderConfig(inputs resource.PropertyMap) resource.PropertyMap {
 }
 
 // NewRegistry creates a new provider registry using the given host.
-func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Registry {
+func NewRegistry(plugctxs *plugin.Contexts, isPreview bool, builtins plugin.Provider) *Registry {
 	return &Registry{
-		host:      host,
+		plugctxs:  plugctxs,
 		isPreview: isPreview,
 		providers: make(map[Reference]plugin.Provider),
 		builtins:  builtins,
@@ -537,8 +537,9 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 	// TODO: We should thread checksums through here.
+	host := r.plugctxs.GetHostByURN(req.URN)
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, parameter, host, r.builtins)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -554,7 +555,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
-		closeErr := r.host.CloseProvider(provider)
+		closeErr := host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
 		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
@@ -629,7 +630,8 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	if diff.Replace() {
-		closeErr := r.host.CloseProvider(provider)
+		host := r.plugctxs.GetHostByURN(req.URN)
+		closeErr := host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
 	}
 
@@ -660,6 +662,8 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		return nil
 	}
 
+	host := r.plugctxs.GetHostByURN(urn)
+
 	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
 	// reuse that instance, but as we're now configuring it remove the unconfigured ID from the provider map
 	// so nothing else tries to use it.
@@ -686,7 +690,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, host, r.builtins)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -706,7 +710,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
-		closeErr := r.host.CloseProvider(provider)
+		closeErr := host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
@@ -757,7 +761,8 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		host := r.plugctxs.GetHostByURN(req.URN)
+		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, host, r.builtins)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
@@ -846,7 +851,8 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 		return plugin.DeleteResponse{}, nil
 	}
 
-	closeErr := r.host.CloseProvider(provider)
+	host := r.plugctxs.GetHostByURN(req.URN)
+	closeErr := host.CloseProvider(provider)
 	contract.IgnoreError(closeErr)
 	return plugin.DeleteResponse{}, nil
 }

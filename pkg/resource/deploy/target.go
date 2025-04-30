@@ -22,11 +22,12 @@ import (
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name         tokens.StackName // the target stack name.
-	Organization tokens.Name      // the target organization name (if any).
-	Config       config.Map       // optional configuration key/value pairs.
-	Decrypter    config.Decrypter // decrypter for secret configuration values.
-	Snapshot     *Snapshot        // the last snapshot deployed to the target.
+	Name         tokens.StackName   // the target stack name.
+	Project      tokens.PackageName // the target project name.
+	Organization tokens.Name        // the target organization name (if any).
+	Config       config.Map         // optional configuration key/value pairs.
+	Decrypter    config.Decrypter   // decrypter for secret configuration values.
+	Snapshot     *Snapshot          // the last snapshot deployed to the target.
 }
 
 const (
@@ -39,6 +40,14 @@ const (
 // Returns true if the given package refers to a dynamic provider.
 func isDynamicProvider(pkg tokens.Package) bool {
 	return pkg == tokens.Package(nodejsDynamicProviderPackage) || pkg == tokens.Package(pythonDynamicProviderPackage)
+}
+
+func (t *Target) StackReference() resource.AbsoluteStackReference {
+	return resource.AbsoluteStackReference{
+		Stack:        t.Name.String(),
+		Project:      t.Project.String(),
+		Organization: t.Organization.String(),
+	}
 }
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.

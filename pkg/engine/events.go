@@ -311,40 +311,31 @@ type StepEventStateMetadata struct {
 	InitErrors []string
 }
 
-func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, error) {
-	target := update.Target
+func makeEventEmitter(events chan<- Event, updates []UpdateInfo) (eventEmitter, error) {
 	var secrets []string
-	if target != nil && target.Config.HasSecureValue() {
-		for k, v := range target.Config {
-			if !v.Secure() {
-				continue
-			}
-
-			secureValues, err := v.SecureValues(target.Decrypter)
-			if err != nil {
-				return eventEmitter{}, DecryptError{
-					Key: k,
-					Err: err,
+	for _, update := range updates {
+		target := update.Target
+		if target != nil && target.Config.HasSecureValue() {
+			for k, v := range target.Config {
+				if !v.Secure() {
+					continue
 				}
+
+				secureValues, err := v.SecureValues(target.Decrypter)
+				if err != nil {
+					return eventEmitter{}, DecryptError{
+						Key: k,
+						Err: err,
+					}
+				}
+				secrets = append(secrets, secureValues...)
 			}
-			secrets = append(secrets, secureValues...)
 		}
 	}
 
 	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
 
 	buffer, done := make(chan Event), make(chan bool)
-	go queueEvents(events, buffer, done)
-
-	return eventEmitter{
-		done: done,
-		ch:   buffer,
-	}, nil
-}
-
-func makeQueryEventEmitter(events chan<- Event) (eventEmitter, error) {
-	buffer, done := make(chan Event), make(chan bool)
-
 	go queueEvents(events, buffer, done)
 
 	return eventEmitter{
