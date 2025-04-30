@@ -1421,9 +1421,10 @@ func (pc *Client) SummarizeErrorWithCopilot(
 func (pc *Client) ExplainPreviewWithCopilot(
 	ctx context.Context,
 	orgID string,
+	kind string,
 	lines []string,
 ) (string, error) {
-	request := createExplainPreviewRequest(lines, orgID, maxCopilotExplainPreviewContentLength)
+	request := createExplainPreviewRequest(lines, orgID, kind, maxCopilotExplainPreviewContentLength)
 	return pc.callCopilot(ctx, request)
 }
 

@@ -70,6 +70,7 @@ func createSummarizeUpdateRequest(
 func createExplainPreviewRequest(
 	lines []string,
 	orgID string,
+	kind string,
 	maxUpdateOutputLen int,
 ) apitype.CopilotExplainPreviewRequest {
 	content := strings.Join(lines, "\n")
@@ -90,6 +91,9 @@ func createExplainPreviewRequest(
 			Skill: apitype.SkillExplainPreview,
 			Params: apitype.CopilotExplainPreviewParams{
 				PulumiPreviewOutput: content,
+				PreviewDetails: apitype.CopilotExplainPreviewDetails{
+					Kind: kind,
+				},
 			},
 		},
 	}

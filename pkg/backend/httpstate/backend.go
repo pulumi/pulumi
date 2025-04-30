@@ -1172,6 +1172,7 @@ func (b *cloudBackend) isCopilotFeatureEnabled(projectName tokens.PackageName, o
 // explain takes engine events, renders them out to a buffer as something similar to what the user sees
 // in the CLI, and then explains the output with Copilot.
 func (b *cloudBackend) explain(
+	kind apitype.UpdateKind,
 	stackRef backend.StackReference,
 	op backend.UpdateOperation,
 	events []engine.Event,
@@ -1181,8 +1182,8 @@ func (b *cloudBackend) explain(
 		stackRef.Name(),
 		op.Proj.Name,
 		display.Options{},
-		true,
-		apitype.UpdateUpdate,
+		true, /* isPreview */
+		kind,
 	)
 	renderer.ProcessEventSlice(events)
 	output := renderer.Output()
@@ -1195,10 +1196,10 @@ func (b *cloudBackend) explain(
 	if err != nil {
 		return "", err
 	}
-	orgName := stackID.Owner
 
 	display.RenderCopilotThinking(opts)
-	summary, err := b.client.ExplainPreviewWithCopilot(context.Background(), orgName, output)
+	orgID := stackID.Owner
+	summary, err := b.client.ExplainPreviewWithCopilot(context.Background(), orgID, string(kind), output)
 	if err != nil {
 		return "", err
 	}
@@ -2282,11 +2283,12 @@ func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
 // engine events and returns a formatted explanation string.
 func (b *cloudBackend) Explain(
 	stackRef backend.StackReference,
+	kind apitype.UpdateKind,
 	op backend.UpdateOperation,
 	events []engine.Event,
 	opts display.Options,
 ) (string, error) {
-	return b.explain(stackRef, op, events, opts)
+	return b.explain(kind, stackRef, op, events, opts)
 }
 
 // IsEnabledForProject checks if Pulumi Copilot features are enabled for the given project. It verifies both the CLI

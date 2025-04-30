@@ -50,7 +50,7 @@ type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op 
 // For Pulumi Cloud, this is a Copilot explainer.
 type Explainer interface {
 	// Explain returns a human-readable explanation of the changes that will be made to the stack.
-	Explain(stackRef StackReference, op UpdateOperation, events []engine.Event, opts display.Options) (string, error)
+	Explain(stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation, events []engine.Event, opts display.Options) (string, error)
 	// IsEnabledForProject returns whether the explainer is enabled for the given project.
 	IsEnabledForProject(projectName tokens.PackageName, opts display.Options) bool
 }
@@ -248,7 +248,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		if response == explainChoice {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
-			explanation, err := explainer.Explain(stack.Ref(), op, events, opts.Display)
+			explanation, err := explainer.Explain(stack.Ref(), kind, op, events, opts.Display)
 			if err != nil {
 				return nil, err
 			}

@@ -75,7 +75,14 @@ type CopilotExplainPreview struct {
 }
 
 type CopilotExplainPreviewParams struct {
-	PulumiPreviewOutput string `json:"pulumiPreviewOutput"` // The Pulumi preview output to explain.
+	// The Pulumi preview output to explain.
+	PulumiPreviewOutput string `json:"pulumiPreviewOutput"`
+	// The details of the preview.
+	PreviewDetails CopilotExplainPreviewDetails `json:"previewDetails"`
+}
+
+type CopilotExplainPreviewDetails struct {
+	Kind string `json:"kind"` // The kind of update that is being explained. e.g. update, refresh, destroy, etc.
 }
 
 // Responses
