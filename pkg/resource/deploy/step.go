@@ -289,6 +289,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	id := s.new.ID
 	outs := s.new.Outputs
+	refreshBeforeUpdate := false
 
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
@@ -320,6 +321,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		id = resp.ID
 		outs = resp.Properties
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		if !s.deployment.opts.DryRun && id == "" {
 			return resourceStatus, nil, errors.New("provider did not return an ID from Create")
@@ -332,6 +334,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
+	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -681,6 +684,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
 		s.new.Outputs = resp.Properties
+		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		// UpdateStep doesn't create, but does modify state.
 		// Change the Modified timestamp.
