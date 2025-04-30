@@ -1,7 +1,6 @@
 module github.com/pulumi/pulumi/sdk/v3
 
-go 1.22
-toolchain go1.24.1
+go 1.23.0
 
 replace golang.org/x/text => golang.org/x/text v0.3.8
 
