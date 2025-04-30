@@ -113,7 +113,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
-	sourcePosition string, ignoreChanges []string, replaceOnChanges []string,
+	sourcePosition string, ignoreChanges []string, replaceOnChanges []string, refreshBeforeUpdate bool,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -144,6 +144,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		SourcePosition:          sourcePosition,
 		IgnoreChanges:           ignoreChanges,
 		ReplaceOnChanges:        replaceOnChanges,
+		RefreshBeforeUpdate:     refreshBeforeUpdate,
 	}
 
 	if timeouts != nil {

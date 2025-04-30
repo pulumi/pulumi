@@ -711,6 +711,9 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+
+	// The provider indicates that the resource requires refreshing on updates.
+	RefreshBeforeUpdate bool
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.

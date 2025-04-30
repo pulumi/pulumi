@@ -274,8 +274,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		nil,   /* created */
 		nil,   /* modified */
 		event.SourcePosition(),
-		nil, /* ignoreChanges */
-		nil, /* replaceOnChanges */
+		nil,   /* ignoreChanges */
+		nil,   /* replaceOnChanges */
+		false, /* refreshBeforeUpdate */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -733,10 +734,18 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	if goal.RetainOnDelete != nil {
 		retainOnDelete = *goal.RetainOnDelete
 	}
+
+	// Carry the refreshBeforeUpdate flag forward if present in the old state.
+	refreshBeforeUpdate := false
+	if old != nil {
+		refreshBeforeUpdate = old.RefreshBeforeUpdate
+	}
+
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges)
+		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
+		refreshBeforeUpdate)
 
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
