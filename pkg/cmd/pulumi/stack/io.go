@@ -362,7 +362,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
 	if needsSave {
-		err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+		err = stack.Save(ctx, ps)
 		if err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
