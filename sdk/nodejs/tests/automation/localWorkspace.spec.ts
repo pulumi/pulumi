@@ -605,6 +605,32 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`previews a refresh without executing it`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi refresh
+        const refRes = await stack.refresh({ userAgent, previewOnly: true });
+        assert.strictEqual(refRes.summary.kind, "update");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`previews a destroy without executing it`, async () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");
