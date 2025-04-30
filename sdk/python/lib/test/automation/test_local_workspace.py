@@ -821,7 +821,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
             # pulumi destroy
             destroy_res = stack.destroy()
-            self.assertEqual(destroy_res.summary.kind, "update")
+            self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)
