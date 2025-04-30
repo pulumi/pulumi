@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/python
+  description: Fix flag mismatch with preview-only refresh operations
