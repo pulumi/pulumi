@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Move pulumi.provider.experimental.provider to pulumi.provider.experimental.component
