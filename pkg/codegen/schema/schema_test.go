@@ -2041,6 +2041,7 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 }
 
 func TestFunctionToken(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		token    string
