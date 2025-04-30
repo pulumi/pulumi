@@ -576,12 +576,13 @@ class Stack:
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes"]
+        args = ["refresh"]
 
         if preview_only:
             args.append("--preview-only")
         else:
             args.append("--skip-preview")
+            args.append("--yes")
 
         if run_program is not None:
             if run_program:
