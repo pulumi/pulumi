@@ -1397,8 +1397,9 @@ func TestPolicyPackPublish(t *testing.T) {
 	require.NoError(t, err)
 	newContent := strings.Replace(string(policyContent),
 		`new PolicyPack("aws-typescript"`,
-		fmt.Sprintf(`new PolicyPack("%s"`, name), 1)
-	err = os.WriteFile(policyIndexPath, []byte(newContent), 0644)
+		fmt.Sprintf(`new PolicyPack("%s"`, name),
+		1)
+	err = os.WriteFile(policyIndexPath, []byte(newContent), 0o600)
 	require.NoError(t, err)
 
 	e.RunCommand("pulumi", "policy", "publish")
