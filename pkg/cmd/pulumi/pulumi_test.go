@@ -116,6 +116,44 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 }
 
 //nolint:paralleltest // changes environment variables and globals
+func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			time.Sleep(4 * time.Second)
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	_, _, _, _, err := getCLIVersionInfo(ctx, srv.URL, nil)
+
+	// Assert.
+	assert.ErrorContains(t, err, "context deadline exceeded")
+}
+
+//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
