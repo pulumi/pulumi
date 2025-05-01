@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/yaml
+  description: Update pulumi-yaml to v1.18.0
