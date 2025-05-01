@@ -1402,9 +1402,11 @@ func TestPolicyPackPublish(t *testing.T) {
 	err = os.WriteFile(policyIndexPath, []byte(newContent), 0o600)
 	require.NoError(t, err)
 
-	e.RunCommand("pulumi", "policy", "publish")
+	stdout, stderr := e.RunCommand("pulumi", "policy", "publish", testOrg)
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
 
-	e.RunCommand("pulumi", "policy", "rm", testOrg+"/"+name, "all", "--yes")
+	stdout, stderr = e.RunCommand("pulumi", "policy", "rm", testOrg+"/"+name, "all", "--yes")
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
 }
 
 func TestPolicyPackInstallDependencies(t *testing.T) {
