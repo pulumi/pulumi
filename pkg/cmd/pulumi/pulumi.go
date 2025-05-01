@@ -586,6 +586,8 @@ func getCLIVersionInfo(
 	}
 
 	client := client.NewClient(cloudURL, "" /*apiToken*/, false, cmdutil.Diag())
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
 	latest, oldest, dev, cacheMS, err := client.GetCLIVersionInfo(ctx, metadata)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
