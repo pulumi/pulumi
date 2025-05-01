@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg
-  description: Allow for hyphens in function names
