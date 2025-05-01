@@ -770,16 +770,16 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, err
 	}
 
+	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	if err != nil {
+		return nil, err
+	}
+
 	// If the provided stack name didn't include the Owner or Project, infer them from the
 	// local environment.
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(b.currentProject)
-		if err != nil {
-			return nil, err
-		}
-
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
@@ -805,10 +805,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	}
 
 	return cloudBackendReference{
-		owner:   qualifiedName.Owner,
-		project: tokens.Name(qualifiedName.Project),
-		name:    parsedName,
-		b:       b,
+		owner:      qualifiedName.Owner,
+		defaultOrg: defaultOrg,
+		project:    tokens.Name(qualifiedName.Project),
+		name:       parsedName,
+		b:          b,
 	}, nil
 }
 
@@ -915,7 +916,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 	}
 
 	getDefaultOrg := func() (string, error) {
-		return pkgWorkspace.GetBackendConfigDefaultOrg(nil)
+		return backend.GetDefaultOrg(ctx, b, nil)
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)
@@ -944,7 +945,7 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 		return nil, err
 	}
 
-	return newStack(stack, b), nil
+	return newStack(ctx, stack, b)
 }
 
 // Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
@@ -1007,10 +1008,12 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'\n", stack.Ref())
+	stack, err := newStack(ctx, apistack, b)
+	if err != nil {
+		fmt.Printf("Created stack '%s'\n", stack.Ref())
+	}
 
-	return stack, nil
+	return stack, err
 }
 
 func (b *cloudBackend) ListStacks(
@@ -1038,12 +1041,30 @@ func (b *cloudBackend) ListStacks(
 		return nil, nil, err
 	}
 
+	// Look up the default organization and persist it across each stack summary, in order to reduce
+	// the number of lookups each stack summary would otherwise have to make to determine whether to
+	// elide the organization name.
+	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
+	// this has the added benefit of ensuring that the default org is consistent for the duration of the
+	// operation, even if the user changes their default org mid-process.
+	defaultOrg, err := b.GetDefaultOrg(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if defaultOrg == "" {
+		defaultOrg, _, _, err = b.CurrentUser()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// Convert []apitype.StackSummary into []backend.StackSummary.
 	backendSummaries := slice.Prealloc[backend.StackSummary](len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
-			summary: apiSummary,
-			b:       b,
+			summary:    apiSummary,
+			b:          b,
+			defaultOrg: defaultOrg,
 		}
 		backendSummaries = append(backendSummaries, backendSummary)
 	}

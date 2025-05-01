@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/nodejs
-  description: Fix flag mismatch with preview-only refresh operations

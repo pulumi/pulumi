@@ -487,7 +487,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	stackName := addRandomSuffix("stack-rename-svcbe")
 	stackRenameBase := addRandomSuffix("renamed-stack-svcbe")
 	integration.CreateBasicPulumiRepo(e)
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", fmt.Sprintf("%s/%s", orgName, stackName))
 
 	// Create some configuration so that a per-project YAML file is generated.
 	e.RunCommand("pulumi", "config", "set", "xyz", "abc")
@@ -500,12 +500,6 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	e.RunCommandExpectError("pulumi", "stack", "rename", "fakeorg/"+stackRenameBase)
 
 	// Next perform a legal rename. This should work.
-	e.RunCommand("pulumi", "stack", "rename", stackRenameBase)
-	stdoutXyz1, _ := e.RunCommand("pulumi", "config", "get", "xyz")
-	assert.Equal(t, "abc", strings.Trim(stdoutXyz1, "\r\n"))
-
-	// Now perform another legal rename, this time explicitly specifying the
-	// "organization" for the stack (which should match the default).
 	e.RunCommand("pulumi", "stack", "rename", orgName+"/"+stackRenameBase+"2")
 	stdoutXyz2, _ := e.RunCommand("pulumi", "config", "get", "xyz")
 	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))

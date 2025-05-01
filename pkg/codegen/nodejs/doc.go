@@ -69,16 +69,22 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
+func (d DocLanguageHelper) GetTypeName(pkg *schema.Package, t schema.Type, input bool, relativeToModule string) string {
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.
 	if optional, ok := t.(*schema.OptionalType); ok {
 		t = optional.ElementType
 	}
 
+	var info NodePackageInfo
+	if i, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
+		info = i
+	}
+
 	modCtx := &modContext{
-		pkg: pkg.Reference(),
-		mod: moduleName,
+		pkg:      pkg.Reference(),
+		modToPkg: info.ModuleToPackage,
+		mod:      moduleName(relativeToModule, pkg.Reference()),
 	}
 	typeName := modCtx.typeString(t, input, nil)
 

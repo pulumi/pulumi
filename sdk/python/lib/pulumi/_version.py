@@ -14,7 +14,7 @@
 
 from semver import VersionInfo
 
-_VERSION = "3.167.0"
+_VERSION = "3.168.0"
 
 version = VersionInfo.parse(_VERSION)
 """Version is the Pulumi SDK's release version."""
