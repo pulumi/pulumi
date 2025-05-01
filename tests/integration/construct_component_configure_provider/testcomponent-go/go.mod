@@ -1,6 +1,8 @@
 module github.com/pulumi/pulumi/tests/integration/construct_component_configure_provider/testcomponent-go
 
-go 1.22
+go 1.24
+
+toolchain go1.24.1
 
 require (
 	github.com/blang/semver v3.5.1+incompatible

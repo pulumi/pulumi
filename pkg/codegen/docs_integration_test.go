@@ -20,6 +20,7 @@ package codegen_test
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -316,6 +317,49 @@ func TestGetLanguageTypeString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func BenchmarkGetPropertyNames(b *testing.B) {
+	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/azure-native-2.41.0.json")
+	require.NoError(b, err)
+	b.Run("full-bind", func(b *testing.B) {
+		for b.Loop() {
+			var spec schema.PackageSpec
+			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
+				"nodejs": nodejs_codegen.Importer,
+			})
+			require.NoError(b, err)
+
+			res, ok := partial.GetResource("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			require.True(b, ok)
+
+			var helper nodejs_codegen.DocLanguageHelper
+			for _, prop := range res.InputProperties {
+				helper.GetTypeName(partial.Reference(), prop.Type, false, partial.TokenToModule(res.Token))
+			}
+		}
+	})
+
+	b.Run("partial-bind", func(b *testing.B) {
+		for b.Loop() {
+			var spec schema.PartialPackageSpec
+			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			partial, err := schema.ImportPartialSpec(spec, map[string]schema.Language{
+				"nodejs": nodejs_codegen.Importer,
+			}, nil)
+			require.NoError(b, err)
+
+			res, ok, err := partial.Resources().Get("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			require.NoError(b, err)
+			require.True(b, ok)
+
+			var helper nodejs_codegen.DocLanguageHelper
+			for _, prop := range res.InputProperties {
+				helper.GetTypeName(partial, prop.Type, false, partial.TokenToModule(res.Token))
+			}
+		}
+	})
 }
 
 func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
