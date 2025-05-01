@@ -43,3 +43,48 @@ func getDefaultOrg(
 	// if unset, defer to the backend's opinion of what the default org should be
 	return b.GetDefaultOrg(ctx)
 }
+
+// GetLegacyDefaultOrgFallback returns the current user name as an org, if the user does not have
+// a default org locally configured. Returns empty string otherwise, or if the backend does not support
+// organizations.
+//
+// IMPORTANT NOTE: This function does not return a user's default org; callers should use `GetDefaultOrg`
+// instead. `GetLegacyDefaultOrgFallback` emulates legacy fall back behavior, if a default org is not set.
+//
+// We preserve parts of this behavior in the interest of backwards compatibility, for users who are migrating
+// from older versions of the Pulumi CLI that did not always store the current selected stack with a fully qualified
+// stack name. For this class of existing users, we want to ensure that we are selecting the correct organization
+// as their CLI is brought up-to-date.
+func GetLegacyDefaultOrgFallback(b Backend, currentProject *workspace.Project) (string, error) {
+	return getLegacyDefaultOrgFallback(b, currentProject, pkgWorkspace.GetBackendConfigDefaultOrg)
+}
+
+func getLegacyDefaultOrgFallback(
+	b Backend,
+	currentProject *workspace.Project,
+	getBackendConfigDefaultOrgF func(*workspace.Project) (string, error),
+) (string, error) {
+	if !b.SupportsOrganizations() {
+		return "", nil
+	}
+
+	// Check if the user has explicitly configured a default organization.
+	// If so, return early -- behavior can be safely modeled with a call to `GetDefaultOrg`.
+	userConfiguredDefaultOrg, err := getBackendConfigDefaultOrgF(currentProject)
+	if err != nil {
+		return "", err
+	}
+
+	// If the user does not have a default org configured, then return their username as their org, without
+	// looking up the backend opinion. This was the legacy fallback behavior we are preserving for smooth
+	// migrations between CLI versions.
+	if userConfiguredDefaultOrg == "" {
+		user, _, _, err := b.CurrentUser()
+		if err != nil {
+			return "", err
+		}
+		return user, nil
+	}
+
+	return "", nil
+}

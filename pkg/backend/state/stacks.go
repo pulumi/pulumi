@@ -16,14 +16,16 @@ package state
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
-func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, error) {
+func CurrentStack(ctx context.Context, b backend.Backend) (backend.Stack, error) {
 	stackName, err := getCurrentStackName()
 	if err != nil {
 		return nil, err
@@ -31,12 +33,17 @@ func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, 
 		return nil, nil
 	}
 
-	ref, err := backend.ParseStackReference(stackName)
+	qualifiedStackName, err := getStackNameWithLegacyOrgNameIfNeeded(b, stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	return backend.GetStack(ctx, ref)
+	ref, err := b.ParseStackReference(qualifiedStackName)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.GetStack(ctx, ref)
 }
 
 func getCurrentStackName() (string, error) {
@@ -51,6 +58,27 @@ func getCurrentStackName() (string, error) {
 	}
 
 	return w.Settings().Stack, nil
+}
+
+// Potentially qualifies a stack name with the username as the org, if orgs are supported by the backend.
+// Earlier versions of the Pulumi CLI did not always store the current selected stack with the fully qualified
+// stack name. Ensure backwards compatibility for these users when they upgrade that we qualify with the
+// correct org name.
+func getStackNameWithLegacyOrgNameIfNeeded(b backend.Backend, stackName string) (string, error) {
+	// Check if only stack name is configured.
+	split := strings.Split(stackName, "/")
+	if len(split) == 1 {
+		// If so, see if we should qualify the stack with legacy default org behavior:
+		fallbackOrg, err := backend.GetLegacyDefaultOrgFallback(b, nil)
+		if err != nil {
+			return "", err
+		}
+		if fallbackOrg != "" {
+			return fmt.Sprintf("%s/%s", fallbackOrg, stackName), nil
+		}
+	}
+
+	return stackName, nil
 }
 
 // SetCurrentStack changes the current stack to the given stack name.
