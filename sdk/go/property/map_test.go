@@ -90,6 +90,8 @@ func TestMapDelete(t *testing.T) {
 
 	assert.Equal(t, m, m.Delete("d"))
 
+	assert.Equal(t, Map{}, m.Delete("a", "b", "c"))
+
 	assert.Equal(t, 3, m.Len())
 }
 
