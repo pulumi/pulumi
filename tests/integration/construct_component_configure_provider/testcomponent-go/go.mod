@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi/tests/integration/construct_component_configure_
 
 go 1.23.0
 
-toolchain go1.24.1
-
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0

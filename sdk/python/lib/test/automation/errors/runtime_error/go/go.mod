@@ -1,8 +1,6 @@
 module github.com/pulumi/pulumi/sdk/v3/python/lib/test/automation/errors/runtime_error
 
-go 1.22
-
-toolchain go1.24.0
+go 1.23.0
 
 require github.com/pulumi/pulumi/sdk/v3 v3.156.0
 

@@ -1,8 +1,6 @@
 module packageadd
 
-go 1.22
-
-toolchain go1.24.0
+go 1.23.0
 
 require (
 	github.com/pulumi/pulumi-gcp/sdk/v8 v8.2.0

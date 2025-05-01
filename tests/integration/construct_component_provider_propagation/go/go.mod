@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi/tests/construct_component_provider_propagation
 
 go 1.23.0
 
-toolchain go1.24.1
-
 replace github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 
 require github.com/pulumi/pulumi/sdk/v3 v3.156.0
