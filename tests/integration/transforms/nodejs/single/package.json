@@ -1,9 +1,0 @@
-{
-    "name": "transforms",
-    "devDependencies": {
-        "typescript": "^2.5.3"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}

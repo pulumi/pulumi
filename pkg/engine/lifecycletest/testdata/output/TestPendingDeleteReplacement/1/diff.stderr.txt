@@ -1,2 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>Could not delete typB<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

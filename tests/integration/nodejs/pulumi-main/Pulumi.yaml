@@ -1,4 +1,0 @@
-name: pulumi-main
-runtime: nodejs
-description: Set the program directory using the main property
-main: src

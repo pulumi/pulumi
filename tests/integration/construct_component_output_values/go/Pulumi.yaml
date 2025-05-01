@@ -1,3 +1,0 @@
-name: construct_component_output_values_go
-description: A program that constructs remote component resources with output values.
-runtime: go

@@ -1,3 +1,0 @@
-name: generic-types
-description: A simple Nodejs program that uses a dynamic ResourceProvider with generic types.
-runtime: nodejs

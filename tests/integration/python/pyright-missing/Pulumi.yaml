@@ -1,7 +1,0 @@
-name: pulumi-python-pyright
-description: A simple Python Pulumi program that type checks with pyright but pyright is not installed.
-runtime:
-  name: python
-  options:
-    virtualenv: venv
-    typechecker: pyright

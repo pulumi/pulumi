@@ -1,9 +1,0 @@
-{
-    "name": "npm-and-yarn-workspaces",
-    "description": "A project that uses npm and yarn workspaces. `pulumi install` should successfully install dependencies.",
-    "private": true,
-    "workspaces": [
-        "packages/*",
-        "infra/"
-    ]
-}

@@ -1,3 +1,0 @@
-name: ts-with-package-json-in-parent-dir
-runtime: nodejs
-description: Run a TypeScript program where package.json is in a parent directory.

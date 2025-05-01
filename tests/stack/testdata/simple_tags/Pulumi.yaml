@@ -1,9 +1,0 @@
-name: simple_tags
-description: A program that ensures we can set tags on a stack.
-runtime: nodejs
-config:
-  pulumi:tags:
-    value:
-      tagS: hello
-      tagB: "true"
-      tagN: "42"

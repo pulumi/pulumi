@@ -1,3 +1,0 @@
-name: pulumi-python-resource-args
-description: A Python program that uses a generated library from schema to test resource args
-runtime: python

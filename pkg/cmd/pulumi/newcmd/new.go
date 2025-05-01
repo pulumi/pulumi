@@ -179,7 +179,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 
 		var aiOrTemplate string
-		if shouldPromptForAIOrTemplate(args, b) {
+		// Skip prompting in non-interactive mode or when --yes is set
+		if args.interactive && !args.yes && shouldPromptForAIOrTemplate(args, b) {
 			aiOrTemplate, err = chooseWithAIOrTemplate(opts)
 		} else {
 			aiOrTemplate = deriveAIOrTemplate(args)

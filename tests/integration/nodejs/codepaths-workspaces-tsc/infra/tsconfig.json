@@ -1,7 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "files": ["index.ts"],
-  "compilerOptions": {
-    "outDir": "bin"
-  }
-}

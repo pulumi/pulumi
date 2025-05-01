@@ -1,8 +1,0 @@
-[project]
-name = "uv"
-version = "0.1.0"
-description = "A Python project that uses the uv toolchain."
-requires-python = ">=3.13"
-dependencies = [
-    "pulumi>=3.0.0,<4.0.0",
-]

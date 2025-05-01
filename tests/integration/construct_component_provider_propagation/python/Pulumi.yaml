@@ -1,7 +1,0 @@
-name: construct_component_provider_propagation_py
-description: A program that constructs remote component resources with first class provider.
-runtime: python
-plugins:
-  providers:
-    - name: testprovider
-      path: ../../../testprovider

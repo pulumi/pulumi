@@ -1,7 +1,0 @@
-<{%fg 1%}>- pkgA:m:typA: (delete) 🔒
-<{%fg 1%}>    [id=created-id-0]
-<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

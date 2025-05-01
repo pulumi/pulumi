@@ -1,3 +1,0 @@
-name: compiler_options
-runtime: nodejs
-description: A TypeScript program that sets the `target` in `tsconfig.json` to `es2016`.

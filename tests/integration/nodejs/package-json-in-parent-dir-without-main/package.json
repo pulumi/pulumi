@@ -1,8 +1,0 @@
-{
-    "name": "package-json-in-parent-dir-without-main",
-    "license": "Apache-2.0",
-    "dependencies": {
-        "@pulumi/pulumi": "latest",
-        "@types/node": "latest"
-    }
-}

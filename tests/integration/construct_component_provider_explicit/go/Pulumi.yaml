@@ -1,5 +1,0 @@
-name: construct_component_provider_go
-description: A program that constructs remote component resources with first class provider.
-runtime: go
-config:
-  pulumi:disable-default-providers: ["*"]

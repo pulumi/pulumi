@@ -1,3 +1,0 @@
-name: printfjs
-description: A Pulumi program that printfs some stuff.
-runtime: nodejs

@@ -1,3 +1,0 @@
-output "rootDirectoryOutput" {
-  value = rootDirectory()
-}

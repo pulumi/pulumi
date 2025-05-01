@@ -1,3 +1,0 @@
-name: nodejs_resource_type_name
-runtime: nodejs
-description: A simple Nodejs program that uses dynamic providers with custom resource type name.

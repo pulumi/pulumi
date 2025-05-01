@@ -1,5 +1,0 @@
-name: l1-builtin-try
-runtime:
-  name: nodejs
-  options:
-    typescript: false

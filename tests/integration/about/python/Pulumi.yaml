@@ -1,6 +1,0 @@
-name: about-python
-runtime:
-  name: python
-  options:
-    virtualenv: venv
-description: An integration test for the about command

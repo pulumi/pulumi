@@ -1,5 +1,0 @@
-name: l2-resource-alpha
-runtime:
-  name: nodejs
-  options:
-    typescript: false

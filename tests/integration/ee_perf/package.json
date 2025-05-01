@@ -1,7 +1,0 @@
-{
-    "name": "javascript",
-    "main": "index.js",
-    "dependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}

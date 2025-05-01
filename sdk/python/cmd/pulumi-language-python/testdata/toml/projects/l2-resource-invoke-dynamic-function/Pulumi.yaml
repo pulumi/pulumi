@@ -1,7 +1,0 @@
-name: l2-resource-invoke-dynamic-function
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv

@@ -1,3 +1,0 @@
-name: complex_implicit_parent_child_dependencies
-description: A Python program that errors out due to implicitly created dependency cycles
-runtime: python

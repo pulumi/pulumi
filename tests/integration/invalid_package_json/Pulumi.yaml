@@ -1,3 +1,0 @@
-name: invalid_package_json
-runtime: nodejs
-description: Validates codepath computation even with an invalid version in the package.json file.

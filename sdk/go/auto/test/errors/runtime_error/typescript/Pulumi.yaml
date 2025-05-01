@@ -1,3 +1,0 @@
-name: runtime_error
-runtime: nodejs
-description: A minimal TypeScript Pulumi program

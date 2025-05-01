@@ -1,27 +1,0 @@
-<{%fg 13%}><{%bold%}>View in Browser (Ctrl+O): <{%underline%}><{%fg 12%}>link<{%reset%}>
-
-
-[1A[1K$<3>[K$<3>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}>[1B
-[1A[1K$<3>[K$<3> <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  project-stack  <{%bold%}><{%reset%}><{%reset%}>           <{%reset%}>Configuration:<{%reset%}>[1B[2A[1K$<3>[K$<3>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                          <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>[2B[1A[1K$<3>[K$<3> <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  pulumi-stack-output-diff-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}>[1B
-[1A[1K$<3>[K$<3> <{%bold%}><{%reset%}>  <{%reset%}>  └─ some:demo:Taxi    taxi                          <{%bold%}><{%reset%}><{%reset%}>            [1B[3A[1K$<3>[K$<3>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                   <{%underline%}><{%fg 12%}>Name<{%reset%}>                          <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>[3B[2A[1K$<3>[K$<3> <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack    pulumi-stack-output-diff-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}>[2B[1A[1K$<3>[K$<3> <{%bold%}><{%reset%}>  <{%reset%}>  ├─ some:demo:Taxi      taxi                          <{%bold%}><{%reset%}><{%reset%}>            [1B
-[1A[1K$<3>[K$<3> <{%bold%}><{%reset%}>  <{%reset%}>  └─ some:demo:Vehicles  vehicles                      <{%bold%}><{%reset%}><{%reset%}>            [1B[2A[1K$<3>[K$<3> <{%reset%}>  <{%reset%}>  ├─ some:demo:Taxi      taxi                          <{%reset%}><{%reset%}>            [2B[1A[1K$<3>[K$<3> <{%reset%}>  <{%reset%}>  └─ some:demo:Vehicles  vehicles                      <{%reset%}><{%reset%}>            [1B[4A[1K$<3>[K$<3>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                   <{%underline%}><{%fg 12%}>Name<{%reset%}>                          <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}>[4B[3A[1K$<3>[K$<3> <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack    pulumi-stack-output-diff-dev  <{%reset%}><{%reset%}>           1 <{%fg 5%}>message<{%reset%}>[3B[2A[1K$<3>[K$<3> <{%reset%}>  <{%reset%}>  ├─ some:demo:Taxi      taxi                          <{%reset%}><{%reset%}>           [2B[1A[1K$<3>[K$<3> <{%reset%}>  <{%reset%}>  └─ some:demo:Vehicles  vehicles                      <{%reset%}><{%reset%}>           [1B<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
-  <{%fg 12%}>pulumi:pulumi:Stack (pulumi-stack-output-diff-dev):<{%reset%}>
-    <{%reset%}>Configuration:<{%reset%}>
-
-<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
-<{%fg 3%}>  ~ vehicles: <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%fg 2%}>      + @isPulumiResource: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 3%}>      ~ taxi             : <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%fg 2%}>          + @isPulumiResource: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}>            color            : <{%reset%}><{%reset%}>"yellow"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            size             : <{%reset%}><{%reset%}>"big"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            urn              : <{%reset%}><{%reset%}>"urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Taxi::taxi"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>        }
-<{%reset%}><{%reset%}>        urn              : <{%reset%}><{%reset%}>"urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>    }
-<{%reset%}>
-<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    3 unchanged
-
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 0s
-

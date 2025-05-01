@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>an unhandled error occurred: oh no<{%reset%}>

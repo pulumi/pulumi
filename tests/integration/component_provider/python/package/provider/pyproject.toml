@@ -1,8 +1,0 @@
-[project]
-name = "provider"
-version = "0.1.0"
-dependencies = ["pulumi"]
-
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"

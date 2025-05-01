@@ -1,3 +1,0 @@
-name: config_missing_go
-runtime: go
-description: A simple Go program that errors on missing configuration.

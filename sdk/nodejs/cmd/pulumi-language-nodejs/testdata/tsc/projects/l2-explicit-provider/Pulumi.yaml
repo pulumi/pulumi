@@ -1,5 +1,0 @@
-name: l2-explicit-provider
-runtime:
-  name: nodejs
-  options:
-    typescript: false

@@ -1,5 +1,0 @@
-name: l2-destroy
-runtime:
-  name: nodejs
-  options:
-    typescript: false

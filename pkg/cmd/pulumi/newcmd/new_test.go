@@ -1102,3 +1102,29 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 		assert.Contains(t, actualP, e)
 	}
 }
+
+//nolint:paralleltest // changes directory for process, mocks backendInstance
+func TestNoPromptWithYesAndNonInteractive(t *testing.T) {
+	args := newArgs{
+		interactive: false,
+		yes:         true,
+	}
+
+	// Mock backend
+	mockBackend := &backend.MockBackend{
+		SupportsTemplatesF: func() bool { return false },
+		NameF:              func() string { return "mock" },
+	}
+
+	// Verify that deriveAIOrTemplate returns "template" without prompting
+	result := deriveAIOrTemplate(args)
+	if result != "template" {
+		t.Errorf("Expected deriveAIOrTemplate to return 'template' with --yes and --non-interactive, got %s", result)
+	}
+
+	// Verify that shouldPromptForAIOrTemplate returns false
+	shouldPrompt := shouldPromptForAIOrTemplate(args, mockBackend)
+	if shouldPrompt {
+		t.Error("Expected shouldPromptForAIOrTemplate to return false with --yes and --non-interactive")
+	}
+}

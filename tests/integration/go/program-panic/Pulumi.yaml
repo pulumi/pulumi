@@ -1,3 +1,0 @@
-name: resource_refs_get_resource_go
-description: A program that ensures invoking 'pulumi:pulumi:getResource' returns resource refs
-runtime: go

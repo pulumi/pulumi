@@ -1,9 +1,0 @@
-{
-  "emittedFiles": [
-    "_index.md",
-    "component/_index.md",
-    "crd.k8s.amazonaws.com/_index.md",
-    "crd.k8s.amazonaws.com/v1alpha1/_index.md",
-    "provider/_index.md"
-  ]
-}

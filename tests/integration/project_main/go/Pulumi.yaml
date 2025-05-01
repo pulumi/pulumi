@@ -1,5 +1,0 @@
-name: project_main
-description: A program with a different main specification.
-runtime: go
-main: a/path/to/main/
-

@@ -1,7 +1,0 @@
-name: pulumi-python-uv
-description: A Python project that uses the uv toolchain.
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    virtualenv: my-venv

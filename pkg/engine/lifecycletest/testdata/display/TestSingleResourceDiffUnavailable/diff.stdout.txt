@@ -1,5 +1,0 @@
-<{%fg 3%}>~ pkgA:m:typA: (update)
-<{%reset%}>    [id=5ade4208-03d0-4187-a3bd-20446eda532a]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 3%}>~ 1 to update<{%reset%}>

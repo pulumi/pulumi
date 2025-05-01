@@ -1,5 +1,0 @@
-name: l1-proxy-index
-runtime:
-  name: nodejs
-  options:
-    typescript: false

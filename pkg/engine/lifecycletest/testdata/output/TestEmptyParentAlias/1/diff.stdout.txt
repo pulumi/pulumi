@@ -1,8 +1,0 @@
-<{%reset%}>  prog:index:myStandardType: (same)
-<{%reset%}>    [urn=urn:pulumi:test::test::prog:index:myStandardType::resA]
-<{%reset%}><{%reset%}>    <{%reset%}>  prog:index:myType: (same)
-<{%reset%}>        [urn=urn:pulumi:test::test::prog:index:myStandardType$prog:index:myType::resC]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    2 unchanged
-
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,3 +1,0 @@
-name: import_node
-runtime: nodejs
-description: A minimal NodeJS program to test import generation.

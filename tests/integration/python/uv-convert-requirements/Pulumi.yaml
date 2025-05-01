@@ -1,7 +1,0 @@
-name: pulumi-python-uv
-description: A Python project that uses the uv toolchain where the pyproject.toml is in a parent folder.
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    virtualenv: my-venv

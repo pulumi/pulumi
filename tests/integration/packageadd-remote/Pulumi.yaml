@@ -1,6 +1,0 @@
-name: package-add-remote-test
-description: A minimal TypeScript Pulumi program
-runtime:
-  name: nodejs
-  options:
-    packagemanager: yarn

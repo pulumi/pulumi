@@ -37,8 +37,14 @@ const (
 )
 
 func deriveAIOrTemplate(args newArgs) string {
+	// If AI-specific flags are set, use AI mode
 	if args.aiPrompt != "" || args.aiLanguage != "" {
 		return "ai"
+	}
+	// If template mode is explicitly set or we're in non-interactive mode with --yes,
+	// default to template mode
+	if args.templateMode || args.yes || !args.interactive {
+		return "template"
 	}
 	return "template"
 }
@@ -48,7 +54,8 @@ func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool
 	return args.aiPrompt == "" &&
 		args.aiLanguage == "" &&
 		!args.templateMode &&
-		isHTTPBackend
+		isHTTPBackend &&
+		!args.yes
 }
 
 // Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI

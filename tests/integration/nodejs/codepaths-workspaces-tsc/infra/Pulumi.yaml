@@ -1,7 +1,0 @@
-name: codepaths-workspaces-tsc
-description: A project that uses npm and yarn workspaces and tsc. CodePaths computation should discover dependencies across the workspaces.
-main: bin/index.js
-runtime:
-  name: nodejs
-  options:
-    typescript: false

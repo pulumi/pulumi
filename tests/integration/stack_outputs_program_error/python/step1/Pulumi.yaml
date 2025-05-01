@@ -1,3 +1,0 @@
-name: stack_outputs_program_error_py
-description: A program that exports some outputs and then errors in a later step.
-runtime: python

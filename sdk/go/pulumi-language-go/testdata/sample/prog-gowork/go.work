@@ -1,6 +1,0 @@
-go 1.18.0
-
-use (
-	./other
-	./prog
-)

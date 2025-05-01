@@ -1,3 +1,0 @@
-name: aliases_retype_remote_component_and_child
-description: A program that replaces a resource component and its child with an alias.
-runtime: go

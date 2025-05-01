@@ -1,5 +1,0 @@
-name: refreshgo
-description: An empty Go Pulumi program with the refresh option set.
-runtime: go
-options:
-    refresh: always

@@ -1,3 +1,0 @@
-name: environments_basic
-runtime: nodejs
-description: A simple Node.js program that uses environments.

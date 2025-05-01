@@ -1,3 +1,0 @@
-name: pulumi-python-asyncio-tasks
-description: A Python program that tests waiting for outputs and tasks.
-runtime: python

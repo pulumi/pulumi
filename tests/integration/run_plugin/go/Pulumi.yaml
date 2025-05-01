@@ -1,3 +1,0 @@
-name: run-plugin-test
-runtime: go
-description: A minimal Go Pulumi program

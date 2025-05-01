@@ -1,6 +1,0 @@
-name: l1-main
-runtime:
-  name: nodejs
-  options:
-    typescript: false
-main: subdir

@@ -1,6 +1,0 @@
-name: pulumi-python-uv-no-venv-option
-description: A Python project that uses the uv toolchain, without specifing the location for the virtualenv.
-runtime:
-  name: python
-  options:
-    toolchain: uv

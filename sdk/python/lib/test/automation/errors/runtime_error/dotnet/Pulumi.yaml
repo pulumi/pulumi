@@ -1,3 +1,0 @@
-name: runtime_error
-runtime: dotnet
-description: A minimal C# Pulumi program

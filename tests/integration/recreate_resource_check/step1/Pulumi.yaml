@@ -1,3 +1,0 @@
-name: recreate_resource_check
-description: A program that tests the engine use of Check on re-created resources
-runtime: nodejs

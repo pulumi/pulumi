@@ -1,3 +1,0 @@
-name: rotate_passphrase
-description: An empty Go Pulumi program to test passphrase rotation.
-runtime: go

@@ -1,5 +1,0 @@
-{
-    "name": "test-codepaths-no-dependencies",
-    "description": "Basic test case for codepaths where there is no dependencies in package.json",
-    "main": "index.ts"
-}

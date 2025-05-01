@@ -1,4 +1,0 @@
-my:outer:
-  inner:
-    nested:
-      secure: securevalue

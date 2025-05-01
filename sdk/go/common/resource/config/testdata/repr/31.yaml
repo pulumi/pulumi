@@ -1,5 +1,0 @@
-my:outer:
-  inner:
-    nested:
-      a: b
-      secure: val

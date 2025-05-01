@@ -1,3 +1,0 @@
-name: yarn-workspaces-nohoist
-runtime: nodejs
-description: A project that uses yarn workspaces with the nohoist option. `pulumi install` should successfully install dependencies.

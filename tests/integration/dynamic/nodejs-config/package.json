@@ -1,8 +1,0 @@
-{
-  "name": "nodejs-dynamic-provider-config",
-  "license": "Apache-2.0",
-  "dependencies": {
-    "@pulumi/pulumi": "latest",
-    "typescript": "^5"
-  }
-}

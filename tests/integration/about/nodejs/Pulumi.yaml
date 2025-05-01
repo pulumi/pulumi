@@ -1,3 +1,0 @@
-name: nodejs
-runtime: nodejs
-description: A nodejs integration test for the about command

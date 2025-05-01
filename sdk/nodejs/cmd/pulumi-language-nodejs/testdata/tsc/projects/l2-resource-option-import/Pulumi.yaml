@@ -1,5 +1,0 @@
-name: l2-resource-option-import
-runtime:
-  name: nodejs
-  options:
-    typescript: false

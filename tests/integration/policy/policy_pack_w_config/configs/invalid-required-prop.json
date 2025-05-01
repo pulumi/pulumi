@@ -1,5 +1,0 @@
-{
-    "s3-no-public-read": {
-        "enforcementLevel": "mandatory"
-    }
-}

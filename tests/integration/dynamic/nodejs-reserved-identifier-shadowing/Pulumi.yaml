@@ -1,3 +1,0 @@
-name: nodejs_reserved_identifier_shadowing
-runtime: nodejs
-description: A NodeJS program that uses dynamic providers to trigger serialization of programs containing identifiers that shadow reserved identifiers (in this case, "exports").

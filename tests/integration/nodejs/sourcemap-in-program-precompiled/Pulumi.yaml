@@ -1,6 +1,0 @@
-name: sourcemap
-description: A pre-compiled TypeScript program
-runtime:
-  name: nodejs
-  options:
-    typescript: false

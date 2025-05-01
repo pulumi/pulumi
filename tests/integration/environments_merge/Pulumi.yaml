@@ -1,3 +1,0 @@
-name: environments_merge
-runtime: nodejs
-description: A simple Node.js program that uses merged environments.

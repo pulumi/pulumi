@@ -1,3 +1,0 @@
-name: emptyjs
-description: An empty Node.js Pulumi program.
-runtime: nodejs

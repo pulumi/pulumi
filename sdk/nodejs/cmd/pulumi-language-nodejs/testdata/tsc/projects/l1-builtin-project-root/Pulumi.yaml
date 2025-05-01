@@ -1,5 +1,0 @@
-name: l1-builtin-project-root
-runtime:
-  name: nodejs
-  options:
-    typescript: false

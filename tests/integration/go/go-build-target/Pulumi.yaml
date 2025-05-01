@@ -1,6 +1,0 @@
-name: go-build
-description: A minimal Go Pulumi program
-runtime: 
-  name: go
-  options:
-    buildTarget: ./a.out

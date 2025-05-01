@@ -1,3 +1,0 @@
-name: stack_outputs_program_error_go
-description: A program that exports some outputs and then errors in a later step.
-runtime: go

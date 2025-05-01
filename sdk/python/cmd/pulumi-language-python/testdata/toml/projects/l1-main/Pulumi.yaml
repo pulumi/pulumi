@@ -1,8 +1,0 @@
-name: l1-main
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv
-main: subdir

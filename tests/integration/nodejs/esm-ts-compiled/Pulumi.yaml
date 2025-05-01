@@ -1,6 +1,0 @@
-name: esm-ts-compiled
-runtime: 
-  name: nodejs
-  options: 
-    typescript: false
-description: Use ECMAScript modules for a TS program.

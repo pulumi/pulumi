@@ -1,3 +1,0 @@
-name: compilation_error
-runtime: dotnet
-description: A minimal C# Pulumi program

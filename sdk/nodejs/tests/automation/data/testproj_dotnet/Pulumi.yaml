@@ -1,3 +1,0 @@
-name: testproj_dotnet
-runtime: dotnet
-description: A minimal dotnet Pulumi program

@@ -1,3 +1,0 @@
-name: construct_component_methods_errors_go
-description: A program that constructs remote component resources with a method that returns an error.
-runtime: go

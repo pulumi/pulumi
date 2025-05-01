@@ -1,3 +1,0 @@
-<{%fg 3%}>warning: <{%reset%}><{%reset%}>The "pulumi:pulumi:StackReference" resource type is deprecated. Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues.<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>unknown stack "rehto"<{%reset%}>
-<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>

@@ -1,6 +1,0 @@
-name: package-install-local
-description: Install
-packages:
-  # The test validates that we can deal with the version number here
-  provider: ../provider@0.0.0
-runtime: nodejs

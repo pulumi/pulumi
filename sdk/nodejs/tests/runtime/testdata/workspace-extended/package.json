@@ -1,8 +1,0 @@
-{
-    "name": "a-workspace-example",
-    "description": "A project that uses yarn workspaces using the extended configuration in package.json",
-    "private": true,
-    "workspaces": {
-        "packages": ["packages/*", "project/"]
-    }
-}

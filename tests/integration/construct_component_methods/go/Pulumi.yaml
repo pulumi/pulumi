@@ -1,3 +1,0 @@
-name: construct_component_methods_go
-description: A program that constructs remote component resources with methods.
-runtime: go

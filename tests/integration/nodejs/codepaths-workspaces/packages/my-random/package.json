@@ -1,8 +1,0 @@
-{
-  "name": "my-random",
-  "main": "index.ts",
-  "version": "1.0.0",
-  "dependencies": {
-    "@pulumi/pulumi": "latest"
-  }
-}

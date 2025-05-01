@@ -1,7 +1,0 @@
-name: esm-ts-specifier-resolution-node
-runtime: 
-  name: nodejs
-  options: 
-    # See https://github.com/TypeStrong/ts-node/issues/1007
-    nodeargs: "--experimental-specifier-resolution=node --loader ts-node/esm --no-warnings"
-description: Use ECMAScript modules for a TS program.

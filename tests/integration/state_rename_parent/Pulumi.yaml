@@ -1,3 +1,0 @@
-name: state_rename_parent
-description: A minimal Go Pulumi program
-runtime: go

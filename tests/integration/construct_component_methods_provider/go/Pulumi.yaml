@@ -1,3 +1,0 @@
-name: construct_component_methods_provider_go
-description: A program that constructs remote component resources with methods and an explicit provider set for another package.
-runtime: go

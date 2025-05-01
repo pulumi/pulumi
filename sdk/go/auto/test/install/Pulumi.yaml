@@ -1,7 +1,0 @@
-name: test-install
-description: Run pulumi install via automation api
-runtime:
-  name: python
-  options:
-    toolchain: pip
-    virtualenv: venv

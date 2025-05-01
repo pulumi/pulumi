@@ -1,1 +1,0 @@
-<{%fg 1%}>error: <{%reset%}><{%reset%}>cannot ignore changes to the following properties because one or more elements of the path are missing: "qux[0]"<{%reset%}>

@@ -1,7 +1,0 @@
-name: pulumi-python-pyright
-description: A simple Python Pulumi program that type checks with pyright.
-runtime:
-  name: python
-  options:
-    virtualenv: venv
-    typechecker: pyright

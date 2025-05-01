@@ -1,7 +1,0 @@
-name: construct_component_methods_unknown_nodejs
-description: A program that constructs remote component resources with methods and unknowns.
-runtime: nodejs
-plugins:
-  providers:
-    - name: testprovider
-      path: ../../../testprovider

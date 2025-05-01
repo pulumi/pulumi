@@ -1,6 +1,0 @@
-name: pulumi-python-poetry
-description: A simple Python Pulumi program that uses Poetry.
-runtime:
-  name: python
-  options:
-    toolchain: poetry

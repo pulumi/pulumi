@@ -1,7 +1,0 @@
-name: pulumi-python-poetry-main
-description: A simple Python Pulumi program that uses Poetry, with a main property
-runtime:
-  name: python
-  options:
-    toolchain: poetry
-main: src

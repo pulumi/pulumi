@@ -1,7 +1,0 @@
-name: l1-output-string
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv

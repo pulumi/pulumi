@@ -1,5 +1,0 @@
-name: test-yaml-option
-runtime:
-  name: nodejs
-  options:
-    tsconfig: other.json

@@ -1,3 +1,0 @@
-name: package-json-in-parent-dir-without-main
-runtime: nodejs
-description: Run a TypeScript program where package.json is in a parent directory, and no main field is provided in package.json.

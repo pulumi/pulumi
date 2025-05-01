@@ -1,7 +1,0 @@
-name: test-provider-url-go
-runtime: go
-description: A minimal Go Pulumi program
-plugins:
-  providers:
-    - name: testprovider
-      path: ../../../testprovider

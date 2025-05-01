@@ -1,7 +1,0 @@
-name: l2-large-string
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: mypy
-    virtualenv: venv

@@ -1,3 +1,0 @@
-name: go-build
-description: A minimal Go Pulumi program
-runtime: go

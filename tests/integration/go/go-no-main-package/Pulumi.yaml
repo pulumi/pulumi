@@ -1,3 +1,0 @@
-name: go-no-main-package
-description: A Go program that has no main package, this can't be run
-runtime: go

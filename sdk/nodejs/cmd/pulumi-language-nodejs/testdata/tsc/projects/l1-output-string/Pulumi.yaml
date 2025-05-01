@@ -1,5 +1,0 @@
-name: l1-output-string
-runtime:
-  name: nodejs
-  options:
-    typescript: false

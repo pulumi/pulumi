@@ -1,3 +1,0 @@
-name: get_resource
-runtime: nodejs
-description: A simple program that gets an existing resource from the engine.

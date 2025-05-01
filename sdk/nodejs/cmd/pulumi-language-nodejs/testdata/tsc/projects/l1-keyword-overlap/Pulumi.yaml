@@ -1,5 +1,0 @@
-name: l1-keyword-overlap
-runtime:
-  name: nodejs
-  options:
-    typescript: false

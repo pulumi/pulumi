@@ -1,9 +1,0 @@
-{
-  "name": "infra",
-  "main": "index.ts",
-  "version": "1.0.0",
-  "dependencies": {
-    "@pulumi/pulumi": "latest",
-    "my-random": "workspace:1.0.0"
-  }
-}

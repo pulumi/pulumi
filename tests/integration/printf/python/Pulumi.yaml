@@ -1,3 +1,0 @@
-name: printfpy
-description: A Pulumi program that printfs some stuff.
-runtime: python

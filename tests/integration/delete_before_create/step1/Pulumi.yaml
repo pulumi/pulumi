@@ -1,3 +1,0 @@
-name: delete_before_create
-description: A program that tests the engine's ability to do delete-before-create replacement.
-runtime: nodejs

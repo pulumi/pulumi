@@ -1,3 +1,0 @@
-name: undefined_stack_output
-runtime: nodejs
-description: Check that undefined stack output warn the user.

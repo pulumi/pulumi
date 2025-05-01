@@ -1,3 +1,0 @@
-name: python_await_error_handling
-runtime: python
-description: A python program to test if non-exported outputs are awaited

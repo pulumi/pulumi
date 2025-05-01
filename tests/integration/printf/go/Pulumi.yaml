@@ -1,3 +1,0 @@
-name: printfgo
-description: A Pulumi program that printfs some stuff.
-runtime: go

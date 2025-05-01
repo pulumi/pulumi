@@ -1,9 +1,0 @@
-{
-    "name": "test-codepaths",
-    "description": "Basic test case for codepaths",
-    "main": "index.ts",
-    "dependencies": {
-        "@pulumi/pulumi": "latest",
-        "semver": "^7.6.0"
-    }
-}

@@ -1,6 +1,0 @@
-replacements:
-  - type: file
-    file: ./sdk/.version
-    fileFormat: sed
-    updatePath: .*
-    versionFormat: ${SEMVER}

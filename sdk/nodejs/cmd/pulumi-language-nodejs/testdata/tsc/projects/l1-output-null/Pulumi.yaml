@@ -1,5 +1,0 @@
-name: l1-output-null
-runtime:
-  name: nodejs
-  options:
-    typescript: false

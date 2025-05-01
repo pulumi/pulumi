@@ -1,5 +1,0 @@
-name: l1-output-bool
-runtime:
-  name: nodejs
-  options:
-    typescript: false

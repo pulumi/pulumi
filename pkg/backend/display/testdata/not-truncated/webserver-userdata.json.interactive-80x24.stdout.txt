@@ -1,67 +1,0 @@
-<{%fg 13%}><{%bold%}>View in Browser (Ctrl+O): <{%underline%}><{%fg 12%}>link<{%reset%}>
-
-<%hide-cursor%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  project-stack  <{%bold%}><{%reset%}><{%reset%}>           <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
-<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  └─ aws:ec2:SecurityGroup  web-secgrp            <{%bold%}><{%reset%}><{%reset%}>            <%clear-to-end%>
-<%cursor-up:3%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  └─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>            <%clear-to-end%>
-<%cursor-up:3%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>                   <{%underline%}><{%fg 12%}>I<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>                  <{%reset%}>C<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>                         <%clear-to-end%>
- <{%bold%}><{%fg 10%}>++<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%bold%}><{%fg 10%}>creating replacement<{%reset%}><{%bold%}><{%fg 10%}><{%reset%}>     [<%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>                  <{%underline%}><{%fg 12%}>In<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>                 <{%reset%}>Co<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>                        <%clear-to-end%>
- <{%fg 10%}>++<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 10%}>created replacement<{%reset%}>     [d<%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>        <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>       <{%reset%}>Configuratio<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>              <%clear-to-end%>
- <{%bold%}><{%fg 13%}>+-<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%bold%}><{%fg 13%}>replacing<{%reset%}><{%bold%}><{%fg 13%}><{%reset%}>     [diff: <{%fg 3%}>~user<{%reset%}><%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>      <{%reset%}>Configuration<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>             <%clear-to-end%>
- <{%fg 13%}>+-<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 13%}>replaced<{%reset%}>     [diff: <{%fg 3%}>~userD<{%reset%}><%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>      <{%reset%}>Configuration<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>             <%clear-to-end%>
- <{%fg 13%}>+-<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 13%}>replaced<{%reset%}>     [diff: <{%fg 3%}>~userD<{%reset%}><%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>                <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>               <{%reset%}>Conf<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>                      <%clear-to-end%>
- <{%bold%}><{%fg 9%}>--<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%bold%}><{%fg 9%}>deleting original<{%reset%}><{%bold%}><{%fg 9%}><{%reset%}>     [dif<%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>               <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  running<{%bold%}><{%reset%}><{%reset%}>              <{%reset%}>Confi<%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>                     <%clear-to-end%>
- <{%fg 9%}>--<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 9%}>deleted original<{%reset%}>     [diff<%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  <{%reset%}><{%reset%}>             1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>             <%clear-to-end%>
- <{%fg 13%}>+-<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 13%}>replaced<{%reset%}>     [diff: <{%fg 3%}>~userD<{%reset%}><%clear-to-end%>
-<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                      <{%underline%}><{%fg 12%}>Name<{%reset%}>                  <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack       aws-ts-webserver-dev  <{%reset%}><{%reset%}>             1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
- <{%reset%}>  <{%reset%}>  ├─ aws:ec2:SecurityGroup  web-secgrp            <{%reset%}><{%reset%}>             <%clear-to-end%>
- <{%fg 13%}>+-<{%reset%}>  └─ aws:ec2:Instance       web-server-www        <{%fg 13%}>replaced<{%reset%}>     [diff: <{%fg 3%}>~userD<{%reset%}><%clear-to-end%>
-<%clear-to-end%>
-<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
-  <{%fg 12%}>pulumi:pulumi:Stack (aws-ts-webserver-dev):<{%reset%}>
-    <{%reset%}>Configuration:<{%reset%}>
-        aws:region: us-west-2
-
-<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
-<{%fg 3%}>  ~ publicHostName: <{%reset%}><{%fg 1%}>"ec2-34-211-56-110.us-west-2.compute.amazonaws.com"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 3%}>
-<{%reset%}><{%fg 3%}>  ~ publicIp      : <{%reset%}><{%fg 1%}>"34.211.56.110"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 3%}>
-<{%reset%}>
-<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 13%}>+-1 replaced<{%reset%}>
-    2 unchanged
-
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 12s
-
-<%show-cursor%>

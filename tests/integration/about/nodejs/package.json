@@ -1,9 +1,0 @@
-{
-    "name": "nodejs",
-    "devDependencies": {
-        "@types/node": "^10.0.0"
-    },
-    "dependencies": {
-        "@pulumi/pulumi": "^3.0.0"
-    }
-}

@@ -1,3 +1,0 @@
-name: construct_component_provider_nodejs
-description: A program that constructs remote component resources with first class provider.
-runtime: nodejs

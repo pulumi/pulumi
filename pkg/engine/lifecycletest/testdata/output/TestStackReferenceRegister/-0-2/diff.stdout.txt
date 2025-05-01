@@ -1,8 +1,0 @@
-<{%fg 2%}>+ pulumi:providers:pulumi: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:pulumi:StackReference: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:StackReference::other]
-<{%reset%}><{%fg 2%}>    name: <{%reset%}><{%fg 2%}>"rehto"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-
-<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

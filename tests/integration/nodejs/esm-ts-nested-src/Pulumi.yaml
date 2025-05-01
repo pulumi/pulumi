@@ -1,8 +1,0 @@
-name: esm-ts-nested-src
-description: Use ECMAScript modules for a TS program nested in a src dir.
-main: src/index.ts
-runtime:
-  name: nodejs
-  options:
-    # See https://github.com/TypeStrong/ts-node/issues/1007
-    nodeargs: "--experimental-specifier-resolution=node --loader ts-node/esm --no-warnings"

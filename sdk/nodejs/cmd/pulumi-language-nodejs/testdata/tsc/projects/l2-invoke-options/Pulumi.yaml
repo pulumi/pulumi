@@ -1,5 +1,0 @@
-name: l2-invoke-options
-runtime:
-  name: nodejs
-  options:
-    typescript: false

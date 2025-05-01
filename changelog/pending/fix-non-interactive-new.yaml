@@ -1,0 +1,4 @@
+kind: fix
+area: cli
+message: Fix `pulumi new` to respect `--yes` and `--non-interactive` flags
+issues: [19378] 

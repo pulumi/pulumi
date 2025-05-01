@@ -1,5 +1,0 @@
-{"sequence":0,"timestamp":0,"preludeEvent":{"config":{}}}
-{"sequence":0,"timestamp":0,"resourcePreEvent":{"metadata":{"op":"create","urn":"urn:pulumi:test::test::pulumi:providers:pkgA::default","type":"pulumi:providers:pkgA","old":null,"new":{"type":"pulumi:providers:pkgA","urn":"urn:pulumi:test::test::pulumi:providers:pkgA::default","custom":true,"id":"","parent":"","inputs":{},"outputs":{},"provider":""},"detailedDiff":null,"logical":true,"provider":""}}}
-{"sequence":0,"timestamp":0,"resOutputsEvent":{"metadata":{"op":"create","urn":"urn:pulumi:test::test::pulumi:providers:pkgA::default","type":"pulumi:providers:pkgA","old":null,"new":{"type":"pulumi:providers:pkgA","urn":"urn:pulumi:test::test::pulumi:providers:pkgA::default","custom":true,"id":"a542baeb-20e9-4645-af86-daac2aaee13a","parent":"","inputs":{},"outputs":{},"provider":""},"detailedDiff":null,"logical":true,"provider":""}}}
-{"sequence":0,"timestamp":0,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":1,"resourceChanges":{},"PolicyPacks":{}}}
-{"sequence":0,"timestamp":0,"cancelEvent":{}}

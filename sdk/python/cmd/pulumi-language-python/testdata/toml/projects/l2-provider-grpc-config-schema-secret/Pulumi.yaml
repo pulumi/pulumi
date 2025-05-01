@@ -1,7 +1,0 @@
-name: l2-provider-grpc-config-schema-secret
-runtime:
-  name: python
-  options:
-    toolchain: uv
-    typechecker: pyright
-    virtualenv: venv

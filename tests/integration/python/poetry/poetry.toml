@@ -1,3 +1,0 @@
-[virtualenvs]
-# Create the venv inside the project directory so it gets cleaned up when we remove the temp directory used for the tests.
-in-project = true

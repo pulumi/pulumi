@@ -1,7 +1,0 @@
-name: construct_component_plain_go
-description: A program that constructs a remote component resource with prompt inputs.
-runtime: go
-plugins:
-  providers:
-    - name: testprovider
-      path: ../../../testprovider

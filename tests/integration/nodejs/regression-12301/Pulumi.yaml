@@ -1,3 +1,0 @@
-name: regression-12301
-runtime: nodejs
-description: Check that 'require' doesn't pick up JSON files.

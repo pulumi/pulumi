@@ -1,3 +1,0 @@
-name: npm-workspaces
-runtime: nodejs
-description: This project is not part of the npm/yarn workspaces setup in the parent directory's package.json.
