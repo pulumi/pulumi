@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.167.0 (2025-05-01)
+
+
+### Features
+
+- [auto/nodejs] Add `onError` callback for capturing incremental stderr output
+  [#19372](https://github.com/pulumi/pulumi/pull/19372)
+
+- [pkg] Allow for hyphens in function names
+  [#19352](https://github.com/pulumi/pulumi/pull/19352)
+
+- [auto/python] Add the ability to configure a remote executor image
+  [#19304](https://github.com/pulumi/pulumi/pull/19304)
+
+- [sdk/yaml] Update pulumi-yaml to v1.18.0
+  [#19381](https://github.com/pulumi/pulumi/pull/19381)
+
+
+### Bug Fixes
+
+- [auto/nodejs] Fix flag mismatch with preview-only refresh operations
+  [#19370](https://github.com/pulumi/pulumi/pull/19370)
+
+- [cli/plugin] Allow creating analyzer plugins without config
+  [#19392](https://github.com/pulumi/pulumi/pull/19392)
+
+- [auto/python] Fix flag mismatch with preview-only refresh operations
+  [#19373](https://github.com/pulumi/pulumi/pull/19373)
+
 ## 3.166.0 (2025-04-29)
 
 
