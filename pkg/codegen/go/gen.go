@@ -116,8 +116,19 @@ func Title(s string) string {
 	return s
 }
 
+// tokenToPackage accepts a *Pulumi token* and returns name of the *Go package* that it
+// should be generated into.
+//
+// For example, it converts: "pkg:someModule:Resource" to "somemodule".
 func tokenToPackage(pkg schema.PackageReference, overrides map[string]string, tok string) string {
-	mod := pkg.TokenToModule(tok)
+	return moduleToPackage(overrides, pkg.TokenToModule(tok))
+}
+
+// moduleToPackage accepts a *Pulumi module* and returns name of the *Go package* that it
+// should be generated into.
+//
+// For example, it converts: "someModule" to "somemodule".
+func moduleToPackage(overrides map[string]string, mod string) string {
 	if override, ok := overrides[mod]; ok {
 		mod = override
 	}

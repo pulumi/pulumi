@@ -78,3 +78,10 @@ func TestPyNameLegacy(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenToModule(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "module", tokenToModule("pkg:module:Type", nil, nil))
+	assert.Equal(t, "mymodule", tokenToModule("pkg:myModule:Type", nil, nil))
+}
