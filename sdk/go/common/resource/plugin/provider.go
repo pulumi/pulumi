@@ -55,6 +55,10 @@ type ProviderHandshakeRequest struct {
 
 	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
 	ConfigureWithUrn bool
+
+	// If true the engine supports views and can send an address of the resource status service that
+	// can be used to create or update view resources.
+	SupportsViews bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -231,12 +235,14 @@ type DiffRequest struct {
 type DiffResponse = DiffResult
 
 type CreateRequest struct {
-	URN        resource.URN
-	Name       string
-	Type       tokens.Type
-	Properties resource.PropertyMap
-	Timeout    float64
-	Preview    bool
+	URN                   resource.URN
+	Name                  string
+	Type                  tokens.Type
+	Properties            resource.PropertyMap
+	Timeout               float64
+	Preview               bool
+	ResourceStatusAddress string
+	ResourceStatusToken   string
 }
 
 type CreateResponse struct {
@@ -246,11 +252,23 @@ type CreateResponse struct {
 }
 
 type ReadRequest struct {
-	URN           resource.URN
-	Name          string
-	Type          tokens.Type
-	ID            resource.ID
-	Inputs, State resource.PropertyMap
+	URN                   resource.URN
+	Name                  string
+	Type                  tokens.Type
+	ID                    resource.ID
+	Inputs, State         resource.PropertyMap
+	ResourceStatusAddress string
+	ResourceStatusToken   string
+	OldViews              []View
+}
+
+type View struct {
+	Type       tokens.Type
+	Name       string
+	ParentType tokens.Type
+	ParentName string
+	Inputs     resource.PropertyMap
+	Outputs    resource.PropertyMap
 }
 
 type ReadResponse struct {
@@ -267,6 +285,9 @@ type UpdateRequest struct {
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
+	ResourceStatusAddress            string
+	ResourceStatusToken              string
+	OldViews                         []View
 }
 
 type UpdateResponse struct {
@@ -275,12 +296,15 @@ type UpdateResponse struct {
 }
 
 type DeleteRequest struct {
-	URN             resource.URN
-	Name            string
-	Type            tokens.Type
-	ID              resource.ID
-	Inputs, Outputs resource.PropertyMap
-	Timeout         float64
+	URN                   resource.URN
+	Name                  string
+	Type                  tokens.Type
+	ID                    resource.ID
+	Inputs, Outputs       resource.PropertyMap
+	Timeout               float64
+	ResourceStatusAddress string
+	ResourceStatusToken   string
+	OldViews              []View
 }
 
 type DeleteResponse struct {
