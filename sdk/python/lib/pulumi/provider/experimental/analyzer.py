@@ -249,8 +249,8 @@ class Analyzer:
         components: list[type[ComponentResource]],
     ) -> AnalyzeResult:
         """
-        Analyze walks the directory at `path` and searches for
-        ComponentResources in Python files.
+        Analyze builds a Pulumi schema for a provider that handles the passed
+        list of components.
         """
         component_defs: dict[str, ComponentDefinition] = {}
         for component in components:
@@ -305,6 +305,9 @@ class Analyzer:
         }
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
+        """
+        Get the type annotations for `o` in a backwards compatible way.
+        """
         if sys.version_info >= (3, 10):
             # Only available in 3.10 and later
             return inspect.get_annotations(o)
@@ -321,6 +324,11 @@ class Analyzer:
     def analyze_component(
         self, component: type[ComponentResource]
     ) -> ComponentDefinition:
+        """
+        Analyze a single component, building up a `ComponentDefinition` that
+        holds all the information necessary to create a resource in a Pulumi
+        provider schema.
+        """
         ann = self.get_annotations(component.__init__)
         args = ann.get("args", None)
         if not args:

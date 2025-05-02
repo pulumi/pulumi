@@ -264,6 +264,12 @@ class ComponentProvider(Provider):
     def get_state(
         self, instance: ComponentResource, component_def: ComponentDefinition
     ) -> dict[str, Any]:
+        """
+        Retrieve the state for a ComponentResource instance.
+
+        This takes care of remapping Python snake_case names to Pulumi schema
+        camelCase names. It also handles mapping enum members to their values.
+        """
         state: dict[str, Any] = {}
         for k, prop in component_def.outputs.items():
             py_name = component_def.outputs_mapping[k]
@@ -315,6 +321,10 @@ class ComponentProvider(Provider):
 
     @staticmethod
     def validate_resource_type(pkg_name: str, resource_type: str) -> None:
+        """
+        Ensure that a resource type has the correct format and matches the
+        package.
+        """
         parts = resource_type.split(":")
         if len(parts) != 3:
             raise ValueError(f"invalid resource type: {resource_type}")

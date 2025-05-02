@@ -282,6 +282,9 @@ def generate_schema(
     type_definitions: dict[str, TypeDefinition],
     dependencies: list[Dependency],
 ) -> PackageSpec:
+    """
+    Build a serializable `PackageSpec` that represents a complete Pulumi schema.
+    """
     pkg = PackageSpec(
         name=name,
         version=version,
