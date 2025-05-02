@@ -1142,51 +1142,31 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	return info, nil
 }
 
-func (mod *modContext) functionReturnType(fun *schema.Function) string {
+// functionAndInvokeReturnTypes returns the return type string for the function being generated
+// and it's call to invoke.
+func (mod *modContext) functionAndInvokeReturnTypes(fun *schema.Function, isObjectType bool) (string, string) {
 	name := tokenToFunctionName(fun.Token)
 	if fun.ReturnType == nil {
-		return "void"
+		res := "void"
+		return res, res
 	}
 
-	if _, isObject := fun.ReturnType.(*schema.ObjectType); isObject && fun.InlineObjectAsReturnType {
-		return title(name) + "Result"
+	invokeRes := title(name) + "Result"
+	if isObjectType && fun.InlineObjectAsReturnType {
+		return invokeRes, invokeRes
 	}
 
-	return mod.typeString(fun.ReturnType, false, nil)
+	return mod.typeString(fun.ReturnType, false, nil), invokeRes
 }
 
 // runtimeInvokeFunction returns the name of the Invoke function to use at runtime
-// from the SDK for the given provider function. This is necessary because some
-// functions have simple return types such as number, string, array<string> etc.
-// and the SDK's invoke function cannot handle these types since the engine expects
-// the result of invokes to be a dictionary.
-//
-// We use invoke for functions with object return types and invokeSingle for everything else.
+// from the SDK for the given provider function. It selects between invoke and invokeOutput.
 func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
-	var functionName string
-	switch fun.ReturnType.(type) {
-	// If the function has no return type, it is a void function.
-	case nil:
-		functionName = "invoke"
-	// If the function has an object return type, it is a normal invoke function.
-	case *schema.ObjectType:
-		functionName = "invoke"
-	// If the function has an object return type, it is also a normal invoke function.
-	// because the deserialization can handle it
-	case *schema.MapType:
-		functionName = "invoke"
-	default:
-		// Anything else needs to be handled by InvokeSingle
-		// which expects an object with a single property to be returned
-		// then unwraps the value from that property
-		functionName = "invokeSingle"
-	}
-
 	if plain {
-		return functionName
+		return "invoke"
 	}
 
-	return functionName + "Output"
+	return "invokeOutput"
 }
 
 func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
@@ -1222,7 +1202,10 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		}
 	}
 
-	funReturnType := mod.functionReturnType(fun)
+	returnType := fun.ReturnType
+	returnTypeObject, isObjectReturnType := returnType.(*schema.ObjectType)
+
+	returnTypeString, invokeResultTypeString := mod.functionAndInvokeReturnTypes(fun, isObjectReturnType)
 
 	fullFunctionName := name
 	if !plain {
@@ -1251,16 +1234,16 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		fmt.Fprintf(w, "%s", argsig)
 	}
 
-	returnType := fmt.Sprintf("Promise<%s>", funReturnType)
+	wrappedReturnTypeString := fmt.Sprintf("Promise<%s>", returnTypeString)
 	if !plain {
-		returnType = fmt.Sprintf("pulumi.Output<%s>", funReturnType)
+		wrappedReturnTypeString = fmt.Sprintf("pulumi.Output<%s>", returnTypeString)
 	}
 
 	invokeOptionsType := "pulumi.InvokeOptions"
 	if !plain {
 		invokeOptionsType = "pulumi.InvokeOutputOptions"
 	}
-	fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, returnType)
+	fmt.Fprintf(w, "opts?: %s): %s {\n", invokeOptionsType, wrappedReturnTypeString)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
@@ -1273,8 +1256,17 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	// If the caller didn't request a specific version, supply one using the version of this library.
 	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
 	invokeCall := runtimeInvokeFunction(fun, plain)
-	// Now simply invoke the runtime function with the arguments, returning the results.
-	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
+
+	// Now simply invoke the runtime function with the arguments, extracting the scalar result if
+	// necessary.
+	if !isObjectReturnType {
+		// If the return type in the schema is not an object, save the value so we can extract the
+		// type from the resulting object, which is packaged. (see invoke in provider_server.go)
+		fmt.Fprintf(w, "    const result = pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
+	} else {
+		fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
+	}
+
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
@@ -1306,8 +1298,23 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 	if pkg.Parameterization != nil {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
+	fmt.Fprintf(w, ");\n")
 
-	fmt.Fprintf(w, ");\n}\n")
+	if fun.ReturnType != nil && !isObjectReturnType {
+		// Returning a non-object type, so we need to extract the value from the result.
+		if plain {
+			// Plain invoke uses Promise, so use the then function.
+			fmt.Fprintf(w, "    // @ts-ignore\n")
+			fmt.Fprintf(w, "    return result.then((r) => r.%s);\n", plugin.ScalarInvokeResponsePropertyName)
+		} else {
+			// Non plain invoke returns pulumi.Output, so use the apply function.
+			fmt.Fprintf(w, "    // @ts-ignore\n")
+			fmt.Fprintf(w, "    return result.apply((r) => r.%s);\n", plugin.ScalarInvokeResponsePropertyName)
+		}
+	}
+
+	// Close out the function.
+	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil && !fun.MultiArgumentInputs {
@@ -1341,21 +1348,33 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		}
 	}
 
-	resultInterfaceName := title(name) + "Result"
 	// if the return type is an inline object definition (not a reference), emit it.
 	// only emit the plain result type T since output-versioned invokes will use Output<T> for the non-plain variant
 	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
+		if isObjectReturnType && fun.InlineObjectAsReturnType {
 			if plain {
 				fmt.Fprintf(w, "\n")
-				if err := mod.genPlainType(w, resultInterfaceName,
-					objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+				if err := mod.genPlainType(w, returnTypeString,
+					returnTypeObject.Comment, returnTypeObject.Properties, false, true, 0); err != nil {
 					return info, err
 				}
 			}
 
-			info.functionResultInterfaceName = resultInterfaceName
+			info.functionResultInterfaceName = returnTypeString
 		}
+	}
+
+	if !isObjectReturnType {
+		plainModifier := ""
+		if plain {
+			plainModifier = "Plain"
+		}
+		// Emit the result type for the invoke call when it is not exported.
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "interface %s%s {\n", invokeResultTypeString, plainModifier)
+		fmt.Fprintf(w, "    %s: %s;\n", plugin.ScalarInvokeResponsePropertyName, returnTypeString)
+		fmt.Fprintf(w, "};\n")
+		fmt.Fprintf(w, "\n")
 	}
 
 	return info, nil

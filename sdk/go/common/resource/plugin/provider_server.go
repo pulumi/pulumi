@@ -836,6 +836,17 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 		return nil, err
 	}
 
+	if resp.ScalarReturn.V != nil && len(resp.Properties) > 0 {
+		return nil, status.Error(codes.Internal, "cannot set both scalar and object return values")
+	}
+
+	if resp.ScalarReturn.V != nil {
+		// If the resp is a scalar, we need to marshal it as a single property.
+		resp.Properties = resource.PropertyMap{
+			ScalarInvokeResponsePropertyName: resp.ScalarReturn,
+		}
+	}
+
 	rpcResult, err := MarshalProperties(resp.Properties, p.marshalOptions("result"))
 	if err != nil {
 		return nil, err

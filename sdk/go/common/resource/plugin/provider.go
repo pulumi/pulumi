@@ -303,9 +303,14 @@ type InvokeRequest struct {
 	Args resource.PropertyMap
 }
 
+const ScalarInvokeResponsePropertyName = "result__"
+
 type InvokeResponse struct {
+	// The return values if the result is of type schema.ObjectTypeSpec.
 	Properties resource.PropertyMap
-	Failures   []CheckFailure
+	// The return values if the result is a scalar of type schema.TypeSpec
+	ScalarReturn resource.PropertyValue
+	Failures     []CheckFailure
 }
 
 type CallRequest struct {

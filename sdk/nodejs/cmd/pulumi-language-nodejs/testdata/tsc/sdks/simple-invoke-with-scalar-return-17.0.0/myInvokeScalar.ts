@@ -6,21 +6,35 @@ import * as utilities from "./utilities";
 
 export function myInvokeScalar(args: MyInvokeScalarArgs, opts?: pulumi.InvokeOptions): Promise<boolean> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
-    return pulumi.runtime.invokeSingle("simple-invoke-with-scalar-return:index:myInvokeScalar", {
+    const result = pulumi.runtime.invoke("simple-invoke-with-scalar-return:index:myInvokeScalar", {
         "value": args.value,
     }, opts);
+    // @ts-ignore
+    return result.then((r) => r.result__);
 }
 
 export interface MyInvokeScalarArgs {
     value: string;
 }
+
+interface MyInvokeScalarResultPlain {
+    result__: boolean;
+};
+
 export function myInvokeScalarOutput(args: MyInvokeScalarOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<boolean> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
-    return pulumi.runtime.invokeSingleOutput("simple-invoke-with-scalar-return:index:myInvokeScalar", {
+    const result = pulumi.runtime.invokeOutput("simple-invoke-with-scalar-return:index:myInvokeScalar", {
         "value": args.value,
     }, opts);
+    // @ts-ignore
+    return result.apply((r) => r.result__);
 }
 
 export interface MyInvokeScalarOutputArgs {
     value: pulumi.Input<string>;
 }
+
+interface MyInvokeScalarResult {
+    result__: boolean;
+};
+
