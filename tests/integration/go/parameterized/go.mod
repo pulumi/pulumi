@@ -1,8 +1,6 @@
 module example.com/parameterized
 
-go 1.21
-
-toolchain go1.22.2
+go 1.23.0
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 

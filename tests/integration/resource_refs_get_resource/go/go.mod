@@ -1,8 +1,6 @@
 module getrestestgo
 
-go 1.22
-
-toolchain go1.24.0
+go 1.23.0
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
