@@ -792,10 +792,11 @@ def test_analyze_any():
 
 def test_analyze_descriptions():
     analyzer = Analyzer("descriptions")
-    (components, type_definitions, _) = analyzer.analyze(
-        components=load_components(Path("testdata", "docstrings")),
+    result = analyzer.analyze(
+        components=load_components(Path("testdata", "docstrings"))
     )
-    assert components == {
+
+    assert result["component_definitions"] == {
         "Component": ComponentDefinition(
             description="Component doc string",
             name="Component",
@@ -827,7 +828,7 @@ def test_analyze_descriptions():
             outputs_mapping={"complexOutput": "complex_output"},
         )
     }
-    assert type_definitions == {
+    assert result["type_definitions"] == {
         "ComplexType": TypeDefinition(
             description="ComplexType doc string",
             name="ComplexType",
@@ -895,10 +896,10 @@ def test_analyze_descriptions():
 def test_analyze_resource_ref():
     analyzer = Analyzer("resource-ref")
 
-    (component_defs, _, dependencies) = analyzer.analyze(
+    result = analyzer.analyze(
         components=load_components(Path("testdata", "resource-ref")),
     )
-    assert component_defs == {
+    assert result["component_definitions"] == {
         "Component": ComponentDefinition(
             name="Component",
             module="resource_ref",
@@ -918,7 +919,7 @@ def test_analyze_resource_ref():
             outputs_mapping={},
         )
     }
-    assert sorted(dependencies, key=lambda d: d.name) == [
+    assert sorted(result["dependencies"], key=lambda d: d.name) == [
         Dependency(
             name="mock_package",
             version="1.2.3",
@@ -1045,8 +1046,8 @@ def test_analyze_enum_type():
         def __init__(self, args: Args): ...
 
     analyzer = Analyzer("enum")
-    (component_defs, type_defs, _) = analyzer.analyze(components=[Component])
-    assert component_defs == {
+    result = analyzer.analyze(components=[Component])
+    assert result["component_definitions"] == {
         "Component": ComponentDefinition(
             name="Component",
             module="test_analyzer",
@@ -1078,7 +1079,7 @@ def test_analyze_enum_type():
             outputs_mapping={},
         )
     }
-    assert type_defs == {
+    assert result["type_definitions"] == {
         "MyEnumStr": TypeDefinition(
             name="MyEnumStr",
             description="string enum",
@@ -1264,10 +1265,10 @@ def test_analyze_component_self_recursive_complex_type():
 def test_analyze_component_mutually_recursive_complex_types_file():
     analyzer = Analyzer("mutually-recursive")
 
-    (components, type_definitions, _) = analyzer.analyze(
+    result = analyzer.analyze(
         components=load_components(Path("testdata", "mutually-recursive")),
     )
-    assert type_definitions == {
+    assert result["type_definitions"] == {
         "RecursiveTypeA": TypeDefinition(
             name="RecursiveTypeA",
             module="mutually_recursive",
@@ -1299,7 +1300,7 @@ def test_analyze_component_mutually_recursive_complex_types_file():
             ),
         ),
     }
-    assert components == {
+    assert result["component_definitions"] == {
         "Component": ComponentDefinition(
             name="Component",
             module="mutually_recursive",

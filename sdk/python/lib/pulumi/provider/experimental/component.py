@@ -56,13 +56,11 @@ class ComponentProvider(Provider):
     ) -> None:
         self._name = name
         self.analyzer = Analyzer(name)
-        (components_defs, type_definitions, dependencies) = self.analyzer.analyze(
-            components
-        )
+        result = self.analyzer.analyze(components)
         self._components = {component.__name__: component for component in components}
-        self._component_defs = components_defs
-        self._type_defs = type_definitions
-        self._dependencies = dependencies
+        self._component_defs = result["component_definitions"]
+        self._type_defs = result["type_definitions"]
+        self._dependencies = result["dependencies"]
         schema = generate_schema(
             name,
             version,

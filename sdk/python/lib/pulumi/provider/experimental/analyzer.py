@@ -32,6 +32,7 @@ from typing import (  # type: ignore
     ForwardRef,
     Literal,
     Optional,
+    TypedDict,
     Union,
     _GenericAlias,  # type: ignore
     _SpecialGenericAlias,  # type: ignore
@@ -181,6 +182,12 @@ class InvalidListTypeError(Exception):
         )
 
 
+class AnalyzeResult(TypedDict):
+    component_definitions: dict[str, ComponentDefinition]
+    type_definitions: dict[str, TypeDefinition]
+    dependencies: list[Dependency]
+
+
 class Analyzer:
     """
     Analyzer infers component and type definitions for a set of
@@ -240,9 +247,7 @@ class Analyzer:
     def analyze(
         self,
         components: list[type[ComponentResource]],
-    ) -> tuple[
-        dict[str, ComponentDefinition], dict[str, TypeDefinition], list[Dependency]
-    ]:
+    ) -> AnalyzeResult:
         """
         Analyze walks the directory at `path` and searches for
         ComponentResources in Python files.
@@ -293,7 +298,11 @@ class Analyzer:
         if len(components) == 0:
             raise Exception("No components found")
 
-        return (component_defs, self.type_definitions, self.dependencies)
+        return {
+            "component_definitions": component_defs,
+            "type_definitions": self.type_definitions,
+            "dependencies": self.dependencies,
+        }
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
         if sys.version_info >= (3, 10):
