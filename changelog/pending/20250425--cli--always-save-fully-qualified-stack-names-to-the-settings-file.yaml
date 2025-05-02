@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Always save fully qualified stack names to the settings file

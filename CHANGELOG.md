@@ -1,5 +1,73 @@
 # Changelog
 
+## 3.167.0 (2025-05-01)
+
+
+### Features
+
+- [auto/nodejs] Add `onError` callback for capturing incremental stderr output
+  [#19372](https://github.com/pulumi/pulumi/pull/19372)
+
+- [pkg] Allow for hyphens in function names
+  [#19352](https://github.com/pulumi/pulumi/pull/19352)
+
+- [auto/python] Add the ability to configure a remote executor image
+  [#19304](https://github.com/pulumi/pulumi/pull/19304)
+
+- [sdk/yaml] Update pulumi-yaml to v1.18.0
+  [#19381](https://github.com/pulumi/pulumi/pull/19381)
+
+
+### Bug Fixes
+
+- [auto/nodejs] Fix flag mismatch with preview-only refresh operations
+  [#19370](https://github.com/pulumi/pulumi/pull/19370)
+
+- [cli/plugin] Allow creating analyzer plugins without config
+  [#19392](https://github.com/pulumi/pulumi/pull/19392)
+
+- [auto/python] Fix flag mismatch with preview-only refresh operations
+  [#19373](https://github.com/pulumi/pulumi/pull/19373)
+
+## 3.166.0 (2025-04-29)
+
+
+### Features
+
+- [engine] Add Handshake to analyzer plugins
+  [#19328](https://github.com/pulumi/pulumi/pull/19328)
+
+- [auto/go] Add `--exclude` and `--exclude-dependents` to the Automation API
+  [#19333](https://github.com/pulumi/pulumi/pull/19333)
+
+- [auto/python] Add `--exclude` and `--exclude-dependents` to the Automation API
+  [#19310](https://github.com/pulumi/pulumi/pull/19310)
+
+- [cli/package] Introduce `pulumi package info` to show information about a package
+
+- [sdk/python] Decorate resources and enums with their type token
+  [#19357](https://github.com/pulumi/pulumi/pull/19357)
+
+
+### Bug Fixes
+
+- [cli] Always save fully qualified stack names to the settings file
+  [#19336](https://github.com/pulumi/pulumi/pull/19336)
+
+- [engine] Fix error message when trying to load plugins in private repositories with no authentication
+  [#19331](https://github.com/pulumi/pulumi/pull/19331)
+
+- [sdk/nodejs] Return complete package descriptors for dependencies
+  [#19346](https://github.com/pulumi/pulumi/pull/19346)
+
+
+### Miscellaneous
+
+- [cli/package] Mark package publish command as non-experimental
+  [#19356](https://github.com/pulumi/pulumi/pull/19356)
+
+- [sdk/python] Move pulumi.provider.experimental.provider to pulumi.provider.experimental.component
+
 ## 3.165.0 (2025-04-25)
 
 

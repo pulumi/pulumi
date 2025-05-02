@@ -72,17 +72,13 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	info, ok := pkg.Language["csharp"].(CSharpPackageInfo)
-	if !ok {
-		info = CSharpPackageInfo{}
-	}
-	typeDetails := map[*schema.ObjectType]*typeDetails{}
+func (d DocLanguageHelper) GetTypeName(pkg *schema.Package, t schema.Type, input bool, relativeToModule string) string {
+	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 	mod := &modContext{
 		pkg:           pkg.Reference(),
-		mod:           moduleName,
-		typeDetails:   typeDetails,
-		namespaces:    d.Namespaces,
+		mod:           relativeToModule,
+		typeDetails:   map[*schema.ObjectType]*typeDetails{},
+		namespaces:    info.Namespaces,
 		rootNamespace: info.GetRootNamespace(),
 	}
 	qualifier := "Inputs"

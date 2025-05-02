@@ -150,24 +150,29 @@ func NewPolicyAnalyzer(
 		dir := policyPackPath
 		client := pulumirpc.NewAnalyzerClient(conn)
 
-		mconfig, err := MarshalProperties(resource.ToResourcePropertyMap(opts.Config),
-			MarshalOptions{KeepSecrets: true})
-		if err != nil {
-			return nil, fmt.Errorf("marshalling config: %w", err)
-		}
-
-		res, err := client.Handshake(ctx, &pulumirpc.AnalyzerHandshakeRequest{
+		req := pulumirpc.AnalyzerHandshakeRequest{
 			EngineAddress:    host.ServerAddr(),
 			RootDirectory:    &dir,
 			ProgramDirectory: &dir,
+		}
 
-			Stack:        opts.Stack,
-			Project:      opts.Project,
-			Organization: opts.Organization,
+		// We might not have options. For example example when running `pulumi
+		// policy publish`, we are not running in the context of a project or
+		// stack.
+		if opts != nil {
+			req.Stack = opts.Stack
+			req.Project = opts.Project
+			req.Organization = opts.Organization
+			req.DryRun = opts.DryRun
+			mconfig, err := MarshalProperties(resource.ToResourcePropertyMap(opts.Config),
+				MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshalling config: %w", err)
+			}
+			req.Config = mconfig
+		}
 
-			DryRun: opts.DryRun,
-			Config: mconfig,
-		})
+		res, err := client.Handshake(ctx, &req)
 		if err != nil {
 			status, ok := status.FromError(err)
 			if ok && status.Code() == codes.Unimplemented {

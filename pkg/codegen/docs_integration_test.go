@@ -19,6 +19,7 @@
 package codegen_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -65,6 +66,39 @@ func TestGetLanguageTypeString(t *testing.T) {
 					Value: "value1",
 				}},
 			},
+		},
+	})
+
+	schemaWithOverrides := bind(t, schema.PackageSpec{
+		Name: "pkg",
+		Types: map[string]schema.ComplexTypeSpec{
+			"pkg:shouldoverride:simpleType": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+				},
+			},
+		},
+		Language: map[string]schema.RawMessage{
+			"go": marshalIntoRaw(t, golang_codegen.GoPackageInfo{
+				ModuleToPackage: map[string]string{
+					"shouldoverride": "overridden",
+				},
+			}),
+			"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpPackageInfo{
+				Namespaces: map[string]string{
+					"shouldoverride": "Overridden",
+				},
+			}),
+			"nodejs": marshalIntoRaw(t, nodejs_codegen.NodePackageInfo{
+				ModuleToPackage: map[string]string{
+					"shouldoverride": "overridden",
+				},
+			}),
+			"python": marshalIntoRaw(t, python_codegen.PackageInfo{
+				ModuleNameOverrides: map[string]string{
+					"shouldoverride": "overridden",
+				},
+			}),
 		},
 	})
 
@@ -194,52 +228,89 @@ func TestGetLanguageTypeString(t *testing.T) {
 				dotnet: "Pulumi.Pkg.Module.AnEnum",
 			},
 		},
+		{
+			name:   "overridden-names-in-module",
+			schema: schemaWithOverrides,
+			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
+			module: schemaWithOverrides.TokenToModule("pkg:shouldoverride:simpleType"),
+			input:  ptr(true),
+			expected: map[language]string{
+				golang: "SimpleType",
+				nodejs: "overridden.SimpleType",
+				python: "SimpleType",
+				dotnet: "Pulumi.Pkg.Overridden.Inputs.SimpleType",
+			},
+		},
+		{
+			name:   "overridden-names",
+			schema: schemaWithOverrides,
+			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
+			input:  ptr(false),
+			expected: map[language]string{
+				golang: "overridden.SimpleType",
+				nodejs: "overridden.SimpleType",
+				python: "_overridden.SimpleType",
+				dotnet: "Pulumi.Pkg.Overridden.Outputs.SimpleType",
+			},
+		},
+		{
+			name:   "optionals",
+			schema: schema.DefaultPulumiPackage.Reference(),
+			typ:    &schema.OptionalType{ElementType: schema.StringType},
+			expected: map[language]string{
+				golang: "*string",
+				nodejs: "string",
+				python: "Optional[str]",
+				dotnet: "string?",
+			},
+		},
 	}
 
-	for _, tt := range tests {
+	// Code generation is not safe to parallelize since import binding mutates the
+	// [schema.Package].
+	for _, tt := range tests { //nolint:paralleltest
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			def, err := tt.schema.Definition()
 			require.NoError(t, err)
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
 				var name string
-				var helper codegen.DocLanguageHelper
+				var helper func() codegen.DocLanguageHelper
 				switch lang {
 				case nodejs:
-					helper = nodejs_codegen.DocLanguageHelper{}
+					helper = mkHelper[nodejs_codegen.DocLanguageHelper]
 					name = "nodejs"
 				case python:
-					helper = python_codegen.DocLanguageHelper{}
+					helper = mkHelper[python_codegen.DocLanguageHelper]
 					name = "python"
 				case golang:
-					h := golang_codegen.DocLanguageHelper{}
-					var info golang_codegen.GoPackageInfo
-					if i, ok := def.Language["go"].(golang_codegen.GoPackageInfo); ok {
-						info = i
+					helper = func() codegen.DocLanguageHelper {
+						h := golang_codegen.DocLanguageHelper{}
+						var info golang_codegen.GoPackageInfo
+						if i, ok := def.Language["go"].(golang_codegen.GoPackageInfo); ok {
+							info = i
+						}
+						h.GeneratePackagesMap(def, "test", info)
+						return h
 					}
-					h.GeneratePackagesMap(def, "test", info)
-					helper = h
 					name = "go"
 				case dotnet:
-					helper = dotnet_codegen.DocLanguageHelper{}
+					helper = mkHelper[dotnet_codegen.DocLanguageHelper]
 					name = "dotnet"
 				default:
 					assert.Fail(t, "Unknown language %T", lang)
 				}
 
 				t.Run(name, func(t *testing.T) {
-					t.Parallel()
-
 					if tt.input == nil || *tt.input {
 						t.Run("input", func(t *testing.T) {
-							actual := helper.GetLanguageTypeString(def, tt.module, tt.typ, true)
+							actual := helper().GetTypeName(def, tt.typ, true, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
 					if tt.input == nil || !*tt.input {
 						t.Run("output", func(t *testing.T) {
-							actual := helper.GetLanguageTypeString(def, tt.module, tt.typ, false)
+							actual := helper().GetTypeName(def, tt.typ, false, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
@@ -254,7 +325,7 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 		"go":     golang_codegen.Importer,
 		"nodejs": nodejs_codegen.Importer,
 		"python": python_codegen.Importer,
-		"dotnet": dotnet_codegen.Importer,
+		"csharp": dotnet_codegen.Importer,
 	}, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -270,3 +341,11 @@ func mustToken[T any](t *testing.T, get func(string) (T, bool, error), token str
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return schema.RawMessage(b)
+}
+
+func mkHelper[T codegen.DocLanguageHelper]() codegen.DocLanguageHelper { var v T; return v }

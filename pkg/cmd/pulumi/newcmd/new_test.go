@@ -109,7 +109,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -134,7 +134,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -161,7 +161,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	removeStack(t, tempdir, fullStackName)
 }
 
 //nolint:paralleltest // changes directory for process

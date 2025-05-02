@@ -2125,3 +2125,110 @@ func TestNoDanglingReferences(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newSpec)
 }
+
+func TestFunctionToken(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		token    string
+		expected hcl.Diagnostics
+	}{
+		{
+			name:     "valid_token_for_provider_method",
+			token:    "pulumi:providers:terraform-provider/providerMethod",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_without_hyphens",
+			token:    "test:index:getFunction",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_with_hyphens",
+			token:    "test:index:get-function-data",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_with_leading_hyphen",
+			token:    "test:index:-getFunction",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:     "valid_token_with_consecutive_hyphens",
+			token:    "test:index:get--function",
+			expected: hcl.Diagnostics(nil),
+		},
+		{
+			name:  "invalid_token_with_invalid_package",
+			token: "123:index:getFunction",
+			expected: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/123:index:getFunction: doesn't validate with '/$defs/functionToken'",
+					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/123:index:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
+					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/123:index:getFunction: invalid token '123:index:getFunction' (must have package name 'test')",
+					Detail:   "",
+				},
+			},
+		},
+		{
+			name:  "invalid_token_with_invalid_module",
+			token: "test:123:getFunction",
+			expected: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:123:getFunction: doesn't validate with '/$defs/functionToken'",
+					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/functions/test:123:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
+					Detail:   "",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Create a minimal package spec with the function token
+			spec := PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					tt.token: {
+						Description: "Test function",
+					},
+				},
+			}
+
+			// Try to bind the spec
+			pkg, diags, err := BindSpec(spec, nil)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, diags)
+
+			// Test marshaling
+			newSpec, err := pkg.MarshalSpec()
+			require.NoError(t, err)
+			require.NotNil(t, newSpec)
+
+			// Try and bind again
+			_, diags, err = BindSpec(*newSpec, nil)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, diags)
+
+			// Verify the function token is preserved
+			_, exists := newSpec.Functions[tt.token]
+			assert.True(t, exists)
+		})
+	}
+}

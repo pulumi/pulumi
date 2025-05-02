@@ -162,6 +162,7 @@ export class PulumiCommand {
         cwd: string,
         additionalEnv: { [key: string]: string },
         onOutput?: (data: string) => void,
+        onError?: (data: string) => void,
         signal?: AbortSignal,
     ): Promise<CommandResult> {
         // all commands should be run in non-interactive mode.
@@ -179,7 +180,7 @@ export class PulumiCommand {
             additionalEnv["PATH"] = envPath;
         }
 
-        return exec(this.command, args, cwd, additionalEnv, onOutput, signal);
+        return exec(this.command, args, cwd, additionalEnv, onOutput, onError, signal);
     }
 }
 
@@ -189,6 +190,7 @@ async function exec(
     cwd?: string,
     additionalEnv?: { [key: string]: string },
     onOutput?: (data: string) => void,
+    onError?: (data: string) => void,
     signal?: AbortSignal,
 ): Promise<CommandResult> {
     const unknownErrCode = -2;
@@ -197,6 +199,15 @@ async function exec(
 
     try {
         const proc = execa(command, args, { env, cwd });
+
+        if (onError && proc.stderr) {
+            proc.stderr!.on("data", (data: any) => {
+                if (data?.toString) {
+                    data = data.toString();
+                }
+                onError(data);
+            });
+        }
 
         if (onOutput && proc.stdout) {
             proc.stdout!.on("data", (data: any) => {
