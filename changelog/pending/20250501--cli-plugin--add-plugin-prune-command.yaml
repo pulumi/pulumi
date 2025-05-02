@@ -1,0 +1,8 @@
+feature: |
+  Added a new `pulumi plugin prune` command that removes older versions of plugins while keeping the most recent versions. 
+  By default, this command keeps the latest version of each plugin for each major version. The command also supports a mode for 
+  keeping only the latest version regardless of major version (--latest-only). This helps reclaim disk space from old plugin 
+  versions that are no longer needed.
+
+component: cli-plugin
+pr: 
