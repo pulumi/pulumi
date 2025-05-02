@@ -835,7 +835,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn("error: invalid argument", error)
+            self.assertIn("error: unsupported color", error)
             error = ""
 
             # pulumi refresh
@@ -844,7 +844,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn("error: invalid argument", error)
+            self.assertIn("error: unsupported color", error)
             error = ""
 
             refresh_res = stack.refresh()
@@ -857,7 +857,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn("error: invalid argument", error)
+            self.assertIn("error: unsupported color", error)
             error = ""
 
             destroy_res = stack.destroy()
