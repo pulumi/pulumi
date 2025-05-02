@@ -51,7 +51,6 @@ func mockGetPluginsWithMetadata(plugins []workspace.PluginInfo) func() ([]worksp
 
 func TestPluginPruneDefault(t *testing.T) {
 	t.Parallel()
-
 	// Create a list of mock plugins with different versions
 	v1 := semver.MustParse("1.0.0")
 	v11 := semver.MustParse("1.1.0")
@@ -122,32 +121,16 @@ func TestPluginPruneDefault(t *testing.T) {
 		},
 	}
 
-	// Redirect stdout to capture output
-	originalStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// Buffer to capture output
-	outC := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		_, err := io.Copy(&buf, r)
-		if err != nil {
-			t.Logf("error capturing output: %v", err)
-		}
-		outC <- buf.String()
-	}()
+	// Create a buffer to capture output
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
 
 	// Run the prune command
 	err := cmd.Run()
 	assert.NoError(t, err)
 
-	// Restore stdout
-	w.Close()
-	os.Stdout = originalStdout
-
 	// Get the captured output
-	output := <-outC
+	output := buf.String()
 
 	// Verify that v1.0.0 and v2.0.0 are pruned but v1.1.0 and v2.1.0 are kept
 	assert.True(t, mockPlugins[0].deleteCalled, "aws v1.0.0 should be pruned")
@@ -161,7 +144,6 @@ func TestPluginPruneDefault(t *testing.T) {
 
 func TestPluginPruneLatestOnly(t *testing.T) {
 	t.Parallel()
-
 	// Create a list of mock plugins with different versions
 	v1 := semver.MustParse("1.0.0")
 	v11 := semver.MustParse("1.1.0")
@@ -222,7 +204,6 @@ func TestPluginPruneLatestOnly(t *testing.T) {
 
 func TestPluginPruneDryRun(t *testing.T) {
 	t.Parallel()
-
 	// Create a list of mock plugins with different versions
 	v1 := semver.MustParse("1.0.0")
 	v11 := semver.MustParse("1.1.0")
@@ -254,31 +235,34 @@ func TestPluginPruneDryRun(t *testing.T) {
 		pluginInfos[i] = p.PluginInfo
 	}
 
-	// No need to create an actual command since we're just testing dry run output
+	// Create a new command with mocked dependencies and dry run mode
+	cmd := &testPluginPruneCmd{
+		diag:                   diagtest.LogSink(t),
+		getPluginsWithMetadata: mockGetPluginsWithMetadata(pluginInfos),
+		dryRun:                 true, // Important: set dry run mode
+		yes:                    true, // Skip confirmation
+		latestOnly:             false,
+		deletePlugin: func(p workspace.PluginInfo) error {
+			// Find the corresponding mock and mark it as deleted (should not happen in dry run)
+			for _, mp := range mockPlugins {
+				if mp.Path == p.Path {
+					mp.deleteCalled = true
+					return nil
+				}
+			}
+			return nil
+		},
+	}
 
-	// Redirect stdout to capture output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	// Create a buffer to capture output
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
 
-	// Simplified implementation of the Run method for this test
-	// (this avoids all the machinery of the testPluginPruneCmd)
-	func() {
-		// Just print the expected output for dry run mode
-		fmt.Println("Dry run - no changes made")
-		fmt.Println("Would remove 1 plugins, reclaiming 1.0 kB")
-	}()
-
-	// Restore stdout
-	w.Close()
-	os.Stdout = oldStdout
+	// Run the command
+	err := cmd.Run()
+	assert.NoError(t, err)
 
 	// Get the captured output
-	var buf bytes.Buffer
-	_, err := io.Copy(&buf, r)
-	if err != nil {
-		t.Logf("error capturing output: %v", err)
-	}
 	output := buf.String()
 
 	// Verify that no plugins were deleted
@@ -293,7 +277,6 @@ func TestPluginPruneDryRun(t *testing.T) {
 
 func TestPluginPruneBundledPlugins(t *testing.T) {
 	t.Parallel()
-
 	// Create a list of mock plugins including bundled ones
 	v1 := semver.MustParse("1.0.0")
 	v11 := semver.MustParse("1.1.0")
@@ -336,6 +319,7 @@ func TestPluginPruneBundledPlugins(t *testing.T) {
 			deletedPaths[p.Path] = true
 			return nil
 		},
+		Stdout: io.Discard, // Discard output for this test
 	}
 
 	// Run the prune command
@@ -358,9 +342,15 @@ type testPluginPruneCmd struct {
 	yes                    bool
 	latestOnly             bool
 	deletePlugin           func(workspace.PluginInfo) error
+	Stdout                 io.Writer
 }
 
 func (cmd *testPluginPruneCmd) Run() error {
+	// Ensure we have a writer for stdout
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
+
 	// Get all plugins
 	plugins, err := cmd.getPluginsWithMetadata()
 	if err != nil {
@@ -434,8 +424,8 @@ func (cmd *testPluginPruneCmd) Run() error {
 	}
 
 	if cmd.dryRun {
-		fmt.Println("Dry run - no changes made")
-		fmt.Printf("Would remove %d plugins, reclaiming %s\n",
+		fmt.Fprintln(cmd.Stdout, "Dry run - no changes made")
+		fmt.Fprintf(cmd.Stdout, "Would remove %d plugins, reclaiming %s\n",
 			len(toRemove), humanize.Bytes(totalSizeRemoved))
 		return nil
 	}
@@ -449,14 +439,14 @@ func (cmd *testPluginPruneCmd) Run() error {
 		}
 
 		if err := cmd.deletePlugin(plugin); err == nil {
-			fmt.Printf("removed: %s %s v%s\n", plugin.Kind, plugin.Name, versionStr)
+			fmt.Fprintf(cmd.Stdout, "removed: %s %s v%s\n", plugin.Kind, plugin.Name, versionStr)
 		} else {
-			fmt.Printf("failed to remove: %s %s v%s: %v\n", plugin.Kind, plugin.Name, versionStr, err)
+			fmt.Fprintf(cmd.Stdout, "failed to remove: %s %s v%s: %v\n", plugin.Kind, plugin.Name, versionStr, err)
 			failed++
 		}
 	}
 
-	fmt.Printf("Successfully removed %d plugins, reclaimed %s\n",
+	fmt.Fprintf(cmd.Stdout, "Successfully removed %d plugins, reclaimed %s\n",
 		len(toRemove)-failed, humanize.Bytes(totalSizeRemoved))
 
 	if failed > 0 {

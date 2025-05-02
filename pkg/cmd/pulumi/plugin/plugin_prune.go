@@ -16,6 +16,8 @@ package plugin
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"sort"
 
 	"github.com/dustin/go-humanize"
@@ -38,6 +40,7 @@ type pluginPruneCmd struct {
 	yes                    bool
 	latestOnly             bool
 	deletePlugin           func(workspace.PluginInfo) error
+	Stdout                 io.Writer // Output writer for testability
 }
 
 // sortPluginsByNameKindVersion sorts a list of plugins by name, kind, and version (if available)
@@ -90,6 +93,7 @@ func newPluginPruneCmd() *cobra.Command {
 				yes:                    yes,
 				latestOnly:             latestOnly,
 				deletePlugin:           func(plugin workspace.PluginInfo) error { return plugin.Delete() },
+				Stdout:                 os.Stdout,
 			}
 
 			return pruneCmd.Run()
@@ -203,13 +207,14 @@ func (cmd *pluginPruneCmd) Run() error {
 		if len(toRemove) != 1 {
 			suffix = "s"
 		}
-		fmt.Print(
+		fmt.Fprint(
+			cmd.Stdout,
 			opts.Color.Colorize(
 				fmt.Sprintf("%sThis will remove %d plugin%s from the cache, reclaiming %s:%s\n",
 					colors.SpecAttention, len(toRemove), suffix,
 					humanize.Bytes(totalSizeRemoved), colors.Reset)))
 
-		fmt.Println("Plugins to remove:")
+		fmt.Fprintln(cmd.Stdout, "Plugins to remove:")
 		// Sort by name and version for a nice display
 		sortPluginsByNameKindVersion(toRemove)
 
@@ -218,11 +223,11 @@ func (cmd *pluginPruneCmd) Run() error {
 			if plugin.Version != nil {
 				versionStr = plugin.Version.String()
 			}
-			fmt.Printf("    %s %s v%s (%s)\n",
+			fmt.Fprintf(cmd.Stdout, "    %s %s v%s (%s)\n",
 				plugin.Kind, plugin.Name, versionStr, humanize.Bytes(plugin.Size))
 		}
 
-		fmt.Println("\nPlugins to keep:")
+		fmt.Fprintln(cmd.Stdout, "\nPlugins to keep:")
 		// Sort the kept plugins as well
 		sortPluginsByNameKindVersion(toKeep)
 
@@ -238,7 +243,7 @@ func (cmd *pluginPruneCmd) Run() error {
 				versionStr = plugin.Version.String()
 			}
 
-			fmt.Printf("    %s %s v%s (%s)\n",
+			fmt.Fprintf(cmd.Stdout, "    %s %s v%s (%s)\n",
 				plugin.Kind, plugin.Name, versionStr, humanize.Bytes(plugin.Size))
 
 			// Mark as displayed
@@ -247,7 +252,7 @@ func (cmd *pluginPruneCmd) Run() error {
 
 		// Add a note if we hid some kept plugins
 		if len(displayedKinds) < len(toKeep) {
-			fmt.Printf("    ... and %d more\n", len(toKeep)-len(displayedKinds))
+			fmt.Fprintf(cmd.Stdout, "    ... and %d more\n", len(toKeep)-len(displayedKinds))
 		}
 
 		if !ui.ConfirmPrompt("Do you want to proceed?", "yes", opts) {
@@ -256,8 +261,8 @@ func (cmd *pluginPruneCmd) Run() error {
 	}
 
 	if cmd.dryRun {
-		fmt.Println("Dry run - no changes made")
-		fmt.Printf("Would remove %d plugins, reclaiming %s\n", len(toRemove), humanize.Bytes(totalSizeRemoved))
+		fmt.Fprintln(cmd.Stdout, "Dry run - no changes made")
+		fmt.Fprintf(cmd.Stdout, "Would remove %d plugins, reclaiming %s\n", len(toRemove), humanize.Bytes(totalSizeRemoved))
 		return nil
 	}
 
@@ -270,14 +275,14 @@ func (cmd *pluginPruneCmd) Run() error {
 		}
 
 		if err := cmd.deletePlugin(plugin); err == nil {
-			fmt.Printf("removed: %s %s v%s\n", plugin.Kind, plugin.Name, versionStr)
+			fmt.Fprintf(cmd.Stdout, "removed: %s %s v%s\n", plugin.Kind, plugin.Name, versionStr)
 		} else {
-			fmt.Printf("failed to remove: %s %s v%s: %v\n", plugin.Kind, plugin.Name, versionStr, err)
+			fmt.Fprintf(cmd.Stdout, "failed to remove: %s %s v%s: %v\n", plugin.Kind, plugin.Name, versionStr, err)
 			failed++
 		}
 	}
 
-	fmt.Printf("Successfully removed %d plugins, reclaimed %s\n",
+	fmt.Fprintf(cmd.Stdout, "Successfully removed %d plugins, reclaimed %s\n",
 		len(toRemove)-failed, humanize.Bytes(totalSizeRemoved))
 
 	if failed > 0 {
