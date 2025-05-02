@@ -132,6 +132,9 @@ function extractSingleValue(result: Inputs | undefined): any {
  * Dynamically invokes the function `tok`, which is offered by a
  * provider plugin. Similar to `invoke`, but returns a single value instead of
  * an object with a single key.
+ *
+ * This was previously by codegen for returning scalars from invoke calls, but a new methodology
+ * and codegen practice that is type safe supersedes it.
  */
 export function invokeSingle(
     tok: string,
@@ -149,6 +152,9 @@ export function invokeSingle(
 /**
  * Similar to the plain `invokeSingle` but returns the response as an output, maintaining
  * secrets of the response, if any.
+ *
+ * This was previously by codegen for returning scalars from invoke calls, but a new methodology
+ * and codegen practice that is type safe supersedes it.
  */
 export function invokeSingleOutput<T>(
     tok: string,

@@ -164,12 +164,8 @@ func (p *SimpleInvokeWithScalarReturnProvider) Invoke(
 			}, nil
 		}
 
-		// Single value returns work because SDKs automatically extract single value returns in their
-		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewBoolProperty(true),
-			},
+			ScalarReturn: resource.NewBoolProperty(true),
 		}, nil
 	}
 
