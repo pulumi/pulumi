@@ -818,7 +818,7 @@ class TestLocalWorkspace(unittest.TestCase):
                 error += e
 
             try:
-                stack.up(plan = "halloumi", on_error = logger)
+                stack.up(plan="halloumi", on_error=logger)
             except:
                 self.assertNotEqual(error, "")
 
@@ -831,7 +831,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
             # pulumi preview
             try:
-                stack.preview(parallel = -1, on_error = logger)
+                stack.preview(parallel=-1, on_error=logger)
             except:
                 self.assertNotEqual(error, "")
 
@@ -840,7 +840,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
             # pulumi refresh
             try:
-                stack.refresh(parallel = -1, on_error = logger)
+                stack.refresh(parallel=-1, on_error=logger)
             except:
                 self.assertNotEqual(error, "")
 
@@ -853,7 +853,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
             # pulumi destroy
             try:
-                stack.refresh(parallel = -1, on_error = logger)
+                stack.refresh(parallel=-1, on_error=logger)
             except:
                 self.assertNotEqual(error, "")
 

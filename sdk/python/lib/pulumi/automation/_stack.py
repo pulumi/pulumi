@@ -1055,10 +1055,10 @@ class Stack:
         return self.workspace.import_stack(self.name, state)
 
     def _run_pulumi_cmd_sync(
-            self,
-            args: List[str],
-            on_output: Optional[OnOutput] = None,
-            on_error: Optional[OnOutput] = None
+        self,
+        args: List[str],
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
     ) -> CommandResult:
         envs = {"PULUMI_DEBUG_COMMANDS": "true"}
         if self._remote:
