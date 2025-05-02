@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs
+  description: Fix generating imports for functions in 3-rd party packages such as @pulumiverse/scaleway 
