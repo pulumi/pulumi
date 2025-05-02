@@ -822,7 +822,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn(error, "error: open halloumi")
+            self.assertIn("error: open halloumi", error)
             error = ""
 
             up_res = stack.up()
@@ -835,7 +835,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn(error, "error: invalid argument")
+            self.assertIn("error: invalid argument", error)
             error = ""
 
             # pulumi refresh
@@ -844,7 +844,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn(error, "error: invalid argument")
+            self.assertIn("error: invalid argument", error)
             error = ""
 
             refresh_res = stack.refresh()
@@ -857,7 +857,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn(error, "error: invalid argument")
+            self.assertIn("error: invalid argument", error)
             error = ""
 
             destroy_res = stack.destroy()
