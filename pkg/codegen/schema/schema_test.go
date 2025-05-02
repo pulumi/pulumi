@@ -2211,7 +2211,9 @@ func TestFunctionToken(t *testing.T) {
 			}
 
 			// Try to bind the spec
-			pkg, diags, err := BindSpec(spec, nil)
+			pkg, diags, err := BindSpec(spec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, diags)
@@ -2222,7 +2224,9 @@ func TestFunctionToken(t *testing.T) {
 			require.NotNil(t, newSpec)
 
 			// Try and bind again
-			_, diags, err = BindSpec(*newSpec, nil)
+			_, diags, err = BindSpec(*newSpec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, diags)
 
