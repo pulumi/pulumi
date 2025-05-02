@@ -36,19 +36,7 @@ func init() {
 
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 
-					// TODO https://github.com/pulumi/pulumi/issues/17816
-					// TODO: the root stack must be the first resource to be registered
-					// such that snap.Resources[0].Type == resource.RootStackType
-					// however with the python SDK, that is not the case, instead the default
-					// provider gets registered first. This is indicating that something might be wrong
-					// with the how python SDK registers resources
-					var stack *resource.State
-					for _, r := range snap.Resources {
-						if r.Type == resource.RootStackType {
-							stack = r
-							break
-						}
-					}
+					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					require.NotNil(l, stack, "expected a stack resource")
 
