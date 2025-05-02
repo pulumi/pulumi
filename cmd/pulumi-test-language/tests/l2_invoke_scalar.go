@@ -1,4 +1,4 @@
-// Copyright 2024-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import (
 )
 
 func init() {
-	LanguageTests["l2-invoke-simple"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.SimpleInvokeProvider{}},
+	LanguageTests["l2-invoke-scalar"] = LanguageTest{
+		Providers: []plugin.Provider{&providers.SimpleInvokeWithScalarReturnProvider{}},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -54,8 +54,7 @@ func init() {
 
 					outputs := stack.Outputs
 
-					AssertPropertyMapMember(l, outputs, "hello", resource.NewStringProperty("hello world"))
-					AssertPropertyMapMember(l, outputs, "goodbye", resource.NewStringProperty("goodbye world"))
+					AssertPropertyMapMember(l, outputs, "scalar", resource.NewBoolProperty(true))
 				},
 			},
 		},
