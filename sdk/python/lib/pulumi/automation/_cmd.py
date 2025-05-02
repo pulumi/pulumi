@@ -240,9 +240,7 @@ class PulumiCommand:
             code = process.returncode
 
         result = CommandResult(
-            stderr="\n".join(stderr_chunks),
-            stdout="\n".join(stdout_chunks),
-            code=code
+            stderr="\n".join(stderr_chunks), stdout="\n".join(stdout_chunks), code=code
         )
         if code != 0:
             raise create_command_error(result)
