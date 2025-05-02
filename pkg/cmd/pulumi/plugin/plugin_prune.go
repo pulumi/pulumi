@@ -40,6 +40,24 @@ type pluginPruneCmd struct {
 	deletePlugin           func(workspace.PluginInfo) error
 }
 
+// sortPluginsByNameKindVersion sorts a list of plugins by name, kind, and version (if available)
+// This helps create a consistent display order for the user.
+func sortPluginsByNameKindVersion(plugins []workspace.PluginInfo) {
+	sort.Slice(plugins, func(i, j int) bool {
+		if plugins[i].Name != plugins[j].Name {
+			return plugins[i].Name < plugins[j].Name
+		}
+		if plugins[i].Kind != plugins[j].Kind {
+			return plugins[i].Kind < plugins[j].Kind
+		}
+		// Sort by version if available
+		if plugins[i].Version != nil && plugins[j].Version != nil {
+			return plugins[i].Version.GT(*plugins[j].Version)
+		}
+		return false
+	})
+}
+
 // newPluginPruneCmd creates a new cobra command for pruning plugins
 func newPluginPruneCmd() *cobra.Command {
 	var dryRun bool
@@ -147,7 +165,10 @@ func (cmd *pluginPruneCmd) Run() error {
 			continue
 		}
 
-		// Sort versions in descending order
+		// Sort plugins by version in descending order (newer versions first).
+		// Plugins with nil versions are treated as lower priority and are sorted to
+		// the end of the list. This ensures plugins with defined versions are preferred
+		// when determining which version to keep.
 		sort.Slice(group, func(i, j int) bool {
 			// If either version is nil, keep the one with a version
 			if group[i].Version == nil {
@@ -190,19 +211,7 @@ func (cmd *pluginPruneCmd) Run() error {
 
 		fmt.Println("Plugins to remove:")
 		// Sort by name and version for a nice display
-		sort.Slice(toRemove, func(i, j int) bool {
-			if toRemove[i].Name != toRemove[j].Name {
-				return toRemove[i].Name < toRemove[j].Name
-			}
-			if toRemove[i].Kind != toRemove[j].Kind {
-				return toRemove[i].Kind < toRemove[j].Kind
-			}
-			// Sort by version if available
-			if toRemove[i].Version != nil && toRemove[j].Version != nil {
-				return toRemove[i].Version.GT(*toRemove[j].Version)
-			}
-			return false
-		})
+		sortPluginsByNameKindVersion(toRemove)
 
 		for _, plugin := range toRemove {
 			versionStr := "n/a"
@@ -215,19 +224,7 @@ func (cmd *pluginPruneCmd) Run() error {
 
 		fmt.Println("\nPlugins to keep:")
 		// Sort the kept plugins as well
-		sort.Slice(toKeep, func(i, j int) bool {
-			if toKeep[i].Name != toKeep[j].Name {
-				return toKeep[i].Name < toKeep[j].Name
-			}
-			if toKeep[i].Kind != toKeep[j].Kind {
-				return toKeep[i].Kind < toKeep[j].Kind
-			}
-			// Sort by version if available
-			if toKeep[i].Version != nil && toKeep[j].Version != nil {
-				return toKeep[i].Version.GT(*toKeep[j].Version)
-			}
-			return false
-		})
+		sortPluginsByNameKindVersion(toKeep)
 
 		displayedKinds := make(map[string]bool)
 		for _, plugin := range toKeep {
