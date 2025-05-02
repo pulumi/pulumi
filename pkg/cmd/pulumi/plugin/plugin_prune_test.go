@@ -105,11 +105,11 @@ func TestPluginPruneDefault(t *testing.T) {
 
 	// Create a new command with mocked dependencies
 	cmd := &testPluginPruneCmd{
-		diag:                  diagtest.LogSink(t),
+		diag:                   diagtest.LogSink(t),
 		getPluginsWithMetadata: mockGetPluginsWithMetadata(pluginInfos),
-		dryRun:                false,
-		yes:                   true, // Skip confirmation
-		latestOnly:            false,
+		dryRun:                 false,
+		yes:                    true, // Skip confirmation
+		latestOnly:             false,
 		deletePlugin: func(p workspace.PluginInfo) error {
 			// Find the corresponding mock and mark it as deleted
 			for _, mp := range mockPlugins {
@@ -126,12 +126,15 @@ func TestPluginPruneDefault(t *testing.T) {
 	originalStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	
+
 	// Buffer to capture output
 	outC := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, r)
+		_, err := io.Copy(&buf, r)
+		if err != nil {
+			t.Logf("error capturing output: %v", err)
+		}
 		outC <- buf.String()
 	}()
 
@@ -142,7 +145,7 @@ func TestPluginPruneDefault(t *testing.T) {
 	// Restore stdout
 	w.Close()
 	os.Stdout = originalStdout
-	
+
 	// Get the captured output
 	output := <-outC
 
@@ -205,9 +208,9 @@ func TestPluginPruneLatestOnly(t *testing.T) {
 	}
 
 	// Set up deleted flags directly for the test
-	mockPlugins[0].deleteCalled = true // v1.0.0 should be pruned
-	mockPlugins[1].deleteCalled = true // v1.1.0 should be pruned
-	mockPlugins[2].deleteCalled = true // v2.0.0 should be pruned
+	mockPlugins[0].deleteCalled = true  // v1.0.0 should be pruned
+	mockPlugins[1].deleteCalled = true  // v1.1.0 should be pruned
+	mockPlugins[2].deleteCalled = true  // v2.0.0 should be pruned
 	mockPlugins[3].deleteCalled = false // v2.1.0 should be kept
 
 	// Verify the deletion flags are set as expected
@@ -272,7 +275,10 @@ func TestPluginPruneDryRun(t *testing.T) {
 
 	// Get the captured output
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	if err != nil {
+		t.Logf("error capturing output: %v", err)
+	}
 	output := buf.String()
 
 	// Verify that no plugins were deleted
@@ -321,11 +327,11 @@ func TestPluginPruneBundledPlugins(t *testing.T) {
 
 	// Create a new command with mocked dependencies
 	cmd := &testPluginPruneCmd{
-		diag:                  diagtest.LogSink(t),
+		diag:                   diagtest.LogSink(t),
 		getPluginsWithMetadata: mockGetPluginsWithMetadata(mockPlugins),
-		dryRun:                false,
-		yes:                   true, // Skip confirmation
-		latestOnly:            false,
+		dryRun:                 false,
+		yes:                    true, // Skip confirmation
+		latestOnly:             false,
 		deletePlugin: func(p workspace.PluginInfo) error {
 			deletedPaths[p.Path] = true
 			return nil
@@ -338,7 +344,7 @@ func TestPluginPruneBundledPlugins(t *testing.T) {
 
 	// Verify that bundled plugins were not deleted
 	assert.False(t, deletedPaths["/path/to/nodejs/1.0.0"], "bundled plugins should not be deleted")
-	
+
 	// Verify that only the older aws plugin was deleted
 	assert.True(t, deletedPaths["/path/to/aws/1.0.0"], "aws v1.0.0 should be deleted")
 	assert.False(t, deletedPaths["/path/to/aws/1.1.0"], "aws v1.1.0 should be kept")
@@ -346,12 +352,12 @@ func TestPluginPruneBundledPlugins(t *testing.T) {
 
 // testPluginPruneCmd is a helper struct with the same structure as pluginPruneCmd for testing
 type testPluginPruneCmd struct {
-	diag                  diag.Sink
+	diag                   diag.Sink
 	getPluginsWithMetadata func() ([]workspace.PluginInfo, error)
-	dryRun                bool
-	yes                   bool
-	latestOnly            bool
-	deletePlugin          func(workspace.PluginInfo) error
+	dryRun                 bool
+	yes                    bool
+	latestOnly             bool
+	deletePlugin           func(workspace.PluginInfo) error
 }
 
 func (cmd *testPluginPruneCmd) Run() error {
@@ -393,14 +399,12 @@ func (cmd *testPluginPruneCmd) Run() error {
 	}
 
 	// For each group, identify plugins to remove (all but the latest version)
-	var toRemove []workspace.PluginInfo
-	var toKeep []workspace.PluginInfo
+	toRemove := make([]workspace.PluginInfo, 0, len(plugins))
 	var totalSizeRemoved uint64
 
 	for _, group := range groups {
 		if len(group) <= 1 {
 			// Only one version, keep it
-			toKeep = append(toKeep, group[0])
 			continue
 		}
 
@@ -417,9 +421,6 @@ func (cmd *testPluginPruneCmd) Run() error {
 			return group[i].Version.GT(*group[j].Version)
 		})
 
-		// Keep only the latest version in each group
-		toKeep = append(toKeep, group[0])
-		
 		// Remove the rest
 		for i := 1; i < len(group); i++ {
 			toRemove = append(toRemove, group[i])
@@ -434,7 +435,7 @@ func (cmd *testPluginPruneCmd) Run() error {
 
 	if cmd.dryRun {
 		fmt.Println("Dry run - no changes made")
-		fmt.Printf("Would remove %d plugins, reclaiming %s\n", 
+		fmt.Printf("Would remove %d plugins, reclaiming %s\n",
 			len(toRemove), humanize.Bytes(totalSizeRemoved))
 		return nil
 	}
@@ -446,7 +447,7 @@ func (cmd *testPluginPruneCmd) Run() error {
 		if plugin.Version != nil {
 			versionStr = plugin.Version.String()
 		}
-		
+
 		if err := cmd.deletePlugin(plugin); err == nil {
 			fmt.Printf("removed: %s %s v%s\n", plugin.Kind, plugin.Name, versionStr)
 		} else {
@@ -455,13 +456,12 @@ func (cmd *testPluginPruneCmd) Run() error {
 		}
 	}
 
-	fmt.Printf("Successfully removed %d plugins, reclaimed %s\n", 
+	fmt.Printf("Successfully removed %d plugins, reclaimed %s\n",
 		len(toRemove)-failed, humanize.Bytes(totalSizeRemoved))
-	
+
 	if failed > 0 {
 		return fmt.Errorf("failed to remove %d plugins", failed)
 	}
-	
+
 	return nil
 }
-

@@ -32,12 +32,12 @@ import (
 
 // pluginPruneCmd implements the `plugin prune` command
 type pluginPruneCmd struct {
-	diag                  diag.Sink
+	diag                   diag.Sink
 	getPluginsWithMetadata func() ([]workspace.PluginInfo, error)
-	dryRun                bool
-	yes                   bool
-	latestOnly            bool
-	deletePlugin          func(workspace.PluginInfo) error
+	dryRun                 bool
+	yes                    bool
+	latestOnly             bool
+	deletePlugin           func(workspace.PluginInfo) error
 }
 
 // newPluginPruneCmd creates a new cobra command for pruning plugins
@@ -64,20 +64,20 @@ func newPluginPruneCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			yes = yes || env.SkipConfirmations.Value()
-			
+
 			pruneCmd := &pluginPruneCmd{
-				diag:                  cmdutil.Diag(),
+				diag:                   cmdutil.Diag(),
 				getPluginsWithMetadata: workspace.GetPluginsWithMetadata,
-				dryRun:                dryRun,
-				yes:                   yes,
-				latestOnly:            latestOnly,
-				deletePlugin:          func(plugin workspace.PluginInfo) error { return plugin.Delete() },
+				dryRun:                 dryRun,
+				yes:                    yes,
+				latestOnly:             latestOnly,
+				deletePlugin:           func(plugin workspace.PluginInfo) error { return plugin.Delete() },
 			}
-			
+
 			return pruneCmd.Run()
 		},
 	}
-	
+
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Show what would be pruned without actually removing anything")
@@ -87,7 +87,7 @@ func newPluginPruneCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&latestOnly, "latest-only", "l", false,
 		"Keep only the absolute latest version of each plugin (ignoring major version differences)")
-	
+
 	return cmd
 }
 
@@ -136,8 +136,8 @@ func (cmd *pluginPruneCmd) Run() error {
 	}
 
 	// For each group, identify plugins to remove (all but the latest version)
-	var toRemove []workspace.PluginInfo
-	var toKeep []workspace.PluginInfo
+	toRemove := make([]workspace.PluginInfo, 0, len(plugins))
+	toKeep := make([]workspace.PluginInfo, 0, len(plugins))
 	var totalSizeRemoved uint64
 
 	for _, group := range groups {
@@ -162,7 +162,7 @@ func (cmd *pluginPruneCmd) Run() error {
 
 		// Keep only the latest version in each group
 		toKeep = append(toKeep, group[0])
-		
+
 		// Remove the rest
 		for i := 1; i < len(group); i++ {
 			toRemove = append(toRemove, group[i])
@@ -185,9 +185,9 @@ func (cmd *pluginPruneCmd) Run() error {
 		fmt.Print(
 			opts.Color.Colorize(
 				fmt.Sprintf("%sThis will remove %d plugin%s from the cache, reclaiming %s:%s\n",
-					colors.SpecAttention, len(toRemove), suffix, 
+					colors.SpecAttention, len(toRemove), suffix,
 					humanize.Bytes(totalSizeRemoved), colors.Reset)))
-		
+
 		fmt.Println("Plugins to remove:")
 		// Sort by name and version for a nice display
 		sort.Slice(toRemove, func(i, j int) bool {
@@ -209,7 +209,7 @@ func (cmd *pluginPruneCmd) Run() error {
 			if plugin.Version != nil {
 				versionStr = plugin.Version.String()
 			}
-			fmt.Printf("    %s %s v%s (%s)\n", 
+			fmt.Printf("    %s %s v%s (%s)\n",
 				plugin.Kind, plugin.Name, versionStr, humanize.Bytes(plugin.Size))
 		}
 
@@ -235,19 +235,19 @@ func (cmd *pluginPruneCmd) Run() error {
 			if displayedKinds[key] {
 				continue // Only show one version of each kind|name combo to avoid long lists
 			}
-			
+
 			versionStr := "n/a"
 			if plugin.Version != nil {
 				versionStr = plugin.Version.String()
 			}
-			
-			fmt.Printf("    %s %s v%s (%s)\n", 
+
+			fmt.Printf("    %s %s v%s (%s)\n",
 				plugin.Kind, plugin.Name, versionStr, humanize.Bytes(plugin.Size))
-			
+
 			// Mark as displayed
 			displayedKinds[key] = true
 		}
-		
+
 		// Add a note if we hid some kept plugins
 		if len(displayedKinds) < len(toKeep) {
 			fmt.Printf("    ... and %d more\n", len(toKeep)-len(displayedKinds))
@@ -271,7 +271,7 @@ func (cmd *pluginPruneCmd) Run() error {
 		if plugin.Version != nil {
 			versionStr = plugin.Version.String()
 		}
-		
+
 		if err := cmd.deletePlugin(plugin); err == nil {
 			fmt.Printf("removed: %s %s v%s\n", plugin.Kind, plugin.Name, versionStr)
 		} else {
@@ -280,12 +280,12 @@ func (cmd *pluginPruneCmd) Run() error {
 		}
 	}
 
-	fmt.Printf("Successfully removed %d plugins, reclaimed %s\n", 
+	fmt.Printf("Successfully removed %d plugins, reclaimed %s\n",
 		len(toRemove)-failed, humanize.Bytes(totalSizeRemoved))
-	
+
 	if failed > 0 {
 		return fmt.Errorf("failed to remove %d plugins", failed)
 	}
-	
+
 	return nil
 }
