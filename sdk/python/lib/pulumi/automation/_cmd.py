@@ -187,6 +187,7 @@ class PulumiCommand:
         cwd: str,
         additional_env: Mapping[str, str],
         on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
     ) -> CommandResult:
         """
         Runs a Pulumi command, returning a CommandResult. If the command fails, a CommandError is raised.
@@ -194,7 +195,8 @@ class PulumiCommand:
         :param args: The arguments to pass to the Pulumi CLI, for example `["stack", "ls"]`.
         :param cwd: The working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
-        :param on_output: A callback to invoke when the command outputs data.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data.
         """
 
         # All commands should be run in non-interactive mode.
@@ -208,29 +210,39 @@ class PulumiCommand:
         cmd.extend(args)
 
         stdout_chunks: List[str] = []
+        stderr_chunks: List[str] = []
 
-        with tempfile.TemporaryFile() as stderr_file:
-            with subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=stderr_file, cwd=cwd, env=env
-            ) as process:
-                assert process.stdout is not None
-                while True:
-                    output = process.stdout.readline().decode(encoding="utf-8")
-                    if output == "" and process.poll() is not None:
-                        break
-                    if output:
-                        text = output.rstrip()
-                        if on_output:
-                            on_output(text)
-                        stdout_chunks.append(text)
+        with subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env
+        ) as process:
+            assert process.stdout is not None
+            assert process.stderr is not None
 
-                code = process.returncode
+            while True:
+                output = process.stdout.readline().decode(encoding="utf-8")
+                error = process.stderr.readline().decode(encoding="utf-8")
 
-            stderr_file.seek(0)
-            stderr_contents = stderr_file.read().decode("utf-8")
+                if output == "" and error == "" and process.poll() is not None:
+                    break
+
+                if output:
+                    text = output.rstrip()
+                    if on_output:
+                        on_output(text)
+                    stdout_chunks.append(text)
+
+                if error:
+                    text = error.rstrip()
+                    if on_error:
+                        on_error(text)
+                    stderr_chunks.append(text)
+
+            code = process.returncode
 
         result = CommandResult(
-            stderr=stderr_contents, stdout="\n".join(stdout_chunks), code=code
+            stderr="\n".join(stderr_chunks),
+            stdout="\n".join(stdout_chunks),
+            code=code
         )
         if code != 0:
             raise create_command_error(result)

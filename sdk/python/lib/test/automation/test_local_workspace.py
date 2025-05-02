@@ -803,6 +803,69 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_on_error(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        try:
+            error = ""
+
+            def logger(e):
+                nonlocal error
+                error += e
+
+            try:
+                stack.up(plan = "halloumi", on_error = logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn(error, "error: open halloumi")
+            error = ""
+
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            try:
+                stack.preview(parallel = -1, on_error = logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn(error, "error: invalid argument")
+            error = ""
+
+            # pulumi refresh
+            try:
+                stack.refresh(parallel = -1, on_error = logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn(error, "error: invalid argument")
+            error = ""
+
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy
+            try:
+                stack.refresh(parallel = -1, on_error = logger)
+            except:
+                self.assertNotEqual(error, "")
+
+            self.assertIn(error, "error: invalid argument")
+            error = ""
+
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_preview_refresh(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
