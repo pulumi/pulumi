@@ -64,6 +64,11 @@ func TestDependencyGraph(t *testing.T) {
 	d7 := &resource.State{URN: "d7", Parent: d6.URN}
 	d8 := &resource.State{URN: "d8", DeletedWith: d6.URN}
 	d9 := &resource.State{URN: "d9", Parent: d8.URN}
+	d10 := &resource.State{URN: "d10", Parent: d6.URN}
+	d11 := &resource.State{URN: "d11", Parent: d10.URN}
+	d12 := &resource.State{URN: "d12", Parent: d10.URN}
+	d13 := &resource.State{URN: "d13", Parent: d6.URN}
+	d14 := &resource.State{URN: "d14", Parent: d10.URN}
 
 	e1 := &resource.State{URN: "e1"}
 	e2 := &resource.State{URN: "e2", Dependencies: []resource.URN{e1.URN}}
@@ -81,6 +86,12 @@ func TestDependencyGraph(t *testing.T) {
 	f2 := &resource.State{URN: "f2", DeletedWith: f1.URN}
 	f1D := &resource.State{URN: "f1", Delete: true}
 
+	g11 := &resource.State{URN: "g1"}
+	g12 := &resource.State{URN: "g1"}
+	g13 := &resource.State{URN: "g1"}
+	g21 := &resource.State{URN: "g2", Parent: g11.URN}
+	g22 := &resource.State{URN: "g2", Parent: g12.URN}
+
 	dg := NewDependencyGraph([]*resource.State{
 		// The "a", "b", and "c" resources are here to test basic dependencies -- providers, dependencies, etc. including
 		// transitive overlaps (e.g. where X depends on Z both directly and through an intermediate Y).
@@ -92,14 +103,22 @@ func TestDependencyGraph(t *testing.T) {
 		// the fact that, when a resource depends on a component (Custom: false), the children of the component that appear
 		// before that resource should also be considered its dependencies (see commentary in dependency_graph.go for more
 		// information).
-		providerD, d1, d2, d3, d4, d5, d6, d7, d8, d9,
+		providerD, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14,
 
 		// The "e" resources exercise the "other" kinds of dependencies -- property dependencies, deleted with, etc.
 		e1, e2, e3, e4, e5,
 
 		// The "f" resources test dependency tracking when there are multiple resources with the same URN due to one being
-		// scheduled for deletion (Delete: true, typically as part of a replace).
+		// scheduled for deletion (Delete: true, typically as part of a replace). Importantly, Delete: true resources _must_
+		// appear after those that are not scheduled for deletion; typically they will be right at the end of a snapshot and
+		// thus dependency graph.
 		f1, f2, f1D,
+
+		// the "g" resources are here to test that pointer equality is correctly used to distinguish between resources which
+		// have the same URN. The order in which they are added is important, as later resources with the same URN will
+		// "shadow" earlier ones, with pointer equality being key to working out which is being referenced by methods on the
+		// graph.
+		g11, g21, g12, g22, g13,
 	})
 
 	// These tests are written explicitly (that is, not using a "table test") in order to make it easier to debug using
@@ -450,6 +469,23 @@ func TestDependencyGraph(t *testing.T) {
 			// Assert.
 			assertSameStates(t, expected, actual)
 		})
+
+		t.Run("g11", func(t *testing.T) {
+			t.Skip("Not currently implemented")
+
+			t.Parallel()
+
+			// Arrange.
+			expected := []*resource.State{
+				g21,
+			}
+
+			// Act.
+			actual := dg.DependingOn(g11, nil /*ignore*/, true /*includeChildren*/)
+
+			// Assert.
+			assertSameStates(t, expected, actual)
+		})
 	})
 
 	t.Run("OnlyDependsOn", func(t *testing.T) {
@@ -514,39 +550,35 @@ func TestDependencyGraph(t *testing.T) {
 
 		providerF1, providerF1Ref := makeProvider("pkg", "providerF", "1")
 		providerF2, providerF2Ref := makeProvider("pkg", "providerF", "2")
-		providerF3, providerF3Ref := makeProvider("pkg", "providerF", "3")
 
-		fx1 := &resource.State{URN: "fx", Provider: providerF1Ref}
-		fx2 := &resource.State{URN: "fx", Provider: providerF2Ref}
+		fx := &resource.State{URN: "fx", Provider: providerF1Ref}
 
-		fy := &resource.State{URN: "fy", Provider: providerF3Ref, Dependencies: []resource.URN{fx1.URN}}
+		fy := &resource.State{URN: "fy", Provider: providerF2Ref, Dependencies: []resource.URN{fx.URN}}
 		fz := &resource.State{
 			URN:      "fz",
-			Provider: providerF3Ref,
+			Provider: providerF2Ref,
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
-				"fzProp1": {fx1.URN},
+				"fzProp1": {fx.URN},
 			},
 		}
 
 		fw := &resource.State{
 			URN:         "fw",
-			Provider:    providerF3Ref,
-			DeletedWith: fx1.URN,
+			Provider:    providerF2Ref,
+			DeletedWith: fx.URN,
 		}
 
-		fu := &resource.State{URN: "fu", Provider: providerF3Ref}
+		fu := &resource.State{URN: "fu", Provider: providerF2Ref}
 		fv := &resource.State{
 			URN:         "fv",
-			Provider:    providerF3Ref,
+			Provider:    providerF2Ref,
 			DeletedWith: fu.URN,
 		}
 
 		dgOnly := NewDependencyGraph([]*resource.State{
 			providerF1,
 			providerF2,
-			providerF3,
-			fx1,
-			fx2,
+			fx,
 			fy,
 			fz,
 			fw,
@@ -558,7 +590,9 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{fx1}
+			expected := []*resource.State{
+				fx, // fx's provider is providerF1
+			}
 
 			// Act.
 			actual := dgOnly.OnlyDependsOn(providerF1)
@@ -571,7 +605,10 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{fx2}
+			expected := []*resource.State{
+				fu, // fu's provider is providerF2
+				fv, // fv's provider is providerF2; fv is deleted with fu whose provider is also providerF2
+			}
 
 			// Act.
 			actual := dgOnly.OnlyDependsOn(providerF2)
@@ -580,48 +617,24 @@ func TestDependencyGraph(t *testing.T) {
 			assertSameStates(t, expected, actual)
 		})
 
-		t.Run("providerF3", func(t *testing.T) {
+		t.Run("fx", func(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
 			expected := []*resource.State{
 				fy,
 				fz,
-
-				// BUG: fw actually depends on fx1, which depends on providerF1, so should not be returned.
 				fw,
-				fu,
-				fv,
 			}
 
 			// Act.
-			actual := dgOnly.OnlyDependsOn(providerF3)
+			actual := dgOnly.OnlyDependsOn(fx)
 
 			// Assert.
 			assertSameStates(t, expected, actual)
 		})
 
-		t.Run("fx1", func(t *testing.T) {
-			t.Parallel()
-
-			// Act.
-			actual := dgOnly.OnlyDependsOn(fx1)
-
-			// Assert.
-			assertSameStates(t, nil, actual)
-		})
-
-		t.Run("fx2", func(t *testing.T) {
-			t.Parallel()
-
-			// Act.
-			actual := dgOnly.OnlyDependsOn(fx2)
-
-			// Assert.
-			assertSameStates(t, nil, actual)
-		})
-
-		t.Run("fy1", func(t *testing.T) {
+		t.Run("fy", func(t *testing.T) {
 			t.Parallel()
 
 			// Act.
@@ -1054,9 +1067,7 @@ func TestDependencyGraph(t *testing.T) {
 			expected := mapset.NewSet(
 				providerD, // d3's provider is providerD
 				d1,        // d3 is deleted with d1 (a component)
-
-				// BUG: Not currently true
-				// d2,        // d2 is a child of d1
+				d2,        // d2 is a child of d1
 			)
 
 			// Act.
@@ -1257,6 +1268,46 @@ func TestDependencyGraph(t *testing.T) {
 			// Assert.
 			assertSameStates(t, expected, actual)
 		})
+
+		t.Run("g21", func(t *testing.T) {
+			t.Skip("Not currently implemented")
+
+			t.Parallel()
+
+			// This test should ignore the g*2 resources, which are identical in terms of URN, ID, etc. but are not the same
+			// when it comes to actual pointer equality. This distinction is important for dependency graphs which handle
+			// resources from different sources (e.g. program, snapshot) and linkages within (but not across) the two sets
+			// need to be handled correctly.
+
+			// Arrange.
+			expected := []*resource.State{g11}
+
+			// Act.
+			actual := dg.ParentsOf(g21)
+
+			// Assert.
+			assertSameStates(t, expected, actual)
+		})
+
+		t.Run("g22", func(t *testing.T) {
+			t.Skip("Not currently implemented")
+
+			t.Parallel()
+
+			// This test should ignore the g*1 resources, which are identical in terms of URN, ID, etc. but are not the same
+			// when it comes to actual pointer equality. This distinction is important for dependency graphs which handle
+			// resources from different sources (e.g. program, snapshot) and linkages within (but not across) the two sets
+			// need to be handled correctly.
+
+			// Arrange.
+			expected := []*resource.State{g12}
+
+			// Act.
+			actual := dg.ParentsOf(g22)
+
+			// Assert.
+			assertSameStates(t, expected, actual)
+		})
 	})
 
 	t.Run("ChildrenOf", func(t *testing.T) {
@@ -1301,6 +1352,19 @@ func TestDependencyGraph(t *testing.T) {
 			assertSameStates(t, expected, actual)
 		})
 
+		t.Run("d6", func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			expected := []*resource.State{d7, d10, d11, d12, d14, d13}
+
+			// Act.
+			actual := dg.ChildrenOf(d6)
+
+			// Assert.
+			assertSameStates(t, expected, actual)
+		})
+
 		t.Run("e1", func(t *testing.T) {
 			t.Parallel()
 
@@ -1309,6 +1373,46 @@ func TestDependencyGraph(t *testing.T) {
 
 			// Act.
 			actual := dg.ChildrenOf(e1)
+
+			// Assert.
+			assertSameStates(t, expected, actual)
+		})
+
+		t.Run("g11", func(t *testing.T) {
+			t.Skip("Not currently implemented")
+
+			t.Parallel()
+
+			// This test should ignore the g*2 resources, which are identical in terms of URN, ID, etc. but are not the same
+			// when it comes to actual pointer equality. This distinction is important for dependency graphs which handle
+			// resources from different sources (e.g. program, snapshot) and linkages within (but not across) the two sets
+			// need to be handled correctly.
+
+			// Arrange.
+			expected := []*resource.State{g21}
+
+			// Act.
+			actual := dg.ChildrenOf(g11)
+
+			// Assert.
+			assertSameStates(t, expected, actual)
+		})
+
+		t.Run("g12", func(t *testing.T) {
+			t.Skip("Not currently implemented")
+
+			t.Parallel()
+
+			// This test should ignore the g*1 resources, which are identical in terms of URN, ID, etc. but are not the same
+			// when it comes to actual pointer equality. This distinction is important for dependency graphs which handle
+			// resources from different sources (e.g. program, snapshot) and linkages within (but not across) the two sets
+			// need to be handled correctly.
+
+			// Arrange.
+			expected := []*resource.State{g22}
+
+			// Act.
+			actual := dg.ChildrenOf(g12)
 
 			// Assert.
 			assertSameStates(t, expected, actual)
