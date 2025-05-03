@@ -48,7 +48,9 @@ func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool
 	return args.aiPrompt == "" &&
 		args.aiLanguage == "" &&
 		!args.templateMode &&
-		isHTTPBackend
+		isHTTPBackend &&
+		!args.yes &&
+		args.interactive
 }
 
 // Iteratively prompt the user for input, sending their input as a prompt tp Pulumi AI
