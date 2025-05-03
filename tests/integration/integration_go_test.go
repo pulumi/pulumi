@@ -1221,11 +1221,39 @@ func TestParameterizedGo(t *testing.T) {
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
 			e.CWD = info.Root
+
+			// Overwrite the main program with the actual test program that uses the generated SDK.
+			actualProgram, err := os.ReadFile(filepath.Join(e.CWD, "actual_program.txt"))
+			require.NoError(t, err)
+			e.WriteTestFile("main.go", string(actualProgram))
+
+			// Generate the SDK for the provider.
 			path := info.Proj.Plugins.Providers[0].Path
 			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
-			return nil
+
+			// Add a reference to the generated SDK in go.mod.
+			return appendLines(filepath.Join(e.CWD, "go.mod"), []string{
+				"require example.com/pulumi-pkg/sdk/go v1.0.0",
+				"replace example.com/pulumi-pkg/sdk/go => ./sdk/go",
+			})
 		},
 	})
+}
+
+func appendLines(name string, lines []string) error {
+	file, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		if _, err := writer.WriteString(line + "\n"); err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
 }
 
 //nolint:paralleltest // mutates environment
