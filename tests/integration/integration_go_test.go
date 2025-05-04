@@ -1222,7 +1222,10 @@ func TestParameterizedGo(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			e.CWD = info.Root
 
-			// Overwrite the main program with the actual test program that uses the generated SDK.
+			// We have a bare-bones main.go program checked-in that does _not_ depend on the generated SDK.
+			// This allows the `make tidy` script and other tools like dependabot to run successfully in this
+			// directory. When running the test, overwrite the bare-bones main.go with the actual test
+			// program that makes use of the generated SDK.
 			actualProgram, err := os.ReadFile(filepath.Join(e.CWD, "actual_program.txt"))
 			require.NoError(t, err)
 			e.WriteTestFile("main.go", string(actualProgram))
