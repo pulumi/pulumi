@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Excluding tests that have their dependencies code-generated but under .gitignore.
-EXCLUDE="-e tests/integration/construct_component_configure_provider/go/go.mod -e sdk/go/pulumi-language-go/testdata -e tests/integration/go/parameterized/go.mod -e tests/testdata -e tests/smoke/testdata"
+EXCLUDE="-e tests/integration/construct_component_configure_provider/go/go.mod -e sdk/go/pulumi-language-go/testdata -e tests/testdata -e tests/smoke/testdata"
 
 for f in $(git ls-files '**go.mod' | grep -v $EXCLUDE)
 do
