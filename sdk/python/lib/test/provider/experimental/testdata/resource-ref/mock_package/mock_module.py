@@ -12,16 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi.provider.experimental.schema import generate_schema
+import pulumi
 
 
-def test_generate_schema_with_namespace():
-    schema = generate_schema("name", "1.2.3", "namespace", {}, {}, [])
-    assert schema.name == "name"
-    assert schema.namespace == "namespace"
-
-
-def test_generate_schema_no_namespace():
-    schema = generate_schema("name", "1.2.3", None, {}, {}, [])
-    assert schema.name == "name"
-    assert schema.namespace is None
+class MyResource(pulumi.CustomResource):
+    pulumi_type = "mock_package:index:MyResource"

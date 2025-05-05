@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi.provider.experimental.schema import generate_schema
+import sys
+import os
+from typing import TypedDict
+
+import pulumi
 
 
-def test_generate_schema_with_namespace():
-    schema = generate_schema("name", "1.2.3", "namespace", {}, {}, [])
-    assert schema.name == "name"
-    assert schema.namespace == "namespace"
+# Make the mock packages available
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+import mock_package
+import mock_package_para
 
 
-def test_generate_schema_no_namespace():
-    schema = generate_schema("name", "1.2.3", None, {}, {}, [])
-    assert schema.name == "name"
-    assert schema.namespace is None
+class Args(TypedDict):
+    res: pulumi.Input[mock_package.MyResource]
+    res_para: pulumi.Input[mock_package_para.MyResource]
+
+
+class Component(pulumi.ComponentResource):
+    def __init__(self, args: Args): ...

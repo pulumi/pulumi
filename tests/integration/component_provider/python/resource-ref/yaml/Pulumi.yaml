@@ -1,0 +1,21 @@
+name: python-component-provider
+description: Using a component provider written in Python
+runtime: yaml
+packages:
+  provider: ../provider
+resources:
+  commandIn:
+    type: command:local:Command
+    properties:
+      create: echo "Hey there $${NAME}!"
+      environment:
+        NAME: Fridolin
+  echo:
+    type: provider:index:EchoCommand
+    properties:
+      name: Bonnie
+      commandIn: ${commandIn}
+outputs:
+  urn: ${echo.commandOut.urn}
+  commandOutStdout: ${echo.commandOut.stdout}
+  commandInStdout: ${echo.commandInStdout}

@@ -22,7 +22,13 @@ from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
 from ...resource import ComponentResource, ResourceOptions
 from ..provider import ConstructResult, Provider
-from .analyzer import Analyzer, ComponentDefinition, PropertyDefinition, TypeDefinition
+from .analyzer import (
+    Analyzer,
+    ComponentDefinition,
+    Dependency,
+    PropertyDefinition,
+    TypeDefinition,
+)
 from .schema import generate_schema
 
 
@@ -38,6 +44,7 @@ class ComponentProvider(Provider):
     _type_defs: dict[str, TypeDefinition]
     _component_defs: dict[str, ComponentDefinition]
     _components: dict[str, type[ComponentResource]]
+    _dependencies: list[Dependency]
     _name: str
 
     def __init__(
@@ -49,16 +56,18 @@ class ComponentProvider(Provider):
     ) -> None:
         self._name = name
         self.analyzer = Analyzer(name)
-        (components_defs, type_definitions) = self.analyzer.analyze(components)
+        result = self.analyzer.analyze(components)
         self._components = {component.__name__: component for component in components}
-        self._component_defs = components_defs
-        self._type_defs = type_definitions
+        self._component_defs = result["component_definitions"]
+        self._type_defs = result["type_definitions"]
+        self._dependencies = result["dependencies"]
         schema = generate_schema(
             name,
             version,
             namespace,
             self._component_defs,
             self._type_defs,
+            self._dependencies,
         )
         super().__init__(version, json.dumps(schema.to_json()))
 
@@ -95,9 +104,10 @@ class ComponentProvider(Provider):
         if not prop.ref:
             raise ValueError(f"property {prop} is not a complex type")
 
-        # Handle built-in types that don't have a colon in their reference
-        # This includes types like Any, Asset, Archive, etc. (e.g. pulumi.json#/Asset)
-        if ":" not in prop.ref:
+        # Handle external resource references (start with a "/") or built-in
+        # types that don't have a colon in their reference, such as Any, Asset,
+        # Archive, etc. (e.g. pulumi.json#/Asset)
+        if prop.ref.startswith("/") or ":" not in prop.ref:
             return None
 
         name = prop.ref.split(":")[-1]
@@ -254,6 +264,12 @@ class ComponentProvider(Provider):
     def get_state(
         self, instance: ComponentResource, component_def: ComponentDefinition
     ) -> dict[str, Any]:
+        """
+        Retrieve the state for a ComponentResource instance.
+
+        This takes care of remapping Python snake_case names to Pulumi schema
+        camelCase names. It also handles mapping enum members to their values.
+        """
         state: dict[str, Any] = {}
         for k, prop in component_def.outputs.items():
             py_name = component_def.outputs_mapping[k]
@@ -305,6 +321,10 @@ class ComponentProvider(Provider):
 
     @staticmethod
     def validate_resource_type(pkg_name: str, resource_type: str) -> None:
+        """
+        Ensure that a resource type has the correct format and matches the
+        package.
+        """
         parts = resource_type.split(":")
         if len(parts) != 3:
             raise ValueError(f"invalid resource type: {resource_type}")
