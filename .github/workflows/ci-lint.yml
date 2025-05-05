@@ -64,14 +64,7 @@ jobs:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
       - name: Run go mod tidy
-        run: make tidy
-      - name: Fail if go mod not tidy
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error go.mod not tidy"
-            echo "::error Please run 'make tidy'"
-            exit 1
-          fi
+        run: make tidy_check
 
   gen:
     name: Generate Go SDK

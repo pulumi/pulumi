@@ -205,6 +205,9 @@ gotestsum/%:
 tidy::
 	./scripts/tidy.sh
 
+tidy_check::
+	./scripts/tidy.sh --check
+
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate
 
