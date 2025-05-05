@@ -51,7 +51,7 @@ type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op 
 type Explainer interface {
 	// Explain returns a human-readable explanation of the changes that will be made to the stack.
 	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
-		events []engine.Event, opts display.Options) (string, error)
+		events []engine.Event) (string, error)
 	// IsEnabledForProject returns whether the explainer is enabled for the given project.
 	IsEnabledForProject(projectName tokens.PackageName, opts display.Options) bool
 }
@@ -250,7 +250,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 
 		if response == explainChoice {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
-			explanation, err := explainer.Explain(ctx, stack.Ref(), kind, op, events, opts.Display)
+			explanation, err := explainer.Explain(ctx, stack.Ref(), kind, op, events)
 			if err != nil {
 				return nil, err
 			}
