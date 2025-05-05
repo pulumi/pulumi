@@ -28,6 +28,8 @@ import (
 type ListType struct {
 	// ElementType is the element type of the list.
 	ElementType Type
+
+	cache conversionCache
 }
 
 // NewListType creates a new list type with the given element type.
@@ -121,7 +123,10 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ListType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)

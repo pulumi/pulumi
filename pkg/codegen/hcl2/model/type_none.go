@@ -60,7 +60,7 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(NoneType, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(NoneType, src, unifying, seen, nil, func() (ConversionKind, lazyDiagnostics) {
 		return NoConversion, nil
 	})
 }

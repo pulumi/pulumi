@@ -27,6 +27,8 @@ import (
 type SetType struct {
 	// ElementType is the element type of the set.
 	ElementType Type
+
+	cache conversionCache
 }
 
 // NewSetType creates a new set type with the given element type.
@@ -78,7 +80,10 @@ func (t *SetType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *SetType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)

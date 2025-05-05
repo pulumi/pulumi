@@ -54,6 +54,8 @@ type EnumType struct {
 	Annotations []interface{}
 
 	s atomic.Value // Value<string>
+
+	cache conversionCache
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
@@ -149,7 +151,10 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *EnumType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		// We have a constant, of the correct type, so we might have a safe
 		// conversion.
 		if src, ok := src.(*ConstType); ok && !t.Type.Equals(src.Type) {

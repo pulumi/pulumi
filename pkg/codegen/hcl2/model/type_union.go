@@ -35,6 +35,8 @@ type UnionType struct {
 	Annotations []interface{}
 
 	s atomic.Value // Value<string>
+
+	cache conversionCache
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -232,7 +234,10 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
 		var diags []lazyDiagnostics
 

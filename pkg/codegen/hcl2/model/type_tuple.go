@@ -35,6 +35,8 @@ type TupleType struct {
 
 	elementUnion Type
 	s            atomic.Value // Value<string>
+
+	cache conversionCache
 }
 
 // NewTupleType creates a new tuple type with the given element types.
@@ -183,7 +185,10 @@ func (t *TupleType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
 			// When unifying, we will unify two tuples of different length to a new tuple, where elements with matching

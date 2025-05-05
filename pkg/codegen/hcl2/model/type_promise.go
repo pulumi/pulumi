@@ -28,6 +28,8 @@ import (
 type PromiseType struct {
 	// ElementType is the element type of the promise.
 	ElementType Type
+
+	cache conversionCache
 }
 
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
@@ -103,7 +105,10 @@ func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
 func (t *PromiseType) conversionFrom(
 	src Type, unifying bool, seen map[Type]struct{},
 ) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if src, ok := src.(*PromiseType); ok {
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		}

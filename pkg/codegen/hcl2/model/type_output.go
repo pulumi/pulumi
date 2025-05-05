@@ -27,6 +27,8 @@ import (
 type OutputType struct {
 	// ElementType is the element type of the output.
 	ElementType Type
+
+	cache conversionCache
 }
 
 // NewOutputType creates a new output type with the given element type after replacing any output or promise types
@@ -103,7 +105,10 @@ func (t *OutputType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *OutputType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)

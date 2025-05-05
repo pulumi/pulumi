@@ -28,6 +28,8 @@ import (
 type MapType struct {
 	// ElementType is the element type of the map.
 	ElementType Type
+
+	cache conversionCache
 }
 
 // NewMapType creates a new map type with the given element type.
@@ -116,7 +118,10 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)

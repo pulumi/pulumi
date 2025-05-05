@@ -40,6 +40,8 @@ type ObjectType struct {
 
 	propertyUnion Type
 	s             atomic.Value // Value<string>
+
+	cache conversionCache
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
@@ -254,7 +256,10 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = make(conversionCache)
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
 			if seen != nil {
