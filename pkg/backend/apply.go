@@ -52,7 +52,7 @@ type Explainer interface {
 	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
 		events []engine.Event) (string, error)
 	// IsCopilotFeatureEnabled returns whether the explainer is enabled for the given project.
-	IsCopilotFeatureEnabled(opts display.Options) bool
+	IsCopilotFeatureEnabled(ctx context.Context, opts display.Options) bool
 }
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
@@ -195,7 +195,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 			choices = append(choices, string(details))
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
-			if explainer != nil && explainer.IsCopilotFeatureEnabled(opts.Display) {
+			if explainer != nil && explainer.IsCopilotFeatureEnabled(ctx, opts.Display) {
 				choices = append(choices, explainChoice)
 			}
 		}
