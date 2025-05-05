@@ -1162,8 +1162,11 @@ func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
 	}
 
 	// Is copilot enabled this project in Pulumi Cloud
-	contract.Assertf(b.copilotEnabledForCurrentProject != nil,
-		"copilotEnabledForProject has not been set. only available after an update has been started.")
+	if b.copilotEnabledForCurrentProject == nil {
+		logging.V(3).Info(
+			"error: copilotEnabledForCurrentProject has not been set. only available after an update has been started.")
+		return false
+	}
 
 	return *b.copilotEnabledForCurrentProject
 }
