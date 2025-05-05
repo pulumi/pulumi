@@ -127,5 +127,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"aws-static-website", "0.4.0"},
 
 		SchemaProvider{"aliases", "1.0.0"},
+		SchemaProvider{"dangling-reference-bad", "0.1.0"},
+		SchemaProvider{"dangling-reference-good", "0.1.0"},
 	)
 }
