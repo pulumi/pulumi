@@ -1327,7 +1327,9 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 	renderer := display.NewCaptureProgressEvents(
 		stack.Ref().Name(),
 		op.Proj.Name,
-		display.Options{},
+		display.Options{
+			ShowResourceChanges: true,
+		},
 		dryRun,
 		kind,
 	)
