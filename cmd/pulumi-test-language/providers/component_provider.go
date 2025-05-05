@@ -371,8 +371,9 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type: "component:index:ComponentCustomRefOutput",
-		Name: req.Name,
+		Type:     "component:index:ComponentCustomRefOutput",
+		Name:     req.Name,
+		Provider: req.Options.Providers["component"],
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
@@ -380,11 +381,12 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	// Register the child resource, parented to the component we just created.
 	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:    "component:index:Custom",
-		Custom:  true,
-		Name:    req.Name + "-child",
-		Parent:  parent.Urn,
-		Version: "13.3.7",
+		Type:     "component:index:Custom",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "13.3.7",
+		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),
@@ -440,8 +442,9 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type: "component:index:ComponentCustomRefInputOutput",
-		Name: req.Name,
+		Type:     "component:index:ComponentCustomRefInputOutput",
+		Name:     req.Name,
+		Provider: req.Options.Providers["component"],
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
@@ -470,11 +473,12 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 
 	// Register the child resource, parented to the component we just created.
 	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:    "component:index:Custom",
-		Custom:  true,
-		Name:    req.Name + "-child",
-		Parent:  parent.Urn,
-		Version: "13.3.7",
+		Type:     "component:index:Custom",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "13.3.7",
+		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": getRes.Return.Fields["state"].GetStructValue().Fields["value"],
@@ -537,8 +541,9 @@ func (p *ComponentProvider) constructComponentCallable(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type: "component:index:ComponentCallable",
-		Name: req.Name,
+		Type:     "component:index:ComponentCallable",
+		Name:     req.Name,
+		Provider: req.Options.Providers["component"],
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
@@ -546,11 +551,12 @@ func (p *ComponentProvider) constructComponentCallable(
 
 	// Register a child resource, parented to the component we just created.
 	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:    "component:index:Custom",
-		Custom:  true,
-		Name:    req.Name + "-child",
-		Parent:  parent.Urn,
-		Version: "13.3.7",
+		Type:     "component:index:Custom",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "13.3.7",
+		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),

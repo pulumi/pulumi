@@ -849,6 +849,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.Provider != nil {
 		appendOption("provider", opts.Provider)
 	}
+	if opts.Providers != nil {
+		appendOption("providers", opts.Providers)
+	}
 	if opts.DependsOn != nil {
 		appendOption("dependsOn", opts.DependsOn)
 	}
