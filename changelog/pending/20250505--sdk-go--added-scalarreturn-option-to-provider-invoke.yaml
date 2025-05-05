@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Added ScalarReturn option to provider invoke
