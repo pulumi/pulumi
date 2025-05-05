@@ -1434,10 +1434,10 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	// Requests that take longer that 10 seconds will result in this message being printed to the user:
+	// Requests that take longer that 20 seconds will result in this message being printed to the user:
 	// "Error summarizing update output: making request: Post "https://api.pulumi.com/api/ai/chat/preview":
 	// context deadline exceeded" Copilot backend will see this in telemetry as well
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"

@@ -1155,7 +1155,7 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
 }
 
-func (b *cloudBackend) IsCopilotFeatureEnabled(projectName tokens.PackageName, opts display.Options) bool {
+func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
 	// Have copilot features been requested by specifying the --copilot flag to the cli
 	if !opts.ShowCopilotFeatures {
 		return false
@@ -1163,8 +1163,7 @@ func (b *cloudBackend) IsCopilotFeatureEnabled(projectName tokens.PackageName, o
 
 	// Is copilot enabled this project in Pulumi Cloud
 	contract.Assertf(b.copilotEnabledForCurrentProject != nil,
-		"copilotEnabledForProject has not been set for project %q. only available after an update has been started.",
-		projectName)
+		"copilotEnabledForProject has not been set. only available after an update has been started.")
 
 	return *b.copilotEnabledForCurrentProject
 }
@@ -1497,7 +1496,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.IsCopilotFeatureEnabled(op.Proj.Name, op.Opts.Display) {
+	if b.IsCopilotFeatureEnabled(op.Opts.Display) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)

@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -53,7 +52,7 @@ type Explainer interface {
 	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
 		events []engine.Event) (string, error)
 	// IsCopilotFeatureEnabled returns whether the explainer is enabled for the given project.
-	IsCopilotFeatureEnabled(projectName tokens.PackageName, opts display.Options) bool
+	IsCopilotFeatureEnabled(opts display.Options) bool
 }
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
@@ -196,7 +195,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 			choices = append(choices, string(details))
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
-			if explainer != nil && explainer.IsCopilotFeatureEnabled(op.Proj.Name, opts.Display) {
+			if explainer != nil && explainer.IsCopilotFeatureEnabled(opts.Display) {
 				choices = append(choices, explainChoice)
 			}
 		}
