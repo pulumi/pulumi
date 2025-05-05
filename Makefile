@@ -203,10 +203,10 @@ gotestsum/%:
 	cd $* && $(PYTHON) '$(CURDIR)/scripts/go-test.py' $(GO_TEST_FLAGS) $${OPTS} $${PKGS}
 
 tidy::
-	./scripts/tidy.sh
-
-tidy_check::
 	./scripts/tidy.sh --check
+
+tidy_fix::
+	./scripts/tidy.sh
 
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate

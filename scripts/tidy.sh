@@ -39,7 +39,7 @@ do
 
         if ! (cd "$(dirname "${f}")" && go mod tidy -compat=1.23 -diff); then
             echo "$f is not tidy"
-            echo "Please run 'make tidy'"
+            echo "Please run 'make tidy_fix'"
             exit 1
         fi
     else
