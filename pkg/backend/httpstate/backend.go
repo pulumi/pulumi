@@ -189,15 +189,15 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d                        diag.Sink
-	url                      string
-	client                   *client.Client
-	escClient                esc_client.Client
-	capabilities             *promise.Promise[apitype.Capabilities]
-	copilotEnabledForProject map[tokens.PackageName]bool
+	d            diag.Sink
+	url          string
+	client       *client.Client
+	escClient    esc_client.Client
+	capabilities *promise.Promise[apitype.Capabilities]
 
 	// The current project, if any.
-	currentProject *workspace.Project
+	currentProject                  *workspace.Project
+	copilotEnabledForCurrentProject *bool
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -218,13 +218,12 @@ func New(ctx context.Context, d diag.Sink,
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	return &cloudBackend{
-		d:                        d,
-		url:                      cloudURL,
-		client:                   apiClient,
-		escClient:                escClient,
-		capabilities:             detectCapabilities(d, apiClient),
-		currentProject:           project,
-		copilotEnabledForProject: map[tokens.PackageName]bool{},
+		d:              d,
+		url:            cloudURL,
+		client:         apiClient,
+		escClient:      escClient,
+		capabilities:   detectCapabilities(d, apiClient),
+		currentProject: project,
 	}, nil
 }
 
@@ -613,6 +612,7 @@ func (b *cloudBackend) URL() string {
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
 	b.currentProject = project
+	b.copilotEnabledForCurrentProject = nil
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
@@ -1447,7 +1447,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
 	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
-	b.copilotEnabledForProject[op.Proj.Name] = isCopilotEnabled
+	b.copilotEnabledForCurrentProject = &isCopilotEnabled
 	copilotEnabledValueString := "is"
 	continuationString := ""
 	if isCopilotEnabled {
