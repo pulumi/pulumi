@@ -122,6 +122,55 @@ func CallPlain(
 	resultPtr.Elem().Set(v)
 }
 
+func callPlainSingle(
+	ctx *pulumi.Context,
+	tok string,
+	args pulumi.Input,
+	output pulumi.Output,
+	self pulumi.Resource,
+	property string,
+	resultPtr reflect.Value,
+	errorPtr *error,
+	opts ...pulumi.InvokeOption,
+) {
+	res, err := callPlainInner(ctx, tok, args, output, self, opts...)
+	if err != nil {
+		*errorPtr = err
+		return
+	}
+
+	v := reflect.ValueOf(res)
+
+	// extract res.property field if asked to do so
+	if property != "" {
+		v = v.FieldByName("Res")
+	}
+
+	if v.Kind() == reflect.Ptr {
+		// Check if the pointer is nil
+		if v.IsNil() {
+			return nil, fmt.Errorf("input cannot be a nil pointer")
+		}
+		// Get the element the pointer points to
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return nil, errors.New("result must be a struct")
+	}
+
+	if v.NumField() != 1 {
+		return nil, errors.New("result must have exactly one field")
+	}
+
+	field := v.Field(0)
+	if !field.CanInterface() {
+		return nil, errors.New("result field cannot be accessed")
+	}
+
+	resultPtr.Elem().Set(field)
+}
+
 func callPlainInner(
 	ctx *pulumi.Context,
 	tok string,

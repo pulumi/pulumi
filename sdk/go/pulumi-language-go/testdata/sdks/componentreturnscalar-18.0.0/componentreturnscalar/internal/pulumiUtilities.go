@@ -16,6 +16,8 @@ import (
 )
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 )
 
@@ -75,7 +77,7 @@ func PkgVersion() (semver.Version, error) {
 	}
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^.*/pulumi-primitive/sdk(/v\\d+)?")
+	re := regexp.MustCompile("^.*/pulumi-componentreturnscalar/sdk(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
@@ -147,25 +149,27 @@ func callPlainSingle(
 	}
 
 	if v.Kind() == reflect.Ptr {
-		// Check if the pointer is nil
 		if v.IsNil() {
-			return nil, fmt.Errorf("input cannot be a nil pointer")
+			*errorPtr = errors.New("input cannot be a nil pointer")
+			return
 		}
-		// Get the element the pointer points to
 		v = v.Elem()
 	}
 
 	if v.Kind() != reflect.Struct {
-		return nil, errors.New("result must be a struct")
+		*errorPtr = errors.New("result must be a struct")
+		return
 	}
 
 	if v.NumField() != 1 {
-		return nil, errors.New("result must have exactly one field")
+		*errorPtr = errors.New("result must have exactly one field")
+		return
 	}
 
 	field := v.Field(0)
 	if !field.CanInterface() {
-		return nil, errors.New("result field cannot be accessed")
+		*errorPtr = errors.New("result field cannot be accessed")
+		return
 	}
 
 	resultPtr.Elem().Set(field)
@@ -214,7 +218,7 @@ func callPlainInner(
 func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOption {
 	defaults := []pulumi.ResourceOption{}
 
-	version := semver.MustParse("7.0.0")
+	version := semver.MustParse("18.0.0")
 	if !version.Equals(semver.Version{}) {
 		defaults = append(defaults, pulumi.Version(version.String()))
 	}
@@ -225,7 +229,7 @@ func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOptio
 func PkgInvokeDefaultOpts(opts []pulumi.InvokeOption) []pulumi.InvokeOption {
 	defaults := []pulumi.InvokeOption{}
 
-	version := semver.MustParse("7.0.0")
+	version := semver.MustParse("18.0.0")
 	if !version.Equals(semver.Version{}) {
 		defaults = append(defaults, pulumi.Version(version.String()))
 	}

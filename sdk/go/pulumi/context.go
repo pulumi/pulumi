@@ -1141,6 +1141,50 @@ func (ctx *Context) CallPackage(
 	return output, nil
 }
 
+func (ctx *Context) CallPackageSingle(
+	tok string, args Input, output Output, self Resource, packageRef string, opts ...InvokeOption,
+) (Output, error) {
+	res, err := ctx.CallPackage(tok, args, output, self, packageRef, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.ApplyT(func(r interface{}) (interface{}, error) {
+		// if the result is an object return the first element
+		v := reflect.ValueOf(r)
+
+		if v.Kind() == reflect.Ptr {
+			// Check if the pointer is nil
+			if v.IsNil() {
+				return nil, errors.New("input cannot be a nil pointer")
+			}
+			// Get the element the pointer points to
+			v = v.Elem()
+		}
+
+		if v.Kind() != reflect.Struct {
+			return nil, errors.New("result must be a struct")
+		}
+
+		if v.NumField() != 1 {
+			return nil, errors.New("result must have exactly one field")
+		}
+
+		field := v.Field(0)
+		if !field.CanInterface() {
+			return nil, errors.New("result field cannot be accessed")
+		}
+
+		return field.Interface(), nil
+	}), nil
+}
+
+func (ctx *Context) CallSingle(
+	tok string, args Input, output Output, self Resource, opts ...InvokeOption,
+) (Output, error) {
+	return ctx.CallPackageSingle(tok, args, output, self, "" /* packageRef */, opts...)
+}
+
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
 // token and name is the "name" part to use in creating a stable and globally unique URN for the object. id is the ID
 // of the resource to read, and props contains any state necessary to perform the read (typically props will be nil).

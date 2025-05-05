@@ -62,12 +62,8 @@ func (ComponentArgs) ElementType() reflect.Type {
 }
 
 // The `refs` method of the `Component` component resource. Returns the call request's property dependencies.
-func (r *Component) Refs(ctx *pulumi.Context, args *ComponentRefsArgs) (ComponentRefsResultOutput, error) {
+func (r *Component) Refs(ctx *pulumi.Context, args *ComponentRefsArgs) (ComponentRefsResult, error) {
 	out, err := ctx.Call("component-property-deps:index:Component/refs", args, ComponentRefsResultOutput{}, r)
-	if err != nil {
-		return ComponentRefsResultOutput{}, err
-	}
-	return out.(ComponentRefsResultOutput), nil
 }
 
 type componentRefsArgs struct {
