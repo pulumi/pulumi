@@ -69,7 +69,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetTypeName(pkg *schema.Package, t schema.Type, input bool, relativeToModule string) string {
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.
 	if optional, ok := t.(*schema.OptionalType); ok {
@@ -77,14 +77,14 @@ func (d DocLanguageHelper) GetTypeName(pkg *schema.Package, t schema.Type, input
 	}
 
 	var info NodePackageInfo
-	if i, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
-		info = i
+	if a, err := pkg.Language("nodejs"); err == nil {
+		info, _ = a.(NodePackageInfo)
 	}
 
 	modCtx := &modContext{
-		pkg:      pkg.Reference(),
+		pkg:      pkg,
 		modToPkg: info.ModuleToPackage,
-		mod:      moduleName(relativeToModule, pkg.Reference()),
+		mod:      moduleName(relativeToModule, pkg),
 	}
 	typeName := modCtx.typeString(t, input, nil)
 
@@ -114,7 +114,7 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return camel(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
 	var objectReturnType *schema.ObjectType
@@ -123,21 +123,24 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 			objectReturnType = objectType
 		} else {
 			modCtx := &modContext{
-				pkg: pkg.Reference(),
+				pkg: pkg,
 				mod: modName,
 			}
 			return modCtx.typeString(m.Function.ReturnType, false, nil)
 		}
 	}
 
-	if info, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
-			modCtx := &modContext{
-				pkg: pkg.Reference(),
-				mod: modName,
-			}
-			return modCtx.typeString(objectReturnType.Properties[0].Type, false, nil)
+	var info NodePackageInfo
+	if i, err := pkg.Language("nodejs"); err == nil {
+		info, _ = i.(NodePackageInfo)
+	}
+
+	if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
+		modCtx := &modContext{
+			pkg: pkg,
+			mod: modName,
 		}
+		return modCtx.typeString(objectReturnType.Properties[0].Type, false, nil)
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
 }

@@ -91,7 +91,7 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 
 	// Generate the type string for the property type and use that to generate the doc link.
 	propertyType := codegen.UnwrapType(pkg.Resources[0].InputProperties[0].Type)
-	typeString := d.GetTypeName(pkg, propertyType, true, pkg.TokenToModule("aws:s3/BucketCorsRule:BucketCorsRule"))
+	typeString := d.GetTypeName(pkg.Reference(), propertyType, true, pkg.TokenToModule("aws:s3/BucketCorsRule:BucketCorsRule"))
 	link := d.GetDocLinkForResourceInputOrOutputType(pkg, "doesNotMatter", typeString, true)
 	assert.Equal(t, "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Inputs.BucketCorsRuleArgs.html", link)
 }
