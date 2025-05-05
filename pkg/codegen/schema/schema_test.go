@@ -2101,7 +2101,7 @@ func TestDanglingReferences(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-bad.json")
+	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 
 	require.Len(t, diags, 1)
@@ -2117,7 +2117,7 @@ func TestNoDanglingReferences(t *testing.T) {
 
 	testdataPath := filepath.Join("..", "testing", "test", "testdata")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("dangling-reference-good.json")
+	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
