@@ -1152,10 +1152,10 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, newCopilotExplainer(b))
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
 }
 
-func (b *cloudBackend) isCopilotFeatureEnabled(projectName tokens.PackageName, opts display.Options) bool {
+func (b *cloudBackend) IsCopilotFeatureEnabled(projectName tokens.PackageName, opts display.Options) bool {
 	// Have copilot features been requested by specifying the --copilot flag to the cli
 	if !opts.ShowCopilotFeatures {
 		return false
@@ -1171,10 +1171,10 @@ func (b *cloudBackend) isCopilotFeatureEnabled(projectName tokens.PackageName, o
 
 // explain takes engine events, renders them out to a buffer as something similar to what the user sees
 // in the CLI, and then explains the output with Copilot.
-func (b *cloudBackend) explain(
+func (b *cloudBackend) Explain(
 	ctx context.Context,
-	kind apitype.UpdateKind,
 	stackRef backend.StackReference,
+	kind apitype.UpdateKind,
 	op backend.UpdateOperation,
 	events []engine.Event,
 ) (string, error) {
@@ -1234,8 +1234,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply,
-		newCopilotExplainer(b))
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1253,7 +1252,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, newCopilotExplainer(b))
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1271,7 +1270,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, newCopilotExplainer(b))
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1498,7 +1497,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.isCopilotFeatureEnabled(op.Proj.Name, op.Opts.Display) {
+	if b.IsCopilotFeatureEnabled(op.Proj.Name, op.Opts.Display) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)
@@ -2281,28 +2280,6 @@ func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return resp.GitHubLogin, nil
-}
-
-func newCopilotExplainer(b *cloudBackend) backend.Explainer {
-	return &copilotExplainer{b}
-}
-
-type copilotExplainer struct {
-	backend *cloudBackend
-}
-
-// Explain generates a natural language explanation of the update operation using Pulumi Copilot. It takes the update
-// engine events and returns a formatted explanation string.
-func (e *copilotExplainer) Explain(ctx context.Context, stackRef backend.StackReference, kind apitype.UpdateKind,
-	op backend.UpdateOperation, events []engine.Event,
-) (string, error) {
-	return e.backend.explain(ctx, kind, stackRef, op, events)
-}
-
-// IsEnabledForProject checks if Pulumi Copilot features are enabled for the given project. It verifies both the CLI
-// flag (--copilot) and the project's Copilot enabled status in Pulumi Cloud.
-func (e *copilotExplainer) IsEnabledForProject(projectName tokens.PackageName, opts display.Options) bool {
-	return e.backend.isCopilotFeatureEnabled(projectName, opts)
 }
 
 type httpstateBackendClient struct {

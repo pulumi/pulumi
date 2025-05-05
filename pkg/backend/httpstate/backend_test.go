@@ -402,7 +402,7 @@ func TestCopilotExplainer(t *testing.T) {
 			Color:   colors.Never,
 		}),
 	}
-	summary, err := b.explain(context.Background(), apitype.UpdateUpdate, stackRef, op, events)
+	summary, err := b.Explain(context.Background(), stackRef, apitype.UpdateUpdate, op, events)
 
 	// Verify results
 	require.NoError(t, err)
