@@ -64,7 +64,7 @@ jobs:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
       - name: Run go mod tidy
-        run: make tidy_check
+        run: make tidy
 
   gen:
     name: Generate Go SDK
