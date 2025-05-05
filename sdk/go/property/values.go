@@ -274,10 +274,13 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	//
 	// We don't want exiting references to dependencies to be able to effect
 	// v.dependencies.
-	v.dependencies = copyArray(dependencies)
+	cp := copyArray(dependencies)
 	// Sort the dependencies on ingestion so that Equals doesn't care about
 	// dependency order.
-	slices.Sort(v.dependencies)
+	slices.Sort(cp)
+	// Finally, deduplicate the dependencies, since a Value can't depend on the same
+	// resource more then once.
+	v.dependencies = slices.Compact(cp)
 	return v
 }
 
