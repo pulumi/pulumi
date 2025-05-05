@@ -73,7 +73,14 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 	err = json.Unmarshal(schemaBytes, &pkgSpec)
 	require.NoError(t, err)
 
-	pkg, err := schema.ImportSpec(pkgSpec, map[string]schema.Language{"test": typeTestImporter(0)})
+	pkg, err := schema.ImportSpec(
+		pkgSpec,
+		map[string]schema.Language{"test": typeTestImporter(0)},
+		schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		},
+	)
+
 	require.NoError(t, err)
 
 	typeName := newTypeNameGenerator(pkg)

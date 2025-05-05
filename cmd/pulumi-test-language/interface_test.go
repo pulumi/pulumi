@@ -176,7 +176,9 @@ func TestProviderSchemas(t *testing.T) {
 			err = json.Unmarshal(resp.Schema, &pkg)
 			require.NoError(t, err)
 
-			_, diags, err := schema.BindSpec(pkg, loader)
+			_, diags, err := schema.BindSpec(pkg, loader, schema.ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			for _, diag := range diags {
 				t.Logf("%s: %v", pkg.Name, diag)
 			}

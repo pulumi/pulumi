@@ -696,7 +696,9 @@ func TestPythonResourceArgs(t *testing.T) {
 	assert.NoError(t, err)
 	var spec schema.PackageSpec
 	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
-	pkg, err := schema.ImportSpec(spec, nil)
+	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	assert.NoError(t, err)
 	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{}, nil)
 	assert.NoError(t, err)
