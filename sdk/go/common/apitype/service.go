@@ -33,6 +33,12 @@ const (
 
 	// Indicates that the service backend supports batch encryption.
 	BatchEncrypt APICapability = "batch-encrypt"
+
+	// Indicates whether the service supports summarizing errors via Copilot.
+	CopilotSummarizeErrorV1 APICapability = "copilot-summarize-error"
+
+	// Indicates whether the service supports the Copilot explainer.
+	CopilotExplainPreviewV1 APICapability = "copilot-explain-preview"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -63,11 +69,21 @@ type Capabilities struct {
 
 	// Indicates whether the service supports batch encryption.
 	BatchEncryption bool
+
+	// Indicates whether the service supports summarizing errors via Copilot.
+	CopilotSummarizeErrorV1 bool
+
+	// Indicates whether the service supports the Copilot explainer.
+	CopilotExplainPreviewV1 bool
+
+	// Dynamic map for supported capabilities
+	supported map[APICapability]bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
 func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 	var parsed Capabilities
+	parsed.supported = make(map[APICapability]bool)
 	for _, entry := range r.Capabilities {
 		switch entry.Capability {
 		case DeltaCheckpointUploads:
@@ -76,6 +92,7 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfig returned %w", err)
 			}
 			parsed.DeltaCheckpointUpdates = &upcfg
+			parsed.supported[DeltaCheckpointUploads] = true
 		case DeltaCheckpointUploadsV2:
 			if entry.Version == 2 {
 				var upcfg DeltaCheckpointUploadsConfigV2
@@ -83,12 +100,30 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 					return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfigV2 returned %w", err)
 				}
 				parsed.DeltaCheckpointUpdates = &upcfg
+				parsed.supported[DeltaCheckpointUploadsV2] = true
 			}
 		case BatchEncrypt:
 			parsed.BatchEncryption = true
+			parsed.supported[BatchEncrypt] = true
+		case CopilotSummarizeErrorV1:
+			if entry.Version == 1 {
+				parsed.CopilotSummarizeErrorV1 = true
+				parsed.supported[CopilotSummarizeErrorV1] = true
+			}
+		case CopilotExplainPreviewV1:
+			if entry.Version == 1 {
+				parsed.CopilotExplainPreviewV1 = true
+				parsed.supported[CopilotExplainPreviewV1] = true
+			}
 		default:
+			parsed.supported[entry.Capability] = true
 			continue
 		}
 	}
 	return parsed, nil
+}
+
+// Supports returns true if the given capability is supported by this backend.
+func (c Capabilities) Supports(capability APICapability) bool {
+	return c.supported[capability]
 }
