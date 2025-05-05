@@ -27,8 +27,9 @@ import (
 const (
 	// 4kb, we're optimizing for latency here. ~1000 tokens.
 	maxCopilotSummarizeUpdateContentLength = 4000
-	// 100kb, we're optimizing for quality here. ~25000 tokens. May cull further on the backend.
-	maxCopilotExplainPreviewContentLength = 100000
+	// 200kb, send a good amount of content to Copilot without incurring a large latency penalty.
+	// This will be trimmed on the backend depending on the model used etc.
+	maxCopilotExplainPreviewContentLength = 200000
 )
 
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
