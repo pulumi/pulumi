@@ -1410,11 +1410,11 @@ func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody interface{}) (
 func (pc *Client) SummarizeErrorWithCopilot(
 	ctx context.Context,
 	orgID string,
-	lines []string,
+	content string,
 	model string,
 	maxSummaryLen int,
 ) (string, error) {
-	request := createSummarizeUpdateRequest(lines, orgID, model, maxSummaryLen, maxCopilotSummarizeUpdateContentLength)
+	request := createSummarizeUpdateRequest(content, orgID, model, maxSummaryLen, maxCopilotSummarizeUpdateContentLength)
 	return pc.callCopilot(ctx, request)
 }
 
@@ -1422,9 +1422,9 @@ func (pc *Client) ExplainPreviewWithCopilot(
 	ctx context.Context,
 	orgID string,
 	kind string,
-	lines []string,
+	content string,
 ) (string, error) {
-	request := createExplainPreviewRequest(lines, orgID, kind, maxCopilotExplainPreviewContentLength)
+	request := createExplainPreviewRequest(content, orgID, kind, maxCopilotExplainPreviewContentLength)
 	return pc.callCopilot(ctx, request)
 }
 

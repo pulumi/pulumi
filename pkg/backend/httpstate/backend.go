@@ -1190,7 +1190,7 @@ func (b *cloudBackend) explain(
 	renderer.ProcessEventSlice(events)
 	output := renderer.Output()
 
-	if len(output) == 0 {
+	if output == "" {
 		return "", errors.New("no output from preview")
 	}
 
@@ -1345,7 +1345,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 }
 
 func (b *cloudBackend) summarizeErrorWithCopilot(
-	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
 ) (*display.CopilotErrorSummaryMetadata, error) {
 	if len(pulumiOutput) == 0 {
 		return nil, nil

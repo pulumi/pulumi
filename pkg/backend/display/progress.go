@@ -422,12 +422,8 @@ func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
 	<-renderDone
 }
 
-func (r *CaptureProgressEvents) Output() []string {
-	v := strings.TrimSpace(r.Buffer.String())
-	if v == "" {
-		return nil
-	}
-	return strings.Split(v, "\n")
+func (r *CaptureProgressEvents) Output() string {
+	return strings.TrimSpace(r.Buffer.String())
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {

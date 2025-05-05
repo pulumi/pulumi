@@ -17,7 +17,6 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -34,14 +33,12 @@ const (
 
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
 func createSummarizeUpdateRequest(
-	lines []string,
+	content string,
 	orgID string,
 	model string,
 	maxSummaryLen int,
 	maxUpdateOutputLen int,
 ) apitype.CopilotSummarizeUpdateRequest {
-	// Convert lines to a single string
-	content := strings.Join(lines, "\n")
 	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
 	return apitype.CopilotSummarizeUpdateRequest{
@@ -68,12 +65,11 @@ func createSummarizeUpdateRequest(
 
 // createExplainPreviewRequest creates a new CopilotExplainPreviewRequest with the given content and org ID
 func createExplainPreviewRequest(
-	lines []string,
+	content string,
 	orgID string,
 	kind string,
 	maxUpdateOutputLen int,
 ) apitype.CopilotExplainPreviewRequest {
-	content := strings.Join(lines, "\n")
 	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
 	return apitype.CopilotExplainPreviewRequest{
