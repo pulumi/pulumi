@@ -1234,7 +1234,8 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, newCopilotExplainer(b))
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply,
+		newCopilotExplainer(b))
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -2292,8 +2293,8 @@ type copilotExplainer struct {
 
 // Explain generates a natural language explanation of the update operation using Pulumi Copilot. It takes the update
 // engine events and returns a formatted explanation string.
-func (e *copilotExplainer) Explain(ctx context.Context, stackRef backend.StackReference, kind apitype.UpdateKind, op backend.UpdateOperation,
-	events []engine.Event,
+func (e *copilotExplainer) Explain(ctx context.Context, stackRef backend.StackReference, kind apitype.UpdateKind,
+	op backend.UpdateOperation, events []engine.Event,
 ) (string, error) {
 	return e.backend.explain(ctx, kind, stackRef, op, events)
 }
