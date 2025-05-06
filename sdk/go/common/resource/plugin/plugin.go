@@ -433,19 +433,20 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		pluginDir := filepath.Dir(bin)
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
+		switch kind {
+		case apitype.ResourcePlugin, apitype.ConverterPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else if kind == apitype.AnalyzerPlugin {
+		case apitype.AnalyzerPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else {
+		default:
 			return nil, errors.New("language plugins must be executable binaries")
 		}
 
