@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go,nodejs,python
-  description: Add --run-program to automation api for destroy and refresh

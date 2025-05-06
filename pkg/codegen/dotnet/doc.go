@@ -25,12 +25,7 @@ import (
 )
 
 // DocLanguageHelper is the DotNet-specific implementation of the DocLanguageHelper.
-type DocLanguageHelper struct {
-	// Namespaces is a map of Pulumi schema module names to their
-	// C# equivalent names, to be used when creating fully-qualified
-	// property type strings.
-	Namespaces map[string]string
-}
+type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
@@ -56,7 +51,8 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typ
 	if pkg == nil {
 		packageNamespace = ""
 	} else if pkg.Name != "" {
-		packageNamespace = "." + namespaceName(d.Namespaces, pkg.Name)
+		info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+		packageNamespace = "." + namespaceName(info.Namespaces, pkg.Name)
 	}
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
@@ -72,17 +68,16 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	info, ok := pkg.Language["csharp"].(CSharpPackageInfo)
-	if !ok {
-		info = CSharpPackageInfo{}
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
+	var info CSharpPackageInfo
+	if a, err := pkg.Language("csharp"); err == nil {
+		info, _ = a.(CSharpPackageInfo)
 	}
-	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
-		pkg:           pkg.Reference(),
-		mod:           moduleName,
-		typeDetails:   typeDetails,
-		namespaces:    d.Namespaces,
+		pkg:           pkg,
+		mod:           relativeToModule,
+		typeDetails:   map[*schema.ObjectType]*typeDetails{},
+		namespaces:    info.Namespaces,
 		rootNamespace: info.GetRootNamespace(),
 	}
 	qualifier := "Inputs"
@@ -107,37 +102,36 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
+	a, _ := pkg.Language("csharp")
+	info, _ := a.(CSharpPackageInfo)
 	var returnType *schema.ObjectType
 	if m.Function.ReturnType != nil {
 		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok {
 			returnType = objectType
 		} else {
-			typeDetails := map[*schema.ObjectType]*typeDetails{}
 			mod := &modContext{
-				pkg:         pkg.Reference(),
-				mod:         modName,
-				typeDetails: typeDetails,
-				namespaces:  d.Namespaces,
+				pkg:           pkg,
+				mod:           modName,
+				typeDetails:   map[*schema.ObjectType]*typeDetails{},
+				namespaces:    info.Namespaces,
+				rootNamespace: info.GetRootNamespace(),
 			}
 			return mod.typeString(m.Function.ReturnType, "", false, false, false)
 		}
 	}
 
-	if info, ok := pkg.Language["csharp"].(CSharpPackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
-			typeDetails := map[*schema.ObjectType]*typeDetails{}
-			mod := &modContext{
-				pkg:           pkg.Reference(),
-				mod:           modName,
-				typeDetails:   typeDetails,
-				namespaces:    d.Namespaces,
-				rootNamespace: info.GetRootNamespace(),
-			}
-			return mod.typeString(returnType.Properties[0].Type, "", false, false, false)
+	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
+		mod := &modContext{
+			pkg:           pkg,
+			mod:           modName,
+			typeDetails:   map[*schema.ObjectType]*typeDetails{},
+			namespaces:    info.Namespaces,
+			rootNamespace: info.GetRootNamespace(),
 		}
+		return mod.typeString(returnType.Properties[0].Type, "", false, false, false)
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), d.GetMethodName(m))
 }

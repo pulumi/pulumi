@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Support private GitHub and GitLab instances, when installing plugins directly from a repository

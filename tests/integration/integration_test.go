@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -523,7 +524,12 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if organization != "" {
+		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
+		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	} else {
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1054,7 +1060,12 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if organization != "" {
+		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
+		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	} else {
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1161,17 +1172,18 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
+	qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
 	// Create a stack in the go project
 	e.CWD = goDir
 	e.ImportDirectory("large_resource/go")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
 	// Now create the js project
 	e.CWD = jsDir
 	e.ImportDirectory("large_resource/nodejs")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
@@ -1361,6 +1373,40 @@ func TestPolicyPackNew(t *testing.T) {
 	require.Contains(t, stdout, "Finished creating virtual environment")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("venv"))
+}
+
+func TestPolicyPackPublish(t *testing.T) {
+	t.Parallel()
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+	testOrg := os.Getenv("PULUMI_TEST_ORG")
+	if testOrg == "" {
+		t.Skipf("Skipping: PULUMI_TEST_ORG is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.RunCommand("pulumi", "policy", "new", "aws-typescript", "--force")
+	// Change the name of the policy in case `aws-typescript` is already published
+	// and so that we have a clear indication that this is coming from a test.
+	// We do our best to clean up the policy after the test completes;
+	name := fmt.Sprintf("test-policy-pack-publish-%d", time.Now().UnixNano())
+	policyIndexPath := filepath.Join(e.RootPath, "index.ts")
+	policyContent, err := os.ReadFile(policyIndexPath)
+	require.NoError(t, err)
+	newContent := strings.Replace(string(policyContent),
+		`new PolicyPack("aws-typescript"`,
+		fmt.Sprintf(`new PolicyPack("%s"`, name),
+		1)
+	err = os.WriteFile(policyIndexPath, []byte(newContent), 0o600)
+	require.NoError(t, err)
+
+	stdout, stderr := e.RunCommand("pulumi", "policy", "publish", testOrg)
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
+
+	stdout, stderr = e.RunCommand("pulumi", "policy", "rm", testOrg+"/"+name, "all", "--yes")
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
 }
 
 func TestPolicyPackInstallDependencies(t *testing.T) {

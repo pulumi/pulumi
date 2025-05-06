@@ -203,6 +203,9 @@ gotestsum/%:
 	cd $* && $(PYTHON) '$(CURDIR)/scripts/go-test.py' $(GO_TEST_FLAGS) $${OPTS} $${PKGS}
 
 tidy::
+	./scripts/tidy.sh --check
+
+tidy_fix::
 	./scripts/tidy.sh
 
 validate_codecov_yaml::

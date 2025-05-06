@@ -622,7 +622,9 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil)
+		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -707,7 +709,9 @@ func SchemaFromSchemaSourceValueArgs(
 ) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil)
+		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			return nil, err
 		}

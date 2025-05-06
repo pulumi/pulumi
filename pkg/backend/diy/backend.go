@@ -732,6 +732,9 @@ func (b *diyBackend) CreateStack(
 	if opts != nil && len(opts.Teams) > 0 {
 		return nil, backend.ErrTeamsNotSupported
 	}
+	if opts != nil && opts.Config != nil {
+		return nil, backend.ErrConfigNotSupported
+	}
 
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {

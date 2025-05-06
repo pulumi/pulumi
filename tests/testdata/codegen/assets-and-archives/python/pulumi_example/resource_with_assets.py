@@ -62,10 +62,8 @@ class ResourceWithAssetsArgs:
         pulumi.set(self, "nested", value)
 
 
+@pulumi.type_token("example:index:ResourceWithAssets")
 class ResourceWithAssets(pulumi.CustomResource):
-
-    pulumi_type = "example:index:ResourceWithAssets"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -26,10 +26,8 @@ class MemberA1Args:
         pass
 
 
+@pulumi.type_token("myPkg:myMod/childA:MemberA1")
 class MemberA1(pulumi.ComponentResource):
-
-    pulumi_type = "myPkg:myMod/childA:MemberA1"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

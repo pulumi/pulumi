@@ -257,7 +257,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		orgName = parts[0]
 		projectName := parts[1]
 
-		stackName, err := buildStackName(args.stack)
+		stackName, err := buildStackName(ctx, b, args.stack)
 		if err != nil {
 			return err
 		}
@@ -441,7 +441,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
-		contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
+		contract.IgnoreError(state.SetCurrentStack(s.Ref().FullyQualifiedName().String()))
 	}
 
 	// Install dependencies.

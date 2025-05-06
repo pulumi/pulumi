@@ -66,7 +66,9 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil)
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	assert.NoError(t, err, "could not import the test package spec")
 	return pkg
 }
@@ -130,10 +132,12 @@ func TestGetFunctionName(t *testing.T) {
 			"pkg:index:getSomeFunction": {},
 			"pkg:conflict:newResource":  {},
 		},
-	}, nil)
+	}, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	d := DocLanguageHelper{}
-	d.GeneratePackagesMap(pkg, "test", GoPackageInfo{})
+	d.GeneratePackagesMap(pkg.Reference(), "test", GoPackageInfo{})
 
 	names := map[string]string{}
 	for _, f := range pkg.Functions {
@@ -163,7 +167,9 @@ func TestGetFunctionNameWithoutPackageMapDoesNotPanic(t *testing.T) {
 		Functions: map[string]schema.FunctionSpec{
 			"pkg:index:getSomeFunction": {},
 		},
-	}, nil)
+	}, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	d := DocLanguageHelper{}
 

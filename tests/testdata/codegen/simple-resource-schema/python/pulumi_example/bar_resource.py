@@ -38,10 +38,8 @@ class BarResourceArgs:
         pulumi.set(self, "foo", value)
 
 
+@pulumi.type_token("bar::BarResource")
 class BarResource(pulumi.ComponentResource):
-
-    pulumi_type = "bar::BarResource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

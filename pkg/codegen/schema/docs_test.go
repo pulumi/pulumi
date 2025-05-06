@@ -164,7 +164,9 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil)
+			pkg, err := ImportSpec(spec, nil, ValidationOptions{
+				AllowDanglingReferences: true,
+			})
 			if err != nil {
 				t.Fatalf("could not import package: %v", err)
 			}
@@ -187,8 +189,8 @@ func TestParseAndRenderDocs(t *testing.T) {
 
 func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
 	filename = strings.TrimSuffix(filename, ".json")
-	idx := 0
-	for {
+
+	for idx := range len(filename) {
 		i := strings.IndexByte(filename[idx:], '-') + idx
 		require.Truef(t, i != -1, "Could not parse %q into (pkg, version)", filename)
 		name := filename[:i]
@@ -196,8 +198,10 @@ func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
 		if v, err := semver.Parse(version); err == nil {
 			return name, &v
 		}
-		idx = i + 1
 	}
+
+	require.Failf(t, "invalid filename", "%q is not suffixed with a semver version", filename)
+	return "", nil
 }
 
 func TestReferenceRenderer(t *testing.T) {

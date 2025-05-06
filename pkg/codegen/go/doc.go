@@ -20,7 +20,6 @@ package gen
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/golang/glog"
@@ -90,22 +89,23 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	modPkg, ok := d.packages[moduleName]
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
+	goPkg := moduleToPackage(d.goPkgInfo.ModuleToPackage, relativeToModule)
+	modPkg, ok := d.packages[goPkg]
 	if !ok {
-		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
-		os.Exit(1)
+		glog.Fatalf("cannot calculate type string for type %q. could not find a package for module %q",
+			t.String(), goPkg)
 	}
 	return modPkg.typeString(t)
 }
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
-func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
+func (d *DocLanguageHelper) GeneratePackagesMap(pkg schema.PackageReference, tool string, goInfo GoPackageInfo) {
 	var err error
-	d.packages, err = generatePackageContextMap(tool, pkg.Reference(), goInfo, nil)
+	d.packages, err = generatePackageContextMap(tool, pkg, goInfo, nil)
 	d.goPkgInfo = goInfo
-	d.topLevelPkg = pkg.Reference()
-	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name)
+	d.topLevelPkg = pkg
+	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name())
 }
 
 // GetPropertyName returns the property name specific to Go.
@@ -149,27 +149,28 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
-	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
-		var objectReturnType *schema.ObjectType
-		if m.Function.ReturnType != nil {
-			if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				objectReturnType = objectType
-			}
+	var info GoPackageInfo
+	if i, err := pkg.Language("go"); err == nil {
+		info, _ = i.(GoPackageInfo)
+	}
+	var objectReturnType *schema.ObjectType
+	if m.Function.ReturnType != nil {
+		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+			objectReturnType = objectType
 		}
+	}
 
-		if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
-			t := objectReturnType.Properties[0].Type
-			modPkg, ok := d.packages[modName]
-			if !ok {
-				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
-					t.String(), modName)
-				os.Exit(1)
-			}
-			return modPkg.outputType(t)
+	if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
+		t := objectReturnType.Properties[0].Type
+		modPkg, ok := d.packages[modName]
+		if !ok {
+			glog.Fatalf("cannot calculate type string for type %q. could not find a package for module %q",
+				t.String(), modName)
 		}
+		return modPkg.outputType(t)
 	}
 	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
 }

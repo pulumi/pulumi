@@ -269,7 +269,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		require.True(t, ok)
 
 		return func(t schema.Type) string {
-			return root.typeString(t, false, false, false)
+			return root.typeString(t, typeStringOpts{})
 		}
 	})
 }
@@ -320,7 +320,7 @@ func TestCalculateDeps(t *testing.T) {
 			// with semver and parver formatted differently from Pulumi.
 			// Pulumi should not have a version.
 			{"parver>=0.2.1", ""},
-			{"pulumi", ">=3.142.0,<4.0.0"},
+			{"pulumi", ">=3.165.0,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
@@ -332,7 +332,7 @@ func TestCalculateDeps(t *testing.T) {
 		expected: [][2]string{
 			{"foobar", "7.10.8"},
 			{"parver>=0.2.1", ""},
-			{"pulumi", ">=3.142.0,<4.0.0"},
+			{"pulumi", ">=3.165.0,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {

@@ -44,6 +44,7 @@ type MockBackend struct {
 	NameF                  func() string
 	URLF                   func() string
 	SetCurrentProjectF     func(proj *workspace.Project)
+	GetDefaultOrgF         func(ctx context.Context) (string, error)
 	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 	SupportsTagsF          func() bool
 	SupportsOrganizationsF func() bool
@@ -176,6 +177,9 @@ func (be *MockBackend) SupportsDeployments() bool {
 }
 
 func (be *MockBackend) GetDefaultOrg(ctx context.Context) (string, error) {
+	if be.GetDefaultOrgF != nil {
+		return be.GetDefaultOrgF(ctx)
+	}
 	return "", nil
 }
 

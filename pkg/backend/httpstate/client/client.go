@@ -477,6 +477,7 @@ func (pc *Client) CreateStack(
 	tags map[apitype.StackTagName]string,
 	teams []string,
 	state *apitype.UntypedDeployment,
+	config *apitype.StackConfig,
 ) (apitype.Stack, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
@@ -494,6 +495,7 @@ func (pc *Client) CreateStack(
 		Tags:      tags,
 		Teams:     teams,
 		State:     state,
+		Config:    config,
 	}
 
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)

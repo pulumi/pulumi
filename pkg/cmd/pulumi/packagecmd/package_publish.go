@@ -55,7 +55,7 @@ type publishPackageArgs struct {
 }
 
 type packagePublishCmd struct {
-	defaultOrg    func(*workspace.Project) (string, error)
+	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error)
 	pluginDir     string
 }
@@ -85,10 +85,9 @@ func newPackagePublishCmd() *cobra.Command {
 			"When <schema> is a path to a local file with a '.json', '.yml' or '.yaml' " +
 			"extension, Pulumi package schema is read from it directly:\n\n" +
 			"  pulumi package publish ./my/schema.json --readme ./README.md",
-		Hidden: !env.Experimental.Value(),
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			pkgPublishCmd.defaultOrg = pkgWorkspace.GetBackendConfigDefaultOrg
+			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
 			pkgPublishCmd.extractSchema = SchemaFromSchemaSource
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], cliArgs[1:])
 		},
@@ -171,7 +170,7 @@ func (cmd *packagePublishCmd) Run(
 	} else if pkg.Publisher != "" { // Otherwise, fall back to the publisher set in the package schema.
 		publisher = pkg.Publisher
 	} else { // As a last resort, try to determine the publisher from the default organization or fail if none is found.
-		publisher, err = cmd.defaultOrg(project)
+		publisher, err = cmd.defaultOrg(ctx, b, project)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}

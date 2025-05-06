@@ -48,10 +48,21 @@ export type TypeDefinition = {
     description?: string;
 };
 
+export type Dependency = {
+    name: string;
+    version?: string;
+    downloadURL?: string;
+    parameterization?: {
+        name: string;
+        version: string;
+        value: string;
+    };
+};
+
 export type AnalyzeResult = {
     components: Record<string, ComponentDefinition>;
     typeDefinitions: Record<string, TypeDefinition>;
-    packageReferences: Record<string, string>;
+    dependencies: Dependency[];
 };
 
 interface docNode {
@@ -72,7 +83,7 @@ export class Analyzer {
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
     private typeDefinitions: Record<string, TypeDefinition> = {};
-    private packageReferences: Record<string, string> = {};
+    private dependencies: Dependency[] = [];
     private docStrings: Record<string, string> = {};
     private componentNames: Set<string>;
     private programFiles: Set<string>;
@@ -154,7 +165,7 @@ Please ensure these components are properly imported to your package's entry poi
         return {
             components: this.components,
             typeDefinitions: this.typeDefinitions,
-            packageReferences: this.packageReferences,
+            dependencies: this.dependencies,
         };
     }
 
@@ -460,10 +471,12 @@ Please ensure these components are properly imported to your package's entry poi
         }
 
         if (isResourceReference(type, this.checker)) {
-            const { packageName, packageVersion, pulumiType } = this.getResourceType(context, type);
-            this.packageReferences[packageName] = packageVersion;
+            const { dependency, pulumiType } = this.getResourceType(context, type);
+            if (!this.dependencies.find((dep) => dep.name === dependency.name && dep.version === dependency.version)) {
+                this.dependencies.push(dependency);
+            }
             return makeProp({
-                $ref: `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`,
+                $ref: `/${dependency.name}/v${dependency.version}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`,
             });
         }
 
@@ -622,9 +635,8 @@ Please ensure these components are properly imported to your package's entry poi
         context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
         type: typescript.Type,
     ): {
-        packageName: string;
-        packageVersion: string;
         pulumiType: string;
+        dependency: Dependency;
     } {
         const symbol = type.getSymbol();
         if (!symbol) {
@@ -716,17 +728,27 @@ Please ensure these components are properly imported to your package's entry poi
             );
         }
 
-        // Read the package version from the package.json file.
         const packageJson = JSON.parse(ts.sys.readFile(packageJsonPath)!);
-        let packageVersion = packageJson.version;
-        if (packageVersion.startsWith("v")) {
-            packageVersion = packageVersion.slice(1);
+        let packageJsonVersion = packageJson.version;
+        if (packageJsonVersion.startsWith("v")) {
+            packageJsonVersion = packageJsonVersion.slice(1);
+        }
+        const dependency: Dependency = {
+            // Older SDKs don't write the version to the `pulumi` section, fall
+            // back to `version` from the package.json.
+            version: packageJson.pulumi.version || packageJsonVersion,
+            name: packageJson.pulumi.name,
+        };
+        if (packageJson.pulumi.server) {
+            dependency.downloadURL = packageJson.pulumi.server;
+        }
+        if (packageJson.pulumi.parameterization) {
+            dependency.parameterization = packageJson.pulumi.parameterization;
         }
 
         return {
-            packageName,
+            dependency,
             pulumiType,
-            packageVersion,
         };
     }
 }

@@ -26,10 +26,8 @@ class HelloWorldArgs:
         pass
 
 
+@pulumi.type_token("subpackage:index:HelloWorld")
 class HelloWorld(pulumi.CustomResource):
-
-    pulumi_type = "subpackage:index:HelloWorld"
-
     @overload
     def __init__(__self__,
                  resource_name: str,
