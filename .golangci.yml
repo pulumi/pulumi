@@ -94,6 +94,12 @@ linters:
         text: strings.Title has been deprecated
       - path: (.+)\.go$
         text: 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'
+      - linters:
+          - staticcheck
+        text: 'error strings should not end with punctuation or newlines'
+      - linters:
+          - staticcheck
+        text: 'error strings should not be capitalized'
     paths:
       - Godeps$
       - builtin$
