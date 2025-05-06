@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 )
 
 // OutputType represents eventual values that carry additional application-specific information.
@@ -28,7 +29,7 @@ type OutputType struct {
 	// ElementType is the element type of the output.
 	ElementType Type
 
-	cache conversionCache
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewOutputType creates a new output type with the given element type after replacing any output or promise types
@@ -106,7 +107,7 @@ func (t *OutputType) ConversionFrom(src Type) ConversionKind {
 
 func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
 	if t.cache == nil {
-		t.cache = make(conversionCache)
+		t.cache = &gsync.Map[Type, cacheEntry]{}
 	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {

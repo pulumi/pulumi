@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 )
 
 type noneType int
@@ -60,7 +61,7 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(NoneType, src, unifying, seen, nil, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(NoneType, src, unifying, seen, &gsync.Map[Type, cacheEntry]{}, func() (ConversionKind, lazyDiagnostics) {
 		return NoConversion, nil
 	})
 }

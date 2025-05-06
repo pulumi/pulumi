@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -85,17 +86,15 @@ type cacheEntry struct {
 	diags lazyDiagnostics
 }
 
-type conversionCache map[Type]cacheEntry
-
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
-	cache conversionCache,
+	cache *gsync.Map[Type, cacheEntry],
 	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
 ) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
 
-	if c, ok := cache[src]; ok {
+	if c, ok := cache.Load(src); ok {
 		return c.kind, c.diags
 	}
 
@@ -103,7 +102,7 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 	case *UnionType:
 		kind, diags := src.conversionTo(dest, unifying, seen)
 		if cache != nil {
-			cache[src] = cacheEntry{kind: kind, diags: diags}
+			cache.Store(src, cacheEntry{kind: kind, diags: diags})
 		}
 		return kind, diags
 	case *ConstType:
@@ -112,20 +111,20 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 		if _, ok := dest.(*EnumType); !ok {
 			kind, diags := conversionFrom(dest, src.Type, unifying, seen, cache, conversionFromImpl)
 			if cache != nil {
-				cache[src] = cacheEntry{kind, diags}
+				cache.Store(src, cacheEntry{kind, diags})
 			}
 			return kind, diags
 		}
 	}
 	if src == DynamicType {
 		if cache != nil {
-			cache[src] = cacheEntry{UnsafeConversion, nil}
+			cache.Store(src, cacheEntry{UnsafeConversion, nil})
 		}
 		return UnsafeConversion, nil
 	}
 	kind, diags := conversionFromImpl()
 	if cache != nil {
-		cache[src] = cacheEntry{kind, diags}
+		cache.Store(src, cacheEntry{kind, diags})
 	}
 	return kind, diags
 }

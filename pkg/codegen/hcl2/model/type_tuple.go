@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 )
 
 // TupleType represents values that are a sequence of independently-typed elements.
@@ -36,7 +37,7 @@ type TupleType struct {
 	elementUnion Type
 	s            atomic.Value // Value<string>
 
-	cache conversionCache
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewTupleType creates a new tuple type with the given element types.
@@ -186,7 +187,7 @@ func (t *TupleType) ConversionFrom(src Type) ConversionKind {
 
 func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
 	if t.cache == nil {
-		t.cache = make(conversionCache)
+		t.cache = &gsync.Map[Type, cacheEntry]{}
 	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {

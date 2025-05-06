@@ -22,11 +22,16 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // OpaqueType represents a type that is named by a string.
-type OpaqueType string
+type OpaqueType struct {
+	Val string
+
+	cache *gsync.Map[Type, cacheEntry]
+}
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*OpaqueType) SyntaxNode() hclsyntax.Node {
@@ -50,7 +55,7 @@ func (t *OpaqueType) Equals(other Type) bool {
 
 func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
 	if o, ok := other.(*OpaqueType); ok {
-		return *o == *t
+		return o.Val == t.Val
 	}
 	return t == other
 }
@@ -66,7 +71,7 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 func (t *OpaqueType) conversionFromImpl(
 	src Type, unifying, checkUnsafe bool, seen map[Type]struct{},
 ) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, nil, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if constType, ok := src.(*ConstType); ok {
 			return t.conversionFrom(constType.Type, unifying, seen)
 		}
@@ -149,16 +154,19 @@ func (t *OpaqueType) String() string {
 	case StringType:
 		return "string"
 	default:
-		if hclsyntax.ValidIdentifier(string(*t)) {
-			return string(*t)
+		if hclsyntax.ValidIdentifier(string(t.Val)) {
+			return string(t.Val)
 		}
 
-		return fmt.Sprintf("type(%s)", string(*t))
+		return fmt.Sprintf("type(%s)", string(t.Val))
 	}
 }
 
 func NewOpaqueType(name string) *OpaqueType {
-	t := OpaqueType(name)
+	t := OpaqueType{
+		Val:   name,
+		cache: &gsync.Map[Type, cacheEntry]{},
+	}
 	return &t
 }
 

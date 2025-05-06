@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -36,7 +37,7 @@ type UnionType struct {
 
 	s atomic.Value // Value<string>
 
-	cache conversionCache
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -235,7 +236,7 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 
 func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
 	if t.cache == nil {
-		t.cache = make(conversionCache)
+		t.cache = &gsync.Map[Type, cacheEntry]{}
 	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
