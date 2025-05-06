@@ -52,8 +52,13 @@ func MainWithContext(
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing(name, name, tracing)
 
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+
 	// Read the non-flags args and connect to the engine.
-	var cancelChannel chan bool
 	args := flag.Args()
 	var host *HostClient
 	if len(args) == 0 {
@@ -68,11 +73,6 @@ func MainWithContext(
 		// If we have a host cancel our cancellation context if it fails the healthcheck
 		ctx, cancel := context.WithCancel(ctx)
 		// map the context Done channel to the rpcutil boolean cancel channel
-		cancelChannel = make(chan bool)
-		go func() {
-			<-ctx.Done()
-			close(cancelChannel)
-		}()
 		err = rpcutil.Healthcheck(ctx, args[0], 5*time.Minute, cancel)
 		if err != nil {
 			return fmt.Errorf("could not start health check host RPC server: %w", err)
