@@ -40,7 +40,11 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 }
 
 // MainWithContext is the same as Main but it accepts a context so it can be cancelled.
-func MainWithContext(ctx context.Context, name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error)) error {
+func MainWithContext(
+	ctx context.Context,
+	name string,
+	provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error),
+) error {
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.Parse()
 
