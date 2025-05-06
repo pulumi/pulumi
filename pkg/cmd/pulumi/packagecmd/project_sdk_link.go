@@ -609,7 +609,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
 		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
 		if len(matches) == 2 {
-			spec.Namespace = matches[1]
+			spec.Namespace = strings.ToLower(matches[1])
 		}
 	}
 }
