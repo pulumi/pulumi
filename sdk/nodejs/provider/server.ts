@@ -300,8 +300,8 @@ class Server implements grpc.UntypedServiceImplementation {
             const req: provproto.UpdateRequest = call.request;
             const resp = new provproto.UpdateResponse();
 
-            const olds = req.getOlds().toJavaScript();
-            const news = req.getNews().toJavaScript();
+            const olds = req.getOlds()!.toJavaScript();
+            const news = req.getNews()!.toJavaScript();
 
             let result: any = {};
             if (this.provider.update) {
@@ -320,7 +320,7 @@ class Server implements grpc.UntypedServiceImplementation {
     public async delete(call: any, callback: any): Promise<void> {
         try {
             const req: provproto.DeleteRequest = call.request;
-            const props: any = req.getProperties().toJavaScript();
+            const props: any = req.getProperties()!.toJavaScript();
             if (this.provider.delete) {
                 await this.provider.delete(req.getId(), req.getUrn(), props);
             }
