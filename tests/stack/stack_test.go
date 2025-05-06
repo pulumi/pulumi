@@ -505,6 +505,28 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
 }
 
+func TestStackEscConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("stack init", func(t *testing.T) {
+		t.Parallel() // This test requires the service, as only the service supports orgs.
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+
+		stackName, err := resource.NewUniqueHex("test-name-", 8, -1)
+		require.NoError(t, err)
+
+		integration.CreateBasicPulumiRepo(e)
+		e.RunCommand("pulumi", "stack", "init", stackName, "--use-esc-env")
+
+		_, configSetErr := e.RunCommandExpectError("pulumi", "config", "set", "foo", "bar")
+		assert.Contains(t, configSetErr, "cannot set config for a stack with cloud config")
+	})
+}
+
 func TestLocalStateLocking(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
 	t.Parallel()
