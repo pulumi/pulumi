@@ -1291,7 +1291,6 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
@@ -1309,6 +1308,11 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 		display.progressEventPayloads[payload.ID] = payload
 	}
 
+	// We have to release the lock before we call renderer.progress, because that may call back into a method that wants
+	// eventMutex.Lock(), causing a deadlock.
+	display.eventMutex.Unlock()
+
+	// Now call renderer.progress outside the lock.
 	display.renderer.progress(payload, first)
 }
 
