@@ -144,8 +144,7 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		currentOperation: apistack.CurrentOperation,
 		tags:             apistack.Tags,
 		b:                b,
-		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
-		usesCloudConfig: apistack.Config != nil,
+		usesCloudConfig:  apistack.Config != nil,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
