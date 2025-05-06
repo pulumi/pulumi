@@ -411,12 +411,19 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	close(renderDone)
 }
 
-func (r *CaptureProgressEvents) Output() []string {
-	v := strings.TrimSpace(r.Buffer.String())
-	if v == "" {
-		return nil
+func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+	go r.ProcessEvents(eventsChan, renderDone)
+	for _, event := range events {
+		eventsChan <- event
 	}
-	return strings.Split(v, "\n")
+	close(eventsChan)
+	<-renderDone
+}
+
+func (r *CaptureProgressEvents) Output() string {
+	return strings.TrimSpace(r.Buffer.String())
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
