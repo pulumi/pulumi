@@ -1,22 +1,16 @@
+version: "2"
 run:
-  timeout: 10m
-  # Enable checking the by default skipped "examples" dirs
   build-tags:
-  - all
+    - all
 linters:
-  enable-all: false
   enable:
-    - durationcheck
     - depguard
-    - errcheck
+    - durationcheck
     - exhaustive
-    - gofumpt
     - goheader
     - goprintffuncname
     - gosec
-    - govet
     - importas
-    - ineffassign
     - lll
     - misspell
     - nakedret
@@ -26,105 +20,96 @@ linters:
     - prealloc
     - revive
     - unconvert
-    - unused
     - usetesting
     - wastedassign
     - whitespace
+  settings:
+    depguard:
+      rules:
+        protobuf:
+          deny:
+            - pkg: github.com/golang/protobuf
+              desc: Use google.golang.org/protobuf instead
+    goheader:
+      values:
+        regexp:
+          COPYRIGHT_YEARS: (\d{4}-)?\d{4}
+          WHITESPACE: \s*
+      template: |-
+        Copyright {{ COPYRIGHT_YEARS }}, Pulumi Corporation.
 
-linters-settings:
-  nakedret:
-    # Make an issue if func has more lines of code than this setting, and it has naked returns.
-    # Default: 30
-    max-func-lines: 60
-  nolintlint:
-    # Some linter exclusions are added to generated or templated files
-    # pre-emptively.
-    # Don't complain about these.
-    allow-unused: true
-  govet:
-    enable:
-      - nilness
-      # Reject comparisons of reflect.Value with DeepEqual or '=='.
-      - reflectvaluecompare
-      # Reject sort.Slice calls with a non-slice argument.
-      - sortslice
-      # Detect write to struct/arrays by-value that aren't read again.
-      - unusedwrite
-  depguard:
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+        {{ WHITESPACE }}http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+    govet:
+      enable:
+        - nilness
+        - reflectvaluecompare
+        - sortslice
+        - unusedwrite
+    importas:
+      alias:
+        - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+          alias: pulumirpc
+        - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go/testing
+          alias: testingrpc
+        - pkg: github.com/deckarep/golang-set/v2
+          alias: mapset
+        - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/testing
+          alias: ptesting
+    nakedret:
+      max-func-lines: 60
+    nolintlint:
+      allow-unused: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      protobuf:
-        deny:
-          - pkg: "github.com/golang/protobuf"
-            desc: Use google.golang.org/protobuf instead
-  importas:
-    alias:
-    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
-      alias: pulumirpc
-    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go/testing
-      alias: testingrpc
-    - pkg: github.com/deckarep/golang-set/v2
-      alias: mapset
-    - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/testing
-      alias: ptesting
-  goheader:
-    values:
-      regexp:
-        COPYRIGHT_YEARS: (\d{4}-)?\d{4}
-        WHITESPACE: \s*
-    template: |-
-      Copyright {{ COPYRIGHT_YEARS }}, Pulumi Corporation.
-
-      Licensed under the Apache License, Version 2.0 (the "License");
-      you may not use this file except in compliance with the License.
-      You may obtain a copy of the License at
-
-      {{ WHITESPACE }}http://www.apache.org/licenses/LICENSE-2.0
-
-      Unless required by applicable law or agreed to in writing, software
-      distributed under the License is distributed on an "AS IS" BASIS,
-      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-      See the License for the specific language governing permissions and
-      limitations under the License.
-
-issues:
-  exclude-rules:
-    # Don't warn on unused parameters.
-    # Parameter names are useful; replacing them with '_' is undesirable.
-    - linters: [revive]
-      text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
-
-    # staticcheck already has smarter checks for empty blocks.
-    # revive's empty-block linter has false positives.
-    # For example, as of writing this, the following is not allowed.
-    #   for foo() { }
-    - linters: [revive]
-      text: 'empty-block: this block is empty, you can remove it'
-
-    # We *frequently* use the term 'new' in the context of properties
-    # (new and old properties),
-    # and we rarely use the 'new' built-in function.
-    # It's fine to ignore these cases.
-    - linters: [revive]
-      text: 'redefines-builtin-id: redefinition of the built-in function new'
-
-  exclude:
-    # https://github.com/pulumi/pulumi/issues/9469
-    - 'Name is deprecated: Name returns the variable or declaration name of the resource'
-
-    # https://github.com/pulumi/pulumi/issues/11869
-    - '"github.com/golang/protobuf/[\w/]+" is deprecated'
-
-    # https://github.com/pulumi/pulumi/issues/11870
-    - 'strings.Title has been deprecated'
-
-    # https://github.com/pulumi/pulumi/issues/12328
-    - 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'
-
-  exclude-dirs:
-    - Godeps$
-    - builtin$
-    - node_modules
-    - testdata$
-    - third_party$
-    - vendor$
-  exclude-dirs-use-default: false
+      - linters:
+          - revive
+        text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
+      - linters:
+          - revive
+        text: 'empty-block: this block is empty, you can remove it'
+      - linters:
+          - revive
+        text: 'redefines-builtin-id: redefinition of the built-in function new'
+      - path: (.+)\.go$
+        text: 'Name is deprecated: Name returns the variable or declaration name of the resource'
+      - path: (.+)\.go$
+        text: '"github.com/golang/protobuf/[\w/]+" is deprecated'
+      - path: (.+)\.go$
+        text: strings.Title has been deprecated
+      - path: (.+)\.go$
+        text: 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'
+    paths:
+      - Godeps$
+      - builtin$
+      - node_modules
+      - testdata$
+      - third_party$
+      - vendor$
+formatters:
+  enable:
+    - gofumpt
+  exclusions:
+    generated: lax
+    paths:
+      - Godeps$
+      - builtin$
+      - node_modules
+      - testdata$
+      - third_party$
+      - vendor$
