@@ -110,7 +110,7 @@ func Name(tc toolchain) string {
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	switch options.Toolchain {
+	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
 	case Poetry:
 		dir := options.ProgramDir
 		if dir == "" {
