@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk
+  description: Support Node.js 24
