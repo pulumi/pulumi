@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	aho_corasick "github.com/petar-dambovaliev/aho-corasick"
+	aho_corasick "github.com/pgavlin/aho-corasick"
 
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
@@ -64,10 +64,7 @@ func (w *redactor) Write(b []byte) (int, error) {
 		_, err := w.line.Write(b[:newline+1])
 		contract.IgnoreError(err)
 
-		redacted := w.replacer.ReplaceAllFunc(w.line.String(), func(m aho_corasick.Match) (string, bool) {
-			return "[secret]", true
-		})
-
+		redacted := w.replacer.ReplaceAllWith(w.line.String(), "[secret]")
 		if _, err = w.w.Write([]byte(redacted)); err != nil {
 			w.line.Truncate(n)
 			return written, err
