@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,7 +25,8 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/pgavlin/fx"
+	"github.com/pgavlin/fx/v2"
+	"github.com/pgavlin/fx/v2/maps"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/eval"
@@ -38,8 +40,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
@@ -266,6 +266,7 @@ type testEnvironmentRetract struct {
 type testEnvironmentRevision struct {
 	number    int
 	yaml      []byte
+	etag      string
 	tags      map[string]bool
 	retracted *testEnvironmentRetract
 }
@@ -491,11 +492,8 @@ func (c *testPulumiClient) ListOrganizationEnvironments(
 	orgName string,
 	continuationToken string,
 ) ([]client.OrgEnvironment, string, error) {
-	names := maps.Keys(c.environments)
-	sort.Strings(names)
-
 	var envs []client.OrgEnvironment
-	for _, k := range names {
+	for k := range maps.Sorted(c.environments) {
 		parts := strings.Split(k, "/")
 		org, projectName, envName := parts[0], parts[1], parts[2]
 
@@ -595,12 +593,7 @@ func (c *testPulumiClient) GetEnvironment(
 		yaml = plaintext
 	}
 
-	eTag := ""
-	if len(env.tags) > 0 {
-		eTag = maps.Keys(env.tags)[0]
-	}
-
-	return yaml, eTag, env.number, nil
+	return yaml, env.etag, env.number, nil
 }
 
 func (c *testPulumiClient) UpdateEnvironment(
@@ -631,16 +624,15 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 	projectName string,
 	envName string,
 	yaml []byte,
-	tag string,
+	etag string,
 ) ([]client.EnvironmentDiagnostic, int, error) {
 	env, latest, err := c.getEnvironment(orgName, projectName, envName, "")
 	if err != nil {
 		return nil, 0, err
 	}
 
-	latestRevHasTag := latest.tags[tag]
-	if tag != "" && !latestRevHasTag {
-		return nil, 0, errors.New("tag mismatch")
+	if etag != "" && etag != latest.etag {
+		return nil, 0, errors.New("etag mismatch")
 	}
 
 	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml, nil)
@@ -657,8 +649,13 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 		env.revisions = append(env.revisions, &testEnvironmentRevision{
 			number: revisionNumber,
 			yaml:   yaml,
-			tags:   map[string]bool{base64.StdEncoding.EncodeToString(h.Sum(nil)): true},
+			etag:   base64.StdEncoding.EncodeToString(h.Sum(nil)),
+			tags:   map[string]bool{"latest": true},
 		})
+
+		if n, ok := env.revisionTags["latest"]; ok && n > 0 {
+			delete(env.revisions[n-1].tags, "latest")
+		}
 		env.revisionTags["latest"] = revisionNumber
 	}
 
@@ -1071,10 +1068,8 @@ func (c *testPulumiClient) ListEnvironmentRevisionTags(
 		return nil, err
 	}
 
-	names := maps.Keys(env.revisionTags)
-	slices.Sort(names)
-	return fx.ToSlice(fx.FMap(fx.IterSlice(names), func(name string) (client.EnvironmentRevisionTag, bool) {
-		return client.EnvironmentRevisionTag{Name: name, Revision: env.revisionTags[name]}, name > options.After
+	return slices.Collect(fx.FMap(maps.SortedPairs(env.revisionTags), func(kvp fx.Pair[string, int]) (client.EnvironmentRevisionTag, bool) {
+		return client.EnvironmentRevisionTag{Name: kvp.Fst, Revision: kvp.Snd}, kvp.Fst > options.After
 	})), nil
 }
 
@@ -1336,20 +1331,25 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 				}
 			}
 
+			h := fnv.New32()
+			h.Write(bytes)
+
 			revisionNumber := len(envRevisions) + 1
-			envRevisions = append(envRevisions, &testEnvironmentRevision{
+			r := &testEnvironmentRevision{
 				number:    revisionNumber,
 				yaml:      bytes,
 				retracted: retract,
+				etag:      base64.StdEncoding.EncodeToString(h.Sum(nil)),
 				tags:      map[string]bool{},
-			})
+			}
+			envRevisions = append(envRevisions, r)
 
 			for _, rt := range rev.Tags {
 				if _, ok := revisionTags[rt]; ok || rt == "latest" {
 					return nil, nil, fmt.Errorf("duplicate tag %q", rt)
 				}
 				revisionTags[rt] = revisionNumber
-				envRevisions[revisionNumber-1].tags[rt] = true
+				r.tags[rt] = true
 			}
 		}
 		revisionTags["latest"] = len(envRevisions)

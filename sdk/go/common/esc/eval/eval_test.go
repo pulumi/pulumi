@@ -28,7 +28,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pgavlin/fx"
+	"github.com/pgavlin/fx/v2"
+	fxm "github.com/pgavlin/fx/v2/maps"
+	fxs "github.com/pgavlin/fx/v2/slices"
+	"github.com/pgavlin/fx/v2/try"
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/schema"
 	"github.com/pulumi/esc/syntax"
@@ -267,10 +270,10 @@ func newBenchEnvironments(root string, delay time.Duration) (*benchEnvironments,
 		return nil, err
 	}
 
-	defs, err := fx.TryMap(fx.Map(
-		fx.FMap(fx.IterSlice(entries), func(e os.DirEntry) (fx.Pair[string, string], bool) {
+	defs, err := fxm.TryCollect(try.UnpackAll(fx.Map(
+		fxs.FMap(entries, func(e os.DirEntry) (fx.Pair[string, string], bool) {
 			name, ok := strings.CutSuffix(e.Name(), ".yaml")
-			return fx.NewPair(name, filepath.Join(root, e.Name())), ok
+			return fx.Pack(name, filepath.Join(root, e.Name())), ok
 		}),
 		func(namepath fx.Pair[string, string]) fx.Result[fx.Pair[string, []byte]] {
 			name, path := namepath.Unpack()
@@ -278,9 +281,10 @@ func newBenchEnvironments(root string, delay time.Duration) (*benchEnvironments,
 			if err != nil {
 				return fx.Err[fx.Pair[string, []byte]](err)
 			}
-			return fx.OK(fx.NewPair(name, bytes))
-		}),
-	)
+			return fx.OK(fx.Pack(name, bytes))
+
+		},
+	)))
 	if err != nil {
 		return nil, err
 	}
