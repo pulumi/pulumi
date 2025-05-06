@@ -86,7 +86,8 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider)
+					// TODO: Prompt for using cloud stack config if on service backend
+					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider, false)
 					if err != nil {
 						return err
 					}
