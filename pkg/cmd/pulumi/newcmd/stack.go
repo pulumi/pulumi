@@ -59,7 +59,7 @@ func GetStack(ctx context.Context, b backend.Backend,
 // PromptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func PromptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, prompt promptForValueFunc,
 	stack string, root string, setCurrent bool, yes bool, opts display.Options,
-	secretsProvider string,
+	secretsProvider string, useEscEnv bool,
 ) (backend.Stack, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
 	contract.Requiref(root != "", "root", "must not be empty")
@@ -69,7 +69,7 @@ func PromptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		s, err := cmdStack.InitStack(ctx, ws, b, stackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, ws, b, stackName, root, setCurrent, secretsProvider, useEscEnv)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func PromptAndCreateStack(ctx context.Context, ws pkgWorkspace.Context, b backen
 		if err != nil {
 			return nil, err
 		}
-		s, err := cmdStack.InitStack(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider)
+		s, err := cmdStack.InitStack(ctx, ws, b, formattedStackName, root, setCurrent, secretsProvider, useEscEnv)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.

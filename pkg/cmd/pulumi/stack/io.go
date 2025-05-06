@@ -127,7 +127,7 @@ func RequireStack(ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.Lo
 			return nil, err
 		}
 
-		return CreateStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "")
+		return CreateStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
@@ -269,7 +269,7 @@ func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
 			return nil, parseErr
 		}
 
-		return CreateStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "")
+		return CreateStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -299,20 +299,20 @@ func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
 // InitStack creates the stack.
 func InitStack(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
-	root string, setCurrent bool, secretsProvider string,
+	root string, setCurrent bool, secretsProvider string, useEscEnv bool,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider)
+	return CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useEscEnv)
 }
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
-	root string, opts *backend.CreateStackOptions, setCurrent bool,
-	secretsProvider string,
+	root string, teams []string, setCurrent bool,
+	secretsProvider string, useEscEnv bool,
 ) (backend.Stack, error) {
 	ps, needsSave, sm, err := createSecretsManagerForNewStack(ws, b, stackRef, secretsProvider)
 	if err != nil {
@@ -348,7 +348,21 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 		}
 	}
 
-	stack, err := b.CreateStack(ctx, stackRef, root, initialState, opts)
+	opts := backend.CreateStackOptions{
+		Teams: teams,
+	}
+
+	if useEscEnv {
+		proj, found := stackRef.Project()
+		if !found {
+			return nil, errors.New("could not get project from stack reference")
+		}
+		opts.Config = &apitype.StackConfig{
+			Environment: proj.String() + "/" + stackRef.Name().String(),
+		}
+	}
+
+	stack, err := b.CreateStack(ctx, stackRef, root, initialState, &opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backenderr.StackAlreadyExistsError); ok {
@@ -361,7 +375,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	}
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
-	if needsSave {
+	if needsSave && !useEscEnv {
 		err = stack.Save(ctx, ps)
 		if err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)

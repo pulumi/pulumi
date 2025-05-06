@@ -374,8 +374,9 @@ func NewUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
+			// TODO: Prompt for using cloud stack config if on service backend
 			if s, err = newcmd.PromptAndCreateStack(ctx, ws, b, ui.PromptForValue, stackName, root, false /*setCurrent*/, yes,
-				opts.Display, secretsProvider); err != nil {
+				opts.Display, secretsProvider, false); err != nil {
 				return err
 			}
 			// The backend will print "Created stack '<stack>'." on success.
