@@ -204,7 +204,8 @@ func (p *SimpleInvokeProvider) CheckConfig(
 func (p *SimpleInvokeProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	if req.Tok == "simple-invoke:index:myInvoke" {
+	switch req.Tok {
+	case "simple-invoke:index:myInvoke":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
@@ -232,7 +233,7 @@ func (p *SimpleInvokeProvider) Invoke(
 				"result": resource.NewStringProperty(value.StringValue() + " world"),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:myInvokeScalar" {
+	case "simple-invoke:index:myInvokeScalar":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
@@ -262,7 +263,7 @@ func (p *SimpleInvokeProvider) Invoke(
 				"result": resource.NewBoolProperty(true),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:unit" {
+	case "simple-invoke:index:unit":
 		if len(req.Args) > 0 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
@@ -274,7 +275,7 @@ func (p *SimpleInvokeProvider) Invoke(
 				"result": resource.NewStringProperty("Hello world"),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:secretInvoke" {
+	case "simple-invoke:index:secretInvoke":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{

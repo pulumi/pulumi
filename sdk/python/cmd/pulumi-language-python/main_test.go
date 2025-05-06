@@ -130,18 +130,19 @@ func TestDeterminePluginVersion(t *testing.T) {
 
 func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 	t.Helper()
-	if name == "pip" {
+	switch name {
+	case "pip":
 		return toolchain.PythonOptions{
 			Toolchain:  toolchain.Pip,
 			Virtualenv: ".venv",
 			Root:       cwd,
 		}
-	} else if name == "poetry" {
+	case "poetry":
 		return toolchain.PythonOptions{
 			Toolchain: toolchain.Poetry,
 			Root:      cwd,
 		}
-	} else if name == "uv" {
+	case "uv":
 		return toolchain.PythonOptions{
 			Toolchain: toolchain.Uv,
 			Root:      cwd,
@@ -164,17 +165,18 @@ in-project = true
 	defer file.Close()
 	_, err = file.WriteString(poetryToml)
 	require.NoError(t, err)
-	if toolchainName == "poetry" {
+	switch toolchainName {
+	case "poetry":
 		cmd := exec.Command("poetry", "init", "--no-interaction")
 		cmd.Dir = cwd
 		out, err := cmd.CombinedOutput()
 		require.NoError(t, err, string(out))
-	} else if toolchainName == "uv" {
+	case "uv":
 		cmd := exec.Command("uv", "init")
 		cmd.Dir = cwd
 		out, err := cmd.CombinedOutput()
 		require.NoError(t, err, string(out))
-	} else if toolchainName == "pip" {
+	case "pip":
 		cmd := exec.Command("python3", "-m", "venv", ".venv")
 		cmd.Dir = cwd
 		out, err := cmd.CombinedOutput()
@@ -182,17 +184,18 @@ in-project = true
 	}
 
 	for _, req := range requirements {
-		if toolchainName == "poetry" {
+		switch toolchainName {
+		case "poetry":
 			cmd := exec.Command("poetry", "add", req)
 			cmd.Dir = cwd
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
-		} else if toolchainName == "uv" {
+		case "uv":
 			cmd := exec.Command("uv", "add", req)
 			cmd.Dir = cwd
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
-		} else if toolchainName == "pip" {
+		case "pip":
 			tc, err := toolchain.ResolveToolchain(opts)
 			require.NoError(t, err)
 			cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", req)
