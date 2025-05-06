@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLogoutCmd() *cobra.Command {
+func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var cloudURL string
 	var localMode bool
 	var all bool
@@ -65,12 +65,11 @@ func NewLogoutCmd() *cobra.Command {
 
 			var err error
 			if all {
-				err = workspace.DeleteAllAccounts()
+				err = workspace.DeleteAllAccountsWithKeyStore(ws.GetKeyStore())
 				fmt.Println("Logged out of everything")
 			} else {
 				if cloudURL == "" {
 					// Try to read the current project
-					ws := pkgWorkspace.Instance
 					project, _, err := ws.ReadProject()
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err
@@ -86,7 +85,7 @@ func NewLogoutCmd() *cobra.Command {
 					cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 				}
 
-				err = workspace.DeleteAccount(cloudURL)
+				err = workspace.DeleteAccountWithKeyStore(ws.GetKeyStore(), cloudURL)
 				fmt.Printf("Logged out of %s\n", cloudURL)
 			}
 
