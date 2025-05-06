@@ -36,6 +36,11 @@ var tracing string
 // Main is the typical entrypoint for a resource provider plugin.  Using it isn't required but can cut down
 // significantly on the amount of boilerplate necessary to fire up a new resource provider.
 func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error)) error {
+	return MainWithContext(context.Background(), name, provMaker)
+}
+
+// MainWithContext is the same as Main but it accepts a context so it can be cancelled.
+func MainWithContext(ctx context.Context, name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error)) error {
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.Parse()
 
@@ -57,7 +62,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 		}
 
 		// If we have a host cancel our cancellation context if it fails the healthcheck
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(ctx)
 		// map the context Done channel to the rpcutil boolean cancel channel
 		cancelChannel = make(chan bool)
 		go func() {
