@@ -396,6 +396,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 }
                 const opts: resource.ComponentResourceOptions = {
                     aliases: req.getAliasesList(),
+                    additionalSecretOutputs: req.getAdditionalsecretoutputsList(),
                     dependsOn: dependsOn,
                     protect: req.getProtect(),
                     providers: providers,
