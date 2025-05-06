@@ -1217,7 +1217,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	if event.Type == engine.ResourcePreEvent {
+	switch event.Type { //nolint:exhaustive // golangci-lint v2 upgrade
+	case engine.ResourcePreEvent:
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 
 		// Register the resource update start time to calculate duration
@@ -1231,7 +1232,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.stopwatchMutex.Unlock()
 
 		row.SetStep(step)
-	} else if event.Type == engine.ResourceOutputsEvent {
+	case engine.ResourceOutputsEvent:
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
 
@@ -1261,19 +1262,19 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
-	} else if event.Type == engine.ResourceOperationFailed {
+	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
-	} else if event.Type == engine.DiagEvent {
+	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
-	} else if event.Type == engine.PolicyViolationEvent {
+	case engine.PolicyViolationEvent:
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
-	} else if event.Type == engine.PolicyRemediationEvent {
+	case engine.PolicyRemediationEvent:
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
-	} else {
+	default:
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 

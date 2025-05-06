@@ -115,7 +115,7 @@ func (e *Environment) SetEnvVars(env ...string) {
 func (e *Environment) ImportDirectory(path string) {
 	err := fsutil.CopyFile(e.CWD, path, nil)
 	if err != nil {
-		e.T.Fatalf("error importing directory: %v", err)
+		e.Fatalf("error importing directory: %v", err)
 	}
 }
 
@@ -135,7 +135,7 @@ func (e *Environment) DeleteEnvironment() {
 // DeleteIfNotFailed deletes the environment's HomePath and RootPath if the test hasn't failed. Otherwise
 // keeps the files around for aiding debugging.
 func (e *Environment) DeleteIfNotFailed() {
-	if !e.T.Failed() {
+	if !e.Failed() {
 		e.DeleteEnvironment()
 	}
 }
@@ -212,8 +212,8 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 // GetCommandResultsIn runs the given command and args in the given directory, returning
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
-	e.T.Helper()
-	e.T.Logf("Running command %v %v", command, strings.Join(args, " "))
+	e.Helper()
+	e.Logf("Running command %v %v", command, strings.Join(args, " "))
 
 	cmd := e.SetupCommandIn(dir, command, args...)
 
@@ -230,7 +230,7 @@ func (e *Environment) GetCommandResultsIn(dir string, command string, args ...st
 // SetupCommandIn creates a new exec.Cmd that's ready to run in the given
 // directory, with the given command and args.
 func (e *Environment) SetupCommandIn(dir string, command string, args ...string) *exec.Cmd {
-	e.T.Helper()
+	e.Helper()
 
 	passphrase := "correct horse battery staple"
 	if e.Passphrase != "" {
@@ -272,10 +272,10 @@ func (e *Environment) WriteTestFile(filename string, contents string) {
 
 	dir := filepath.Dir(filename)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		e.T.Fatalf("error making directories for test file (%v): %v", filename, err)
+		e.Fatalf("error making directories for test file (%v): %v", filename, err)
 	}
 
 	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
-		e.T.Fatalf("writing test file (%v): %v", filename, err)
+		e.Fatalf("writing test file (%v): %v", filename, err)
 	}
 }

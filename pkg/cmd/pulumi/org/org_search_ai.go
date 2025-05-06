@@ -101,7 +101,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	err = cmd.Render(&cmd.searchCmd, res)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
 	}

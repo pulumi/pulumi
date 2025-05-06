@@ -1174,7 +1174,8 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			contract.IgnoreError(err)
 		}
 
-		if name == "IgnoreChanges" {
+		switch name {
+		case "IgnoreChanges":
 			// ignore changes need to be special cased
 			// because new [] { "field" } cannot be implicitly casted to List<string>
 			// which is the type of IgnoreChanges
@@ -1190,7 +1191,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		} else if name == "Parent" {
+		case "Parent":
 			// special case parent = this, do not escape "this"
 			if parent, isThis := value.(*model.ScopeTraversalExpression); isThis {
 				if parent.RootName == "this" && len(parent.Parts) == 1 && g.isComponent {
@@ -1201,7 +1202,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		} else if name == "DependsOn" {
+		case "DependsOn":
 			// depends on need to be special cased
 			// because new [] { resourceA, resourceB } cannot be implicitly casted to InputList<Resource>
 			// use syntax DependsOn = { resourceA, resourceB } instead
@@ -1217,7 +1218,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		} else {
+		default:
 			g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 		}
 	}

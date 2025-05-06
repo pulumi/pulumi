@@ -7,6 +7,7 @@
 // TODO:
 //  * repeat all the tests with Poll:true
 
+//nolint:staticcheck
 package tail
 
 import (

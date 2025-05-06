@@ -103,8 +103,8 @@ func TestRefreshTargetChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[4].URN, d)
 
 	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
-	opts.UpdateOptions.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{b})
-	opts.UpdateOptions.TargetDependents = true
+	opts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{b})
+	opts.TargetDependents = true
 
 	snap, err = lt.TestOp(Refresh).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
@@ -203,7 +203,7 @@ func TestExcludeTarget(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::resC",
 	})
 
@@ -249,8 +249,8 @@ func TestExcludeChildren(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
 
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
-	opts.UpdateOptions.ExcludeDependents = true
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.ExcludeDependents = true
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
 
@@ -303,7 +303,7 @@ func TestDestroyExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
@@ -316,7 +316,7 @@ func TestDestroyExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
 	})
 
@@ -367,8 +367,8 @@ func TestDestroyExcludeChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[3].URN.Name(), "resC")
 
-	opts.UpdateOptions.ExcludeDependents = true
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.ExcludeDependents = true
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 	})
 
@@ -417,7 +417,7 @@ func TestExcludeProviderImplicitly(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::resA",
 	})
 
@@ -490,7 +490,7 @@ func TestRefreshExcludeTarget(t *testing.T) {
 	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
 	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
 
@@ -569,8 +569,8 @@ func TestRefreshExcludeChildren(t *testing.T) {
 	assert.Equal(t, snap.Resources[4].URN.Name(), "resD")
 
 	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
-	opts.UpdateOptions.ExcludeDependents = true
-	opts.UpdateOptions.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
+	opts.ExcludeDependents = true
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB",
 	})
 
@@ -3333,6 +3333,7 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * A is removed from the program
 		// * An update targeting TARGET is performed
+		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
 			// Arrange.
 			p := &lt.TestPlan{}
@@ -3382,6 +3383,7 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
+		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
 			// Arrange.
 			p := &lt.TestPlan{}
@@ -3430,6 +3432,7 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		// * A is removed from the program
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
+		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
 			// Arrange.
 			p := &lt.TestPlan{}

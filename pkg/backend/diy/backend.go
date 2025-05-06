@@ -1128,7 +1128,7 @@ func (b *diyBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
 		// Print a banner so it's clear this is a diy deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)

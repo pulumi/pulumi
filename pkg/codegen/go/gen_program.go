@@ -855,7 +855,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if call.Name == pcl.Invoke {
+				switch call.Name {
+				case pcl.Invoke:
 					tokenArg := call.Args[0]
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
@@ -874,7 +875,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 						panic(err)
 					}
 					g.addPulumiImport(pkg, vPath, mod, name)
-				} else if call.Name == pcl.IntrinsicConvert {
+				case pcl.IntrinsicConvert:
 					g.collectConvertImports(program, call)
 				}
 

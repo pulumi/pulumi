@@ -106,7 +106,7 @@ func TestHostEngine(t *testing.T) {
 				for _, tt := range tests {
 					tt := tt
 					tt.req.Ephemeral = ephemeral
-					t.Run(tt.name, func(t *testing.T) {
+					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 						output, err := hostEngine.Log(context.Background(), tt.req)
 						assert.Equal(t, tt.expectedError, err)
 						assert.Equal(t, tt.expectedOutput, output)

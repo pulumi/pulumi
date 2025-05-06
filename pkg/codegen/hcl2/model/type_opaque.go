@@ -70,8 +70,8 @@ func (t *OpaqueType) conversionFromImpl(
 		if constType, ok := src.(*ConstType); ok {
 			return t.conversionFrom(constType.Type, unifying, seen)
 		}
-		switch {
-		case t == NumberType:
+		switch t {
+		case NumberType:
 			// src == NumberType is handled by t == src above
 			contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
 
@@ -89,21 +89,21 @@ func (t *OpaqueType) conversionFromImpl(
 				}
 			}
 			return NoConversion, nil
-		case t == IntType:
+		case IntType:
 			if checkUnsafe {
 				if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
 					return UnsafeConversion, nil
 				}
 			}
 			return NoConversion, nil
-		case t == BoolType:
+		case BoolType:
 			if checkUnsafe {
 				if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
 					return UnsafeConversion, nil
 				}
 			}
 			return NoConversion, nil
-		case t == StringType:
+		case StringType:
 			ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
 			ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
 			if ckb == SafeConversion || ckn == SafeConversion {

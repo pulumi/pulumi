@@ -252,7 +252,7 @@ func TestReferenceRenderer(t *testing.T) {
 							return ast.WalkContinue, nil
 						}
 
-						replaced := bytes.Replace(l.Destination, []byte{'/'}, []byte{'_'}, -1)
+						replaced := bytes.ReplaceAll(l.Destination, []byte{'/'}, []byte{'_'})
 						if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
 							return ast.WalkStop, err
 						}

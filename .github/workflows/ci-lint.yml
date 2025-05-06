@@ -17,7 +17,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.64.2
+  GOLANGCI_LINT_VERSION: v2.1.6
 
 jobs:
   golangci:
@@ -41,16 +41,13 @@ jobs:
       # The action doesn't have an install-only mode,
       # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --help
 
       - name: Run golangci-lint
-        # Print GitHub Actions-friendly output so that errors get marked
-        # in the pull request.
-        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=colored-line-number
-
+        run: make lint_golang
   tidy:
     name: go mod tidy
     runs-on: ubuntu-22.04

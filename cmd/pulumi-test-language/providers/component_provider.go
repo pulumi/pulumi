@@ -598,9 +598,10 @@ func (p *ComponentProvider) Call(
 	defer conn.Close()
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
-	if req.Tok == "component:index:ComponentCallable/identity" {
+	switch req.Tok {
+	case "component:index:ComponentCallable/identity":
 		return p.callComponentCallableIdentity(ctx, req, monitor)
-	} else if req.Tok == "component:index:ComponentCallable/prefixed" {
+	case "component:index:ComponentCallable/prefixed":
 		return p.callComponentCallablePrefixed(ctx, req, monitor)
 	}
 
