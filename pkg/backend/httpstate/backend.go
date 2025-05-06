@@ -1487,7 +1487,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())

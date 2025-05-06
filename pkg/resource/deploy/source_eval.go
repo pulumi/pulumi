@@ -2457,9 +2457,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
 	reason := pulumirpc.Result_SUCCESS
-	if result.Result == ResultStateSkipped {
+	switch result.Result {
+	case ResultStateSkipped:
 		reason = pulumirpc.Result_SKIP
-	} else if result.Result == ResultStateFailed {
+	case ResultStateFailed:
 		reason = pulumirpc.Result_FAIL
 	}
 	return &pulumirpc.RegisterResourceResponse{

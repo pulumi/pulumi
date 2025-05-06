@@ -385,7 +385,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	// TODO(dixler): `--replace a` currently is treated as a targeted update, but this is not correct.
 	//               Removing `|| sg.replaceTargetsOpt.IsConstrained()` would result in a behavior change
 	//               that would require some thinking to fully understand the repercussions.
-	if !(sg.deployment.opts.Targets.IsConstrained() || sg.deployment.opts.ReplaceTargets.IsConstrained()) {
+	if !sg.deployment.opts.Targets.IsConstrained() && !sg.deployment.opts.ReplaceTargets.IsConstrained() {
 		return steps, nil
 	}
 

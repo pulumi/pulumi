@@ -94,7 +94,7 @@ func ShowEvents(
 
 	// Need to filter the engine events here to exclude any internal events.
 	stampedEvents = channel.FilterRead(stampedEvents, func(e engine.StampedEvent) bool {
-		return !e.Event.Internal()
+		return !e.Internal()
 	})
 
 	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))

@@ -211,8 +211,8 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	// 0.1.0. We thus guard against this case, though in theory this is unnecessary -- schema versions are required for
 	// parameterized providers, so we should expect not to hit this case and overwrite a (parameterized) package version
 	// with an almost certainly different plugin version.
-	if pluginVersion != nil && descriptor.Parameterization == nil && spec.PackageInfoSpec.Version == "" {
-		spec.PackageInfoSpec.Version = pluginVersion.String()
+	if pluginVersion != nil && descriptor.Parameterization == nil && spec.Version == "" {
+		spec.Version = pluginVersion.String()
 	}
 
 	p, err := ImportPartialSpec(spec, nil, l)

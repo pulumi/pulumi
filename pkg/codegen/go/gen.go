@@ -661,7 +661,7 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 						return "*" + elem
 					}
 				case *schema.EnumType:
-					if !(details.ptrInput || details.input) {
+					if !details.ptrInput && !details.input {
 						return "*" + elem
 					}
 				}
@@ -883,7 +883,7 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 					return "*" + elem
 				}
 			case *schema.EnumType:
-				if !(details.ptrOutput || details.output) {
+				if !details.ptrOutput && !details.output {
 					return "*" + elem
 				}
 			}
@@ -1025,7 +1025,7 @@ func (pkg *pkgContext) genericOutputTypeImpl(t schema.Type) string {
 					return "*" + elementType
 				}
 			case *schema.EnumType:
-				if !(details.ptrOutput || details.output) {
+				if !details.ptrOutput && !details.output {
 					return "*" + elementType
 				}
 			}

@@ -58,7 +58,7 @@ func newCloudRequiredPolicy(client *client.Client,
 }
 
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
-func (rp *cloudRequiredPolicy) Version() string { return rp.RequiredPolicy.VersionTag }
+func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
 func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
 func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {

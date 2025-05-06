@@ -236,7 +236,7 @@ func newDeployment(
 		UseLegacyRefreshDiff:      opts.UseLegacyRefreshDiff,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
-		GeneratePlan:              opts.UpdateOptions.GeneratePlan,
+		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
 		Autonamer:                 opts.Autonamer,
 	}

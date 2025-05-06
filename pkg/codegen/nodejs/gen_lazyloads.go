@@ -40,13 +40,14 @@ func newLazyLoadGen() *lazyLoadGen {
 // resources and functions this is optimized to use lazy loading.
 // Falls back to eager re-export for everything else.
 func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string) {
-	if exp.fileType == functionFileType {
+	switch exp.fileType {
+	case functionFileType:
 		// optimize lazy-loading function modules
 		ll.genFunctionReexport(w, exp.functionFileInfo, importPath)
-	} else if exp.fileType == resourceFileType {
+	case resourceFileType:
 		// optimize lazy-loading resource modules
 		ll.genResourceReexport(w, exp.resourceFileInfo, importPath)
-	} else {
+	default:
 		// non-optimized but foolproof eager reexport
 		fmt.Fprintf(w, "export * from %q;\n", importPath)
 	}

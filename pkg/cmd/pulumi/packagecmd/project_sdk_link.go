@@ -802,7 +802,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 					// we previously installed a plugin in a different subdirectory of the same repository.
 					// This is why the provider might have failed to start up.  Install the dependencies
 					// and try again.
-					depErr := descriptor.PluginSpec.InstallDependencies(pctx.Base())
+					depErr := descriptor.InstallDependencies(pctx.Base())
 					if depErr != nil {
 						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
 					}

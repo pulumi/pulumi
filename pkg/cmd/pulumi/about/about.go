@@ -39,7 +39,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -401,8 +400,8 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 	} else if snapshot == nil {
 		return currentStackAbout{}, errors.New("No current snapshot")
 	}
-	var resources []*resource.State = snapshot.Resources
-	var pendingOps []resource.Operation = snapshot.PendingOperations
+	resources := snapshot.Resources
+	pendingOps := snapshot.PendingOperations
 
 	aboutResources := make([]aboutState, len(resources))
 	for i, r := range resources {

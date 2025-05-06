@@ -54,7 +54,7 @@ func GenerateReproTest(
 func writeHeader(b *strings.Builder) {
 	year := time.Now().Year()
 
-	b.WriteString(fmt.Sprintf(`// Copyright %d, Pulumi Corporation.
+	fmt.Fprintf(b, `// Copyright %d, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ func writeHeader(b *strings.Builder) {
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-`, year))
+`, year)
 }
 
 // writePackageImports writes a superset of the imports that we'll need for a generated lifecycle test.
