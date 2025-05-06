@@ -40,7 +40,7 @@ func newLazyLoadGen() *lazyLoadGen {
 // resources and functions this is optimized to use lazy loading.
 // Falls back to eager re-export for everything else.
 func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string) {
-	switch exp.fileType {
+	switch exp.fileType { //nolint:exhaustive // golangci-lint v2 upgrade
 	case functionFileType:
 		// optimize lazy-loading function modules
 		ll.genFunctionReexport(w, exp.functionFileInfo, importPath)

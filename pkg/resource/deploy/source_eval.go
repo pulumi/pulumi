@@ -2457,7 +2457,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"provider resource %s has unconfigured ID", result.State.URN)
 
 	reason := pulumirpc.Result_SUCCESS
-	switch result.Result {
+	switch result.Result { //nolint:exhaustive // golangci-lint v2 upgrade
 	case ResultStateSkipped:
 		reason = pulumirpc.Result_SKIP
 	case ResultStateFailed:

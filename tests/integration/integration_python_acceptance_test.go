@@ -517,7 +517,7 @@ func TestMypySupport(t *testing.T) {
 		for _, event := range stack.Events {
 			if event.DiagnosticEvent != nil {
 				messages = append(messages,
-					strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1))
+					strings.ReplaceAll(event.DiagnosticEvent.Message, "\r\n", "\n"))
 			}
 		}
 		expected := "__main__.py:8: error: " +
@@ -545,7 +545,7 @@ func TestPyrightSupport(t *testing.T) {
 			" of type \"str\" in function \"export\"\n\n"
 		for _, event := range stack.Events {
 			if event.DiagnosticEvent != nil {
-				message := strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1)
+				message := strings.ReplaceAll(event.DiagnosticEvent.Message, "\r\n", "\n")
 				if strings.HasSuffix(message, expected) {
 					found = true
 				}

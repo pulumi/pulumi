@@ -1217,7 +1217,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	switch event.Type {
+	switch event.Type { //nolint:exhaustive // golangci-lint v2 upgrade
 	case engine.ResourcePreEvent:
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 
