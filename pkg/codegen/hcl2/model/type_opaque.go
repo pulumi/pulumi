@@ -27,11 +27,7 @@ import (
 )
 
 // OpaqueType represents a type that is named by a string.
-type OpaqueType struct {
-	Val string
-
-	cache *gsync.Map[Type, cacheEntry]
-}
+type OpaqueType string
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*OpaqueType) SyntaxNode() hclsyntax.Node {
@@ -55,7 +51,7 @@ func (t *OpaqueType) Equals(other Type) bool {
 
 func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
 	if o, ok := other.(*OpaqueType); ok {
-		return o.Val == t.Val
+		return *o == *t
 	}
 	return t == other
 }
@@ -71,7 +67,7 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 func (t *OpaqueType) conversionFromImpl(
 	src Type, unifying, checkUnsafe bool, seen map[Type]struct{},
 ) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, &gsync.Map[Type, cacheEntry]{}, func() (ConversionKind, lazyDiagnostics) {
 		if constType, ok := src.(*ConstType); ok {
 			return t.conversionFrom(constType.Type, unifying, seen)
 		}
@@ -154,19 +150,16 @@ func (t *OpaqueType) String() string {
 	case StringType:
 		return "string"
 	default:
-		if hclsyntax.ValidIdentifier(string(t.Val)) {
-			return string(t.Val)
+		if hclsyntax.ValidIdentifier(string(*t)) {
+			return string(*t)
 		}
 
-		return fmt.Sprintf("type(%s)", string(t.Val))
+		return fmt.Sprintf("type(%s)", string(*t))
 	}
 }
 
 func NewOpaqueType(name string) *OpaqueType {
-	t := OpaqueType{
-		Val:   name,
-		cache: &gsync.Map[Type, cacheEntry]{},
-	}
+	t := OpaqueType(name)
 	return &t
 }
 

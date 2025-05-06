@@ -890,7 +890,7 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			}
 			return "interface{}"
 		default:
-			return string(destType.Val)
+			return string(*destType)
 		}
 	case *model.ObjectType:
 
