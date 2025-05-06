@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,17 +32,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newStateUnprotectCommand() *cobra.Command {
-	var unprotectAll bool
+const protectMessage = "This will protect by modifying the stack state directly.\n" +
+	"If your program does not also set the 'protect' resource option, Pulumi will unprotect the \n" +
+	"resource the next time your program runs (e.g. as part of a `pulumi up`)\n" +
+	"Confirm?"
+
+func newStateProtectCommand() *cobra.Command {
+	var protectAll bool
 	var stack string
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "unprotect [resource URN]",
-		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resources in a stack's state
+		Use:   "protect [resource URN]",
+		Short: "protect resource in a stack's state",
+		Long: `Protect resource in a stack's state
 
-This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
+This command sets the 'protect' bit on one or more resources, preventing those resources from being deleted.
+
+Caution: this command is a low-level operation that directly modifies your stack's state.
+Setting the 'protect' bit on a resource in your stack's state is not sufficient to protect it in
+all cases. If your program does not also set the 'protect' resource option, Pulumi will
+unprotect the resource the next time your program runs (e.g. as part of a ` + "`pulumi up`" + `).
+
+See https://www.pulumi.com/docs/iac/concepts/options/protect/ for more information on
+the 'protect' resource option and how it can be used to protect resources in your program.
+
+To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
@@ -53,8 +68,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			if unprotectAll {
-				return unprotectAllResources(ctx, ws, stack, showPrompt)
+			if protectAll {
+				return protectAllResources(ctx, ws, stack, showPrompt)
 			}
 
 			var urn resource.URN
@@ -64,55 +79,64 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
-				urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
+				urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to protect:")
 				if err != nil {
 					return fmt.Errorf("failed to select resource: %w", err)
 				}
 			} else {
 				urn = resource.URN(args[0])
 			}
-			return unprotectResource(ctx, ws, stack, urn, showPrompt)
+			return protectResource(ctx, ws, stack, urn, showPrompt)
 		},
 	}
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
+	cmd.Flags().BoolVar(&protectAll, "all", false, "Protect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 
 	return cmd
 }
 
-func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
-	err := runTotalStateEdit(
+func protectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
+	err := runTotalStateEditWithPrompt(
 		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
-			// Protects against Panic when a user tries to unprotect non-existing resources
+			// Protects against Panic when a user tries to protect non-existing resources
 			if snap == nil {
-				return errors.New("no resources found to unprotect")
+				return errors.New("no resources found to protect")
 			}
 
 			for _, res := range snap.Resources {
-				err := edit.UnprotectResource(snap, res)
-				contract.AssertNoErrorf(err, "Unable to unprotect resource %q", res.URN)
+				err := edit.ProtectResource(snap, res)
+				contract.AssertNoErrorf(err, "Unable to protect resource %q", res.URN)
 			}
 
 			return nil
-		})
+		}, protectMessage)
 	if err != nil {
 		return err
 	}
-	fmt.Println("All resources unprotected")
+	fmt.Println("All resources protected")
 	return nil
 }
 
-func unprotectResource(
+func protectResource(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn, edit.UnprotectResource)
+	err := runStateEditWithPrompt(
+		ctx,
+		ws,
+		backend.DefaultLoginManager,
+		stackName,
+		showPrompt,
+		urn,
+		edit.ProtectResource,
+		protectMessage,
+	)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Resource unprotected")
+	fmt.Println("Resource protected")
 	return nil
 }
