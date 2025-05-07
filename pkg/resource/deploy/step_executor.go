@@ -568,8 +568,12 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 		se.log(workerID, "worker waiting for incoming chains")
 		select {
 		case request := <-se.incomingChains:
-			if request.Chain == nil {
-				se.log(workerID, "worker received nil chain, exiting")
+			contract.Assertf(request.CompletionChan != nil || request.Chain == nil,
+				"worker received a non-nil chain with a nil completion channel: %v", request.Chain,
+			)
+
+			if request.CompletionChan == nil {
+				se.log(workerID, "worker received nil completion channel, exiting")
 				return
 			}
 
