@@ -28,9 +28,11 @@ func TestMainWithContext(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	err := MainWithContext(ctx, "short-lived-test-provider", func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
-		return pulumirpc.UnimplementedResourceProviderServer{}, nil
-	})
+	err := MainWithContext(ctx, "short-lived-test-provider",
+		func(_ *HostClient) (pulumirpc.ResourceProviderServer, error) {
+			return pulumirpc.UnimplementedResourceProviderServer{}, nil
+		},
+	)
 
 	// The provider should have respected our context's timeout.
 	assert.NoError(t, err)
