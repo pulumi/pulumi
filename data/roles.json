@@ -1,0 +1,180 @@
+{
+  "version": "1.0",
+  "roles": {
+    "developer": {
+      "name": "Developer",
+      "description": "Engineers who write and maintain Pulumi code",
+      "primary_responsibilities": [
+        "Implementing new features",
+        "Fixing bugs",
+        "Writing tests",
+        "Code review",
+        "Performance optimization"
+      ],
+      "key_skills": [
+        "Programming in Go/TypeScript/Python/C#",
+        "Understanding of cloud services",
+        "Infrastructure design patterns",
+        "Testing methodologies",
+        "Debugging techniques"
+      ],
+      "tools_used": [
+        "Git",
+        "IDE (VS Code, GoLand, etc.)",
+        "Testing frameworks",
+        "CI/CD pipelines",
+        "Debugging tools"
+      ]
+    },
+    "provider_developer": {
+      "name": "Provider Developer",
+      "description": "Engineers who create and maintain Pulumi providers for cloud services",
+      "primary_responsibilities": [
+        "Creating resource mappings to cloud APIs",
+        "Implementing provider schemas",
+        "Testing provider resources",
+        "Keeping providers up-to-date with cloud services",
+        "Handling backwards compatibility"
+      ],
+      "key_skills": [
+        "Deep knowledge of specific cloud provider APIs",
+        "Pulumi resource model understanding",
+        "Schema definition expertise",
+        "API versioning management",
+        "Provider testing"
+      ],
+      "tools_used": [
+        "Pulumi schema tools",
+        "Provider generation framework",
+        "Cloud provider SDKs",
+        "API documentation systems",
+        "Integration testing frameworks"
+      ]
+    },
+    "infrastructure_architect": {
+      "name": "Infrastructure Architect",
+      "description": "Professionals who design cloud infrastructure and Pulumi component patterns",
+      "primary_responsibilities": [
+        "Designing reusable infrastructure components",
+        "Creating architecture patterns",
+        "Implementing best practices",
+        "Performance and cost optimization",
+        "Security architecture design"
+      ],
+      "key_skills": [
+        "Deep cloud architecture knowledge",
+        "Multi-cloud design patterns",
+        "Component resource modeling",
+        "Cost optimization strategies",
+        "Security best practices"
+      ],
+      "tools_used": [
+        "Architecture diagramming tools",
+        "Cost calculators",
+        "Security scanning tools",
+        "Performance measurement tools",
+        "CloudFormation/Terraform (for migration comparisons)"
+      ]
+    },
+    "devops_engineer": {
+      "name": "DevOps Engineer",
+      "description": "Engineers who focus on deployment, automation, and operational aspects",
+      "primary_responsibilities": [
+        "Automating infrastructure deployment",
+        "Setting up CI/CD pipelines",
+        "Monitoring and observability",
+        "Incident response",
+        "Performance optimization"
+      ],
+      "key_skills": [
+        "CI/CD pipelines expertise",
+        "Automation scripting",
+        "Monitoring and observability",
+        "Performance troubleshooting",
+        "Security operations"
+      ],
+      "tools_used": [
+        "GitHub Actions/CircleCI/Jenkins",
+        "Monitoring systems",
+        "Logging tools",
+        "Alert management",
+        "Container orchestration"
+      ]
+    },
+    "documentation_writer": {
+      "name": "Documentation Writer",
+      "description": "Content creators who write documentation, examples, and tutorials",
+      "primary_responsibilities": [
+        "Writing clear documentation",
+        "Creating tutorials and guides",
+        "Maintaining API references",
+        "Developing examples",
+        "Updating existing documentation"
+      ],
+      "key_skills": [
+        "Technical writing",
+        "Markdown expertise",
+        "Information architecture",
+        "Example development",
+        "Documentation testing"
+      ],
+      "tools_used": [
+        "Markdown editors",
+        "Documentation generators",
+        "Content management systems",
+        "Diagramming tools",
+        "Screen recording software"
+      ]
+    },
+    "customer_success_engineer": {
+      "name": "Customer Success Engineer",
+      "description": "Engineers who help customers implement Pulumi successfully",
+      "primary_responsibilities": [
+        "Providing technical support",
+        "Troubleshooting customer issues",
+        "Creating customer-specific solutions",
+        "Facilitating migrations to Pulumi",
+        "Training and workshops"
+      ],
+      "key_skills": [
+        "Deep Pulumi knowledge",
+        "Cloud provider expertise",
+        "Problem-solving abilities",
+        "Communication skills",
+        "Migration strategies"
+      ],
+      "tools_used": [
+        "Support ticketing systems",
+        "Knowledge bases",
+        "Screen sharing tools",
+        "Training platforms",
+        "Debugging and diagnostic tools"
+      ]
+    },
+    "community_advocate": {
+      "name": "Community Advocate",
+      "description": "Professionals who engage with and support the Pulumi community",
+      "primary_responsibilities": [
+        "Engaging with community members",
+        "Creating community content",
+        "Speaking at events",
+        "Managing community forums",
+        "Collecting feedback"
+      ],
+      "key_skills": [
+        "Community management",
+        "Content creation",
+        "Public speaking",
+        "Social media engagement",
+        "Technical knowledge sharing"
+      ],
+      "tools_used": [
+        "Community forums",
+        "Social media platforms",
+        "Webinar software",
+        "Content management systems",
+        "Feedback collection tools"
+      ]
+    }
+  }
+}

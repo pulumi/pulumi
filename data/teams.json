@@ -1,0 +1,113 @@
+{
+  "version": "1.0",
+  "teams": {
+    "iac-core": {
+      "name": "Infrastructure as Code Core",
+      "description": "Core Pulumi engine, runtime, and CLI tools",
+      "repositories": [
+        "github.com/pulumi/pulumi",
+        "github.com/pulumi/pulumi-cli",
+        "github.com/pulumi/sdk"
+      ],
+      "languages": ["go", "typescript", "python", "csharp", "java"],
+      "key_components": [
+        "Resource model and dependency tracking system",
+        "Language SDKs and runtime bindings",
+        "CLI implementation and workflow management",
+        "State storage and management",
+        "Deployment engine and orchestration"
+      ],
+      "key_concepts": [
+        "Resource providers and abstraction",
+        "State management and persistence",
+        "CLI operations and workflow",
+        "Language runtime integration",
+        "Dependency resolution and tracking"
+      ]
+    },
+    "esc": {
+      "name": "Environment, Secrets, and Configuration",
+      "description": "Framework for managing deployment configuration, environments, and sensitive data",
+      "repositories": [
+        "github.com/pulumi/esc",
+        "github.com/pulumi/esc-examples"
+      ],
+      "languages": ["go", "typescript"],
+      "key_components": [
+        "Environment definition and management",
+        "Secrets encryption and handling",
+        "Configuration schema and validation",
+        "Environment hierarchies and inheritance"
+      ],
+      "key_concepts": [
+        "Environment management and hierarchies",
+        "Secret handling and encryption",
+        "Configuration schema definition",
+        "Configuration validation",
+        "Multi-environment deployment"
+      ]
+    },
+    "providers": {
+      "name": "Cloud Providers",
+      "description": "Cloud provider-specific implementations",
+      "repositories": [
+        "github.com/pulumi/pulumi-aws",
+        "github.com/pulumi/pulumi-azure-native",
+        "github.com/pulumi/pulumi-gcp",
+        "github.com/pulumi/pulumi-kubernetes",
+        "github.com/pulumi/pulumi-docker",
+        "github.com/pulumi/pulumi-cloudflare"
+      ],
+      "languages": ["go", "typescript", "python", "csharp", "java"],
+      "key_components": [
+        "Resource mappings to cloud provider APIs",
+        "Provider schema definition",
+        "Resource type implementation",
+        "Input/output property definitions"
+      ],
+      "key_concepts": [
+        "Resource mapping to cloud provider APIs",
+        "Provider schema definition and versioning",
+        "Cloud API integration and authentication",
+        "Resource state diffing and updates",
+        "Provider configuration and options"
+      ]
+    },
+    "service": {
+      "name": "Pulumi Service",
+      "description": "Backend service for Pulumi state and team management",
+      "repositories": [
+        "github.com/pulumi/service",
+        "github.com/pulumi/pulumi-cloud",
+        "github.com/pulumi/service-api"
+      ],
+      "languages": ["go", "typescript"],
+      "key_components": [
+        "State storage and management",
+        "Organization and team management",
+        "RBAC and permissions",
+        "Deployment history and audit logs",
+        "API endpoints for CLI and Automation API"
+      ]
+    },
+    "docs": {
+      "name": "Documentation",
+      "description": "Pulumi documentation and examples",
+      "repositories": [
+        "github.com/pulumi/docs",
+        "github.com/pulumi/examples",
+        "github.com/pulumi/workshops"
+      ],
+      "languages": ["typescript", "markdown"]
+    },
+    "registry": {
+      "name": "Pulumi Registry",
+      "description": "Component and provider package registry",
+      "repositories": [
+        "github.com/pulumi/registry",
+        "github.com/pulumi/registry-tools"
+      ],
+      "languages": ["typescript", "go"]
+    }
+  }
+}

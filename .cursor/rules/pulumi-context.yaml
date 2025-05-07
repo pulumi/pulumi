@@ -1,0 +1,76 @@
+# Cursor AI configuration for Pulumi repositories
+version: 1.0
+
+# Main context rules
+context:
+  references:
+    teams_source: "/data/teams.json"
+    pulumi_context: "/data/pulumi-context.json"
+    mcp_server:
+      command: "npx"
+      args: ["@pulumi/mcp-server@latest"]
+  
+  base_knowledge:
+    - "Pulumi is an infrastructure as code platform that enables developers to define, deploy, and manage cloud infrastructure using familiar programming languages"
+    - "Core languages supported: TypeScript/JavaScript, Python, Go, .NET (C#/F#), Java, YAML"
+    - "Supports 120+ cloud providers including AWS, Azure, Google Cloud, and Kubernetes"
+    - "Uses standard programming constructs like loops, conditionals, functions, and classes for infrastructure code"
+    - "Manages infrastructure state through the Pulumi Service or self-hosted backends"
+  
+  # Additional Cursor-specific guidance that's not in shared context
+  cursor_specific:
+    code_completion:
+      resource_patterns:
+        typescript:
+          standard: "new aws.s3.Bucket(name, { /* args */ })"
+          component: "extends pulumi.ComponentResource"
+        python:
+          standard: "aws.s3.Bucket(name, opts=pulumi.ResourceOptions())"
+          component: "class MyComponent(pulumi.ComponentResource)"
+        go:
+          standard: "s3.NewBucket(ctx, name, &s3.BucketArgs{}, pulumi.Option{})"
+          component: "type MyComponent struct { pulumi.ComponentResource }"
+        csharp:
+          standard: "var bucket = new Aws.S3.Bucket(name, new Aws.S3.BucketArgs());"
+          component: "class MyComponent : Pulumi.ComponentResource"
+    
+    syntax_highlighting:
+      pulumi_yaml: "yaml"
+      pulumi_typescript: "typescript"
+      pulumi_python: "python"
+      pulumi_go: "go"
+      pulumi_csharp: "csharp"
+      pulumi_java: "java"
+
+# Code assistance configuration
+assistance:
+  preferred_languages:
+    - go
+    - typescript
+    - python
+    - csharp
+    - java
+  
+  style_conventions:
+    go:
+      formatting: "Follow Go standard conventions and use gofmt"
+      linting: "Use golangci-lint"
+    
+    typescript:
+      formatting: "Use prettier"
+      linting: "Use ESLint"
+    
+    python:
+      formatting: "Use Black"
+      linting: "Use Ruff"
+    
+    csharp:
+      formatting: "Use .NET formatter"
+      linting: "Use .NET analyzer"
+    
+  workflow:
+    task_approach:
+      - "Break tasks into TODO list items"
+      - "Complete and verify each item"
+      - "Use 'think' for complex problems"
+      - "Reference central context files"

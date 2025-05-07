@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "project": "pulumi-ai-tooling",
+  "repository": "github.com/pulumi/ai-tooling",
+  "description": "Central repository for Pulumi AI tooling configurations and cross-team contexts",
+  
+  "references": {
+    "teams_source": "/data/teams.json",
+    "pulumi_context": "/data/pulumi-context.json",
+    "mcp_server": {
+      "command": "npx",
+      "args": ["@pulumi/mcp-server@latest"]
+    }
+  },
+  
+  "workflow": {
+    "task_approach": {
+      "todo_list": "Break down tasks into checkable TODO items",
+      "step_by_step": "Complete tasks one by one, verifying each step",
+      "deep_thinking": "Use 'think' keyword for complex problems",
+      "verification": "Always verify work after completion"
+    }
+  },
+  
+  "codeium_specific": {
+    "code_completion": {
+      "resource_patterns": {
+        "typescript": {
+          "standard_resource": "new aws.s3.Bucket(name, { /* args */ })",
+          "component_resource": "extends pulumi.ComponentResource",
+          "output_handling": "bucket.id.apply(id => { /* use id */ })"
+        },
+        "python": {
+          "standard_resource": "aws.s3.Bucket(name, args)",
+          "component_resource": "class MyComponent(pulumi.ComponentResource)",
+          "output_handling": "bucket.id.apply(lambda id: /* use id */)"
+        },
+        "go": {
+          "standard_resource": "s3.NewBucket(ctx, name, &s3.BucketArgs{})",
+          "component_resource": "type MyComponent struct { pulumi.ComponentResource }",
+          "output_handling": "bucket.ID().ApplyT(func(id string) interface{} { return nil })"
+        }
+      }
+    }
+  },
+  
+  "code_patterns": {
+    "go": {
+      "linting": "golangci-lint run",
+      "testing": "go test ./...",
+      "formatting": "gofmt -s -w ."
+    },
+    "typescript": {
+      "linting": "npm run lint",
+      "testing": "npm test",
+      "formatting": "npm run format"
+    },
+    "python": {
+      "linting": "pylint",
+      "testing": "pytest",
+      "formatting": "black"
+    }
+  },
+  
+  "sync_configuration": {
+    "enabled": true,
+    "target_repositories": [
+      "github.com/pulumi/pulumi",
+      "github.com/pulumi/esc",
+      "github.com/pulumi/pulumi-aws",
+      "github.com/pulumi/pulumi-azure-native"
+    ],
+    "sync_method": "github-action"
+  }
+}

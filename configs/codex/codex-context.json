@@ -1,0 +1,92 @@
+{
+  "version": "1.0",
+  "name": "pulumi-ai-tooling",
+  "description": "AI tooling configurations for Pulumi projects",
+  
+  "references": {
+    "teams_source": "/data/teams.json",
+    "pulumi_context": "/data/pulumi-context.json",
+    "mcp_server": {
+      "command": "npx",
+      "args": ["@pulumi/mcp-server@latest"]
+    }
+  },
+  
+  "workflow": {
+    "task_approach": {
+      "todo_list": "Break down tasks into checkable TODO items",
+      "step_by_step": "Complete tasks one by one, verifying each step",
+      "deep_thinking": "Use 'think' keyword for complex problems",
+      "verification": "Always verify work after completion"
+    }
+  },
+  
+  "codex_specific": {
+    "code_completion": {
+      "resource_patterns": {
+        "typescript": {
+          "standard_resource": "new aws.s3.Bucket(name, { /* args */ })",
+          "component_resource": "extends pulumi.ComponentResource",
+          "output_handling": "bucket.id.apply(id => { /* use id */ })"
+        },
+        "python": {
+          "standard_resource": "aws.s3.Bucket(name, args)",
+          "component_resource": "class MyComponent(pulumi.ComponentResource)",
+          "output_handling": "bucket.id.apply(lambda id: /* use id */)"
+        },
+        "go": {
+          "standard_resource": "s3.NewBucket(ctx, name, &s3.BucketArgs{})",
+          "component_resource": "type MyComponent struct { pulumi.ComponentResource }",
+          "output_handling": "bucket.ID().ApplyT(func(id string) interface{} { return nil })"
+        },
+        "csharp": {
+          "standard_resource": "new Aws.S3.Bucket(name, new Aws.S3.BucketArgs())",
+          "component_resource": "class MyComponent : Pulumi.ComponentResource",
+          "output_handling": "bucket.Id.Apply(id => { /* use id */ })"
+        }
+      }
+    }
+  },
+  
+  "development_practices": {
+    "workflow": {
+      "code_review": "Follow standard Pulumi code review process",
+      "testing": "Ensure comprehensive test coverage",
+      "documentation": "Keep AI context files up-to-date"
+    },
+    "tools": {
+      "go": {
+        "linting": "golangci-lint run",
+        "testing": "go test ./...",
+        "formatting": "gofmt -s -w ."
+      },
+      "typescript": {
+        "linting": "npm run lint",
+        "testing": "npm test",
+        "formatting": "npm run format"
+      },
+      "python": {
+        "linting": "pylint",
+        "testing": "pytest",
+        "formatting": "black"
+      },
+      "csharp": {
+        "linting": "dotnet format",
+        "testing": "dotnet test",
+        "formatting": "dotnet format"
+      }
+    }
+  },
+  
+  "synchronization": {
+    "enabled": true,
+    "mechanism": "github-action",
+    "frequency": "on-push-to-main",
+    "target_repositories": [
+      "github.com/pulumi/pulumi",
+      "github.com/pulumi/esc",
+      "github.com/pulumi/pulumi-aws",
+      "github.com/pulumi/pulumi-azure-native"
+    ]
+  }
+}

@@ -1,0 +1,331 @@
+{
+  "version": "1.0",
+  "platform": {
+    "description": "Pulumi is an open-source Infrastructure as Code (IaC) platform that enables developers to define, deploy, and manage cloud infrastructure using familiar programming languages instead of domain-specific languages or templates.",
+    "website": "https://www.pulumi.com",
+    "github": "https://github.com/pulumi",
+    "core_capabilities": {
+      "multi_language": {
+        "description": "Support for multiple programming languages",
+        "languages": [
+          {
+            "name": "TypeScript/JavaScript",
+            "status": "Stable",
+            "runtime": "Node.js"
+          },
+          {
+            "name": "Python",
+            "status": "Stable",
+            "runtime": "Python 3.x"
+          },
+          {
+            "name": "Go",
+            "status": "Stable",
+            "runtime": "Go runtime"
+          },
+          {
+            "name": ".NET",
+            "status": "Stable",
+            "runtime": ".NET Core",
+            "variants": ["C#", "F#", "VB.NET"]
+          },
+          {
+            "name": "Java",
+            "status": "Public Preview",
+            "runtime": "JVM"
+          },
+          {
+            "name": "YAML",
+            "status": "Stable",
+            "runtime": "YAML parser"
+          }
+        ]
+      },
+      "multi_cloud": {
+        "description": "Provision resources across 120+ cloud providers",
+        "major_providers": [
+          "AWS",
+          "Azure",
+          "Google Cloud",
+          "Kubernetes",
+          "DigitalOcean",
+          "Cloudflare"
+        ]
+      },
+      "programming_constructs": {
+        "description": "Use native programming language features for infrastructure code",
+        "features": [
+          "Loops and iteration",
+          "Conditionals and branching",
+          "Functions and abstraction",
+          "Classes and inheritance",
+          "Package management",
+          "Error handling",
+          "Testing frameworks"
+        ]
+      },
+      "state_management": {
+        "description": "Track and manage infrastructure state across deployments",
+        "backends": [
+          "Pulumi Service (cloud-hosted)",
+          "Self-hosted backends",
+          "Local filesystem",
+          "AWS S3",
+          "Azure Blob Storage",
+          "Google Cloud Storage"
+        ]
+      },
+      "secrets_management": {
+        "description": "Securely handle sensitive configuration data",
+        "features": [
+          "Encrypted secrets in state",
+          "Integration with secret managers",
+          "Environment-specific secrets",
+          "Secret rotation"
+        ]
+      },
+      "policy_as_code": {
+        "description": "Define and enforce security and compliance policies",
+        "framework": "CrossGuard",
+        "features": [
+          "Policy packs",
+          "Custom policy enforcement",
+          "Compliance reporting",
+          "Organization-wide policies"
+        ]
+      },
+      "component_architecture": {
+        "description": "Create reusable infrastructure building blocks",
+        "features": [
+          "Component resources",
+          "Resource encapsulation",
+          "Composition and nesting",
+          "Input/output mapping",
+          "Package distribution"
+        ]
+      }
+    },
+    "technical_architecture": {
+      "engine": {
+        "description": "Orchestrates the deployment process and manages resource dependencies",
+        "responsibilities": [
+          "Dependency resolution",
+          "Resource planning",
+          "Deployment orchestration",
+          "State management",
+          "Error handling and recovery"
+        ]
+      },
+      "resource_providers": {
+        "description": "Plugin architecture connecting to cloud provider APIs",
+        "implementation": "Dynamic plugin system loading provider-specific code",
+        "components": [
+          "Schema definition",
+          "CRUD operations",
+          "API mappings",
+          "State diffing",
+          "Resource mapping"
+        ]
+      },
+      "language_sdks": {
+        "description": "Strongly-typed libraries exposing resources in each language",
+        "features": [
+          "Type-safe resource definitions",
+          "IDE integration and intellisense",
+          "Resource method exposure",
+          "Output handling",
+          "Error propagation"
+        ]
+      },
+      "cli": {
+        "description": "Command-line interface for infrastructure operations",
+        "commands": [
+          "pulumi up (deploy)",
+          "pulumi preview",
+          "pulumi destroy",
+          "pulumi stack",
+          "pulumi config"
+        ]
+      },
+      "state_backend": {
+        "description": "Storage system for infrastructure state information",
+        "features": [
+          "Serialization format",
+          "Locking",
+          "Encryption",
+          "Versioning",
+          "Checkpointing"
+        ]
+      },
+      "automation_api": {
+        "description": "Programmatic control of Pulumi deployments",
+        "use_cases": [
+          "CI/CD integration",
+          "Custom deployment tools",
+          "Self-service infrastructure portals",
+          "Testing frameworks",
+          "Integration with other systems"
+        ]
+      }
+    },
+    "core_concepts": {
+      "resources": {
+        "description": "Cloud infrastructure components that can be created, updated, or deleted",
+        "types": [
+          "Standard resources (VM, network, database)",
+          "Custom resources",
+          "Component resources",
+          "Provider resources"
+        ]
+      },
+      "stacks": {
+        "description": "Independent instances of cloud resources (dev, staging, production)",
+        "features": [
+          "Isolated state",
+          "Environment-specific configuration",
+          "Stack references for sharing outputs",
+          "Tags and metadata"
+        ]
+      },
+      "projects": {
+        "description": "Collection of code and configuration defining infrastructure",
+        "components": [
+          "Pulumi.yaml file",
+          "Stack configuration files",
+          "Source code",
+          "Dependencies"
+        ]
+      },
+      "providers": {
+        "description": "Plugins enabling interaction with specific cloud platforms",
+        "implementation": [
+          "Resource CRUD operations",
+          "API client integration",
+          "Authentication and configuration",
+          "Resource mapping"
+        ]
+      },
+      "components": {
+        "description": "Custom, composable resource types for reuse",
+        "features": [
+          "Child resource management",
+          "Input/output contract",
+          "Resource encapsulation",
+          "Custom methods and properties"
+        ]
+      },
+      "outputs_inputs": {
+        "description": "Values flowing between resources during deployment",
+        "features": [
+          "Dependency tracking",
+          "Asynchronous resolution",
+          "Type safety",
+          "Transformations"
+        ]
+      },
+      "dependencies": {
+        "description": "Automatically tracked relationships ensuring proper ordering",
+        "features": [
+          "Implicit dependency detection",
+          "Explicit dependency declaration",
+          "Parallel execution of independent resources",
+          "Dependency graph visualization"
+        ]
+      }
+    },
+    "product_suite": [
+      {
+        "name": "Pulumi IaC",
+        "description": "Core infrastructure-as-code platform and engine"
+      },
+      {
+        "name": "Pulumi ESC",
+        "description": "Environment, Secrets, and Configuration management system"
+      },
+      {
+        "name": "Pulumi Insights",
+        "description": "Asset management and compliance platform"
+      },
+      {
+        "name": "Pulumi IDP",
+        "description": "Internal Developer Platform for infrastructure delivery"
+      }
+    ],
+    "workflow_patterns": {
+      "infrastructure_deployment": {
+        "description": "Process for deploying infrastructure",
+        "steps": [
+          "pulumi up - provision resources",
+          "review planned changes",
+          "confirm and execute",
+          "verify outputs"
+        ]
+      },
+      "previewing_changes": {
+        "description": "Review changes before deployment",
+        "steps": [
+          "pulumi preview - see planned changes",
+          "review resource modifications",
+          "validate configuration"
+        ]
+      },
+      "team_collaboration": {
+        "description": "Ways teams work together on infrastructure",
+        "methods": [
+          "Stack references",
+          "Project sharing",
+          "Pulumi Service for state management",
+          "RBAC policies"
+        ]
+      },
+      "continuous_delivery": {
+        "description": "Integration with CI/CD for automated deployments",
+        "patterns": [
+          "Automation API integration",
+          "CI/CD pipeline steps",
+          "Preview and apply stages",
+          "Testing integration"
+        ]
+      },
+      "testing": {
+        "description": "Approaches to testing infrastructure",
+        "types": [
+          "Unit testing for component resources",
+          "Integration testing with actual cloud resources",
+          "Property testing for infrastructure validation",
+          "Mock testing with provider mocks"
+        ]
+      }
+    },
+    "code_patterns": {
+      "typescript": {
+        "resources": "new aws.s3.Bucket(name, args, opts)",
+        "components": "extends pulumi.ComponentResource",
+        "outputs": "Use apply() to transform Output values"
+      },
+      "python": {
+        "resources": "aws.s3.Bucket(name, args, opts)",
+        "components": "class MyComponent(pulumi.ComponentResource)",
+        "outputs": "Use apply() or transform with Output methods"
+      },
+      "go": {
+        "resources": "s3.NewBucket(ctx, name, args, opts)",
+        "components": "type MyComponent struct { pulumi.ComponentResource }",
+        "outputs": "Use ApplyT() methods to transform Outputs"
+      },
+      "csharp": {
+        "resources": "new Aws.S3.Bucket(name, args, opts)",
+        "components": "class MyComponent : Pulumi.ComponentResource",
+        "outputs": "Use Apply() for Output transformations"
+      }
+    },
+    "commands": {
+      "new_project": "pulumi new <template>",
+      "preview": "pulumi preview",
+      "deploy": "pulumi up",
+      "destroy": "pulumi destroy",
+      "stack_ops": "pulumi stack [init|select|ls]",
+      "config": "pulumi config [set|get] [--secret]"
+    }
+  }
+}
