@@ -131,8 +131,7 @@ lint_golang:: lint_deps
 		echo "[golangci-lint] Linting $(pkg)..." && \
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
-			--timeout 5m \
-			--path-prefix $(pkg)) \
+			--timeout 5m) \
 		&&) true
 
 lint_golang_fix::
@@ -142,7 +141,6 @@ lint_golang_fix::
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--timeout 5m \
-			--path-prefix $(pkg) \
 			--fix) \
 		&&) true
 
