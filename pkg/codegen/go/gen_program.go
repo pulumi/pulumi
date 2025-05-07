@@ -1078,6 +1078,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 
 var resourceType = model.NewOpaqueType("pulumi.Resource")
 
+var providerResourceType = model.NewOpaqueType("pulumi.ProviderResource")
+
 func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []interface{}) {
 	if opts == nil {
 		return nil, nil
@@ -1109,6 +1111,40 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	}
 	if opts.Provider != nil {
 		appendOption("Provider", opts.Provider, model.DynamicType)
+	}
+	if opts.Providers != nil {
+		// If the providers (plural) resource option was passed, it could be either a list of provider resources, or a map
+		// whose values are provider resources. We first work out which by asking whether the type of the expression passed
+		// is convertible to a list or map of provider resources.
+		//
+		// In the case where it's a list, we deconstruct the list and repeatedly call the Provider(...) function of the SDK,
+		// which in the Go SDK may be passed multiple times (setting the singular provider option if passed once and the
+		// plural providers option if passed more than once).
+		//
+		// If it's a map, we use the ProviderMap function of the SDK. This takes a single map[string]ProviderResource. In
+		// order to ensure that we generate the right type, we wrap the map expression in a __convert intrinsic with that
+		// explicit type, to avoid cases where e.g. we'll see dynamic types and generate map[string]interface{} (which the
+		// Go compiler will not like).
+		providersType := opts.Providers.Type()
+
+		listType := model.NewListType(model.DynamicType)
+		mapType := model.NewMapType(model.DynamicType)
+
+		if listType.ConversionFrom(providersType) == model.SafeConversion {
+			// It's a list of providers. Iterate over the expressions in the list and generate a call to Provider(...) for
+			// each.
+			providersList, ok := opts.Providers.(*model.TupleConsExpression)
+			contract.Assertf(ok, "Expected a list of providers, got %T", opts.Providers)
+
+			for _, p := range providersList.Expressions {
+				appendOption("Provider", p, providerResourceType)
+			}
+		} else if mapType.ConversionFrom(providersType) == model.SafeConversion {
+			// It's a map of providers. Build the explicit destination type map[string]ProviderResource and convert the given
+			// expression to that before generating the call to ProviderMap(...).
+			destMapType := model.NewMapType(providerResourceType)
+			appendOption("ProviderMap", pcl.NewConvertCall(opts.Providers, destMapType), destMapType)
+		}
 	}
 	if opts.DependsOn != nil {
 		appendOption("DependsOn", opts.DependsOn, model.NewListType(resourceType))

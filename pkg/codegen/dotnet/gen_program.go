@@ -1202,12 +1202,19 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 			} else {
 				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
 			}
-		case "DependsOn":
-			// depends on need to be special cased
-			// because new [] { resourceA, resourceB } cannot be implicitly casted to InputList<Resource>
-			// use syntax DependsOn = { resourceA, resourceB } instead
+		case "DependsOn", "Providers":
+			// The DependsOn and Providers resource options need to be special cased. Both want something List-y (e.g.
+			// InputList for DependsOn, List for Providers), but normal code generation will yield arrays e.g.:
+			//
+			// new [] { x, y }
+			//
+			// To emit something that can be used as a list, we simply omit the [] and produce expressions of the form:
+			//
+			// new { x, y }
+			//
+			// instead.
 			if resourcesList, isTuple := value.(*model.TupleConsExpression); isTuple {
-				g.Fgenf(&result, "\n%sDependsOn =", g.Indent)
+				g.Fgenf(&result, "\n%s%s =", g.Indent, name)
 				g.Fgenf(&result, "\n%s{", g.Indent)
 				g.Indented(func() {
 					for _, resource := range resourcesList.Expressions {
@@ -1229,6 +1236,33 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	}
 	if opts.Provider != nil {
 		appendOption("Provider", opts.Provider)
+	}
+	if opts.Providers != nil {
+		// If the providers (plural) resource option was passed, it could be either a list of provider resources, or a map
+		// whose values are provider resources. The .Net SDK only supports passing a list of provider resources, so we need
+		// to check if we've been given a map and convert accordingly if so. We do this by seeing if we've been given an
+		// ObjectConsExpression (something of the form { x = y, ... }) and if so produce a TupleConsExpression (something of
+		// the form [y, ...]) of the values instead.
+		providersType := opts.Providers.Type()
+		mapType := model.NewMapType(model.DynamicType)
+
+		providersExpr := opts.Providers
+
+		if mapType.ConversionFrom(providersType) == model.SafeConversion {
+			providersMap, ok := opts.Providers.(*model.ObjectConsExpression)
+			contract.Assertf(ok, "expected providers to be a map")
+
+			providersList := &model.TupleConsExpression{
+				Expressions: make([]model.Expression, len(providersMap.Items)),
+			}
+			for i, p := range providersMap.Items {
+				providersList.Expressions[i] = p.Value
+			}
+
+			providersExpr = providersList
+		}
+
+		appendOption("Providers", providersExpr)
 	}
 	if opts.DependsOn != nil {
 		appendOption("DependsOn", opts.DependsOn)
@@ -1388,7 +1422,15 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 					g.resetListInitializer()
 				}
 			})
-			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "CustomResourceOptions"))
+
+			// If the resource's schema indicates that it's a component, we'll want to generate code to pass
+			// ComponentResourceOptions instead of CustomResourceOptions.
+			resourceOptionsType := "CustomResourceOptions"
+			if r.Schema != nil && r.Schema.IsComponent {
+				resourceOptionsType = "ComponentResourceOptions"
+			}
+
+			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, resourceOptionsType))
 		}
 	}
 

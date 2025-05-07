@@ -1,0 +1,11 @@
+{
+	"name": "l2-explicit-providers",
+	"devDependencies": {
+		"@types/node": "^18"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/component": "ROOT/artifacts/pulumi-component-13.3.7.tgz"
+	}
+}
