@@ -376,31 +376,71 @@ type programImports struct {
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	preambleHelperMethods := codegen.NewStringSet()
-	var componentImports []string
 
+	// This map tracks the package tokens by the associated import.
+	//
+	// It will have entries similar to the following:
+	//
+	// npmToPuPkgName["@pulumiverse/scaleway"] = "scaleway"
 	npmToPuPkgName := make(map[string]string)
+
+	var componentImports []string
 	seenComponentImports := map[string]bool{}
+
+	// Index known PackageReference by corresponding package name token.
+	knownPackageRefsByPkg := make(map[string]schema.PackageReference)
+	for _, pkgRef := range program.PackageReferences() {
+		// Can more than one package be bound to the same name? It seems possible in case of components.
+		knownPackageRefsByPkg[pkgRef.Name()] = pkgRef
+	}
+
+	// Collect imports for a package; optionally supply packageRef if handily available, otherwise pass nil.
+	visitPkg := func(pkg string, packageRef schema.PackageReference) {
+		if packageRef == nil {
+			packageRef = knownPackageRefsByPkg[pkg]
+		}
+		if pkg == PulumiToken {
+			return
+		}
+		namespace := "@pulumi"
+		if packageRef != nil && packageRef.Namespace() != "" {
+			namespace = "@" + packageRef.Namespace()
+		}
+		pkgName := namespace + "/" + pkg
+		if packageRef != nil {
+			def, err := packageRef.Definition()
+			contract.AssertNoErrorf(err, "Should be able to retrieve definition for %q", pkg)
+
+			if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+				pkgName = info.PackageName
+			}
+			npmToPuPkgName[pkgName] = pkg
+		}
+		importSet.Add(pkgName)
+	}
+
+	// Like visitPkg but PakckageReference is not handily available.
+	visitPkgWithoutRef := func(pkg string) {
+		visitPkg(pkg, nil)
+	}
+
+	// Notes direct npm imports.
+	visitDirectImport := func(nodeImportString string) {
+		if nodeImportString == "" {
+			return
+		}
+		importSet.Add(nodeImportString)
+	}
+
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
 			pkg, _, _, _ := n.DecomposeToken()
-			if pkg == PulumiToken {
-				continue
-			}
-			namespace := "@pulumi"
-			if n.Schema != nil && n.Schema.PackageReference != nil && n.Schema.PackageReference.Namespace() != "" {
-				namespace = "@" + n.Schema.PackageReference.Namespace()
-			}
-			pkgName := namespace + "/" + pkg
+			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
-				def, err := n.Schema.PackageReference.Definition()
-				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", n.Schema.Token)
-				if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
-					pkgName = info.PackageName
-				}
-				npmToPuPkgName[pkgName] = pkg
+				packageRef = n.Schema.PackageReference
 			}
-			importSet.Add(pkgName)
+			visitPkg(pkg, packageRef)
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
@@ -413,11 +453,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
-					for _, importPackage := range i {
-						importSet.Add(importPackage)
-					}
-				}
+				g.visitFunctionImports(call, visitDirectImport, visitPkgWithoutRef)
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}

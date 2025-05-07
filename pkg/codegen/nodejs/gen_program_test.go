@@ -15,13 +15,20 @@
 package nodejs
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateProgramVersionSelection(t *testing.T) {
@@ -55,4 +62,69 @@ func TestEnumReferencesCorrectIdentifier(t *testing.T) {
 	// These are redundant, but serve to clarify our expectations around package alias names.
 	assert.NotEqual(t, "bar.WebhookFilters", result)
 	assert.NotEqual(t, "@pulumi/bar.WebhookFilters", result)
+}
+
+func TestCollectProgramImportsRespectsPackageName(t *testing.T) {
+	t.Parallel()
+
+	hcl := `
+default = invoke("scaleway:account/getProject:getProject", {})
+
+resource "app" "scaleway:iam/application:Application" {}
+`
+
+	scalewaySchema := schema.PackageSpec{
+		Name: "scaleway",
+		Resources: map[string]schema.ResourceSpec{
+			"scaleway:iam/application:Application": {},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"scaleway:account/getProject:getProject": {},
+		},
+		Language: map[string]schema.RawMessage{
+			"nodejs": schema.RawMessage(`{"packageName": "@pulumiverse/scaleway"}`),
+		},
+	}
+
+	scalewaySchemaBytes, err := json.MarshalIndent(&scalewaySchema, "", "  ")
+	require.NoError(t, err)
+
+	parser := syntax.NewParser()
+	err = parser.ParseFile(bytes.NewReader([]byte(hcl)), "infra.tf")
+	require.NoError(t, err, "parse failed")
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(&plugin.MockHost{
+		ResolvePluginF: func(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+			return &workspace.PluginInfo{Name: spec.Name}, nil
+		},
+		ProviderF: func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+			return &plugin.MockProvider{
+				GetSchemaF: func(
+					ctx context.Context,
+					gsr plugin.GetSchemaRequest,
+				) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: scalewaySchemaBytes}, nil
+				},
+			}, nil
+		},
+	}))
+	if err != nil || diags.HasErrors() {
+		for _, d := range diags {
+			t.Logf("%s: %s", d.Summary, d.Detail)
+		}
+		t.Errorf("BindProgram failed: %v", err)
+		t.FailNow()
+	}
+
+	packages, err := program.PackageSnapshots()
+	require.NoError(t, err)
+	for _, p := range packages {
+		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		require.NoError(t, err)
+	}
+
+	g := generator{program: program, Formatter: &format.Formatter{Indent: "  "}}
+	imp := g.collectProgramImports(program)
+
+	assert.Equal(t, 1, len(imp.importStatements))
+	assert.Equal(t, `import * as scaleway from "@pulumiverse/scaleway";`, imp.importStatements[0])
 }
