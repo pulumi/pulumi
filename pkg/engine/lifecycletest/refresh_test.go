@@ -1915,9 +1915,11 @@ func TestRefreshWithBigProgram(t *testing.T) {
 		programExecutions++
 
 		for i := int32(0); i < parallel+1; i++ {
-			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA"+strconv.FormatInt(int64(i), 10), true, deploytest.ResourceOptions{
-				Inputs: programInputs,
-			})
+			resp, err := monitor.RegisterResource(
+				"pkgA:m:typA", "resA"+strconv.FormatInt(int64(i), 10), true,
+				deploytest.ResourceOptions{
+					Inputs: programInputs,
+				})
 			assert.NoError(t, err)
 
 			// First time we should see the create outputs, second time the read outputs
