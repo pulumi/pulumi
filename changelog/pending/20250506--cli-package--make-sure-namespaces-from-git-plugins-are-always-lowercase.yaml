@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Make sure namespaces from Git Plugins are always lowercase

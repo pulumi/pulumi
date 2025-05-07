@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.168.0 (2025-05-07)
+
+
+### Features
+
+- [cli] Consider unresolved references a validation error; add the `--allow-dangling-references` flag to opt out of this behaviour
+  [#19216](https://github.com/pulumi/pulumi/pull/19216)
+
+- [sdk] Support Node.js 24
+  [#19420](https://github.com/pulumi/pulumi/pull/19420)
+
+- [cli/state] Add pulumi state protect
+  [#19355](https://github.com/pulumi/pulumi/pull/19355)
+
+- [sdk/go] Update to Go 1.23
+  [#19118](https://github.com/pulumi/pulumi/pull/19118)
+
+- [sdk/go] Add a Delete method to property.Map
+  [#19384](https://github.com/pulumi/pulumi/pull/19384)
+
+- [sdk/go] Support private GitHub and GitLab instances, when installing plugins directly from a repository
+  [#19377](https://github.com/pulumi/pulumi/pull/19377)
+
+- [sdk/python] Support Resource References
+  [#19226](https://github.com/pulumi/pulumi/pull/19226)
+
+
+### Bug Fixes
+
+- [engine] Adjust analyzer handshake request that stack configuration is optional
+  [#19435](https://github.com/pulumi/pulumi/pull/19435)
+
+- [cli/display] Fix race condition when rendering progress events
+  [#19434](https://github.com/pulumi/pulumi/pull/19434)
+
+- [cli/package] Make sure namespaces from Git Plugins are always lowercase
+  [#19441](https://github.com/pulumi/pulumi/pull/19441)
+
+- [cli/plugin] Allow creating analyzer plugins without config
+  [#19393](https://github.com/pulumi/pulumi/pull/19393)
+  [#19395](https://github.com/pulumi/pulumi/pull/19395)
+
+
+### Miscellaneous
+
+- [cli] Update yaml, java & dotnet
+
 ## 3.167.0 (2025-05-01)
 
 

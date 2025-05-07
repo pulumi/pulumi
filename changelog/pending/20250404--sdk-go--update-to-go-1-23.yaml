@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Update to Go 1.23

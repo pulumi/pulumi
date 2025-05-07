@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Adjust analyzer handshake request that stack configuration is optional
