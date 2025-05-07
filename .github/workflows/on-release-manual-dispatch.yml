@@ -1,0 +1,49 @@
+name: Release Dispatch
+
+permissions:
+  # To create the follow-up PR.
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        required: true
+        description: "Git Tag"
+        type: string
+      release_notes:
+        required: true
+        description: "Release Notes"
+        type: string
+
+concurrency: release
+
+jobs:
+  info:
+    name: gather
+    runs-on: ubuntu-22.04
+    outputs:
+      version: "${{ fromJSON(steps.version.outputs.version) }}"
+    steps:
+      - uses: actions/checkout@v4
+        # Uses release ref (tag)
+      - name: Info
+        id: version
+        run: |
+          TAG="${{ inputs.tag_name }}"
+          PULUMI_VERSION="${TAG#v}" # remove prefix
+
+          ./.github/scripts/set-output version "${PULUMI_VERSION}"
+
+  release:
+    name: release
+    needs: [info]
+    uses: ./.github/workflows/release.yml
+    with:
+      ref: ${{ inputs.tag_name }}
+      version: ${{ needs.info.outputs.version }}
+      release-notes: ${{ inputs.release_notes }}
+      queue-merge: true
+      run-dispatch-commands: true
+    secrets: inherit

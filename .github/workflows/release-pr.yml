@@ -66,7 +66,7 @@ jobs:
             cd pkg
             go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
           )
-          make tidy
+          make tidy_fix
           git add -A
           git commit -m "chore: post-release go.mod updates"
 
