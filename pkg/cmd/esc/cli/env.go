@@ -186,13 +186,9 @@ func (cmd *envCommand) getNewEnvRef(
 		cmd.envNameFlag, args = args[0], args[1:]
 	}
 
-	ref, isRelative := cmd.getEnvRef(cmd.envNameFlag, nil)
+	ref, _ := cmd.getEnvRef(cmd.envNameFlag, nil)
 
 	if !ref.hasAmbiguousPath {
-		if !strings.Contains(cmd.envNameFlag, "/") && !isRelative {
-			cmd.printDeprecatedNameMessage(cmd.envNameFlag, ref)
-		}
-
 		return ref, args, nil
 	}
 
@@ -226,7 +222,6 @@ func (cmd *envCommand) getNewEnvRef(
 	}
 
 	if !existsProject && existsLegacyPath {
-		cmd.printDeprecatedNameMessage(cmd.envNameFlag, legacyRef)
 		return legacyRef, args, nil
 	}
 
@@ -256,13 +251,9 @@ func (cmd *envCommand) getExistingEnvRefWithRelative(
 	refString string,
 	rel *environmentRef,
 ) (environmentRef, error) {
-	ref, isRelative := cmd.getEnvRef(refString, rel)
+	ref, _ := cmd.getEnvRef(refString, rel)
 
 	if !ref.hasAmbiguousPath {
-		if !strings.Contains(refString, "/") && !isRelative {
-			cmd.printDeprecatedNameMessage(refString, ref)
-		}
-
 		return ref, nil
 	}
 
@@ -295,7 +286,6 @@ func (cmd *envCommand) getExistingEnvRefWithRelative(
 	}
 
 	if existsLegacyPath {
-		cmd.printDeprecatedNameMessage(refString, legacyRef)
 		return legacyRef, nil
 	}
 
@@ -398,11 +388,4 @@ func (cmd *envCommand) writePropertyEnvironmentDiagnostics(out io.Writer, diags 
 	}
 
 	return nil
-}
-
-func (cmd *envCommand) printDeprecatedNameMessage(name string, ref environmentRef) {
-	msg := fmt.Sprintf(
-		"%sWarning: Referring to an environment name ('%s') without a project is deprecated.\nPlease use '%s/%s' or '%s' instead.%s",
-		colors.SpecWarning, name, ref.orgName, ref.Id(), ref.Id(), colors.Reset)
-	fmt.Fprintln(cmd.esc.stderr, cmd.esc.colors.Colorize(msg))
 }
