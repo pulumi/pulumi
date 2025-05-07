@@ -267,6 +267,7 @@ func NewPreviewCmd() *cobra.Command {
 	var eventLogPath string
 	var parallel int32
 	var refresh string
+	var runProgram bool
 	var showConfig bool
 	var showPolicyRemediations bool
 	var showReplacementSteps bool
@@ -346,7 +347,7 @@ func NewPreviewCmd() *cobra.Command {
 				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
 					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, nil, replaces,
-					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile, false)
+					targetReplaces, targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -460,6 +461,7 @@ func NewPreviewCmd() *cobra.Command {
 					Debug:                     debug,
 					ShowSecrets:               showSecrets,
 					Refresh:                   refreshOption,
+					RefreshProgram:            runProgram,
 					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 					UseLegacyDiff:             env.EnableLegacyDiff.Value(),
 					UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
@@ -638,6 +640,9 @@ func NewPreviewCmd() *cobra.Command {
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
+	cmd.PersistentFlags().BoolVar(
+		&runProgram, "run-program", env.RunProgram.Value(),
+		"Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
