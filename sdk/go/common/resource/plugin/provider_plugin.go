@@ -2313,6 +2313,7 @@ func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (Get
 	return GetMappingsResponse{resp.Providers}, nil
 }
 
+// marshalViews is a helper that marshals a slice of views into the gRPC equivalent.
 func marshalViews(views []View, opts MarshalOptions) ([]*pulumirpc.View, error) {
 	if len(views) == 0 {
 		return nil, nil
@@ -2329,6 +2330,7 @@ func marshalViews(views []View, opts MarshalOptions) ([]*pulumirpc.View, error) 
 	return result, nil
 }
 
+// marshalView is a helper that marshals a view into the gRPC equivalent.
 func marshalView(v View, opts MarshalOptions) (*pulumirpc.View, error) {
 	var err error
 

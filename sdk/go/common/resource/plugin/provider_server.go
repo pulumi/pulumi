@@ -978,6 +978,7 @@ func (p *providerServer) GetMappings(ctx context.Context,
 	return &pulumirpc.GetMappingsResponse{Providers: providers.Keys}, nil
 }
 
+// unmarshalViews is a helper that unmarshals a slice of views from gRPC into a slice of View structs.
 func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error) {
 	if len(views) == 0 {
 		return nil, nil
@@ -994,6 +995,7 @@ func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error
 	return result, nil
 }
 
+// unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
 func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
 	var err error
 
