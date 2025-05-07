@@ -61,6 +61,42 @@ REMEDIATE: EnforcementLevel.ValueType  # 3
 global___EnforcementLevel = EnforcementLevel
 
 @typing_extensions.final
+class AnalyzerStackConfiguration(google.protobuf.message.Message):
+    """`AnalyzerStackConfiguration` is the message for the stack configuration of the stack being analyzed."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    STACK_FIELD_NUMBER: builtins.int
+    PROJECT_FIELD_NUMBER: builtins.int
+    ORGANIZATION_FIELD_NUMBER: builtins.int
+    DRY_RUN_FIELD_NUMBER: builtins.int
+    CONFIG_FIELD_NUMBER: builtins.int
+    stack: builtins.str
+    """The stack name being analyzed."""
+    project: builtins.str
+    """The project name of the stack being analyzed."""
+    organization: builtins.str
+    """The organization name of the stack being analyzed."""
+    dry_run: builtins.bool
+    """True if this is a preview/dry run."""
+    @property
+    def config(self) -> google.protobuf.struct_pb2.Struct:
+        """The configuration of the stack being analyzed as a property map."""
+    def __init__(
+        self,
+        *,
+        stack: builtins.str = ...,
+        project: builtins.str = ...,
+        organization: builtins.str = ...,
+        dry_run: builtins.bool = ...,
+        config: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["config", b"config"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "dry_run", b"dry_run", "organization", b"organization", "project", b"project", "stack", b"stack"]) -> None: ...
+
+global___AnalyzerStackConfiguration = AnalyzerStackConfiguration
+
+@typing_extensions.final
 class AnalyzerHandshakeRequest(google.protobuf.message.Message):
     """`AnalyzerHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.Analyzer.Handshake) call."""
 
@@ -69,11 +105,7 @@ class AnalyzerHandshakeRequest(google.protobuf.message.Message):
     ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
-    STACK_FIELD_NUMBER: builtins.int
-    PROJECT_FIELD_NUMBER: builtins.int
-    ORGANIZATION_FIELD_NUMBER: builtins.int
-    DRY_RUN_FIELD_NUMBER: builtins.int
-    CONFIG_FIELD_NUMBER: builtins.int
+    STACK_CONFIGURATION_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the analyzer. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -89,35 +121,27 @@ class AnalyzerHandshakeRequest(google.protobuf.message.Message):
     in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
     number), this field will be empty.
     """
-    stack: builtins.str
-    """The stack name being analyzed."""
-    project: builtins.str
-    """The project name of the stack being analyzed."""
-    organization: builtins.str
-    """The organization name of the stack being analyzed."""
-    dry_run: builtins.bool
-    """True if this is a preview/dry run."""
     @property
-    def config(self) -> google.protobuf.struct_pb2.Struct:
-        """The configuration of the stack being analyzed as a property map."""
+    def stack_configuration(self) -> global___AnalyzerStackConfiguration:
+        """The stack configuration of the stack being analyzed, if any. Analyzers may be started without an
+        associated stack, for example to query GetPluginInfo or GetAnalyzerInfo.
+        """
     def __init__(
         self,
         *,
         engine_address: builtins.str = ...,
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
-        stack: builtins.str = ...,
-        project: builtins.str = ...,
-        organization: builtins.str = ...,
-        dry_run: builtins.bool = ...,
-        config: google.protobuf.struct_pb2.Struct | None = ...,
+        stack_configuration: global___AnalyzerStackConfiguration | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "config", b"config", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "config", b"config", "dry_run", b"dry_run", "engine_address", b"engine_address", "organization", b"organization", "program_directory", b"program_directory", "project", b"project", "root_directory", b"root_directory", "stack", b"stack"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "_stack_configuration", b"_stack_configuration", "program_directory", b"program_directory", "root_directory", b"root_directory", "stack_configuration", b"stack_configuration"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "_stack_configuration", b"_stack_configuration", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory", "stack_configuration", b"stack_configuration"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_root_directory", b"_root_directory"]) -> typing_extensions.Literal["root_directory"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["_stack_configuration", b"_stack_configuration"]) -> typing_extensions.Literal["stack_configuration"] | None: ...
 
 global___AnalyzerHandshakeRequest = AnalyzerHandshakeRequest
 

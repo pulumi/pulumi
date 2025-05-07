@@ -160,16 +160,18 @@ func NewPolicyAnalyzer(
 		// policy publish`, we are not running in the context of a project or
 		// stack.
 		if opts != nil {
-			req.Stack = opts.Stack
-			req.Project = opts.Project
-			req.Organization = opts.Organization
-			req.DryRun = opts.DryRun
+			rpcOpts := &pulumirpc.AnalyzerStackConfiguration{
+				Stack:        opts.Stack,
+				Project:      opts.Project,
+				Organization: opts.Organization,
+			}
 			mconfig, err := MarshalProperties(resource.ToResourcePropertyMap(opts.Config),
 				MarshalOptions{KeepSecrets: true})
 			if err != nil {
 				return nil, fmt.Errorf("marshalling config: %w", err)
 			}
-			req.Config = mconfig
+			rpcOpts.Config = mconfig
+			req.StackConfiguration = rpcOpts
 		}
 
 		res, err := client.Handshake(ctx, &req)
