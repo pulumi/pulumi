@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 import os
+import select
 import subprocess
 import tempfile
 import urllib.request
@@ -219,23 +220,27 @@ class PulumiCommand:
             assert process.stderr is not None
 
             while True:
-                output = process.stdout.readline().decode(encoding="utf-8")
-                error = process.stderr.readline().decode(encoding="utf-8")
+                reads, _, _ = select.select([process.stdout, process.stderr], [], [])
 
-                if output == "" and error == "" and process.poll() is not None:
+                for read in reads:
+                    if read == process.stdout:
+                        output = process.stdout.readline()
+                        text = output.decode(encoding="utf-8").rstrip()
+
+                        if on_output:
+                            on_output(text)
+                        stdout_chunks.append(text)
+
+                    if read == process.stderr:
+                        error = process.stderr.readline()
+                        text = error.decode(encoding="utf-8").rstrip()
+
+                        if on_error:
+                            on_error(text)
+                        stderr_chunks.append(text)
+
+                if process.poll() is not None:
                     break
-
-                if output:
-                    text = output.rstrip()
-                    if on_output:
-                        on_output(text)
-                    stdout_chunks.append(text)
-
-                if error:
-                    text = error.rstrip()
-                    if on_error:
-                        on_error(text)
-                    stderr_chunks.append(text)
 
             code = process.returncode
 
