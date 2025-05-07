@@ -642,7 +642,8 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&runProgram, "run-program", env.RunProgram.Value(),
-		"Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set")
+		"Run the program to determine up-to-date state for providers to refresh resources,"+
+			" this only applies if --refresh is set")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
