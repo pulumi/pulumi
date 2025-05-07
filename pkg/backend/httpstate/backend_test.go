@@ -14,10 +14,12 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"testing"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -33,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -333,4 +337,83 @@ func TestCloudBackend_GetPackageRegistry(t *testing.T) {
 
 	_, ok := registry.(*cloudPackageRegistry)
 	assert.True(t, ok, "expected registry to be a cloudPackageRegistry")
+}
+
+// Bit of an integration test.
+// That we can render engine events, send them to the backend, and get a summary back.
+func TestCopilotExplainer(t *testing.T) {
+	t.Parallel()
+
+	copilotResponse, err := json.Marshal(apitype.CopilotResponse{
+		ThreadMessages: []apitype.CopilotThreadMessage{
+			{
+				Role:    "assistant",
+				Kind:    "response",
+				Content: json.RawMessage(`"Test summary of changes"`),
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	// Create a mock transport that
+	// 1. captures the request to assert on
+	// 2. returns our test response
+	var requestBody []byte
+	mockTransport := &mockTransport{
+		roundTrip: func(req *http.Request) (*http.Response, error) {
+			var err error
+			requestBody, err = io.ReadAll(req.Body)
+			if err != nil {
+				return nil, err
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(copilotResponse)),
+				Header:     make(http.Header),
+			}, nil
+		},
+	}
+
+	// Create a backend and API client using our mock transport
+	apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+	apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
+	b := &cloudBackend{
+		client: apiClient,
+		d:      diagtest.LogSink(t),
+	}
+
+	// Call explainer
+	stackRef := cloudBackendReference{
+		name:    tokens.MustParseStackName("foo"),
+		owner:   "test-owner",
+		project: "test-project",
+	}
+	op := backend.UpdateOperation{
+		Proj: &workspace.Project{Name: "test-project"},
+		Opts: backend.UpdateOptions{
+			Display: display.Options{
+				Color: colors.Never,
+			},
+		},
+	}
+	events := []engine.Event{
+		engine.NewEvent(engine.StdoutEventPayload{
+			Message: "Hello, world!",
+			Color:   colors.Never,
+		}),
+	}
+	summary, err := b.Explain(context.Background(), stackRef, apitype.UpdateUpdate, op, events)
+
+	// Verify results
+	require.NoError(t, err)
+	assert.Contains(t, summary, "Test summary of changes")
+	assert.Contains(t, string(requestBody), "Hello, world!")
+}
+
+type mockTransport struct {
+	roundTrip func(*http.Request) (*http.Response, error)
+}
+
+func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t.roundTrip(req)
 }

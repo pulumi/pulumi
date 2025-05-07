@@ -889,7 +889,7 @@ func TestTracePropagationGo(t *testing.T) {
 		t.Parallel()
 
 		isGoListTrace := func(t *appdash.Trace) bool {
-			m := t.Span.Annotations.StringMap()
+			m := t.StringMap()
 
 			isGoCmd := strings.HasSuffix(m["command"], "go") ||
 				strings.HasSuffix(m["command"], "go.exe")
@@ -908,7 +908,7 @@ func TestTracePropagationGo(t *testing.T) {
 
 		exportStackCounter := 0
 		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
-			name := tr.Span.Name()
+			name := tr.Name()
 			if name == "api/exportStack" {
 				exportStackCounter++
 			}

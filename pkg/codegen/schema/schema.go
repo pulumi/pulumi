@@ -1764,7 +1764,7 @@ func (returnTypeSpec *ReturnTypeSpec) UnmarshalJSON(inputJSON []byte) error {
 	var m returnTypeSpecObjectSerialForm
 	err := json.Unmarshal(inputJSON, &m)
 	if err == nil {
-		if m.ObjectTypeSpec.Properties != nil {
+		if m.Properties != nil {
 			ts.ObjectTypeSpec = &m.ObjectTypeSpec
 			if plain, ok := m.Plain.(bool); ok && plain {
 				ts.ObjectTypeSpecIsPlain = true

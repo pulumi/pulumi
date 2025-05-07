@@ -126,7 +126,7 @@ func TestTryWithCorrectArguments(t *testing.T) {
 		return model.NewConstType(model.NumberType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
 	}
 	expectedType := model.NewUnionType(num(1), num(2), num(3))
-	assert.Equal(t, expectedType, variableType, "the type is a plain union")
+	assert.True(t, expectedType.Equals(variableType), "the type is a plain union")
 }
 
 // Tests that the PCL `try` intrinsic function binds when correctly passed an output based argument.
@@ -152,7 +152,7 @@ func TestTryWithCorrectOutputArguments(t *testing.T) {
 		return model.NewConstType(model.NumberType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
 	}
 	expectedType := model.NewOutputType(model.NewUnionType(num(1), num(2), num(3)))
-	assert.Equal(t, expectedType, variableType, "the type is an output union")
+	assert.True(t, expectedType.Equals(variableType), "the type is an output union")
 }
 
 // Tests that the PCL `try` intrinsic function binds when correctly passed a dynamically typed arguments.
@@ -327,7 +327,7 @@ func TestInvalidBindingPulumiResourceTypeName(t *testing.T) {
 			},
 			{
 				name: "wrong argument",
-				source: fmt.Sprintf(`res = { id = "foo", urn = "bar" }			
+				source: fmt.Sprintf(`res = { id = "foo", urn = "bar" }
 				type = %s(res)`, function),
 				expected: function + " argument must be a single resource",
 			},

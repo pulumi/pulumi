@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -71,6 +72,7 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 	for _, line := range summaryLines {
 		fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
 	}
+
 	fmt.Fprintln(out)
 
 	if opts.ShowLinkToCopilot {
@@ -83,4 +85,27 @@ func PrintCopilotLink(out io.Writer, opts Options, permalink string) {
 	fmt.Fprintln(out, "  "+
 		opts.Color.Colorize(colors.Underline+colors.BrightBlue+ExplainFailureLink(permalink)+colors.Reset))
 	fmt.Fprintln(out)
+}
+
+// RenderCopilotThinking displays a "Thinking..." message.
+func RenderCopilotThinking(opts Options) {
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+
+	fmt.Fprintln(stdout, "Thinking...")
+}
+
+// FormatCopilotSummary formats a Copilot summary for display.
+func FormatCopilotSummary(summary string, opts Options) string {
+	summary = renderBoldMarkdown(summary, opts)
+	return fmt.Sprintf("\n%s\n", opts.Color.Colorize(summary))
+}
+
+// renderBoldMarkdown renders bold double-asterisk markdown in a summary as a colorized string.
+// Double-asterisk markdown is very common in Copilot summaries and is quite hard to read.
+func renderBoldMarkdown(summary string, opts Options) string {
+	summary = regexp.MustCompile(`\*\*(.*?)\*\*`).ReplaceAllString(summary, colors.BrightBlue+"$1"+colors.Reset)
+	return summary
 }

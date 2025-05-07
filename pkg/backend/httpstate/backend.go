@@ -196,7 +196,8 @@ type cloudBackend struct {
 	capabilities *promise.Promise[apitype.Capabilities]
 
 	// The current project, if any.
-	currentProject *workspace.Project
+	currentProject                  *workspace.Project
+	copilotEnabledForCurrentProject *bool
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -611,6 +612,7 @@ func (b *cloudBackend) URL() string {
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
 	b.currentProject = project
+	b.copilotEnabledForCurrentProject = nil
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
@@ -1150,7 +1152,70 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
+}
+
+func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
+	// Have copilot features been requested by specifying the --copilot flag to the cli
+	if !opts.ShowCopilotFeatures {
+		return false
+	}
+
+	// Is copilot enabled this project in Pulumi Cloud
+	if b.copilotEnabledForCurrentProject == nil {
+		logging.V(3).Info(
+			"error: copilotEnabledForCurrentProject has not been set. only available after an update has been started.")
+		return false
+	}
+
+	return *b.copilotEnabledForCurrentProject
+}
+
+// explain takes engine events, renders them out to a buffer as something similar to what the user sees
+// in the CLI, and then explains the output with Copilot.
+func (b *cloudBackend) Explain(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	kind apitype.UpdateKind,
+	op backend.UpdateOperation,
+	events []engine.Event,
+) (string, error) {
+	renderer := display.NewCaptureProgressEvents(
+		stackRef.Name(),
+		op.Proj.Name,
+		display.Options{
+			ShowResourceChanges: true,
+		},
+		true, /* isPreview */
+		kind,
+	)
+	renderer.ProcessEventSlice(events)
+	output := renderer.Output()
+
+	if output == "" {
+		return "", errors.New("no output from preview")
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return "", err
+	}
+
+	displayOpts := op.Opts.Display
+	display.RenderCopilotThinking(displayOpts)
+	orgID := stackID.Owner
+	summary, err := b.client.ExplainPreviewWithCopilot(ctx, orgID, string(kind), output)
+	if err != nil {
+		return "", err
+	}
+
+	if summary == "" {
+		summary = "No summary available"
+	}
+
+	formattedSummary := display.FormatCopilotSummary(summary, displayOpts)
+
+	return formattedSummary, nil
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1171,7 +1236,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1189,7 +1254,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1207,7 +1272,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1270,16 +1335,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		dryRun,
 		kind,
 	)
-
-	eventsChannel := make(chan engine.Event)
-	doneChannel := make(chan bool)
-
-	go renderer.ProcessEvents(eventsChannel, doneChannel)
-	for _, event := range events {
-		eventsChannel <- event
-	}
-	close(eventsChannel)
-	<-doneChannel
+	renderer.ProcessEventSlice(events)
 
 	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
@@ -1291,7 +1347,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 }
 
 func (b *cloudBackend) summarizeErrorWithCopilot(
-	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
 ) (*display.CopilotErrorSummaryMetadata, error) {
 	if len(pulumiOutput) == 0 {
 		return nil, nil
@@ -1395,6 +1451,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
 	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
+	b.copilotEnabledForCurrentProject = &isCopilotEnabled
 	copilotEnabledValueString := "is"
 	continuationString := ""
 	if isCopilotEnabled {
@@ -1430,7 +1487,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
@@ -1442,9 +1499,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	// This code is here so we can capture errors from previews-of-updates as well as updates.
-	// The createAndStartUpdate call above can also disable ShowCopilotFeatures if its not enabled in the user's org.
-	if op.Opts.Display.ShowCopilotFeatures {
+	if b.IsCopilotFeatureEnabled(op.Opts.Display) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)

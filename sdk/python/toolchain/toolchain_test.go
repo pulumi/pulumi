@@ -339,7 +339,8 @@ func TestPyenvInstall(t *testing.T) {
 func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 	t.Helper()
 
-	if opts.Toolchain == Pip {
+	switch opts.Toolchain {
+	case Pip:
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)
 		err = tc.InstallDependencies(context.Background(), opts.Root, false, /*useLanguageVersionTools*/
@@ -352,7 +353,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
 		}
-	} else if opts.Toolchain == Poetry {
+	case Poetry:
 		writePyprojectForPoetry(t, opts.Root)
 		// Write poetry.toml file to enable in-project virtualenvs. This ensures we delete the
 		// virtualenv with the tmp directory after the test is done.
@@ -369,7 +370,7 @@ func createVenv(t *testing.T, opts PythonOptions, packages ...string) {
 			out, err := cmd.CombinedOutput()
 			require.NoError(t, err, string(out))
 		}
-	} else if opts.Toolchain == Uv {
+	case Uv:
 		writePyprojectForUv(t, opts.Root)
 		tc, err := ResolveToolchain(opts)
 		require.NoError(t, err)

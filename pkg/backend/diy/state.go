@@ -399,9 +399,10 @@ func (b *diyBackend) stackPath(ctx context.Context, ref *diyBackendReference) st
 		}
 
 		// plainObj will always come out first since allObjs is sorted by Key
-		if file.Key == plainPath {
+		switch file.Key {
+		case plainPath:
 			plainObj = file
-		} else if file.Key == gzipedPath {
+		case gzipedPath:
 			// We have a plain .json file and it was modified after this gzipped one so use it.
 			if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
 				return plainPath

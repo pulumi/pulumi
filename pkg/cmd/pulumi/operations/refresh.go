@@ -469,7 +469,7 @@ func filterMapPendingCreates(
 		}
 		snap.PendingOperations = pending
 		return nil
-	})
+	}, nil)
 }
 
 // Apply the CLI args from --import-pending-creates [[URN ID]...]. If an error was found,

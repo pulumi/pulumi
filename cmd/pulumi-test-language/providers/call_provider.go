@@ -341,11 +341,12 @@ func (p *CallProvider) Call(
 	defer conn.Close()
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
-	if req.Tok == "call:index:Custom/providerValue" {
+	switch req.Tok {
+	case "call:index:Custom/providerValue":
 		return p.callCustomProviderValue(ctx, req, monitor)
-	} else if req.Tok == "pulumi:providers:call/identity" {
+	case "pulumi:providers:call/identity":
 		return p.callProviderIdentity(ctx, req, monitor)
-	} else if req.Tok == "pulumi:providers:call/prefixed" {
+	case "pulumi:providers:call/prefixed":
 		return p.callProviderPrefixed(ctx, req, monitor)
 	}
 

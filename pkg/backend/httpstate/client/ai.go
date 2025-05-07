@@ -17,35 +17,45 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
+// Maximum number of characters to send to Copilot for requests.
+// We do this in "chars" to avoid including a proper token counting library for now.
+// Tokens are 3-4 characters as a rough estimate.
+const (
+	// 4kb, we're optimizing for latency here. ~1000 tokens.
+	maxCopilotSummarizeUpdateContentLength = 4000
+	// 200kb, send a good amount of content to Copilot without incurring a large latency penalty.
+	// This will be trimmed on the backend depending on the model used etc.
+	maxCopilotExplainPreviewContentLength = 200000
+)
+
 // createSummarizeUpdateRequest creates a new CopilotSummarizeUpdateRequest with the given content and org ID
 func createSummarizeUpdateRequest(
-	lines []string,
+	content string,
 	orgID string,
 	model string,
 	maxSummaryLen int,
 	maxUpdateOutputLen int,
 ) apitype.CopilotSummarizeUpdateRequest {
-	// Convert lines to a single string
-	content := strings.Join(lines, "\n")
 	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
 
 	return apitype.CopilotSummarizeUpdateRequest{
-		State: apitype.CopilotState{
-			Client: apitype.CopilotClientState{
-				CloudContext: apitype.CopilotCloudContext{
-					OrgID: orgID,
-					URL:   "https://app.pulumi.com",
+		CopilotRequest: apitype.CopilotRequest{
+			State: apitype.CopilotState{
+				Client: apitype.CopilotClientState{
+					CloudContext: apitype.CopilotCloudContext{
+						OrgID: orgID,
+						URL:   "https://app.pulumi.com",
+					},
 				},
 			},
 		},
-		DirectSkillCall: apitype.CopilotDirectSkillCall{
-			Skill: "summarizeUpdate",
-			Params: apitype.CopilotSkillParams{
+		DirectSkillCall: apitype.CopilotSummarizeUpdate{
+			Skill: apitype.SkillSummarizeUpdate,
+			Params: apitype.CopilotSummarizeUpdateParams{
 				PulumiUpdateOutput: content,
 				Model:              model,
 				MaxLen:             maxSummaryLen,
@@ -54,8 +64,40 @@ func createSummarizeUpdateRequest(
 	}
 }
 
-// extractSummaryFromResponse parses the Copilot API response and extracts the summary content
-func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateResponse) (string, error) {
+// createExplainPreviewRequest creates a new CopilotExplainPreviewRequest with the given content and org ID
+func createExplainPreviewRequest(
+	content string,
+	orgID string,
+	kind string,
+	maxUpdateOutputLen int,
+) apitype.CopilotExplainPreviewRequest {
+	content = TruncateWithMiddleOut(content, maxUpdateOutputLen)
+
+	return apitype.CopilotExplainPreviewRequest{
+		CopilotRequest: apitype.CopilotRequest{
+			State: apitype.CopilotState{
+				Client: apitype.CopilotClientState{
+					CloudContext: apitype.CopilotCloudContext{
+						OrgID: orgID,
+						URL:   "https://app.pulumi.com",
+					},
+				},
+			},
+		},
+		DirectSkillCall: apitype.CopilotExplainPreview{
+			Skill: apitype.SkillExplainPreview,
+			Params: apitype.CopilotExplainPreviewParams{
+				PulumiPreviewOutput: content,
+				PreviewDetails: apitype.CopilotExplainPreviewDetails{
+					Kind: kind,
+				},
+			},
+		},
+	}
+}
+
+// extractCopilotResponse parses the Copilot API response and extracts the summary content
+func extractCopilotResponse(copilotResp apitype.CopilotResponse) (string, error) {
 	for _, msg := range copilotResp.ThreadMessages {
 		if msg.Role != "assistant" {
 			continue
@@ -74,10 +116,6 @@ func extractSummaryFromResponse(copilotResp apitype.CopilotSummarizeUpdateRespon
 	}
 	return "", errors.New("no assistant message found in response")
 }
-
-// Maximum number of characters to send to Copilot. We do this to avoid including a proper token counting library for
-// now. Tokens are 3-4 characters as a rough estimate. So this is 1000 tokens.
-const maxCopilotContentLength = 4000
 
 const truncationNotice = "... (truncated) ..."
 

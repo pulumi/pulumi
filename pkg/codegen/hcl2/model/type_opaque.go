@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -66,57 +67,58 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 func (t *OpaqueType) conversionFromImpl(
 	src Type, unifying, checkUnsafe bool, seen map[Type]struct{},
 ) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
-		if constType, ok := src.(*ConstType); ok {
-			return t.conversionFrom(constType.Type, unifying, seen)
-		}
-		switch {
-		case t == NumberType:
-			// src == NumberType is handled by t == src above
-			contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
+	return conversionFrom(
+		t, src, unifying, seen, &gsync.Map[Type, cacheEntry]{}, func() (ConversionKind, lazyDiagnostics) {
+			if constType, ok := src.(*ConstType); ok {
+				return t.conversionFrom(constType.Type, unifying, seen)
+			}
+			switch t {
+			case NumberType:
+				// src == NumberType is handled by t == src above
+				contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
 
-			cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
-			switch cki {
-			case SafeConversion:
-				return SafeConversion, nil
-			case UnsafeConversion:
-				return UnsafeConversion, nil
-			case NoConversion:
+				cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
+				switch cki {
+				case SafeConversion:
+					return SafeConversion, nil
+				case UnsafeConversion:
+					return UnsafeConversion, nil
+				case NoConversion:
+					if checkUnsafe {
+						if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
+							return UnsafeConversion, nil
+						}
+					}
+				}
+				return NoConversion, nil
+			case IntType:
+				if checkUnsafe {
+					if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
+						return UnsafeConversion, nil
+					}
+				}
+				return NoConversion, nil
+			case BoolType:
 				if checkUnsafe {
 					if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
 						return UnsafeConversion, nil
 					}
 				}
-			}
-			return NoConversion, nil
-		case t == IntType:
-			if checkUnsafe {
-				if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
+				return NoConversion, nil
+			case StringType:
+				ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
+				ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
+				if ckb == SafeConversion || ckn == SafeConversion {
+					return SafeConversion, nil
+				}
+				if ckb == UnsafeConversion || ckn == UnsafeConversion {
 					return UnsafeConversion, nil
 				}
+				return NoConversion, nil
+			default:
+				return NoConversion, nil
 			}
-			return NoConversion, nil
-		case t == BoolType:
-			if checkUnsafe {
-				if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
-					return UnsafeConversion, nil
-				}
-			}
-			return NoConversion, nil
-		case t == StringType:
-			ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
-			ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
-			if ckb == SafeConversion || ckn == SafeConversion {
-				return SafeConversion, nil
-			}
-			if ckb == UnsafeConversion || ckn == UnsafeConversion {
-				return UnsafeConversion, nil
-			}
-			return NoConversion, nil
-		default:
-			return NoConversion, nil
-		}
-	})
+		})
 }
 
 func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {

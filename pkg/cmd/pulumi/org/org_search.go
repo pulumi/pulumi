@@ -173,7 +173,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	err = cmd.Render(&cmd.searchCmd, res)
 	if err != nil {
 		return fmt.Errorf("table rendering error: %w", err)
 	}
@@ -255,13 +255,11 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 	if err != nil {
 		return err
 	}
-	_, err = w.Write(
-		[]byte(
-			fmt.Sprintf(
-				"Displaying %s of %s total results.\n",
-				strconv.Itoa(len(results.Resources)),
-				strconv.FormatInt(*results.Total, 10))),
-	)
+	_, err = fmt.Fprintf(w,
+
+		"Displaying %s of %s total results.\n",
+		strconv.Itoa(len(results.Resources)),
+		strconv.FormatInt(*results.Total, 10))
 	if err != nil {
 		return err
 	}
@@ -269,9 +267,8 @@ func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) err
 	if err != nil {
 		return err
 	}
-	_, err = w.Write(
-		[]byte(fmt.Sprintf("\nResources displayed are the result of the following Pulumi query:\n%s\n", results.Query)),
-	)
+	_, err = fmt.Fprintf(w,
+		"\nResources displayed are the result of the following Pulumi query:\n%s\n", results.Query)
 	return err
 }
 

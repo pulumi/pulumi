@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -704,6 +705,68 @@ func TestExcludeProtected(t *testing.T) {
 	// We run the command again, but this time there are not unprotected resources to destroy.
 	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
 	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")
+}
+
+func TestUnprotect(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("protect_resources/step1")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
+
+	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+}
+
+func TestUnprotectProtect(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("protect_resources/step1")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
+
+	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "state", "protect", "--all", "--yes")
+
+	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
 }
 
 func TestInvalidPluginError(t *testing.T) {
@@ -1538,6 +1601,22 @@ func TestOverrideComponentNamespace(t *testing.T) {
 	require.NoError(t, err)
 	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
 	// it is 'pulumi', which we get from `github.com/*pulumi*/....
+	require.Equal(t, "pulumi", packageSpec.Namespace)
+}
+
+func TestOverrideNamespaceLowercase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
+		"github.com/Pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+	var packageSpec schema.PackageSpec
+	err := json.Unmarshal([]byte(stdout), &packageSpec)
+	require.NoError(t, err)
+	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
+	// it is 'pulumi', which we get from `github.com/*Pulumi*/....; note that namespaces only allow lowercasee
+	// characters, so we lowercase it automatically.
 	require.Equal(t, "pulumi", packageSpec.Namespace)
 }
 

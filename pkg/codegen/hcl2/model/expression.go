@@ -1400,8 +1400,8 @@ func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 		typ = ctyTypeToType(x.Value.Type(), false)
 	}
 
-	switch {
-	case typ == NoneType || typ == StringType || typ == IntType || typ == NumberType || typ == BoolType:
+	switch typ {
+	case NoneType, StringType, IntType, NumberType, BoolType:
 		// OK
 		typ = NewConstType(typ, x.Value)
 	default:

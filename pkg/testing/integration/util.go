@@ -189,7 +189,7 @@ func AssertHTTPResultWithRetry(
 	if !assert.True(t, ok, fmt.Sprintf("expected `%s` output", output)) {
 		return false
 	}
-	if !(strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://")) {
+	if !strings.HasPrefix(hostname, "http://") && !strings.HasPrefix(hostname, "https://") {
 		hostname = "http://" + hostname
 	}
 	var err error
