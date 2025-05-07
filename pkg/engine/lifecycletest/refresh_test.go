@@ -1910,11 +1910,12 @@ func TestRefreshWithBigProgram(t *testing.T) {
 	}
 
 	programExecutions := 0
+	parallel := int32(4)
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		programExecutions++
 
-		for i := int64(0); i < 5; i++ {
-			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA"+strconv.FormatInt(i, 10), true, deploytest.ResourceOptions{
+		for i := int32(0); i < parallel+1; i++ {
+			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA"+strconv.FormatInt(int64(i), 10), true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
 			assert.NoError(t, err)
@@ -1937,7 +1938,7 @@ func TestRefreshWithBigProgram(t *testing.T) {
 			HostF:            hostF,
 			SkipDisplayTests: true,
 			UpdateOptions: engine.UpdateOptions{
-				Parallel: 4,
+				Parallel: parallel,
 			},
 		},
 	}

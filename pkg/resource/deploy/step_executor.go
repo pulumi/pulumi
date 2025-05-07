@@ -573,7 +573,7 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 			)
 
 			if request.CompletionChan == nil {
-				se.log(workerID, "worker received nil chain, exiting")
+				se.log(workerID, "worker received nil completion channel, exiting")
 				return
 			}
 
