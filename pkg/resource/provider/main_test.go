@@ -22,13 +22,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMainWithContext(t *testing.T) {
+func TestMainContext(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	err := MainWithContext(ctx, "short-lived-test-provider",
+	err := MainContext(ctx, "short-lived-test-provider",
 		func(_ *HostClient) (pulumirpc.ResourceProviderServer, error) {
 			return pulumirpc.UnimplementedResourceProviderServer{}, nil
 		},

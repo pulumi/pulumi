@@ -1,4 +1,4 @@
 changes:
   - type: feat
     scope: pkg
-    description: Add MainWithContext to allow for provider cancelation
+    description: Add MainContext to allow for provider cancelation
