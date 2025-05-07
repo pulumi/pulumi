@@ -247,6 +247,22 @@ func TestLanguage(t *testing.T) {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
+					// Skip l2-large-string on Node.js 24 https://github.com/nodejs/node/issues/58197
+					// TODO: https://github.com/pulumi/pulumi/issues/19442
+					if tt == "l2-large-string" {
+						cmd := exec.Command("node", "-v")
+						output, err := cmd.Output()
+						require.NoError(t, err)
+
+						var major int
+						_, err = fmt.Sscanf(string(output), "v%d", &major)
+						require.NoError(t, err)
+
+						if major >= 24 {
+							t.Skip("Skipping test on Node.js 24+ due to known regression")
+						}
+					}
+
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 						Token: prepare.Token,
 						Test:  tt,
