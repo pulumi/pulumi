@@ -62,15 +62,6 @@ def test_property_value_map():
 
 
 async def test_nesting():
-    class RecursiveTypeA(TypedDict):
-        b: Optional[pulumi.Input["RecursiveTypeB"]]
-
-    class RecursiveTypeB(TypedDict):
-        a: Optional[pulumi.Input[RecursiveTypeA]]
-
-    class Args(TypedDict):
-        rec: pulumi.Input[RecursiveTypeA]
-
     value = {
         "rec": PropertyValue(
             {"a": PropertyValue({"b": PropertyValue({"a": PropertyValue(None)})})}

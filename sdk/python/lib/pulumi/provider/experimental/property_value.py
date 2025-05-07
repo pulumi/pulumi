@@ -28,9 +28,9 @@ from typing import (
     Union,
     cast,
     Callable,
+    Iterable,
     Sequence,
     Mapping,
-    Iterable,
     get_args,
     get_origin,
 )
@@ -60,9 +60,7 @@ class PropertyValueType(Enum):
     OBJECT = "Object"
     ASSET = "Asset"
     ARCHIVE = "Archive"
-    SECRET = "Secret"
     RESOURCE = "Resource"
-    OUTPUT = "Output"
     COMPUTED = "Computed"
 
 
@@ -72,67 +70,24 @@ class ResourceReference:
     Represents a reference to a resource.
     """
 
-    def __init__(
-        self, urn: str, resource_id: Optional[Any], package_version: str
-    ) -> None:
-        """
-        :param urn: The URN of the resource.
-        :param resource_id: The ID of the resource.
-        :param package_version: The package version of the resource.
-        """
-        self.urn = urn
-        self.resource_id = resource_id
-        self.package_version = package_version
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ResourceReference):
-            return False
-        return (
-            self.urn == other.urn
-            and self.resource_id == other.resource_id
-            and self.package_version == other.package_version
-        )
-
-    def __hash__(self) -> int:
-        return hash((self.urn, self.resource_id, self.package_version))
-
-
-@dataclass(frozen=True)
-class OutputReference:
-    """
-    Represents a reference to an output value.
-    """
-
-    dependencies: frozenset[str]
-    value: Optional["PropertyValue"]
-
-    def __init__(
-        self, value: Optional["PropertyValue"], dependencies: Iterable[str]
-    ) -> None:
-        """
-        :param value: The value of the output, if known.
-        :param dependencies: The dependencies of the output.
-        """
-        object.__setattr__(self, "value", value)
-        object.__setattr__(self, "dependencies", frozenset(dependencies))
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, OutputReference):
-            return False
-        return self.value == other.value and self.dependencies == other.dependencies
-
-    def __hash__(self) -> int:
-        return hash((self.value, frozenset(self.dependencies)))
-
-    def __str__(self) -> str:
-        return f"Output({self.value}, {self.dependencies})"
-
+    urn: str
+    """The URN of the resource."""
+    resource_id: Optional[Any]
+    """The ID of the resource, if applicable."""
+    package_version: str
+    """The package version of the resource."""
 
 @dataclass(frozen=True)
 class PropertyValue:
     """
     Represents a property value.
     """
+
+    is_secret : bool = False
+    """Whether the property value is a secret."""
+
+    dependencies: frozenset[str] = frozenset()
+    """The dependencies of the property value."""
 
     @dataclass(frozen=True)
     class Computed:
@@ -151,11 +106,9 @@ class PropertyValue:
             str,
             pulumi.Asset,
             pulumi.Archive,
-            "PropertyValue",
             Sequence["PropertyValue"],
             Mapping[str, "PropertyValue"],
             ResourceReference,
-            OutputReference,
             "PropertyValue.Computed",
         ]
     ]
@@ -169,14 +122,14 @@ class PropertyValue:
                 str,
                 pulumi.Asset,
                 pulumi.Archive,
-                "PropertyValue",
                 Sequence["PropertyValue"],
                 Mapping[str, "PropertyValue"],
                 ResourceReference,
-                OutputReference,
                 Computed,
             ]
         ],
+        is_secret: bool = False,
+        dependencies: Optional[Iterable[str]] = None,
     ) -> None:
         """
         :param value: The value of the property.
@@ -191,6 +144,8 @@ class PropertyValue:
             # Ensure the Asset/Archive is immutable by deep copying
             value = copy.deepcopy(value)
         object.__setattr__(self, "value", value)
+        object.__setattr__(self, "is_secret", is_secret)
+        object.__setattr__(self, "dependencies", frozenset(dependencies))
 
     @staticmethod
     def computed() -> "PropertyValue":
@@ -205,6 +160,26 @@ class PropertyValue:
         Creates a null property value.
         """
         return PropertyValue(None)
+    
+    def with_secret(self, is_secret: bool) -> "PropertyValue":
+        """
+        Returns a copy of the PropertyValue with the specified secret status.
+        """
+        return PropertyValue(
+            self.value,
+            is_secret=is_secret,
+            dependencies=self.dependencies,
+        )
+    
+    def with_dependencies(self, dependencies: Iterable[str]) -> "PropertyValue":
+        """
+        Returns a copy of the PropertyValue with the specified dependencies.
+        """
+        return PropertyValue(
+            self.value,
+            is_secret=self.is_secret,
+            dependencies=dependencies,
+        )
 
     @property
     def type(self) -> PropertyValueType:
@@ -229,10 +204,6 @@ class PropertyValue:
             return PropertyValueType.OBJECT
         if isinstance(self.value, ResourceReference):
             return PropertyValueType.RESOURCE
-        if isinstance(self.value, OutputReference):
-            return PropertyValueType.OUTPUT
-        if isinstance(self.value, PropertyValue):
-            return PropertyValueType.SECRET
         if isinstance(self.value, PropertyValue.Computed):
             return PropertyValueType.COMPUTED
         raise ValueError(f"Unsupported value type: {type(self.value)}")
@@ -240,46 +211,32 @@ class PropertyValue:
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, PropertyValue):
             return False
-        return self.value == other.value
+        return self.value == other.value and self.is_secret == other.is_secret and self.dependencies == other.dependencies
 
     def __hash__(self) -> int:
-        return hash(self.value)
+        return hash([self.value, self.is_secret, self.dependencies])
 
     def __str__(self) -> str:
-        return str(self.value)
-
-    def is_secret(self) -> bool:
-        """
-        Determines if the property value is a secret.
-        """
-        return isinstance(self.value, PropertyValue)
+        v = str(self.value)
+        # If we have secretness or dependencies, we want to include that in the string representation.
+        if self.is_secret:
+            v = f"{v} (secret)"
+        if self.dependencies:
+            deps = ", ".join(self.dependencies)
+            v = f"{v} (dependencies: {deps})"
+        return v
 
     def contains_secret(self) -> bool:
         """
         Determines if the property value contains a secret.
         """
-        if isinstance(self.value, PropertyValue):
+        if self.is_secret:
             return True
         if isinstance(self.value, Sequence) and not isinstance(self.value, str):
             return any(v.contains_secret() for v in self.value)
         if isinstance(self.value, Mapping):
             return any(v.contains_secret() for v in self.value.values())
-        if isinstance(self.value, OutputReference):
-            return self.value.value is not None and self.value.value.contains_secret()
         return False
-
-    def unwrap(self) -> "PropertyValue":
-        """
-        Attempts to unwrap the value if it is a secret or output.
-        """
-        if isinstance(self.value, PropertyValue):
-            return self.value.unwrap()
-        if isinstance(self.value, OutputReference):
-            inner = self.value.value
-            if inner is None:
-                return PropertyValue.computed()
-            return inner.unwrap()
-        return self
 
     def marshal(
         self, property_dependencies: Optional[Set[str]] = None
@@ -379,9 +336,6 @@ class PropertyValue:
             return struct_pb2.Value(struct_value=struct_pb2.Struct(fields=pbstruct))
 
         if isinstance(self.value, ResourceReference):
-            raise NotImplementedError()
-
-        if isinstance(self.value, OutputReference):
             raise NotImplementedError()
 
         raise ValueError(f"Unsupported value type: {type(self.value)}")
@@ -491,11 +445,11 @@ class PropertyValue:
                     if isinstance(prop.value, OutputReference):
                         new_deps = prop.value.dependencies.union(deps)
                         result[key] = PropertyValue(
-                            OutputReference(prop.value.value, dependencies=new_deps)
+                            OutputReference(prop.value.value, new_deps)
                         )
                     else:
                         result[key] = PropertyValue(
-                            OutputReference(prop, dependencies=deps)
+                            OutputReference(prop, frozenset(deps))
                         )
         return result
 
@@ -710,7 +664,9 @@ class PropertyValue:
                     if urn is not None:
                         dependencies.add(urn)
 
-                output_value = PropertyValue(OutputReference(inner, dependencies))
+                output_value = PropertyValue(
+                    OutputReference(inner, frozenset(dependencies))
+                )
 
                 if is_secret:
                     output_value = PropertyValue(output_value)
