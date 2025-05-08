@@ -895,8 +895,8 @@ type ProjectPlugin struct {
 }
 
 // Spec Return a PluginSpec object for this project plugin.
-func (pp ProjectPlugin) Spec() (PluginSpec, error) {
-	return NewPluginSpec(pp.Name, pp.Kind, pp.Version, "", nil)
+func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
+	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
 }
 
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
@@ -1016,13 +1016,14 @@ var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
 })
 
 func NewPluginSpec(
+	ctx context.Context,
 	source string,
 	kind apitype.PluginKind,
 	version *semver.Version,
 	pluginDownloadURL string,
 	checksums map[string][]byte,
 ) (PluginSpec, error) {
-	spec, inference, err := parsePluginSpec(context.Background(), source, kind)
+	spec, inference, err := parsePluginSpec(ctx, source, kind)
 	if err != nil {
 		return spec, err
 	}
@@ -2229,7 +2230,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(d, spec, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(context.Background(), d, spec, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2241,7 +2242,7 @@ func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 
 func GetPluginInfo(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(d, spec, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(context.Background(), d, spec, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -2273,6 +2274,7 @@ func getPluginPath(info *PluginInfo) string {
 //   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //   - an error in all other cases.
 func getPluginInfoAndPath(
+	ctx context.Context,
 	d diag.Sink,
 	spec PluginSpec, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
@@ -2309,7 +2311,7 @@ func getPluginInfoAndPath(
 			}
 		}
 
-		localSpec, err := plugin.Spec()
+		localSpec, err := plugin.Spec(ctx)
 		if err != nil {
 			return nil, "", err
 		}

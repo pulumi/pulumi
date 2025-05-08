@@ -294,7 +294,7 @@ func runConvert(
 			return nil
 		}
 
-		pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
 		if err != nil {
 			pCtx.Diag.Errorf(diag.Message("", "failed to create plugin spec for %q: %v"), pluginName, err)
 			return nil

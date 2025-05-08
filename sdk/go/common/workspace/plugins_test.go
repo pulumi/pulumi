@@ -1919,7 +1919,7 @@ func TestNewPluginSpec(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			spec, err := NewPluginSpec(c.source, c.kind, c.version, c.pluginDownloadURL, nil)
+			spec, err := NewPluginSpec(context.Background(), c.source, c.kind, c.version, c.pluginDownloadURL, nil)
 			if c.Error != nil {
 				require.EqualError(t, err, c.Error.Error())
 				return
