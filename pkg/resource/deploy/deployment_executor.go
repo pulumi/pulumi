@@ -282,6 +282,19 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 						return false, result.BailError(err)
 					}
 				}
+
+			case event := <-ex.deployment.resourceStatusEvents:
+				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming resource status event")
+
+				if err := ex.handleSingleEvent(event); err != nil {
+					if !result.IsBail(err) {
+						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+						ex.reportError(ex.deployment.generateEventURN(event), err)
+					}
+					cancel()
+					return false, result.BailError(err)
+				}
+
 			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
@@ -533,6 +546,9 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
 		ex.asyncEventsExpected--
 		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
+	case AdditionalStepsEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received AdditionalStepsEvent")
+		steps, err = ex.stepGen.HandleAdditionalSteps(e)
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		var async bool
@@ -677,7 +693,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				// TODO oldViews
+				step := NewRefreshStep(ex.deployment, nil, res, nil)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			}
@@ -693,7 +710,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				// TODO oldViews
+				step := NewRefreshStep(ex.deployment, nil, res, nil)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
@@ -705,7 +723,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				// loop.
 				for _, dep := range allDeps {
 					if targetsActual.Contains(dep.URN) {
-						step := NewRefreshStep(ex.deployment, nil, res)
+						// TODO oldViews
+						step := NewRefreshStep(ex.deployment, nil, res, nil)
 						steps = append(steps, step)
 						resourceToStep[res] = step
 

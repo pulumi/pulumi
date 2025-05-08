@@ -60,6 +60,7 @@ type State struct {
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
+	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
 }
 
 // Copy creates a deep copy of the resource state, except without copying the lock.
@@ -92,6 +93,7 @@ func (s *State) Copy() *State {
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
+		ViewOf:                  s.ViewOf,
 	}
 }
 
@@ -115,6 +117,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
 	sourcePosition string, ignoreChanges []string, replaceOnChanges []string, refreshBeforeUpdate bool,
+	viewOf URN,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -146,6 +149,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		IgnoreChanges:           ignoreChanges,
 		ReplaceOnChanges:        replaceOnChanges,
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
+		ViewOf:                  viewOf,
 	}
 
 	if timeouts != nil {
