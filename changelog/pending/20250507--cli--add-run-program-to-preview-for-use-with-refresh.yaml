@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `--run-program` to `preview` and `up` for use with `--refresh`

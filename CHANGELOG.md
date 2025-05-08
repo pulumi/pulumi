@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.169.0 (2025-05-08)
+
+
+### Features
+
+- [cli] Add `--run-program` to `preview` and `up` for use with `--refresh`
+  [#19449](https://github.com/pulumi/pulumi/pull/19449)
+
+- [engine] Use language runtimes `RunPlugin` method for booting policy packs
+
+- [pkg] Add MainContext to allow for provider cancelation
+  [#19445](https://github.com/pulumi/pulumi/pull/19445)
+
+- [auto/{nodejs,python}] Add --config-file option to Automation API operations (Preview, Up, Refresh, Destroy) for NodeJS, and Python
+
+
+### Bug Fixes
+
+- [engine] Fix `refresh --run-program` hanging on non-trivial programs
+  [#19448](https://github.com/pulumi/pulumi/pull/19448)
+
+- [programgen/nodejs] Fix generating imports for functions in 3-rd party packages such as @pulumiverse/scaleway
+  [#19410](https://github.com/pulumi/pulumi/pull/19410)
+
 ## 3.168.0 (2025-05-07)
 
 

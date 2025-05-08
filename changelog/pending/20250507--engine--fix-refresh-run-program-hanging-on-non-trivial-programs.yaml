@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix `refresh --run-program` hanging on non-trivial programs
