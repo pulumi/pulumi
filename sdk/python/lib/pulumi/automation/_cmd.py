@@ -234,9 +234,13 @@ class PulumiCommand:
 
                     if chunk:
                         if incoming is process.stdout:
+                            if on_output:
+                                on_output(chunk)
                             stdout_chunks.append(chunk)
                         elif incoming is process.stderr:
                             stderr_chunks.append(chunk)
+                            if on_error:
+                                on_error(chunk)
                     else:
                         if incoming is process.stdout:
                             streams.remove(process.stdout)
