@@ -14,7 +14,6 @@
 
 import os
 import tempfile
-from io import StringIO
 import unittest
 
 from pulumi.automation import LocalWorkspace, Stack, ProjectSettings, OpType
@@ -35,16 +34,15 @@ class TestConfigFile(unittest.IsolatedAsyncioTestCase):
             config = Config()
             export("plain", config.get("plain"))
 
+        project_name = "test_config_file_option"
+        stack_name = stack_namer(project_name)
+
+        workspace = LocalWorkspace(
+            work_dir=tempfile.mkdtemp(),
+            project_settings=ProjectSettings(name=project_name, runtime="python"),
+            program=pulumi_program,
+        )
         try:
-            project_name = "test_project"
-            stack_name = "dev"
-
-            workspace = LocalWorkspace(
-                work_dir=tempfile.mkdtemp(),
-                project_settings=ProjectSettings(name=project_name, runtime="python"),
-                program=pulumi_program,
-            )
-
             stack = Stack.create_or_select(stack_name, workspace)
 
             # We will test the config file option for both _parse_extra_args and the stack.preview, stack.up, stack.refresh, stack.destroy methods
