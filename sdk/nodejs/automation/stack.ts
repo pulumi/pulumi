@@ -1049,6 +1049,9 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
     if (opts.suppressProgress) {
         args.push("--suppress-progress");
     }
+    if (opts.configFile) {
+        args.push("--config-file", opts.configFile);
+    }
 }
 
 /**
@@ -1355,6 +1358,11 @@ export interface GlobalOpts {
      * Suppress display of periodic progress dots.
      */
     suppressProgress?: boolean;
+
+    /**
+     * Use the configuration values in the specified file rather than detecting the file name.
+     */
+    configFile?: string;
 
     /**
      * Save any creates seen during the preview into an import file to use with `pulumi import`.
