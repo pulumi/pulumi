@@ -157,17 +157,6 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 		defer YarnInstallMutex.Unlock()
 	}
 
-	if e.UseLocalPulumiBuild {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			e.Logf("Run Error: %v", err)
-			e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
-		}
-		if home != "" {
-			cmd = filepath.Join(home, ".pulumi-dev", "bin", "pulumi")
-		}
-	}
-
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
@@ -235,6 +224,19 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 	passphrase := "correct horse battery staple"
 	if e.Passphrase != "" {
 		passphrase = e.Passphrase
+	}
+
+	if e.UseLocalPulumiBuild && command == "pulumi" {
+		pulumiRoot := os.Getenv("PULUMI_ROOT")
+		if pulumiRoot == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				e.Logf("Run Error: %v", err)
+				e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", command, args)
+			}
+			pulumiRoot = filepath.Join(home, ".pulumi-dev")
+		}
+		command = filepath.Join(pulumiRoot, "bin", "pulumi")
 	}
 
 	//nolint:gas
