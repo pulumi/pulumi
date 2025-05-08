@@ -1,0 +1,5 @@
+name: l2-component-call-simple-liftedreturn
+runtime:
+  name: nodejs
+  options:
+    typescript: false
