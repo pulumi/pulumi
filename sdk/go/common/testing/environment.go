@@ -16,7 +16,6 @@ package testing
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -27,7 +26,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/lazy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,6 +33,7 @@ import (
 const (
 	//nolint:gosec
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
+	pulumiBinaryPathEnvVar      = "PULUMI_INTEGRATION_BINARY_PATH"
 )
 
 // Environment is an extension of the testing.T type that provides support for a test environment
@@ -57,8 +56,6 @@ type Environment struct {
 	Passphrase string
 	// Set to true to turn off setting PULUMI_CONFIG_PASSPHRASE.
 	NoPassphrase bool
-	// Set to true to use the local Pulumi dev build from ~/.pulumi-dev/bin/pulumi which get from `make install`
-	UseLocalPulumiBuild bool
 	// Content to pass on stdin, if any
 	Stdin io.Reader
 }
@@ -204,9 +201,9 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.Helper()
-	e.Logf("Running command %v %v", command, strings.Join(args, " "))
 
 	cmd := e.SetupCommandIn(dir, command, args...)
+	e.Logf("Running command %v %v", cmd.Path, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
 	var outBuffer bytes.Buffer
@@ -229,28 +226,7 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 	}
 
 	if command == "pulumi" {
-		if pulumiPath, isSet := os.LookupEnv("PULUMI_INTEGRATION_PATH"); isSet {
-			command = pulumiPath
-		} else if e.UseLocalPulumiBuild {
-			pulumiRoot := os.Getenv("PULUMI_ROOT")
-			if pulumiRoot == "" {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					e.Logf("Run Error: %v", err)
-					e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", command, args)
-				}
-				pulumiRoot = filepath.Join(home, ".pulumi-dev")
-			}
-			command = filepath.Join(pulumiRoot, "bin", "pulumi")
-		} else {
-			// Recurse upwards to find bin/pulumi
-			pulumiPath, err := pulumiBinaryPath.Value()
-			if err != nil {
-				e.Fatalf("can't locate pulumi binary: %v", err)
-			}
-			e.Logf("Using pulumi binary: %v", pulumiPath)
-			command = pulumiPath
-		}
+		command = e.resolvePulumiPath()
 	}
 
 	cmd := exec.Command(command, args...)
@@ -295,21 +271,17 @@ func (e *Environment) WriteTestFile(filename string, contents string) {
 	}
 }
 
-var pulumiBinaryPath lazy.Lazy2[string, error] = lazy.New2(func() (string, error) {
-	// Recurse upwards to find bin/pulumi
-	currentDirectory, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("can't locate current working directory: %v", err)
+func (e *Environment) resolvePulumiPath() string {
+	e.Helper()
+	if pulumiPath, isSet := os.LookupEnv(pulumiBinaryPathEnvVar); isSet {
+		return pulumiPath
 	}
-	for {
-		pulumiPath := filepath.Join(currentDirectory, "bin", "pulumi")
-		if stat, err := os.Stat(pulumiPath); err == nil && !stat.IsDir() {
-			return pulumiPath, nil
-		}
-		if currentDirectory == "/" {
-			// We are at the root, so we can't go up any further.
-			return "", errors.New("could not find bin/pulumi, have you run `make build`?")
-		}
-		currentDirectory = filepath.Dir(currentDirectory)
+	pulumiPath, err := exec.LookPath("pulumi")
+	if err == nil {
+		return pulumiPath
 	}
-})
+	if !os.IsNotExist(err) {
+		e.Logf("error locating pulumi binary from path: %v", err)
+	}
+	return "pulumi"
+}
