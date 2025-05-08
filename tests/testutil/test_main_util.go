@@ -43,11 +43,14 @@ func SetupPulumiBinary() {
 			os.Exit(1)
 		}
 	}
-	os.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Join(repoRoot, "bin"), os.Getenv("PATH")))
+	repoBin := filepath.Join(repoRoot, "bin")
+	os.Setenv("PATH", fmt.Sprintf("%s:%s", repoBin, os.Getenv("PATH")))
 	if os.Getenv("PULUMI_INTEGRATION_BINARY_PATH") == "" {
-		if _, err := os.Stat(filepath.Join(repoRoot, "bin", "pulumi")); os.IsNotExist(err) {
-			fmt.Printf("WARNING: pulumi binary not found in %s/bin. Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", repoRoot)
+		pulumiBinPath := filepath.Join(repoBin, "pulumi")
+		if _, err := os.Stat(pulumiBinPath); os.IsNotExist(err) {
+			fmt.Printf("WARNING: pulumi binary not found at %s."+
+				" Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
 		}
-		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", filepath.Join(repoRoot, "bin", "pulumi"))
+		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", pulumiBinPath)
 	}
 }
