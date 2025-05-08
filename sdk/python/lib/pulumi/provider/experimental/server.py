@@ -192,10 +192,12 @@ class ProviderServicer(ResourceProviderServicer):
         pulumi.runtime.config.set_all_config(
             dict(request.config), list(request.configSecretKeys)
         )
-        inputs = PropertyValue.unmarshal_map(
-            request.inputs,
-            {k: set(v.urns) for k, v in request.inputDependencies.items()},
-        )
+        inputs = PropertyValue.unmarshal_map(request.inputs)
+        # Add the input dependencies to the inputs property values
+        for k, v in inputs.items():
+            deps = request.inputDependencies.get(k)
+            if deps is not None:
+                inputs[k] = v.with_dependencies(v.dependencies.union(deps.urns))
 
         result = await self._provider.construct(
             provider.ConstructRequest(
@@ -262,11 +264,15 @@ class ProviderServicer(ResourceProviderServicer):
     def _construct_response(
         self, result: provider.ConstructResponse
     ) -> proto.ConstructResponse:
-        # Note: property_deps is populated by PropertyValue.marshal_map.
         property_deps: Dict[str, Set[str]] = {}
+        # Get the property dependencies from the result
+        for k, v in result.state.items():
+            if k in ["id", "urn"]:
+                continue
+            property_deps[k] = result.state[k].all_dependencies()
+
         state = PropertyValue.marshal_map(
-            {k: v for k, v in result.state.items() if k not in ["id", "urn"]},
-            property_dependencies=property_deps,
+            {k: v for k, v in result.state.items() if k not in ["id", "urn"]}
         )
 
         deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
@@ -319,9 +325,12 @@ class ProviderServicer(ResourceProviderServicer):
             list(request.configSecretKeys),
         )
 
-        args = PropertyValue.unmarshal_map(
-            request.args, {k: set(v.urns) for k, v in request.argDependencies.items()}
-        )
+        args = PropertyValue.unmarshal_map(request.args)
+        # Add the input dependencies to the args property values
+        for k, v in args.items():
+            deps = request.argDependencies.get(k)
+            if deps is not None:
+                args[k] = v.with_dependencies(v.dependencies.union(deps.urns))
 
         result = await self._provider.call(
             provider.CallRequest(tok=request.tok, args=args)
