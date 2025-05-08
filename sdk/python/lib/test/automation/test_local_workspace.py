@@ -822,7 +822,7 @@ class TestLocalWorkspace(unittest.TestCase):
             except:
                 self.assertNotEqual(error, "")
 
-            self.assertIn("error: open halloumi", error)
+            self.assertIn("error: unsupported color", error)
             error = ""
 
             up_res = stack.up()
