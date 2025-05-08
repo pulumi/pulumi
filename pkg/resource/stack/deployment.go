@@ -356,6 +356,7 @@ func SerializeResource(
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
 		IgnoreChanges:           res.IgnoreChanges,
+		ReplaceOnChanges:        res.ReplaceOnChanges,
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 	}
 
