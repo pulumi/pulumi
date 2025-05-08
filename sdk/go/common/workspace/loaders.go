@@ -19,8 +19,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -220,6 +222,14 @@ func LoadProjectStackBytes(
 	//     config:
 	//       {projectName}:instanceSize: t3.micro
 	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackForm)
+
+	configObj, ok := simplifiedStackForm["config"]
+	if ok {
+		if configMap, ok := configObj.(map[string]interface{}); ok {
+			checkForEmptyConfig(configMap)
+		}
+	}
+
 	modifiedProjectStack, _ := marshaller.Marshal(projectStackWithNamespacedConfig)
 
 	var projectStack ProjectStack
@@ -304,4 +314,52 @@ func LoadPolicyPack(path string) (*PolicyPackProject, error) {
 	}
 
 	return &policyPackProject, nil
+}
+
+// checkForEmptyConfig emits a warning for any config values that are `null` in
+// the YAML/JSON. These are currently loaded into a `config.Value` that's
+// interpreted as an empty string when we unmarshal into `ProjectStack.Config`,
+// but we want to change this in the future to maintain nullness.
+// Note that for object values, null is maintained inside objects already.
+//
+// ```yaml
+// # somekey{1,2,3} are all `null` in YAML, but `""` in pulumi.
+// somekey1:
+// somekey2: null
+// somekey3: ~
+//
+// # someobj.somekey{4,5,6} is `null` in both YAML and pulumi
+// someobj:
+//
+//	somekey4:
+//	somekey5: null
+//	somekey6: ~
+//
+// ```
+func checkForEmptyConfig(config map[string]interface{}) {
+	keys := []string{}
+	for k, v := range config {
+		if v == nil {
+			keys = append(keys, k)
+		}
+	}
+
+	if len(keys) == 1 {
+		cmdutil.Diag().Warningf(&diag.Diag{
+			Message: fmt.Sprintf("No value for configuration key %q. This is currently treated as an empty string `\"\"`, "+
+				"but will be treated as `null` in a future version of pulumi.", keys[0]),
+		})
+	} else if len(keys) > 1 {
+		for i, k := range keys {
+			keys[i] = `"` + k + `"`
+		}
+		joiner := ", "
+		if len(keys) == 2 {
+			joiner = " and "
+		}
+		cmdutil.Diag().Warningf(&diag.Diag{
+			Message: fmt.Sprintf("No value for configuration keys %s. This is currently treated as an empty string `\"\"`, "+
+				"but will be treated as `null` in a future version of pulumi.", strings.Join(keys, joiner)),
+		})
+	}
 }
