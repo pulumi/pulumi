@@ -29,7 +29,7 @@ import { EngineEvent, SummaryEvent } from "./events";
 import { LocalWorkspace } from "./localWorkspace";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { TagMap } from "./tag";
-import { Deployment, PulumiFn, Workspace } from "./workspace";
+import { Deployment, PulumiFn, Workspace, GetAllConfigOptions, ConfigOptions } from "./workspace";
 
 import * as langrpc from "../proto/language_grpc_pb";
 
@@ -448,7 +448,7 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
-     * Compares the current stack’s resource state with the state known to exist
+     * Compares the current stack's resource state with the state known to exist
      * in the actual cloud provider. Any such changes are adopted into the
      * current stack.
      *
@@ -800,14 +800,38 @@ Event: ${line}\n${e.toString()}`);
      *  The key contains a path to a property in a map or list to get
      */
     async getConfig(key: string, path?: boolean): Promise<ConfigValue> {
-        return this.workspace.getConfig(this.name, key, path);
+        return this.getConfigWithOptions(key, { path });
+    }
+
+    /**
+     * Returns the config value associated with the specified key with options.
+     *
+     * @param key
+     *  The key to use for the config lookup
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async getConfigWithOptions(key: string, opts?: ConfigOptions): Promise<ConfigValue> {
+        return this.workspace.getConfigWithOptions(this.name, key, opts);
     }
 
     /**
      * Returns the full config map associated with the stack in the workspace.
      */
     async getAllConfig(): Promise<ConfigMap> {
-        return this.workspace.getAllConfig(this.name);
+        return this.workspace.getAllConfigWithOptions(this.name, {
+            showSecrets: true,
+        });
+    }
+
+    /**
+     * Returns the full config map associated with the stack in the workspace with options.
+     *
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async getAllConfigWithOptions(opts?: GetAllConfigOptions): Promise<ConfigMap> {
+        return this.workspace.getAllConfigWithOptions(this.name, opts);
     }
 
     /**
@@ -821,7 +845,21 @@ Event: ${line}\n${e.toString()}`);
      *  The key contains a path to a property in a map or list to set.
      */
     async setConfig(key: string, value: ConfigValue, path?: boolean): Promise<void> {
-        return this.workspace.setConfig(this.name, key, value, path);
+        return this.setConfigWithOptions(key, value, { path });
+    }
+
+    /**
+     * Sets a config key-value pair on the stack in the associated Workspace with options.
+     *
+     * @param key
+     *  The key to set.
+     * @param value
+     *  The config value to set.
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async setConfigWithOptions(key: string, value: ConfigValue, opts?: ConfigOptions): Promise<void> {
+        return this.workspace.setConfigWithOptions(this.name, key, value, opts);
     }
 
     /**
@@ -834,7 +872,20 @@ Event: ${line}\n${e.toString()}`);
      *  The keys contain a path to a property in a map or list to set.
      */
     async setAllConfig(config: ConfigMap, path?: boolean): Promise<void> {
-        return this.workspace.setAllConfig(this.name, config, path);
+        return this.setAllConfigWithOptions(config, { path });
+    }
+
+    /**
+     * Sets all specified config values on the stack in the associated
+     * workspace with options.
+     *
+     * @param config
+     *  The map of config key-value pairs to set.
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async setAllConfigWithOptions(config: ConfigMap, opts?: ConfigOptions): Promise<void> {
+        return this.workspace.setAllConfigWithOptions(this.name, config, opts);
     }
 
     /**
@@ -846,7 +897,19 @@ Event: ${line}\n${e.toString()}`);
      *  The key contains a path to a property in a map or list to remove.
      */
     async removeConfig(key: string, path?: boolean): Promise<void> {
-        return this.workspace.removeConfig(this.name, key, path);
+        return this.removeConfigWithOptions(key, { path });
+    }
+
+    /**
+     * Removes the specified config key from the stack in the associated workspace with options.
+     *
+     * @param key
+     *  The config key to remove.
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async removeConfigWithOptions(key: string, opts?: ConfigOptions): Promise<void> {
+        return this.workspace.removeConfigWithOptions(this.name, key, opts);
     }
 
     /**
@@ -858,7 +921,19 @@ Event: ${line}\n${e.toString()}`);
      *  The keys contain a path to a property in a map or list to remove.
      */
     async removeAllConfig(keys: string[], path?: boolean): Promise<void> {
-        return this.workspace.removeAllConfig(this.name, keys, path);
+        return this.removeAllConfigWithOptions(keys, { path });
+    }
+
+    /**
+     * Removes the specified config keys from the stack in the associated workspace with options.
+     *
+     * @param keys
+     *  The config keys to remove.
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    async removeAllConfigWithOptions(keys: string[], opts?: ConfigOptions): Promise<void> {
+        return this.workspace.removeAllConfigWithOptions(this.name, keys, opts);
     }
 
     /**
