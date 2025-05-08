@@ -224,35 +224,26 @@ class PulumiCommand:
             assert process.stdout is not None
             assert process.stderr is not None
 
-            stderr_ongoing = True
-            stdout_ongoing = True
+            streams = [process.stdout, process.stderr]
 
-            while stderr_ongoing or stdout_ongoing or process.poll() is None:
-                reads, _, _ = select.select([process.stdout, process.stderr], [], [])
+            while len(streams):
+                reads, _, _ = select.select(streams, [], [])
 
-                for read in reads:
-                    if read == process.stdout and stdout_ongoing:
-                        output = process.stdout.readline()
+                for incoming in reads:
+                    chunk = incoming.readline()
 
-                        if output == "":
-                            stdout_ongoing = False
-                            break
+                    if chunk:
+                        if incoming is process.stdout:
+                            stdout_chunks.append(chunk)
+                        elif incoming is process.stderr:
+                            stderr_chunks.append(chunk)
+                    else:
+                        if incoming is process.stdout:
+                            streams.remove(process.stdout)
+                        elif incoming is process.stderr:
+                            streams.remove(process.stderr)
 
-                        if on_output:
-                            on_output(output)
-                        stdout_chunks.append(output)
-
-                    if read == process.stderr and stderr_ongoing:
-                        error = process.stderr.readline()
-
-                        if error == "":
-                            stderr_ongoing = False
-                            break
-
-                        if on_error:
-                            on_error(error)
-                        stderr_chunks.append(error)
-
+            process.wait()
             code = process.returncode
 
         result = CommandResult(

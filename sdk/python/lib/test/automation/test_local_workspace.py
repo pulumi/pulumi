@@ -818,7 +818,7 @@ class TestLocalWorkspace(unittest.TestCase):
                 error += e
 
             try:
-                stack.up(plan="halloumi", on_error=logger)
+                stack.up(color="vibrant grey", on_error=logger)
             except:
                 self.assertNotEqual(error, "")
 
