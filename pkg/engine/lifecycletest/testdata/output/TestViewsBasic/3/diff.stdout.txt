@@ -1,0 +1,18 @@
+<{%fg 1%}>- pkgA:m:typA: (delete)
+<{%fg 1%}>    [id=new-id]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 1%}>    foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}>    <{%fg 1%}>- pkgA:m:typAView: (delete)
+<{%fg 1%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
+<{%reset%}><{%fg 1%}>        input: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>        --outputs:--<{%reset%}>
+<{%fg 1%}>      - result: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>- pulumi:providers:pkgA: (delete)
+<{%fg 1%}>    [id=b1eb68ca-cd96-4d1b-bfcc-de1a1918aed2]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

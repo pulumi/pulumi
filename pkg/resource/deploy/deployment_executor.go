@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -203,6 +205,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 	// Set up a step generator and executor for this deployment.
 	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
+
+	// Set up the resource status server for this deployment.
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW")) {
+		ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, ex.stepExec)
+		if err != nil {
+			return nil, fmt.Errorf("creating resource status server: %w", err)
+		}
+		defer contract.IgnoreClose(ex.deployment.resourceStatus)
+	}
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
@@ -594,6 +605,16 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 	ctx, cancel := context.WithCancel(callerCtx)
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
 
+	// Set up the resource status server for this deployment.
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW")) {
+		var err error
+		ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, stepExec)
+		if err != nil {
+			return nil, fmt.Errorf("creating resource status server: %w", err)
+		}
+		defer contract.IgnoreClose(ex.deployment.resourceStatus)
+	}
+
 	importer := &importer{
 		deployment: ex.deployment,
 		executor:   stepExec,
@@ -659,6 +680,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				continue
 			}
 
+			// If the resource is a view, skip it. Only the owning resource
+			// should have a refresh step.
+			if res.ViewOf != "" {
+				continue
+			}
+
 			knownToBeExcluded := false
 
 			// In the case of `--exclude-dependents`, we need to check through all
@@ -685,7 +712,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				oldViews := ex.deployment.oldViews[res.URN]
+				step := NewRefreshStep(ex.deployment, nil, res, oldViews)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			}
@@ -694,6 +722,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		targetsActual := ex.deployment.opts.Targets
 
 		for _, res := range prev.Resources {
+			// If the resource is a view, skip it. Only the owning resource
+			// should have a refresh step.
+			if res.ViewOf != "" {
+				continue
+			}
+
 			if targetsActual.Contains(res.URN) {
 				// For each resource we're going to refresh we need to ensure we have a provider for it
 				err := ex.deployment.EnsureProvider(res.Provider)
@@ -701,7 +735,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				oldViews := ex.deployment.oldViews[res.URN]
+				step := NewRefreshStep(ex.deployment, nil, res, oldViews)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
@@ -713,7 +748,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				// loop.
 				for _, dep := range allDeps {
 					if targetsActual.Contains(dep.URN) {
-						step := NewRefreshStep(ex.deployment, nil, res)
+						oldViews := ex.deployment.oldViews[res.URN]
+						step := NewRefreshStep(ex.deployment, nil, res, oldViews)
 						steps = append(steps, step)
 						resourceToStep[res] = step
 
@@ -729,9 +765,28 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	ctx, cancel := context.WithCancel(callerCtx)
 
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
+
+	// Set up the resource status server for this deployment.
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW")) {
+		var err error
+		ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, stepExec)
+		if err != nil {
+			return fmt.Errorf("creating resource status server: %w", err)
+		}
+		defer contract.IgnoreClose(ex.deployment.resourceStatus)
+	}
+
 	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
+
+	// Apply view refresh steps published to the resource status server, if any.
+	viewRefreshSteps := ex.deployment.resourceStatus.RefreshSteps()
+	for _, s := range ex.deployment.prev.Resources {
+		if step, has := viewRefreshSteps[s.URN]; has {
+			resourceToStep[s] = step
+		}
+	}
 
 	ex.rebuildBaseState(resourceToStep)
 
@@ -797,7 +852,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 
 		if new == nil {
-			contract.Assertf(old.Custom, "expected custom resource")
+			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
 			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}

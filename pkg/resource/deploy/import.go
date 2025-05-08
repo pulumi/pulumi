@@ -114,7 +114,7 @@ func NewImportDeployment(
 	}
 
 	// Produce a map of all old resources for fast access.
-	_, olds, err := buildResourceMap(prev, opts.DryRun)
+	_, olds, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +140,7 @@ func NewImportDeployment(
 		target:       target,
 		prev:         prev,
 		olds:         olds,
+		oldViews:     oldViews,
 		goals:        newGoals,
 		imports:      imports,
 		isImport:     true,
@@ -218,7 +219,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false)
+		nil, false, nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "")
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
@@ -327,7 +328,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
-			nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false)
+			nil, nil, nil, "", false, "", nil, nil, "", nil, nil, false, "")
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
 			return nil, false, nil
@@ -426,7 +427,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		new := resource.NewState(
 			urn.Type(), urn, !imp.Component, false, "", resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, imp.ID, false, "", nil, nil, "", nil,
-			nil, false)
+			nil, false, "")
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &resource.Goal{})
 

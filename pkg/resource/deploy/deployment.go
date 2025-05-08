@@ -296,6 +296,8 @@ type Deployment struct {
 	prev *Snapshot
 	// a map of all old resources.
 	olds map[resource.URN]*resource.State
+	// a map of all old resource views, keyed by the owning resource's URN.
+	oldViews map[resource.URN][]plugin.View
 	// a map of all planned resource changes, if any.
 	plan *Plan
 	// resources to import, if this is an import deployment.
@@ -320,6 +322,8 @@ type Deployment struct {
 	newPlans *resourcePlans
 	// the set of resources read as part of the deployment
 	reads *gsync.Map[resource.URN, *resource.State]
+	// the resource status server.
+	resourceStatus *resourceStatusServer
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -431,10 +435,15 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 	return nil
 }
 
-func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[resource.URN]*resource.State, error) {
+func buildResourceMaps(prev *Snapshot) (
+	[]*resource.State,
+	map[resource.URN]*resource.State,
+	map[resource.URN][]plugin.View, error,
+) {
 	olds := make(map[resource.URN]*resource.State)
+	oldViews := make(map[resource.URN][]plugin.View)
 	if prev == nil {
-		return nil, olds, nil
+		return nil, olds, oldViews, nil
 	}
 
 	for _, oldres := range prev.Resources {
@@ -445,12 +454,33 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 
 		urn := oldres.URN
 		if olds[urn] != nil {
-			return nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
+			return nil, nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
 		}
 		olds[urn] = oldres
+
+		// If this resource is a view of another resource, add it to the list of views for that resource.
+		if oldres.ViewOf != "" {
+			view := viewFromState(oldres)
+			oldViews[oldres.ViewOf] = append(oldViews[oldres.ViewOf], view)
+		}
 	}
 
-	return prev.Resources, olds, nil
+	return prev.Resources, olds, oldViews, nil
+}
+
+// viewFromState creates a new View from the given resource state.
+func viewFromState(res *resource.State) plugin.View {
+	view := plugin.View{
+		Type:    res.URN.Type(),
+		Name:    res.URN.Name(),
+		Inputs:  res.Inputs,
+		Outputs: res.Outputs,
+	}
+	if res.Parent != "" && res.Parent != res.ViewOf {
+		view.ParentType = res.Parent.Type()
+		view.ParentName = res.Parent.Name()
+	}
+	return view
 }
 
 // NewDeployment creates a new deployment from a resource snapshot plus a package to evaluate.
@@ -485,7 +515,7 @@ func NewDeployment(
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// deploymentExecutor.refresh for details.
-	oldResources, olds, err := buildResourceMap(prev, opts.DryRun)
+	oldResources, olds, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -517,6 +547,7 @@ func NewDeployment(
 		prev:                 prev,
 		plan:                 plan,
 		olds:                 olds,
+		oldViews:             oldViews,
 		source:               source,
 		localPolicyPackPaths: localPolicyPackPaths,
 		depGraph:             depGraph,
