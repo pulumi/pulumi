@@ -94,22 +94,10 @@ class Configurer(pulumi.ComponentResource):
             opts,
             remote=True)
 
-    @pulumi.output_type
-    class MeaningOfLifeResult:
-        def __init__(__self__, res=None):
-            if res and not isinstance(res, int):
-                raise TypeError("Expected argument 'res' to be a int")
-            pulumi.set(__self__, "res", res)
-
-        @property
-        @pulumi.getter
-        def res(self) -> builtins.int:
-            return pulumi.get(self, "res")
-
     def meaning_of_life(__self__) -> int:
         __args__ = dict()
         __args__['__self__'] = __self__
-        return _utilities.call_plain('metaprovider:index:Configurer/meaningOfLife', __args__, res=__self__, typ=Configurer.MeaningOfLifeResult).res
+        return _utilities.call_plain_single('metaprovider:index:Configurer/meaningOfLife', __args__, res=__self__)
 
     @pulumi.output_type
     class ObjectMixResult:
@@ -136,20 +124,8 @@ class Configurer(pulumi.ComponentResource):
         __args__['__self__'] = __self__
         return _utilities.call_plain('metaprovider:index:Configurer/objectMix', __args__, res=__self__, typ=Configurer.ObjectMixResult)
 
-    @pulumi.output_type
-    class TlsProviderResult:
-        def __init__(__self__, res=None):
-            if res and not isinstance(res, pulumi_tls.Provider):
-                raise TypeError("Expected argument 'res' to be a pulumi_tls.Provider")
-            pulumi.set(__self__, "res", res)
-
-        @property
-        @pulumi.getter
-        def res(self) -> 'pulumi_tls.Provider':
-            return pulumi.get(self, "res")
-
     def tls_provider(__self__) -> pulumi_tls.Provider:
         __args__ = dict()
         __args__['__self__'] = __self__
-        return _utilities.call_plain('metaprovider:index:Configurer/tlsProvider', __args__, res=__self__, typ=Configurer.TlsProviderResult).res
+        return _utilities.call_plain_single('metaprovider:index:Configurer/tlsProvider', __args__, res=__self__)
 
