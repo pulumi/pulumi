@@ -620,29 +620,34 @@ func isUpgradeable(version semver.Version) bool {
 // with the download that's currently in progress, so we don't have to start over, and
 // never update the CLI. Once the current download is finished, we then check the latest
 // version again, potentially skipping a few releases, depending on how long it took.
-func installNewCLI(ctx context.Context, version semver.Version) *semver.Version {
+//
+// We only return an error here if we failed catastrophically, leaving and removed the
+// old CLI while not installing the new one.  In that case we want to warn the user. In
+// all other cases we just log the error and return nil.  This is because we don't want
+// to break the user's workflow if we can't install the new CLI for some reason.
+func installNewCLI(ctx context.Context, version semver.Version) (*semver.Version, error) {
 	logging.V(3).Infof("installing new CLI version %s", version)
 	tmpFile, err := doDownload(ctx, version)
 	if err != nil {
 		logging.V(3).Infof("error downloading new CLI: %s", err)
-		return nil
+		return nil, nil
 	}
 	homeDir, err := workspace.GetPulumiHomeDir()
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 
 	f, err := os.Open(tmpFile)
 	if err != nil {
 		logging.V(3).Infof("error opening temporary file: %s, %s", tmpFile, err)
-		return nil
+		return nil, nil
 	}
 	defer os.Remove(tmpFile)
 
 	tmpDir, err := os.MkdirTemp(homeDir, "pulumi-update")
 	if err != nil {
 		logging.V(3).Infof("error creating temporary directory: %s", err)
-		return nil
+		return nil, nil
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -651,25 +656,43 @@ func installNewCLI(ctx context.Context, version semver.Version) *semver.Version 
 	if err != nil {
 		os.RemoveAll(tmpDir)
 		logging.V(3).Infof("error extracting new CLI: %s", err)
-		return nil
+		return nil, nil
 	}
 
-	entries, err := os.ReadDir(filepath.Join(tmpDir, "pulumi"))
+	err = os.Rename(filepath.Join(homeDir, "bin"), filepath.Join(homeDir, "bin.bak"))
 	if err != nil {
-		logging.V(3).Infof("error reading temporary directory: %s", err)
-		return nil
+		logging.V(3).Infof("error moving old CLI to backup dir: %s", err)
+		return nil, nil
 	}
-	for _, file := range entries {
-		if strings.HasPrefix(file.Name(), "pulumi") {
-			// Move the new CLI into the current directory.
-			err := os.Rename(filepath.Join(tmpDir, "pulumi", file.Name()), filepath.Join(homeDir, "bin", file.Name()))
-			if err != nil {
-				logging.V(3).Infof("error moving new CLI into place: %s", err)
-				return nil
-			}
+	err = os.MkdirAll(filepath.Join(homeDir, "bin"), 0o700)
+	if err != nil {
+		// Try to restore the old CLI
+		err = os.Rename(filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		if err != nil {
+			logging.V(3).Infof("error restoring old CLI: %s", err)
+			return nil, fmt.Errorf("failed to install new CLI after moving the old binaries out of the way. "+
+				"Please restore it manually, by moving %s to %s",
+				filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
 		}
+		logging.V(3).Infof("error creating bin directory: %s", err)
+		return nil, nil
 	}
-	return &version
+	// Move the new CLI into the bin directory.
+	err = os.Rename(filepath.Join(tmpDir, "pulumi"), filepath.Join(homeDir, "bin"))
+	if err != nil {
+		// if we fail, Make a best effort to restore the old CLI
+		_ = os.RemoveAll(filepath.Join(homeDir, "bin"))
+		err = os.Rename(filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		if err != nil {
+			logging.V(3).Infof("error restoring old CLI: %s", err)
+			return nil, fmt.Errorf("failed to install new CLI after moving the old binaries out of the way. "+
+				"Please restore it manually, by moving %s to %s",
+				filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		}
+		logging.V(3).Infof("error moving new CLI into place: %s", err)
+		return nil, nil
+	}
+	return &version, nil
 }
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
@@ -707,7 +730,11 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 			if !isDevVersion {
 				version = latestVer
 			}
-			newVersion := installNewCLI(ctx, version)
+			newVersion, err := installNewCLI(ctx, version)
+			if err != nil {
+				return diag.RawMessage("",
+					"Tried to update Pulumi CLI, but there was an error installing the new version: "+err.Error())
+			}
 			if newVersion != nil {
 				return diag.RawMessage("", "Pulumi CLI has been updated to the version: "+newVersion.String())
 			}
@@ -846,7 +873,7 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 		msg += "run \n   " + cmd + "\nor "
 	}
 
-	if isUpgradeable() {
+	if isUpgradeable(current) {
 		msg += "set PULUMI_AUTO_UPDATE_CLI=true in your environment to auto-update the CLI, \nor "
 	}
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."

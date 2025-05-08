@@ -1700,10 +1700,11 @@ func TestCLIInstallation(t *testing.T) {
 	err = fsutil.CopyFile(filepath.Join(e.HomePath, "bin", pulumiName), pulumiBin, nil)
 	require.NoError(t, err)
 
-	os.WriteFile(filepath.Join(e.RootPath, "Pulumi.yaml"), []byte(`name: pulumi-test-yaml
+	err = os.WriteFile(filepath.Join(e.RootPath, "Pulumi.yaml"), []byte(`name: pulumi-test-yaml
 description: A minimal Pulumi YAML program
 runtime: yaml
-`), 0o755)
+`), 0o600)
+	require.NoError(t, err)
 
 	e.RunCommand(pulumiName, "stack", "init", "organization/pulumi-test-yaml/test")
 
@@ -1716,36 +1717,41 @@ runtime: yaml
 	case "aarch64":
 		arch = "arm64"
 	default:
-		panic(fmt.Sprintf("unsupported architecture: %s", runtime.GOARCH))
+		panic("unsupported architecture: %s" + runtime.GOARCH)
 	}
 
 	err = os.MkdirAll(filepath.Join(e.HomePath, "tmp"), 0o755)
 	require.NoError(t, err)
 
 	// Fake having started a download, so we can test with a known version.
-	_, err = os.Create(filepath.Join(e.HomePath, "tmp", fmt.Sprintf("pulumi-v3.160.0-alpha.x35ab291-%s-%s.tar.gz", runtime.GOOS, arch)))
+	_, err = os.Create(filepath.Join(e.HomePath, "tmp",
+		fmt.Sprintf("pulumi-v3.160.0-alpha.x35ab291-%s-%s.tar.gz", runtime.GOOS, arch)))
 	require.NoError(t, err)
 
 	// Run pulumi watch in a separate goroutine, so it runs in the background and installs the CLI.
 	go func() {
 		e.Env = append(e.Env, "PULUMI_AUTO_UPDATE_CLI=true")
 		for {
-			t.Log("running watch")
-			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			//nolint:gosec
 			cmd := exec.CommandContext(ctx, filepath.Join(e.HomePath, "bin", pulumiName), "watch", "--logtostderr", "-v3")
 			cmd.Dir = e.RootPath
 			cmdutil.RegisterProcessGroup(cmd)
 			cmd.Cancel = func() error {
-				cmdutil.KillChildren(cmd.Process.Pid)
+				_ = cmdutil.KillChildren(cmd.Process.Pid)
 				return nil
 			}
 			cmd.WaitDelay = 5 * time.Second
 			env := os.Environ()
 			env = append(env, "PULUMI_AUTO_UPDATE_CLI=true")
-			cmd.Env = append(append(append(env, "PULUMI_HOME="+e.HomePath), "PULUMI_CREDENTIALS_PATH="+e.RootPath), "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+			cmd.Env = append(append(append(env,
+				"PULUMI_HOME="+e.HomePath),
+				"PULUMI_CREDENTIALS_PATH="+e.RootPath),
+				"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
-			out, err := cmd.CombinedOutput()
-			t.Log("ran watch" + string(out) + err.Error())
+			err = cmd.Run()
+			require.NoError(t, err)
+			cancel()
 		}
 	}()
 	// Wait for the new CLI to be installed, give it two minutes at most
