@@ -2242,7 +2242,7 @@ func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 
 func GetPluginInfo(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(context.Background(), d, spec, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(context.TODO(), d, spec, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
