@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/nodejs
+  description: Add programgen to utilize scalar method call returns
