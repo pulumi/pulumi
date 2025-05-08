@@ -1215,6 +1215,7 @@ func (ctx *Context) readPackageResource(
 		if propsType.Kind() == reflect.Ptr {
 			propsType = propsType.Elem()
 		}
+		//nolint:staticcheck // Not applying de-morgens law right now
 		if !(propsType.Kind() == reflect.Struct ||
 			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
 			return errors.New("props must be a struct or map or a pointer to a struct or map")
@@ -1396,6 +1397,7 @@ func (ctx *Context) registerResource(
 		if propsType.Kind() == reflect.Ptr {
 			propsType = propsType.Elem()
 		}
+		//nolint:staticcheck // Not applying de-morgens law right now
 		if !(propsType.Kind() == reflect.Struct ||
 			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
 			return errors.New("props must be a struct or map or a pointer to a struct or map")

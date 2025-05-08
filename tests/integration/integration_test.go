@@ -1604,6 +1604,22 @@ func TestOverrideComponentNamespace(t *testing.T) {
 	require.Equal(t, "pulumi", packageSpec.Namespace)
 }
 
+func TestOverrideNamespaceLowercase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
+		"github.com/Pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+	var packageSpec schema.PackageSpec
+	err := json.Unmarshal([]byte(stdout), &packageSpec)
+	require.NoError(t, err)
+	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
+	// it is 'pulumi', which we get from `github.com/*Pulumi*/....; note that namespaces only allow lowercasee
+	// characters, so we lowercase it automatically.
+	require.Equal(t, "pulumi", packageSpec.Namespace)
+}
+
 func TestTaggedComponent(t *testing.T) {
 	t.Parallel()
 

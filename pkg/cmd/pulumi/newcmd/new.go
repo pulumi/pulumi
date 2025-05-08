@@ -492,9 +492,6 @@ func isInteractive() bool {
 }
 
 // NewNewCmd creates a New command with default dependencies.
-// Intentionally disabling here for cleaner err declaration/assignment.
-//
-//nolint:vetshadow
 func NewNewCmd() *cobra.Command {
 	args := newArgs{
 		prompt:               ui.PromptForValue,

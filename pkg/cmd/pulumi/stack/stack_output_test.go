@@ -448,7 +448,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("bash", func(t *testing.T) {
+			t.Run("bash", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 				var got bytes.Buffer
 				writer := bashStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))
@@ -457,7 +457,7 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 				assert.Equal(t, want, got.String())
 			})
 
-			t.Run("pwsh", func(t *testing.T) {
+			t.Run("pwsh", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 				var got bytes.Buffer
 				writer := powershellStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))

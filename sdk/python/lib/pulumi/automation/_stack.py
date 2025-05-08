@@ -292,6 +292,7 @@ class Stack:
         continue_on_error: Optional[bool] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -325,6 +326,7 @@ class Stack:
         :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running up.
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: UpResult
         """
         program = program or self.workspace.program
@@ -419,6 +421,7 @@ class Stack:
         import_file: Optional[str] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -451,6 +454,7 @@ class Stack:
         :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: PreviewResult
         """
         program = program or self.workspace.program
@@ -546,6 +550,7 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         run_program: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -573,6 +578,7 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param run_program: Run the program in the workspace to refresh the stack
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -672,6 +678,7 @@ class Stack:
         refresh: Optional[bool] = None,
         preview_only: Optional[bool] = None,
         run_program: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -698,6 +705,7 @@ class Stack:
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :param preview_only: Only show a preview of the destroy, but don't perform the destroy itself
         :param run_program: Run the program in the workspace to destroy the stack
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -1108,6 +1116,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
     attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
     refresh: Optional[bool] = kwargs.get("refresh")
+    config_file: Optional[str] = kwargs.get("config_file")
 
     if message:
         extra_args.extend(["--message", message])
@@ -1162,6 +1171,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--attach-debugger"])
     if refresh:
         extra_args.extend(["--refresh"])
+    if config_file:
+        extra_args.extend(["--config-file", config_file])
     return extra_args
 
 

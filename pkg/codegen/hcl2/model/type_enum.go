@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -54,6 +55,8 @@ type EnumType struct {
 	Annotations []interface{}
 
 	s atomic.Value // Value<string>
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
@@ -149,7 +152,10 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *EnumType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = &gsync.Map[Type, cacheEntry]{}
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		// We have a constant, of the correct type, so we might have a safe
 		// conversion.
 		if src, ok := src.(*ConstType); ok && !t.Type.Equals(src.Type) {

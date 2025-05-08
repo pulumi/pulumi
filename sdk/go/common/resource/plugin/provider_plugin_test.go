@@ -748,13 +748,13 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 
 		close(deleting)
 		_, err := p.Delete(context.Background(), DeleteRequest{
-			resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
-			"qux",
-			"bar:baz",
-			"whatever",
-			props,
-			props,
-			1000,
+			URN:     resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
+			Name:    "qux",
+			Type:    "bar:baz",
+			ID:      "whatever",
+			Inputs:  props,
+			Outputs: props,
+			Timeout: 1000,
 		})
 		assert.NoError(t, err, "Delete failed")
 	}()

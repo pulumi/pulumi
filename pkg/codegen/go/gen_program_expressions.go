@@ -921,7 +921,8 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		return "map[string]" + valType
 	case *model.ListType:
 		argTypeName := g.argumentTypeName(destType.ElementType, isInput)
-		if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
+		isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
+		if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
 			}
@@ -949,7 +950,8 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 
 		if elmType != nil && elmType != model.NoneType {
 			argTypeName := g.argumentTypeName(elmType, isInput)
-			if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
+			isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
+			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
 				}

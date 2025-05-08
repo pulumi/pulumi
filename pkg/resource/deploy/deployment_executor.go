@@ -553,7 +553,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	}
 	// Exclude the steps that depend on errored steps if ContinueOnError is set.
 	newSteps := slice.Prealloc[Step](len(steps))
-	skipped := false
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
 	}
@@ -561,15 +560,15 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		if doesStepDependOn(step, ex.skipped) {
 			step.Skip()
 			ex.skipped.Add(step.Res().URN)
-			skipped = true
 			continue
 		}
 		newSteps = append(newSteps, step)
 	}
 
-	// If we pass an empty chain to the step executors the workers will shut down.  However we don't want that
-	// if we just skipped a step because its dependencies errored out.  Return early in that case.
-	if skipped && len(newSteps) == 0 {
+	// Don't bother passing an empty chain to the step executor. This might be if we just skipped a step
+	// because its dependencies errored out, or because the step gen returned no steps. Return early in that
+	// case.
+	if len(newSteps) == 0 {
 		return nil
 	}
 

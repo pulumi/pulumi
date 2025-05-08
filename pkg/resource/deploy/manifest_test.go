@@ -53,7 +53,7 @@ func TestManifest(t *testing.T) {
 	})
 	t.Run("DeserializeManifest", func(t *testing.T) {
 		t.Parallel()
-		t.Run("bad version", func(t *testing.T) {
+		t.Run("bad version", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 			_, err := DeserializeManifest(apitype.ManifestV1{
 				Plugins: []apitype.PluginInfoV1{
 					{
@@ -63,8 +63,9 @@ func TestManifest(t *testing.T) {
 			})
 			assert.ErrorContains(t, err, "Invalid character(s) found in major number")
 		})
-		t.Run("ok", func(t *testing.T) {
-			t.Run("has plugins", func(t *testing.T) {
+
+		t.Run("ok", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("has plugins", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 				m, err := DeserializeManifest(apitype.ManifestV1{
 					Plugins: []apitype.PluginInfoV1{
 						{
@@ -84,7 +85,7 @@ func TestManifest(t *testing.T) {
 					},
 				}, m.Serialize())
 			})
-			t.Run("no plugins", func(t *testing.T) {
+			t.Run("no plugins", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 				m, err := DeserializeManifest(apitype.ManifestV1{
 					Plugins: []apitype.PluginInfoV1{},
 				})

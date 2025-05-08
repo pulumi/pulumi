@@ -498,11 +498,12 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				// what we kept in the statefile. That would go well with the pluginification of secret
 				// providers as well, but for now just switch on the secret provider type and ask it to fill in
 				// the config file for us.
-				if deployment.SecretsProviders.Type == passphrase.Type {
+				switch deployment.SecretsProviders.Type {
+				case passphrase.Type:
 					err = passphrase.EditProjectStack(ps, deployment.SecretsProviders.State)
-				} else if deployment.SecretsProviders.Type == cloud.Type {
+				case cloud.Type:
 					err = cloud.EditProjectStack(ps, deployment.SecretsProviders.State)
-				} else {
+				default:
 					// Anything else assume we can just clear all the secret bits
 					ps.EncryptionSalt = ""
 					ps.SecretsProvider = ""

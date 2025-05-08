@@ -37,6 +37,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
@@ -921,7 +922,7 @@ func (pd PackageDescriptor) PackageName() string {
 	if pd.Parameterization != nil {
 		return pd.Parameterization.Name
 	}
-	return pd.PluginSpec.Name
+	return pd.Name
 }
 
 // PackageVersion returns the version of the package.
@@ -929,12 +930,12 @@ func (pd PackageDescriptor) PackageVersion() *semver.Version {
 	if pd.Parameterization != nil {
 		return &pd.Parameterization.Version
 	}
-	return pd.PluginSpec.Version
+	return pd.Version
 }
 
 func (pd PackageDescriptor) String() string {
-	name := pd.PluginSpec.Name
-	version := pd.PluginSpec.Version
+	name := pd.Name
+	version := pd.Version
 	if pd.Parameterization != nil {
 		name = pd.Parameterization.Name
 		version = &pd.Parameterization.Version
@@ -1005,6 +1006,15 @@ type PluginSpec struct {
 
 type PluginVersionNotFoundError error
 
+var urlRegex = sync.OnceValue(func() *regexp.Regexp {
+	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
+})
+
+// Allow sha1 and sha256 hashes.
+var gitCommitHashRegex = sync.OnceValue(func() *regexp.Regexp {
+	return regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
+})
+
 func NewPluginSpec(
 	source string,
 	kind apitype.PluginKind,
@@ -1012,92 +1022,136 @@ func NewPluginSpec(
 	pluginDownloadURL string,
 	checksums map[string][]byte,
 ) (PluginSpec, error) {
-	name := source
-	isGitPlugin := false
-	versionStr := ""
-
-	// Parse the version if available.  This can either be a simple semver version, or a git commit hash.
-	if s := strings.SplitN(source, "@", 2); len(s) == 2 {
-		name = s[0]
-		versionStr = s[1]
+	spec, inference, err := parsePluginSpec(context.Background(), source, kind)
+	if err != nil {
+		return spec, err
 	}
 
-	if versionStr != "" && version != nil {
-		return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
-	}
-
-	urlRegex := regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/]$`)
-	if strings.HasPrefix(name, "https://") || strings.HasPrefix(name, "git://") || urlRegex.MatchString(name) {
-		// We support URLs with and without the https:// prefix.  Standardize them here, so we can work with
-		// them uniformly.
-		name = strings.TrimPrefix(name, "https://")
-		name = strings.TrimPrefix(name, "git://")
-		u, err := url.Parse(name)
-		// If we don't have a URL, we just treat it as a normal plugin name.
-		if err == nil {
-			if pluginDownloadURL != "" {
-				return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
-			}
-			url, _, err := gitutil.ParseGitRepoURL("https://" + u.String())
-			if err != nil {
-				return PluginSpec{}, err
-			}
-			name = strings.ReplaceAll(strings.TrimPrefix(url, "https://"), "/", "_")
-			// Prefix the url with `git://`, so we can later recognize this as a git URL.
-			pluginDownloadURL = "git://" + u.String()
-			isGitPlugin = true
-			// If there is no version specified, we version the plugin ourselves. This way the user gets
-			// a consistent experience once the plugin is installed, and won't have any problems when the repo
-			// is updated.  The version will then be added to the plugins SDK, and will be reused when the NewPluginSpec
-			// is used, so the user gets a consistent experience.
-			if versionStr == "" {
-				var err error
-				version, err = gitutil.GetLatestTagOrHash(context.Background(), url)
-				if err != nil {
-					return PluginSpec{
-						Name:              name,
-						Kind:              kind,
-						Version:           version,
-						PluginDownloadURL: pluginDownloadURL,
-						Checksums:         checksums,
-					}, PluginVersionNotFoundError(err)
-				}
-			}
+	if version != nil {
+		if inference.explicitVersion {
+			return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
 		}
+		spec.Version = version
 	}
 
-	if versionStr != "" {
-		// Semver versions will have two `.`s.
-		if !isGitPlugin || strings.Count(versionStr, ".") == 2 {
-			v, err := semver.ParseTolerant(versionStr)
-			if err != nil {
-				additionalMsg := ""
-				if isGitPlugin {
-					additionalMsg = " or git commit hash"
-				}
-				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver%s: %w", additionalMsg, err)
-			}
+	if pluginDownloadURL != "" {
+		if inference.explicitPluginDownloadURL {
+			return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
+		}
+		spec.PluginDownloadURL = pluginDownloadURL
+	}
+	spec.Checksums = checksums
+
+	return spec, nil
+}
+
+type parsePluginSpecInference struct {
+	explicitVersion           bool
+	explicitPluginDownloadURL bool
+}
+
+func parsePluginSpec(
+	ctx context.Context, source string, kind apitype.PluginKind,
+) (PluginSpec, parsePluginSpecInference, error) {
+	if strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source) {
+		return parsePluginSpecFromURL(ctx, source, kind)
+	}
+
+	return parsePluginSpecFromName(ctx, source, kind)
+}
+
+func (inference *parsePluginSpecInference) parseVersion(spec string, parse func(version string) error) (string, error) {
+	if i := strings.LastIndexByte(spec, '@'); i >= 0 {
+		inference.explicitVersion = true
+		return spec[:i], parse(spec[i+1:])
+	}
+	return spec, nil
+}
+
+func parsePluginSpecFromURL(
+	ctx context.Context, spec string, kind apitype.PluginKind,
+) (PluginSpec, parsePluginSpecInference, error) {
+	// Parse the version if available.  This can either be a simple semver version, or a git commit hash.
+	var version *semver.Version
+	var inference parsePluginSpecInference
+	spec, err := inference.parseVersion(spec, func(versionStr string) error {
+		v, err := semver.ParseTolerant(versionStr)
+		if err == nil {
 			version = &v
-		} else {
-			// Allow sha1 and sha256 hashes.
-			gitCommitRegex := regexp.MustCompile(`^[0-9a-fA-F]{4,64}$`)
-			if !gitCommitRegex.MatchString(versionStr) {
-				return PluginSpec{}, fmt.Errorf("VERSION must be valid semver or git commit hash: %s", versionStr)
-			}
+			return nil
+		}
+		if gitCommitHashRegex().MatchString(versionStr) {
 			version = &semver.Version{
 				// VersionStr cannot start with a 0, so we prefix it with an 'x' to avoid this.
 				Pre: []semver.PRVersion{{VersionStr: "x" + versionStr}},
 			}
+			return nil
+		}
+		return fmt.Errorf("VERSION must be valid semver or git commit hash: %s", versionStr)
+	})
+	if err != nil {
+		return PluginSpec{}, inference, err
+	}
+
+	parsedURL, err := url.Parse(spec)
+	if err != nil {
+		return PluginSpec{}, inference, fmt.Errorf("invalid URL: %w", err)
+	}
+	switch parsedURL.Scheme {
+	case "git", "https", "":
+		parsedURL.Scheme = "https"
+	default:
+		return PluginSpec{}, inference, errors.New(`unknown URL scheme: expected "git" or "https"`)
+	}
+
+	gitURL, _, err := gitutil.ParseGitRepoURL(parsedURL.String())
+	if err != nil {
+		return PluginSpec{}, inference, err
+	}
+	pluginSpec := PluginSpec{
+		Name:    strings.ReplaceAll(strings.TrimPrefix(gitURL, "https://"), "/", "_"),
+		Kind:    kind,
+		Version: version,
+		// Prefix the url with `git://`, so we can later recognize this as a git URL.
+		PluginDownloadURL: func(url url.URL) string { url.Scheme = "git"; return url.String() }(*parsedURL),
+	}
+	inference.explicitPluginDownloadURL = true
+
+	// If there is no version specified, we version the plugin ourselves. This way the user gets
+	// a consistent experience once the plugin is installed, and won't have any problems when the repo
+	// is updated.  The version will then be added to the plugins SDK, and will be reused when the NewPluginSpec
+	// is used, so the user gets a consistent experience.
+	if pluginSpec.Version == nil {
+		var err error
+		pluginSpec.Version, err = gitutil.GetLatestTagOrHash(ctx, gitURL)
+		if err != nil {
+			return pluginSpec, inference, PluginVersionNotFoundError(err)
 		}
 	}
 
+	return pluginSpec, inference, nil
+}
+
+func parsePluginSpecFromName(
+	_ context.Context, spec string, kind apitype.PluginKind,
+) (PluginSpec, parsePluginSpecInference, error) {
+	var version *semver.Version
+	var inference parsePluginSpecInference
+	// Parse the version if available.  This must be a simple semver version.
+	spec, err := inference.parseVersion(spec, func(versionStr string) error {
+		v, err := semver.ParseTolerant(versionStr)
+		if err != nil {
+			return fmt.Errorf("VERSION must be valid semver: %w", err)
+		}
+		version = &v
+		return nil
+	})
+
 	return PluginSpec{
-		Name:              name,
-		Kind:              kind,
-		Version:           version,
-		PluginDownloadURL: pluginDownloadURL,
-		Checksums:         checksums,
-	}, nil
+		Name:    spec,
+		Kind:    kind,
+		Version: version,
+	}, inference, err
 }
 
 // IsGitPlugin returns if the plugin comes from the git source

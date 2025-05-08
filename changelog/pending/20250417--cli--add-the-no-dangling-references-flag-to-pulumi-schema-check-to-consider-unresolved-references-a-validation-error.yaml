@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Consider unresolved references a validation error; add the `--allow-dangling-references` flag to opt out of this behaviour

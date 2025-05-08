@@ -299,15 +299,15 @@ func TestGetLanguageTypeString(t *testing.T) {
 					assert.Fail(t, "Unknown language %T", lang)
 				}
 
-				t.Run(name, func(t *testing.T) {
+				t.Run(name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 					if tt.input == nil || *tt.input {
-						t.Run("input", func(t *testing.T) {
+						t.Run("input", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 							actual := helper().GetTypeName(tt.schema, tt.typ, true, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
 					if tt.input == nil || !*tt.input {
-						t.Run("output", func(t *testing.T) {
+						t.Run("output", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 							actual := helper().GetTypeName(tt.schema, tt.typ, false, tt.module)
 							assert.Equal(t, expected, actual)
 						})

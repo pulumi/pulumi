@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: Allow creating analyzer plugins without config

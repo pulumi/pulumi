@@ -49,6 +49,7 @@ func TestTarget(t *testing.T) {
 				_, err := target.GetPackageConfig("test")
 				assert.ErrorIs(t, err, expectedErr)
 			})
+			//nolint:paralleltest // golangci-lint v2 upgrade
 			t.Run("different namespace", func(t *testing.T) {
 				target := &Target{
 					Config: config.Map{
@@ -61,7 +62,8 @@ func TestTarget(t *testing.T) {
 				assert.NoError(t, err)
 			})
 		})
-		t.Run("ok", func(t *testing.T) {
+
+		t.Run("ok", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
 			expectedErr := errors.New("expected error")
 			target := &Target{
 				Config: config.Map{

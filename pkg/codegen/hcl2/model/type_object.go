@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -40,6 +41,8 @@ type ObjectType struct {
 
 	propertyUnion Type
 	s             atomic.Value // Value<string>
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
@@ -254,7 +257,10 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = &gsync.Map[Type, cacheEntry]{}
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
 			if seen != nil {

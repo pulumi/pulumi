@@ -22,12 +22,15 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 )
 
 // MapType represents maps from strings to particular element types.
 type MapType struct {
 	// ElementType is the element type of the map.
 	ElementType Type
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewMapType creates a new map type with the given element type.
@@ -116,7 +119,10 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = &gsync.Map[Type, cacheEntry]{}
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
