@@ -280,6 +280,18 @@ def call_plain(
 
     return result
 
+def call_plain_single(
+    tok: str,
+    props: pulumi.Inputs,
+    res: typing.Optional[pulumi.Resource] = None,
+    typ: typing.Optional[type] = None,
+) -> typing.Any:
+    """
+    Wraps pulumi.runtime.plain to force the output and return it plainly as well as extract a single (scalar) value.
+    """
+
+    result = call_plain(tok, props, res, typ)
+    return pulumi.runtime.extract_single_value(result)
 
 async def _await_output(o: pulumi.Output[typing.Any]) -> typing.Tuple[object, bool, bool, set]:
     return (
