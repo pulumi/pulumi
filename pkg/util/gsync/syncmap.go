@@ -55,6 +55,15 @@ func (m *Map[K, V]) LoadOrStore(k K, v V) (value V, ok bool) {
 	return
 }
 
+// LoadAndDelete deletes the value for a key, returning the previous value if any.
+// The loaded result reports whether the key was present.
+func (m *Map[K, V]) LoadAndDelete(k K) (value V, loaded bool) {
+	var s any
+	s, loaded = m.m.LoadAndDelete(k)
+	value = s.(V)
+	return
+}
+
 // Range calls f sequentially for each key and value present in the map. If f returns false, range stops the iteration.
 //
 // Range does not necessarily correspond to any consistent snapshot of the Map's contents: no key will be visited more
