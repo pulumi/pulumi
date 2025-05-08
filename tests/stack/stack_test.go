@@ -507,8 +507,9 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 
 func TestStackEscConfig(t *testing.T) {
 	t.Parallel()
-	t.Run("stack init", func(t *testing.T) {
-		t.Parallel() // This test requires the service, as only the service supports orgs.
+	t.Run("stack init + set", func(t *testing.T) {
+		t.Parallel()
+		// This test requires the service, as only the service supports orgs.
 		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 		}
@@ -522,8 +523,39 @@ func TestStackEscConfig(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "stack", "init", stackName, "--use-esc-env")
 
-		_, configSetErr := e.RunCommandExpectError("pulumi", "config", "set", "foo", "bar")
-		assert.Contains(t, configSetErr, "cannot set config for a stack with cloud config")
+		configSetOut, configSetErr := e.RunCommandExpectError("pulumi", "config", "set", "foo", "bar")
+		assert.Empty(t, configSetOut)
+		expectedConfigSetErr := fmt.Sprintf(
+			"config set not supported for cloud-managed stacks: use `pulumi env set pulumi-test/%s pulumiConfig.foo bar",
+			stackName)
+		assert.Contains(t, configSetErr, expectedConfigSetErr, "directs user to use 'env set'")
+
+		configSetOut, configSetErr = e.RunCommandExpectError("pulumi", "config", "set", "--secret", "foo", "bar")
+		assert.Empty(t, configSetOut)
+		newVar := fmt.Sprintf(
+			"config set not supported for cloud-managed stacks: "+
+				"use `pulumi env set pulumi-test/%s pulumiConfig.foo --secret <value>",
+			stackName)
+		assert.Contains(t, configSetErr, newVar, "should hide secret values")
+
+		envSetOut, envSetErr := e.RunCommand("pulumi", "env", "set", "pulumi-test/"+stackName, "pulumiConfig.foo", "bar")
+		assert.Empty(t, envSetOut)
+		assert.Empty(t, envSetErr)
+
+		getOut, getErr := e.RunCommand("pulumi", "config", "get", "foo")
+		assert.Empty(t, getErr)
+		assert.Equal(t, "bar\n", getOut)
+
+		configRmOut, configRmErr := e.RunCommandExpectError("pulumi", "config", "rm", "foo")
+		assert.Empty(t, configRmOut)
+		expectedConfigRmErr := fmt.Sprintf(
+			"config rm not supported for cloud-managed stacks: use `pulumi env rm pulumi-test/%s pulumiConfig.foo",
+			stackName)
+		assert.Contains(t, configRmErr, expectedConfigRmErr, "direct user to use 'env rm'")
+
+		envRmOut, envRmErr := e.RunCommand("pulumi", "env", "rm", "pulumi-test/"+stackName, "pulumiConfig.foo")
+		assert.Empty(t, envRmOut)
+		assert.Empty(t, envRmErr)
 	})
 }
 

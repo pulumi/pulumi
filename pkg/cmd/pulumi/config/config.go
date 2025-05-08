@@ -203,6 +203,16 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				return err
 			}
 
+			if _, isFileConfig := destinationStack.GetStackFilename(ctx); !isFileConfig {
+				env := "<env>"
+				imports := destinationProjectStack.Environment.Imports()
+				if len(imports) == 1 {
+					env = imports[0]
+				}
+				helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.<key>`", env)
+				return errors.New("config copy not supported with cloud-managed stack destination: " + helpText)
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Do we need to copy a single value or the entire map
@@ -358,6 +368,16 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
+			if _, isFileConfig := stack.GetStackFilename(ctx); !isFileConfig {
+				env := "<env>"
+				imports := ps.Environment.Imports()
+				if len(imports) == 1 {
+					env = imports[0]
+				}
+				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.%s`", env, key.Name())
+				return errors.New("config rm not supported for cloud-managed stacks: " + helpText)
+			}
+
 			err = ps.Config.Remove(key, path)
 			if err != nil {
 				return err
@@ -413,6 +433,16 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			ps, err := stack.Load(ctx, project)
 			if err != nil {
 				return err
+			}
+
+			if _, isFileConfig := stack.GetStackFilename(ctx); !isFileConfig {
+				env := "<env>"
+				imports := ps.Environment.Imports()
+				if len(imports) == 1 {
+					env = imports[0]
+				}
+				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.<key>`", env)
+				return errors.New("config rm-all not supported for cloud-managed stacks: " + helpText)
 			}
 
 			for _, arg := range args {
@@ -706,6 +736,20 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 				"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
 				key)
 		}
+	}
+
+	if _, isFileConfig := s.GetStackFilename(ctx); !isFileConfig {
+		exampleValue := "--secret <value>"
+		if !c.Secret {
+			exampleValue = value
+		}
+		env := "<env>"
+		imports := ps.Environment.Imports()
+		if len(imports) == 1 {
+			env = imports[0]
+		}
+		helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.%s %s`", env, key.Name(), exampleValue)
+		return errors.New("config set not supported for cloud-managed stacks: " + helpText)
 	}
 
 	err = ps.Config.Set(key, v, c.Path)
