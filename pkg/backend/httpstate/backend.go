@@ -1323,9 +1323,8 @@ func (b *cloudBackend) PromptAI(
 
 func (b *cloudBackend) renderAndSummarizeOutput(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation,
-	events []engine.Event, update client.UpdateIdentifier, updateMeta updateMetadata,
+	events []engine.Event, update client.UpdateIdentifier, updateMeta updateMetadata, dryRun bool,
 ) {
-	dryRun := kind == apitype.PreviewUpdate
 	renderer := display.NewCaptureProgressEvents(
 		stack.Ref().Name(),
 		op.Proj.Name,
@@ -1526,7 +1525,7 @@ func (b *cloudBackend) apply(
 		defer func() {
 			close(eventsChannel)
 			<-done
-			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta)
+			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
 		}()
 	}
 
