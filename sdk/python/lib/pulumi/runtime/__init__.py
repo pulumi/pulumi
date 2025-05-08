@@ -56,6 +56,8 @@ from .invoke import (
     invoke_async,
     invoke_output,
     call,
+    call_single,
+    extract_single_value,
 )
 
 from ._json import (
@@ -102,6 +104,8 @@ __all__ = [
     "invoke_async",
     "invoke_output",
     "call",
+    "call_single",
+    "extract_single_value",
     # _json
     "to_json",
     # rpc
