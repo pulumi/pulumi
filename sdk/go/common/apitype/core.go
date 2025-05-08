@@ -357,6 +357,9 @@ type ResourceV3 struct {
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	// TODO: This is here temporarily. It will be moved to ResourceV4.
+	// ViewOf is a reference to the resource that this resource is a view of.
+	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
