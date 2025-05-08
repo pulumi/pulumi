@@ -203,6 +203,9 @@ func TestConfigSetTypes(t *testing.T) {
 				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
 					return project.Save(stack.ConfigFile)
 				},
+				GetStackFilenameF: func(ctx context.Context) (string, bool) {
+					return "Pulumi.stack.yaml", true
+				},
 			}
 
 			configSetCmd := &configSetCmd{
