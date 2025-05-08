@@ -125,6 +125,9 @@ class Parameterization:
     # it in base64.
     value: str
 
+    def __hash__(self) -> int:
+        return hash((self.name, self.version, self.value))
+
 
 @dataclass
 class Dependency:
@@ -132,6 +135,9 @@ class Dependency:
     version: Optional[str] = None
     downloadURL: Optional[str] = None
     parameterization: Optional[Parameterization] = None
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.version, self.downloadURL, self.parameterization))
 
 
 class TypeNotFoundError(Exception):
@@ -187,8 +193,16 @@ class DependencyError(Exception): ...
 
 class AnalyzeResult(TypedDict):
     component_definitions: dict[str, ComponentDefinition]
+    """The components defined by the package."""
     type_definitions: dict[str, TypeDefinition]
-    dependencies: list[Dependency]
+    """The types defined in the package, these are complex types or enums."""
+    external_enum_types: dict[str, type[Enum]]
+    """
+    A map of references to Python enum types. These are used to deserialize
+    raw values back into Python types.
+    """
+    dependencies: set[Dependency]
+    """The packages this package depends on."""
 
 
 class Analyzer:
@@ -234,8 +248,12 @@ class Analyzer:
 
     def __init__(self, name: str):
         self.name = name
-        self.dependencies: list[Dependency] = []
+        self.dependencies: set[Dependency] = set()
         self.type_definitions: dict[str, TypeDefinition] = {}
+        # Keep track of external enum types we encountered. We use these to map a schema
+        # reference to a type so that we can deserialize a raw value back into a Python
+        # enum type.
+        self.external_enum_types: dict[str, type[Enum]] = {}
         # For unresolved types, we need to keep track of whether we saw them in a
         # component output or an input.
         self.unresolved_forward_refs: dict[
@@ -305,6 +323,7 @@ class Analyzer:
             "component_definitions": component_defs,
             "type_definitions": self.type_definitions,
             "dependencies": self.dependencies,
+            "external_enum_types": self.external_enum_types,
         }
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
@@ -422,6 +441,7 @@ class Analyzer:
         is always false. For properties used in an input, can_be_plain is true,
         indicating that they can potentially be plain.
         """
+        type_string: Optional[str]
         optional = optional if optional is not None else is_optional(arg)
         if is_simple(arg):
             return PropertyDefinition(
@@ -566,7 +586,7 @@ class Analyzer:
             type_string, package_name = get_package_name(arg, typ, name)
             try:
                 dep = get_dependency_for_type(arg)
-                self.dependencies.append(dep)
+                self.dependencies.add(dep)
                 return PropertyDefinition(
                     ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
                     optional=optional,
@@ -579,6 +599,22 @@ class Analyzer:
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
             )
         elif is_enum(arg):
+            type_string = getattr(arg, "pulumi_type", None)
+            if type_string:  # This is an enum from an external package
+                _, package_name = get_package_name(arg, typ, name)
+                try:
+                    dep = get_dependency_for_type(arg)
+                    self.dependencies.add(dep)
+                    ref = f"/{dep.name}/v{dep.version}/schema.json#/types/{type_string.replace('/', '%2F')}"
+                    self.external_enum_types[ref] = arg
+                    return PropertyDefinition(
+                        ref=ref,
+                        optional=optional,
+                        description=self.get_docstring(typ, name),
+                    )
+                except DependencyError as e:
+                    raise Exception(f"{package_name}: {str(e)}")
+
             type_name = arg.__name__
             type_def = self.type_definitions.get(type_name)
             if not type_def:
