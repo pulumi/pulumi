@@ -214,33 +214,44 @@ class PulumiCommand:
         stderr_chunks: List[str] = []
 
         with subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
+            env=env,
+            encoding="utf-8",
         ) as process:
             assert process.stdout is not None
             assert process.stderr is not None
 
-            while True:
+            stderr_ongoing = True
+            stdout_ongoing = True
+
+            while stderr_ongoing or stdout_ongoing or process.poll() is None:
                 reads, _, _ = select.select([process.stdout, process.stderr], [], [])
 
                 for read in reads:
-                    if read == process.stdout:
+                    if read == process.stdout and stdout_ongoing:
                         output = process.stdout.readline()
-                        text = output.decode(encoding="utf-8").rstrip()
+
+                        if output == "":
+                            stdout_ongoing = False
+                            break
 
                         if on_output:
-                            on_output(text)
-                        stdout_chunks.append(text)
+                            on_output(output)
+                        stdout_chunks.append(output)
 
-                    if read == process.stderr:
+                    if read == process.stderr and stderr_ongoing:
                         error = process.stderr.readline()
-                        text = error.decode(encoding="utf-8").rstrip()
+
+                        if error == "":
+                            stderr_ongoing = False
+                            break
 
                         if on_error:
-                            on_error(text)
-                        stderr_chunks.append(text)
-
-                if process.poll() is not None:
-                    break
+                            on_error(error)
+                        stderr_chunks.append(error)
 
             code = process.returncode
 
