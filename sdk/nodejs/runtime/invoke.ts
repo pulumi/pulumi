@@ -383,18 +383,21 @@ function deserializeResponse(
 /**
  * Dynamically calls the function `tok`, which is offered by a provider plugin.
  */
-export function call<T>(
+export function callAsync<T>(
     tok: string,
     props: Inputs,
     res?: Resource,
     packageRef?: Promise<string | undefined>,
-): Output<T> {
+): Promise<{
+    result: Inputs | undefined;
+    isKnown: boolean;
+    containsSecrets: boolean;
+    dependencies: Resource[];
+}> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
-    const [out, resolver] = createOutput<T>(`call(${tok})`);
-
-    debuggablePromise(
+    return debuggablePromise(
         Promise.resolve().then(async () => {
             const done = rpcKeepAlive();
             try {
@@ -483,20 +486,67 @@ export function call<T>(
                     }
                 }
 
-                // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
-                // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
-                // present during previews (i.e. isDryRun() will be true).
-                resolver(<any>result, true, containsSecrets, deps);
-            } catch (e) {
-                resolver(<any>undefined, true, false, undefined, e);
+                return {
+                    result: result,
+                    containsSecrets: containsSecrets,
+                    dependencies: deps,
+                    isKnown: true,
+                };
             } finally {
                 done();
             }
         }),
         label,
     );
+}
 
-    return out;
+/**
+ * Call is the corresponding function to invokeOutput.
+ */
+export function call<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`call(${tok})`);
+    callAsync(tok, props, res, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets, dependencies } = response;
+
+            // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
+            // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
+            // present during previews (i.e. isDryRun() will be true).
+            resolve(<any>result, isKnown, containsSecrets, dependencies);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
+}
+
+/**
+ * callSingle is the corresponding function to invokeSingleOutput.
+ */
+export function callSingle<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`callSingle(${tok})`);
+    callAsync(tok, props, res, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets, dependencies } = response;
+            const value = extractSingleValue(result);
+            resolve(<T>value, isKnown, containsSecrets, dependencies, undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
 }
 
 function createOutput<T>(
