@@ -73,9 +73,6 @@ func defaultParallel() int32 {
 	return defaultParallel
 }
 
-// intentionally disabling here for cleaner err declaration/assignment.
-//
-//nolint:vetshadow
 func NewUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool

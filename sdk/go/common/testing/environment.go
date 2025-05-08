@@ -239,7 +239,6 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 		command = filepath.Join(pulumiRoot, "bin", "pulumi")
 	}
 
-	//nolint:gas
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	if e.Stdin != nil {
