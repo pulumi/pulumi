@@ -329,7 +329,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
 			nil, nil, nil, "", false, "", nil, nil, "", nil, nil)
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
-		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
+		// TODO - we need the state to work here
+		if issueCheckErrors(i.deployment, state.Type, urn, &resp) {
 			return nil, false, nil
 		}
 

@@ -954,7 +954,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 
 		if err != nil {
 			return nil, false, err
-		} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
+		} else if issueCheckErrors(sg.deployment, new.Type, urn, &resp) {
 			invalid = true
 		}
 		new.Inputs = inputs
@@ -1529,7 +1529,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				inputs := resp.Properties
 				if err != nil {
 					return nil, err
-				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
+				} else if issueCheckErrors(sg.deployment, new.Type, urn, &resp) {
 					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
 				}
 				new.Inputs = inputs
@@ -2332,27 +2332,26 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 }
 
 // issueCheckErrors prints any check errors to the diagnostics error sink.
-func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
-	failures []plugin.CheckFailure,
+func issueCheckErrors(deployment *Deployment, tokenType tokens.Type, urn resource.URN,
+	checkResponse *plugin.CheckResponse,
 ) bool {
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+	return issueCheckFailures(deployment.Diag().Errorf, tokenType, urn, checkResponse)
 }
 
 // issueCheckErrors prints any check errors to the given printer function.
-func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
-	failures []plugin.CheckFailure,
+func issueCheckFailures(printf func(*diag.Diag, ...interface{}), tokenType tokens.Type, urn resource.URN, checkResponse *plugin.CheckResponse,
 ) bool {
-	if len(failures) == 0 {
+	if len(checkResponse.Failures) == 0 {
 		return false
 	}
-	inputs := new.Inputs
-	for _, failure := range failures {
+	inputs := checkResponse.Properties
+	for _, failure := range checkResponse.Failures {
 		if failure.Property != "" {
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
-				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				tokenType, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
 			printf(
-				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
+				diag.GetResourceInvalidError(urn), tokenType, urn.Name(), failure.Reason)
 		}
 	}
 	return true

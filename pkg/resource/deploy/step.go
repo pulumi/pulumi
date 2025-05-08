@@ -1428,7 +1428,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				errorMessage)
 		}
 
-		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, resp.Failures)
+		issueCheckFailures(s.deployment.Diag().Warningf, s.new.Type, s.new.URN, &resp,)
 
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
 
@@ -1455,7 +1455,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if err != nil {
 		return rst, nil, err
 	}
-	if issueCheckErrors(s.deployment, s.new, s.new.URN, resp.Failures) {
+	if issueCheckErrors(s.deployment, s.new.Type, s.new.URN, &resp) {
 		return rst, nil, errors.New("one or more inputs failed to validate")
 	}
 	s.new.Inputs = resp.Properties
