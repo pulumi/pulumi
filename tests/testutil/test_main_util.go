@@ -44,5 +44,7 @@ func SetupPulumiBinary() {
 		}
 	}
 	os.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Join(repoRoot, "bin"), os.Getenv("PATH")))
-	os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", filepath.Join(repoRoot, "bin", "pulumi"))
+	if os.Getenv("PULUMI_INTEGRATION_BINARY_PATH") == "" {
+		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", filepath.Join(repoRoot, "bin", "pulumi"))
+	}
 }
