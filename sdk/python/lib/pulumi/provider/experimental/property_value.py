@@ -58,9 +58,9 @@ class ResourceReference:
 
     urn: str
     """The URN of the resource."""
-    resource_id: Optional[Any]
+    resource_id: Optional["PropertyValue"] = None
     """The ID of the resource, if applicable."""
-    package_version: str
+    package_version: Optional[str] = None
     """The package version of the resource."""
 
 
@@ -354,7 +354,18 @@ class PropertyValue:
                 return marshal_archive(value)
 
             if isinstance(value, ResourceReference):
-                raise NotImplementedError()
+                pbstruct = {}
+                pbstruct[pulumi.runtime.rpc._special_sig_key] = struct_pb2.Value(
+                    string_value=pulumi.runtime.rpc._special_resource_sig
+                )
+                pbstruct["urn"] = struct_pb2.Value(string_value=value.urn)
+                if value.resource_id is not None:
+                    pbstruct["resource_id"] = value.resource_id.marshal()
+                if value.package_version is not None:
+                    pbstruct["package_version"] = struct_pb2.Value(
+                        string_value=value.package_version
+                    )
+                return struct_pb2.Value(struct_value=struct_pb2.Struct(fields=pbstruct))
 
             raise ValueError(f"Unsupported value type: {type(value)}")
 
@@ -459,6 +470,59 @@ class PropertyValue:
                     )
                 raise AssertionError(
                     "Invalid archive encountered when unmarshalling resource property"
+                )
+
+            if sig.string_value == pulumi.runtime.rpc._special_resource_sig:
+                if "urn" not in fields or not fields["urn"].HasField("string_value"):
+                    raise ValueError("Resource reference missing 'urn' field.")
+                urn = fields["urn"].string_value
+                resource_id = fields.get("resource_id")
+                package_version = fields.get("package_version")
+                if resource_id is not None:
+                    resource_id_value = PropertyValue.unmarshal(resource_id)
+                if package_version is not None:
+                    if not package_version.HasField("string_value"):
+                        raise ValueError(
+                            "Resource reference 'package_version' field is not a string."
+                        )
+                    package_version_str = package_version.string_value
+                return PropertyValue(
+                    ResourceReference(
+                        urn=urn,
+                        resource_id=resource_id_value,
+                        package_version=package_version_str,
+                    )
+                )
+
+            if sig.string_value == pulumi.runtime.rpc._special_output_value_sig:
+                inner = fields.get("value")
+                if inner is None:
+                    raise ValueError("Output value missing 'value' field.")
+                dependencies = fields.get("dependencies")
+                if dependencies is not None:
+                    if not dependencies.HasField("list_value"):
+                        raise ValueError(
+                            "Output value 'dependencies' field is not a list."
+                        )
+                    deps = set()
+                    for dep in dependencies.list_value.values:
+                        if not dep.HasField("string_value"):
+                            raise ValueError(
+                                "Output value 'dependencies' field contains non-string values."
+                            )
+                        deps.add(dep.string_value)
+                secret = fields.get("secret")
+                if secret is not None:
+                    if not secret.HasField("bool_value"):
+                        raise ValueError(
+                            "Output value 'secret' field is not a boolean."
+                        )
+                    is_secret = secret.bool_value
+
+                return (
+                    PropertyValue.unmarshal(inner)
+                    .with_dependencies(deps)
+                    .with_secret(is_secret)
                 )
 
             raise ValueError(f"Unknown signature key for struct value: {sig}")
