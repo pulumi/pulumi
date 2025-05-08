@@ -10,9 +10,16 @@ Integration tests use the built binaries for the CLI and language runtimes. We h
 
 :::{attention}
 
-By default the integration tests use the binaries for the CLI and the language runtime plugins from `$PATH`.  You can set `PULUMI_INTEGRATION_REBUILD_BINARIES=true` in your environment to automatically re-build the binaries locally to your repository and have the integration tests use them automatically.
+Integration tests should use have a TestMain which calls the `testutils.SetupPulumiBinary()` method to set an explicit path to the binaries under test to avoid reliance on the `$PATH` which can cause the wrong binary to be used in tests, resulting in incorrect test results.
 
-Alternatively you can build the binaries yourself and make sure they aren in the `$PATH` as follows:
+:::
+
+You can set `PULUMI_INTEGRATION_REBUILD_BINARIES=true` in your environment to automatically re-build the binaries locally to your repository and have the integration tests use them automatically.
+
+To test an alternative `pulumi` binary, set the environment variable `PULUMI_INTEGRATION_BINARY_PATH` to the absolute path of the binary you want to test.
+
+#### Build the required binaries
+
 ```bash
 # from the repostiory root, build and install `pulumi`
 make build install
@@ -20,7 +27,6 @@ make build install
 cd sdk/python
 make build install
 ```
-:::
 
 To run a single integration test, run the following command from the repository root.
 
