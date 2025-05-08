@@ -2230,7 +2230,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(context.Background(), d, spec, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(context.TODO(), d, spec, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
