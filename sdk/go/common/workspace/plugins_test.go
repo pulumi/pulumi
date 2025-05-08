@@ -1769,7 +1769,7 @@ func TestNewPluginSpec(t *testing.T) {
 			name:   "plugin with invalid semver",
 			source: "pulumi-example@v1.0.0.0",
 			kind:   apitype.ResourcePlugin,
-			Error:  errors.New("VERSION must be valid semver: Invalid character(s) found in patch number \"0.0\""),
+			Error:  errors.New("VERSION must be valid semver: v1.0.0.0"),
 		},
 		{
 			name:   "git plugin with version",
