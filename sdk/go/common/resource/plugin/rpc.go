@@ -201,10 +201,19 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			})
 			return MarshalPropertyValue(key, output, opts)
 		}
-		secret := resource.NewObjectProperty(resource.PropertyMap{
-			resource.SigKey: resource.NewStringProperty(resource.SecretSig),
-			"value":         v.SecretValue().Element,
-		})
+		var secret resource.PropertyValue
+		secretValue := v.SecretValue().Element
+		if (secretValue.IsString()) {
+			secret = resource.NewObjectProperty(resource.PropertyMap{
+				resource.SigKey: resource.NewStringProperty(resource.SecretSig),
+				"value":         resource.NewStringProperty("************"),
+			})
+		} else {
+			secret = resource.NewObjectProperty(resource.PropertyMap{
+				resource.SigKey: resource.NewStringProperty(resource.SecretSig),
+				"value":         v.SecretValue().Element,
+			})
+		}
 		return MarshalPropertyValue(key, secret, opts)
 	} else if v.IsResourceReference() {
 		ref := v.ResourceReferenceValue()
