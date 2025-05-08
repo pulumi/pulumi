@@ -1,4 +1,4 @@
-// Copyright 2017-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tests
+package stack
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 func TestMain(m *testing.M) {
-	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
-	// backups of test stacks.
-	disableCheckpointBackups := env.DIYBackendDisableCheckpointBackups.Var().Name()
-	if err := os.Setenv(disableCheckpointBackups, "1"); err != nil {
-		fmt.Printf("error setting env var '%s': %v\n", disableCheckpointBackups, err)
-		os.Exit(1)
-	}
-
 	testutil.SetupPulumiBinary()
 
 	code := m.Run()
