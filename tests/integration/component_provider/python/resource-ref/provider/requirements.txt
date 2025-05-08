@@ -1,1 +1,1 @@
-pulumi-command==1.0.3
+pulumi-command==1.0.4

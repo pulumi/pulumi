@@ -15,7 +15,9 @@ resources:
     properties:
       name: Bonnie
       commandIn: ${commandIn}
+      loglevelIn: stdoutAndStderr
 outputs:
   urn: ${echo.commandOut.urn}
   commandOutStdout: ${echo.commandOut.stdout}
   commandInStdout: ${echo.commandInStdout}
+  loglevelOut: ${echo.loglevelOut}

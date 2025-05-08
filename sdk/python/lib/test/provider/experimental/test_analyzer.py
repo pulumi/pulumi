@@ -910,10 +910,18 @@ def test_analyze_resource_ref():
                 "resPara": PropertyDefinition(
                     ref="/terraform-provider/v0.10.0/schema.json#/resources/parameterized:index:MyResource",
                 ),
+                "enum": PropertyDefinition(
+                    ref="/mock_package/v1.2.3/schema.json#/types/mock_package:index:MyEnum"
+                ),
+                "enumPara": PropertyDefinition(
+                    ref="/terraform-provider/v0.10.0/schema.json#/types/parameterized:index:MyEnum"
+                ),
             },
             inputs_mapping={
                 "res": "res",
                 "resPara": "res_para",
+                "enum": "enum",
+                "enumPara": "enum_para",
             },
             outputs={},
             outputs_mapping={},
@@ -1012,6 +1020,8 @@ def test_analyze_union_type_3_10_syntax():
 
 
 def test_analyze_enum_type():
+    """Test enums defined within the component package."""
+
     class MyEnumStr(Enum):
         """string enum"""
 
