@@ -9,7 +9,7 @@ paths:
     - - value
     string: '["a","b","c",["value"]]'
     redacted: '["a","b","c",["value"]]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAATf+CSgAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjDltdaW50ZXJmYWNlIHt9/4ISAAEGc3RyaW5nDAcABXZhbHVl
+    object: HBAADltdaW50ZXJmYWNlIHt9fwIBAv+AAAEQAABN/4BKAAQGc3RyaW5nDAMAAWEGc3RyaW5nDAMAAWIGc3RyaW5nDAMAAWMOW11pbnRlcmZhY2Uge33/gBIAAQZzdHJpbmcMBwAFdmFsdWU=
     secure: false
     isObject: true
   my:name[0]:
@@ -19,6 +19,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFh
     secure: false
     isObject: false
+    type: 1
   my:name[1]:
     value: b
     string: b
@@ -26,6 +27,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFi
     secure: false
     isObject: false
+    type: 1
   my:name[2]:
     value: c
     string: c
@@ -33,12 +35,13 @@ paths:
     object: DhAABnN0cmluZwwDAAFj
     secure: false
     isObject: false
+    type: 1
   my:name[3]:
     value:
     - value
     string: '["value"]'
     redacted: '["value"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAFf+CEgABBnN0cmluZwwHAAV2YWx1ZQ==
+    object: HBAADltdaW50ZXJmYWNlIHt9fwIBAv+AAAEQAAAV/4ASAAEGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[3][0]:
@@ -48,3 +51,4 @@ paths:
     object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: false
+    type: 1

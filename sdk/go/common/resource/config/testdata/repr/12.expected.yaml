@@ -8,7 +8,7 @@ paths:
       c: d
     string: '{"a":{"secure":"securevalue"},"c":"d"}'
     redacted: '{"a":"[secret]","c":"d"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAE//gEwAAgFhF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4AfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQFjBnN0cmluZwwDAAFk
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABP/4JMAAIBYwZzdHJpbmcMAwABZAFhF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
     secure: true
     isObject: true
     secureValues:
@@ -30,3 +30,4 @@ paths:
     object: DhAABnN0cmluZwwDAAFk
     secure: false
     isObject: false
+    type: 1

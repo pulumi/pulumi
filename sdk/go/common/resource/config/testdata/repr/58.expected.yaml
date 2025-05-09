@@ -6,7 +6,7 @@ paths:
     - name: foo
     string: '[{"name":"foo"}]'
     redacted: '[{"name":"foo"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAQ/+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABj/gBUAAQRuYW1lBnN0cmluZwwFAANmb28=
+    object: HBAADltdaW50ZXJmYWNlIHt9fwIBAv+AAAEQAABE/4AoAAEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gQQBAv+CAAEMARAAABj/ghUAAQRuYW1lBnN0cmluZwwFAANmb28=
     secure: false
     isObject: true
   my:servers[0]:
@@ -14,7 +14,7 @@ paths:
       name: foo
     string: '{"name":"foo"}'
     redacted: '{"name":"foo"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABj/gBUAAQRuYW1lBnN0cmluZwwFAANmb28=
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAY/4IVAAEEbmFtZQZzdHJpbmcMBQADZm9v
     secure: false
     isObject: true
   my:servers[0].name:
@@ -24,3 +24,4 @@ paths:
     object: EBAABnN0cmluZwwFAANmb28=
     secure: false
     isObject: false
+    type: 1
