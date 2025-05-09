@@ -29,8 +29,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -42,8 +44,9 @@ func GetStackConfiguration(
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
+	sink diag.Sink,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, ssml, stack, project, nil)
+	return getStackConfigurationWithFallback(ctx, ssml, stack, project, sink, nil)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -57,9 +60,10 @@ func GetStackConfigurationOrLatest(
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
+	sink diag.Sink,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
-		ctx, ssml, stack, project,
+		ctx, ssml, stack, project, sink,
 		func(err error) (config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// This error indicates that we're not being run in a project directory.
@@ -75,9 +79,10 @@ func getStackConfigurationWithFallback(
 	ssml cmdStack.SecretsManagerLoader,
 	s backend.Stack,
 	project *workspace.Project,
+	sink diag.Sink,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := cmdStack.LoadProjectStack(project, s)
+	workspaceStack, err := cmdStack.LoadProjectStack(project, s, cmdutil.Diag())
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err

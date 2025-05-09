@@ -147,7 +147,7 @@ func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Pr
 }
 
 // LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
+func LoadProjectStack(project *Project, path string, diags diag.Sink) (*ProjectStack, error) {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	marshaller, err := marshallerForPath(path)
@@ -165,7 +165,7 @@ func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
 		return nil, err
 	}
 
-	return LoadProjectStackBytes(project, b, path, marshaller)
+	return LoadProjectStackBytes(project, b, path, marshaller, diags)
 }
 
 func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
@@ -192,6 +192,7 @@ func LoadProjectStackBytes(
 	b []byte,
 	path string,
 	marshaller encoding.Marshaler,
+	diags diag.Sink,
 ) (*ProjectStack, error) {
 	var projectStackRaw interface{}
 	err := marshaller.Unmarshal(b, &projectStackRaw)
@@ -223,10 +224,12 @@ func LoadProjectStackBytes(
 	//       {projectName}:instanceSize: t3.micro
 	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackForm)
 
-	configObj, ok := simplifiedStackForm["config"]
-	if ok {
-		if configMap, ok := configObj.(map[string]interface{}); ok {
-			checkForEmptyConfig(configMap)
+	if diags != nil {
+		configObj, ok := simplifiedStackForm["config"]
+		if ok {
+			if configMap, ok := configObj.(map[string]interface{}); ok {
+				checkForEmptyConfig(configMap, diags)
+			}
 		}
 	}
 
@@ -336,7 +339,7 @@ func LoadPolicyPack(path string) (*PolicyPackProject, error) {
 //	somekey6: ~
 //
 // ```
-func checkForEmptyConfig(config map[string]interface{}) {
+func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 	keys := []string{}
 	for k, v := range config {
 		if v == nil {
@@ -357,7 +360,7 @@ func checkForEmptyConfig(config map[string]interface{}) {
 		if len(keys) == 2 {
 			joiner = " and "
 		}
-		cmdutil.Diag().Warningf(&diag.Diag{
+		diags.Warningf(&diag.Diag{
 			Message: fmt.Sprintf("No value for configuration keys %s. This is currently treated as an empty string `\"\"`, "+
 				"but will be treated as `null` in a future version of pulumi.", strings.Join(keys, joiner)),
 		})

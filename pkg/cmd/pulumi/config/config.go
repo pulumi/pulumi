@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -84,7 +85,7 @@ func NewConfigCmd() *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -181,7 +182,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack)
+			currentProjectStack, err := cmdStack.LoadProjectStack(project, currentStack, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -198,7 +199,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := cmdStack.LoadProjectStack(project, destinationStack)
+			destinationProjectStack, err := cmdStack.LoadProjectStack(project, destinationStack, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -295,7 +296,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			return getConfig(ctx, ssml, ws, s, key, path, jsonOut, open)
+			return getConfig(ctx, ssml, ws, s, key, path, jsonOut, open, cmdutil.Diag())
 		},
 	}
 	getCmd.Flags().BoolVarP(
@@ -353,7 +354,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -410,7 +411,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -478,7 +479,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := workspace.LoadProjectStack(project, configPath)
+			ps, err := workspace.LoadProjectStack(project, configPath, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -554,7 +555,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 
 type configSetCmd struct {
 	Stdin            *os.File
-	LoadProjectStack func(*workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
+	LoadProjectStack func(*workspace.Project, backend.Stack, diag.Sink) (*workspace.ProjectStack, error)
 
 	Plaintext bool
 	Secret    bool
@@ -666,7 +667,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := loadProjectStack(project, s)
+	ps, err := loadProjectStack(project, s, cmdutil.Diag())
 	if err != nil {
 		return err
 	}
@@ -766,7 +767,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := cmdStack.LoadProjectStack(project, stack)
+			ps, err := cmdStack.LoadProjectStack(project, stack, cmdutil.Diag())
 			if err != nil {
 				return err
 			}
@@ -1014,12 +1015,13 @@ func getConfig(
 	key config.Key,
 	path, jsonOut,
 	openEnvironment bool,
+	sink diag.Sink,
 ) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack, sink)
 	if err != nil {
 		return err
 	}

@@ -83,7 +83,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := LoadProjectStack(project, s)
+				ps, err := LoadProjectStack(project, s, cmdutil.Diag())
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
