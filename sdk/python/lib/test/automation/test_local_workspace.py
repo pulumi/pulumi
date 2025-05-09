@@ -44,6 +44,8 @@ from pulumi.automation import (
     StackAlreadyExistsError,
     StackNotFoundError,
     fully_qualified_stack_name,
+    ConfigOptions,
+    GetAllConfigOptions,
 )
 from pulumi.resource import (
     ComponentResource,
@@ -1413,6 +1415,374 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.preview()
 
         stack.workspace.remove_stack(stack_name)
+
+    def test_config_with_options(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        config_yaml = f"{stack_name}.yaml"
+        config_json = f"{stack_name}.json"
+
+        try:
+            # test backward compatibility
+            stack.set_config_with_options("key1", ConfigValue(value="value1"), None)
+            # test new flag without subPath
+            stack.set_config_with_options(
+                "key2", ConfigValue(value="value2"), ConfigOptions(path=False)
+            )
+            # test new flag with subPath
+            stack.set_config_with_options(
+                "key3.subKey1", ConfigValue(value="value3"), ConfigOptions(path=True)
+            )
+            # test old method and key as secret
+            stack.set_config_with_options(
+                "key4", ConfigValue(value="value4", secret=True), None
+            )
+            # test subPath and key as secret
+            stack.set_config_with_options(
+                "key5.subKey1",
+                ConfigValue(value="value5", secret=True),
+                ConfigOptions(path=True),
+            )
+            # test string with dots
+            stack.set_config_with_options(
+                "key6.subKey1", ConfigValue(value="value6", secret=True), None
+            )
+            # test string with dots
+            stack.set_config_with_options(
+                "key7.subKey1",
+                ConfigValue(value="value7", secret=True),
+                ConfigOptions(path=False),
+            )
+            # test subPath
+            stack.set_config_with_options(
+                "key7.subKey2", ConfigValue(value="value8"), ConfigOptions(path=True)
+            )
+            # test subPath
+            stack.set_config_with_options(
+                "key7.subKey3", ConfigValue(value="value9"), ConfigOptions(path=True)
+            )
+
+            # test config file with JSON without subPath
+            stack.set_config_with_options(
+                "key8",
+                ConfigValue(value="value10"),
+                ConfigOptions(path=False, config_file=config_json),
+            )
+            # test config file with JSON with subPath
+            stack.set_config_with_options(
+                "key9.subKey1",
+                ConfigValue(value="value11"),
+                ConfigOptions(path=True, config_file=config_json),
+            )
+            # test config file with JSON and key as secret
+            stack.set_config_with_options(
+                "key10",
+                ConfigValue(value="value12", secret=True),
+                ConfigOptions(config_file=config_json),
+            )
+            # test config file with JSON and subPath and key as secret
+            stack.set_config_with_options(
+                "key11.subKey1",
+                ConfigValue(value="value13", secret=True),
+                ConfigOptions(path=True, config_file=config_json),
+            )
+            # test config file with JSON and subPath
+            stack.set_config_with_options(
+                "key11.subKey2",
+                ConfigValue(value="value14"),
+                ConfigOptions(path=True, config_file=config_json),
+            )
+
+            # test config file with YAML without subPath
+            stack.set_config_with_options(
+                "key12",
+                ConfigValue(value="value15"),
+                ConfigOptions(path=False, config_file=config_yaml),
+            )
+            # test config file with YAML with subPath
+            stack.set_config_with_options(
+                "key13.subKey1",
+                ConfigValue(value="value16"),
+                ConfigOptions(path=True, config_file=config_yaml),
+            )
+            # test config file with YAML and key as secret
+            stack.set_config_with_options(
+                "key14",
+                ConfigValue(value="value17", secret=True),
+                ConfigOptions(config_file=config_yaml),
+            )
+            # test config file with YAML and subPath and key as secret
+            stack.set_config_with_options(
+                "key15.subKey1",
+                ConfigValue(value="value18", secret=True),
+                ConfigOptions(path=True, config_file=config_yaml),
+            )
+            # test config file with YAML and subPath
+            stack.set_config_with_options(
+                "key15.subKey2",
+                ConfigValue(value="value19"),
+                ConfigOptions(path=True, config_file=config_yaml),
+            )
+
+            # test backward compatibility
+            cv1 = stack.get_config_with_options("key1", None)
+            self.assertEqual(cv1.value, "value1")
+            self.assertFalse(cv1.secret)
+
+            # test new flag without subPath
+            cv2 = stack.get_config_with_options("key2", ConfigOptions(path=False))
+            self.assertEqual(cv2.value, "value2")
+            self.assertFalse(cv2.secret)
+
+            # test new flag with subPath
+            cv3 = stack.get_config_with_options(
+                "key3.subKey1", ConfigOptions(path=True)
+            )
+            self.assertEqual(cv3.value, "value3")
+            self.assertFalse(cv3.secret)
+
+            # test old method and key as secret
+            cv4 = stack.get_config_with_options("key4", None)
+            self.assertEqual(cv4.value, "value4")
+            self.assertTrue(cv4.secret)
+
+            # test subPath and key as secret
+            cv5 = stack.get_config_with_options(
+                "key5.subKey1", ConfigOptions(path=True)
+            )
+            self.assertEqual(cv5.value, "value5")
+            self.assertTrue(cv5.secret)
+
+            # test string with dots
+            cv6 = stack.get_config_with_options("key6.subKey1", None)
+            self.assertEqual(cv6.value, "value6")
+            self.assertTrue(cv6.secret)
+
+            # test string with dots
+            cv7 = stack.get_config_with_options(
+                "key7.subKey1", ConfigOptions(path=False)
+            )
+            self.assertEqual(cv7.value, "value7")
+            self.assertTrue(cv7.secret)
+
+            # test subPath
+            cv8 = stack.get_config_with_options(
+                "key7.subKey2", ConfigOptions(path=True)
+            )
+            self.assertEqual(cv8.value, "value8")
+            self.assertFalse(cv8.secret)
+
+            # test subPath
+            cv9 = stack.get_config_with_options(
+                "key7.subKey3", ConfigOptions(path=True)
+            )
+            self.assertEqual(cv9.value, "value9")
+            self.assertFalse(cv9.secret)
+
+            # test config file with JSON without subPath
+            cv10 = stack.get_config_with_options(
+                "key8", ConfigOptions(path=False, config_file=config_json)
+            )
+            self.assertEqual(cv10.value, "value10")
+            self.assertFalse(cv10.secret)
+
+            # test config file with JSON with subPath
+            cv11 = stack.get_config_with_options(
+                "key9.subKey1", ConfigOptions(path=True, config_file=config_json)
+            )
+            self.assertEqual(cv11.value, "value11")
+            self.assertFalse(cv11.secret)
+
+            # test config file with JSON and key as secret
+            cv12 = stack.get_config_with_options(
+                "key10", ConfigOptions(path=True, config_file=config_json)
+            )
+            self.assertEqual(cv12.value, "value12")
+            self.assertTrue(cv12.secret)
+
+            # test config file with JSON and subPath and key as secret
+            cv13 = stack.get_config_with_options(
+                "key11.subKey1", ConfigOptions(path=True, config_file=config_json)
+            )
+            self.assertEqual(cv13.value, "value13")
+            self.assertTrue(cv13.secret)
+
+            # test config file with JSON and subPath
+            cv14 = stack.get_config_with_options(
+                "key11.subKey2", ConfigOptions(path=True, config_file=config_json)
+            )
+            self.assertEqual(cv14.value, "value14")
+            self.assertFalse(cv14.secret)
+
+            # test config file with YAML without subPath
+            cv15 = stack.get_config_with_options(
+                "key12", ConfigOptions(path=False, config_file=config_yaml)
+            )
+            self.assertEqual(cv15.value, "value15")
+            self.assertFalse(cv15.secret)
+
+            # test config file with YAML with subPath
+            cv16 = stack.get_config_with_options(
+                "key13.subKey1", ConfigOptions(path=True, config_file=config_yaml)
+            )
+            self.assertEqual(cv16.value, "value16")
+            self.assertFalse(cv16.secret)
+
+            # test config file with YAML and key as secret
+            cv17 = stack.get_config_with_options(
+                "key14", ConfigOptions(path=True, config_file=config_yaml)
+            )
+            self.assertEqual(cv17.value, "value17")
+            self.assertTrue(cv17.secret)
+
+            # test config file with YAML and subPath and key as secret
+            cv18 = stack.get_config_with_options(
+                "key15.subKey1", ConfigOptions(path=True, config_file=config_yaml)
+            )
+            self.assertEqual(cv18.value, "value18")
+            self.assertTrue(cv18.secret)
+
+            # test config file with YAML and subPath
+            cv19 = stack.get_config_with_options(
+                "key15.subKey2", ConfigOptions(path=True, config_file=config_yaml)
+            )
+            self.assertEqual(cv19.value, "value19")
+            self.assertFalse(cv19.secret)
+
+            # Test removing config with options
+            stack.remove_config_with_options("key1", None)
+            stack.remove_config_with_options("key2", None)
+            stack.remove_config_with_options("key3", ConfigOptions(path=False))
+            stack.remove_config_with_options("key4", ConfigOptions(path=False))
+            stack.remove_config_with_options("key5", None)
+            stack.remove_config_with_options("key6.subKey1", ConfigOptions(path=False))
+            stack.remove_config_with_options("key7.subKey1", None)
+            stack.remove_config_with_options(
+                "key8", ConfigOptions(path=False, config_file=config_json)
+            )
+            stack.remove_config_with_options(
+                "key9.subKey1", ConfigOptions(path=True, config_file=config_json)
+            )
+            stack.remove_config_with_options(
+                "key10", ConfigOptions(path=True, config_file=config_json)
+            )
+            stack.remove_config_with_options(
+                "key12", ConfigOptions(path=False, config_file=config_yaml)
+            )
+            stack.remove_config_with_options(
+                "key13.subKey1", ConfigOptions(path=True, config_file=config_yaml)
+            )
+            stack.remove_config_with_options(
+                "key14", ConfigOptions(path=True, config_file=config_yaml)
+            )
+
+            # Test getting all config
+            cfg = stack.get_all_config()
+            self.assertEqual(
+                cfg[f"{project_name}:key7"].value,
+                '{"subKey2":"value8","subKey3":"value9"}',
+            )
+
+            # Test getting all config with options
+            cfg_json = stack.get_all_config_with_options(
+                GetAllConfigOptions(config_file=config_json)
+            )
+            self.assertEqual(cfg_json[f"{project_name}:key11"].value, "[secret]")
+            self.assertTrue(cfg_json[f"{project_name}:key11"].secret)
+            self.assertEqual(cfg_json[f"{project_name}:key9"].value, "{}")
+
+            # Test getting all config with options and show secrets
+            cfg_json_secret = stack.get_all_config_with_options(
+                GetAllConfigOptions(config_file=config_json, show_secrets=True)
+            )
+            self.assertEqual(
+                cfg_json_secret[f"{project_name}:key11"].value,
+                '{"subKey1":"value13","subKey2":"value14"}',
+            )
+            self.assertTrue(cfg_json_secret[f"{project_name}:key11"].secret)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+            if os.path.exists(config_json):
+                os.remove(config_json)
+            if os.path.exists(config_yaml):
+                os.remove(config_yaml)
+
+    def test_config_all_with_options(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        config_yaml = f"{stack_name}.yaml"
+        config_json = f"{stack_name}.json"
+
+        try:
+            # Test setting all config with options
+            config = {
+                "key1": ConfigValue(value="value1", secret=False),
+                "key2": ConfigValue(value="value2", secret=True),
+                "key3.subKey1": ConfigValue(value="value3", secret=False),
+                "key3.subKey2": ConfigValue(value="value4", secret=False),
+                "key3.subKey3": ConfigValue(value="value5", secret=False),
+                "key4.subKey1": ConfigValue(value="value6", secret=True),
+            }
+            stack.set_all_config_with_options(config, ConfigOptions(path=True))
+
+            # Test getting all config with options
+            cfg = stack.get_all_config_with_options(GetAllConfigOptions(path=True))
+            self.assertEqual(cfg[f"{project_name}:key1"].value, "value1")
+            self.assertFalse(cfg[f"{project_name}:key1"].secret)
+            self.assertEqual(cfg[f"{project_name}:key2"].value, "value2")
+            self.assertTrue(cfg[f"{project_name}:key2"].secret)
+            self.assertEqual(
+                cfg[f"{project_name}:key3"].value,
+                '{"subKey1":"value3","subKey2":"value4","subKey3":"value5"}',
+            )
+            self.assertFalse(cfg[f"{project_name}:key3"].secret)
+            self.assertEqual(cfg[f"{project_name}:key4"].value, '{"subKey1":"value6"}')
+            self.assertTrue(cfg[f"{project_name}:key4"].secret)
+
+            # Test getting all config with options and show secrets
+            cfg_secret = stack.get_all_config_with_options(
+                GetAllConfigOptions(path=True, show_secrets=True)
+            )
+            self.assertEqual(cfg_secret[f"{project_name}:key1"].value, "value1")
+            self.assertFalse(cfg_secret[f"{project_name}:key1"].secret)
+            self.assertEqual(cfg_secret[f"{project_name}:key2"].value, "value2")
+            self.assertTrue(cfg_secret[f"{project_name}:key2"].secret)
+            self.assertEqual(
+                cfg_secret[f"{project_name}:key3"].value,
+                '{"subKey1":"value3","subKey2":"value4","subKey3":"value5"}',
+            )
+            self.assertFalse(cfg_secret[f"{project_name}:key3"].secret)
+            self.assertEqual(
+                cfg_secret[f"{project_name}:key4"].value, '{"subKey1":"value6"}'
+            )
+            self.assertTrue(cfg_secret[f"{project_name}:key4"].secret)
+
+            # Test removing all config with options
+            stack.remove_all_config_with_options(
+                list(config.keys()), ConfigOptions(path=True)
+            )
+
+            # Verify all config has been removed
+            cfg = stack.get_all_config()
+            self.assertEqual(len(cfg), 0)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+            if os.path.exists(config_json):
+                os.remove(config_json)
+            if os.path.exists(config_yaml):
+                os.remove(config_yaml)
 
 
 def pulumi_program():
