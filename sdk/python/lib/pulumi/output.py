@@ -37,6 +37,7 @@ from typing import (
 )
 
 from . import log
+from . import _output
 from . import _types
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
@@ -835,14 +836,10 @@ class Output(Generic[T_co]):
         return s_output.apply(loads)
 
     def __str__(self) -> str:
-        msg = """Calling __str__ on an Output[T] is not supported.
-
-To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v: f"prefix{v}suffix")
-
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+        err = _output._OutputToStringError()
         if os.getenv("PULUMI_ERROR_OUTPUT_STRING", "").lower() in ["1", "true"]:
-            raise TypeError(msg)
+            raise err
+        msg = str(err)
         log.warn(msg)
         msg += "\nThis function may throw in a future version of Pulumi."
         return msg
