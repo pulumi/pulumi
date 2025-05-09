@@ -27,7 +27,9 @@ func TestCapabilities(t *testing.T) {
 		t.Parallel()
 		actual, err := CapabilitiesResponse{}.Parse()
 		assert.NoError(t, err)
-		assert.Equal(t, Capabilities{}, actual)
+		assert.Equal(t, Capabilities{
+			supported: map[APICapability]bool{},
+		}, actual)
 	})
 	t.Run("parse delta v1", func(t *testing.T) {
 		t.Parallel()
@@ -43,6 +45,9 @@ func TestCapabilities(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{},
+			supported: map[APICapability]bool{
+				DeltaCheckpointUploads: true,
+			},
 		}, actual)
 	})
 	t.Run("parse delta v1 with config", func(t *testing.T) {
@@ -61,6 +66,9 @@ func TestCapabilities(t *testing.T) {
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{
 				CheckpointCutoffSizeBytes: 1024,
 			},
+			supported: map[APICapability]bool{
+				DeltaCheckpointUploads: true,
+			},
 		}, actual)
 	})
 	t.Run("parse delta v2", func(t *testing.T) {
@@ -78,6 +86,9 @@ func TestCapabilities(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{},
+			supported: map[APICapability]bool{
+				DeltaCheckpointUploadsV2: true,
+			},
 		}, actual)
 	})
 	t.Run("parse delta v2 with config", func(t *testing.T) {
@@ -97,6 +108,9 @@ func TestCapabilities(t *testing.T) {
 			DeltaCheckpointUpdates: &DeltaCheckpointUploadsConfigV2{
 				CheckpointCutoffSizeBytes: 1024,
 			},
+			supported: map[APICapability]bool{
+				DeltaCheckpointUploadsV2: true,
+			},
 		}, actual)
 	})
 	t.Run("parse batch encrypt", func(t *testing.T) {
@@ -110,6 +124,40 @@ func TestCapabilities(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			BatchEncryption: true,
+			supported: map[APICapability]bool{
+				BatchEncrypt: true,
+			},
+		}, actual)
+	})
+
+	t.Run("parse copilot summarize error v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: CopilotSummarizeErrorV1, Version: 1},
+			},
+		}
+		actual, err := response.Parse()
+		assert.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			CopilotSummarizeErrorV1: true,
+			supported: map[APICapability]bool{
+				CopilotSummarizeErrorV1: true,
+			},
+		}, actual)
+	})
+
+	t.Run("parse copilot summarize error with newer version", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: CopilotSummarizeErrorV1, Version: 2},
+			},
+		}
+		actual, err := response.Parse()
+		assert.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			supported: map[APICapability]bool{},
 		}, actual)
 	})
 }

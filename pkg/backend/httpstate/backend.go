@@ -1155,12 +1155,14 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
 }
 
+// IsCopilotFeatureEnabled implements the "explainer" interface.
+// Checks that the backend supports the CopilotExplainPreviewV1 capability.
 func (b *cloudBackend) IsCopilotFeatureEnabled(ctx context.Context, opts display.Options) bool {
 	return b.copilotFeatureEnabled(ctx, opts, apitype.CopilotExplainPreviewV1)
 }
 
 func (b *cloudBackend) copilotFeatureEnabled(ctx context.Context, opts display.Options,
-	copilotCapabilities ...apitype.APICapability,
+	requiredCopilotCapability apitype.APICapability,
 ) bool {
 	// Have copilot features been requested by specifying the --copilot flag to the cli
 	if !opts.ShowCopilotFeatures {
@@ -1168,11 +1170,9 @@ func (b *cloudBackend) copilotFeatureEnabled(ctx context.Context, opts display.O
 	}
 
 	// Check that the backend supports the copilot capabilities requested
-	for _, capability := range copilotCapabilities {
-		if !b.Capabilities(ctx).Supports(capability) {
-			logging.V(7).Infof("Copilot feature %q is not supported by the backend", capability)
-			return false
-		}
+	if !b.Capabilities(ctx).Supports(requiredCopilotCapability) {
+		logging.V(7).Infof("Copilot feature %q is not supported by the backend", requiredCopilotCapability)
+		return false
 	}
 
 	// Is copilot enabled this project in Pulumi Cloud

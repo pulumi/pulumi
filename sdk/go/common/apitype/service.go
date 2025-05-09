@@ -17,6 +17,8 @@ package apitype
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // An APICapability is the name of a capability or feature that a service backend
@@ -116,7 +118,6 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				parsed.supported[CopilotExplainPreviewV1] = true
 			}
 		default:
-			parsed.supported[entry.Capability] = true
 			continue
 		}
 	}
@@ -125,5 +126,9 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 
 // Supports returns true if the given capability is supported by this backend.
 func (c Capabilities) Supports(capability APICapability) bool {
+	if c.supported == nil {
+		logging.V(7).Infof("Capabilities not parsed, assuming %q is not supported", capability)
+		return false
+	}
 	return c.supported[capability]
 }
