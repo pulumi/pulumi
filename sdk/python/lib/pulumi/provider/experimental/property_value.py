@@ -43,7 +43,7 @@ class PropertyValueType(Enum):
     NUMBER = "Number"
     STRING = "String"
     ARRAY = "Array"
-    OBJECT = "Object"
+    MAP = "Map"
     ASSET = "Asset"
     ARCHIVE = "Archive"
     RESOURCE = "Resource"
@@ -210,7 +210,7 @@ class PropertyValue:
         if isinstance(self.value, list):
             return PropertyValueType.ARRAY
         if isinstance(self.value, dict):
-            return PropertyValueType.OBJECT
+            return PropertyValueType.MAP
         if isinstance(self.value, ResourceReference):
             return PropertyValueType.RESOURCE
         if isinstance(self.value, Computed):
