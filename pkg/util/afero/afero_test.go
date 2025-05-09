@@ -23,6 +23,7 @@ import (
 )
 
 func TestCopyFileWhenWorks(t *testing.T) {
+	t.Parallel()
 	content := []byte("hello world")
 	fs := afero.NewMemMapFs()
 	err := afero.WriteFile(fs, "/src/file.txt", content, 0o644)
