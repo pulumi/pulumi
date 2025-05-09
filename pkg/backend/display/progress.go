@@ -427,12 +427,14 @@ func (r *CaptureProgressEvents) Output() string {
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
-	// If its an actual update we can use the failed flag
-	if !r.display.isPreview {
-		return r.display.failed
+	// Display layer has detected a ResourceOperationFailed event.
+	// Only happens in non-preview updates.
+	if r.display.failed {
+		return true
 	}
 
-	// If its a preview we need to check the resource rows for any failures
+	// Diagnostic events have an error.
+	// This can include things like Auth errors which are not ResourceOperationFailed events.
 	for _, row := range r.display.resourceRows {
 		diagInfo := row.DiagInfo()
 		if diagInfo != nil && diagInfo.ErrorCount > 0 {
