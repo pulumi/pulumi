@@ -60,9 +60,9 @@ type HelmReleaseSettingsInput interface {
 // BETA FEATURE - Options to configure the Helm Release resource.
 type HelmReleaseSettingsArgs struct {
 	// The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
-	Driver pulumi.StringPtrInput `pulumi:"driver"`
+	Driver *string `pulumi:"driver"`
 	// The path to the helm plugins directory.
-	PluginsPath pulumi.StringPtrInput `pulumi:"pluginsPath"`
+	PluginsPath *string `pulumi:"pluginsPath"`
 	// to test required args
 	RequiredArg pulumi.StringInput `pulumi:"requiredArg"`
 }
@@ -75,12 +75,12 @@ func (val *HelmReleaseSettingsArgs) Defaults() *HelmReleaseSettingsArgs {
 	tmp := *val
 	if tmp.Driver == nil {
 		if d := internal.GetEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
-			tmp.Driver = pulumi.StringPtr(d.(string))
+			tmp.Driver = *string(d.(string))
 		}
 	}
 	if tmp.PluginsPath == nil {
 		if d := internal.GetEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
-			tmp.PluginsPath = pulumi.StringPtr(d.(string))
+			tmp.PluginsPath = *string(d.(string))
 		}
 	}
 	return &tmp
@@ -278,10 +278,10 @@ type KubeClientSettingsInput interface {
 // Options for tuning the Kubernetes client used by a Provider.
 type KubeClientSettingsArgs struct {
 	// Maximum burst for throttle. Default value is 10.
-	Burst pulumi.IntPtrInput `pulumi:"burst"`
+	Burst *int `pulumi:"burst"`
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
-	Qps     pulumi.Float64PtrInput     `pulumi:"qps"`
-	RecTest KubeClientSettingsPtrInput `pulumi:"recTest"`
+	Qps     *float64                `pulumi:"qps"`
+	RecTest *KubeClientSettingsArgs `pulumi:"recTest"`
 }
 
 // Defaults sets the appropriate defaults for KubeClientSettingsArgs
@@ -292,12 +292,12 @@ func (val *KubeClientSettingsArgs) Defaults() *KubeClientSettingsArgs {
 	tmp := *val
 	if tmp.Burst == nil {
 		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
-			tmp.Burst = pulumi.IntPtr(d.(int))
+			tmp.Burst = *int(d.(int))
 		}
 	}
 	if tmp.Qps == nil {
 		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
-			tmp.Qps = pulumi.Float64Ptr(d.(float64))
+			tmp.Qps = *float64(d.(float64))
 		}
 	}
 
@@ -504,13 +504,13 @@ type LayeredTypeInput interface {
 // Make sure that defaults propagate through types
 type LayeredTypeArgs struct {
 	// The answer to the question
-	Answer pulumi.Float64PtrInput   `pulumi:"answer"`
+	Answer *float64                 `pulumi:"answer"`
 	Other  HelmReleaseSettingsInput `pulumi:"other"`
 	// Test how plain types interact
 	PlainOther *HelmReleaseSettingsArgs `pulumi:"plainOther"`
 	// The question already answered
-	Question  pulumi.StringPtrInput `pulumi:"question"`
-	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
+	Question  *string          `pulumi:"question"`
+	Recursive *LayeredTypeArgs `pulumi:"recursive"`
 	// To ask and answer
 	Thinker pulumi.StringInput `pulumi:"thinker"`
 }
@@ -522,14 +522,14 @@ func (val *LayeredTypeArgs) Defaults() *LayeredTypeArgs {
 	}
 	tmp := *val
 	if tmp.Answer == nil {
-		tmp.Answer = pulumi.Float64Ptr(42.0)
+		tmp.Answer = *float64(42.0)
 	}
 
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
 	if tmp.Question == nil {
 		if d := internal.GetEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
-			tmp.Question = pulumi.StringPtr(d.(string))
+			tmp.Question = *string(d.(string))
 		}
 	}
 
@@ -763,9 +763,9 @@ type TypInput interface {
 
 // A test for namespaces (mod main)
 type TypArgs struct {
-	Mod1 mod1.TypPtrInput      `pulumi:"mod1"`
-	Mod2 mod2.TypPtrInput      `pulumi:"mod2"`
-	Val  pulumi.StringPtrInput `pulumi:"val"`
+	Mod1 *mod1.TypArgs `pulumi:"mod1"`
+	Mod2 *mod2.TypArgs `pulumi:"mod2"`
+	Val  *string       `pulumi:"val"`
 }
 
 // Defaults sets the appropriate defaults for TypArgs
@@ -776,7 +776,7 @@ func (val *TypArgs) Defaults() *TypArgs {
 	tmp := *val
 
 	if tmp.Val == nil {
-		tmp.Val = pulumi.StringPtr("mod main")
+		tmp.Val = *string("mod main")
 	}
 	return &tmp
 }

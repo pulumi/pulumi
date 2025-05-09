@@ -33,8 +33,8 @@ type TypInput interface {
 
 // A test for namespaces (mod 2)
 type TypArgs struct {
-	Mod1 mod1.TypPtrInput      `pulumi:"mod1"`
-	Val  pulumi.StringPtrInput `pulumi:"val"`
+	Mod1 *mod1.TypArgs `pulumi:"mod1"`
+	Val  *string       `pulumi:"val"`
 }
 
 func (TypArgs) ElementType() reflect.Type {

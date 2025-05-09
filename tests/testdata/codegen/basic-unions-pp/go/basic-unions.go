@@ -11,7 +11,7 @@ func main() {
 		_, err := basicunions.NewExampleServer(ctx, "replica", &basicunions.ExampleServerArgs{
 			Properties: &basicunions.ServerPropertiesForReplicaArgs{
 				CreateMode: pulumi.String("Replica"),
-				Version:    pulumi.String("0.1.0-dev"),
+				Version:    "0.1.0-dev",
 			},
 		})
 		if err != nil {

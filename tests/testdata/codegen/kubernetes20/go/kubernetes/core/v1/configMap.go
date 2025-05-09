@@ -37,8 +37,8 @@ func NewConfigMap(ctx *pulumi.Context,
 		args = &ConfigMapArgs{}
 	}
 
-	args.ApiVersion = pulumi.StringPtr("v1")
-	args.Kind = pulumi.StringPtr("ConfigMap")
+	args.ApiVersion = *string("v1")
+	args.Kind = *string("ConfigMap")
 	opts = utilities.PkgResourceDefaultOpts(opts)
 	var resource ConfigMap
 	err := ctx.RegisterResource("kubernetes:core/v1:ConfigMap", name, args, &resource, opts...)
