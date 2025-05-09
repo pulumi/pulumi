@@ -250,6 +250,15 @@ class ProviderServicer(ResourceProviderServicer):
                 for pkg, ref in request.providers.items()
             },
             parent=parent,
+            custom_timeouts=pulumi.resource.CustomTimeouts(
+                request.customTimeouts.create,
+                request.customTimeouts.update,
+                request.customTimeouts.delete,
+            ),
+            ignore_changes=list(request.ignoreChanges),
+            replace_on_changes=list(request.replaceOnChanges),
+            retain_on_delete=request.retainOnDelete,
+            deleted_with=_create_provider_resource(request.deletedWith),
         )
 
     async def _construct_response(
