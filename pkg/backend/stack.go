@@ -38,7 +38,7 @@ type Stack interface {
 	// GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
 	GetStackFilename(ctx context.Context) (string, bool)
 	// Load the stack's configuration from the backend.
-	Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	Load(ctx context.Context, project *workspace.Project, configFileOverride string) (*workspace.ProjectStack, error)
 	// Save the stack's configuration to the backend.
 	Save(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.

@@ -555,16 +555,17 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 type MockStack struct {
 	RefF              func() StackReference
 	GetStackFilenameF func(ctx context.Context) (string, bool)
-	LoadF             func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	SaveF             func(ctx context.Context, project *workspace.ProjectStack) error
-	OrgNameF          func() string
-	ConfigF           func() config.Map
-	SnapshotF         func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	TagsF             func() map[apitype.StackTagName]string
-	BackendF          func() Backend
-	PreviewF          func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF           func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF           func(ctx context.Context, op UpdateOperation,
+	LoadF             func(ctx context.Context, project *workspace.Project, configFileOverride string,
+	) (*workspace.ProjectStack, error)
+	SaveF     func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF  func() string
+	ConfigF   func() config.Map
+	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	TagsF     func() map[apitype.StackTagName]string
+	BackendF  func() Backend
+	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	UpdateF   func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	ImportF   func(ctx context.Context, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
@@ -594,9 +595,10 @@ func (ms *MockStack) GetStackFilename(ctx context.Context) (string, bool) {
 	panic("not implemented: MockStack.GetStackFilename")
 }
 
-func (ms *MockStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+func (ms *MockStack) Load(ctx context.Context, project *workspace.Project, configFileOverride string,
+) (*workspace.ProjectStack, error) {
 	if ms.LoadF != nil {
-		return ms.LoadF(ctx, project)
+		return ms.LoadF(ctx, project, configFileOverride)
 	}
 	panic("not implemented: MockStack.Load")
 }

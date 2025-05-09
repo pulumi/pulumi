@@ -103,7 +103,8 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
-		LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+		LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+		) (*workspace.ProjectStack, error) {
 			bytes, err := os.ReadFile("Pulumi.testStack.yaml")
 			if err != nil && !os.IsNotExist(err) {
 				return nil, err
@@ -214,7 +215,8 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
-		LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+		LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+		) (*workspace.ProjectStack, error) {
 			return workspace.LoadProjectStack(project, "Pulumi.testStack.yaml")
 		},
 		SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {

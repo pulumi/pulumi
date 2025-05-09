@@ -114,7 +114,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := stack.Load(ctx, project)
+	projectStack, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}

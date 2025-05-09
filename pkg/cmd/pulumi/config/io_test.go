@@ -73,7 +73,8 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
 			},
-			LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+			LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+			) (*workspace.ProjectStack, error) {
 				return workspace.LoadProjectStack(project, "Pulumi.name.yaml")
 			},
 			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
@@ -108,7 +109,8 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
 			},
-			LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+			LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+			) (*workspace.ProjectStack, error) {
 				return nil, workspace.ErrProjectNotFound
 			},
 			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {

@@ -77,7 +77,7 @@ func getStackConfigurationWithFallback(
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := s.Load(ctx, project)
+	workspaceStack, err := s.Load(ctx, project, cmdStack.ConfigFile)
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err

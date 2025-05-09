@@ -84,7 +84,7 @@ func NewConfigCmd() *cobra.Command {
 				return err
 			}
 
-			ps, err := stack.Load(ctx, project)
+			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := currentStack.Load(ctx, project)
+			currentProjectStack, err := currentStack.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -198,7 +198,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := destinationStack.Load(ctx, project)
+			destinationProjectStack, err := destinationStack.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -363,7 +363,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := stack.Load(ctx, project)
+			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -430,7 +430,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := stack.Load(ctx, project)
+			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -508,7 +508,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := s.Load(ctx, project)
+			ps, err := s.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -691,7 +691,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := s.Load(ctx, project)
+	ps, err := s.Load(ctx, project, cmdStack.ConfigFile)
 	if err != nil {
 		return err
 	}
@@ -805,7 +805,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := stack.Load(ctx, project)
+			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -1058,7 +1058,7 @@ func getConfig(
 	if err != nil {
 		return err
 	}
-	ps, err := stack.Load(ctx, project)
+	ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 	if err != nil {
 		return err
 	}

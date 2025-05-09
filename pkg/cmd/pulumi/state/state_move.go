@@ -194,7 +194,7 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
-		ps, err := dest.Load(ctx, project)
+		ps, err := dest.Load(ctx, project, cmdStack.ConfigFile)
 		if err != nil {
 			return err
 		}
