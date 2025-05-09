@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -980,19 +981,9 @@ func (p *providerServer) GetMappings(ctx context.Context,
 
 // unmarshalViews is a helper that unmarshals a slice of views from gRPC into a slice of View structs.
 func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error) {
-	if len(views) == 0 {
-		return nil, nil
-	}
-
-	result := make([]View, len(views))
-	for i, v := range views {
-		uv, err := unmarshalView(v, opts)
-		if err != nil {
-			return nil, err
-		}
-		result[i] = uv
-	}
-	return result, nil
+	return slice.MapError(views, func(v *pulumirpc.View) (View, error) {
+		return unmarshalView(v, opts)
+	})
 }
 
 // unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.

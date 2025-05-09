@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -121,7 +122,9 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 	viewOf := info.urn
 
 	// Unmarshal the steps.
-	steps, err := rs.unmarshalViewSteps(viewOf, req.Steps)
+	steps, err := slice.MapError(req.Steps, func(step *pulumirpc.ViewStep) (Step, error) {
+		return rs.unmarshalViewStep(viewOf, step)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling steps: %w", err)
 	}
@@ -134,22 +137,6 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 	}
 
 	return &pulumirpc.PublishViewStepsResponse{}, nil
-}
-
-func (rs *resourceStatusServer) unmarshalViewSteps(viewOf resource.URN, steps []*pulumirpc.ViewStep) ([]Step, error) {
-	if len(steps) == 0 {
-		return nil, nil
-	}
-
-	result := make([]Step, len(steps))
-	for i, step := range steps {
-		us, err := rs.unmarshalViewStep(viewOf, step)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshaling step: %w", err)
-		}
-		result[i] = us
-	}
-	return result, nil
 }
 
 func (rs *resourceStatusServer) unmarshalViewStep(viewOf resource.URN, step *pulumirpc.ViewStep) (Step, error) {

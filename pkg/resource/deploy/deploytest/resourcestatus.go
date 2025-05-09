@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -55,7 +56,7 @@ func (rs *ResourceStatus) Close() error {
 }
 
 func (rs *ResourceStatus) PublishViewSteps(token string, steps []ViewStep) error {
-	marshaledSteps, err := rs.marshalSteps(steps)
+	marshaledSteps, err := slice.MapError(steps, rs.marshalStep)
 	if err != nil {
 		return fmt.Errorf("marshaling steps: %w", err)
 	}
@@ -68,21 +69,6 @@ func (rs *ResourceStatus) PublishViewSteps(token string, steps []ViewStep) error
 		return fmt.Errorf("publishing view steps: %w", err)
 	}
 	return nil
-}
-
-func (rs *ResourceStatus) marshalSteps(steps []ViewStep) ([]*pulumirpc.ViewStep, error) {
-	if len(steps) == 0 {
-		return nil, nil
-	}
-	result := make([]*pulumirpc.ViewStep, len(steps))
-	for i, step := range steps {
-		marshaledStep, err := rs.marshalStep(step)
-		if err != nil {
-			return nil, fmt.Errorf("marshaling step: %w", err)
-		}
-		result[i] = marshaledStep
-	}
-	return result, nil
 }
 
 func (rs *ResourceStatus) marshalStep(step ViewStep) (*pulumirpc.ViewStep, error) {
