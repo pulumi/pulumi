@@ -49,7 +49,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func GenSDK(language, out string, pkg *schema.Package, overlays string, local bool) error {
