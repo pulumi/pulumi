@@ -6,7 +6,7 @@ paths:
       inner: value
     string: '{"inner":"value"}'
     redacted: '{"inner":"value"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAb/4IYAAEFaW5uZXIGc3RyaW5nDAcABXZhbHVl
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABv/gBgAAQVpbm5lcgZzdHJpbmcMBwAFdmFsdWU=
     secure: false
     isObject: true
   my:array.inner:
