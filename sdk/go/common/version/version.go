@@ -14,5 +14,18 @@
 
 package version
 
+import "runtime/debug"
+
 // Version is initialized by the Go linker to contain the semver of this build.
 var Version string
+
+func init() {
+	if Version != "" {
+		return
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	Version = info.Main.Version
+}
