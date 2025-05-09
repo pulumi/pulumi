@@ -1,0 +1,3 @@
+name: config_missing_py
+description: A simple Python program that errors on missing configuration.
+runtime: python
