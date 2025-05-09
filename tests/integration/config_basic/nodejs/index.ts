@@ -1,7 +1,7 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-import * as assert from "assert";
 import { Config } from "@pulumi/pulumi";
+import * as assert from "assert";
 
 // Just test that basic config works.
 const config = new Config("config_basic_js");
@@ -9,6 +9,9 @@ const config = new Config("config_basic_js");
 // This value is plaintext and doesn't require encryption.
 const value = config.require("aConfigValue");
 assert.strictEqual(value, "this value is a value", "'aConfigValue' not the expected value");
+
+const phonenumber = config.require("phonenumber");
+assert.strictEqual(phonenumber, "+441234567890", "'phonenumber' not the expected value");
 
 // This value is a secret and is encrypted using the passphrase `supersecret`.
 const secret = config.require("bEncryptedSecret");
