@@ -394,6 +394,12 @@ class Server implements grpc.UntypedServiceImplementation {
                         providers[pkg] = createProviderResource(ref);
                     }
                 }
+
+                let deletedWith = undefined
+                if (req.getDeletedwith() == "") {
+                  deletedWith = createProviderResource(req.getDeletedwith())
+                }
+
                 const opts: resource.ComponentResourceOptions = {
                     aliases: req.getAliasesList(),
                     dependsOn: dependsOn,
@@ -404,7 +410,7 @@ class Server implements grpc.UntypedServiceImplementation {
                     replaceOnChanges: req.getReplaceonchangesList(),
                     customTimeouts: req.getCustomtimeouts()?.toObject(),
                     retainOnDelete: req.getRetainondelete(),
-                    deletedWith: createProviderResource(req.getDeletedwith()),
+                    deletedWith,
                 };
 
                 const result = await this.provider.construct(name, type, inputs, opts);
