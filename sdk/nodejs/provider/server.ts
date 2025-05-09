@@ -395,9 +395,9 @@ class Server implements grpc.UntypedServiceImplementation {
                     }
                 }
 
-                let deletedWith = undefined
-                if (req.getDeletedwith() == "") {
-                  deletedWith = createProviderResource(req.getDeletedwith())
+                let deletedWith = undefined;
+                if (req.getDeletedwith() === "") {
+                    deletedWith = createProviderResource(req.getDeletedwith());
                 }
 
                 const opts: resource.ComponentResourceOptions = {
