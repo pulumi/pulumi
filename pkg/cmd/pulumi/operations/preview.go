@@ -400,7 +400,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			// Save any config values passed via flags.
-			if err = parseAndSaveConfigArray(ws, s, configArray, configPath); err != nil {
+			if err = parseAndSaveConfigArray(ws, s, configArray, configPath, cmdutil.Diag()); err != nil {
 				return err
 			}
 
@@ -409,7 +409,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj, cmdutil.Diag())
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

@@ -190,11 +190,11 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.
-		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true)
+		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true, cmdutil.Diag())
 		if err != nil {
 			return err
 		}
-		ps, err := cmdStack.LoadProjectStack(project, dest)
+		ps, err := cmdStack.LoadProjectStack(project, dest, cmdutil.Diag())
 		if err != nil {
 			return err
 		}

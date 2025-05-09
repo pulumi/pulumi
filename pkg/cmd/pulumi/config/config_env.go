@@ -28,6 +28,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -38,6 +39,7 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
 		stdout:           os.Stdout,
+		diags:            cmdutil.Diag(),
 		ws:               pkgWorkspace.Instance,
 		requireStack:     cmdStack.RequireStack,
 		loadProjectStack: cmdStack.LoadProjectStack,
@@ -67,6 +69,7 @@ type configEnvCmd struct {
 
 	interactive bool
 	color       colors.Colorization
+	diags       diag.Sink
 
 	ssml cmdStack.SecretsManagerLoader
 	ws   pkgWorkspace.Context
@@ -80,7 +83,7 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
-	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
+	loadProjectStack func(project *workspace.Project, stack backend.Stack, diags diag.Sink) (*workspace.ProjectStack, error)
 
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
 
@@ -120,7 +123,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := cmd.loadProjectStack(project, stack)
+	projectStack, err := cmd.loadProjectStack(project, stack, cmd.diags)
 	if err != nil {
 		return nil, nil, nil, err
 	}

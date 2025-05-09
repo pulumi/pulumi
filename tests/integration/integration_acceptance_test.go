@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -86,10 +87,15 @@ func TestConfigSave(t *testing.T) {
 		assert.Equal(t, v, dv)
 	}
 
-	testStack1, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	testStack1, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"), sink)
 	assert.NoError(t, err)
-	testStack2, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
+	testStack2, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"), sink)
 	assert.NoError(t, err)
+
+	assert.Empty(t, stdout)
+	assert.Empty(t, stderr)
 
 	assert.Equal(t, 2, len(testStack1.Config))
 	assert.Equal(t, 2, len(testStack2.Config))

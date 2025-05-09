@@ -83,6 +83,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 		},
 		nil,
+		nil,
 	)
 }
 
@@ -114,6 +115,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 				}
 			},
 		},
+		nil,
 		nil,
 	)
 	if !called {

@@ -15,9 +15,11 @@
 package workspace
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,4 +58,27 @@ config:
 
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
 	assert.NoError(t, err)
+}
+
+func TestEmptyValueWarning(t *testing.T) {
+	t.Parallel()
+	b := []byte(`
+config:
+  project:a:
+  project:b: null
+  project:c: ~
+  project:d: ""
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	var p *Project
+	projectStack, err := LoadProjectStackBytes(p, b, "Pulumi.stack.yaml", marshaller, sink)
+	require.NoError(t, err)
+	require.Contains(t, stderr.String(), "warning: No value for configuration keys \"project:a\", \"project:b\", \"project:c\"")
+	require.Len(t, projectStack.Config, 4)
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewValue(""))
 }

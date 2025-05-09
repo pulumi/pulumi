@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -128,8 +129,8 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				},
 			}, nil
 		},
-		loadProjectStack: func(p *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
-			return workspace.LoadProjectStackBytes(p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
+		loadProjectStack: func(p *workspace.Project, _ backend.Stack, d diag.Sink) (*workspace.ProjectStack, error) {
+			return workspace.LoadProjectStackBytes(p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML, d)
 		},
 		saveProjectStack: func(_ backend.Stack, ps *workspace.ProjectStack) error {
 			b, err := encoding.YAML.Marshal(ps)
