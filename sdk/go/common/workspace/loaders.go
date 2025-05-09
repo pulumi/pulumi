@@ -350,7 +350,8 @@ func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 	if len(keys) == 1 {
 		cmdutil.Diag().Warningf(&diag.Diag{
 			Message: fmt.Sprintf("No value for configuration key %q. This is currently treated as an empty string `\"\"`, "+
-				"but will be treated as `null` in a future version of pulumi.", keys[0]),
+				"but will be treated as `null` in a future version of pulumi.\n"+
+				"Set %q to `\"\"` to avoid this warning.", keys[0], keys[0]),
 		})
 	} else if len(keys) > 1 {
 		for i, k := range keys {
@@ -362,7 +363,8 @@ func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 		}
 		diags.Warningf(&diag.Diag{
 			Message: fmt.Sprintf("No value for configuration keys %s. This is currently treated as an empty string `\"\"`, "+
-				"but will be treated as `null` in a future version of pulumi.", strings.Join(keys, joiner)),
+				"but will be treated as `null` in a future version of pulumi.\n"+
+				"Set the values to `\"\"` to avoid this warning.", strings.Join(keys, joiner)),
 		})
 	}
 }
