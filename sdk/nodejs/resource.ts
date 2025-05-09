@@ -809,12 +809,6 @@ export interface ResourceOptions {
      */
     deletedWith?: Resource;
 
-    /**
-     * When set to true, indicates that this resource should be deleted before
-     * its replacement is created when replacement is necessary.
-     */
-    deleteBeforeReplace?: boolean;
-
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
 }
@@ -965,6 +959,12 @@ export interface ResourceTransformationResult {
 export interface CustomResourceOptions extends ResourceOptions {
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
+
+    /**
+     * When set to true, indicates that this resource should be deleted before
+     * its replacement is created when replacement is necessary.
+     */
+    deleteBeforeReplace?: boolean;
 
     /**
      * The names of outputs for this resource that should be treated as secrets.
