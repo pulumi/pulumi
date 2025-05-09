@@ -88,9 +88,9 @@ func newStackInitCmd() *cobra.Command {
 		"names that should have permission to read and update this stack,"+
 		" once created")
 	cmd.PersistentFlags().BoolVar(
-		&sicmd.useEscEnv, "use-esc-env", false, "Create an environment in ESC for this stack",
+		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
-	_ = cmd.PersistentFlags().MarkHidden("use-esc-env")
+	_ = cmd.PersistentFlags().MarkHidden("remote-config")
 	return cmd
 }
 
@@ -101,7 +101,7 @@ type stackInitCmd struct {
 	stackToCopy     string
 	noSelect        bool
 	teams           []string
-	useEscEnv       bool
+	remoteConfig    bool
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -184,7 +184,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 
 	teams := sanitizeTeams(cmd.teams)
 	newStack, err := CreateStack(ctx, ws, b, stackRef, root, teams,
-		!cmd.noSelect, cmd.secretsProvider, cmd.useEscEnv)
+		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+

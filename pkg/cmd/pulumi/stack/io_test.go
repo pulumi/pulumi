@@ -107,7 +107,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		nil,   /*opts*/
 		false, /*setCurrent*/
 		"",    /*secretsProvider*/
-		false, /* useEscEnv */
+		false, /* useRemoteConfig */
 	)
 
 	// Assert.

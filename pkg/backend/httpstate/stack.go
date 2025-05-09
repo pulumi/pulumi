@@ -119,8 +119,8 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
-	// usesCloudConfig indicates whether this stack's config exists in ESC instead of a local file.
-	usesCloudConfig bool
+	// usesRemoteConfig indicates whether this stack's config exists in ESC instead of a local file.
+	usesRemoteConfig bool
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -145,14 +145,14 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		currentOperation: apistack.CurrentOperation,
 		tags:             apistack.Tags,
 		b:                b,
-		usesCloudConfig:  apistack.Config != nil,
+		usesRemoteConfig: apistack.Config != nil,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
 // GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
 func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
-	if s.usesCloudConfig {
+	if s.usesRemoteConfig {
 		return "", false
 	}
 	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
@@ -163,12 +163,12 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project, confi
 ) (*workspace.ProjectStack, error) {
 	// Always use manually specified config file if specified.
 	if configFileOverride != "" {
-		if s.usesCloudConfig {
-			fmt.Printf("Warning: using config file %s but this stack uses cloud config by default\n", configFileOverride)
+		if s.usesRemoteConfig {
+			fmt.Printf("Warning: using config file %s but this stack uses remote config by default\n", configFileOverride)
 		}
 		return workspace.LoadProjectStack(project, configFileOverride)
 	}
-	if s.usesCloudConfig {
+	if s.usesRemoteConfig {
 		stackID, err := s.b.getCloudStackIdentifier(s.ref)
 		if err != nil {
 			return nil, err
@@ -195,7 +195,7 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project, confi
 				return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, err)
 			}
 			if err == nil {
-				fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses cloud config\n",
+				fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses remote config\n",
 					configFilePath)
 			}
 			return projectStack, nil
@@ -206,7 +206,7 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project, confi
 }
 
 func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
-	if s.usesCloudConfig {
+	if s.usesRemoteConfig {
 		if projectStack.Config != nil {
 			return errors.New("cannot set config for a stack with cloud config")
 		}

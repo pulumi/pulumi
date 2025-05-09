@@ -289,20 +289,20 @@ func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
 // InitStack creates the stack.
 func InitStack(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
-	root string, setCurrent bool, secretsProvider string, useEscEnv bool,
+	root string, setCurrent bool, secretsProvider string, useRemoteConfig bool,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useEscEnv)
+	return CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig)
 }
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, teams []string, setCurrent bool,
-	secretsProvider string, useEscEnv bool,
+	secretsProvider string, useRemoteConfig bool,
 ) (backend.Stack, error) {
 	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, ws, b, stackRef, secretsProvider)
 	if err != nil {
@@ -342,7 +342,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 		Teams: teams,
 	}
 
-	if useEscEnv {
+	if useRemoteConfig {
 		proj, found := stackRef.Project()
 		if !found {
 			return nil, errors.New("could not get project from stack reference")
@@ -365,7 +365,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	}
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
-	if needsSave && !useEscEnv {
+	if needsSave && !useRemoteConfig {
 		err = stack.Save(ctx, ps)
 		if err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)

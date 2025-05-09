@@ -83,7 +83,7 @@ type newArgs struct {
 	aiLanguage           httpstate.PulumiAILanguage
 	templateMode         bool
 	runtimeOptions       []string
-	useEscEnv            bool
+	remoteStackConfig    bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -378,7 +378,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
 		if s, err = PromptAndCreateStack(ctx, ws, b, args.prompt,
-			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider, args.useEscEnv); err != nil {
+			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider, args.remoteStackConfig); err != nil {
 			return err
 		}
 		// The backend will print "Created stack '<stack>'" on success.
@@ -667,10 +667,10 @@ func NewNewCmd() *cobra.Command {
 	)
 
 	cmd.PersistentFlags().BoolVar(
-		&args.useEscEnv, "use-esc-env", false,
-		"Experimental: Use an ESC environment for the stack configuration named the same as the stack",
+		&args.remoteStackConfig, "remote-stack-config", false,
+		"Store stack configuration remotely",
 	)
-	_ = cmd.PersistentFlags().MarkHidden("use-esc-env")
+	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 
 	return cmd
 }
