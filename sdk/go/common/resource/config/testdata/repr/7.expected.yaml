@@ -1,13 +1,13 @@
 decrypt:
-  my:secureTestKey: securevalue
+    my:secureTestKey: securevalue
 paths:
-  my:secureTestKey:
-    value:
-      secure: securevalue
-    string: securevalue
-    redacted: '[secret]'
-    object: GBAABnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
-    secure: true
-    isObject: false
-    secureValues:
-    - securevalue
+    my:secureTestKey:
+        value:
+            secure: securevalue
+        string: securevalue
+        redacted: '[secret]'
+        object: GBAABnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
+        secure: true
+        isObject: false
+        secureValues:
+            - securevalue

@@ -1,18 +1,18 @@
 decrypt:
-  my:testKey: '["a"]'
+    my:testKey: '["a"]'
 paths:
-  my:testKey:
-    value:
-    - a
-    string: '["a"]'
-    redacted: '["a"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAEf+EDgABBnN0cmluZwwDAAFh
-    secure: false
-    isObject: true
-  my:testKey[0]:
-    value: a
-    string: a
-    redacted: a
-    object: DhAABnN0cmluZwwDAAFh
-    secure: false
-    isObject: false
+    my:testKey:
+        value:
+            - a
+        string: '["a"]'
+        redacted: '["a"]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAEf+CDgABBnN0cmluZwwDAAFh
+        secure: false
+        isObject: true
+    my:testKey[0]:
+        value: a
+        string: a
+        redacted: a
+        object: DhAABnN0cmluZwwDAAFh
+        secure: false
+        isObject: false

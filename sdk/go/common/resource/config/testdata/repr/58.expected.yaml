@@ -1,26 +1,26 @@
 decrypt:
-  my:servers: '[{"name":"foo"}]'
+    my:servers: '[{"name":"foo"}]'
 paths:
-  my:servers:
-    value:
-    - name: foo
-    string: '[{"name":"foo"}]'
-    redacted: '[{"name":"foo"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAARP+EKAABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAY/4IVAAEEbmFtZQZzdHJpbmcMBQADZm9v
-    secure: false
-    isObject: true
-  my:servers[0]:
-    value:
-      name: foo
-    string: '{"name":"foo"}'
-    redacted: '{"name":"foo"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAY/4IVAAEEbmFtZQZzdHJpbmcMBQADZm9v
-    secure: false
-    isObject: true
-  my:servers[0].name:
-    value: foo
-    string: foo
-    redacted: foo
-    object: EBAABnN0cmluZwwFAANmb28=
-    secure: false
-    isObject: false
+    my:servers:
+        value:
+            - name: foo
+        string: '[{"name":"foo"}]'
+        redacted: '[{"name":"foo"}]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAQ/+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABj/gBUAAQRuYW1lBnN0cmluZwwFAANmb28=
+        secure: false
+        isObject: true
+    my:servers[0]:
+        value:
+            name: foo
+        string: '{"name":"foo"}'
+        redacted: '{"name":"foo"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABj/gBUAAQRuYW1lBnN0cmluZwwFAANmb28=
+        secure: false
+        isObject: true
+    my:servers[0].name:
+        value: foo
+        string: foo
+        redacted: foo
+        object: EBAABnN0cmluZwwFAANmb28=
+        secure: false
+        isObject: false

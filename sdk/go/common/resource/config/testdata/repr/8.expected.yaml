@@ -1,34 +1,34 @@
 decrypt:
-  my:arrayKey: '["a","b","c"]'
+    my:arrayKey: '["a","b","c"]'
 paths:
-  my:arrayKey:
-    value:
-    - a
-    - b
-    - c
-    string: '["a","b","c"]'
-    redacted: '["a","b","c"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAKf+EJgADBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFj
-    secure: false
-    isObject: true
-  my:arrayKey[0]:
-    value: a
-    string: a
-    redacted: a
-    object: DhAABnN0cmluZwwDAAFh
-    secure: false
-    isObject: false
-  my:arrayKey[1]:
-    value: b
-    string: b
-    redacted: b
-    object: DhAABnN0cmluZwwDAAFi
-    secure: false
-    isObject: false
-  my:arrayKey[2]:
-    value: c
-    string: c
-    redacted: c
-    object: DhAABnN0cmluZwwDAAFj
-    secure: false
-    isObject: false
+    my:arrayKey:
+        value:
+            - a
+            - b
+            - c
+        string: '["a","b","c"]'
+        redacted: '["a","b","c"]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAKf+CJgADBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFj
+        secure: false
+        isObject: true
+    my:arrayKey[0]:
+        value: a
+        string: a
+        redacted: a
+        object: DhAABnN0cmluZwwDAAFh
+        secure: false
+        isObject: false
+    my:arrayKey[1]:
+        value: b
+        string: b
+        redacted: b
+        object: DhAABnN0cmluZwwDAAFi
+        secure: false
+        isObject: false
+    my:arrayKey[2]:
+        value: c
+        string: c
+        redacted: c
+        object: DhAABnN0cmluZwwDAAFj
+        secure: false
+        isObject: false

@@ -45,42 +45,42 @@ func TestMarshalMap(t *testing.T) {
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":12321123131}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested: 12321123131\n",
+			ExpectedYAML: "my:parent:\n    nested: 12321123131\n",
 			ExpectedJSON: `{"my:parent":{"nested":12321123131}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":[12321123131]}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n  - 12321123131\n",
+			ExpectedYAML: "my:parent:\n    nested:\n        - 12321123131\n",
 			ExpectedJSON: `{"my:parent":{"nested":[12321123131]}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":{"foo":12321123131}}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n    foo: 12321123131\n",
+			ExpectedYAML: "my:parent:\n    nested:\n        foo: 12321123131\n",
 			ExpectedJSON: `{"my:parent":{"nested":{"foo":12321123131}}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":4.2}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested: 4.2\n",
+			ExpectedYAML: "my:parent:\n    nested: 4.2\n",
 			ExpectedJSON: `{"my:parent":{"nested":4.2}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":[4.2]}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n  - 4.2\n",
+			ExpectedYAML: "my:parent:\n    nested:\n        - 4.2\n",
 			ExpectedJSON: `{"my:parent":{"nested":[4.2]}}`,
 		},
 		{
 			Value: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":{"foo":4.2}}`),
 			},
-			ExpectedYAML: "my:parent:\n  nested:\n    foo: 4.2\n",
+			ExpectedYAML: "my:parent:\n    nested:\n        foo: 4.2\n",
 			ExpectedJSON: `{"my:parent":{"nested":{"foo":4.2}}}`,
 		},
 	}

@@ -1,18 +1,18 @@
 decrypt:
-  my:anotherTestKey: anotherTestValue
-  my:testKey: testValue
+    my:anotherTestKey: anotherTestValue
+    my:testKey: testValue
 paths:
-  my:anotherTestKey:
-    value: anotherTestValue
-    string: anotherTestValue
-    redacted: anotherTestValue
-    object: HRAABnN0cmluZwwSABBhbm90aGVyVGVzdFZhbHVl
-    secure: false
-    isObject: false
-  my:testKey:
-    value: testValue
-    string: testValue
-    redacted: testValue
-    object: FhAABnN0cmluZwwLAAl0ZXN0VmFsdWU=
-    secure: false
-    isObject: false
+    my:anotherTestKey:
+        value: anotherTestValue
+        string: anotherTestValue
+        redacted: anotherTestValue
+        object: HRAABnN0cmluZwwSABBhbm90aGVyVGVzdFZhbHVl
+        secure: false
+        isObject: false
+    my:testKey:
+        value: testValue
+        string: testValue
+        redacted: testValue
+        object: FhAABnN0cmluZwwLAAl0ZXN0VmFsdWU=
+        secure: false
+        isObject: false

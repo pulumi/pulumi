@@ -1,35 +1,35 @@
 decrypt:
-  my:servers: '[{"host":"example","name":"foo"}]'
+    my:servers: '[{"host":"example","name":"foo"}]'
 paths:
-  my:servers:
-    value:
-    - host: example
-      name: foo
-    string: '[{"host":"example","name":"foo"}]'
-    redacted: '[{"host":"example","name":"foo"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAW/+EKAABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAv/4IsAAIEaG9zdAZzdHJpbmcMCQAHZXhhbXBsZQRuYW1lBnN0cmluZwwFAANmb28=
-    secure: false
-    isObject: true
-  my:servers[0]:
-    value:
-      host: example
-      name: foo
-    string: '{"host":"example","name":"foo"}'
-    redacted: '{"host":"example","name":"foo"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAv/4IsAAIEbmFtZQZzdHJpbmcMBQADZm9vBGhvc3QGc3RyaW5nDAkAB2V4YW1wbGU=
-    secure: false
-    isObject: true
-  my:servers[0].host:
-    value: example
-    string: example
-    redacted: example
-    object: FBAABnN0cmluZwwJAAdleGFtcGxl
-    secure: false
-    isObject: false
-  my:servers[0].name:
-    value: foo
-    string: foo
-    redacted: foo
-    object: EBAABnN0cmluZwwFAANmb28=
-    secure: false
-    isObject: false
+    my:servers:
+        value:
+            - host: example
+              name: foo
+        string: '[{"host":"example","name":"foo"}]'
+        redacted: '[{"host":"example","name":"foo"}]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAWv+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC//gCwAAgRob3N0BnN0cmluZwwJAAdleGFtcGxlBG5hbWUGc3RyaW5nDAUAA2Zvbw==
+        secure: false
+        isObject: true
+    my:servers[0]:
+        value:
+            host: example
+            name: foo
+        string: '{"host":"example","name":"foo"}'
+        redacted: '{"host":"example","name":"foo"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC//gCwAAgRuYW1lBnN0cmluZwwFAANmb28EaG9zdAZzdHJpbmcMCQAHZXhhbXBsZQ==
+        secure: false
+        isObject: true
+    my:servers[0].host:
+        value: example
+        string: example
+        redacted: example
+        object: FBAABnN0cmluZwwJAAdleGFtcGxl
+        secure: false
+        isObject: false
+    my:servers[0].name:
+        value: foo
+        string: foo
+        redacted: foo
+        object: EBAABnN0cmluZwwFAANmb28=
+        secure: false
+        isObject: false

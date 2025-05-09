@@ -1,34 +1,34 @@
 decrypt:
-  my:outer: '[1,2,3]'
+    my:outer: '[1,2,3]'
 paths:
-  my:outer:
-    value:
-    - 1
-    - 2
-    - 3
-    string: '[1,2,3]'
-    redacted: '[1,2,3]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAI/+EIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
-    secure: false
-    isObject: true
-  my:outer[0]:
-    value: "1"
-    string: "1"
-    redacted: "1"
-    object: DhAABnN0cmluZwwDAAEx
-    secure: false
-    isObject: false
-  my:outer[1]:
-    value: "2"
-    string: "2"
-    redacted: "2"
-    object: DhAABnN0cmluZwwDAAEy
-    secure: false
-    isObject: false
-  my:outer[2]:
-    value: "3"
-    string: "3"
-    redacted: "3"
-    object: DhAABnN0cmluZwwDAAEz
-    secure: false
-    isObject: false
+    my:outer:
+        value:
+            - 1
+            - 2
+            - 3
+        string: '[1,2,3]'
+        redacted: '[1,2,3]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAI/+CIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
+        secure: false
+        isObject: true
+    my:outer[0]:
+        value: "1"
+        string: "1"
+        redacted: "1"
+        object: DhAABnN0cmluZwwDAAEx
+        secure: false
+        isObject: false
+    my:outer[1]:
+        value: "2"
+        string: "2"
+        redacted: "2"
+        object: DhAABnN0cmluZwwDAAEy
+        secure: false
+        isObject: false
+    my:outer[2]:
+        value: "3"
+        string: "3"
+        redacted: "3"
+        object: DhAABnN0cmluZwwDAAEz
+        secure: false
+        isObject: false

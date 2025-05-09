@@ -1,18 +1,18 @@
 decrypt:
-  my:testKey: '{"inner":"value"}'
+    my:testKey: '{"inner":"value"}'
 paths:
-  my:testKey:
-    value:
-      inner: value
-    string: '{"inner":"value"}'
-    redacted: '{"inner":"value"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAb/4IYAAEFaW5uZXIGc3RyaW5nDAcABXZhbHVl
-    secure: false
-    isObject: true
-  my:testKey.inner:
-    value: value
-    string: value
-    redacted: value
-    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
-    secure: false
-    isObject: false
+    my:testKey:
+        value:
+            inner: value
+        string: '{"inner":"value"}'
+        redacted: '{"inner":"value"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABv/gBgAAQVpbm5lcgZzdHJpbmcMBwAFdmFsdWU=
+        secure: false
+        isObject: true
+    my:testKey.inner:
+        value: value
+        string: value
+        redacted: value
+        object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+        secure: false
+        isObject: false

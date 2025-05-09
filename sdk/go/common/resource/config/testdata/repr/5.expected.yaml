@@ -1,27 +1,27 @@
 decrypt:
-  my:parent: '{"nested":[4.2]}'
+    my:parent: '{"nested":[4.2]}'
 paths:
-  my:parent:
-    value:
-      nested:
-      - 4.2
-    string: '{"nested":[4.2]}'
-    redacted: '{"nested":[4.2]}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABB/4IkAAEGbmVzdGVkDltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAGf+EFgABB2Zsb2F0NjQICgD4zczMzMzMEEA=
-    secure: false
-    isObject: true
-  my:parent.nested:
-    value:
-    - 4.2
-    string: '[4.2]'
-    redacted: '[4.2]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAGf+EFgABB2Zsb2F0NjQICgD4zczMzMzMEEA=
-    secure: false
-    isObject: true
-  my:parent.nested[0]:
-    value: "4.2"
-    string: "4.2"
-    redacted: "4.2"
-    object: EBAABnN0cmluZwwFAAM0LjI=
-    secure: false
-    isObject: false
+    my:parent:
+        value:
+            nested:
+                - 4.2
+        string: '{"nested":[4.2]}'
+        redacted: '{"nested":[4.2]}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAEH/gCQAAQZuZXN0ZWQOW11pbnRlcmZhY2Uge33/gQIBAv+CAAEQAAAZ/4IWAAEHZmxvYXQ2NAgKAPjNzMzMzMwQQA==
+        secure: false
+        isObject: true
+    my:parent.nested:
+        value:
+            - 4.2
+        string: '[4.2]'
+        redacted: '[4.2]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAGf+CFgABB2Zsb2F0NjQICgD4zczMzMzMEEA=
+        secure: false
+        isObject: true
+    my:parent.nested[0]:
+        value: "4.2"
+        string: "4.2"
+        redacted: "4.2"
+        object: EBAABnN0cmluZwwFAAM0LjI=
+        secure: false
+        isObject: false

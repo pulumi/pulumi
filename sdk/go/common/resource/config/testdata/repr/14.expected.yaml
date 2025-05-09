@@ -1,44 +1,44 @@
 decrypt:
-  my:mapKey: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
+    my:mapKey: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
 paths:
-  my:mapKey:
-    value:
-      a:
-        bar: blah
-        secure: foo
-      c: d
-    string: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
-    redacted: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABa/4JXAAIBYRdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+CKgACA2JhcgZzdHJpbmcMBgAEYmxhaAZzZWN1cmUGc3RyaW5nDAUAA2ZvbwFjBnN0cmluZwwDAAFk
-    secure: false
-    isObject: true
-  my:mapKey.a:
-    value:
-      bar: blah
-      secure: foo
-    string: '{"bar":"blah","secure":"foo"}'
-    redacted: '{"bar":"blah","secure":"foo"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAt/4IqAAIDYmFyBnN0cmluZwwGAARibGFoBnNlY3VyZQZzdHJpbmcMBQADZm9v
-    secure: false
-    isObject: true
-  my:mapKey.a.bar:
-    value: blah
-    string: blah
-    redacted: blah
-    object: ERAABnN0cmluZwwGAARibGFo
-    secure: false
-    isObject: false
-  my:mapKey.a.secure:
-    value: foo
-    string: foo
-    redacted: foo
-    object: EBAABnN0cmluZwwFAANmb28=
-    secure: false
-    isObject: false
-  my:mapKey.c:
-    value: d
-    string: d
-    redacted: d
-    object: DhAABnN0cmluZwwDAAFk
-    secure: false
-    isObject: false
+    my:mapKey:
+        value:
+            a:
+                bar: blah
+                secure: foo
+            c: d
+        string: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
+        redacted: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAFr/gFcAAgFjBnN0cmluZwwDAAFkAWEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gCoAAgZzZWN1cmUGc3RyaW5nDAUAA2ZvbwNiYXIGc3RyaW5nDAYABGJsYWg=
+        secure: false
+        isObject: true
+    my:mapKey.a:
+        value:
+            bar: blah
+            secure: foo
+        string: '{"bar":"blah","secure":"foo"}'
+        redacted: '{"bar":"blah","secure":"foo"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC3/gCoAAgNiYXIGc3RyaW5nDAYABGJsYWgGc2VjdXJlBnN0cmluZwwFAANmb28=
+        secure: false
+        isObject: true
+    my:mapKey.a.bar:
+        value: blah
+        string: blah
+        redacted: blah
+        object: ERAABnN0cmluZwwGAARibGFo
+        secure: false
+        isObject: false
+    my:mapKey.a.secure:
+        value: foo
+        string: foo
+        redacted: foo
+        object: EBAABnN0cmluZwwFAANmb28=
+        secure: false
+        isObject: false
+    my:mapKey.c:
+        value: d
+        string: d
+        redacted: d
+        object: DhAABnN0cmluZwwDAAFk
+        secure: false
+        isObject: false

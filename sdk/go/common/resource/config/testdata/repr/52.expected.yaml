@@ -1,34 +1,34 @@
 decrypt:
-  my:name: '["a","value","c"]'
+    my:name: '["a","value","c"]'
 paths:
-  my:name:
-    value:
-    - a
-    - value
-    - c
-    string: '["a","value","c"]'
-    redacted: '["a","value","c"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAALf+EKgADBnN0cmluZwwDAAFhBnN0cmluZwwHAAV2YWx1ZQZzdHJpbmcMAwABYw==
-    secure: false
-    isObject: true
-  my:name[0]:
-    value: a
-    string: a
-    redacted: a
-    object: DhAABnN0cmluZwwDAAFh
-    secure: false
-    isObject: false
-  my:name[1]:
-    value: value
-    string: value
-    redacted: value
-    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
-    secure: false
-    isObject: false
-  my:name[2]:
-    value: c
-    string: c
-    redacted: c
-    object: DhAABnN0cmluZwwDAAFj
-    secure: false
-    isObject: false
+    my:name:
+        value:
+            - a
+            - value
+            - c
+        string: '["a","value","c"]'
+        redacted: '["a","value","c"]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAALf+CKgADBnN0cmluZwwDAAFhBnN0cmluZwwHAAV2YWx1ZQZzdHJpbmcMAwABYw==
+        secure: false
+        isObject: true
+    my:name[0]:
+        value: a
+        string: a
+        redacted: a
+        object: DhAABnN0cmluZwwDAAFh
+        secure: false
+        isObject: false
+    my:name[1]:
+        value: value
+        string: value
+        redacted: value
+        object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+        secure: false
+        isObject: false
+    my:name[2]:
+        value: c
+        string: c
+        redacted: c
+        object: DhAABnN0cmluZwwDAAFj
+        secure: false
+        isObject: false

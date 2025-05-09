@@ -1,18 +1,18 @@
 decrypt:
-  my:outer: '{"inner":"01"}'
+    my:outer: '{"inner":"01"}'
 paths:
-  my:outer:
-    value:
-      inner: "01"
-    string: '{"inner":"01"}'
-    redacted: '{"inner":"01"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAY/4IVAAEFaW5uZXIGc3RyaW5nDAQAAjAx
-    secure: false
-    isObject: true
-  my:outer.inner:
-    value: "01"
-    string: "01"
-    redacted: "01"
-    object: DxAABnN0cmluZwwEAAIwMQ==
-    secure: false
-    isObject: false
+    my:outer:
+        value:
+            inner: "01"
+        string: '{"inner":"01"}'
+        redacted: '{"inner":"01"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABj/gBUAAQVpbm5lcgZzdHJpbmcMBAACMDE=
+        secure: false
+        isObject: true
+    my:outer.inner:
+        value: "01"
+        string: "01"
+        redacted: "01"
+        object: DxAABnN0cmluZwwEAAIwMQ==
+        secure: false
+        isObject: false

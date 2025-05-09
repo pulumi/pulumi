@@ -1,10 +1,10 @@
 decrypt:
-  my:true: testValue
+    my:true: testValue
 paths:
-  my:true:
-    value: testValue
-    string: testValue
-    redacted: testValue
-    object: FhAABnN0cmluZwwLAAl0ZXN0VmFsdWU=
-    secure: false
-    isObject: false
+    my:true:
+        value: testValue
+        string: testValue
+        redacted: testValue
+        object: FhAABnN0cmluZwwLAAl0ZXN0VmFsdWU=
+        secure: false
+        isObject: false

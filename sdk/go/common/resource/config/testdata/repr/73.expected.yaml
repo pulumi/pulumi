@@ -1,26 +1,26 @@
 decrypt:
-  my:key: '{"bar":"baz","secure":"value"}'
+    my:key: '{"bar":"baz","secure":"value"}'
 paths:
-  my:key:
-    value:
-      bar: baz
-      secure: value
-    string: '{"bar":"baz","secure":"value"}'
-    redacted: '{"bar":"baz","secure":"value"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAu/4IrAAIDYmFyBnN0cmluZwwFAANiYXoGc2VjdXJlBnN0cmluZwwHAAV2YWx1ZQ==
-    secure: false
-    isObject: true
-  my:key.bar:
-    value: baz
-    string: baz
-    redacted: baz
-    object: EBAABnN0cmluZwwFAANiYXo=
-    secure: false
-    isObject: false
-  my:key.secure:
-    value: value
-    string: value
-    redacted: value
-    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
-    secure: false
-    isObject: false
+    my:key:
+        value:
+            bar: baz
+            secure: value
+        string: '{"bar":"baz","secure":"value"}'
+        redacted: '{"bar":"baz","secure":"value"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC7/gCsAAgNiYXIGc3RyaW5nDAUAA2JhegZzZWN1cmUGc3RyaW5nDAcABXZhbHVl
+        secure: false
+        isObject: true
+    my:key.bar:
+        value: baz
+        string: baz
+        redacted: baz
+        object: EBAABnN0cmluZwwFAANiYXo=
+        secure: false
+        isObject: false
+    my:key.secure:
+        value: value
+        string: value
+        redacted: value
+        object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+        secure: false
+        isObject: false

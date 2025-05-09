@@ -1,18 +1,18 @@
 decrypt:
-  my:array: '["value"]'
+    my:array: '["value"]'
 paths:
-  my:array:
-    value:
-    - value
-    string: '["value"]'
-    redacted: '["value"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAFf+EEgABBnN0cmluZwwHAAV2YWx1ZQ==
-    secure: false
-    isObject: true
-  my:array[0]:
-    value: value
-    string: value
-    redacted: value
-    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
-    secure: false
-    isObject: false
+    my:array:
+        value:
+            - value
+        string: '["value"]'
+        redacted: '["value"]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAFf+CEgABBnN0cmluZwwHAAV2YWx1ZQ==
+        secure: false
+        isObject: true
+    my:array[0]:
+        value: value
+        string: value
+        redacted: value
+        object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+        secure: false
+        isObject: false

@@ -1,18 +1,18 @@
 decrypt:
-  my:outer: '{"inner":100}'
+    my:outer: '{"inner":100}'
 paths:
-  my:outer:
-    value:
-      inner: 100
-    string: '{"inner":100}'
-    redacted: '{"inner":100}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAW/4ITAAEFaW5uZXIFaW50NjQEAwD/yA==
-    secure: false
-    isObject: true
-  my:outer.inner:
-    value: "100"
-    string: "100"
-    redacted: "100"
-    object: EBAABnN0cmluZwwFAAMxMDA=
-    secure: false
-    isObject: false
+    my:outer:
+        value:
+            inner: 100
+        string: '{"inner":100}'
+        redacted: '{"inner":100}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABb/gBMAAQVpbm5lcgVpbnQ2NAQDAP/I
+        secure: false
+        isObject: true
+    my:outer.inner:
+        value: "100"
+        string: "100"
+        redacted: "100"
+        object: EBAABnN0cmluZwwFAAMxMDA=
+        secure: false
+        isObject: false

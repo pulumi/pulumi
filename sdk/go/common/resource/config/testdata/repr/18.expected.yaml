@@ -1,24 +1,24 @@
 decrypt:
-  my:testKey: '{"inner":{"secure":"securevalue"}}'
+    my:testKey: '{"inner":{"secure":"securevalue"}}'
 paths:
-  my:testKey:
-    value:
-      inner:
-        secure: securevalue
-    string: '{"inner":{"secure":"securevalue"}}'
-    redacted: '{"inner":"[secret]"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABF/4JCAAEFaW5uZXIXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gh8AAQZzZWN1cmUGc3RyaW5nDA0AC3NlY3VyZXZhbHVl
-    secure: true
-    isObject: true
-    secureValues:
-    - securevalue
-  my:testKey.inner:
-    value:
-      secure: securevalue
-    string: securevalue
-    redacted: '[secret]'
-    object: GBAABnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
-    secure: true
-    isObject: false
-    secureValues:
-    - securevalue
+    my:testKey:
+        value:
+            inner:
+                secure: securevalue
+        string: '{"inner":{"secure":"securevalue"}}'
+        redacted: '{"inner":"[secret]"}'
+        object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAEX/gEIAAQVpbm5lchdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+AHwABBnNlY3VyZQZzdHJpbmcMDQALc2VjdXJldmFsdWU=
+        secure: true
+        isObject: true
+        secureValues:
+            - securevalue
+    my:testKey.inner:
+        value:
+            secure: securevalue
+        string: securevalue
+        redacted: '[secret]'
+        object: GBAABnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
+        secure: true
+        isObject: false
+        secureValues:
+            - securevalue

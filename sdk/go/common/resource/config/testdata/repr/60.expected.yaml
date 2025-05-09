@@ -1,39 +1,39 @@
 decrypt:
-  my:name: '[{"secure":"securevalue"},"b","c"]'
+    my:name: '[{"secure":"securevalue"},"b","c"]'
 paths:
-  my:name:
-    value:
-    - secure: securevalue
-    - b
-    - c
-    string: '[{"secure":"securevalue"},"b","c"]'
-    redacted: '["[secret]","b","c"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAZv+EKAADF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA6/4IfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQZzdHJpbmcMAwABYgZzdHJpbmcMAwABYw==
-    secure: true
-    isObject: true
-    secureValues:
-    - securevalue
-  my:name[0]:
-    value:
-      secure: securevalue
-    string: securevalue
-    redacted: '[secret]'
-    object: GBAABnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
-    secure: true
-    isObject: false
-    secureValues:
-    - securevalue
-  my:name[1]:
-    value: b
-    string: b
-    redacted: b
-    object: DhAABnN0cmluZwwDAAFi
-    secure: false
-    isObject: false
-  my:name[2]:
-    value: c
-    string: c
-    redacted: c
-    object: DhAABnN0cmluZwwDAAFj
-    secure: false
-    isObject: false
+    my:name:
+        value:
+            - secure: securevalue
+            - b
+            - c
+        string: '[{"secure":"securevalue"},"b","c"]'
+        redacted: '["[secret]","b","c"]'
+        object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAZf+CJwADF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAADr/gB8AAQZzZWN1cmUGc3RyaW5nDA0AC3NlY3VyZXZhbHVlBnN0cmluZwwDAAFiBnN0cmluZwwDAAFj
+        secure: true
+        isObject: true
+        secureValues:
+            - securevalue
+    my:name[0]:
+        value:
+            secure: securevalue
+        string: securevalue
+        redacted: '[secret]'
+        object: GBAABnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
+        secure: true
+        isObject: false
+        secureValues:
+            - securevalue
+    my:name[1]:
+        value: b
+        string: b
+        redacted: b
+        object: DhAABnN0cmluZwwDAAFi
+        secure: false
+        isObject: false
+    my:name[2]:
+        value: c
+        string: c
+        redacted: c
+        object: DhAABnN0cmluZwwDAAFj
+        secure: false
+        isObject: false
