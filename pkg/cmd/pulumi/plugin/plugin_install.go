@@ -137,7 +137,8 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		pluginSpec, err := workspace.NewPluginSpec(args[1], apitype.PluginKind(args[0]), version, cmd.serverURL, checksums)
+		pluginSpec, err := workspace.NewPluginSpec(ctx,
+			args[1], apitype.PluginKind(args[0]), version, cmd.serverURL, checksums)
 		if err != nil {
 			return err
 		}

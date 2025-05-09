@@ -691,7 +691,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if err != nil {
 		return nil, err
 	}
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -757,7 +757,7 @@ func SchemaFromSchemaSourceValueArgs(
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Provider, error) {
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}

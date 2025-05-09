@@ -152,7 +152,7 @@ func (cmd *packagePublishCmd) Run(
 
 	// If no readme path is provided, check if there's a readme in the package source or plugin directory we can slurp up.
 	if args.readmePath == "" {
-		readmePath, err := cmd.findReadme(packageSrc)
+		readmePath, err := cmd.findReadme(ctx, packageSrc)
 		if err != nil {
 			return fmt.Errorf("failed to find readme: %w", err)
 		}
@@ -270,7 +270,7 @@ func login(ctx context.Context, project *workspace.Project) (backend.Backend, er
 // 1. The package source if it is a directory
 // 2. The installed plugin directory
 // If no readme is found, an empty string is returned.
-func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
+func (cmd *packagePublishCmd) findReadme(ctx context.Context, packageSrc string) (string, error) {
 	findReadmeInDir := func(dir string) string {
 		info, err := os.Stat(dir)
 		if err != nil && errors.Is(err, os.ErrNotExist) {
@@ -305,7 +305,7 @@ func (cmd *packagePublishCmd) findReadme(packageSrc string) (string, error) {
 	}
 
 	// Otherwise, try to retrieve the readme from the installed plugin.
-	pluginSpec, err := workspace.NewPluginSpec(packageSrc, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(ctx, packageSrc, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create plugin spec: %w", err)
 	}
