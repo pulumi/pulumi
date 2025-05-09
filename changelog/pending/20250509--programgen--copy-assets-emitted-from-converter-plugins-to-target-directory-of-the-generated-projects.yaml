@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Copy assets emitted from converter plugins to target directory of the generated projects

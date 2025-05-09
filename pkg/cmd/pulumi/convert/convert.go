@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -253,6 +254,17 @@ func runConvert(
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
+			}
+
+			// copy all non-PCL files from the source directory to the target directory
+			// such that any assets are copied over, excluding the Pulumi.yaml project file
+			err = aferoUtil.CopyDirWhen(afero.NewOsFs(), sourceDirectory, targetDirectory,
+				func(file afero.File) bool {
+					return file.Name() != "Pulumi.yaml" &&
+						path.Ext(file.Name()) != ".pp"
+				})
+			if err != nil {
+				return nil, fmt.Errorf("copying files from source directory: %w", err)
 			}
 
 			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)

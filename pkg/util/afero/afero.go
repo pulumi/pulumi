@@ -22,8 +22,8 @@ import (
 	"github.com/spf13/afero"
 )
 
-// Copies all file and directories from src to dst
-func CopyDir(fs afero.Fs, src, dst string) error {
+// Copies all file and directories from src to dst that match the filter
+func CopyDirWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) error {
 	entries, err := afero.ReadDir(fs, src)
 	if err != nil {
 		return err
@@ -37,11 +37,11 @@ func CopyDir(fs afero.Fs, src, dst string) error {
 		destPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			if err := CopyDir(fs, sourcePath, destPath); err != nil {
+			if err := CopyDirWhen(fs, sourcePath, destPath, filter); err != nil {
 				return err
 			}
 		} else {
-			if err := Copy(fs, sourcePath, destPath); err != nil {
+			if err := CopyWhen(fs, sourcePath, destPath, filter); err != nil {
 				return err
 			}
 		}
@@ -49,19 +49,24 @@ func CopyDir(fs afero.Fs, src, dst string) error {
 	return nil
 }
 
-// Copies a file from src to dst
-func Copy(fs afero.Fs, src, dst string) error {
-	out, err := fs.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
+// Copies a file from src to dst if the filter returns true
+func CopyWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) error {
 	in, err := fs.Open(src)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
+
+	if filter != nil && !filter(in) {
+		// skip copying if the file doesn't pass the filter
+		return nil
+	}
+
+	out, err := fs.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
 
 	_, err = io.Copy(out, in)
 	if err != nil {
@@ -69,4 +74,18 @@ func Copy(fs afero.Fs, src, dst string) error {
 	}
 
 	return nil
+}
+
+// CopyDir copies all files and directories from src to dst
+func CopyDir(fs afero.Fs, src, dst string) error {
+	return CopyDirWhen(fs, src, dst, func(file afero.File) bool {
+		return true
+	})
+}
+
+// Copy copies a file from src to dst
+func Copy(fs afero.Fs, src, dst string) error {
+	return CopyWhen(fs, src, dst, func(file afero.File) bool {
+		return true
+	})
 }
