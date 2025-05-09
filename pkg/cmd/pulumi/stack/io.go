@@ -48,16 +48,6 @@ import (
 
 var ConfigFile string
 
-func loadProjectStackByReference(
-	project *workspace.Project,
-	stackRef backend.StackReference,
-) (*workspace.ProjectStack, error) {
-	if ConfigFile == "" {
-		return workspace.DetectProjectStack(stackRef.Name().Q())
-	}
-	return workspace.LoadProjectStack(project, ConfigFile)
-}
-
 type LoadOption int
 
 const (
@@ -314,7 +304,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	root string, teams []string, setCurrent bool,
 	secretsProvider string, useEscEnv bool,
 ) (backend.Stack, error) {
-	ps, needsSave, sm, err := createSecretsManagerForNewStack(ws, b, stackRef, secretsProvider)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, ws, b, stackRef, secretsProvider)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}
