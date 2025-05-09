@@ -43,32 +43,3 @@ func (l *lazy[T]) Value() T {
 	})
 	return l.result
 }
-
-// Lazy2 is a type that represents two values that are computed only once on first access
-// and then cached for subsequent calls. This is thread-safe.
-type Lazy2[T any, U any] interface {
-	Value() (T, U)
-}
-
-type lazy2[T any, U any] struct {
-	once    sync.Once
-	result1 T
-	result2 U
-	f       func() (T, U)
-}
-
-// New2 creates a new Lazy2[T, U] with the given function to compute the values.
-func New2[T any, U any](f func() (T, U)) Lazy2[T, U] {
-	return &lazy2[T, U]{
-		f:    f,
-		once: sync.Once{},
-	}
-}
-
-// Value returns the computed values, computing them on the first access.
-func (l *lazy2[T, U]) Value() (T, U) {
-	l.once.Do(func() {
-		l.result1, l.result2 = l.f()
-	})
-	return l.result1, l.result2
-}
