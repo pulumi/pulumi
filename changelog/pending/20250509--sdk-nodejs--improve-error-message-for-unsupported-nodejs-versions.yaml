@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: improve error message for unsupported NodeJS versions

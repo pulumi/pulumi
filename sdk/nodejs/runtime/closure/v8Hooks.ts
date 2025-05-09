@@ -15,7 +15,7 @@
 // Module that hooks into v8 and provides information about it to interested parties. Because this
 // hooks into v8 events it is critical that this module is loaded early when the process starts.
 // Otherwise, information may not be known when needed.  This module is only intended for use on
-// Node v11 and higher.
+// Node v18 and higher.
 
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
@@ -55,12 +55,23 @@ async function createInspectorSessionAsync(): Promise<import("inspector").Sessio
 
 /**
  * Returns the inspector session that can be used to query the state of this
- * running Node instance. Must only be called on Node11 and above. On Node10 and
+ * running Node instance. Must only be called on Node18 and above. On Node17 and
  * below, this will throw.
  *
  * @internal
  */
 export async function getSessionAsync() {
+    // Check Node.js version first and provide a helpful error message
+    const nodeVersion = process.versions.node;
+    const majorVersion = parseInt(nodeVersion.split('.')[0], 10);
+
+    if (majorVersion < 18) {
+        throw new Error(
+            `NodeJS version ${nodeVersion} is not supported. Pulumi requires NodeJS >= 18. ` +
+            `Please upgrade NodeJS: https://nodejs.org/en/download/package-manager/`
+        );
+    }
+
     return getSession();
 }
 
@@ -71,6 +82,17 @@ export async function getSessionAsync() {
  * @internal
  */
 export async function isInitializedAsync() {
+    // Check Node.js version first
+    const nodeVersion = process.versions.node;
+    const majorVersion = parseInt(nodeVersion.split('.')[0], 10);
+
+    if (majorVersion < 18) {
+        throw new Error(
+            `NodeJS version ${nodeVersion} is not supported. Pulumi requires NodeJS >= 18. ` +
+            `Please upgrade NodeJS: https://nodejs.org/en/download/package-manager/`
+        );
+    }
+
     await getSession();
 }
 
