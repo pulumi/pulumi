@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: yaml
+  description: Update all uses of gopkg.in/yaml to v3
