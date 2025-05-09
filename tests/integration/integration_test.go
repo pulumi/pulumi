@@ -1729,8 +1729,8 @@ runtime: yaml
 	require.NoError(t, err)
 
 	// Run pulumi watch in a separate goroutine, so it runs in the background and installs the CLI.
+	e.Env = append(e.Env, "PULUMI_AUTO_UPDATE_CLI=true")
 	go func() {
-		e.Env = append(e.Env, "PULUMI_AUTO_UPDATE_CLI=true")
 		for {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			//nolint:gosec
@@ -1742,20 +1742,19 @@ runtime: yaml
 				return nil
 			}
 			cmd.WaitDelay = 5 * time.Second
-			env := os.Environ()
-			env = append(env, "PULUMI_AUTO_UPDATE_CLI=true")
-			cmd.Env = append(append(append(env,
+			cmd.Env = append(append(append(append(os.Environ(),
+				"PULUMI_AUTO_UPDATE_CLI=true"),
 				"PULUMI_HOME="+e.HomePath),
 				"PULUMI_CREDENTIALS_PATH="+e.RootPath),
 				"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
-			err = cmd.Run()
-			require.NoError(t, err)
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, string(out))
 			cancel()
 		}
 	}()
 	// Wait for the new CLI to be installed, give it two minutes at most
-	endTime := time.Now().Add(time.Minute)
+	endTime := time.Now().Add(time.Minute * 2)
 	for {
 		if time.Now().After(endTime) {
 			t.Fatal("timed out waiting for new CLI to be installed")

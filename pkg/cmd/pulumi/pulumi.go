@@ -282,11 +282,15 @@ func NewPulumiCmd() *cobra.Command {
 
 			// Run the version check in parallel so that it doesn't block executing the command.
 			// If there is a new version to report, we will do so after the command has finished.
-			waitForUpdateCheck = true
-			go func() {
-				updateCheckResult <- checkForUpdate(updateCtx)
-				close(updateCheckResult)
-			}()
+			if env.SkipUpdateCheck.Value() && !env.AutoUpdateCLI.Value() {
+				logging.V(5).Infof("skipping update check")
+			} else {
+				waitForUpdateCheck = true
+				go func() {
+					updateCheckResult <- checkForUpdate(updateCtx)
+					close(updateCheckResult)
+				}()
+			}
 
 			return nil
 		},
@@ -707,25 +711,26 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	isDevVersion := isDevVersion(curVer)
 
 	var skipUpdateCheck bool
-	_, _, _, err = getCachedVersionInfo(isDevVersion)
-	if err == nil {
+	latestVer, oldestAllowedVer, devVer, err := getCachedVersionInfo(isDevVersion)
+	if err == nil && !env.AutoUpdateCLI.Value() {
 		// If we have a cached version, we already warned the user once
 		// in the last 24 hours--the cache is considered stale after that.
 		// So we don't need to warn again.
 		skipUpdateCheck = true
-	}
-	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx)
-	if err != nil {
-		logging.V(3).Infof("error fetching latest version information "+
-			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
-	}
-	if ctx.Err() != nil {
-		logging.V(3).Infof("context cancelled, fetched latest version information")
-		return nil
+	} else {
+		latestVer, oldestAllowedVer, devVer, err = getCLIVersionInfo(ctx)
+		if err != nil {
+			logging.V(3).Infof("error fetching latest version information "+
+				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+		}
+		if ctx.Err() != nil {
+			logging.V(3).Infof("context cancelled, fetched latest version information")
+			return nil
+		}
 	}
 
 	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
-		if os.Getenv("PULUMI_AUTO_UPDATE_CLI") == "true" && isUpgradeable(curVer) {
+		if env.AutoUpdateCLI.Value() && isUpgradeable(curVer) {
 			version := devVer
 			if !isDevVersion {
 				version = latestVer
