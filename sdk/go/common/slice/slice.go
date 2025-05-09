@@ -38,7 +38,6 @@ func Map[T, U any](s []T, f func(T) U) []U {
 func MapError[T, U any](s []T, f func(T) (U, error)) ([]U, error) {
 	r := Prealloc[U](len(s))
 	for _, v := range s {
-		var err error
 		u, err := f(v)
 		if err != nil {
 			return r, err
