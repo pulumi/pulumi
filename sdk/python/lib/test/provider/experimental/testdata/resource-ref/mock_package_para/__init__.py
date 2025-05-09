@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .mock_module import MyResource
+from .mock_module import MyResource, MyEnum
 
 
-__all__ = ["MyResource"]
+__all__ = ["MyResource", "MyEnum"]

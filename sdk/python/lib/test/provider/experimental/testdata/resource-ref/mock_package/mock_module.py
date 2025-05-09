@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 import pulumi
 
 
-class MyResource(pulumi.CustomResource):
-    pulumi_type = "mock_package:index:MyResource"
+@pulumi.type_token("mock_package:index:MyEnum")
+class MyEnum(Enum): ...
+
+
+@pulumi.type_token("mock_package:index:MyResource")
+class MyResource(pulumi.CustomResource): ...
