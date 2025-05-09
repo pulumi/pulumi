@@ -210,7 +210,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 					env = imports[0]
 				}
 				helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.<key>`", env)
-				return errors.New("config copy not supported with cloud-managed stack destination: " + helpText)
+				return errors.New("config copy destination not supported for remote stack config: " + helpText)
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -375,7 +375,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 					env = imports[0]
 				}
 				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.%s`", env, key.Name())
-				return errors.New("config rm not supported for cloud-managed stacks: " + helpText)
+				return errors.New("config rm not supported for remote stack config: " + helpText)
 			}
 
 			err = ps.Config.Remove(key, path)
@@ -442,7 +442,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 					env = imports[0]
 				}
 				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.<key>`", env)
-				return errors.New("config rm-all not supported for cloud-managed stacks: " + helpText)
+				return errors.New("config rm-all not supported for remote stack config: " + helpText)
 			}
 
 			for _, arg := range args {
@@ -500,7 +500,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 
 			configPath, isFile := s.GetStackFilename(ctx)
 			if !isFile {
-				return errors.New("config refresh not supported for cloud-managed stacks")
+				return errors.New("config refresh not supported for remote stack config")
 			}
 
 			c, err := backend.GetLatestConfiguration(ctx, s)
@@ -749,7 +749,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 			env = imports[0]
 		}
 		helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.%s %s`", env, key.Name(), exampleValue)
-		return errors.New("config set not supported for cloud-managed stacks: " + helpText)
+		return errors.New("config set not supported for remote stack config: " + helpText)
 	}
 
 	err = ps.Config.Set(key, v, c.Path)

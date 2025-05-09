@@ -521,19 +521,19 @@ func TestStackEscConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "stack", "init", stackName, "--use-esc-env")
+		e.RunCommand("pulumi", "stack", "init", stackName, "--remote-config")
 
 		configSetOut, configSetErr := e.RunCommandExpectError("pulumi", "config", "set", "foo", "bar")
 		assert.Empty(t, configSetOut)
 		expectedConfigSetErr := fmt.Sprintf(
-			"config set not supported for cloud-managed stacks: use `pulumi env set pulumi-test/%s pulumiConfig.foo bar",
+			"config set not supported for remote stack config: use `pulumi env set pulumi-test/%s pulumiConfig.foo bar",
 			stackName)
 		assert.Contains(t, configSetErr, expectedConfigSetErr, "directs user to use 'env set'")
 
 		configSetOut, configSetErr = e.RunCommandExpectError("pulumi", "config", "set", "--secret", "foo", "bar")
 		assert.Empty(t, configSetOut)
 		newVar := fmt.Sprintf(
-			"config set not supported for cloud-managed stacks: "+
+			"config set not supported for remote stack config: "+
 				"use `pulumi env set pulumi-test/%s pulumiConfig.foo --secret <value>",
 			stackName)
 		assert.Contains(t, configSetErr, newVar, "should hide secret values")
@@ -549,7 +549,7 @@ func TestStackEscConfig(t *testing.T) {
 		configRmOut, configRmErr := e.RunCommandExpectError("pulumi", "config", "rm", "foo")
 		assert.Empty(t, configRmOut)
 		expectedConfigRmErr := fmt.Sprintf(
-			"config rm not supported for cloud-managed stacks: use `pulumi env rm pulumi-test/%s pulumiConfig.foo",
+			"config rm not supported for remote stack config: use `pulumi env rm pulumi-test/%s pulumiConfig.foo",
 			stackName)
 		assert.Contains(t, configRmErr, expectedConfigRmErr, "direct user to use 'env rm'")
 
