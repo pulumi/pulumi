@@ -31,7 +31,7 @@ import grpc
 from semver import VersionInfo
 
 from ._cmd import CommandResult, OnOutput
-from ._config import ConfigValue, ConfigMap
+from ._config import ConfigValue, ConfigMap, ConfigOptions, GetAllConfigOptions
 from .errors import StackNotFoundError, InvalidVersionError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
@@ -88,13 +88,13 @@ class UpdateSummary:
             config_value = config[key]
             secret = config_value["secret"]
             # If it is a secret, and we're not showing secrets, the value is excluded from the JSON results.
-            # In that case, we'll just use the sentinal `[secret]` value. Otherwise, we expect to get a value.
+            # In that case, we'll just use the sentinel `[secret]` value. Otherwise, we expect to get a value.
             value = (
                 config_value.get("value", "[secret]")
                 if secret
                 else config_value["value"]
             )
-            self.config[key] = ConfigValue(value=value, secret=secret)
+            self.config[key] = ConfigValue(value, secret)
 
     def __repr__(self):
         return (
@@ -601,7 +601,7 @@ class Stack:
         program: Optional[PulumiFn] = None,
     ) -> RefreshResult:
         """
-        Compares the current stack’s resource state with the state known to exist in the actual
+        Compares the current stack's resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
 
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
@@ -1404,6 +1404,124 @@ class Stack:
             self.workspace._remote_args()
             if isinstance(self.workspace, LocalWorkspace)
             else []
+        )
+
+    def get_config_with_options(
+        self, key: str, options: Optional[ConfigOptions] = None
+    ) -> ConfigValue:
+        """
+        Returns the config value associated with the specified key.
+
+        :param key: The key for the config item to get.
+        :param options: Optional configuration options.
+        :returns: ConfigValue
+        """
+        if options is None:
+            return self.get_config(key)
+
+        return self.workspace.get_config(
+            self.name,
+            key,
+            path=options.path,
+            config_file=options.config_file,
+        )
+
+    def set_config_with_options(
+        self, key: str, value: ConfigValue, options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Sets a config key-value pair on the Stack in the associated Workspace.
+
+        :param key: The config key to add.
+        :param value: The config value to add.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.set_config(key, value)
+            return
+
+        self.workspace.set_config(
+            self.name,
+            key,
+            value,
+            path=options.path,
+            config_file=options.config_file,
+        )
+
+    def remove_config_with_options(
+        self, key: str, options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Removes the specified config key from the Stack in the associated Workspace.
+
+        :param key: The key to remove from config.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.remove_config(key)
+            return
+
+        self.workspace.remove_config(
+            self.name,
+            key,
+            path=options.path,
+            config_file=options.config_file,
+        )
+
+    def get_all_config_with_options(
+        self, options: Optional[GetAllConfigOptions] = None
+    ) -> ConfigMap:
+        """
+        Returns the full config map associated with the stack in the Workspace.
+
+        :param options: Optional configuration options.
+        :returns: ConfigMap
+        """
+        if options is None:
+            return self.get_all_config()
+
+        return self.workspace.get_all_config_with_options(
+            self.name,
+            options,
+        )
+
+    def set_all_config_with_options(
+        self, config: ConfigMap, options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Sets all specified config values on the stack in the associated Workspace.
+
+        :param config: A mapping of key to ConfigValue to set to config.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.set_all_config(config)
+            return
+
+        self.workspace.set_all_config_with_options(
+            self.name,
+            config,
+            options,
+        )
+
+    def remove_all_config_with_options(
+        self, keys: list[str], options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Removes the specified config keys from the Stack in the associated Workspace.
+
+        :param keys: The keys to remove from config.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.remove_all_config(keys)
+            return
+
+        self.workspace.remove_all_config(
+            self.name,
+            keys,
+            path=options.path,
+            config_file=options.config_file,
         )
 
 
