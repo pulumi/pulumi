@@ -47,10 +47,13 @@ func SetupPulumiBinary() {
 	os.Setenv("PATH", fmt.Sprintf("%s:%s", repoBin, os.Getenv("PATH")))
 	if os.Getenv("PULUMI_INTEGRATION_BINARY_PATH") == "" {
 		pulumiBinPath := filepath.Join(repoBin, "pulumi")
-		if _, err := os.Stat(pulumiBinPath); os.IsNotExist(err) {
-			fmt.Printf("WARNING: pulumi binary not found at %s. "+
-				"Falling back to searching the $PATH. "+
-				"Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
+		// Disable in CI to avoid breaking the matrix calculation which uses the output from `go test`
+		if _, isCI := os.LookupEnv("CI"); !isCI {
+			if _, err := os.Stat(pulumiBinPath); os.IsNotExist(err) {
+				fmt.Printf("WARNING: pulumi binary not found at %s. "+
+					"Falling back to searching the $PATH. "+
+					"Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
+			}
 		}
 		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", pulumiBinPath)
 	}
