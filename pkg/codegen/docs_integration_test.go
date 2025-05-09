@@ -421,7 +421,7 @@ func TestGetMethodResultName(t *testing.T) {
 			expected: map[language]string{
 				golang: "pulumi.StringOutput",
 				nodejs: "string",
-				python: "builtins.str", // TODO[https://github.com/pulumi/pulumi/issues/19272]
+				python: "str",
 				dotnet: "string",
 			},
 		},
