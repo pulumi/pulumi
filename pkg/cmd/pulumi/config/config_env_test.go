@@ -126,7 +126,8 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
 					return b64.NewBase64SecretsManager(), nil
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
 				},
 				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {

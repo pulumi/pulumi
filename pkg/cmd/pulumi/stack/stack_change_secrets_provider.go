@@ -120,7 +120,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	currentProjectStack, err := currentStack.Load(ctx, project)
+	currentProjectStack, err := currentStack.Load(ctx, project, ConfigFile)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := currentStack.Load(ctx, project)
+	reloadedProjectStack, err := currentStack.Load(ctx, project, ConfigFile)
 	if err != nil {
 		return err
 	}

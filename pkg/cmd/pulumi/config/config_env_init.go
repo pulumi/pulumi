@@ -203,7 +203,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	project *workspace.Project,
 	stack backend.Stack,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := stack.Load(ctx, project)
+	ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
 	if err != nil {
 		return nil, nil, err
 	}

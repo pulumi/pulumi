@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -158,7 +159,15 @@ func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
 	return path, err == nil
 }
 
-func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+func (s *cloudStack) Load(ctx context.Context, project *workspace.Project, configFileOverride string,
+) (*workspace.ProjectStack, error) {
+	// Always use manually specified config file if specified.
+	if configFileOverride != "" {
+		if s.usesCloudConfig {
+			fmt.Printf("Warning: using config file %s but this stack uses cloud config by default\n", configFileOverride)
+		}
+		return workspace.LoadProjectStack(project, configFileOverride)
+	}
 	if s.usesCloudConfig {
 		stackID, err := s.b.getCloudStackIdentifier(s.ref)
 		if err != nil {
@@ -175,6 +184,19 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*wor
 				EncryptedKey:    stack.Config.EncryptedKey,
 				EncryptionSalt:  stack.Config.EncryptionSalt,
 				Config:          config.Map{},
+			}
+			// Check if the config file exists and warn if it does.
+			_, configFilePath, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
+			if err != nil {
+				return nil, fmt.Errorf("detecting config file path: %v", err)
+			}
+			_, err = os.Stat(configFilePath)
+			if err != nil && !os.IsNotExist(err) {
+				return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, err)
+			}
+			if err == nil {
+				fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses cloud config\n",
+					configFilePath)
 			}
 			return projectStack, nil
 		}

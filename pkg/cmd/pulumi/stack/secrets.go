@@ -59,7 +59,7 @@ func CreateSecretsManagerForExistingStack(
 	if err != nil {
 		return err
 	}
-	ps, err := stack.Load(ctx, project)
+	ps, err := stack.Load(ctx, project, ConfigFile)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func createSecretsManagerForNewStack(
 		if err != nil || s == nil {
 			ps = &workspace.ProjectStack{}
 		} else {
-			ps, err = s.Load(ctx, project)
+			ps, err = s.Load(ctx, project, ConfigFile)
 			if err != nil || ps == nil {
 				ps = &workspace.ProjectStack{}
 			}

@@ -89,7 +89,8 @@ func TestConfigSet(t *testing.T) {
 				GetStackFilenameF: func(context.Context) (string, bool) {
 					return "Pulumi.stack.yaml", true
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStack(project, "Pulumi.stack.yaml")
 				},
 				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
@@ -197,7 +198,8 @@ func TestConfigSetTypes(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
+				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {

@@ -59,7 +59,11 @@ func (s *diyStack) GetStackFilename(ctx context.Context) (string, bool) {
 	return path, err == nil
 }
 
-func (s *diyStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+func (s *diyStack) Load(ctx context.Context, project *workspace.Project, configFileOverride string,
+) (*workspace.ProjectStack, error) {
+	if configFileOverride != "" {
+		return workspace.LoadProjectStack(project, configFileOverride)
+	}
 	return workspace.DetectProjectStack(s.Ref().Name().Q())
 }
 
