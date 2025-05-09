@@ -7,7 +7,7 @@ paths:
         foo: 4.2
     string: '{"nested":{"foo":4.2}}'
     redacted: '{"nested":{"foo":4.2}}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABB/4I+AAEGbmVzdGVkF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IaAAEDZm9vB2Zsb2F0NjQICgD4zczMzMzMEEA=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAEH/gD4AAQZuZXN0ZWQXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gBoAAQNmb28HZmxvYXQ2NAgKAPjNzMzMzMwQQA==
     secure: false
     isObject: true
   my:parent.nested:
@@ -15,7 +15,7 @@ paths:
       foo: 4.2
     string: '{"foo":4.2}'
     redacted: '{"foo":4.2}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAd/4IaAAEDZm9vB2Zsb2F0NjQICgD4zczMzMzMEEA=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAB3/gBoAAQNmb28HZmxvYXQ2NAgKAPjNzMzMzMwQQA==
     secure: false
     isObject: true
   my:parent.nested.foo:
