@@ -15,6 +15,7 @@
 package cmdutil
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -28,9 +29,22 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/appdash"
 	appdash_opentracing "github.com/pulumi/appdash/opentracing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	jaeger "github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
+	otpropagator "go.opentelemetry.io/contrib/propagators/ot"
+	"go.opentelemetry.io/otel"
+	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	otelZipkin "go.opentelemetry.io/otel/exporters/zipkin"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+
+	jaegerpropagator "go.opentelemetry.io/contrib/propagators/jaeger"
+
+	w3cpropagator "go.opentelemetry.io/otel/propagation"
 )
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
@@ -46,6 +60,14 @@ var TracingToFile bool
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
+
+type otelCloserWrapper struct {
+	traceProvider *trace.TracerProvider
+}
+
+func (o *otelCloserWrapper) Close() error {
+	return o.traceProvider.Shutdown(context.TODO())
+}
 
 type localStore struct {
 	path  string
@@ -123,27 +145,55 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 		tracer = appdash_opentracing.NewTracer(collector)
 
 	default:
-		// Store the tracing endpoint
 		TracingEndpoint = tracingEndpoint
 
-		// Jaeger tracer can be initialized with a transport that will
-		// report tracing Spans to a Zipkin backend
-		transport, err := zipkin.NewHTTPTransport(
-			tracingEndpoint,
-			zipkin.HTTPBatchSize(1),
-			zipkin.HTTPLogger(jaeger.StdLogger),
-		)
-		if err != nil {
-			log.Fatalf("Cannot initialize HTTP transport: %v", err)
+		if exporterTypeStr := env.OpentelemetryTracing.Value(); exporterTypeStr != "" {
+			traceExporter, err := getExporter(exporterTypeStr, tracingEndpoint)
+			if err != nil {
+				log.Fatalf("unable to initialize opentelemetry exporter: %v", err)
+			}
+			compositePropagator := w3cpropagator.NewCompositeTextMapPropagator(
+				jaegerpropagator.Jaeger{},
+				otpropagator.OT{},
+				w3cpropagator.TraceContext{},
+				w3cpropagator.Baggage{},
+			)
+			otel.SetTextMapPropagator(compositePropagator)
+
+			traceRes, err := resource.New(context.TODO(),
+				resource.WithAttributes(semconv.ServiceNameKey.String(name)),
+			)
+			if err != nil {
+				log.Fatalf("failed to initialize resource: %v", err)
+			}
+			traceProvider := trace.NewTracerProvider(
+				trace.WithResource(traceRes),
+				trace.WithSyncer(traceExporter), // Would probably be better to use WithBatcher instead. However Cobra PostRun are not called on error, which would prevent sending batched spans
+			)
+			t, otelTracer := otelBridge.NewTracerPair(traceProvider.Tracer("sdk/go/common/util/cmdutil"))
+			otel.SetTracerProvider(otelTracer)
+			tracer, traceCloser = t, &otelCloserWrapper{traceProvider: traceProvider}
+		} else {
+			// Jaeger tracer can be initialized with a transport that will
+			// report tracing Spans to a Zipkin backend
+			transport, err := zipkin.NewHTTPTransport(
+				tracingEndpoint,
+				zipkin.HTTPBatchSize(1),
+				zipkin.HTTPLogger(jaeger.StdLogger),
+			)
+			if err != nil {
+				log.Fatalf("Cannot initialize HTTP transport: %v", err)
+			}
+
+			// create Jaeger tracer
+			t, closer := jaeger.NewTracer(
+				name,
+				jaeger.NewConstSampler(true), // sample all traces
+				jaeger.NewRemoteReporter(transport))
+
+			tracer, traceCloser = t, closer
 		}
 
-		// create Jaeger tracer
-		t, closer := jaeger.NewTracer(
-			name,
-			jaeger.NewConstSampler(true), // sample all traces
-			jaeger.NewRemoteReporter(transport))
-
-		tracer, traceCloser = t, closer
 	}
 
 	// Set the ambient tracer
@@ -324,5 +374,16 @@ func collectMemStats(spanPrefix string) {
 				time.Sleep(intervalDuration)
 			}
 		}
+	}
+}
+
+func getExporter(s string, tracingEndpoint string) (trace.SpanExporter, error) {
+	switch s {
+	case "zipkin":
+		return otelZipkin.New(tracingEndpoint)
+	case "otlp":
+		return otlptracehttp.New(context.TODO(), otlptracehttp.WithEndpointURL(tracingEndpoint))
+	default:
+		return nil, fmt.Errorf("unknown exporter: %s, valid values are 'zipkin' or 'otlp'", s)
 	}
 }

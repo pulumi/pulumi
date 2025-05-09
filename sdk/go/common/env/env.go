@@ -41,6 +41,8 @@ func Global() env.Env {
 // and publicly consumed.
 var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and commands.")
 
+var OpentelemetryTracing = env.String("OPENTELEMETRY_INSTRUMENTATION", "Switch opentracing default instrumentation to opentelemetry with the given exporter, supported values are 'zipkin', 'otlp'")
+
 var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi.")
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
