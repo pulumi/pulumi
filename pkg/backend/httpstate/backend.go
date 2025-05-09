@@ -1512,7 +1512,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.copilotFeatureEnabled(ctx, op.Opts.Display, apitype.CopilotExplainPreviewV1) {
+	if b.copilotFeatureEnabled(ctx, op.Opts.Display, apitype.CopilotSummarizeErrorV1) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)
