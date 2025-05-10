@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Add new provider interface to `pulumi.provider.experimental.provider`

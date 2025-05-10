@@ -175,7 +175,7 @@ func TestStackOutputsResourceErrorPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider-py")},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
@@ -1368,7 +1368,7 @@ func TestDeletedWithPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider-py")},
 		},
 		Quick: true,
 	})
@@ -1458,7 +1458,8 @@ func TestParameterizedPython(t *testing.T) {
 	err = os.RemoveAll(filepath.Join("python", "parameterized", "sdk"))
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "package", "gen-sdk", "../../../testprovider", "pkg", "--language", "python", "--local")
+	_, _ = e.RunCommand("pulumi", "package", "gen-sdk",
+		"../../../testprovider-py", "pkg", "--language", "python", "--local")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "parameterized"),
@@ -1466,7 +1467,7 @@ func TestParameterizedPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python"),
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider-py")},
 		},
 	})
 }
