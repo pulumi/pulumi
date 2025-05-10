@@ -49,6 +49,11 @@ const testData: {
         expectedJSON: `{"bar":"don't tell"}`,
         expectedObject: { bar: "don't tell" },
     },
+    {
+        key: "phonenumber",
+        expectedJSON: "+441234567890",
+        expectedObject: "+441234567890",
+    }
 ];
 
 for (const test of testData) {

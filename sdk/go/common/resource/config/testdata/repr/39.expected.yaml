@@ -6,7 +6,7 @@ paths:
       test.Key: value
     string: '{"test.Key":"value"}'
     redacted: '{"test.Key":"value"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAB7/gBsAAQh0ZXN0LktleQZzdHJpbmcMBwAFdmFsdWU=
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAe/4IbAAEIdGVzdC5LZXkGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:nested["test.Key"]:
@@ -16,3 +16,4 @@ paths:
     object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: false
+    type: 1

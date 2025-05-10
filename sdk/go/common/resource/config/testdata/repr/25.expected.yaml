@@ -6,13 +6,14 @@ paths:
       inner: true
     string: '{"inner":true}'
     redacted: '{"inner":true}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABT/gBEAAQVpbm5lcgRib29sAgIAAQ==
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAU/4IRAAEFaW5uZXIEYm9vbAICAAE=
     secure: false
     isObject: true
   my:outer.inner:
-    value: "true"
+    value: true
     string: "true"
     redacted: "true"
-    object: ERAABnN0cmluZwwGAAR0cnVl
+    object: CxAABGJvb2wCAgAB
     secure: false
     isObject: false
+    type: 4

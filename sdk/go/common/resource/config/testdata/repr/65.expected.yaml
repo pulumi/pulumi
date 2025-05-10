@@ -6,13 +6,14 @@ paths:
     - false
     string: '[false]'
     redacted: '[false]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAADv+CCwABBGJvb2wCAgAA
+    object: HBAADltdaW50ZXJmYWNlIHt9fwIBAv+AAAEQAAAO/4ALAAEEYm9vbAICAAA=
     secure: false
     isObject: true
   my:testKey[0]:
-    value: "false"
+    value: false
     string: "false"
     redacted: "false"
-    object: EhAABnN0cmluZwwHAAVmYWxzZQ==
+    object: CxAABGJvb2wCAgAA
     secure: false
     isObject: false
+    type: 4

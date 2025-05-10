@@ -9,7 +9,7 @@ paths:
     - - nested: value
     string: '["a","b","c",[{"nested":"value"}]]'
     redacted: '["a","b","c",[{"nested":"value"}]]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAf/+CfAAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjDltdaW50ZXJmYWNlIHt9/4InAAEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge31/BAEC/4AAAQwBEAAAHP+AGQABBm5lc3RlZAZzdHJpbmcMBwAFdmFsdWU=
+    object: HBAADltdaW50ZXJmYWNlIHt9fwIBAv+AAAEQAAD/gP+AfQAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjDltdaW50ZXJmYWNlIHt9/4AoAAEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gQQBAv+CAAEMARAAABz/ghkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[0]:
@@ -19,6 +19,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFh
     secure: false
     isObject: false
+    type: 1
   my:name[1]:
     value: b
     string: b
@@ -26,6 +27,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFi
     secure: false
     isObject: false
+    type: 1
   my:name[2]:
     value: c
     string: c
@@ -33,12 +35,13 @@ paths:
     object: DhAABnN0cmluZwwDAAFj
     secure: false
     isObject: false
+    type: 1
   my:name[3]:
     value:
     - nested: value
     string: '[{"nested":"value"}]'
     redacted: '[{"nested":"value"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAR/+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABz/gBkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
+    object: HBAADltdaW50ZXJmYWNlIHt9fwIBAv+AAAEQAABI/4AoAAEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gQQBAv+CAAEMARAAABz/ghkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[3][0]:
@@ -46,7 +49,7 @@ paths:
       nested: value
     string: '{"nested":"value"}'
     redacted: '{"nested":"value"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABz/gBkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAc/4IZAAEGbmVzdGVkBnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: true
   my:name[3][0].nested:
@@ -56,3 +59,4 @@ paths:
     object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: false
+    type: 1

@@ -80,6 +80,7 @@ func getCmdBin(loc *string, bin, def string) (string, error) {
 			}
 		}
 	}
+	fmt.Printf("Using `%s` binary at `%s`\n", bin, *loc)
 	return *loc, nil
 }
 

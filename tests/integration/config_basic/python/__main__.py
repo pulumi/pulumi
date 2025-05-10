@@ -43,6 +43,11 @@ test_data = [
         'key': 'foo',
         'expected_json': '{"bar":"don\'t tell"}',
         'expected_object': { 'bar': "don't tell" }
+    },
+    {
+        'key': 'phonenumber',
+        'expected_json': '+441234567890',
+        'expected_object': '+441234567890',
     }
 ]
 
