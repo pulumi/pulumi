@@ -153,7 +153,9 @@ func pclGenerateProject(
 ) (hcl.Diagnostics, error) {
 	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
 	// We always try to copy the source directory to the target directory even if binding failed
-	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
+	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory, func(fi os.FileInfo) bool {
+		return true
+	})
 	// And then we return the combined diagnostics and errors
 	var err error
 	if bindErr != nil || copyErr != nil {
@@ -258,8 +260,8 @@ func runConvert(
 
 			// copy all non-PCL files from the source directory to the target directory
 			// such that any assets are copied over, excluding the Pulumi.yaml project file
-			err = aferoUtil.CopyDirWhen(afero.NewOsFs(), sourceDirectory, targetDirectory,
-				func(file afero.File) bool {
+			err = aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory,
+				func(file os.FileInfo) bool {
 					return file.Name() != "Pulumi.yaml" &&
 						path.Ext(file.Name()) != ".pp"
 				})

@@ -22,14 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCopyFileWhenWorks(t *testing.T) {
+func TestCopyDirWorksWithFilters(t *testing.T) {
 	t.Parallel()
 	content := []byte("hello world")
 	fs := afero.NewMemMapFs()
 	err := afero.WriteFile(fs, "/src/file.txt", content, 0o644)
 	assert.NoError(t, err)
 	// filter always returns false so nothing is copied
-	err = CopyWhen(fs, "/src/file.txt", "/dst/file.txt", func(f afero.File) bool {
+	err = CopyDir(fs, "/src", "/dst", func(f os.FileInfo) bool {
 		return false
 	})
 
@@ -39,7 +39,7 @@ func TestCopyFileWhenWorks(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	// now copy the file with a filter that always returns true
-	err = CopyWhen(fs, "/src/file.txt", "/dst/file.txt", func(f afero.File) bool {
+	err = CopyDir(fs, "/src", "/dst", func(f os.FileInfo) bool {
 		return true
 	})
 

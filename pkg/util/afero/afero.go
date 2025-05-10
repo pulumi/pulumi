@@ -23,7 +23,7 @@ import (
 )
 
 // Copies all file and directories from src to dst that match the filter
-func CopyDirWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) error {
+func CopyDir(fs afero.Fs, src, dst string, filter func(os.FileInfo) bool) error {
 	entries, err := afero.ReadDir(fs, src)
 	if err != nil {
 		return err
@@ -37,11 +37,14 @@ func CopyDirWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) err
 		destPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			if err := CopyDirWhen(fs, sourcePath, destPath, filter); err != nil {
+			if err := CopyDir(fs, sourcePath, destPath, filter); err != nil {
 				return err
 			}
 		} else {
-			if err := CopyWhen(fs, sourcePath, destPath, filter); err != nil {
+			if filter != nil && !filter(entry) {
+				continue
+			}
+			if err := Copy(fs, sourcePath, destPath); err != nil {
 				return err
 			}
 		}
@@ -49,24 +52,19 @@ func CopyDirWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) err
 	return nil
 }
 
-// Copies a file from src to dst if the filter returns true
-func CopyWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) error {
-	in, err := fs.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	if filter != nil && !filter(in) {
-		// skip copying if the file doesn't pass the filter
-		return nil
-	}
-
+// Copies a file from src to dst
+func Copy(fs afero.Fs, src, dst string) error {
 	out, err := fs.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
+
+	in, err := fs.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
 
 	_, err = io.Copy(out, in)
 	if err != nil {
@@ -74,18 +72,4 @@ func CopyWhen(fs afero.Fs, src, dst string, filter func(afero.File) bool) error 
 	}
 
 	return nil
-}
-
-// CopyDir copies all files and directories from src to dst
-func CopyDir(fs afero.Fs, src, dst string) error {
-	return CopyDirWhen(fs, src, dst, func(file afero.File) bool {
-		return true
-	})
-}
-
-// Copy copies a file from src to dst
-func Copy(fs afero.Fs, src, dst string) error {
-	return CopyWhen(fs, src, dst, func(file afero.File) bool {
-		return true
-	})
 }
