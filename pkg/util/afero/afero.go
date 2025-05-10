@@ -36,14 +36,15 @@ func CopyDir(fs afero.Fs, src, dst string, filter func(os.FileInfo) bool) error 
 		sourcePath := filepath.Join(src, entry.Name())
 		destPath := filepath.Join(dst, entry.Name())
 
+		if filter != nil && !filter(entry) {
+			continue
+		}
+
 		if entry.IsDir() {
 			if err := CopyDir(fs, sourcePath, destPath, filter); err != nil {
 				return err
 			}
 		} else {
-			if filter != nil && !filter(entry) {
-				continue
-			}
 			if err := Copy(fs, sourcePath, destPath); err != nil {
 				return err
 			}

@@ -262,6 +262,21 @@ func runConvert(
 			// such that any assets are copied over, excluding the Pulumi.yaml project file
 			err = aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory,
 				func(file os.FileInfo) bool {
+					if file.IsDir() {
+						sourceAbsPath, err := filepath.Abs(filepath.Join(sourceDirectory, file.Name()))
+						if err != nil {
+							return false
+						}
+
+						targetAbsPath, err := filepath.Abs(targetDirectory)
+						if err != nil {
+							return false
+						}
+						// if the target directory is a subdirectory of the source directory,
+						// skip copying it over
+						return sourceAbsPath != targetAbsPath
+					}
+
 					return file.Name() != "Pulumi.yaml" &&
 						path.Ext(file.Name()) != ".pp"
 				})
