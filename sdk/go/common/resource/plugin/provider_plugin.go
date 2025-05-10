@@ -1364,9 +1364,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 	return CreateResponse{
-		ID:         id,
-		Properties: outs,
-		Status:     resourceStatus,
+		ID:                  id,
+		Properties:          outs,
+		Status:              resourceStatus,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, resourceError
 }
 
