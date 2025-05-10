@@ -1006,6 +1006,21 @@ type PluginSpec struct {
 
 type PluginVersionNotFoundError error
 
+// registryNameRegex matches strings of the form:
+//
+//	package
+//	publisher/package
+//	source/publisher/package
+//	package@version
+//	publisher/package@version
+//	source/publisher/package@version
+//
+// Here source, publisher and package must match [a-z0-9][a-z0-9-]* and version can be any
+// string.
+var registryNameRegex = sync.OnceValue(func() *regexp.Regexp {
+	return regexp.MustCompile(`^(([a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*(@.*)?$`)
+})
+
 var urlRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
 })
@@ -1058,6 +1073,10 @@ func parsePluginSpec(
 		return parsePluginSpecFromURL(ctx, source, kind)
 	}
 
+	if registryNameRegex().MatchString(source) && kind == apitype.ResourcePlugin {
+		return parsePluginSpecFromRegistry(ctx, source)
+	}
+
 	return parsePluginSpecFromName(ctx, source, kind)
 }
 
@@ -1067,6 +1086,119 @@ func (inference *parsePluginSpecInference) parseVersion(spec string, parse func(
 		return spec[:i], parse(spec[i+1:])
 	}
 	return spec, nil
+}
+
+type registry interface {
+	GetPackage(ctx context.Context, name string, version *semver.Version) (apitype.PackageMetadata, error)
+	SearchByName(ctx context.Context, name string) func(func(apitype.PackageMetadata, error) bool)
+}
+
+func parsePluginSpecFromRegistry(
+	ctx context.Context, spec string,
+) (PluginSpec, parsePluginSpecInference, error) {
+	var version *semver.Version
+	var inference parsePluginSpecInference
+	spec, err := inference.parseVersion(spec, func(versionStr string) error {
+		v, err := semver.ParseTolerant(versionStr)
+		if err != nil {
+			return fmt.Errorf("VERSION must be valid semver: %s", versionStr)
+		}
+		version = &v
+		return nil
+	})
+	if err != nil {
+		return PluginSpec{}, inference, err
+	}
+
+	var registry registry
+
+	pluginFromMeta := func(meta apitype.PackageMetadata) (PluginSpec, parsePluginSpecInference, error) {
+		return PluginSpec{
+			Name:              meta.Name,
+			Kind:              apitype.ResourcePlugin,
+			Version:           &meta.Version,
+			PluginDownloadURL: "registry:" + meta.Source + "/" + meta.Publisher + "/" + meta.Name,
+		}, inference, nil
+	}
+
+	parts := strings.Split(spec, "/")
+	switch len(parts) {
+	case 3:
+		// If the version was specified also, we don't need to do
+		// anything. Otherwise, we need to resolve the latest version.
+		if version == nil {
+			meta, err := registry.GetPackage(ctx, spec, nil)
+			if err != nil {
+				return PluginSpec{}, inference, fmt.Errorf("could not get the latest version of %s: %w", spec, err)
+			}
+			return pluginFromMeta(meta)
+		}
+
+		return PluginSpec{
+			Name:              parts[2],
+			Kind:              apitype.ResourcePlugin,
+			Version:           version,
+			PluginDownloadURL: "registry:" + spec,
+		}, inference, nil
+	case 2:
+		// First check on "private"
+		pkg, err := registry.GetPackage(ctx, "private/"+spec, version)
+		if err == nil {
+			return pluginFromMeta(pkg)
+		} else if err != nil && !isNotFound(err) {
+			return PluginSpec{}, inference, fmt.Errorf("unable to check on private/%s: %w", spec, err)
+		}
+
+		// Then check on "pulumi"
+		pkg, err = registry.GetPackage(ctx, "pulumi/"+spec, version)
+		if err == nil {
+			return pluginFromMeta(pkg)
+		} else if !isNotFound(err) {
+			return PluginSpec{}, inference, fmt.Errorf("unable to check on pulumi/%s: %w", spec, err)
+		}
+
+		// Both "private" and "pulumi" didn't exist, so the spec is invalid.
+		return PluginSpec{}, inference, fmt.Errorf("could not find a package for %s", spec)
+	case 1:
+		var privatePackageMetadata, pulumiPackageMetadata *apitype.PackageMetadata
+		var retErr error
+		query := registry.SearchByName(ctx, spec)
+		query(func(meta apitype.PackageMetadata, err error) (_continue bool) {
+			if err != nil {
+				retErr = err
+				return false
+			}
+
+			if meta.Source == "private" && privatePackageMetadata == nil {
+				privatePackageMetadata = &meta
+				return true
+			}
+			if meta.Source == "pulumi" && meta.Publisher == "pulumi" {
+				pulumiPackageMetadata = &meta
+				return true
+			}
+
+			// meta didn't match, so keep going
+			return true
+		})
+		if retErr != nil {
+			return PluginSpec{}, inference, err
+		}
+		if privatePackageMetadata != nil {
+			return pluginFromMeta(*privatePackageMetadata)
+		}
+		if pulumiPackageMetadata != nil {
+			return pluginFromMeta(*pulumiPackageMetadata)
+		}
+		var versionStr string
+		if version != nil {
+			versionStr = "@" + version.String()
+		}
+		return PluginSpec{}, inference, fmt.Errorf("%s%s does not match a registry package", spec, versionStr)
+	default:
+		return PluginSpec{}, inference,
+			fmt.Errorf("invalid identifier, registry identifiers must be [[SOURCE/]VERSION/]NAME[@VERSION]: %s", spec)
+	}
 }
 
 func parsePluginSpecFromURL(
