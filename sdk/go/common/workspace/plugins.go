@@ -1142,7 +1142,7 @@ func parsePluginSpecFromName(
 	spec, err := inference.parseVersion(spec, func(versionStr string) error {
 		v, err := semver.ParseTolerant(versionStr)
 		if err != nil {
-			return fmt.Errorf("VERSION must be valid semver: %w", err)
+			return fmt.Errorf("VERSION must be valid semver: %s", versionStr)
 		}
 		version = &v
 		return nil
