@@ -241,6 +241,19 @@ class ProviderServicer(ResourceProviderServicer):
         parent = None
         if not _empty_as_none(request.parent):
             parent = DependencyResource(request.parent)
+
+        deleted_with = None
+        if request.deletedWith != "":
+            deleted_with = _create_provider_resource(request.deletedWith)
+
+        custom_timeouts = None
+        if request.customTimeouts:
+            pulumi.resource.CustomTimeouts(
+                request.customTimeouts.create,
+                request.customTimeouts.update,
+                request.customTimeouts.delete,
+            )
+
         return pulumi.ResourceOptions(
             aliases=list(request.aliases),
             depends_on=[DependencyResource(urn) for urn in request.dependencies],
@@ -250,6 +263,11 @@ class ProviderServicer(ResourceProviderServicer):
                 for pkg, ref in request.providers.items()
             },
             parent=parent,
+            custom_timeouts=custom_timeouts,
+            ignore_changes=list(request.ignoreChanges),
+            replace_on_changes=list(request.replaceOnChanges),
+            retain_on_delete=request.retainOnDelete,
+            deleted_with=deleted_with,
         )
 
     async def _construct_response(
