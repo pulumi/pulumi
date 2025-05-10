@@ -15,8 +15,6 @@
 import ast
 import builtins
 import collections
-from dataclasses import dataclass
-from enum import Enum
 import importlib.resources
 import inspect
 import json
@@ -25,6 +23,8 @@ import types
 import typing
 from collections import abc
 from collections.abc import Awaitable
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from types import GenericAlias
 from typing import (  # type: ignore
@@ -180,6 +180,9 @@ class InvalidListTypeError(Exception):
         super().__init__(
             f"list types must specify a type argument, got '{arg.__name__}' for '{typ.__name__}.{property_name}'"
         )
+
+
+class DependencyError(Exception): ...
 
 
 class AnalyzeResult(TypedDict):
@@ -560,51 +563,17 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            type_string = getattr(arg, "pulumi_type", None)
-            if not type_string:
-                mod = arg.__module__.split(".")[0]
-                raise Exception(
-                    f"Can not determine resource reference for type '{arg.__name__}' used in '{typ.__name__}.{name}': "
-                    + f"'{arg.__name__}.pulumi_type' is not defined. This may be due to an outdated version of '{mod}'."
-                )
-            parts = type_string.split(":")
-            if len(parts) != 3:
-                raise Exception(
-                    f"invalid type string '{type_string}' for type '{arg}' used in '{typ.__name__}.{name}'"
-                )
-            package_name = parts[0]
+            type_string, package_name = get_package_name(arg, typ, name)
             try:
-                root_mod = arg.__module__.split(".")[0]
-                pluginJSON = (
-                    importlib.resources.files(root_mod)
-                    .joinpath("pulumi-plugin.json")
-                    .open("r")
-                    .read()
-                )
-                plugin = json.loads(pluginJSON)
-                dep = Dependency(plugin["name"], plugin["version"])
-                if "server" in plugin:
-                    dep.downloadURL = plugin["server"]
-                if "parameterization" in plugin:
-                    p = plugin["parameterization"]
-                    dep.parameterization = Parameterization(
-                        p["name"], p["version"], p["value"]
-                    )
+                dep = get_dependency_for_type(arg)
                 self.dependencies.append(dep)
                 return PropertyDefinition(
                     ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
                     optional=optional,
                     description=self.get_docstring(typ, name),
                 )
-            except FileNotFoundError as e:
-                raise Exception(
-                    f"Could not load pulumi-plugin.json for package '{package_name}'"
-                ) from e
-            except json.JSONDecodeError as e:
-                raise Exception(
-                    f"Could not parse pulumi-plugin.json for package '{package_name}'"
-                ) from e
-
+            except DependencyError as e:
+                raise Exception(f"{package_name}: {str(e)}")
         elif is_union(arg):
             raise Exception(
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
@@ -746,6 +715,45 @@ class Analyzer:
             pass
 
         return self.docstrings.get(typ.__name__, {}).get(name, None)
+
+
+def get_package_name(arg: type, typ: type, name: str) -> tuple[str, str]:
+    type_string = getattr(arg, "pulumi_type", None)
+    if not type_string:
+        mod = arg.__module__.split(".")[0]
+        raise Exception(
+            f"Can not determine resource reference for type '{arg.__name__}' used in '{typ.__name__}.{name}': "
+            + f"'{arg.__name__}.pulumi_type' is not defined. This may be due to an outdated version of '{mod}'."
+        )
+    parts = type_string.split(":")
+    if len(parts) != 3:
+        raise Exception(
+            f"invalid type string '{type_string}' for type '{arg}' used in '{typ.__name__}.{name}'"
+        )
+    return type_string, parts[0]
+
+
+def get_dependency_for_type(arg: type) -> Dependency:
+    try:
+        root_mod = arg.__module__.split(".")[0]
+        pluginJSON = (
+            importlib.resources.files(root_mod)
+            .joinpath("pulumi-plugin.json")
+            .open("r")
+            .read()
+        )
+        plugin = json.loads(pluginJSON)
+        dep = Dependency(plugin["name"], plugin["version"])
+        if "server" in plugin:
+            dep.downloadURL = plugin["server"]
+        if "parameterization" in plugin:
+            p = plugin["parameterization"]
+            dep.parameterization = Parameterization(p["name"], p["version"], p["value"])
+        return dep
+    except FileNotFoundError as e:
+        raise DependencyError("Could not load pulumi-plugin.json") from e
+    except json.JSONDecodeError as e:
+        raise DependencyError("Could not parse pulumi-plugin.json for package") from e
 
 
 def is_in_venv(path: Path):
