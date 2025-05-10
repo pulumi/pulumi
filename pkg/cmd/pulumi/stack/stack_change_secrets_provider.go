@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -120,7 +121,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	currentProjectStack, err := LoadProjectStack(project, currentStack)
+	currentProjectStack, err := LoadProjectStack(project, currentStack, cmdutil.Diag())
 	if err != nil {
 		return err
 	}
@@ -149,7 +150,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
 	if err := CreateSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
-		false /*creatingStack*/); err != nil {
+		false /*creatingStack*/, cmdutil.Diag()); err != nil {
 		return err
 	}
 
@@ -163,6 +164,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		currentStack,
 		currentProjectStack,
 		decrypter,
+		cmdutil.Diag(),
 	)
 }
 
@@ -172,10 +174,10 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
-	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
+	currentConfig *workspace.ProjectStack, decrypter config.Decrypter, sink diag.Sink,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := LoadProjectStack(project, currentStack)
+	reloadedProjectStack, err := LoadProjectStack(project, currentStack, sink)
 	if err != nil {
 		return err
 	}
