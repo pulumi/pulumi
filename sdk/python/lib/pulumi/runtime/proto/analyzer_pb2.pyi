@@ -61,8 +61,8 @@ REMEDIATE: EnforcementLevel.ValueType  # 3
 global___EnforcementLevel = EnforcementLevel
 
 @typing_extensions.final
-class AnalyzerStackConfiguration(google.protobuf.message.Message):
-    """`AnalyzerStackConfiguration` is the message for the stack configuration of the stack being analyzed."""
+class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
+    """`AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -94,7 +94,19 @@ class AnalyzerStackConfiguration(google.protobuf.message.Message):
     def HasField(self, field_name: typing_extensions.Literal["config", b"config"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "dry_run", b"dry_run", "organization", b"organization", "project", b"project", "stack", b"stack"]) -> None: ...
 
-global___AnalyzerStackConfiguration = AnalyzerStackConfiguration
+global___AnalyzerStackConfigureRequest = AnalyzerStackConfigureRequest
+
+@typing_extensions.final
+class AnalyzerStackConfigureResponse(google.protobuf.message.Message):
+    """`AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___AnalyzerStackConfigureResponse = AnalyzerStackConfigureResponse
 
 @typing_extensions.final
 class AnalyzerHandshakeRequest(google.protobuf.message.Message):
@@ -105,7 +117,6 @@ class AnalyzerHandshakeRequest(google.protobuf.message.Message):
     ENGINE_ADDRESS_FIELD_NUMBER: builtins.int
     ROOT_DIRECTORY_FIELD_NUMBER: builtins.int
     PROGRAM_DIRECTORY_FIELD_NUMBER: builtins.int
-    STACK_CONFIGURATION_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the analyzer. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -121,27 +132,19 @@ class AnalyzerHandshakeRequest(google.protobuf.message.Message):
     in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
     number), this field will be empty.
     """
-    @property
-    def stack_configuration(self) -> global___AnalyzerStackConfiguration:
-        """The stack configuration of the stack being analyzed, if any. Analyzers may be started without an
-        associated stack, for example to query GetPluginInfo or GetAnalyzerInfo.
-        """
     def __init__(
         self,
         *,
         engine_address: builtins.str = ...,
         root_directory: builtins.str | None = ...,
         program_directory: builtins.str | None = ...,
-        stack_configuration: global___AnalyzerStackConfiguration | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "_stack_configuration", b"_stack_configuration", "program_directory", b"program_directory", "root_directory", b"root_directory", "stack_configuration", b"stack_configuration"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "_stack_configuration", b"_stack_configuration", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory", "stack_configuration", b"stack_configuration"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "engine_address", b"engine_address", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_program_directory", b"_program_directory"]) -> typing_extensions.Literal["program_directory"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_root_directory", b"_root_directory"]) -> typing_extensions.Literal["root_directory"] | None: ...
-    @typing.overload
-    def WhichOneof(self, oneof_group: typing_extensions.Literal["_stack_configuration", b"_stack_configuration"]) -> typing_extensions.Literal["stack_configuration"] | None: ...
 
 global___AnalyzerHandshakeRequest = AnalyzerHandshakeRequest
 

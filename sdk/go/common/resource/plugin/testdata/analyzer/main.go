@@ -19,6 +19,10 @@ type analyzer struct {
 }
 
 func (a *analyzer) Handshake(ctx context.Context, req *pulumirpc.AnalyzerHandshakeRequest) (*pulumirpc.AnalyzerHandshakeResponse, error) {
+	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
+}
+
+func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.StackConfigureRequest) (*pulumirpc.StackConfigureResponse, error) {
 	if req.StackConfiguration.Stack != "test-stack" {
 		return nil, fmt.Errorf("expected stack to be test-stack, got %s", req.StackConfiguration.Stack)
 	}

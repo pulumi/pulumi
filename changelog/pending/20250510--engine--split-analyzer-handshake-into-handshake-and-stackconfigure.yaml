@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: engine
+  description: Split analyzer handshake into handshake and stackconfigure
