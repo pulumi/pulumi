@@ -1155,9 +1155,23 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
 }
 
-func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
+// IsCopilotFeatureEnabled implements the "explainer" interface.
+// Checks that the backend supports the CopilotExplainPreviewV1 capability.
+func (b *cloudBackend) IsCopilotFeatureEnabled(ctx context.Context, opts display.Options) bool {
+	return b.copilotFeatureEnabled(ctx, opts, apitype.CopilotExplainPreviewV1)
+}
+
+func (b *cloudBackend) copilotFeatureEnabled(ctx context.Context, opts display.Options,
+	requiredCopilotCapability apitype.APICapability,
+) bool {
 	// Have copilot features been requested by specifying the --copilot flag to the cli
 	if !opts.ShowCopilotFeatures {
+		return false
+	}
+
+	// Check that the backend supports the copilot capabilities requested
+	if !b.Capabilities(ctx).Supports(requiredCopilotCapability) {
+		logging.V(7).Infof("Copilot feature %q is not supported by the backend", requiredCopilotCapability)
 		return false
 	}
 
@@ -1498,7 +1512,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.IsCopilotFeatureEnabled(op.Opts.Display) {
+	if b.copilotFeatureEnabled(ctx, op.Opts.Display, apitype.CopilotSummarizeErrorV1) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)
