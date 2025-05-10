@@ -125,16 +125,42 @@ func TestImportOption(t *testing.T) {
 	provURN := p.NewProviderURN("pkgA", "default", "")
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
-	// Run the initial update. The import should fail due to a mismatch in inputs between the program and the
-	// actual resource state.
+	// Run the initial update. The import should succeed and update the state to the differing goal state.
 	project := p.GetProject()
-	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.ErrorContains(t, err, "step application failed: inputs to import do not match the existing resource")
+	expectedOutputs = inputs
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
+			seenImport := false
+			seenUpdate := false
+			for _, entry := range entries {
+				switch urn := entry.Step.URN(); urn {
+				case provURN:
+					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
+				case resURN:
+					if seenImport {
+						assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
+						seenUpdate = entry.Kind == JournalEntrySuccess
+					} else {
+						assert.Equal(t, deploy.OpImport, entry.Step.Op())
+						seenImport = entry.Kind == JournalEntrySuccess
+					}
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			assert.True(t, seenUpdate, "expected to see an update after the import")
+			return err
+		}, "0")
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, expectedOutputs, snap.Resources[1].Outputs)
 
-	// Run a second update after fixing the inputs. The import should succeed.
+	// Run another update (from zero starting snapshot) after matching the inputs to the cloud. The import
+	// should succeed, and just import the resource (i.e. we don't bother Same'ing it).
 	inputs["foo"] = resource.NewStringProperty("bar")
 	expectedOutputs = readOutputs
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
