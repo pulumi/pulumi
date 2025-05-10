@@ -99,6 +99,28 @@ function deserialize_pulumirpc_AnalyzerInfo(buffer_arg) {
   return pulumi_analyzer_pb.AnalyzerInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_AnalyzerStackConfigureRequest(arg) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzerStackConfigureRequest)) {
+    throw new Error('Expected argument of type pulumirpc.AnalyzerStackConfigureRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AnalyzerStackConfigureRequest(buffer_arg) {
+  return pulumi_analyzer_pb.AnalyzerStackConfigureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_AnalyzerStackConfigureResponse(arg) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzerStackConfigureResponse)) {
+    throw new Error('Expected argument of type pulumirpc.AnalyzerStackConfigureResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AnalyzerStackConfigureResponse(buffer_arg) {
+  return pulumi_analyzer_pb.AnalyzerStackConfigureResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ConfigureAnalyzerRequest(arg) {
   if (!(arg instanceof pulumi_analyzer_pb.ConfigureAnalyzerRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConfigureAnalyzerRequest');
@@ -227,6 +249,20 @@ handshake: {
     requestDeserialize: deserialize_pulumirpc_AnalyzerHandshakeRequest,
     responseSerialize: serialize_pulumirpc_AnalyzerHandshakeResponse,
     responseDeserialize: deserialize_pulumirpc_AnalyzerHandshakeResponse,
+  },
+  // `ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+// This method is not always called, for example if the engine is just booting the analyzer up to call
+// GetAnalyzerInfo.
+configureStack: {
+    path: '/pulumirpc.Analyzer/ConfigureStack',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_analyzer_pb.AnalyzerStackConfigureRequest,
+    responseType: pulumi_analyzer_pb.AnalyzerStackConfigureResponse,
+    requestSerialize: serialize_pulumirpc_AnalyzerStackConfigureRequest,
+    requestDeserialize: deserialize_pulumirpc_AnalyzerStackConfigureRequest,
+    responseSerialize: serialize_pulumirpc_AnalyzerStackConfigureResponse,
+    responseDeserialize: deserialize_pulumirpc_AnalyzerStackConfigureResponse,
   },
 };
 
