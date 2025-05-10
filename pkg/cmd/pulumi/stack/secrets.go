@@ -36,7 +36,7 @@ import (
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.
 func CreateSecretsManagerForExistingStack(
-	_ context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -59,7 +59,7 @@ func CreateSecretsManagerForExistingStack(
 	if err != nil {
 		return err
 	}
-	ps, err := LoadProjectStack(project, stack)
+	ps, err := stack.Load(ctx, project, ConfigFile)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func CreateSecretsManagerForExistingStack(
 
 	// Handle if the configuration changed any of EncryptedKey, etc
 	if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
-		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
+		if err = stack.Save(ctx, ps); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -92,6 +92,7 @@ func CreateSecretsManagerForExistingStack(
 // Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
 // fall back to a default defined by the backend that will manage the stack.
 func createSecretsManagerForNewStack(
+	ctx context.Context,
 	ws pkgWorkspace.Context,
 	b backend.Backend,
 	stackRef backend.StackReference,
@@ -107,9 +108,14 @@ func createSecretsManagerForNewStack(
 	if err != nil {
 		ps = &workspace.ProjectStack{}
 	} else {
-		ps, err = loadProjectStackByReference(project, stackRef)
-		if err != nil {
+		s, err := b.GetStack(ctx, stackRef)
+		if err != nil || s == nil {
 			ps = &workspace.ProjectStack{}
+		} else {
+			ps, err = s.Load(ctx, project, ConfigFile)
+			if err != nil || ps == nil {
+				ps = &workspace.ProjectStack{}
+			}
 		}
 	}
 
