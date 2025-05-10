@@ -14,6 +14,10 @@
 
 package apitype
 
+import (
+	"time"
+)
+
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
 // breaking changes.
@@ -43,6 +47,8 @@ type DiagnosticEvent struct {
 	Severity  string `json:"severity"`
 	StreamID  int    `json:"streamID,omitempty"`
 	Ephemeral bool   `json:"ephemeral,omitempty"`
+	// Timestamp is when the diagnostic event was created
+	Timestamp time.Time `json:"timestamp,omitempty"`
 }
 
 // StartDebuggingEvent is emitted to start a debugging session.

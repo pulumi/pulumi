@@ -115,11 +115,16 @@ def error(
     :param Optional[int] stream_id: If provided, associate this message with a stream of other messages.
 
     """
+    # Add timestamp to error messages
+    from datetime import datetime
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamped_msg = f"[{now}] {msg}"
+    
     engine = get_engine()
     if engine is not None:
-        _log(engine, engine_pb2.ERROR, msg, resource, stream_id, ephemeral)
+        _log(engine, engine_pb2.ERROR, timestamped_msg, resource, stream_id, ephemeral)
     else:
-        print("error: " + msg, file=sys.stderr)
+        print("error: " + timestamped_msg, file=sys.stderr)
 
 
 def _log(engine, severity, message, resource, stream_id, ephemeral):
