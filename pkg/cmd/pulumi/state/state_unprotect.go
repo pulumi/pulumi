@@ -18,9 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -36,6 +38,7 @@ func newStateUnprotectCommand() *cobra.Command {
 	var unprotectAll bool
 	var stack string
 	var yes bool
+	var urnArray []string
 
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN]",
@@ -57,6 +60,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return unprotectAllResources(ctx, ws, stack, showPrompt)
 			}
 
+			// If --urn flags were provided, use those
+			if len(urnArray) > 0 {
+				return unprotectMultipleResources(ctx, ws, stack, urnArray, showPrompt)
+			}
+
+			// Otherwise, use the positional argument or interactive selection
 			var urn resource.URN
 
 			if len(args) != 1 {
@@ -80,6 +89,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().StringArrayVarP(
+		&urnArray, "urn", "u", []string{},
+		"Resource URN to unprotect. Multiple resources can be specified using --urn urn1 --urn urn2")
 
 	return cmd
 }
@@ -104,6 +116,70 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 	}
 	fmt.Println("All resources unprotected")
 	return nil
+}
+
+// unprotectMultipleResources unprotects multiple resources specified by their URNs.
+func unprotectMultipleResources(
+	ctx context.Context, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+) error {
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+	s, err := cmdStack.RequireStack(
+		ctx,
+		ws,
+		backend.DefaultLoginManager,
+		stackName,
+		cmdStack.OfferNew,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+
+	return TotalStateEdit(ctx, s, showPrompt, opts, func(_ display.Options, snap *deploy.Snapshot) error {
+		if snap == nil {
+			return errors.New("no resources found to unprotect")
+		}
+
+		var errs []string
+		resourceCount := 0
+
+		for _, urnStr := range urns {
+			urn := resource.URN(urnStr)
+			found := false
+
+			for _, res := range snap.Resources {
+				if res.URN == urn {
+					found = true
+					if err := edit.UnprotectResource(snap, res); err != nil {
+						errs = append(errs, fmt.Sprintf("error unprotecting resource %q: %v", urn, err))
+					} else {
+						resourceCount++
+					}
+					break
+				}
+			}
+
+			if !found {
+				errs = append(errs, fmt.Sprintf("No such resource %q exists in the current state", urn))
+			}
+		}
+
+		if resourceCount > 0 {
+			if len(errs) > 0 {
+				fmt.Printf("%d resources unprotected with errors\n", resourceCount)
+			} else {
+				fmt.Printf("%d resources unprotected\n", resourceCount)
+			}
+		}
+
+		if len(errs) > 0 {
+			return errors.New(strings.Join(errs, "\n"))
+		}
+
+		return nil
+	})
 }
 
 func unprotectResource(
