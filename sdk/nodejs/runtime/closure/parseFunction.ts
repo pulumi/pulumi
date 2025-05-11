@@ -747,7 +747,7 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
         functionVars = new Set();
         scopes.push(new Set());
 
-        // If this is a named class, it's name is in scope at the top level of itself.
+        // If this is a named class, its name is in scope at the top level of itself.
         if (className) {
             functionVars.add(className.text);
         }
@@ -756,14 +756,15 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
         node.members.forEach((m) => {
             // make all property assignments or declarations scoped to the class
             if (
-                [typescript.SyntaxKind.PropertyAssignment, typescript.SyntaxKind.PropertyDeclaration].includes(
-                    m.kind,
-                ) &&
-                typeof m.name !== "undefined"
+                (   m.kind === typescript.SyntaxKind.PropertyAssignment ||
+                    m.kind === typescript.SyntaxKind.PropertyDeclaration
+                ) && (
+                    typeof m.name !== "undefined"
+                ) && (
+                    m.name.kind === typescript.SyntaxKind.Identifier
+                )
             ) {
-                if (m.name.kind === typescript.SyntaxKind.Identifier) {
-                    functionVars.add(m.name.text);
-                }
+                functionVars.add(m.name.text);
             }
             walk(m);
         });
