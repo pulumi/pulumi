@@ -76,8 +76,11 @@ config:
 	var p *Project
 	projectStack, err := LoadProjectStackBytes(p, b, "Pulumi.stack.yaml", marshaller, sink)
 	require.NoError(t, err)
-	require.Contains(t, stderr.String(),
-		"warning: No value for configuration keys \"project:a\", \"project:b\", \"project:c\"")
+	require.Contains(t, stderr.String(), "warning: No value for configuration keys")
+	require.Contains(t, stderr.String(), "project:a")
+	require.Contains(t, stderr.String(), "project:b")
+	require.Contains(t, stderr.String(), "project:c")
+	require.NotContains(t, stderr.String(), "project:d")
 	require.Len(t, projectStack.Config, 4)
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue(""))
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))
