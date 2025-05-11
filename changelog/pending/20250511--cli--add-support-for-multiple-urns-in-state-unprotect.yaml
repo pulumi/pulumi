@@ -1,4 +1,4 @@
 changes:
-- type: feat
+- type: enhancement
   scope: cli
-  description: Add support for using multiple URNs with `pulumi state unprotect` via the `--urn` flag
+  description: Add support for specifying multiple URNs as positional arguments with `pulumi state unprotect`, also add interactive selection of URNs

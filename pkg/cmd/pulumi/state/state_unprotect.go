@@ -38,17 +38,16 @@ func newStateUnprotectCommand() *cobra.Command {
 	var unprotectAll bool
 	var stack string
 	var yes bool
-	var urnArray []string
 
 	cmd := &cobra.Command{
-		Use:   "unprotect [resource URN]",
+		Use:   "unprotect [resource URN...]",
 		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resources in a stack's state
+		Long: `Unprotect resource in a stack's state
 
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cmdutil.MaximumNArgs(1),
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -60,26 +59,21 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return unprotectAllResources(ctx, ws, stack, showPrompt)
 			}
 
-			// If --urn flags were provided, use those
-			if len(urnArray) > 0 {
-				return unprotectMultipleResources(ctx, ws, stack, urnArray, showPrompt)
+			// If URN arguments were provided, use those
+			if len(args) > 0 {
+				return unprotectMultipleResources(ctx, ws, stack, args, showPrompt)
 			}
 
-			// Otherwise, use the positional argument or interactive selection
-			var urn resource.URN
-
-			if len(args) != 1 {
-				if !cmdutil.Interactive() {
-					return missingNonInteractiveArg("resource URN")
-				}
-				var err error
-				urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
-				if err != nil {
-					return fmt.Errorf("failed to select resource: %w", err)
-				}
-			} else {
-				urn = resource.URN(args[0])
+			// Otherwise, use interactive selection
+			if !cmdutil.Interactive() {
+				return missingNonInteractiveArg("resource URN")
 			}
+
+			urn, err := getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
+			if err != nil {
+				return fmt.Errorf("failed to select resource: %w", err)
+			}
+
 			return unprotectResource(ctx, ws, stack, urn, showPrompt)
 		},
 	}
@@ -89,9 +83,6 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
-	cmd.Flags().StringArrayVarP(
-		&urnArray, "urn", "u", []string{},
-		"Resource URN to unprotect. Multiple resources can be specified using --urn urn1 --urn urn2")
 
 	return cmd
 }
@@ -179,7 +170,7 @@ func unprotectMultipleResources(
 		}
 
 		return nil
-	})
+	}, nil)
 }
 
 func unprotectResource(
