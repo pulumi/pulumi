@@ -429,7 +429,12 @@ func loadProjectStackFromText(t *testing.T, project *Project, content string, si
 	return LoadProjectStack(project, path, sink)
 }
 
-func loadProjectStackFromJSONText(t *testing.T, project *Project, content string, sink diag.Sink) (*ProjectStack, error) {
+func loadProjectStackFromJSONText(
+	t *testing.T,
+	project *Project,
+	content string,
+	sink diag.Sink,
+) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
 	assert.NoError(t, err)
 	path := tmp.Name()
@@ -1483,6 +1488,7 @@ runtime: yaml`
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
 		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON, sink)
+		require.NoError(t, err)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		stack.Environment = stack.Environment.Append("env")

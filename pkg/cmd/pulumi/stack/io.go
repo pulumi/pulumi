@@ -56,7 +56,11 @@ func GetProjectStackPath(stack backend.Stack) (string, error) {
 	return ConfigFile, nil
 }
 
-func LoadProjectStack(project *workspace.Project, stack backend.Stack, diags diag.Sink) (*workspace.ProjectStack, error) {
+func LoadProjectStack(
+	project *workspace.Project,
+	stack backend.Stack,
+	diags diag.Sink,
+) (*workspace.ProjectStack, error) {
 	return loadProjectStackByReference(project, stack.Ref(), diags)
 }
 
