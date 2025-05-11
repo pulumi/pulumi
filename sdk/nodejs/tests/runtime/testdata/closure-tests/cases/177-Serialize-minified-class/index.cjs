@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
 
 exports.description = "Serialize minified class";
 
-// important thing for this case is that spaces are not required, e.g after class
-// minified JS example obviously triggers a lot of TS complains, which we have to ignore
+// important thing for this case is class expressions, and that spaces are not required, e.g after class
 
 exports.func = () => {
     let z = [];
