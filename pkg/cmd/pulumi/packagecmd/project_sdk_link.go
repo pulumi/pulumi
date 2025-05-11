@@ -609,7 +609,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
 		matches := namespaceRegex.FindStringSubmatch(pluginSpec.PluginDownloadURL)
 		if len(matches) == 2 {
-			spec.Namespace = matches[1]
+			spec.Namespace = strings.ToLower(matches[1])
 		}
 	}
 }
@@ -622,7 +622,9 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginSpec)
 func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil)
+		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -689,7 +691,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if err != nil {
 		return nil, err
 	}
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +709,9 @@ func SchemaFromSchemaSourceValueArgs(
 ) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		pkg, diags, err := schema.BindSpec(spec, nil)
+		pkg, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -753,7 +757,7 @@ func SchemaFromSchemaSourceValueArgs(
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Provider, error) {
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -798,7 +802,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 					// we previously installed a plugin in a different subdirectory of the same repository.
 					// This is why the provider might have failed to start up.  Install the dependencies
 					// and try again.
-					depErr := descriptor.PluginSpec.InstallDependencies(pctx.Base())
+					depErr := descriptor.InstallDependencies(pctx.Base())
 					if depErr != nil {
 						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
 					}

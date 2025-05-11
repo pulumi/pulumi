@@ -55,6 +55,10 @@ type ProviderHandshakeRequest struct {
 
 	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
 	ConfigureWithUrn bool
+
+	// If true the engine supports views and can send an address of the resource status service that
+	// can be used to create or update view resources.
+	SupportsViews bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -237,6 +241,10 @@ type CreateRequest struct {
 	Properties resource.PropertyMap
 	Timeout    float64
 	Preview    bool
+	// The gRPC address of the ResourceStatus service which can be used to create view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
 }
 
 type CreateResponse struct {
@@ -251,6 +259,13 @@ type ReadRequest struct {
 	Type          tokens.Type
 	ID            resource.ID
 	Inputs, State resource.PropertyMap
+	// The gRPC address of the ResourceStatus service which can be used to read view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being read. These will only be populated when the Read call is being made as part
+	// of a refresh operation.
+	OldViews []View
 }
 
 type ReadResponse struct {
@@ -267,6 +282,12 @@ type UpdateRequest struct {
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
+	// The gRPC address of the ResourceStatus service which can be used to update view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being updated.
+	OldViews []View
 }
 
 type UpdateResponse struct {
@@ -281,6 +302,12 @@ type DeleteRequest struct {
 	ID              resource.ID
 	Inputs, Outputs resource.PropertyMap
 	Timeout         float64
+	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views of the resource being deleted.
+	OldViews []View
 }
 
 type DeleteResponse struct {
@@ -811,4 +838,25 @@ type CallResult struct {
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
 	Failures []CheckFailure
+}
+
+// View represents the state of a view resource.
+type View struct {
+	// The type of the view resource.
+	Type tokens.Type
+
+	// The name of the view resource.
+	Name string
+
+	// An optional type of the parent view resource.
+	ParentType tokens.Type
+
+	// An optional name of the parent view resource.
+	ParentName string
+
+	// The view resource's inputs.
+	Inputs resource.PropertyMap
+
+	// The view resource's outputs.
+	Outputs resource.PropertyMap
 }

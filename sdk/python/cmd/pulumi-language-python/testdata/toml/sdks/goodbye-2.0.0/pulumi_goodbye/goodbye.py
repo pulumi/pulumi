@@ -26,10 +26,8 @@ class GoodbyeArgs:
         pass
 
 
+@pulumi.type_token("goodbye:index:Goodbye")
 class Goodbye(pulumi.CustomResource):
-
-    pulumi_type = "goodbye:index:Goodbye"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

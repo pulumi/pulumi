@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testPackageSpec = schema.PackageSpec{
@@ -65,7 +66,9 @@ var testPackageSpec = schema.PackageSpec{
 func getTestPackage(t *testing.T) *schema.Package {
 	t.Helper()
 
-	pkg, err := schema.ImportSpec(testPackageSpec, nil)
+	pkg, err := schema.ImportSpec(testPackageSpec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	assert.NoError(t, err, "could not import the test package spec")
 	return pkg
 }
@@ -112,4 +115,63 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 	expected := "https://pkg.go.dev/github.com/pulumi/pulumi-aws/sdk/go/aws/s3?tab=doc#Bucket"
 	link := d.GetDocLinkForResourceType(pkg, "s3", "Bucket")
 	assert.Equal(t, expected, link)
+}
+
+func TestGetFunctionName(t *testing.T) {
+	t.Parallel()
+	pkg, err := schema.ImportSpec(schema.PackageSpec{
+		Name:    "pkg",
+		Version: "0.0.1",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"pkg:conflict:Resource": {},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"pkg:index:getSomeFunction": {},
+			"pkg:conflict:newResource":  {},
+		},
+	}, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	d := DocLanguageHelper{}
+	d.GeneratePackagesMap(pkg.Reference(), "test", GoPackageInfo{})
+
+	names := map[string]string{}
+	for _, f := range pkg.Functions {
+		names[f.Token] = d.GetFunctionName(f)
+	}
+
+	assert.Equal(t, map[string]string{
+		"pkg:index:getSomeFunction": "GetSomeFunction",
+		// "pkg:conflict:newResource" is renamed to "CreateResource" to avoid
+		// conflicting with the resource constructor for "pkg:conflict:Resource"
+		// (NewResource).
+		"pkg:conflict:newResource": "CreateResource",
+	}, names)
+}
+
+// Calling GetFunctionName may return the wrong result when
+// [DocLanguageHelper.GeneratePackagesMap] is not called, but it shouldn't panic.
+func TestGetFunctionNameWithoutPackageMapDoesNotPanic(t *testing.T) {
+	t.Parallel()
+
+	pkg, err := schema.ImportSpec(schema.PackageSpec{
+		Name:    "pkg",
+		Version: "0.0.1",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"pkg:index:getSomeFunction": {},
+		},
+	}, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	d := DocLanguageHelper{}
+
+	assert.Equal(t, "GetSomeFunction", d.GetFunctionName(pkg.Functions[0]))
 }

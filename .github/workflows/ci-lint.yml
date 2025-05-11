@@ -17,7 +17,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.64.2
+  GOLANGCI_LINT_VERSION: v2.1.6
 
 jobs:
   golangci:
@@ -41,16 +41,13 @@ jobs:
       # The action doesn't have an install-only mode,
       # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --help
 
       - name: Run golangci-lint
-        # Print GitHub Actions-friendly output so that errors get marked
-        # in the pull request.
-        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=colored-line-number
-
+        run: make lint_golang
   tidy:
     name: go mod tidy
     runs-on: ubuntu-22.04
@@ -65,13 +62,6 @@ jobs:
           check-latest: true
       - name: Run go mod tidy
         run: make tidy
-      - name: Fail if go mod not tidy
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error go.mod not tidy"
-            echo "::error Please run 'make tidy'"
-            exit 1
-          fi
 
   gen:
     name: Generate Go SDK
@@ -173,3 +163,27 @@ jobs:
           check-latest: true
       - run: |
           make lint_actions
+
+  pulumi-json:
+    name: Lint pulumi.json
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Ensure Node # We need to install Node.js deps so that biome is available
+        run: |
+          cd sdk/nodejs && make ensure
+      - run: |
+          make lint_pulumi_json

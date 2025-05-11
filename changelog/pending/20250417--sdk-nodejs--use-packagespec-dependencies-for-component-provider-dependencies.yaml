@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Use PackageSpec.Dependencies for component provider dependencies

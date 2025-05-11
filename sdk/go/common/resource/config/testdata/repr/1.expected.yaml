@@ -6,7 +6,7 @@ paths:
       nested: 12321123131
     string: '{"nested":12321123131}'
     redacted: '{"nested":12321123131}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAb/4IYAAEGbmVzdGVkBWludDY0BAcA+wW8ytZ2
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABv/gBgAAQZuZXN0ZWQFaW50NjQEBwD7BbzK1nY=
     secure: false
     isObject: true
   my:parent.nested:

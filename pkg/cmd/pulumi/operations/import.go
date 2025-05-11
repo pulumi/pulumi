@@ -56,8 +56,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -712,7 +710,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
+					pluginSpec, err := workspace.NewPluginSpec(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
@@ -876,57 +874,43 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			wrapper := func(
-				f func(*pcl.Program) (map[string][]byte, hcl.Diagnostics, error),
-			) func(*pcl.Program, schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-				return func(p *pcl.Program, loader schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
-					return f(p)
+			programGenerator := func(
+				program *pcl.Program, loader schema.ReferenceLoader,
+			) (map[string][]byte, hcl.Diagnostics, error) {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return nil, nil, err
 				}
-			}
+				sink := cmdutil.Diag()
 
-			var programGenerator programGeneratorFunc
-			switch proj.Runtime.Name() {
-			case "dotnet":
-				programGenerator = wrapper(dotnet.GenerateProgram)
-			default:
-				programGenerator = func(
-					program *pcl.Program, loader schema.ReferenceLoader,
-				) (map[string][]byte, hcl.Diagnostics, error) {
-					cwd, err := os.Getwd()
-					if err != nil {
-						return nil, nil, err
-					}
-					sink := cmdutil.Diag()
-
-					ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-					if err != nil {
-						return nil, nil, err
-					}
-					defer contract.IgnoreClose(pCtx.Host)
-					programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
-					languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					loaderServer := schema.NewLoaderServer(loader)
-					grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
-					if err != nil {
-						return nil, nil, err
-					}
-					defer contract.IgnoreClose(grpcServer)
-
-					// by default, binding the PCL program for generating import definition is not strict
-					// this is because we might generate unbound variables in the generated code that reference
-					// a parent resource or a provider
-					strict := false
-					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					return files, diagnostics, nil
+				ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+				if err != nil {
+					return nil, nil, err
 				}
+				defer contract.IgnoreClose(pCtx.Host)
+				programInfo := plugin.NewProgramInfo(cwd, cwd, ".", nil)
+				languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				loaderServer := schema.NewLoaderServer(loader)
+				grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(grpcServer)
+
+				// by default, binding the PCL program for generating import definition is not strict
+				// this is because we might generate unbound variables in the generated code that reference
+				// a parent resource or a provider
+				strict := false
+				files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				return files, diagnostics, nil
 			}
 
 			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)

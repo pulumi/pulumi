@@ -204,7 +204,8 @@ func (p *SimpleInvokeProvider) CheckConfig(
 func (p *SimpleInvokeProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	if req.Tok == "simple-invoke:index:myInvoke" {
+	switch req.Tok {
+	case "simple-invoke:index:myInvoke":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
@@ -232,7 +233,37 @@ func (p *SimpleInvokeProvider) Invoke(
 				"result": resource.NewStringProperty(value.StringValue() + " world"),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:unit" {
+	case "simple-invoke:index:myInvokeScalar":
+		value, ok := req.Args["value"]
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "missing value"),
+			}, nil
+		}
+
+		if value.IsComputed() {
+			return plugin.InvokeResponse{
+				// providers should not get computed values (during preview)
+				// since we bail out early in the core SDKs or generated provider SDKs
+				// when we encounter unknowns
+				Failures: makeCheckFailure("value", "value is unknown when calling myInvokeScalar"),
+			}, nil
+		}
+
+		if !value.IsString() {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "is not a string"),
+			}, nil
+		}
+
+		// Single value returns work because SDKs automatically extract single value returns in their
+		// invoke implementations.
+		return plugin.InvokeResponse{
+			Properties: resource.PropertyMap{
+				"result": resource.NewBoolProperty(true),
+			},
+		}, nil
+	case "simple-invoke:index:unit":
 		if len(req.Args) > 0 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
@@ -244,7 +275,7 @@ func (p *SimpleInvokeProvider) Invoke(
 				"result": resource.NewStringProperty("Hello world"),
 			},
 		}, nil
-	} else if req.Tok == "simple-invoke:index:secretInvoke" {
+	case "simple-invoke:index:secretInvoke":
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{

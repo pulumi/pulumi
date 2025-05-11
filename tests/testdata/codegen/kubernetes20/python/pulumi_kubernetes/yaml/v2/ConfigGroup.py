@@ -89,10 +89,8 @@ class ConfigGroupArgs:
         pulumi.set(self, "yaml", value)
 
 
+@pulumi.type_token("kubernetes:yaml/v2:ConfigGroup")
 class ConfigGroup(pulumi.ComponentResource):
-
-    pulumi_type = "kubernetes:yaml/v2:ConfigGroup"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

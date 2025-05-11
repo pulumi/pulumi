@@ -15,7 +15,6 @@
 package lifecycletest
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -30,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +47,7 @@ func (p *testRequiredPolicy) Version() string {
 	return p.version
 }
 
-func (p *testRequiredPolicy) Install(_ context.Context) (string, error) {
+func (p *testRequiredPolicy) Install(_ *plugin.Context) (string, error) {
 	return "", nil
 }
 
@@ -75,12 +75,12 @@ func TestSimpleAnalyzer(t *testing.T) {
 			assert.Equal(t, "test-proj", opts.Project)
 			assert.Equal(t, "test", opts.Stack)
 
-			assert.Equal(t, map[config.Key]string{
-				config.MustMakeKey(opts.Project, "bool"):   "false",
-				config.MustMakeKey(opts.Project, "float"):  "1.5",
-				config.MustMakeKey(opts.Project, "string"): "hello",
-				config.MustMakeKey(opts.Project, "obj"):    "{\"key\":\"value\"}",
-			}, opts.Config)
+			assert.Equal(t, property.NewMap(map[string]property.Value{
+				opts.Project + ":bool":   property.New(true),
+				opts.Project + ":float":  property.New(1.5),
+				opts.Project + ":string": property.New("hello"),
+				opts.Project + ":obj":    property.New(property.NewMap(map[string]property.Value{"key": property.New("value")})),
+			}), opts.Config)
 
 			return &deploytest.Analyzer{}, nil
 		}),
@@ -104,7 +104,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 			HostF: hostF,
 		},
 		Config: config.Map{
-			config.MustMakeKey(proj, "bool"):   config.NewTypedValue("bool", config.TypeBool),
+			config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
 			config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
 			config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
 			config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),

@@ -325,14 +325,21 @@ var functionImports = map[string][]string{
 	"sha1":               {"crypto"},
 }
 
-func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
+func (g *generator) visitFunctionImports(
+	x *model.FunctionCallExpression,
+	visitNodeImport func(nodeImportString string),
+	visitPackageImport func(pkg string),
+) {
 	if x.Name != pcl.Invoke {
-		return functionImports[x.Name]
+		for _, i := range functionImports[x.Name] {
+			visitNodeImport(i)
+		}
+		return
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	return []string{"@pulumi/" + pkg}
+	visitPackageImport(pkg)
 }
 
 func enumName(enum *model.EnumType) (string, error) {

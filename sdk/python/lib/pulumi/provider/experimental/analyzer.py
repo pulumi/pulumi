@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import ast
+import builtins
 import collections
+from dataclasses import dataclass
 from enum import Enum
+import importlib.resources
 import inspect
+import json
 import sys
 import types
 import typing
@@ -28,6 +32,7 @@ from typing import (  # type: ignore
     ForwardRef,
     Literal,
     Optional,
+    TypedDict,
     Union,
     _GenericAlias,  # type: ignore
     _SpecialGenericAlias,  # type: ignore
@@ -39,13 +44,6 @@ from typing import (  # type: ignore
 from ...asset import Archive, Asset
 from ...output import Output
 from ...resource import ComponentResource, Resource
-from .component import (
-    ComponentDefinition,
-    EnumValueDefinition,
-    PropertyDefinition,
-    PropertyType,
-    TypeDefinition,
-)
 from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
@@ -60,6 +58,80 @@ _GenericAliasT = (  # type: ignore
     _SpecialGenericAlias,
     GenericAlias,
 )
+
+
+class PropertyType(Enum):
+    STRING = "string"
+    INTEGER = "integer"
+    NUMBER = "number"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    ARRAY = "array"
+
+
+@dataclass
+class EnumValueDefinition:
+    name: str
+    value: Union[str, float, int, bool]
+    description: Optional[str] = None
+
+
+@dataclass
+class PropertyDefinition:
+    optional: bool = False
+    type: Optional[PropertyType] = None
+    ref: Optional[str] = None
+    description: Optional[str] = None
+    items: Optional["PropertyDefinition"] = None
+    additional_properties: Optional["PropertyDefinition"] = None
+    plain: Optional[Literal[True]] = None
+
+
+@dataclass
+class TypeDefinition:
+    name: str
+    type: PropertyType
+    properties: dict[str, PropertyDefinition]
+    properties_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    module: str
+    """The Python module where this type is defined."""
+    python_type: builtins.type
+    """The Python type from which we derived this type definition."""
+    description: Optional[str] = None
+    enum: Optional[list[EnumValueDefinition]] = None
+
+
+@dataclass
+class ComponentDefinition:
+    name: str
+    inputs: dict[str, PropertyDefinition]
+    outputs: dict[str, PropertyDefinition]
+    inputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    outputs_mapping: dict[str, str]
+    """Mapping from the schema name to the Python name."""
+    module: Optional[str]
+    """The Python module where this component is defined."""
+    description: Optional[str] = None
+
+
+@dataclass
+class Parameterization:
+    name: str
+    version: str
+    # The value is a represented as base64 encoded string in JSON. Since all we
+    # do is return it again in the schema, we don't decode it to bytes, and keep
+    # it in base64.
+    value: str
+
+
+@dataclass
+class Dependency:
+    name: str
+    version: Optional[str] = None
+    downloadURL: Optional[str] = None
+    parameterization: Optional[Parameterization] = None
 
 
 class TypeNotFoundError(Exception):
@@ -110,6 +182,12 @@ class InvalidListTypeError(Exception):
         )
 
 
+class AnalyzeResult(TypedDict):
+    component_definitions: dict[str, ComponentDefinition]
+    type_definitions: dict[str, TypeDefinition]
+    dependencies: list[Dependency]
+
+
 class Analyzer:
     """
     Analyzer infers component and type definitions for a set of
@@ -153,6 +231,7 @@ class Analyzer:
 
     def __init__(self, name: str):
         self.name = name
+        self.dependencies: list[Dependency] = []
         self.type_definitions: dict[str, TypeDefinition] = {}
         # For unresolved types, we need to keep track of whether we saw them in a
         # component output or an input.
@@ -168,10 +247,10 @@ class Analyzer:
     def analyze(
         self,
         components: list[type[ComponentResource]],
-    ) -> tuple[dict[str, ComponentDefinition], dict[str, TypeDefinition]]:
+    ) -> AnalyzeResult:
         """
-        Analyze walks the directory at `path` and searches for
-        ComponentResources in Python files.
+        Analyze builds a Pulumi schema for a provider that handles the passed
+        list of components.
         """
         component_defs: dict[str, ComponentDefinition] = {}
         for component in components:
@@ -219,9 +298,16 @@ class Analyzer:
         if len(components) == 0:
             raise Exception("No components found")
 
-        return (component_defs, self.type_definitions)
+        return {
+            "component_definitions": component_defs,
+            "type_definitions": self.type_definitions,
+            "dependencies": self.dependencies,
+        }
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
+        """
+        Get the type annotations for `o` in a backwards compatible way.
+        """
         if sys.version_info >= (3, 10):
             # Only available in 3.10 and later
             return inspect.get_annotations(o)
@@ -238,6 +324,11 @@ class Analyzer:
     def analyze_component(
         self, component: type[ComponentResource]
     ) -> ComponentDefinition:
+        """
+        Analyze a single component, building up a `ComponentDefinition` that
+        holds all the information necessary to create a resource in a Pulumi
+        provider schema.
+        """
         ann = self.get_annotations(component.__init__)
         args = ann.get("args", None)
         if not args:
@@ -469,10 +560,51 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            # TODO: https://github.com/pulumi/pulumi/issues/18484
-            raise Exception(
-                f"Resource references are not supported yet: found type '{arg.__name__}' for '{typ.__name__}.{name}'"
-            )
+            type_string = getattr(arg, "pulumi_type", None)
+            if not type_string:
+                mod = arg.__module__.split(".")[0]
+                raise Exception(
+                    f"Can not determine resource reference for type '{arg.__name__}' used in '{typ.__name__}.{name}': "
+                    + f"'{arg.__name__}.pulumi_type' is not defined. This may be due to an outdated version of '{mod}'."
+                )
+            parts = type_string.split(":")
+            if len(parts) != 3:
+                raise Exception(
+                    f"invalid type string '{type_string}' for type '{arg}' used in '{typ.__name__}.{name}'"
+                )
+            package_name = parts[0]
+            try:
+                root_mod = arg.__module__.split(".")[0]
+                pluginJSON = (
+                    importlib.resources.files(root_mod)
+                    .joinpath("pulumi-plugin.json")
+                    .open("r")
+                    .read()
+                )
+                plugin = json.loads(pluginJSON)
+                dep = Dependency(plugin["name"], plugin["version"])
+                if "server" in plugin:
+                    dep.downloadURL = plugin["server"]
+                if "parameterization" in plugin:
+                    p = plugin["parameterization"]
+                    dep.parameterization = Parameterization(
+                        p["name"], p["version"], p["value"]
+                    )
+                self.dependencies.append(dep)
+                return PropertyDefinition(
+                    ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
+                    optional=optional,
+                    description=self.get_docstring(typ, name),
+                )
+            except FileNotFoundError as e:
+                raise Exception(
+                    f"Could not load pulumi-plugin.json for package '{package_name}'"
+                ) from e
+            except json.JSONDecodeError as e:
+                raise Exception(
+                    f"Could not parse pulumi-plugin.json for package '{package_name}'"
+                ) from e
+
         elif is_union(arg):
             raise Exception(
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"

@@ -50,6 +50,11 @@ class AnalyzerStub(object):
                 request_serializer=pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.Handshake = channel.unary_unary(
+                '/pulumirpc.Analyzer/Handshake',
+                request_serializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.FromString,
+                )
 
 
 class AnalyzerServicer(object):
@@ -105,6 +110,15 @@ class AnalyzerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Handshake(self, request, context):
+        """`Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
+        analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
+        used to communicate between the two parties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AnalyzerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -137,6 +151,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
                     servicer.Configure,
                     request_deserializer=pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Handshake': grpc.unary_unary_rpc_method_handler(
+                    servicer.Handshake,
+                    request_deserializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.FromString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -251,5 +270,22 @@ class Analyzer(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Configure',
             pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Handshake(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Handshake',
+            pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

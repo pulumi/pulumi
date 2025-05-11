@@ -382,6 +382,56 @@ func TestGenerateHCL2Definition(t *testing.T) {
 	}
 }
 
+// Tests that HCL definitions can be generated even if there is a mismatch in
+// the version of the provider in the state.
+func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	state := &resource.State{
+		ID:       "someProvider",
+		Type:     "pulumi:providers:aws",
+		Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
+		URN:      "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		Inputs: resource.PropertyMap{
+			"region": resource.NewStringProperty("us-west-2"),
+		},
+	}
+
+	importState := ImportState{
+		Names: nil,
+		Snapshot: []*resource.State{
+			{
+				ID:       "123",
+				ImportID: "abc",
+				Type:     "pulumi:providers:aws",
+				URN:      "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+				Inputs: resource.PropertyMap{
+					"region": resource.NewStringProperty("some-default-value"),
+				},
+			},
+		},
+	}
+
+	// Act.
+	block, _, err := GenerateHCL2Definition(loader, state, importState)
+
+	// Assert.
+	assert.NoError(t, err)
+	assert.Equal(t, []model.BodyItem{&model.Attribute{
+		Name: "region",
+		Value: &model.TemplateExpression{
+			Parts: []model.Expression{
+				&model.LiteralValueExpression{
+					Value: cty.StringVal("us-west-2"),
+				},
+			},
+		},
+	}}, block.Body.Items, "expected region to be set on custom provider")
+}
+
 // Tests that HCL definitions can be generated even if there is a mismatch in the version of the provider in the
 // snapshot and the version of the provider loaded from the plugin.
 func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {

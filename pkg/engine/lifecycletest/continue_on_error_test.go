@@ -721,13 +721,8 @@ func TestContinueOnErrorImport(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
-					return plugin.DiffResult{
-						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"foo": {Kind: plugin.DiffUpdate},
-						},
-					}, nil
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{}, errors.New("intentionally failed read")
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
@@ -765,7 +760,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	require.ErrorContains(t, err, "inputs to import do not match the existing resource")
+	require.ErrorContains(t, err, "intentionally failed read")
 	require.NotNil(t, snap)
 	assert.Equal(t, 1, len(snap.Resources)) // 1 provider
 }

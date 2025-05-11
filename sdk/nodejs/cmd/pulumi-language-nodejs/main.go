@@ -184,7 +184,7 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 	// version. On Windows this does not properly handle arguments with newlines, so we need to
 	// ensure that the script is a single line.
 	// https://github.com/pulumi/pulumi/issues/16393
-	script = strings.Replace(script, "\n", "", -1)
+	script = strings.ReplaceAll(script, "\n", "")
 	args := []string{"-e", script}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -1004,7 +1004,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 			return fmt.Errorf("failure while trying to find workspace root: %w", err)
 		}
 	} else {
-		stdout.Write([]byte(fmt.Sprintf("Detected workspace root at %s\n", newWorkspaceRoot)))
+		fmt.Fprintf(stdout, "Detected workspace root at %s\n", newWorkspaceRoot)
 		workspaceRoot = newWorkspaceRoot
 	}
 
@@ -1625,7 +1625,9 @@ func (host *nodeLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader), schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}

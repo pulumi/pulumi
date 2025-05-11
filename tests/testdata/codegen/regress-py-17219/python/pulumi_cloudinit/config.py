@@ -75,10 +75,8 @@ class ConfigArgs:
         pulumi.set(self, "parts", value)
 
 
+@pulumi.type_token("cloudinit:index/config:Config")
 class Config(pulumi.CustomResource):
-
-    pulumi_type = "cloudinit:index/config:Config"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

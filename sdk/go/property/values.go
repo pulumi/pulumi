@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The Pulumi value system (formerly resource.PropertyValue)
 package property
 
 import (
@@ -29,12 +28,14 @@ type (
 	Archive = *archive.Archive
 )
 
-// Value is an imitable representation of a Pulumi value.
+// Value is an imitable representation of a Pulumi property value. To create a new Value
+// from a typed Go value, see [New]. To create a new Value from an untyped any value, see
+// [Any].
 //
-// It may represent any type in GoValue. In addition, values may be secret or
-// computed. It may have resource dependencies.
+// It may represent any type in [GoValue], included the [Computed] value. In addition,
+// values may be secret and/or have resource dependencies.
 //
-// The zero value of Value is null.
+// The zero value of Value is null, and is valid for use.
 type Value struct {
 	isSecret bool
 
@@ -274,10 +275,13 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	//
 	// We don't want exiting references to dependencies to be able to effect
 	// v.dependencies.
-	v.dependencies = copyArray(dependencies)
+	cp := copyArray(dependencies)
 	// Sort the dependencies on ingestion so that Equals doesn't care about
 	// dependency order.
-	slices.Sort(v.dependencies)
+	slices.Sort(cp)
+	// Finally, deduplicate the dependencies, since a Value can't depend on the same
+	// resource more then once.
+	v.dependencies = slices.Compact(cp)
 	return v
 }
 

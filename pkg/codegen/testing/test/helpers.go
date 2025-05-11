@@ -58,7 +58,9 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 	}
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	} else if diags.HasErrors() {
@@ -378,4 +380,4 @@ const (
 )
 
 // PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.78.0"
+const PulumiDotnetSDKVersion = "3.80.0"

@@ -52,7 +52,7 @@ func newPluginRunCmd() *cobra.Command {
 			kind := apitype.PluginKind(kind)
 
 			// TODO: Add support for --server and --checksums.
-			pluginSpec, err := workspace.NewPluginSpec(args[0], kind, nil, "", nil)
+			pluginSpec, err := workspace.NewPluginSpec(ctx, args[0], kind, nil, "", nil)
 			if err != nil {
 				return err
 			}

@@ -112,32 +112,32 @@ var Importer schema.Language = importer(0)
 type importer int
 
 // ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.
-func (importer) ImportDefaultSpec(def *schema.DefaultValue, raw json.RawMessage) (interface{}, error) {
+func (importer) ImportDefaultSpec(raw json.RawMessage) (interface{}, error) {
 	return raw, nil
 }
 
 // ImportPropertySpec decodes language-specific metadata associated with a Property.
-func (importer) ImportPropertySpec(property *schema.Property, raw json.RawMessage) (interface{}, error) {
+func (importer) ImportPropertySpec(raw json.RawMessage) (interface{}, error) {
 	return raw, nil
 }
 
 // ImportObjectTypeSpec decodes language-specific metadata associated with a ObjectType.
-func (importer) ImportObjectTypeSpec(object *schema.ObjectType, raw json.RawMessage) (interface{}, error) {
+func (importer) ImportObjectTypeSpec(raw json.RawMessage) (interface{}, error) {
 	return raw, nil
 }
 
 // ImportResourceSpec decodes language-specific metadata associated with a Resource.
-func (importer) ImportResourceSpec(resource *schema.Resource, raw json.RawMessage) (interface{}, error) {
+func (importer) ImportResourceSpec(raw json.RawMessage) (interface{}, error) {
 	return raw, nil
 }
 
 // ImportFunctionSpec decodes language-specific metadata associated with a Function.
-func (importer) ImportFunctionSpec(function *schema.Function, raw json.RawMessage) (interface{}, error) {
+func (importer) ImportFunctionSpec(raw json.RawMessage) (interface{}, error) {
 	return raw, nil
 }
 
 // ImportPackageSpec decodes language-specific metadata associated with a Package.
-func (importer) ImportPackageSpec(pkg *schema.Package, raw json.RawMessage) (interface{}, error) {
+func (importer) ImportPackageSpec(raw json.RawMessage) (interface{}, error) {
 	var info GoPackageInfo
 	if err := json.Unmarshal(raw, &info); err != nil {
 		return nil, err

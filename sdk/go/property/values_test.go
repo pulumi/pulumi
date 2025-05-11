@@ -430,6 +430,13 @@ func TestWithDependencies(t *testing.T) {
 		assert.Equal(t, v1, v2, "This tests that we can safely use dependencies in reflect based equality tests")
 		assert.True(t, v1.Equals(v2))
 	})
+
+	t.Run("duplicate", func(t *testing.T) {
+		t.Parallel()
+
+		v1 := New("v").WithDependencies([]urn.URN{"1", "2", "1"})
+		assert.Equal(t, []urn.URN{"1", "2"}, v1.Dependencies())
+	})
 }
 
 func TestNotComparable(t *testing.T) {

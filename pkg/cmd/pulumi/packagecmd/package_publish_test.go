@@ -413,7 +413,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			})
 
 			// Setup defaultOrg mock
-			defaultOrg := func(project *workspace.Project) (string, error) {
+			defaultOrg := func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 				return tt.mockOrg, tt.mockOrgErr
 			}
 
@@ -512,7 +512,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			})
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(project *workspace.Project) (string, error) {
+				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
 				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
@@ -567,7 +567,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			tt.setupBackend(t)
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(project *workspace.Project) (string, error) {
+				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 					return "default-org", nil
 				},
 				extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
@@ -604,7 +604,7 @@ func (m *mockWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
 func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	cmd := packagePublishCmd{
-		defaultOrg: func(p *workspace.Project) (string, error) {
+		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
 			return "", nil
 		},
 		extractSchema: func(pctx *plugin.Context, packageSource string, args []string) (*schema.Package, error) {
@@ -637,6 +637,7 @@ func unmarshalSchema(schemaBytes []byte) (*schema.PackageSpec, error) {
 func TestFindReadme(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
+	ctx := context.Background()
 
 	cmd := packagePublishCmd{
 		pluginDir: tmpDir,
@@ -645,7 +646,7 @@ func TestFindReadme(t *testing.T) {
 	t.Run("NonExistentDirectory", func(t *testing.T) {
 		t.Parallel()
 		nonExistentDir := filepath.Join(tmpDir, "does-not-exist")
-		readme, err := cmd.findReadme(nonExistentDir)
+		readme, err := cmd.findReadme(ctx, nonExistentDir)
 		assert.Empty(t, readme)
 		assert.NoError(t, err, "Should not return error for non-existent directory")
 	})
@@ -656,7 +657,7 @@ func TestFindReadme(t *testing.T) {
 		err := os.WriteFile(filePath, []byte("not a readme"), 0o600)
 		require.NoError(t, err)
 
-		readme, err := cmd.findReadme(filePath)
+		readme, err := cmd.findReadme(ctx, filePath)
 		assert.Empty(t, readme)
 		assert.NoError(t, err, "Should not return error when source is a file")
 	})
@@ -667,7 +668,7 @@ func TestFindReadme(t *testing.T) {
 		err := os.WriteFile(schemaPath, []byte("{}"), 0o600)
 		require.NoError(t, err)
 
-		readme, err := cmd.findReadme(schemaPath)
+		readme, err := cmd.findReadme(ctx, schemaPath)
 		assert.Empty(t, readme)
 		assert.NoError(t, err, "Should not return error when source is a schema file")
 	})
@@ -677,7 +678,7 @@ func TestFindReadme(t *testing.T) {
 		dirPath := filepath.Join(tmpDir, "no-readme-dir")
 		require.NoError(t, os.Mkdir(dirPath, 0o755))
 
-		readme, err := cmd.findReadme(dirPath)
+		readme, err := cmd.findReadme(ctx, dirPath)
 		assert.Empty(t, readme)
 		assert.NoError(t, err, "Should not return error when directory has no readme")
 	})
@@ -689,7 +690,7 @@ func TestFindReadme(t *testing.T) {
 		readmePath := filepath.Join(dirPath, "README.md")
 		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
 
-		found, err := cmd.findReadme(dirPath)
+		found, err := cmd.findReadme(ctx, dirPath)
 		assert.Equal(t, readmePath, found)
 		assert.NoError(t, err)
 	})
@@ -698,7 +699,7 @@ func TestFindReadme(t *testing.T) {
 		t.Parallel()
 		// An invalid plugin spec string should return an error
 		invalidPlugin := "my-cool-plugin@not-a-valid-version"
-		readme, err := cmd.findReadme(invalidPlugin)
+		readme, err := cmd.findReadme(ctx, invalidPlugin)
 		assert.Empty(t, readme)
 		assert.Error(t, err, "Should return error for invalid plugin spec")
 		assert.Contains(t, err.Error(), "failed to create plugin spec")
@@ -708,8 +709,46 @@ func TestFindReadme(t *testing.T) {
 		t.Parallel()
 		// Use a valid-looking plugin name but with no readme
 		validPlugin := "my-cool-plugin"
-		readme, err := cmd.findReadme(validPlugin)
+		readme, err := cmd.findReadme(ctx, validPlugin)
 		assert.Empty(t, readme)
 		assert.NoError(t, err, "Should not return error when no readme is found")
+	})
+
+	t.Run("Git Plugin Download URL", func(t *testing.T) {
+		t.Parallel()
+		pluginDownloadURL := "git://github.com/pulumi/pulumi-example@v1.2.3"
+		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		require.NoError(t, err)
+		pluginSpec.PluginDir = cmd.pluginDir
+
+		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
+		require.NoError(t, os.Mkdir(dirPath, 0o755))
+		readmePath := filepath.Join(dirPath, "README.md")
+		require.NoError(t, os.WriteFile(readmePath, []byte("# Test Readme"), 0o600))
+
+		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
+		assert.Equal(t, readmePath, readme)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Git Plugin Download URL with subdirectory", func(t *testing.T) {
+		t.Parallel()
+		pluginDownloadURL := "git://github.com/pulumi/pulumi-subdir-example/path@v1.2.3"
+		pluginSpec, err := workspace.NewPluginSpec(ctx, pluginDownloadURL, apitype.ResourcePlugin, nil, "", nil)
+		require.NoError(t, err)
+		pluginSpec.PluginDir = cmd.pluginDir
+
+		dirPath := filepath.Join(tmpDir, pluginSpec.Dir())
+		require.NoError(t, os.Mkdir(dirPath, 0o755))
+		readmePath := filepath.Join(dirPath, "README.md")
+		require.NoError(t, os.WriteFile(readmePath, []byte("# Root Readme"), 0o600))
+		subdirPath := filepath.Join(dirPath, "path")
+		require.NoError(t, os.Mkdir(subdirPath, 0o755))
+		subdirReadmePath := filepath.Join(subdirPath, "README.md")
+		require.NoError(t, os.WriteFile(subdirReadmePath, []byte("# Subdir Readme"), 0o600))
+
+		readme, err := cmd.findReadme(ctx, pluginDownloadURL)
+		assert.Equal(t, subdirReadmePath, readme)
+		assert.NoError(t, err)
 	})
 }

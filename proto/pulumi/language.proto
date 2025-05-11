@@ -444,6 +444,9 @@ message RunPluginRequest{
 
     // The [plugin program](pulumirpc.ProgramInfo) to use.
     ProgramInfo info = 5;
+
+    // The kind of plugin to run (resource/analyzer/etc).
+    string kind = 6;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.

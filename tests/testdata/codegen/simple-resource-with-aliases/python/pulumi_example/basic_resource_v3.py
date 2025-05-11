@@ -36,10 +36,8 @@ class BasicResourceV3Args:
         pulumi.set(self, "bar", value)
 
 
+@pulumi.type_token("example:index:BasicResourceV3")
 class BasicResourceV3(pulumi.CustomResource):
-
-    pulumi_type = "example:index:BasicResourceV3"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

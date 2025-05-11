@@ -22,12 +22,15 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 )
 
 // PromiseType represents eventual values that do not carry additional information.
 type PromiseType struct {
 	// ElementType is the element type of the promise.
 	ElementType Type
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
@@ -103,7 +106,10 @@ func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
 func (t *PromiseType) conversionFrom(
 	src Type, unifying bool, seen map[Type]struct{},
 ) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	if t.cache == nil {
+		t.cache = &gsync.Map[Type, cacheEntry]{}
+	}
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if src, ok := src.(*PromiseType); ok {
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		}

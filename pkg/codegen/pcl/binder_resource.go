@@ -479,6 +479,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "provider":
 				t = model.DynamicType
 				resourceOptions.Provider = item.Value
+			case "providers":
+				t = model.NewUnionType(model.NewMapType(model.DynamicType), model.NewListType(model.DynamicType))
+				resourceOptions.Providers = item.Value
 			case "dependsOn":
 				t = model.NewListType(model.DynamicType)
 				resourceOptions.DependsOn = item.Value

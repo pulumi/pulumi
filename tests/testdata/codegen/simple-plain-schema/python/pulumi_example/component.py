@@ -144,10 +144,8 @@ class ComponentArgs:
         pulumi.set(self, "foo", value)
 
 
+@pulumi.type_token("example::Component")
 class Component(pulumi.ComponentResource):
-
-    pulumi_type = "example::Component"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

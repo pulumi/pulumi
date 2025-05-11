@@ -71,10 +71,8 @@ class ResourceArgs:
         pulumi.set(self, "public_data", value)
 
 
+@pulumi.type_token("secret:index:Resource")
 class Resource(pulumi.CustomResource):
-
-    pulumi_type = "secret:index:Resource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

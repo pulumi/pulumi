@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -49,6 +48,11 @@ type cloudBackendReference struct {
 	project tokens.Name
 	owner   string
 	b       *cloudBackend
+
+	// defaultOrg is the user's default organization, either configured by the user or determined otherwise.
+	// If unset, will assume that there is no default organization configured and fall back to referencing
+	// the user's individual org.
+	defaultOrg string
 }
 
 func (c cloudBackendReference) String() string {
@@ -64,10 +68,9 @@ func (c cloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(currentProject)
-		if err == nil && defaultOrg != "" {
+		if c.defaultOrg != "" {
 			// The default owner is the org
-			if c.owner == defaultOrg {
+			if c.owner == c.defaultOrg {
 				return c.name.String()
 			}
 		} else {
@@ -115,24 +118,30 @@ type cloudStack struct {
 	tags map[apitype.StackTagName]string
 }
 
-func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
+func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
+
+	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+	if err != nil {
+		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
+	}
 
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
-			owner:   apistack.OrgName,
-			project: tokens.Name(apistack.ProjectName),
-			name:    stackName,
-			b:       b,
+			owner:      apistack.OrgName,
+			project:    tokens.Name(apistack.ProjectName),
+			defaultOrg: defaultOrg,
+			name:       stackName,
+			b:          b,
 		},
 		orgName:          apistack.OrgName,
 		currentOperation: apistack.CurrentOperation,
 		tags:             apistack.Tags,
 		b:                b,
 		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
-	}
+	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
@@ -228,6 +237,11 @@ func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 type cloudStackSummary struct {
 	summary apitype.StackSummary
 	b       *cloudBackend
+	// defaultOrg passes a cached value for what the default org should be, through to
+	// `cloudBackendReference` where it may be used to qualify the stack name when stringified.
+	// If unset, `cloudBackendReference` will refer to the individual org rather than manage
+	// an explicit lookup.
+	defaultOrg string
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {
@@ -236,10 +250,11 @@ func (css cloudStackSummary) Name() backend.StackReference {
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", css.summary.StackName)
 
 	return cloudBackendReference{
-		owner:   css.summary.OrgName,
-		project: tokens.Name(css.summary.ProjectName),
-		name:    stackName,
-		b:       css.b,
+		owner:      css.summary.OrgName,
+		defaultOrg: css.defaultOrg,
+		project:    tokens.Name(css.summary.ProjectName),
+		name:       stackName,
+		b:          css.b,
 	}
 }
 

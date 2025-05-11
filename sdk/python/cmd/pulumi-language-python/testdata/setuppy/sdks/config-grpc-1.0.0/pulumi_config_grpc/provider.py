@@ -1178,10 +1178,8 @@ class ProviderArgs:
         pulumi.set(self, "string3", value)
 
 
+@pulumi.type_token("pulumi:providers:config-grpc")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:config-grpc"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

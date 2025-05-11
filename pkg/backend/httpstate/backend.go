@@ -196,7 +196,8 @@ type cloudBackend struct {
 	capabilities *promise.Promise[apitype.Capabilities]
 
 	// The current project, if any.
-	currentProject *workspace.Project
+	currentProject                  *workspace.Project
+	copilotEnabledForCurrentProject *bool
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -611,6 +612,7 @@ func (b *cloudBackend) URL() string {
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
 	b.currentProject = project
+	b.copilotEnabledForCurrentProject = nil
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
@@ -770,16 +772,16 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, err
 	}
 
+	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	if err != nil {
+		return nil, err
+	}
+
 	// If the provided stack name didn't include the Owner or Project, infer them from the
 	// local environment.
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(b.currentProject)
-		if err != nil {
-			return nil, err
-		}
-
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
@@ -805,10 +807,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	}
 
 	return cloudBackendReference{
-		owner:   qualifiedName.Owner,
-		project: tokens.Name(qualifiedName.Project),
-		name:    parsedName,
-		b:       b,
+		owner:      qualifiedName.Owner,
+		defaultOrg: defaultOrg,
+		project:    tokens.Name(qualifiedName.Project),
+		name:       parsedName,
+		b:          b,
 	}, nil
 }
 
@@ -915,7 +918,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 	}
 
 	getDefaultOrg := func() (string, error) {
-		return pkgWorkspace.GetBackendConfigDefaultOrg(nil)
+		return backend.GetDefaultOrg(ctx, b, nil)
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)
@@ -944,7 +947,7 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 		return nil, err
 	}
 
-	return newStack(stack, b), nil
+	return newStack(ctx, stack, b)
 }
 
 // Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
@@ -991,7 +994,7 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1007,10 +1010,12 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'\n", stack.Ref())
+	stack, err := newStack(ctx, apistack, b)
+	if err != nil {
+		fmt.Printf("Created stack '%s'\n", stack.Ref())
+	}
 
-	return stack, nil
+	return stack, err
 }
 
 func (b *cloudBackend) ListStacks(
@@ -1038,12 +1043,30 @@ func (b *cloudBackend) ListStacks(
 		return nil, nil, err
 	}
 
+	// Look up the default organization and persist it across each stack summary, in order to reduce
+	// the number of lookups each stack summary would otherwise have to make to determine whether to
+	// elide the organization name.
+	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
+	// this has the added benefit of ensuring that the default org is consistent for the duration of the
+	// operation, even if the user changes their default org mid-process.
+	defaultOrg, err := b.GetDefaultOrg(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if defaultOrg == "" {
+		defaultOrg, _, _, err = b.CurrentUser()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// Convert []apitype.StackSummary into []backend.StackSummary.
 	backendSummaries := slice.Prealloc[backend.StackSummary](len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
-			summary: apiSummary,
-			b:       b,
+			summary:    apiSummary,
+			b:          b,
+			defaultOrg: defaultOrg,
 		}
 		backendSummaries = append(backendSummaries, backendSummary)
 	}
@@ -1129,7 +1152,70 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
+}
+
+func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
+	// Have copilot features been requested by specifying the --copilot flag to the cli
+	if !opts.ShowCopilotFeatures {
+		return false
+	}
+
+	// Is copilot enabled this project in Pulumi Cloud
+	if b.copilotEnabledForCurrentProject == nil {
+		logging.V(3).Info(
+			"error: copilotEnabledForCurrentProject has not been set. only available after an update has been started.")
+		return false
+	}
+
+	return *b.copilotEnabledForCurrentProject
+}
+
+// explain takes engine events, renders them out to a buffer as something similar to what the user sees
+// in the CLI, and then explains the output with Copilot.
+func (b *cloudBackend) Explain(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	kind apitype.UpdateKind,
+	op backend.UpdateOperation,
+	events []engine.Event,
+) (string, error) {
+	renderer := display.NewCaptureProgressEvents(
+		stackRef.Name(),
+		op.Proj.Name,
+		display.Options{
+			ShowResourceChanges: true,
+		},
+		true, /* isPreview */
+		kind,
+	)
+	renderer.ProcessEventSlice(events)
+	output := renderer.Output()
+
+	if output == "" {
+		return "", errors.New("no output from preview")
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return "", err
+	}
+
+	displayOpts := op.Opts.Display
+	display.RenderCopilotThinking(displayOpts)
+	orgID := stackID.Owner
+	summary, err := b.client.ExplainPreviewWithCopilot(ctx, orgID, string(kind), output)
+	if err != nil {
+		return "", err
+	}
+
+	if summary == "" {
+		summary = "No summary available"
+	}
+
+	formattedSummary := display.FormatCopilotSummary(summary, displayOpts)
+
+	return formattedSummary, nil
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1150,7 +1236,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1168,7 +1254,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1186,7 +1272,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1236,7 +1322,8 @@ func (b *cloudBackend) PromptAI(
 }
 
 func (b *cloudBackend) renderAndSummarizeOutput(
-	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation, events []engine.Event,
+	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation,
+	events []engine.Event, update client.UpdateIdentifier, updateMeta updateMetadata, dryRun bool,
 ) {
 	renderer := display.NewCaptureProgressEvents(
 		stack.Ref().Name(),
@@ -1244,30 +1331,22 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 		display.Options{
 			ShowResourceChanges: true,
 		},
-		true,
+		dryRun,
 		kind,
 	)
+	renderer.ProcessEventSlice(events)
 
-	eventsChannel := make(chan engine.Event)
-	doneChannel := make(chan bool)
-
-	go renderer.ProcessEvents(eventsChannel, doneChannel)
-	for _, event := range events {
-		eventsChannel <- event
-	}
-	close(eventsChannel)
-	<-doneChannel
-
+	permalink := b.getPermalink(update, updateMeta.version, dryRun)
 	if renderer.OutputIncludesFailure() {
 		summary, err := b.summarizeErrorWithCopilot(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 		// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 		// if we can't generate a summary.
-		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display)
+		display.RenderCopilotErrorSummary(summary, err, op.Opts.Display, permalink)
 	}
 }
 
 func (b *cloudBackend) summarizeErrorWithCopilot(
-	ctx context.Context, pulumiOutput []string, stackRef backend.StackReference, opts display.Options,
+	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
 ) (*display.CopilotErrorSummaryMetadata, error) {
 	if len(pulumiOutput) == 0 {
 		return nil, nil
@@ -1282,7 +1361,6 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 	model := opts.CopilotSummaryModel
 	maxSummaryLen := opts.CopilotSummaryMaxLen
 
-	startTime := time.Now()
 	summary, err := b.client.SummarizeErrorWithCopilot(ctx, orgName, pulumiOutput, model, maxSummaryLen)
 	if err != nil {
 		return nil, err
@@ -1293,11 +1371,8 @@ func (b *cloudBackend) summarizeErrorWithCopilot(
 		return nil, nil
 	}
 
-	elapsedMs := time.Since(startTime).Milliseconds()
-
 	return &display.CopilotErrorSummaryMetadata{
-		Summary:   summary,
-		ElapsedMs: elapsedMs,
+		Summary: summary,
 	}, nil
 }
 
@@ -1375,6 +1450,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Check if the user's org (stack's owner) has Copilot enabled. If not, we don't show the link to Copilot.
 	isCopilotEnabled := updateDetails.IsCopilotIntegrationEnabled
+	b.copilotEnabledForCurrentProject = &isCopilotEnabled
 	copilotEnabledValueString := "is"
 	continuationString := ""
 	if isCopilotEnabled {
@@ -1386,7 +1462,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		}
 	} else {
 		op.Opts.Display.ShowLinkToCopilot = false
-		op.Opts.Display.ShowCopilotSummary = false
+		op.Opts.Display.ShowCopilotFeatures = false
 		copilotEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Copilot in org '%s' %s enabled for user '%s'%s",
@@ -1410,7 +1486,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
@@ -1422,10 +1498,7 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	// Note: ShowCopilotSummary can only be set to true via the update cmd (e.g. `pulumi up`)
-	// This code is here so we can capture errors from previews-of-updates as well as updates.
-	// The createAndStartUpdate call above can also disable ShowCopilotSummary if its not enabled in the user's org.
-	if op.Opts.Display.ShowCopilotSummary {
+	if b.IsCopilotFeatureEnabled(op.Opts.Display) {
 		originalEvents := events
 		// New var as we need a bidirectional channel type to be able to read from it.
 		eventsChannel := make(chan engine.Event)
@@ -1452,7 +1525,7 @@ func (b *cloudBackend) apply(
 		defer func() {
 			close(eventsChannel)
 			<-done
-			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents)
+			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
 		}()
 	}
 

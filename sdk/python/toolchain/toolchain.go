@@ -110,13 +110,14 @@ func Name(tc toolchain) string {
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	if options.Toolchain == Poetry {
+	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
+	case Poetry:
 		dir := options.ProgramDir
 		if dir == "" {
 			dir = options.Root
 		}
 		return newPoetry(dir)
-	} else if options.Toolchain == Uv {
+	case Uv:
 		return newUv(options.Root, options.Virtualenv)
 	}
 	return newPip(options.Root, options.Virtualenv)
@@ -202,8 +203,8 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 	}
 
 	if showOutput {
-		_, err := infoWriter.Write([]byte(fmt.Sprintf("Installing python version from .python-version file at %s\n",
-			versionFile)))
+		_, err := fmt.Fprintf(infoWriter, "Installing python version from .python-version file at %s\n",
+			versionFile)
 		if err != nil {
 			return fmt.Errorf("error while writing to infoWriter %s", err)
 		}

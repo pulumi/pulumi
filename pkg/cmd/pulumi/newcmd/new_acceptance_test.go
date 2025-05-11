@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -88,21 +89,24 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
+	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
+
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		description:       "foo: bar", // Needs special escaping for YAML
-		stack:             stackName,
+		stack:             orgStackName,
 		templateNameOrURL: "typescript",
 	}
 
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	assert.Equal(t, fullStackName, loadStackName(t))
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -118,6 +122,8 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	// instead of a constant.
 	unixTsNanos := time.Now().UnixNano()
 	numericProjectName := strconv.Itoa(int(unixTsNanos))
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), numericProjectName, stackName)
+	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
 	args := newArgs{
 		interactive:       false,
@@ -125,7 +131,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 		name:              numericProjectName, // Should be serialized as a string.
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
-		stack:             stackName,
+		stack:             orgStackName,
 		templateNameOrURL: "yaml",
 	}
 
@@ -137,8 +143,8 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 
 	assert.Equal(t, p.Name.String(), numericProjectName)
 
-	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	assert.Equal(t, fullStackName, loadStackName(t))
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -149,9 +155,12 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
+	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), filepath.Base(tempdir), stackName)
+	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
+
 	args := newArgs{
 		interactive:       true,
-		prompt:            promptMock(uniqueProjectName, stackName),
+		prompt:            promptMock(uniqueProjectName, orgStackName),
 		secretsProvider:   "default",
 		templateNameOrURL: "typescript",
 	}
@@ -159,8 +168,8 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, tempdir, stackName)
+	assert.Equal(t, fullStackName, loadStackName(t))
+	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -244,6 +253,7 @@ func promptMock(name string, stackName string) promptForValueFunc {
 			err := isValidFn(name)
 			return name, err
 		}
+
 		if valueType == "Stack name" {
 			err := isValidFn(stackName)
 			return stackName, err

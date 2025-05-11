@@ -361,9 +361,10 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		// Our first request will be for the gcp provider. Since the workspace doesn't have a plugin with that name, and
 		// there's no hint, we should see an installation attempt for it. The second request will be for aws, which will
 		// trigger the same behaviour since nothing will match in the workspace.
-		if installCalls == 0 {
+		switch installCalls {
+		case 0:
 			assert.Equal(t, "gcp", pluginName)
-		} else if installCalls == 1 {
+		case 1:
 			assert.Equal(t, "aws", pluginName)
 		}
 

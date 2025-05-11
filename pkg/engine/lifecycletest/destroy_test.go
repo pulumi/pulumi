@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/blang/semver"
@@ -43,13 +44,13 @@ func TestDestroyWithProgram(t *testing.T) {
 	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
 
-	deleteCalled := 0
+	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" || req.Name == "resB" {
-						deleteCalled++
+						atomic.AddInt32(&deleteCalled, 1)
 						assert.Equal(t, createInputs, req.Inputs)
 						assert.Equal(t, createOutputs, req.Outputs)
 
@@ -138,7 +139,7 @@ func TestDestroyWithProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should have deleted resA and resB
-	assert.Equal(t, 2, deleteCalled)
+	assert.Equal(t, int32(2), deleteCalled)
 	// Resources should be deleted from state
 	assert.Len(t, snap.Resources, 0)
 }
@@ -261,13 +262,13 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
 
-	deleteCalled := 0
+	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resB" {
-						deleteCalled++
+						atomic.AddInt32(&deleteCalled, 1)
 						assert.Equal(t, createInputs, req.Inputs)
 						assert.Equal(t, createOutputs, req.Outputs)
 
@@ -306,7 +307,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 			return &deploytest.Provider{
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" {
-						deleteCalled++
+						atomic.AddInt32(&deleteCalled, 1)
 						assert.Equal(t, createInputs, req.Inputs)
 						assert.Equal(t, createOutputs, req.Outputs)
 
@@ -378,7 +379,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should have deleted resA and resB
-	assert.Equal(t, 2, deleteCalled)
+	assert.Equal(t, int32(2), deleteCalled)
 	// All the resources should be deleted from state
 	assert.Len(t, snap.Resources, 0)
 }
@@ -392,7 +393,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	createInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
 
-	deleteCalled := 0
+	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -424,7 +425,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 			return &deploytest.Provider{
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" || req.Name == "resB" {
-						deleteCalled++
+						atomic.AddInt32(&deleteCalled, 1)
 						assert.Equal(t, createInputs, req.Inputs)
 						assert.Equal(t, createOutputs, req.Outputs)
 
@@ -504,7 +505,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should have deleted resA and resB
-	assert.Equal(t, 2, deleteCalled)
+	assert.Equal(t, int32(2), deleteCalled)
 	// All the resources should be deleted from state
 	assert.Len(t, snap.Resources, 0)
 }

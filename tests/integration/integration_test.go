@@ -23,8 +23,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -523,7 +525,12 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if organization != "" {
+		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
+		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	} else {
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -698,6 +705,68 @@ func TestExcludeProtected(t *testing.T) {
 	// We run the command again, but this time there are not unprotected resources to destroy.
 	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
 	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")
+}
+
+func TestUnprotect(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("protect_resources/step1")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
+
+	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+}
+
+func TestUnprotectProtect(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("protect_resources/step1")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
+
+	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
+	e.RunCommand("pulumi", "state", "protect", "--all", "--yes")
+
+	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
+	assert.Error(t, err, "expect error from pulumi destroy")
+	if runtime.GOOS == "windows" {
+		assert.ErrorContains(t, err, "exit status 0xffffffff")
+	} else {
+		assert.ErrorContains(t, err, "exit status 255")
+	}
 }
 
 func TestInvalidPluginError(t *testing.T) {
@@ -1054,7 +1123,12 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	if organization != "" {
+		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
+		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	} else {
+		e.RunCommand("pulumi", "stack", "init", stackName)
+	}
 
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
@@ -1161,17 +1235,18 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
+	qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
 	// Create a stack in the go project
 	e.CWD = goDir
 	e.ImportDirectory("large_resource/go")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
 	// Now create the js project
 	e.CWD = jsDir
 	e.ImportDirectory("large_resource/nodejs")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
@@ -1363,6 +1438,40 @@ func TestPolicyPackNew(t *testing.T) {
 	require.True(t, e.PathExists("venv"))
 }
 
+func TestPolicyPackPublish(t *testing.T) {
+	t.Parallel()
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+	testOrg := os.Getenv("PULUMI_TEST_ORG")
+	if testOrg == "" {
+		t.Skipf("Skipping: PULUMI_TEST_ORG is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.RunCommand("pulumi", "policy", "new", "aws-typescript", "--force")
+	// Change the name of the policy in case `aws-typescript` is already published
+	// and so that we have a clear indication that this is coming from a test.
+	// We do our best to clean up the policy after the test completes;
+	name := fmt.Sprintf("test-policy-pack-publish-%d", time.Now().UnixNano())
+	policyIndexPath := filepath.Join(e.RootPath, "index.ts")
+	policyContent, err := os.ReadFile(policyIndexPath)
+	require.NoError(t, err)
+	newContent := strings.Replace(string(policyContent),
+		`new PolicyPack("aws-typescript"`,
+		fmt.Sprintf(`new PolicyPack("%s"`, name),
+		1)
+	err = os.WriteFile(policyIndexPath, []byte(newContent), 0o600)
+	require.NoError(t, err)
+
+	stdout, stderr := e.RunCommand("pulumi", "policy", "publish", testOrg)
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
+
+	stdout, stderr = e.RunCommand("pulumi", "policy", "rm", testOrg+"/"+name, "all", "--yes")
+	t.Logf("stdout: %s\nstderr: %s", stdout, stderr)
+}
+
 func TestPolicyPackInstallDependencies(t *testing.T) {
 	t.Parallel()
 
@@ -1492,6 +1601,22 @@ func TestOverrideComponentNamespace(t *testing.T) {
 	require.NoError(t, err)
 	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
 	// it is 'pulumi', which we get from `github.com/*pulumi*/....
+	require.Equal(t, "pulumi", packageSpec.Namespace)
+}
+
+func TestOverrideNamespaceLowercase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema",
+		"github.com/Pulumi/component-test-providers/test-provider@b39e20e4e33600e33073ccb2df0ddb46388641dc")
+	var packageSpec schema.PackageSpec
+	err := json.Unmarshal([]byte(stdout), &packageSpec)
+	require.NoError(t, err)
+	// Without the override in the `package` command we'd expect the namespace to be empty here. Check that
+	// it is 'pulumi', which we get from `github.com/*Pulumi*/....; note that namespaces only allow lowercasee
+	// characters, so we lowercase it automatically.
 	require.Equal(t, "pulumi", packageSpec.Namespace)
 }
 

@@ -1,6 +1,0 @@
-kind: feature
-area: cli
-title: Add `pulumi project` command to manage Pulumi projects
-description: |
-  Introduces the `pulumi project` command to manage Pulumi projects.
-  This command provides subcommands for listing projects (`pulumi project ls`)

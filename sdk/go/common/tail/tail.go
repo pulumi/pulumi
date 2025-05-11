@@ -234,7 +234,7 @@ func (tail *Tail) readLine() (string, error) {
 	line = strings.TrimRight(line, "\n")
 
 	// if we don't have to handle incomplete lines, we can return the line as-is
-	if !tail.Config.CompleteLines {
+	if !tail.CompleteLines {
 		// Note ReadString "returns the data read before the error" in
 		// case of an error, including EOF, so we return it as is. The
 		// caller is expected to process it if err is EOF.
@@ -250,7 +250,7 @@ func (tail *Tail) readLine() (string, error) {
 		tail.lineBuf.Reset()
 		return line, nil
 	}
-	if tail.Config.Follow {
+	if tail.Follow {
 		line = ""
 	}
 	return line, io.EOF

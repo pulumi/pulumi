@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
@@ -107,8 +109,9 @@ func IsLocalPluginPath(source string) bool {
 
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
-	pluginSpec, err := workspace.NewPluginSpec(source, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil {
+	pluginSpec, err := workspace.NewPluginSpec(context.TODO(), source, apitype.ResourcePlugin, nil, "", nil)
+	var pluginErr workspace.PluginVersionNotFoundError
+	if err != nil && !errors.As(err, &pluginErr) {
 		// If we can't parse it as a plugin spec, assume it's a local path
 		return true
 	}
@@ -276,7 +279,7 @@ type PolicyAnalyzerOptions struct {
 	Organization string
 	Project      string
 	Stack        string
-	Config       map[config.Key]string
+	Config       property.Map
 	DryRun       bool
 }
 

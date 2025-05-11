@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Add resourceName and resourceType to get the runtime name and type token for resources

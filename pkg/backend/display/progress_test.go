@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -47,7 +46,6 @@ func defaultOpts() Options {
 		ShowReads:            true,
 		DeterministicOutput:  true,
 		ShowLinkToCopilot:    false,
-		ShowCopilotSummary:   false,
 		RenderOnDirty:        true,
 	}
 }
@@ -207,10 +205,10 @@ func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.False(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Hello, world!")
+	assert.Contains(t, captureRenderer.Output(), "Hello, world!")
 }
 
-func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
+func TestCaptureProgressEventsDetectsResourceOperationFailed(t *testing.T) {
 	t.Parallel()
 
 	// If we see a ResourceOperationFailed event, the update is marked as failed.
@@ -220,12 +218,7 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 			Op:  deploy.OpUpdate,
 		},
 	})
-	// Some diagnostics which is what we're usually interested in.
-	diagEvent := engine.NewEvent(engine.DiagEventPayload{
-		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
-		Message: "Failed to update",
-	})
-	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
+	failureEvents := []engine.Event{resourceOperationFailedEvent}
 	eventsChannel := sliceToBufferedChan(failureEvents)
 
 	captureRenderer := NewCaptureProgressEvents(
@@ -233,10 +226,9 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
 }
 
-func TestCaptureProgressEventsDetectsAndCapturesFailurePreview(t *testing.T) {
+func TestCaptureProgressEventsDetectsDiagnosticsWithErrors(t *testing.T) {
 	t.Parallel()
 
 	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
@@ -252,7 +244,7 @@ func TestCaptureProgressEventsDetectsAndCapturesFailurePreview(t *testing.T) {
 	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
+	assert.Contains(t, captureRenderer.Output(), "Failed to update")
 }
 
 func BenchmarkProgressEvents(t *testing.B) {

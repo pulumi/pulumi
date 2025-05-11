@@ -15,9 +15,11 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
-from .component import (
+from .analyzer import (
     ComponentDefinition,
+    Dependency,
     EnumValueDefinition,
+    Parameterization,
     PropertyDefinition,
     PropertyType,
     TypeDefinition,
@@ -188,6 +190,63 @@ class Resource(ObjectType):
 
 
 @dataclass
+class ParameterizationDescriptor:
+    name: str
+    version: str
+    value: str  # base64 encoded string
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "value": self.value,
+        }
+
+    @staticmethod
+    def from_definition(
+        parameterization: Parameterization,
+    ) -> "ParameterizationDescriptor":
+        return ParameterizationDescriptor(
+            name=parameterization.name,
+            version=parameterization.version,
+            value=parameterization.value,
+        )
+
+
+@dataclass
+class PackageDescriptor:
+    name: str
+    version: Optional[str] = None
+    downloadURL: Optional[str] = None
+    parameterization: Optional[ParameterizationDescriptor] = None
+
+    def to_json(self) -> dict[str, Any]:
+        return remove_none(
+            {
+                "name": self.name,
+                "version": self.version,
+                "downloadURL": self.downloadURL,
+                "parameterization": self.parameterization.to_json()
+                if self.parameterization
+                else None,
+            }
+        )
+
+    @staticmethod
+    def from_definition(dep: Dependency) -> "PackageDescriptor":
+        return PackageDescriptor(
+            name=dep.name,
+            version=dep.version,
+            downloadURL=dep.downloadURL,
+            parameterization=ParameterizationDescriptor.from_definition(
+                dep.parameterization
+            )
+            if dep.parameterization
+            else None,
+        )
+
+
+@dataclass
 class PackageSpec:
     """https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#package"""
 
@@ -198,6 +257,7 @@ class PackageSpec:
     resources: dict[str, Resource]
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
+    dependencies: Optional[list[PackageDescriptor]]
 
     def to_json(self) -> dict[str, Any]:
         return remove_none(
@@ -209,6 +269,7 @@ class PackageSpec:
                 "resources": {k: v.to_json() for k, v in self.resources.items()},
                 "types": {k: v.to_json() for k, v in self.types.items()},
                 "language": self.language,
+                "dependencies": [dep.to_json() for dep in self.dependencies or []],
             }
         )
 
@@ -219,7 +280,11 @@ def generate_schema(
     namespace: Optional[str],
     components: dict[str, ComponentDefinition],
     type_definitions: dict[str, TypeDefinition],
+    dependencies: list[Dependency],
 ) -> PackageSpec:
+    """
+    Build a serializable `PackageSpec` that represents a complete Pulumi schema.
+    """
     pkg = PackageSpec(
         name=name,
         version=version,
@@ -244,6 +309,7 @@ def generate_schema(
                 "respectSchemaVersion": True,
             },
         },
+        dependencies=[PackageDescriptor.from_definition(dep) for dep in dependencies],
     )
     for component_name, component in components.items():
         pkg.resources[f"{name}:index:{component_name}"] = Resource.from_definition(

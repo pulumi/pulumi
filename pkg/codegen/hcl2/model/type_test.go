@@ -25,7 +25,11 @@ import (
 
 func testTraverse(t *testing.T, receiver Traversable, traverser hcl.Traverser, expected Traversable, expectDiags bool) {
 	actual, diags := receiver.Traverse(traverser)
-	assert.Equal(t, expected, actual)
+	if a, ok := actual.(Type); ok {
+		assert.True(t, a.Equals(expected.(Type)))
+	} else {
+		assert.Equal(t, expected, actual)
+	}
 	if expectDiags {
 		assert.Greater(t, len(diags), 0)
 	} else {
@@ -569,16 +573,16 @@ func TestInputType(t *testing.T) {
 
 func assertUnified(t *testing.T, expectedSafe, expectedUnsafe Type, types ...Type) {
 	actualSafe, actualUnsafe := UnifyTypes(types...)
-	assert.Equal(t, expectedSafe, actualSafe)
-	assert.Equal(t, expectedUnsafe, actualUnsafe)
+	assert.True(t, expectedSafe.Equals(actualSafe))
+	assert.True(t, expectedUnsafe.Equals(actualUnsafe))
 
 	// Reverse the types and ensure we get the same results.
 	for i, j := 0, len(types)-1; i < j; i, j = i+1, j-1 {
 		types[i], types[j] = types[j], types[i]
 	}
 	actualSafe2, actualUnsafe2 := UnifyTypes(types...)
-	assert.Equal(t, actualSafe, actualSafe2)
-	assert.Equal(t, actualUnsafe, actualUnsafe2)
+	assert.True(t, actualSafe.Equals(actualSafe2))
+	assert.True(t, actualUnsafe.Equals(actualUnsafe2))
 }
 
 func TestUnifyType(t *testing.T) {

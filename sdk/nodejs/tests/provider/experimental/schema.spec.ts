@@ -22,11 +22,19 @@ describe("Schema", function () {
         const typeDefinitions: Record<string, TypeDefinition> = {};
 
         // Mock package references
-        const packageReferences = {
-            aws: "5.0.0",
-            "azure-native": "4.0.0",
-            kubernetes: "3.0.0",
-        };
+        const dependencies = [
+            { name: "aws", version: "5.0.0" },
+            {
+                name: "terraform-provider",
+                version: "0.10.0",
+                parameterization: {
+                    name: "parameterized",
+                    version: "0.2.2",
+                    value: "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
+                },
+            },
+            { name: "kubernetes", version: "3.0.0", downloadURL: "example.com/download" },
+        ];
 
         // Generate schema
         const schema = generateSchema(
@@ -35,13 +43,21 @@ describe("Schema", function () {
             "Test provider for Pulumi",
             components,
             typeDefinitions,
-            packageReferences,
+            dependencies,
         );
 
         assert.deepStrictEqual(schema.dependencies, [
             { name: "aws", version: "5.0.0" },
-            { name: "azure-native", version: "4.0.0" },
-            { name: "kubernetes", version: "3.0.0" },
+            {
+                name: "terraform-provider",
+                version: "0.10.0",
+                parameterization: {
+                    name: "parameterized",
+                    version: "0.2.2",
+                    value: "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
+                },
+            },
+            { name: "kubernetes", version: "3.0.0", downloadURL: "example.com/download" },
         ]);
     });
 
@@ -55,7 +71,7 @@ describe("Schema", function () {
             "my-description",
             components,
             typeDefinitions,
-            {},
+            [],
             "my-namespace",
         );
 
