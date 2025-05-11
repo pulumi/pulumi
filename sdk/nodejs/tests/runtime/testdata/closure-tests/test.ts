@@ -59,7 +59,9 @@ describe(`closure tests (TypeScript ${typescript.version})`, function () {
     for (const testCase of cases) {
         const filesInCase = readdirSync(`./cases/${testCase}`);
         const testCaseFile = filesInCase.find((file: string) => /^index.(cj|j)s$/.test(file));
-        if (!testCaseFile) throw new Error(`No test file specified for case ${testCase}`)
+        if (!testCaseFile) {
+            throw new Error(`No test file specified for case ${testCase}`);
+        }
         const { func, isFactoryFunction, error: expectedError, description, allowSecrets, after } = require(`./cases/${testCase}/${testCaseFile}`);
         const nodeMajor = parseInt(process.version.split(".")[0].slice(1));
         if (description === "Use webcrypto via global.crypto" && nodeMajor < 19) {
