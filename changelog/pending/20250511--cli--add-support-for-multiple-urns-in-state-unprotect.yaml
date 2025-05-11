@@ -1,2 +1,4 @@
-ckind: enhancement
-body: Add support for using multiple URNs with `pulumi state unprotect` via the `--urn` flag 
+changes:
+- type: feat
+  scope: cli
+  description: Add support for using multiple URNs with `pulumi state unprotect` via the `--urn` flag
