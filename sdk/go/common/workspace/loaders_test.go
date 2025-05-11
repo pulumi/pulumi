@@ -70,12 +70,14 @@ config:
   project:d: ""
 `)
 	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	var p *Project
 	projectStack, err := LoadProjectStackBytes(p, b, "Pulumi.stack.yaml", marshaller, sink)
 	require.NoError(t, err)
-	require.Contains(t, stderr.String(), "warning: No value for configuration keys \"project:a\", \"project:b\", \"project:c\"")
+	require.Contains(t, stderr.String(),
+		"warning: No value for configuration keys \"project:a\", \"project:b\", \"project:c\"")
 	require.Len(t, projectStack.Config, 4)
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue(""))
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))

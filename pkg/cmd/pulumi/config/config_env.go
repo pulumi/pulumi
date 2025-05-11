@@ -83,7 +83,11 @@ type configEnvCmd struct {
 		opts display.Options,
 	) (backend.Stack, error)
 
-	loadProjectStack func(project *workspace.Project, stack backend.Stack, diags diag.Sink) (*workspace.ProjectStack, error)
+	loadProjectStack func(
+		project *workspace.Project,
+		stack backend.Stack,
+		diags diag.Sink,
+	) (*workspace.ProjectStack, error)
 
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
 
