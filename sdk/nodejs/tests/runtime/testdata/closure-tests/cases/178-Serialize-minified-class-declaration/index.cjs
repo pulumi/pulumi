@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-exports.description = "Serialize minified class";
+exports.description = "Serialize minified class declaration";
 
-// important thing for this case is class expressions, and that spaces are not required, e.g after class
+// important thing for this case is class declarations, and that spaces are not required, e.g after class
 
 exports.func = () => {
-    let z = [];
-    let y=5,h=class{_fns;constructor(i=[]){this._fns=i;}clear(){this._fns=[];}exists(r){return this._fns.indexOf(r)!==-1}eject(r){let e=this._fns.indexOf(r);e!==-1&&(this._fns=[...this._fns.slice(0,e),...this._fns.slice(e+1)]);}use(r){this._fns=[...this._fns,r];}}
-    new h(z).clear();
+    let y = 5;
+    class foo{constructor(baz) {this.bar = baz;}get() {return this.bar}set(bing){this.bar = bing}}
+    let x=new foo(1)
+    x.set(y)
 }
