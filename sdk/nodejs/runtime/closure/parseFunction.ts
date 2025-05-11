@@ -17,6 +17,7 @@
 import * as typescript from "typescript";
 import * as log from "../../log";
 import * as utils from "./utils";
+import * as util from "node:util";
 
 const ts: typeof typescript = require("../../typescript-shim");
 
@@ -747,11 +748,10 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
         functionVars = new Set();
         scopes.push(new Set());
 
-        // If this is a named class, its name is in scope at the top level of itself.
+        // If this is a named class, it should be in the parent scope.
         if (className) {
-            functionVars.add(className.text);
+            savedFunctionVars.add(className.text);
         }
-
         // Next, visit each member
         node.members.forEach((m) => {
             // make all property assignments or declarations scoped to the class
