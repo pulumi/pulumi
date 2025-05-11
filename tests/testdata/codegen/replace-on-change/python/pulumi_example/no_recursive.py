@@ -27,10 +27,8 @@ class NoRecursiveArgs:
         pass
 
 
+@pulumi.type_token("example::NoRecursive")
 class NoRecursive(pulumi.CustomResource):
-
-    pulumi_type = "example::NoRecursive"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

@@ -59,10 +59,32 @@ func runStateEdit(
 	})
 }
 
+// runStateEditWithPrompt is the same as runStateEdit, but allows the caller to override the
+// prompt message.
+func runStateEditWithPrompt(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
+	urn resource.URN, operation edit.OperationFunc, overridePromptMessage string,
+) error {
+	return runTotalStateEditWithPrompt(
+		ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+			res, err := locateStackResource(opts, snap, urn)
+			if err != nil {
+				return err
+			}
+
+			return operation(snap, res)
+		},
+		overridePromptMessage)
+}
+
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
+	stackName string,
+	showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 ) error {
 	opts := display.Options{
@@ -79,11 +101,44 @@ func runTotalStateEdit(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation)
+	return TotalStateEdit(ctx, s, showPrompt, opts, operation, nil)
 }
 
-func TotalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
+// runTotalStateEditWithPrompt is the same as runTotalStateEdit, but allows the caller to
+// override the prompt message.
+func runTotalStateEditWithPrompt(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
+	stackName string,
+	showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
+	overridePromptMessage string,
+) error {
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+	s, err := cmdStack.RequireStack(
+		ctx,
+		ws,
+		lm,
+		stackName,
+		cmdStack.OfferNew,
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+	return TotalStateEdit(ctx, s, showPrompt, opts, operation, &overridePromptMessage)
+}
+
+func TotalStateEdit(
+	ctx context.Context,
+	s backend.Stack,
+	showPrompt bool,
+	opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error,
+	overridePromptMessage *string,
 ) error {
 	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
@@ -96,7 +151,11 @@ func TotalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		confirm := false
 		surveycore.DisableColor = true
 		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
-		prompt += "This command will edit your stack's state directly. Confirm?"
+		if overridePromptMessage != nil {
+			prompt += *overridePromptMessage
+		} else {
+			prompt += "This command will edit your stack's state directly. Confirm?"
+		}
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {

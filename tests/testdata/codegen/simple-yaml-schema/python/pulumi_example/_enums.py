@@ -3,7 +3,7 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import builtins
-import builtins
+import pulumi
 from enum import Enum
 
 __all__ = [
@@ -12,11 +12,13 @@ __all__ = [
 ]
 
 
+@pulumi.type_token("example::OutputOnlyEnumType")
 class OutputOnlyEnumType(builtins.str, Enum):
     FOO = "foo"
     BAR = "bar"
 
 
+@pulumi.type_token("example::RubberTreeVariety")
 class RubberTreeVariety(builtins.str, Enum):
     """
     types of rubber trees

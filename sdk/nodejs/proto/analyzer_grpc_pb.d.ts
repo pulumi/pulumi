@@ -17,6 +17,7 @@ interface IAnalyzerService extends grpc.ServiceDefinition<grpc.UntypedServiceImp
     getAnalyzerInfo: IAnalyzerService_IGetAnalyzerInfo;
     getPluginInfo: IAnalyzerService_IGetPluginInfo;
     configure: IAnalyzerService_IConfigure;
+    handshake: IAnalyzerService_IHandshake;
 }
 
 interface IAnalyzerService_IAnalyze extends grpc.MethodDefinition<pulumi_analyzer_pb.AnalyzeRequest, pulumi_analyzer_pb.AnalyzeResponse> {
@@ -73,6 +74,15 @@ interface IAnalyzerService_IConfigure extends grpc.MethodDefinition<pulumi_analy
     responseSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
     responseDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
 }
+interface IAnalyzerService_IHandshake extends grpc.MethodDefinition<pulumi_analyzer_pb.AnalyzerHandshakeRequest, pulumi_analyzer_pb.AnalyzerHandshakeResponse> {
+    path: "/pulumirpc.Analyzer/Handshake";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_analyzer_pb.AnalyzerHandshakeRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_analyzer_pb.AnalyzerHandshakeRequest>;
+    responseSerialize: grpc.serialize<pulumi_analyzer_pb.AnalyzerHandshakeResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_analyzer_pb.AnalyzerHandshakeResponse>;
+}
 
 export const AnalyzerService: IAnalyzerService;
 
@@ -83,6 +93,7 @@ export interface IAnalyzerServer extends grpc.UntypedServiceImplementation {
     getAnalyzerInfo: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, pulumi_analyzer_pb.AnalyzerInfo>;
     getPluginInfo: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, pulumi_plugin_pb.PluginInfo>;
     configure: grpc.handleUnaryCall<pulumi_analyzer_pb.ConfigureAnalyzerRequest, google_protobuf_empty_pb.Empty>;
+    handshake: grpc.handleUnaryCall<pulumi_analyzer_pb.AnalyzerHandshakeRequest, pulumi_analyzer_pb.AnalyzerHandshakeResponse>;
 }
 
 export interface IAnalyzerClient {
@@ -104,6 +115,9 @@ export interface IAnalyzerClient {
     configure(request: pulumi_analyzer_pb.ConfigureAnalyzerRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     configure(request: pulumi_analyzer_pb.ConfigureAnalyzerRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     configure(request: pulumi_analyzer_pb.ConfigureAnalyzerRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_analyzer_pb.AnalyzerHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_analyzer_pb.AnalyzerHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerHandshakeResponse) => void): grpc.ClientUnaryCall;
+    handshake(request: pulumi_analyzer_pb.AnalyzerHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerHandshakeResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class AnalyzerClient extends grpc.Client implements IAnalyzerClient {
@@ -126,4 +140,7 @@ export class AnalyzerClient extends grpc.Client implements IAnalyzerClient {
     public configure(request: pulumi_analyzer_pb.ConfigureAnalyzerRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public configure(request: pulumi_analyzer_pb.ConfigureAnalyzerRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public configure(request: pulumi_analyzer_pb.ConfigureAnalyzerRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_analyzer_pb.AnalyzerHandshakeRequest, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_analyzer_pb.AnalyzerHandshakeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerHandshakeResponse) => void): grpc.ClientUnaryCall;
+    public handshake(request: pulumi_analyzer_pb.AnalyzerHandshakeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_analyzer_pb.AnalyzerHandshakeResponse) => void): grpc.ClientUnaryCall;
 }

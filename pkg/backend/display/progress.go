@@ -411,21 +411,30 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	close(renderDone)
 }
 
-func (r *CaptureProgressEvents) Output() []string {
-	v := strings.TrimSpace(r.Buffer.String())
-	if v == "" {
-		return nil
+func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+	go r.ProcessEvents(eventsChan, renderDone)
+	for _, event := range events {
+		eventsChan <- event
 	}
-	return strings.Split(v, "\n")
+	close(eventsChan)
+	<-renderDone
+}
+
+func (r *CaptureProgressEvents) Output() string {
+	return strings.TrimSpace(r.Buffer.String())
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
-	// If its an actual update we can use the failed flag
-	if !r.display.isPreview {
-		return r.display.failed
+	// Display layer has detected a ResourceOperationFailed event.
+	// Only happens in non-preview updates.
+	if r.display.failed {
+		return true
 	}
 
-	// If its a preview we need to check the resource rows for any failures
+	// Diagnostic events have an error.
+	// This can include things like Auth errors which are not ResourceOperationFailed events.
 	for _, row := range r.display.resourceRows {
 		diagInfo := row.DiagInfo()
 		if diagInfo != nil && diagInfo.ErrorCount > 0 {
@@ -807,12 +816,14 @@ func (display *ProgressDisplay) printDiagnostics() {
 	}
 
 	// Print a link to Copilot to explain the failure.
+	// "ShowCopilotFeatures" renders the link if it is enabled so don't render it here.
+	showCopilotLink := display.opts.ShowLinkToCopilot && !display.opts.ShowCopilotFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showCopilotLink {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
-			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
+			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
 		display.println("")
 	}
 }
@@ -1208,7 +1219,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	if event.Type == engine.ResourcePreEvent {
+	switch event.Type { //nolint:exhaustive // golangci-lint v2 upgrade
+	case engine.ResourcePreEvent:
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 
 		// Register the resource update start time to calculate duration
@@ -1222,7 +1234,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.stopwatchMutex.Unlock()
 
 		row.SetStep(step)
-	} else if event.Type == engine.ResourceOutputsEvent {
+	case engine.ResourceOutputsEvent:
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
 
@@ -1252,19 +1264,19 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
-	} else if event.Type == engine.ResourceOperationFailed {
+	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
-	} else if event.Type == engine.DiagEvent {
+	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
-	} else if event.Type == engine.PolicyViolationEvent {
+	case engine.PolicyViolationEvent:
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
-	} else if event.Type == engine.PolicyRemediationEvent {
+	case engine.PolicyRemediationEvent:
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
-	} else {
+	default:
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
@@ -1289,7 +1301,6 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
@@ -1307,6 +1318,11 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 		display.progressEventPayloads[payload.ID] = payload
 	}
 
+	// We have to release the lock before we call renderer.progress, because that may call back into a method that wants
+	// eventMutex.Lock(), causing a deadlock.
+	display.eventMutex.Unlock()
+
+	// Now call renderer.progress outside the lock.
 	display.renderer.progress(payload, first)
 }
 

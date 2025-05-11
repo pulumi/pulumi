@@ -3,7 +3,7 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import builtins
-import builtins
+import pulumi
 from enum import Enum
 
 __all__ = [
@@ -14,16 +14,19 @@ __all__ = [
 ]
 
 
+@pulumi.type_token("other:tree/v1:Diameter")
 class Diameter(builtins.float, Enum):
     SIXINCH = 6
     TWELVEINCH = 12
 
 
+@pulumi.type_token("plant:tree/v1:Farm")
 class Farm(builtins.str, Enum):
     PULUMI_PLANTERS_INC_ = "Pulumi Planters Inc."
     PLANTS_R_US = "Plants'R'Us"
 
 
+@pulumi.type_token("plant:tree/v1:RubberTreeVariety")
 class RubberTreeVariety(builtins.str, Enum):
     """
     types of rubber trees
@@ -42,6 +45,7 @@ class RubberTreeVariety(builtins.str, Enum):
     """
 
 
+@pulumi.type_token("plant:tree/v1:TreeSize")
 class TreeSize(builtins.str, Enum):
     SMALL = "small"
     MEDIUM = "medium"

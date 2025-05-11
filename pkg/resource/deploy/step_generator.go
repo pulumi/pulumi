@@ -385,7 +385,7 @@ func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	// TODO(dixler): `--replace a` currently is treated as a targeted update, but this is not correct.
 	//               Removing `|| sg.replaceTargetsOpt.IsConstrained()` would result in a behavior change
 	//               that would require some thinking to fully understand the repercussions.
-	if !(sg.deployment.opts.Targets.IsConstrained() || sg.deployment.opts.ReplaceTargets.IsConstrained()) {
+	if !sg.deployment.opts.Targets.IsConstrained() && !sg.deployment.opts.ReplaceTargets.IsConstrained() {
 		return steps, nil
 	}
 
@@ -730,7 +730,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	}
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
+		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges)
 
 	if providers.IsProviderType(goal.Type) {
@@ -872,9 +872,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	if isImport {
 		// TODO(seqnum) Not sure how sequence numbers should interact with imports
 
-		// Write the ID of the resource to import into the new state and return an ImportStep or an
-		// ImportReplacementStep
-		new.ImportID = goal.ID
+		// Return an ImportStep or an ImportReplacementStep
 
 		// If we're generating plans create a plan, Imports have no diff, just a goal state
 		if sg.deployment.opts.GeneratePlan {
@@ -1326,7 +1324,9 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					}
 				}
 
-				rootStep := NewSameStep(sg.deployment, event, old, old)
+				new := old.Copy()
+				new.ID = ""
+				rootStep := NewSameStep(sg.deployment, event, old, new)
 				steps = append(steps, rootStep)
 				return steps, nil
 			}

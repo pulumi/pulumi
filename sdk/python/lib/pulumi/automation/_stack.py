@@ -268,11 +268,13 @@ class Stack:
         parallel: Optional[int] = None,
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
         policy_packs: Optional[List[str]] = None,
         policy_pack_configs: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         diff: Optional[bool] = None,
         target_dependents: Optional[bool] = None,
+        exclude_dependents: Optional[bool] = None,
         replace: Optional[List[str]] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
@@ -290,6 +292,7 @@ class Stack:
         continue_on_error: Optional[bool] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -299,11 +302,13 @@ class Stack:
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message (optional) to associate with the update operation.
         :param target: Specify an exclusive list of resource URNs to destroy.
+        :param exclude: Specify an exclusive list of resource URNs to ignore.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param policy_packs: Run one or more policy packs as part of this update.
         :param policy_pack_configs: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag.
         :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in the Exclude list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
@@ -321,6 +326,7 @@ class Stack:
         :param continue_on_error: Continue to perform the update operation despite the occurrence of errors
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running up.
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: UpResult
         """
         program = program or self.workspace.program
@@ -392,11 +398,13 @@ class Stack:
         parallel: Optional[int] = None,
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
         policy_packs: Optional[List[str]] = None,
         policy_pack_configs: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         diff: Optional[bool] = None,
         target_dependents: Optional[bool] = None,
+        exclude_dependents: Optional[bool] = None,
         replace: Optional[List[str]] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
@@ -413,6 +421,7 @@ class Stack:
         import_file: Optional[str] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -422,11 +431,13 @@ class Stack:
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
+        :param exclude: Specify an exclusive list of resource URNs to ignore.
         :param policy_packs: Run one or more policy packs as part of this update.
         :param policy_pack_configs: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in the Exclude list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
@@ -443,6 +454,7 @@ class Stack:
         :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: PreviewResult
         """
         program = program or self.workspace.program
@@ -521,6 +533,9 @@ class Stack:
         message: Optional[str] = None,
         preview_only: Optional[bool] = None,
         target: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        target_dependents: Optional[bool] = None,
+        exclude_dependents: Optional[bool] = None,
         expect_no_changes: Optional[bool] = None,
         clear_pending_creates: Optional[bool] = None,
         color: Optional[str] = None,
@@ -535,6 +550,7 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         run_program: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -545,6 +561,9 @@ class Stack:
         :param message: Message (optional) to associate with the refresh operation.
         :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself.
         :param target: Specify an exclusive list of resource URNs to refresh.
+        :param exclude: Specify an exclusive list of resource URNs to ignore.
+        :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in the Exclude list.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param clear_pending_creates: Clear all pending creates, dropping them from the state.
         :param on_output: A function to process the stdout stream.
@@ -559,15 +578,17 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param run_program: Run the program in the workspace to refresh the stack
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes"]
+        args = ["refresh"]
 
         if preview_only:
             args.append("--preview-only")
         else:
             args.append("--skip-preview")
+            args.append("--yes")
 
         if run_program is not None:
             if run_program:
@@ -657,6 +678,7 @@ class Stack:
         refresh: Optional[bool] = None,
         preview_only: Optional[bool] = None,
         run_program: Optional[bool] = None,
+        config_file: Optional[str] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -683,6 +705,7 @@ class Stack:
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :param preview_only: Only show a preview of the destroy, but don't perform the destroy itself
         :param run_program: Run the program in the workspace to destroy the stack
+        :param config_file: Path to a Pulumi config file to use for this update.
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -1075,9 +1098,11 @@ def _parse_extra_args(**kwargs) -> List[str]:
     diff: Optional[bool] = kwargs.get("diff")
     replace: Optional[List[str]] = kwargs.get("replace")
     target: Optional[List[str]] = kwargs.get("target")
+    exclude: Optional[List[str]] = kwargs.get("exclude")
     policy_packs: Optional[List[str]] = kwargs.get("policy_packs")
     policy_pack_configs: Optional[List[str]] = kwargs.get("policy_pack_configs")
     target_dependents: Optional[bool] = kwargs.get("target_dependents")
+    exclude_dependents: Optional[bool] = kwargs.get("exclude_dependents")
     parallel: Optional[int] = kwargs.get("parallel")
     color: Optional[str] = kwargs.get("color")
     log_flow: Optional[bool] = kwargs.get("log_flow")
@@ -1091,6 +1116,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     continue_on_error: Optional[bool] = kwargs.get("continue_on_error")
     attach_debugger: Optional[bool] = kwargs.get("attach_debugger")
     refresh: Optional[bool] = kwargs.get("refresh")
+    config_file: Optional[str] = kwargs.get("config_file")
 
     if message:
         extra_args.extend(["--message", message])
@@ -1106,6 +1132,9 @@ def _parse_extra_args(**kwargs) -> List[str]:
     if target:
         for t in target:
             extra_args.extend(["--target", t])
+    if exclude:
+        for e in exclude:
+            extra_args.extend(["--exclude", e])
     if policy_packs:
         for p in policy_packs:
             extra_args.extend(["--policy-pack", p])
@@ -1114,6 +1143,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
             extra_args.extend(["--policy-pack-config", p])
     if target_dependents:
         extra_args.append("--target-dependents")
+    if exclude_dependents:
+        extra_args.append("--exclude-dependents")
     if parallel:
         extra_args.extend(["--parallel", str(parallel)])
     if color:
@@ -1140,6 +1171,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--attach-debugger"])
     if refresh:
         extra_args.extend(["--refresh"])
+    if config_file:
+        extra_args.extend(["--config-file", config_file])
     return extra_args
 
 

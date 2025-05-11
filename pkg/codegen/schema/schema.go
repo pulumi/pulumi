@@ -663,17 +663,17 @@ type Package struct {
 // Language provides hooks for importing language-specific metadata in a package.
 type Language interface {
 	// ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.
-	ImportDefaultSpec(def *DefaultValue, bytes json.RawMessage) (interface{}, error)
+	ImportDefaultSpec(bytes json.RawMessage) (any, error)
 	// ImportPropertySpec decodes language-specific metadata associated with a Property.
-	ImportPropertySpec(property *Property, bytes json.RawMessage) (interface{}, error)
+	ImportPropertySpec(bytes json.RawMessage) (interface{}, error)
 	// ImportObjectTypeSpec decodes language-specific metadata associated with a ObjectType.
-	ImportObjectTypeSpec(object *ObjectType, bytes json.RawMessage) (interface{}, error)
+	ImportObjectTypeSpec(bytes json.RawMessage) (interface{}, error)
 	// ImportResourceSpec decodes language-specific metadata associated with a Resource.
-	ImportResourceSpec(resource *Resource, bytes json.RawMessage) (interface{}, error)
+	ImportResourceSpec(bytes json.RawMessage) (interface{}, error)
 	// ImportFunctionSpec decodes language-specific metadata associated with a Function.
-	ImportFunctionSpec(function *Function, bytes json.RawMessage) (interface{}, error)
+	ImportFunctionSpec(bytes json.RawMessage) (interface{}, error)
 	// ImportPackageSpec decodes language-specific metadata associated with a Package.
-	ImportPackageSpec(pkg *Package, bytes json.RawMessage) (interface{}, error)
+	ImportPackageSpec(bytes json.RawMessage) (interface{}, error)
 }
 
 func sortedLanguageNames(metadata map[string]interface{}) []string {
@@ -690,7 +690,7 @@ func importDefaultLanguages(def *DefaultValue, languages map[string]Language) er
 		val := def.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportDefaultSpec(def, raw)
+				val, err := lang.ImportDefaultSpec(raw)
 				if err != nil {
 					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
@@ -712,7 +712,7 @@ func importPropertyLanguages(property *Property, languages map[string]Language) 
 		val := property.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportPropertySpec(property, raw)
+				val, err := lang.ImportPropertySpec(raw)
 				if err != nil {
 					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
@@ -734,7 +734,7 @@ func importObjectTypeLanguages(object *ObjectType, languages map[string]Language
 		val := object.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportObjectTypeSpec(object, raw)
+				val, err := lang.ImportObjectTypeSpec(raw)
 				if err != nil {
 					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
@@ -770,7 +770,7 @@ func importResourceLanguages(resource *Resource, languages map[string]Language) 
 		val := resource.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportResourceSpec(resource, raw)
+				val, err := lang.ImportResourceSpec(raw)
 				if err != nil {
 					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
@@ -799,7 +799,7 @@ func importFunctionLanguages(function *Function, languages map[string]Language) 
 		val := function.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportFunctionSpec(function, raw)
+				val, err := lang.ImportFunctionSpec(raw)
 				if err != nil {
 					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
@@ -862,7 +862,7 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 		val := pkg.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportPackageSpec(pkg, raw)
+				val, err := lang.ImportPackageSpec(raw)
 				if err != nil {
 					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
@@ -1764,7 +1764,7 @@ func (returnTypeSpec *ReturnTypeSpec) UnmarshalJSON(inputJSON []byte) error {
 	var m returnTypeSpecObjectSerialForm
 	err := json.Unmarshal(inputJSON, &m)
 	if err == nil {
-		if m.ObjectTypeSpec.Properties != nil {
+		if m.Properties != nil {
 			ts.ObjectTypeSpec = &m.ObjectTypeSpec
 			if plain, ok := m.Plain.(bool); ok && plain {
 				ts.ObjectTypeSpecIsPlain = true

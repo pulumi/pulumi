@@ -28,23 +28,46 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 	t.Parallel()
 
 	summary := "This is a test summary"
-	elapsedMs := int64(100)
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout: buf,
-		Color:  colors.Never,
+		Stdout:            buf,
+		Color:             colors.Never,
+		ShowLinkToCopilot: true,
 	}
 
 	// Render to buffer
 	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
-		Summary:   summary,
-		ElapsedMs: elapsedMs,
-	}, nil, opts)
+		Summary: summary,
+	}, nil, opts, "http://foo.bar/baz")
 
-	expectedCopilotSummary := fmt.Sprintf(`AI-generated summary%s: 100ms
+	expectedCopilotSummary := fmt.Sprintf(`Copilot Diagnostics%s
   This is a test summary
 
-`, copilotEmojiOr())
+  Would you like additional help with this update?
+  http://foo.bar/baz?explainFailure
+
+`, copilotDelimiterEmoji())
+	assert.Equal(t, expectedCopilotSummary, buf.String())
+}
+
+func TestRenderCopilotErrorSummaryNoLink(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout:            buf,
+		Color:             colors.Never,
+		ShowLinkToCopilot: false,
+	}
+
+	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
+		Summary: "This is a test summary",
+	}, nil, opts, "http://foo.bar/baz")
+
+	expectedCopilotSummary := fmt.Sprintf(`Copilot Diagnostics%s
+  This is a test summary
+
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummary, buf.String())
 }
 
@@ -57,12 +80,12 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(nil, errors.New("test error"), opts)
+	RenderCopilotErrorSummary(nil, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithError := fmt.Sprintf(`AI-generated summary%s:
+	expectedCopilotSummaryWithError := fmt.Sprintf(`Copilot Diagnostics%s
   error summarizing update output: test error
 
-`, copilotEmojiOr())
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithError, buf.String())
 }
 
@@ -75,7 +98,7 @@ func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
 		Color:  colors.Never,
 	}
 
-	RenderCopilotErrorSummary(nil, nil, opts)
+	RenderCopilotErrorSummary(nil, nil, opts, "http://foo.bar/baz")
 
 	assert.Equal(t, "", buf.String())
 }
@@ -85,7 +108,6 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	t.Parallel()
 
 	summary := "This is a test summary"
-	elapsedMs := int64(100)
 	buf := new(bytes.Buffer)
 	opts := Options{
 		Stdout: buf,
@@ -93,13 +115,38 @@ func TestRenderCopilotErrorSummaryWithError(t *testing.T) {
 	}
 
 	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
-		Summary:   summary,
-		ElapsedMs: elapsedMs,
-	}, errors.New("test error"), opts)
+		Summary: summary,
+	}, errors.New("test error"), opts, "http://foo.bar/baz")
 
-	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`AI-generated summary%s: 100ms
+	expectedCopilotSummaryWithErrorAndSummary := fmt.Sprintf(`Copilot Diagnostics%s
   error summarizing update output: test error
 
-`, copilotEmojiOr())
+`, copilotDelimiterEmoji())
 	assert.Equal(t, expectedCopilotSummaryWithErrorAndSummary, buf.String())
+}
+
+func TestRenderBoldMarkdown(t *testing.T) {
+	t.Parallel()
+
+	summary := `**This** is a test **summary**
+**Resource** has been **created**`
+
+	highlightColor := colors.BrightBlue
+
+	expectedSummary := highlightColor + "This" + colors.Reset + " is a test " + highlightColor + "summary" + colors.Reset +
+		"\n" +
+		highlightColor + "Resource" + colors.Reset + " has been " + highlightColor + "created" + colors.Reset
+	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Always})
+	assert.Equal(t, expectedSummary, formattedSummary)
+}
+
+func TestRenderBoldMarkdownNever(t *testing.T) {
+	t.Parallel()
+
+	summary := `This is a test summary
+Resource has been created`
+
+	expectedSummary := "This is a test summary\nResource has been created"
+	formattedSummary := renderBoldMarkdown(summary, Options{Color: colors.Never})
+	assert.Equal(t, expectedSummary, formattedSummary)
 }

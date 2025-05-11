@@ -188,6 +188,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -202,6 +207,9 @@ Event: ${line}\n${e.toString()}`);
                 for (const packConfig of opts.policyPackConfigs) {
                     args.push("--policy-pack-config", packConfig);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -269,7 +277,7 @@ Event: ${line}\n${e.toString()}`);
 
         let upResult: CommandResult;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -327,6 +335,11 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--replace", rURN);
                 }
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
@@ -341,6 +354,9 @@ Event: ${line}\n${e.toString()}`);
                 for (const packConfig of opts.policyPackConfigs) {
                     args.push("--policy-pack-config", packConfig);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -409,7 +425,7 @@ Event: ${line}\n${e.toString()}`);
 
         let previewResult: CommandResult;
         try {
-            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
             didError = true;
             throw e;
@@ -440,9 +456,14 @@ Event: ${line}\n${e.toString()}`);
      *  Options to customize the behavior of the refresh.
      */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
-        const args = ["refresh", "--yes"];
+        const args = ["refresh"];
 
-        args.push(opts?.previewOnly ? "--preview-only" : "--skip-preview");
+        if (opts?.previewOnly) {
+            args.push("--preview-only");
+        } else {
+            args.push("--skip-preview", "--yes");
+        }
+
         args.push(...this.remoteArgs());
 
         if (opts) {
@@ -455,10 +476,21 @@ Event: ${line}\n${e.toString()}`);
             if (opts.clearPendingCreates) {
                 args.push("--clear-pending-creates");
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.targetDependents) {
+                args.push("--target-dependents");
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
@@ -494,7 +526,7 @@ Event: ${line}\n${e.toString()}`);
 
         let refResult: CommandResult;
         try {
-            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            refResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } finally {
             await cleanUp(logFile, await logPromise);
         }
@@ -532,10 +564,18 @@ Event: ${line}\n${e.toString()}`);
             if (opts.message) {
                 args.push("--message", opts.message);
             }
+            if (opts.exclude) {
+                for (const eURN of opts.exclude) {
+                    args.push("--exclude", eURN);
+                }
+            }
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
                 }
+            }
+            if (opts.excludeDependents) {
+                args.push("--exclude-dependents");
             }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
@@ -583,7 +623,7 @@ Event: ${line}\n${e.toString()}`);
 
         let desResult: CommandResult;
         try {
-            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.signal);
+            desResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } finally {
             await cleanUp(logFile, await logPromise);
         }
@@ -616,7 +656,7 @@ Event: ${line}\n${e.toString()}`);
 
         applyGlobalOpts(options, args);
 
-        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.signal);
+        const renameResult = await this.runPulumiCmd(args, options?.onOutput, options?.onError, options?.signal);
 
         if (this.isRemote && options?.showSecrets) {
             throw new Error("can't enable `showSecrets` for remote workspaces");
@@ -940,6 +980,7 @@ Event: ${line}\n${e.toString()}`);
     private async runPulumiCmd(
         args: string[],
         onOutput?: (out: string) => void,
+        onError?: (err: string) => void,
         signal?: AbortSignal,
     ): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
@@ -955,7 +996,14 @@ Event: ${line}\n${e.toString()}`);
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, "--stack", this.name, ...additionalArgs];
-        const result = await this.workspace.pulumiCommand.run(args, this.workspace.workDir, envs, onOutput, signal);
+        const result = await this.workspace.pulumiCommand.run(
+            args,
+            this.workspace.workDir,
+            envs,
+            onOutput,
+            onError,
+            signal,
+        );
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -1000,6 +1048,9 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
     }
     if (opts.suppressProgress) {
         args.push("--suppress-progress");
+    }
+    if (opts.configFile) {
+        args.push("--config-file", opts.configFile);
     }
 }
 
@@ -1309,6 +1360,11 @@ export interface GlobalOpts {
     suppressProgress?: boolean;
 
     /**
+     * Use the configuration values in the specified file rather than detecting the file name.
+     */
+    configFile?: string;
+
+    /**
      * Save any creates seen during the preview into an import file to use with `pulumi import`.
      */
     importFile?: string;
@@ -1359,6 +1415,16 @@ export interface UpOptions extends GlobalOpts {
     policyPackConfigs?: string[];
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1374,7 +1440,12 @@ export interface UpOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1459,6 +1530,16 @@ export interface PreviewOptions extends GlobalOpts {
     policyPackConfigs?: string[];
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1479,9 +1560,14 @@ export interface PreviewOptions extends GlobalOpts {
     program?: PulumiFn;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
      */
     onOutput?: (out: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
+     */
+    onError?: (err: string) => void;
 
     /**
      * A callback to be executed when the operation yields an event.
@@ -1534,9 +1620,24 @@ export interface RefreshOptions extends GlobalOpts {
     clearPendingCreates?: boolean;
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
+
+    /**
+     * Operate on dependent targets discovered but not specified in `targets`.
+     */
+    targetDependents?: boolean;
 
     /**
      * A custom user agent to use when executing the operation.
@@ -1544,7 +1645,12 @@ export interface RefreshOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1588,6 +1694,16 @@ export interface DestroyOptions extends GlobalOpts {
     refresh?: boolean;
 
     /**
+     * Specify a set of resource URNs to exclude from operations.
+     */
+    exclude?: string[];
+
+    /**
+     * Exclude dependents of targets specified with `exclude`.
+     */
+    excludeDependents?: boolean;
+
+    /**
      * Specify a set of resource URNs to operate on. Other resources will not be updated.
      */
     target?: string[];
@@ -1603,7 +1719,12 @@ export interface DestroyOptions extends GlobalOpts {
     userAgent?: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 
@@ -1657,7 +1778,12 @@ export interface RenameOptions extends GlobalOpts {
     stackName: string;
 
     /**
-     * A callback to be executed when the operation produces output.
+     * A callback to be executed when the operation produces stderr output.
+     */
+    onError?: (err: string) => void;
+
+    /**
+     * A callback to be executed when the operation produces stdout output.
      */
     onOutput?: (out: string) => void;
 

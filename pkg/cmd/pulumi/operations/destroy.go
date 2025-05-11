@@ -81,6 +81,9 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeProtected bool
 	var continueOnError bool
 
+	// Flags for Copilot.
+	var copilotEnabled bool
+
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if deployment.RemoteSupported() {
 		use, cmdArgs = "destroy [url]", cmdutil.MaximumNArgs(1)
@@ -186,6 +189,8 @@ func NewDestroyCmd() *cobra.Command {
 			if suppressPermalink != "false" && isDIYBackend {
 				opts.Display.SuppressPermalink = true
 			}
+
+			configureCopilotOptions(copilotEnabled, cmd, &opts.Display, isDIYBackend)
 
 			s, err := cmdStack.RequireStack(
 				ctx,
@@ -339,7 +344,7 @@ func NewDestroyCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(
-		&runProgram, "run-program", false,
+		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to destroy resources")
 
 	cmd.PersistentFlags().BoolVarP(
@@ -424,6 +429,16 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
+
+	cmd.PersistentFlags().BoolVar(
+		&copilotEnabled, "copilot", false,
+		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
+			"(can also be set with PULUMI_COPILOT environment variable)")
+	// hide the copilot-summary flag for now. (Soft-release)
+	contract.AssertNoErrorf(
+		cmd.PersistentFlags().MarkHidden("copilot"),
+		`Could not mark "copilot" as hidden`,
+	)
 
 	// Remote flags
 	remoteArgs.ApplyFlags(cmd)

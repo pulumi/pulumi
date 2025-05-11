@@ -37,10 +37,8 @@ class ProviderArgs:
         pulumi.set(self, "text", value)
 
 
+@pulumi.type_token("pulumi:providers:goodbye")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:goodbye"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

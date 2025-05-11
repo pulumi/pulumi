@@ -138,11 +138,9 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, _ integration.RuntimeValidationStackInfo) {
 			const needle = "panic: great sadness\n"
 			haystack := stderr.String()
-			// 2 instances of needle:
-			// - One instance is the returned error.
-			// - Another instance is in the stderr output.
-			assert.Equal(t, 2, strings.Count(haystack, needle),
-				"Expected only two instance of %q in:\n%s", needle, haystack)
+			// one instances of needle in the returned error:
+			assert.Equal(t, 1, strings.Count(haystack, needle),
+				"Expected only one instance of %q in:\n%s", needle, haystack)
 		},
 	})
 }
@@ -891,7 +889,7 @@ func TestTracePropagationGo(t *testing.T) {
 		t.Parallel()
 
 		isGoListTrace := func(t *appdash.Trace) bool {
-			m := t.Span.Annotations.StringMap()
+			m := t.StringMap()
 
 			isGoCmd := strings.HasSuffix(m["command"], "go") ||
 				strings.HasSuffix(m["command"], "go.exe")
@@ -910,7 +908,7 @@ func TestTracePropagationGo(t *testing.T) {
 
 		exportStackCounter := 0
 		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
-			name := tr.Span.Name()
+			name := tr.Name()
 			if name == "api/exportStack" {
 				exportStackCounter++
 			}
@@ -1223,11 +1221,42 @@ func TestParameterizedGo(t *testing.T) {
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
 			e.CWD = info.Root
+
+			// We have a bare-bones main.go program checked-in that does _not_ depend on the generated SDK.
+			// This allows the `make tidy` script and other tools like dependabot to run successfully in this
+			// directory. When running the test, overwrite the bare-bones main.go with the actual test
+			// program that makes use of the generated SDK.
+			actualProgram, err := os.ReadFile(filepath.Join(e.CWD, "actual_program.txt"))
+			require.NoError(t, err)
+			e.WriteTestFile("main.go", string(actualProgram))
+
+			// Generate the SDK for the provider.
 			path := info.Proj.Plugins.Providers[0].Path
 			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
-			return nil
+
+			// Add a reference to the generated SDK in go.mod.
+			return appendLines(filepath.Join(e.CWD, "go.mod"), []string{
+				"require example.com/pulumi-pkg/sdk/go v1.0.0",
+				"replace example.com/pulumi-pkg/sdk/go => ./sdk/go",
+			})
 		},
 	})
+}
+
+func appendLines(name string, lines []string) error {
+	file, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		if _, err := writer.WriteString(line + "\n"); err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
 }
 
 //nolint:paralleltest // mutates environment

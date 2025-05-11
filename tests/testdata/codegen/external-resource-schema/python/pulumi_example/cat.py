@@ -51,10 +51,8 @@ class CatArgs:
         pulumi.set(self, "pet", value)
 
 
+@pulumi.type_token("example::Cat")
 class Cat(pulumi.CustomResource):
-
-    pulumi_type = "example::Cat"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

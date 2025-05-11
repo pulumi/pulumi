@@ -105,6 +105,18 @@ func (m Map) Set(key string, value Value) Map {
 	return Map{cp}
 }
 
+// Delete produces a new map identical to the receiver with given keys removed.
+func (m Map) Delete(keys ...string) Map {
+	cp := copyMapMaybeNil(m.m)
+	for _, k := range keys {
+		delete(cp, k)
+	}
+	if len(cp) == 0 {
+		return Map{}
+	}
+	return Map{cp}
+}
+
 // NewMap creates a new map from m.
 func NewMap(m map[string]Value) Map { return Map{copyMapMaybeNil(m)} }
 

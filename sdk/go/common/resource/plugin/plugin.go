@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -345,12 +346,19 @@ func newPlugin[T any](
 				return nil, nil, errRunPolicyModuleNotFound
 			}
 
+			var errMsg string
+			detailed, ok := rpcerror.FromError(readerr)
+			if ok {
+				errMsg = detailed.Error()
+			} else {
+				errMsg = readerr.Error()
+			}
 			// Fall back to a generic, opaque error.
 			if portString == "" {
-				return nil, nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
+				return nil, nil, fmt.Errorf("could not read plugin [%v]: %s", bin, errMsg)
 			}
-			return nil, nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w",
-				bin, portString, readerr)
+			return nil, nil, fmt.Errorf("failure reading plugin [%v] (read '%v'): %s",
+				bin, portString, errMsg)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -425,19 +433,20 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		pluginDir := filepath.Dir(bin)
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		if kind == apitype.ResourcePlugin || kind == apitype.ConverterPlugin {
+		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
+		case apitype.ResourcePlugin, apitype.ConverterPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else if kind == apitype.AnalyzerPlugin {
+		case apitype.AnalyzerPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
 			}
 			runtimeInfo = proj.Runtime
-		} else {
+		default:
 			return nil, errors.New("language plugins must be executable binaries")
 		}
 
@@ -460,6 +469,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
 			Env:              env,
+			Kind:             string(kind),
 		})
 		if err != nil {
 			return nil, err
@@ -635,15 +645,14 @@ func (p *plugin) Close() error {
 		//	To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:
 		//
 		//	<output>
-		d.Errorf(diag.StreamMessage("", fmt.Sprintf("\n\n         Detected that %s exited prematurely.\n", p.Bin), id))
-		d.Errorf(diag.StreamMessage("",
-			"         This is *always* a bug in the provider. "+
-				"Please report the issue to the provider author as appropriate.\n\n", id))
-		d.Errorf(diag.StreamMessage("",
-			"To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:\n\n", id))
 		p.unstructuredOutput.outputLock.Lock()
 		defer p.unstructuredOutput.outputLock.Unlock()
-		d.Errorf(diag.StreamMessage("", p.unstructuredOutput.output.String(), id))
+		d.Errorf(diag.StreamMessage("",
+			fmt.Sprintf("Detected that %s exited prematurely. \n"+
+				"       This is *always* a bug in the provider. "+
+				"Please report the issue to the provider author as appropriate.\n"+
+				"       To assist with debugging we have dumped the STDOUT and STDERR streams of the plugin:%s\n",
+				p.Bin, p.unstructuredOutput.output.String()), id))
 	}
 
 	return result

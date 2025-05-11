@@ -86,10 +86,8 @@ class ProviderArgs:
         pulumi.set(self, "namespace", value)
 
 
+@pulumi.type_token("pulumi:providers:kubernetes")
 class Provider(pulumi.ProviderResource):
-
-    pulumi_type = "pulumi:providers:kubernetes"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

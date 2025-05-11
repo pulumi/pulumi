@@ -605,6 +605,32 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`previews a refresh without executing it`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi refresh
+        const refRes = await stack.refresh({ userAgent, previewOnly: true });
+        assert.strictEqual(refRes.summary.kind, "update");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`previews a destroy without executing it`, async () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");
@@ -701,6 +727,103 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`listens for error output`, async () => {
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
+            withTestBackend({}, "inline_node"),
+        );
+
+        // We need to come up with some creative ways to make these commands
+        // produce error output. These are the least elaborate ideas I could
+        // come up with.
+
+        let error = "";
+
+        // pulumi up
+        try {
+            await stack.up({
+                plan: "halloumi",
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: open halloumi/);
+        error = "";
+
+        const upRes = await stack.up();
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        try {
+            await stack.preview({
+                parallel: 1.1,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: invalid argument/);
+        error = "";
+
+        const preRes = await stack.preview({ userAgent });
+        assert.strictEqual(preRes.changeSummary.same, 1);
+
+        // pulumi refresh
+        try {
+            await stack.refresh({
+                parallel: 2.2,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: invalid argument/);
+        error = "";
+
+        const refRes = await stack.refresh({ userAgent });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        try {
+            await stack.destroy({
+                parallel: 3.3,
+                onError: (e) => {
+                    error += e;
+                },
+            });
+        } catch (e) {
+            assert.notStrictEqual(error, "");
+        }
+
+        assert.match(error, /error: invalid argument/);
+        error = "";
+
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
@@ -865,6 +988,36 @@ describe("LocalWorkspace", () => {
 
         const destroyRes = await stack.destroy({ userAgent, refresh });
         assert.match(destroyRes.stdout, /refreshing/);
+    });
+    it(`operations accept configFile option`, async () => {
+        // We are testing that the configFile option is accepted by the operations.
+
+        const configPath = upath.joinSafe(__dirname, "data", "yaml", "Pulumi.local.yaml");
+
+        const program = async () => {
+            const config = new Config();
+            return {
+                plain: config.get("plain"),
+            };
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `configfile_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack(
+            { stackName, projectName, program },
+            withTestBackend({}, "inline_node"),
+        );
+        await stack.up({ userAgent, configFile: configPath });
+        const outputs = await stack.outputs();
+        assert.strictEqual(outputs["plain"].value, "plain");
+        const previewRes = await stack.preview({ userAgent, configFile: configPath });
+        assert.strictEqual(previewRes.changeSummary.same, 1);
+        const refRes = await stack.refresh({ userAgent, configFile: configPath });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+        const destroyRes = await stack.destroy({ userAgent, configFile: configPath });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+        await stack.workspace.removeStack(stackName);
     });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {

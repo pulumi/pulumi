@@ -61,6 +61,12 @@ type PackageReference interface {
 	// Functions returns the package's functions.
 	Functions() PackageFunctions
 
+	// The language specific metadata for a given language.
+	//
+	// The package must have been originally bound with a matching [Language]
+	// importer.
+	Language(string) (any, error)
+
 	// TokenToModule extracts a package member's module name from its token.
 	TokenToModule(token string) string
 
@@ -206,6 +212,10 @@ func (p packageDefRef) Resources() PackageResources {
 
 func (p packageDefRef) Functions() PackageFunctions {
 	return packageDefFunctions{p.pkg}
+}
+
+func (p packageDefRef) Language(language string) (any, error) {
+	return p.pkg.Language[language], nil
 }
 
 func (p packageDefRef) TokenToModule(token string) string {
@@ -449,7 +459,9 @@ func (p *PartialPackage) bindConfig() ([]*Property, error) {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
 	}
 
-	config, diags, err := bindConfig(spec, p.types)
+	config, diags, err := bindConfig(spec, p.types, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +481,9 @@ func (p *PartialPackage) Provider() (*Resource, error) {
 		return p.def.Provider, nil
 	}
 
-	provider, diags, err := p.types.bindResourceDef("pulumi:providers:" + p.spec.Name)
+	provider, diags, err := p.types.bindResourceDef("pulumi:providers:"+p.spec.Name, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -499,6 +513,39 @@ func (p *PartialPackage) Functions() PackageFunctions {
 	return partialPackageFunctions{p}
 }
 
+func (p *PartialPackage) Language(language string) (any, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		if l, ok := p.def.Language[language]; ok {
+			return l, nil
+		}
+	}
+
+	val, ok := p.spec.Language[language]
+	if !ok {
+		return nil, nil
+	}
+	importer, ok := p.languages[language]
+	if !ok {
+		return nil, nil
+	}
+	imported, err := importer.ImportPackageSpec(json.RawMessage(val))
+	if err != nil {
+		return nil, err
+	}
+	if p.def == nil {
+		p.def = new(Package)
+	}
+	if p.def.Language == nil {
+		p.def.Language = map[string]any{}
+	}
+	p.def.Language[language] = imported
+
+	return imported, nil
+}
+
 func (p *PartialPackage) TokenToModule(token string) string {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -523,19 +570,25 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	}
 
 	var diags hcl.Diagnostics
-	provider, resources, resourceDiags, err := p.types.finishResources(sortedKeys(p.spec.Resources))
+	provider, resources, resourceDiags, err := p.types.finishResources(sortedKeys(p.spec.Resources), ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	diags = diags.Extend(resourceDiags)
 
-	functions, functionDiags, err := p.types.finishFunctions(sortedKeys(p.spec.Functions))
+	functions, functionDiags, err := p.types.finishFunctions(sortedKeys(p.spec.Functions), ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	diags = diags.Extend(functionDiags)
 
-	typeList, typeDiags, err := p.types.finishTypes(sortedKeys(p.spec.Types))
+	typeList, typeDiags, err := p.types.finishTypes(sortedKeys(p.spec.Types), ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +662,9 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 		return functions[i].Token < functions[j].Token
 	})
 
-	typeList, diags, err := p.types.finishTypes(nil)
+	typeList, diags, err := p.types.finishTypes(nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	contract.AssertNoErrorf(err, "error snapshotting types")
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
@@ -662,7 +717,9 @@ func (p partialPackageTypes) Get(token string) (Type, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	typ, diags, err := p.types.bindTypeDef(token)
+	typ, diags, err := p.types.bindTypeDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -705,7 +762,9 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	res, diags, err := p.types.bindResourceDef(token)
+	res, diags, err := p.types.bindResourceDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -719,7 +778,9 @@ func (p partialPackageResources) GetType(token string) (*ResourceType, bool, err
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	typ, diags, err := p.types.bindResourceTypeDef(token)
+	typ, diags, err := p.types.bindResourceTypeDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -762,7 +823,9 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	fn, diags, err := p.types.bindFunctionDef(token)
+	fn, diags, err := p.types.bindFunctionDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}

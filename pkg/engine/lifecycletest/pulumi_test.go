@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -422,38 +423,24 @@ func TestConfigPropertyMapMatches(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Check that the config property map matches what we expect.
-		assert.Equal(t, 8, len(info.Config))
-		assert.Equal(t, 8, len(info.ConfigPropertyMap))
+		assert.Equal(t, 8, info.Config.Len())
 
-		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
-		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
-		assert.Equal(t, "hunter2", info.ConfigPropertyMap["pkgA:secret"].SecretValue().Element.StringValue())
-
-		assert.Equal(t, "all I see is ******", info.Config[config.MustMakeKey("pkgA", "plain")])
-		assert.False(t, info.ConfigPropertyMap["pkgA:plain"].IsSecret())
-		assert.Equal(t, "all I see is ******", info.ConfigPropertyMap["pkgA:plain"].StringValue())
-
-		assert.Equal(t, "1234", info.Config[config.MustMakeKey("pkgA", "int")])
-		assert.Equal(t, 1234.0, info.ConfigPropertyMap["pkgA:int"].NumberValue())
-
-		assert.Equal(t, "12.34", info.Config[config.MustMakeKey("pkgA", "float")])
+		assert.Equal(t, property.New("hunter2").WithSecret(true), info.Config.Get("pkgA:secret"))
+		assert.Equal(t, property.New("all I see is ******"), info.Config.Get("pkgA:plain"))
+		assert.Equal(t, property.New(1234.0), info.Config.Get("pkgA:int"))
 		// This is a string because adjustObjectValue only parses integers, not floats.
-		assert.Equal(t, "12.34", info.ConfigPropertyMap["pkgA:float"].StringValue())
-
-		assert.Equal(t, "012345", info.Config[config.MustMakeKey("pkgA", "string")])
-		assert.Equal(t, "012345", info.ConfigPropertyMap["pkgA:string"].StringValue())
-
-		assert.Equal(t, "true", info.Config[config.MustMakeKey("pkgA", "bool")])
-		assert.Equal(t, true, info.ConfigPropertyMap["pkgA:bool"].BoolValue())
-
-		assert.Equal(t, "[1,2,3]", info.Config[config.MustMakeKey("pkgA", "array")])
-		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[0].NumberValue())
-		assert.Equal(t, 2.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[1].NumberValue())
-		assert.Equal(t, 3.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[2].NumberValue())
-
-		assert.Equal(t, `{"bar":"02","foo":1}`, info.Config[config.MustMakeKey("pkgA", "map")])
-		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:map"].ObjectValue()["foo"].NumberValue())
-		assert.Equal(t, "02", info.ConfigPropertyMap["pkgA:map"].ObjectValue()["bar"].StringValue())
+		assert.Equal(t, property.New("12.34"), info.Config.Get("pkgA:float"))
+		assert.Equal(t, property.New("012345"), info.Config.Get("pkgA:string"))
+		assert.Equal(t, property.New(true), info.Config.Get("pkgA:bool"))
+		assert.Equal(t, property.New([]property.Value{
+			property.New(1.0),
+			property.New(2.0),
+			property.New(3.0),
+		}), info.Config.Get("pkgA:array"))
+		assert.Equal(t, property.New(map[string]property.Value{
+			"foo": property.New(1.0),
+			"bar": property.New("02"),
+		}), info.Config.Get("pkgA:map"))
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF)

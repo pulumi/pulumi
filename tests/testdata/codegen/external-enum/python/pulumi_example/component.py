@@ -51,10 +51,8 @@ class ComponentArgs:
         pulumi.set(self, "remote_enum", value)
 
 
+@pulumi.type_token("example:index:Component")
 class Component(pulumi.CustomResource):
-
-    pulumi_type = "example:index:Component"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

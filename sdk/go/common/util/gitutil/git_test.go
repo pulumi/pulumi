@@ -378,6 +378,22 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		{"svn:something.com/owner/repo", nil},
 		{"https://bitbucket.org/foo.git", nil},
 		{"git@github.foo.acme.bad-tld:owner-name/repo-name.git", nil},
+		{
+			"git@github.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"git@github.enterprise.example.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.enterprise.example.com"},
+		},
+		{
+			"https://github.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"https://github.enterprise.example.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.enterprise.example.com"},
+		},
 	}
 
 	for _, test := range gitTests {
@@ -460,6 +476,10 @@ func TestParseAuthURL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
 
+		_, auth, err = getAuthForURL("http://github.enterprise.example.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
 		_, auth, err = getAuthForURL("http://gitlab.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Nil(t, auth)
@@ -469,6 +489,10 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "token-1")
 		t.Setenv("GITHUB_TOKEN", "")
 		_, auth, err := getAuthForURL("http://gitlab.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
+
+		_, auth, err = getAuthForURL("http://gitlab.enterprise.example.com/pulumi/templates")
 		assert.NoError(t, err)
 		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
 

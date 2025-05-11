@@ -101,6 +101,12 @@ func GenerateHCL2Definition(
 	}
 
 	packageName := state.Type.Package()
+	if providers.IsProviderType(state.Type) {
+		// When the type is a provider type, the type triple is in the form
+		// pulumi:providers:pkg instead of pkg:mod:type, so use the token "name"
+		// position as the package instead.
+		packageName = tokens.Package(state.Type.Name())
+	}
 	pluginName, err := providers.GetProviderName(packageName, provider.Inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider name: %w", err)
@@ -150,7 +156,14 @@ func GenerateHCL2Definition(
 
 	// With the package loaded, we can get the full resource schema and use that to generate an appropriate HCL2
 	// definition.
-	r, ok, err := pkg.Resources().Get(string(state.Type))
+	var r *schema.Resource
+	ok := true
+	if providers.IsProviderType(state.Type) {
+		r, err = pkg.Provider()
+	} else {
+		r, ok, err = pkg.Resources().Get(string(state.Type))
+	}
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
 	}

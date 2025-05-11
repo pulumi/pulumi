@@ -166,7 +166,7 @@ type orgTemplate struct {
 
 func (t orgTemplate) Name() string               { return t.t.Name }
 func (t orgTemplate) Description() string        { return "" }
-func (t orgTemplate) ProjectDescription() string { return t.t.ProjectTemplate.Description }
+func (t orgTemplate) ProjectDescription() string { return t.t.Description }
 func (t orgTemplate) Error() error               { return nil }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")

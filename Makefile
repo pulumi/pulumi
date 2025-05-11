@@ -112,9 +112,18 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
 
-lint_fix:: lint_golang_fix
+lint_pulumi_json::
+	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
+	# JSON schema says regexps should conform to ECMA 262.
+	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
+
+lint_pulumi_json_fix::
+	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+
+lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
 lint_golang:: lint_deps
 	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
@@ -122,8 +131,7 @@ lint_golang:: lint_deps
 		echo "[golangci-lint] Linting $(pkg)..." && \
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
-			--timeout 5m \
-			--path-prefix $(pkg)) \
+			--timeout 5m) \
 		&&) true
 
 lint_golang_fix::
@@ -133,7 +141,6 @@ lint_golang_fix::
 		golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--timeout 5m \
-			--path-prefix $(pkg) \
 			--fix) \
 		&&) true
 
@@ -142,6 +149,9 @@ lint_deps:
 lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.27 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
+
+format:: ensure
+	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
@@ -191,6 +201,9 @@ gotestsum/%:
 	cd $* && $(PYTHON) '$(CURDIR)/scripts/go-test.py' $(GO_TEST_FLAGS) $${OPTS} $${PKGS}
 
 tidy::
+	./scripts/tidy.sh --check
+
+tidy_fix::
 	./scripts/tidy.sh
 
 validate_codecov_yaml::

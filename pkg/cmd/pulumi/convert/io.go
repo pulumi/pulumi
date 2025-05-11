@@ -33,7 +33,7 @@ func LoadConverterPlugin(
 	name string,
 	log func(sev diag.Severity, msg string),
 ) (plugin.Converter, error) {
-	pluginSpec, err := workspace.NewPluginSpec(name, apitype.ConverterPlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(ctx.Request(), name, apitype.ConverterPlugin, nil, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not load converter plugin: %w", err)
 	}

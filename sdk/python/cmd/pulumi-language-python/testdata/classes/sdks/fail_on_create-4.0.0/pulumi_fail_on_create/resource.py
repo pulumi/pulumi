@@ -31,10 +31,8 @@ class ResourceArgs:
         pulumi.set(self, "value", value)
 
 
+@pulumi.type_token("fail_on_create:index:Resource")
 class Resource(pulumi.CustomResource):
-
-    pulumi_type = "fail_on_create:index:Resource"
-
     @overload
     def __init__(__self__,
                  resource_name: str,

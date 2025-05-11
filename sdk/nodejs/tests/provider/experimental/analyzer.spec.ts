@@ -312,7 +312,7 @@ describe("Analyzer", function () {
     it("infers resource references", async function () {
         const dir = path.join(__dirname, "testdata", "resource-reference");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
-        const { components, packageReferences } = analyzer.analyze();
+        const { components, dependencies } = analyzer.analyze();
         assert.deepStrictEqual(components, {
             MyComponent: {
                 name: "MyComponent",
@@ -340,12 +340,30 @@ describe("Analyzer", function () {
                         $ref: "/tls/v4.11.1/schema.json#/resources/tls:index%2FprivateKey:PrivateKey",
                         optional: true,
                     },
+                    outputParameterized: {
+                        $ref: "/terraform-provider/v0.10.0/schema.json#/resources/netlify:index%2FdeployKey:DeployKey",
+                    },
                 },
             },
         });
-        assert.deepStrictEqual(packageReferences, {
-            tls: "4.11.1",
-        });
+        assert.deepStrictEqual(
+            new Set(dependencies),
+            new Set([
+                {
+                    name: "tls",
+                    version: "4.11.1",
+                },
+                {
+                    name: "terraform-provider",
+                    version: "0.10.0",
+                    parameterization: {
+                        name: "netlify",
+                        value: "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25ldGxpZnkvbmV0bGlmeSIsInZlcnNpb24iOiIwLjIuMiJ9fQ==",
+                        version: "0.2.2",
+                    },
+                },
+            ]),
+        );
     });
 
     it("errors nicely for invalid property types for top-level properties", async function () {

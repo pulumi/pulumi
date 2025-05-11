@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -80,27 +81,52 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 	return assignableFromImpl()
 }
 
+type cacheEntry struct {
+	kind  ConversionKind
+	diags lazyDiagnostics
+}
+
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
+	cache *gsync.Map[Type, cacheEntry],
 	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
 ) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
 
+	if c, ok := cache.Load(src); ok {
+		return c.kind, c.diags
+	}
+
 	switch src := src.(type) {
 	case *UnionType:
-		return src.conversionTo(dest, unifying, seen)
+		kind, diags := src.conversionTo(dest, unifying, seen)
+		if cache != nil {
+			cache.Store(src, cacheEntry{kind: kind, diags: diags})
+		}
+		return kind, diags
 	case *ConstType:
 		// We want `EnumType`s too see const types, since they allow safe
 		// conversions.
 		if _, ok := dest.(*EnumType); !ok {
-			return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
+			kind, diags := conversionFrom(dest, src.Type, unifying, seen, cache, conversionFromImpl)
+			if cache != nil {
+				cache.Store(src, cacheEntry{kind, diags})
+			}
+			return kind, diags
 		}
 	}
 	if src == DynamicType {
+		if cache != nil {
+			cache.Store(src, cacheEntry{UnsafeConversion, nil})
+		}
 		return UnsafeConversion, nil
 	}
-	return conversionFromImpl()
+	kind, diags := conversionFromImpl()
+	if cache != nil {
+		cache.Store(src, cacheEntry{kind, diags})
+	}
+	return kind, diags
 }
 
 func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
