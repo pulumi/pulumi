@@ -14,7 +14,7 @@
 
 //go:build !windows
 
-package display
+package sysutil
 
 import (
 	"syscall"
@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func sigint() {
-	err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+func Sigint(pid int) {
+	err := syscall.Kill(pid, syscall.SIGINT)
 	contract.IgnoreError(err)
 }

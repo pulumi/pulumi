@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -76,6 +77,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -184,6 +186,7 @@ func NewPulumiCmd() *cobra.Command {
 	var memProfileRate int
 
 	updateCheckResult := make(chan *diag.Diag)
+	var updateCancel context.CancelFunc
 
 	cmd := &cobra.Command{
 		Use:           "pulumi",
@@ -214,6 +217,8 @@ func NewPulumiCmd() *cobra.Command {
 			// If we fail before we start the async update check, go ahead and close the
 			// channel since we know it will never receive a value.
 			var waitForUpdateCheck bool
+			var updateCtx context.Context
+			updateCtx, updateCancel = context.WithCancel(cmd.Context())
 			defer func() {
 				if !waitForUpdateCheck {
 					close(updateCheckResult)
@@ -275,14 +280,14 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if env.SkipUpdateCheck.Value() {
+			// Run the version check in parallel so that it doesn't block executing the command.
+			// If there is a new version to report, we will do so after the command has finished.
+			if env.SkipUpdateCheck.Value() && !env.AutoUpdateCLI.Value() {
 				logging.V(5).Infof("skipping update check")
 			} else {
-				// Run the version check in parallel so that it doesn't block executing the command.
-				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
 				go func() {
-					updateCheckResult <- checkForUpdate(ctx)
+					updateCheckResult <- checkForUpdate(updateCtx)
 					close(updateCheckResult)
 				}()
 			}
@@ -294,6 +299,7 @@ func NewPulumiCmd() *cobra.Command {
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
 
+			updateCancel()
 			checkVersionMsg, ok := <-updateCheckResult
 			if ok && checkVersionMsg != nil && !isJSON {
 				cmdutil.Diag().Warningf(checkVersionMsg)
@@ -491,6 +497,208 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	return devCommits > curCommits
 }
 
+func checkForExistingTempFile() (*semver.Version, error) {
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(filepath.Join(homeDir, "tmp"))
+	if err != nil {
+		return nil, err
+	}
+	tgzRegex := regexp.MustCompile(`pulumi-v(.+)-.+-.+.tar.gz`)
+	for _, entry := range entries {
+		submatches := tgzRegex.FindStringSubmatch(entry.Name())
+		if len(submatches) == 2 && submatches[1] != "" {
+			v := semver.MustParse(submatches[1])
+			return &v, nil
+		}
+	}
+	return nil, nil
+}
+
+func doDownload(ctx context.Context, version semver.Version) (string, error) {
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	v, err := checkForExistingTempFile()
+	if err != nil {
+		return "", err
+	}
+	if v != nil {
+		version = *v
+	}
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = "x64"
+	case "arm64":
+		arch = "arm64"
+	case "aarch64":
+		arch = "arm64"
+	default:
+		return "", fmt.Errorf("unsupported architecture: %s", runtime.GOARCH)
+	}
+	tgzFile := fmt.Sprintf("pulumi-v%s-%s-%s.tar.gz", version, runtime.GOOS, arch)
+
+	downloadURL := fmt.Sprintf("https://github.com/pulumi/pulumi/releases/download/v%s/", version)
+	if isDevVersion(version) {
+		downloadURL = "https://get.pulumi.com/releases/sdk/"
+	}
+
+	downloadURL = fmt.Sprintf("%s/%s", downloadURL, tgzFile)
+
+	err = os.MkdirAll(filepath.Join(homeDir, "tmp"), 0o700)
+	if err != nil {
+		return "", err
+	}
+	tmpFile := filepath.Join(homeDir, "tmp", tgzFile)
+	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(tmpFile)
+	var rangeStart int64
+	if err == nil && info != nil {
+		rangeStart = info.Size()
+	}
+
+	client := client.NewClient(httpstate.DefaultURL(pkgWorkspace.Instance), "", false, cmdutil.Diag())
+	resp, err := client.DownloadCLI(ctx, downloadURL, rangeStart)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		// Something went wrong.  Let's remove the tmp file and try again
+		os.Remove(tmpFile)
+		return "", err
+	}
+
+	_, err = io.Copy(f, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if ctx.Err() != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+		return "", err
+	}
+	return tmpFile, nil
+}
+
+func isUpgradeable(version semver.Version) bool {
+	if runtime.GOOS == "windows" {
+		return false
+	}
+	if !isDevVersion(version) {
+		return false
+	}
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return false
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+
+	if !strings.HasPrefix(exe, filepath.Join(homeDir, "bin")) {
+		return false
+	}
+	return true
+}
+
+// Install a new version of the CLI into `$PULUMI_HOME/bin`. Only works if the currently
+// running binary is installed in `$PULUMI_HOME/bin`.
+//
+// We download the new version piece by piece, stopping when the CLI would normally exit,
+// so people on slower internet connections won't have a huge performance impact.
+// When a download isn't finished, but there is a new version available, we still continue
+// with the download that's currently in progress, so we don't have to start over, and
+// never update the CLI. Once the current download is finished, we then check the latest
+// version again, potentially skipping a few releases, depending on how long it took.
+//
+// We only return an error here if we failed catastrophically, leaving and removed the
+// old CLI while not installing the new one.  In that case we want to warn the user. In
+// all other cases we just log the error and return nil.  This is because we don't want
+// to break the user's workflow if we can't install the new CLI for some reason.
+func installNewCLI(ctx context.Context, version semver.Version) (*semver.Version, error) {
+	logging.V(3).Infof("installing new CLI version %s", version)
+	tmpFile, err := doDownload(ctx, version)
+	if err != nil {
+		logging.V(3).Infof("error downloading new CLI: %s", err)
+		return nil, nil
+	}
+	homeDir, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		return nil, nil
+	}
+
+	f, err := os.Open(tmpFile)
+	if err != nil {
+		logging.V(3).Infof("error opening temporary file: %s, %s", tmpFile, err)
+		return nil, nil
+	}
+	defer os.Remove(tmpFile)
+
+	tmpDir, err := os.MkdirTemp(homeDir, "pulumi-update")
+	if err != nil {
+		logging.V(3).Infof("error creating temporary directory: %s", err)
+		return nil, nil
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Extract the tarball into the temporary directory.
+	err = archive.ExtractTGZ(f, tmpDir)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		logging.V(3).Infof("error extracting new CLI: %s", err)
+		return nil, nil
+	}
+
+	err = os.Rename(filepath.Join(homeDir, "bin"), filepath.Join(homeDir, "bin.bak"))
+	if err != nil {
+		logging.V(3).Infof("error moving old CLI to backup dir: %s", err)
+		return nil, nil
+	}
+	err = os.MkdirAll(filepath.Join(homeDir, "bin"), 0o700)
+	if err != nil {
+		// Try to restore the old CLI
+		err = os.Rename(filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		if err != nil {
+			logging.V(3).Infof("error restoring old CLI: %s", err)
+			return nil, fmt.Errorf("failed to install new CLI after moving the old binaries out of the way. "+
+				"Please restore it manually, by moving %s to %s",
+				filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		}
+		logging.V(3).Infof("error creating bin directory: %s", err)
+		return nil, nil
+	}
+	// Move the new CLI into the bin directory.
+	err = os.Rename(filepath.Join(tmpDir, "pulumi"), filepath.Join(homeDir, "bin"))
+	if err != nil {
+		// if we fail, Make a best effort to restore the old CLI
+		_ = os.RemoveAll(filepath.Join(homeDir, "bin"))
+		err = os.Rename(filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		if err != nil {
+			logging.V(3).Infof("error restoring old CLI: %s", err)
+			return nil, fmt.Errorf("failed to install new CLI after moving the old binaries out of the way. "+
+				"Please restore it manually, by moving %s to %s",
+				filepath.Join(homeDir, "bin.bak"), filepath.Join(homeDir, "bin"))
+		}
+		logging.V(3).Infof("error moving new CLI into place: %s", err)
+		return nil, nil
+	}
+	return &version, nil
+}
+
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
 func checkForUpdate(ctx context.Context) *diag.Diag {
@@ -500,15 +708,11 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	}
 
 	// We don't care about warning for you to update if you have installed a locally complied version
-	if isLocalVersion(curVer) {
-		return nil
-	}
-
 	isDevVersion := isDevVersion(curVer)
 
 	var skipUpdateCheck bool
 	latestVer, oldestAllowedVer, devVer, err := getCachedVersionInfo(isDevVersion)
-	if err == nil {
+	if err == nil && !env.AutoUpdateCLI.Value() {
 		// If we have a cached version, we already warned the user once
 		// in the last 24 hours--the cache is considered stale after that.
 		// So we don't need to warn again.
@@ -519,9 +723,29 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 			logging.V(3).Infof("error fetching latest version information "+
 				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
 		}
+		if ctx.Err() != nil {
+			logging.V(3).Infof("context cancelled, fetched latest version information")
+			return nil
+		}
 	}
 
 	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
+		if env.AutoUpdateCLI.Value() && isUpgradeable(curVer) {
+			version := devVer
+			if !isDevVersion {
+				version = latestVer
+			}
+			newVersion, err := installNewCLI(ctx, version)
+			if err != nil {
+				return diag.RawMessage("",
+					"Tried to update Pulumi CLI, but there was an error installing the new version: "+err.Error())
+			}
+			if newVersion != nil {
+				return diag.RawMessage("", "Pulumi CLI has been updated to the version: "+newVersion.String())
+			}
+			return nil
+		}
+
 		if isDevVersion {
 			latestVer = devVer
 		}
@@ -649,10 +873,14 @@ func getUpgradeMessage(latest semver.Version, current semver.Version, isDevVersi
 	cmd := getUpgradeCommand(isDevVersion)
 
 	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
+
 	if cmd != "" {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
+	if isUpgradeable(current) {
+		msg += "set PULUMI_AUTO_UPDATE_CLI=true in your environment to auto-update the CLI, \nor "
+	}
 	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
 }

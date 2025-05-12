@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/sysutil"
 	"golang.org/x/exp/maps"
 )
 
@@ -478,7 +480,7 @@ func (r *treeRenderer) handleEvents() {
 func (r *treeRenderer) handleKey(key string) {
 	switch key {
 	case terminal.KeyCtrlC:
-		sigint()
+		sysutil.Sigint(os.Getpid())
 	case terminal.KeyCtrlO:
 		if r.permalink != "" {
 			if err := browser.OpenURL(r.permalink); err != nil {
