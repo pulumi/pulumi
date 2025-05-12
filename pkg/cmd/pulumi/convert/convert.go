@@ -355,12 +355,18 @@ func runConvert(
 		}
 		defer contract.IgnoreClose(grpcServer)
 
+		absoluteOutDir, err := filepath.Abs(outDir)
+		if err != nil {
+			return fmt.Errorf("get absolute path for output directory: %w", err)
+		}
+
 		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
-			SourceDirectory: cwd,
-			TargetDirectory: pclDirectory,
-			MapperTarget:    grpcServer.Addr(),
-			LoaderTarget:    grpcServer.Addr(),
-			Args:            args,
+			SourceDirectory:           cwd,
+			TargetDirectory:           pclDirectory,
+			MapperTarget:              grpcServer.Addr(),
+			LoaderTarget:              grpcServer.Addr(),
+			Args:                      args,
+			GeneratedProjectDirectory: absoluteOutDir,
 		})
 		if err != nil {
 			return err

@@ -130,6 +130,7 @@ class ConvertProgramRequest(google.protobuf.message.Message):
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
+    GENERATED_PROJECT_DIRECTORY_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """the source directory containing the program to convert from."""
     target_directory: builtins.str
@@ -141,6 +142,12 @@ class ConvertProgramRequest(google.protobuf.message.Message):
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options."""
+    generated_project_directory: builtins.str
+    """the directory where the final project will be generated. 
+    use to determine relative paths of any asset that will be copied over.
+    Do not write files to this directory as these files might be overwritten in 
+    the project generation process.
+    """
     def __init__(
         self,
         *,
@@ -149,8 +156,9 @@ class ConvertProgramRequest(google.protobuf.message.Message):
         mapper_target: builtins.str = ...,
         loader_target: builtins.str = ...,
         args: collections.abc.Iterable[builtins.str] | None = ...,
+        generated_project_directory: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "generated_project_directory", b"generated_project_directory", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
 
 global___ConvertProgramRequest = ConvertProgramRequest
 
