@@ -105,47 +105,54 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 	return nil
 }
 
+// unprotectResourcesInSnapshot handles the logic for unprotecting resources in a snapshot.
+func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+	if snap == nil {
+		return 0, []error{errors.New("no resources found to unprotect")}
+	}
+
+	var errs []error
+	resourceCount := 0
+
+	// Map URNs to resources for efficient lookup
+	urnToResource := make(map[resource.URN]*resource.State)
+	for _, res := range snap.Resources {
+		urnToResource[res.URN] = res
+	}
+
+	for _, urnStr := range urns {
+		urn := resource.URN(urnStr)
+		res, found := urnToResource[urn]
+
+		if found {
+			res.Protect = false
+			resourceCount++
+		} else {
+			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+		}
+	}
+
+	return resourceCount, errs
+}
+
 // unprotectMultipleResources unprotects multiple resources specified by their URNs.
 func unprotectMultipleResources(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEdit(
 		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
-			if snap == nil {
-				return errors.New("no resources found to unprotect")
-			}
+			resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
-			var errs []string
-			resourceCount := 0
-
-			// Map URNs to resources for efficient lookup
-			urnToResource := make(map[resource.URN]*resource.State)
-			for _, res := range snap.Resources {
-				urnToResource[res.URN] = res
-			}
-
-			for _, urnStr := range urns {
-				urn := resource.URN(urnStr)
-				res, found := urnToResource[urn]
-
-				if found {
-					contract.Assert(edit.UnprotectResource(snap, res) == nil)
-					resourceCount++
-				} else {
-					errs = append(errs, fmt.Sprintf("No such resource %q exists in the current state", urn))
-				}
-			}
-
-			if resourceCount > 0 {
-				if len(errs) > 0 {
-					fmt.Printf("%d resources unprotected with errors\n", resourceCount)
-				} else {
-					fmt.Printf("%d resources unprotected\n", resourceCount)
-				}
+			if resourceCount > 0 && len(errs) == 0 {
+				fmt.Printf("%d resources unprotected\n", resourceCount)
 			}
 
 			if len(errs) > 0 {
-				return errors.New(strings.Join(errs, "\n"))
+				var errMsgs []string
+				for _, err := range errs {
+					errMsgs = append(errMsgs, err.Error())
+				}
+				return errors.New(strings.Join(errMsgs, "\n"))
 			}
 
 			return nil
@@ -155,14 +162,5 @@ func unprotectMultipleResources(
 func unprotectResource(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn,
-		func(_ *deploy.Snapshot, res *resource.State) error {
-			res.Protect = false
-			return nil
-		})
-	if err != nil {
-		return err
-	}
-	fmt.Println("Resource unprotected")
-	return nil
+	return unprotectMultipleResources(ctx, ws, stackName, []string{string(urn)}, showPrompt)
 }
