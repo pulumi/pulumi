@@ -374,7 +374,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				if len(imports) == 1 {
 					env = imports[0]
 				}
-				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.%s`", env, key.Name())
+				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.%s`", env, key.String())
 				return errors.New("config rm not supported for remote stack config: " + helpText)
 			}
 
@@ -748,7 +748,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		if len(imports) == 1 {
 			env = imports[0]
 		}
-		helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.%s %s`", env, key.Name(), exampleValue)
+		helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.%s %s`", env, key.String(), exampleValue)
 		return errors.New("config set not supported for remote stack config: " + helpText)
 	}
 
