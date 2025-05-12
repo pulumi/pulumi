@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -539,13 +540,135 @@ func getBooleanAttributeValue(attr *model.Attribute) (bool, *hcl.Diagnostic) {
 	}
 }
 
+// recognizeToBase64 checks expressions of the form `toBase64(<expr>)` and returns the inner expression
+func recognizeToBase64(expr hclsyntax.Expression) (hclsyntax.Expression, bool) {
+	switch expr := expr.(type) {
+	case *hclsyntax.FunctionCallExpr:
+		if expr.Name != "toBase64" {
+			return expr, false
+		}
+
+		if len(expr.Args) != 1 {
+			return expr, false
+		}
+
+		return expr.Args[0], true
+	default:
+		return expr, false
+	}
+}
+
+// recognizeToJSON checks expressions of the form `toJSON(<expr>)` and returns the inner expression
+// only if that inner expression is an object
+func recognizeObjectWithinToJSON(expr hclsyntax.Expression) (*hclsyntax.ObjectConsExpr, bool) {
+	switch expr := expr.(type) {
+	case *hclsyntax.FunctionCallExpr:
+		if expr.Name != "toJSON" {
+			return nil, false
+		}
+
+		if len(expr.Args) != 1 {
+			return nil, false
+		}
+
+		objectExpr, ok := expr.Args[0].(*hclsyntax.ObjectConsExpr)
+		if !ok {
+			return nil, false
+		}
+		return objectExpr, true
+	default:
+		return nil, false
+	}
+}
+
+func recognizeLiteralString(expr hclsyntax.Expression) (string, bool) {
+	switch expr := expr.(type) {
+	case *hclsyntax.LiteralValueExpr:
+		if expr.Val.Type() != cty.String {
+			return "", false
+		}
+		return expr.Val.AsString(), true
+	case *hclsyntax.TemplateExpr:
+		if len(expr.Parts) != 1 {
+			return "", false
+		}
+
+		part, ok := expr.Parts[0].(*hclsyntax.LiteralValueExpr)
+		if !ok || part.Val.Type() != cty.String {
+			return "", false
+		}
+		return part.Val.AsString(), true
+	case *hclsyntax.ObjectConsKeyExpr:
+		return recognizeLiteralString(expr.Wrapped)
+	case *hclsyntax.ScopeTraversalExpr:
+		if len(expr.Traversal) == 1 {
+			if attr, ok := expr.Traversal[0].(hcl.TraverseRoot); ok {
+				return attr.Name, true
+			}
+		}
+
+		return "", false
+	default:
+		return "", false
+	}
+}
+
+// convertObjectExpressionToMap converts an HCL expresssion to a Golang object
+func convertExpression(expr hclsyntax.Expression) interface{} {
+	// convert ObjectConsExpr to map[string]interface{}
+	if objectExpr, ok := expr.(*hclsyntax.ObjectConsExpr); ok {
+		mapped := make(map[string]interface{})
+		for _, item := range objectExpr.Items {
+			if key, ok := recognizeLiteralString(item.KeyExpr); ok {
+				mapped[key] = convertExpression(item.ValueExpr)
+			}
+		}
+		return mapped
+	}
+
+	// convert TupleConsExpr to []interface{}
+	if listExpr, ok := expr.(*hclsyntax.TupleConsExpr); ok {
+		mapped := make([]interface{}, len(listExpr.Exprs))
+		for i, item := range listExpr.Exprs {
+			mapped[i] = convertExpression(item)
+		}
+		return mapped
+	}
+
+	// convert basic value types to their Go equivalents
+	if literalExpr, ok := expr.(*hclsyntax.LiteralValueExpr); ok {
+		if literalExpr.Val.Type() == cty.String {
+			return literalExpr.Val.AsString()
+		}
+		if literalExpr.Val.Type() == cty.Number {
+			return literalExpr.Val.AsBigFloat().String()
+		}
+		if literalExpr.Val.Type() == cty.Bool {
+			return literalExpr.Val.True()
+		}
+	}
+
+	// a special case for strings, sometimes they are wrapped in a template expression
+	if templateExpr, ok := expr.(*hclsyntax.TemplateExpr); ok {
+		if len(templateExpr.Parts) == 1 {
+			if part, ok := templateExpr.Parts[0].(*hclsyntax.LiteralValueExpr); ok {
+				if part.Val.Type() == cty.String {
+					return part.Val.AsString()
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // readParameterizationDescriptor parses a map of attributes that match contents of a parameterization block in the
 // form of:
 //
 //	parameterization {
 //	    name = <name>
 //	    version = <version>
-//	    value = <base64 encoded string>
+//	    value = <base64 encoded string> | toBase64(<expr>) | toBase64(toJSON(<object>))
 //	}
 func readParameterizationDescriptor(
 	packageName string,
@@ -575,19 +698,42 @@ func readParameterizationDescriptor(
 			descriptor.Version = parsedVersion
 
 		case "value":
-			// value must be a base64 encoded string
-			base64EncodedValue, err := evaluateLiteralExpr(value)
-			if err != nil {
-				return nil, errorf(value.Range(), "invalid base64 encoded value for parameterization of %q: %v", packageName, err)
+			// value is a string, assume it is base64 encoded string
+			if base64EncodedValue, ok := recognizeLiteralString(value); ok {
+				decoded, err := base64.StdEncoding.DecodeString(base64EncodedValue)
+				if err != nil {
+					return nil, errorf(value.Range(), "invalid base64 encoded value for parameterization of %q: %v", packageName, err)
+				}
+
+				descriptor.Value = decoded
 			}
 
-			decoded, err := base64.StdEncoding.DecodeString(base64EncodedValue)
-			if err != nil {
-				return nil, errorf(value.Range(), "invalid base64 encoded value for parameterization of %q: %v", packageName, err)
-			}
+			// value is a toBase64(<expr>) expression
+			if arg, ok := recognizeToBase64(value); ok {
+				// first check to see if argument is toJSON(<object-expr>)
+				// if so, we convert the object to a JSON string
+				// and then base64 encode it
+				if objectExpr, ok := recognizeObjectWithinToJSON(arg); ok {
+					converted := convertExpression(objectExpr)
+					// convert the object to a JSON string
+					jsonValue, err := json.Marshal(converted)
+					if err != nil {
+						return nil, errorf(value.Range(), "invalid value attribute of parameterization of %q: %v", packageName, err)
+					}
+					descriptor.Value = jsonValue
+				}
 
-			descriptor.Value = decoded
+				if valueToBeEnoded, ok := recognizeLiteralString(arg); ok {
+					// value is a toBase64(<expr>) expression
+					descriptor.Value = []byte(valueToBeEnoded)
+				}
+			}
 		}
+	}
+
+	if descriptor.Value == nil {
+		return nil, errorf(hcl.Range{},
+			"parameterization of %q must have a value attribute", packageName)
 	}
 
 	return descriptor, nil

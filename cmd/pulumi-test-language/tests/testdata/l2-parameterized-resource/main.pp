@@ -4,7 +4,7 @@ package "subpackage" {
     parameterization {
         name = "subpackage"
         version = "2.0.0"
-        value = "SGVsbG9Xb3JsZA==" // base64(utf8_bytes("HelloWorld"))
+        value = toBase64("HelloWorld")
     }
 }
 

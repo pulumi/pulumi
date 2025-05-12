@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Support readable forms of package parameterization blocks in PCL

@@ -670,6 +670,71 @@ package "random" {
 	assert.Equal(t, "SGVsbG8=", base64Value)
 }
 
+func TestParsingPackageDescriptorsUsingToBase64Function(t *testing.T) {
+	t.Parallel()
+	source := `
+package "random" {
+	baseProviderName = "terraform-provider"
+	baseProviderVersion = "0.1.0"
+    baseProviderDownloadUrl = "https://example.com/terraform-provider.zip"
+    parameterization {
+ 		name = "random"
+        version = "4.5.6"
+        value = toBase64("Hello")
+    }
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
+	require.NoError(t, err)
+	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.Equal(t, 1, len(packageDescriptors), "There are two package descriptors")
+
+	assert.Equal(t, "terraform-provider", packageDescriptors["random"].Name)
+	assert.Equal(t, "0.1.0", packageDescriptors["random"].Version.String())
+	assert.Equal(t, "https://example.com/terraform-provider.zip", packageDescriptors["random"].DownloadURL)
+	require.NotNil(t, packageDescriptors["random"].Parameterization)
+	assert.Equal(t, "random", packageDescriptors["random"].Parameterization.Name)
+	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
+	value := packageDescriptors["random"].Parameterization.Value
+	assert.Equal(t, "Hello", string(value))
+}
+
+func TestParsingPackageDescriptorsUsingToBase64ToJSON(t *testing.T) {
+	t.Parallel()
+	source := `
+package "vpc" {
+	baseProviderName = "terraform-module"
+	baseProviderVersion = "0.1.3"
+    parameterization {
+ 		name = "vpc"
+        version = "5.18.1"
+        value = toBase64(toJSON({
+			module = "terraform-aws-modules/vpc/aws"
+			version = "5.18.1"
+			packageName = "vpc"
+		}))
+    }
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
+	require.NoError(t, err)
+	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.Equal(t, 1, len(packageDescriptors), "There are two package descriptors")
+
+	assert.Equal(t, "terraform-module", packageDescriptors["vpc"].Name)
+	assert.Equal(t, "0.1.3", packageDescriptors["vpc"].Version.String())
+	require.NotNil(t, packageDescriptors["vpc"].Parameterization)
+	assert.Equal(t, "vpc", packageDescriptors["vpc"].Parameterization.Name)
+	assert.Equal(t, "5.18.1", packageDescriptors["vpc"].Parameterization.Version.String())
+	value := packageDescriptors["vpc"].Parameterization.Value
+	expectedValue := `{"module":"terraform-aws-modules/vpc/aws","packageName":"vpc","version":"5.18.1"}`
+	assert.Equal(t, expectedValue, string(value))
+}
+
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
 	t.Parallel()
 	source := `
