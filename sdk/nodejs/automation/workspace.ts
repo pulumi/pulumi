@@ -540,10 +540,6 @@ export interface GetAllConfigOptions {
      * Show secret values when getting config.
      */
     showSecrets?: boolean;
-    /**
-     * Allows to use the path flag while getting configuration.
-     */
-    path?: boolean;
 }
 
 export interface ConfigOptions {

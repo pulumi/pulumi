@@ -715,17 +715,7 @@ export class LocalWorkspace implements Workspace {
         args.push(stackName);
 
         const result = await this.runPulumiCmd(args);
-        if (result.err) {
-            throw new Error(result.stderr);
-        }
-        const config = JSON.parse(result.stdout);
-        const val: ConfigMap = {};
-        for (const key in config) {
-            if (Object.prototype.hasOwnProperty.call(config, key)) {
-                val[key] = config[key];
-            }
-        }
-        return val;
+        return JSON.parse(result.stdout);
     }
 
     /**
