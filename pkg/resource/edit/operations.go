@@ -125,16 +125,6 @@ search:
 	return nil
 }
 
-// UnprotectResource unprotects a resource, allowing it to be deleted.
-func UnprotectResource(res *resource.State) {
-	res.Protect = false
-}
-
-// ProtectResource protects a resource, preventing it from being deleted.
-func ProtectResource(res *resource.State) {
-	res.Protect = true
-}
-
 // LocateResource returns all resources in the given snapshot that have the given URN.
 func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 	// If there is no snapshot then return no resources

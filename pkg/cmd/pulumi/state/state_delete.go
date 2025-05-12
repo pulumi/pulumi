@@ -87,7 +87,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				handleProtected = func(res *resource.State) error {
 					cmdutil.Diag().Warningf(diag.Message(res.URN,
 						"deleting protected resource %s due to presence of --force"), res.URN)
-					edit.UnprotectResource(res)
+					res.Protect = false
 					return nil
 				}
 			}

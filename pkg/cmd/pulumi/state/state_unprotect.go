@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -92,7 +91,7 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 			}
 
 			for _, res := range snap.Resources {
-				edit.UnprotectResource(res)
+				res.Protect = false
 			}
 
 			return nil
@@ -109,7 +108,7 @@ func unprotectResource(
 ) error {
 	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn,
 		func(_ *deploy.Snapshot, res *resource.State) error {
-			edit.UnprotectResource(res)
+			res.Protect = false
 			return nil
 		})
 	if err != nil {
