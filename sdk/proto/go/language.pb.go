@@ -1376,7 +1376,7 @@ type RunPluginRequest struct {
 	Info *ProgramInfo `protobuf:"bytes,5,opt,name=info,proto3" json:"info,omitempty"`
 	// The kind of plugin to run (resource/analyzer/etc).
 	Kind string `protobuf:"bytes,6,opt,name=kind,proto3" json:"kind,omitempty"`
-	// The name of the plugin (for display purposes
+	// The name of the plugin (for display purposes)
 	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	// True if a plugin should be started under a debugger.
 	AttachDebugger bool `protobuf:"varint,8,opt,name=attach_debugger,json=attachDebugger,proto3" json:"attach_debugger,omitempty"`

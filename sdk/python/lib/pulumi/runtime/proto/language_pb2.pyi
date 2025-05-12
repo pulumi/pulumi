@@ -736,7 +736,7 @@ class RunPluginRequest(google.protobuf.message.Message):
     kind: builtins.str
     """The kind of plugin to run (resource/analyzer/etc)."""
     name: builtins.str
-    """The name of the plugin (for display purposes"""
+    """The name of the plugin (for display purposes)"""
     attach_debugger: builtins.bool
     """True if a plugin should be started under a debugger."""
     def __init__(
