@@ -108,7 +108,7 @@ func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.Progr
 	return nil, nil
 }
 
-func (host *testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
+func (host *testPluginHost) DebugContext() plugin.DebugContext {
 	return nil
 }
 

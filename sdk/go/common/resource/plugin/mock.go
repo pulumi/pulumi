@@ -39,7 +39,7 @@ type MockHost struct {
 	GetProjectPluginsF  func() []workspace.ProjectPlugin
 	SignalCancellationF func() error
 	CloseF              func() error
-	StartDebuggingF     func(DebuggingInfo) error
+	DebugContextF       func() DebugContext
 }
 
 var _ Host = (*MockHost)(nil)
@@ -142,9 +142,9 @@ func (m *MockHost) Close() error {
 	return nil
 }
 
-func (m *MockHost) StartDebugging(info DebuggingInfo) error {
-	if m.StartDebuggingF != nil {
-		return m.StartDebuggingF(info)
+func (m *MockHost) DebugContext() DebugContext {
+	if m.DebugContextF != nil {
+		return m.DebugContextF()
 	}
 	return nil
 }

@@ -439,7 +439,7 @@ func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg strin
 	}
 }
 
-func (host *pluginHost) StartDebugging(plugin.DebuggingInfo) error {
+func (host *pluginHost) DebugContext() plugin.DebugContext {
 	return nil
 }
 
