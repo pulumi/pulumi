@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -42,7 +41,7 @@ func newStateUnprotectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unprotect [resource URN...]",
 		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resource in a stack's state
+		Long: `Unprotect resources in a stack's state
 
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
 
@@ -113,64 +112,47 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 func unprotectMultipleResources(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
-	opts := display.Options{
-		Color: cmdutil.GetGlobalColorization(),
-	}
-	s, err := cmdStack.RequireStack(
-		ctx,
-		ws,
-		backend.DefaultLoginManager,
-		stackName,
-		cmdStack.OfferNew,
-		opts,
-	)
-	if err != nil {
-		return err
-	}
+	return runTotalStateEdit(
+		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+			if snap == nil {
+				return errors.New("no resources found to unprotect")
+			}
 
-	return TotalStateEdit(ctx, s, showPrompt, opts, func(_ display.Options, snap *deploy.Snapshot) error {
-		if snap == nil {
-			return errors.New("no resources found to unprotect")
-		}
+			var errs []string
+			resourceCount := 0
 
-		var errs []string
-		resourceCount := 0
-
-		for _, urnStr := range urns {
-			urn := resource.URN(urnStr)
-			found := false
-
+			// Map URNs to resources for efficient lookup
+			urnToResource := make(map[resource.URN]*resource.State)
 			for _, res := range snap.Resources {
-				if res.URN == urn {
-					found = true
-					if err := edit.UnprotectResource(snap, res); err != nil {
-						errs = append(errs, fmt.Sprintf("error unprotecting resource %q: %v", urn, err))
-					} else {
-						resourceCount++
-					}
-					break
+				urnToResource[res.URN] = res
+			}
+
+			for _, urnStr := range urns {
+				urn := resource.URN(urnStr)
+				res, found := urnToResource[urn]
+
+				if found {
+					contract.Assert(edit.UnprotectResource(snap, res) == nil)
+					resourceCount++
+				} else {
+					errs = append(errs, fmt.Sprintf("No such resource %q exists in the current state", urn))
 				}
 			}
 
-			if !found {
-				errs = append(errs, fmt.Sprintf("No such resource %q exists in the current state", urn))
+			if resourceCount > 0 {
+				if len(errs) > 0 {
+					fmt.Printf("%d resources unprotected with errors\n", resourceCount)
+				} else {
+					fmt.Printf("%d resources unprotected\n", resourceCount)
+				}
 			}
-		}
 
-		if resourceCount > 0 {
 			if len(errs) > 0 {
-				fmt.Printf("%d resources unprotected with errors\n", resourceCount)
-			} else {
-				fmt.Printf("%d resources unprotected\n", resourceCount)
+				return errors.New(strings.Join(errs, "\n"))
 			}
-		}
 
-		if len(errs) > 0 {
-			return errors.New(strings.Join(errs, "\n"))
-		}
-
-		return nil
-	}, nil)
+			return nil
+		})
 }
 
 func unprotectResource(
