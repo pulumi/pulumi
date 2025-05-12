@@ -22,12 +22,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/cobra"
 )
@@ -93,8 +91,7 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 			}
 
 			for _, res := range snap.Resources {
-				err := edit.UnprotectResource(snap, res)
-				contract.AssertNoErrorf(err, "Unable to unprotect resource %q", res.URN)
+				res.Protect = false
 			}
 
 			return nil
@@ -109,7 +106,11 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 func unprotectResource(
 	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn, edit.UnprotectResource)
+	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn,
+		func(_ *deploy.Snapshot, res *resource.State) error {
+			res.Protect = false
+			return nil
+		})
 	if err != nil {
 		return err
 	}

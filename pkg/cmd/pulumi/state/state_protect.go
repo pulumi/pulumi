@@ -22,12 +22,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/cobra"
 )
@@ -108,8 +106,7 @@ func protectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName
 			}
 
 			for _, res := range snap.Resources {
-				err := edit.ProtectResource(snap, res)
-				contract.AssertNoErrorf(err, "Unable to protect resource %q", res.URN)
+				res.Protect = true
 			}
 
 			return nil
@@ -131,7 +128,10 @@ func protectResource(
 		stackName,
 		showPrompt,
 		urn,
-		edit.ProtectResource,
+		func(_ *deploy.Snapshot, res *resource.State) error {
+			res.Protect = true
+			return nil
+		},
 		protectMessage,
 	)
 	if err != nil {
