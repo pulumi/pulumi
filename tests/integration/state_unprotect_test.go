@@ -108,18 +108,25 @@ let b = new Resource("resource2", { state: 2 }, { protect: true });
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
 	lines := strings.Split(stdout, "\n")
 	var urns []string
+	
+	// More specific matching to find only the Resource URNs we created
 	for _, line := range lines {
-		if strings.Contains(line, "resource1") || strings.Contains(line, "resource2") {
+		if strings.Contains(line, "Resource::resource1") || strings.Contains(line, "Resource::resource2") {
 			fields := strings.Fields(line)
-			if len(fields) >= 3 {
-				urns = append(urns, fields[2])
+			for _, field := range fields {
+				// Look for the URN format
+				if strings.HasPrefix(field, "urn:pulumi:") {
+					urns = append(urns, field)
+					break
+				}
 			}
 		}
 	}
 	assert.Equal(t, 2, len(urns), "Expected to find 2 resource URNs")
 
-	// Unprotect multiple resources in one command
-	e.RunCommand("pulumi", "state", "unprotect", urns[0], urns[1], "--yes")
+	// Unprotect multiple resources in one command by passing all URNs
+	args := append([]string{"pulumi", "state", "unprotect", "--yes"}, urns...)
+	e.RunCommand(args...)
 
 	// Verify resources are now unprotected by successfully destroying the stack
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
