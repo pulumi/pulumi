@@ -1,4 +1,0 @@
-changes:
-- type: enhancement
-  scope: cli
-  description: Add support for specifying multiple URNs as positional arguments with `pulumi state unprotect`, also add interactive selection of URNs
