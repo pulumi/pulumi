@@ -143,7 +143,7 @@ class ConvertProgramRequest(google.protobuf.message.Message):
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options."""
     generated_project_directory: builtins.str
-    """the directory where the final project will be generated. 
+    """the directory where the final generated project for the eventual destination language will be written.
     use to determine relative paths of any asset that will be copied over.
     Do not write files to this directory as these files might be overwritten in 
     the project generation process.

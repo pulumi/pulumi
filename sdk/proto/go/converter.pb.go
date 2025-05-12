@@ -277,7 +277,7 @@ type ConvertProgramRequest struct {
 	LoaderTarget string `protobuf:"bytes,4,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options.
 	Args []string `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"`
-	// the directory where the final project will be generated.
+	// the directory where the final generated project for the eventual destination language will be written.
 	// use to determine relative paths of any asset that will be copied over.
 	// Do not write files to this directory as these files might be overwritten in
 	// the project generation process.
