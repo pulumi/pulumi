@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: auto/nodejs
-  description: add ConfigOptions support to NodeJs Automation API
+  description: Add ConfigOptions support to NodeJS Automation API
