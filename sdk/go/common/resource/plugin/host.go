@@ -93,7 +93,7 @@ type Host interface {
 	SignalCancellation() error
 
 	// StartDebugging asks the host to start a debugging session with the given configuration.
-	StartDebugging(DebuggingInfo) error
+	DebugContext() DebugContext
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -189,7 +189,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
-		debugging:               debugging,
+		debugContext:            debugging,
 		projectName:             projectName,
 	}
 
@@ -303,7 +303,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	projectName             tokens.PackageName               // name of the project
-	debugging               DebugContext
+	debugContext            DebugContext
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -341,9 +341,8 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
 
-func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
-	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
-	return host.debugging.StartDebugging(info)
+func (host *defaultHost) DebugContext() DebugContext {
+	return host.debugContext
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.

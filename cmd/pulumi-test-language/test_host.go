@@ -214,7 +214,7 @@ func (h *testHost) Close() error {
 	return nil
 }
 
-func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
+func (h *testHost) DebugContext() plugin.DebugContext {
 	panic("not implemented")
 }
 
