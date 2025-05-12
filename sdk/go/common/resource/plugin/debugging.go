@@ -14,7 +14,7 @@
 
 package plugin
 
-type DebugEventEmitter interface {
+type DebugContext interface {
 	// StartDebugging asks the host to start a debug session for the given configuration.
 	StartDebugging(info DebuggingInfo) error
 }

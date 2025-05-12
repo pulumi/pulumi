@@ -42,7 +42,7 @@ const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
-	diag, statusDiag diag.Sink, debugging plugin.DebugEventEmitter, disableProviderPreview bool,
+	diag, statusDiag diag.Sink, debugging plugin.DebugContext, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
@@ -189,9 +189,9 @@ func newDeployment(
 	}
 
 	// Create a context for plugins.
-	debuggingEventEmitter := newDebuggingEventEmitter(opts.Events)
+	debugContext := newDebugContext(opts.Events)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
-		opts.Diag, opts.StatusDiag, debuggingEventEmitter, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
