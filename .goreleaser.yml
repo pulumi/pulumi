@@ -9,7 +9,7 @@ builds:
   binary: pulumi
   dir: pkg
   main: ./cmd/pulumi
-  gobinary: ../scripts/go-wrapper.sh
+  tool: ../scripts/go-wrapper.sh
   env:
   - GO111MODULE=on
   goos: ['linux', 'darwin', 'windows']
@@ -29,19 +29,19 @@ builds:
   binary: pulumi-language-go
   dir: sdk/go/pulumi-language-go
   main: ./
-  gobinary: ../../../scripts/go-wrapper.sh
+  tool: ../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
   dir: sdk/nodejs/cmd/pulumi-language-nodejs
   main: ./
-  gobinary: ../../../../scripts/go-wrapper.sh
+  tool: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python
   dir: sdk/python/cmd/pulumi-language-python
   main: ./
-  gobinary: ../../../../scripts/go-wrapper.sh
+  tool: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-display-wasm
   binary: pulumi-display
@@ -60,7 +60,7 @@ archives:
   wrap_in_directory: pulumi{{ if eq .Os "windows" }}/bin{{ end }}
   format_overrides:
     - goos: windows
-      format: zip
+      formats: zip
   files:
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
@@ -73,7 +73,7 @@ archives:
   name_template: '{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}'
 
 snapshot:
-  name_template: "{{ .Version }}-SNAPSHOT"
+  version_template: "{{ .Version }}-SNAPSHOT"
 
 checksum:
   name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"
