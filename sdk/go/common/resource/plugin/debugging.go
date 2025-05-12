@@ -18,8 +18,8 @@ type DebugContext interface {
 	// StartDebugging asks the host to start a debug session for the given configuration.
 	StartDebugging(info DebuggingInfo) error
 
-	// DebuggingEnabled returns true if debugging is enabled.
-	DebuggingEnabled() bool
+	// AttachDebugger returns true if debugging is enabled.
+	AttachDebugger() bool
 }
 
 type DebuggingInfo struct {
