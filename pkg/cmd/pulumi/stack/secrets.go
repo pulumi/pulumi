@@ -100,23 +100,9 @@ func createSecretsManagerForNewStack(
 ) (*workspace.ProjectStack, bool, secrets.Manager, error) {
 	var sm secrets.Manager
 
-	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
-	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
-	// populate it as we go.
-	var ps *workspace.ProjectStack
-	project, _, err := ws.ReadProject()
+	ps, err := readStackConfiguration(ctx, ws, b, stackRef)
 	if err != nil {
-		ps = &workspace.ProjectStack{}
-	} else {
-		s, err := b.GetStack(ctx, stackRef)
-		if err != nil || s == nil {
-			ps = &workspace.ProjectStack{}
-		} else {
-			ps, err = s.Load(ctx, project, ConfigFile)
-			if err != nil || ps == nil {
-				ps = &workspace.ProjectStack{}
-			}
-		}
+		return nil, false, nil, err
 	}
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
@@ -135,6 +121,35 @@ func createSecretsManagerForNewStack(
 
 	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
 	return ps, needsSave, sm, err
+}
+
+func readStackConfiguration(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend,
+	stackRef backend.StackReference,
+) (*workspace.ProjectStack, error) {
+	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
+	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
+	// populate it as we go.
+	project, _, err := ws.ReadProject()
+	if err != nil {
+		return &workspace.ProjectStack{}, nil
+	}
+	s, err := b.GetStack(ctx, stackRef)
+	if err != nil || s == nil {
+		// Attempt to load file directly as it might already exist even though not in the backend
+		if ConfigFile != "" {
+			return workspace.LoadProjectStack(project, ConfigFile)
+		}
+		return workspace.DetectProjectStack(stackRef.Name().Q())
+	}
+	ps, err := s.Load(ctx, project, ConfigFile)
+	if err != nil || ps == nil {
+		if ConfigFile != "" {
+			return workspace.LoadProjectStack(project, ConfigFile)
+		}
+		return workspace.DetectProjectStack(stackRef.Name().Q())
+	}
+
+	return ps, err
 }
 
 // A SecretsManagerLoader provides methods for loading secrets managers and
