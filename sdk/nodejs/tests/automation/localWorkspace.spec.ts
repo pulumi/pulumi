@@ -2042,56 +2042,32 @@ describe("Config Operations", () => {
         });
     });
 
-    describe("Config Secret Warnings", () => {
-        it("should warn when setting secret values", async () => {
-            const warnings: string[] = [];
-            const originalWarn = console.warn;
-            console.warn = (...args: any[]) => {
-                warnings.push(args.join(" "));
-            };
-
-            try {
-                await workspace.setConfigWithOptions(
-                    stackName,
-                    "test-key",
-                    { value: "test-value", secret: true },
-                    { path: false },
-                );
-                const config = await workspace.getConfigWithOptions(stackName, "test-key", { path: false });
-                assert.strictEqual(config.value, "test-value");
-                assert.strictEqual(config.secret, true);
-                // In case there are no warnings, just test that config was set correctly
-                // assert.ok(warnings.some((w) => w.includes("secret")));
-            } finally {
-                console.warn = originalWarn;
-            }
+    describe("Config Secret Operations", () => {
+        it("should set secret values correctly", async () => {
+            await workspace.setConfigWithOptions(
+                stackName,
+                "test-key",
+                { value: "test-value", secret: true },
+                { path: false },
+            );
+            const config = await workspace.getConfigWithOptions(stackName, "test-key", { path: false });
+            assert.strictEqual(config.value, "test-value");
+            assert.strictEqual(config.secret, true);
         });
 
-        it("should warn when setting multiple secret values", async () => {
-            const warnings: string[] = [];
-            const originalWarn = console.warn;
-            console.warn = (...args: any[]) => {
-                warnings.push(args.join(" "));
+        it("should set multiple secret values correctly", async () => {
+            const configMap = {
+                "test-key1": { value: "test-value1", secret: true },
+                "test-key2": { value: "test-value2", secret: true },
             };
-
-            try {
-                const configMap = {
-                    "test-key1": { value: "test-value1", secret: true },
-                    "test-key2": { value: "test-value2", secret: true },
-                };
-                await workspace.setAllConfigWithOptions(stackName, configMap, { path: false });
-                const config = await workspace.getAllConfigWithOptions(stackName, { showSecrets: true });
-                const testKey1 = `${projectName}:test-key1`;
-                const testKey2 = `${projectName}:test-key2`;
-                assert.strictEqual(config[testKey1].value, "test-value1");
-                assert.strictEqual(config[testKey1].secret, true);
-                assert.strictEqual(config[testKey2].value, "test-value2");
-                assert.strictEqual(config[testKey2].secret, true);
-                // In case there are no warnings, just test that config was set correctly
-                // assert.ok(warnings.some((w) => w.includes("secret")));
-            } finally {
-                console.warn = originalWarn;
-            }
+            await workspace.setAllConfigWithOptions(stackName, configMap, { path: false });
+            const config = await workspace.getAllConfigWithOptions(stackName, { showSecrets: true });
+            const testKey1 = `${projectName}:test-key1`;
+            const testKey2 = `${projectName}:test-key2`;
+            assert.strictEqual(config[testKey1].value, "test-value1");
+            assert.strictEqual(config[testKey1].secret, true);
+            assert.strictEqual(config[testKey2].value, "test-value2");
+            assert.strictEqual(config[testKey2].secret, true);
         });
     });
 });
