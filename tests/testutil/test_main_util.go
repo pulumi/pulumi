@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -25,10 +26,7 @@ import (
 // Pulumi CLI and the language runtime plugins into the `bin` directory of the repository root. It will then set up the
 // $PATH environment variable to include this directory, so that when the tests run we will use the newly built binaries
 // without polluting the global $PATH, where the integration tests usually expect to find the binaries.
-func SetupBinaryRebuilding() {
-	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") != "true" {
-		return
-	}
+func SetupPulumiBinary() {
 	// Find the root of the repository
 	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -36,12 +34,27 @@ func SetupBinaryRebuilding() {
 		os.Exit(1)
 	}
 	repoRoot := strings.TrimSpace(string(stdout))
-	cmd := exec.Command("make", "build_local")
-	cmd.Dir = repoRoot
-	stdout, err = cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("error building plugin: %v.  Output: %v\n", err, string(stdout))
-		os.Exit(1)
+	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") == "true" {
+		cmd := exec.Command("make", "build_local")
+		cmd.Dir = repoRoot
+		stdout, err = cmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("error building plugin: %v.  Output: %v\n", err, string(stdout))
+			os.Exit(1)
+		}
 	}
-	os.Setenv("PATH", fmt.Sprintf("%s:%s", repoRoot+"/bin", os.Getenv("PATH")))
+	repoBin := filepath.Join(repoRoot, "bin")
+	os.Setenv("PATH", fmt.Sprintf("%s:%s", repoBin, os.Getenv("PATH")))
+	if os.Getenv("PULUMI_INTEGRATION_BINARY_PATH") == "" {
+		pulumiBinPath := filepath.Join(repoBin, "pulumi")
+		// Disable in CI to avoid breaking the matrix calculation which uses the output from `go test`
+		if _, isCI := os.LookupEnv("CI"); !isCI {
+			if _, err := os.Stat(pulumiBinPath); os.IsNotExist(err) {
+				fmt.Printf("WARNING: pulumi binary not found at %s. "+
+					"Falling back to searching the $PATH. "+
+					"Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
+			}
+		}
+		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", pulumiBinPath)
+	}
 }
