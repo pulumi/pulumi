@@ -245,7 +245,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// The use of `requiresSaving` here ensures that there was actually some config
 			// that needed saved, otherwise it's an unnecessary save call
 			if requiresSaving {
-				err := destinationStack.Save(ctx, destinationProjectStack)
+				err := destinationStack.Save(ctx, destinationProjectStack, cmdStack.ConfigFile)
 				if err != nil {
 					return err
 				}
@@ -383,7 +383,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return stack.Save(ctx, ps)
+			return stack.Save(ctx, ps, cmdStack.ConfigFile)
 		},
 	}
 	rmCmd.PersistentFlags().BoolVar(
@@ -457,7 +457,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return stack.Save(ctx, ps)
+			return stack.Save(ctx, ps, cmdStack.ConfigFile)
 		},
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
@@ -757,7 +757,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		return fmt.Errorf("could not set config: %w", err)
 	}
 
-	return s.Save(ctx, ps)
+	return s.Save(ctx, ps, cmdStack.ConfigFile)
 }
 
 func newConfigSetAllCmd(stack *string) *cobra.Command {
@@ -848,7 +848,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return stack.Save(ctx, ps)
+			return stack.Save(ctx, ps, cmdStack.ConfigFile)
 		},
 	}
 
@@ -909,7 +909,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = stack.Save(ctx, ps); err != nil {
+			if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -939,7 +939,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = stack.Save(ctx, ps); err != nil {
+			if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1085,7 +1085,7 @@ func getConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = stack.Save(ctx, ps); err != nil {
+			if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1119,7 +1119,7 @@ func getConfig(
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
 			if state != cmdStack.SecretsManagerUnchanged {
-				if err = stack.Save(ctx, ps); err != nil {
+				if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
 					return fmt.Errorf("save stack config: %w", err)
 				}
 			}

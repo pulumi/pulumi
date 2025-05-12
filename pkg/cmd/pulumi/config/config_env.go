@@ -206,7 +206,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		}
 	}
 
-	if err = (*stack).Save(ctx, projectStack); err != nil {
+	if err = (*stack).Save(ctx, projectStack, cmdStack.ConfigFile); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

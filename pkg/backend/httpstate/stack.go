@@ -205,7 +205,10 @@ func (s *cloudStack) Load(ctx context.Context, project *workspace.Project, confi
 	return workspace.DetectProjectStack(s.Ref().Name().Q())
 }
 
-func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack, configFileOverride string) error {
+	if configFileOverride != "" {
+		return projectStack.Save(configFileOverride)
+	}
 	if s.usesRemoteConfig {
 		if projectStack.Config != nil {
 			return errors.New("cannot set config for a stack with cloud config")

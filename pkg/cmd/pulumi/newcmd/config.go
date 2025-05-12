@@ -214,7 +214,7 @@ func promptForConfig(
 		return nil, err
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = stack.Save(ctx, ps); err != nil {
+		if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -338,5 +338,5 @@ func SaveConfig(ctx context.Context, ws pkgWorkspace.Context, stack backend.Stac
 		ps.Config[k] = v
 	}
 
-	return stack.Save(ctx, ps)
+	return stack.Save(ctx, ps, cmdStack.ConfigFile)
 }

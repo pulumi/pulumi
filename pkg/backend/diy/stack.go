@@ -67,7 +67,10 @@ func (s *diyStack) Load(ctx context.Context, project *workspace.Project, configF
 	return workspace.DetectProjectStack(s.Ref().Name().Q())
 }
 
-func (s *diyStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+func (s *diyStack) Save(ctx context.Context, projectStack *workspace.ProjectStack, configFileOverride string) error {
+	if configFileOverride != "" {
+		return projectStack.Save(configFileOverride)
+	}
 	return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
 }
 

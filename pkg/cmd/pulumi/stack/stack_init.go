@@ -237,7 +237,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// The use of `requiresSaving` here ensures that there was actually some config
 		// that needed saved, otherwise it's an unnecessary save call
 		if requiresSaving {
-			err := newStack.Save(ctx, newProjectStack)
+			err := newStack.Save(ctx, newProjectStack, ConfigFile)
 			if err != nil {
 				return err
 			}

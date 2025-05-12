@@ -366,7 +366,7 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
 	if needsSave && !useRemoteConfig {
-		err = stack.Save(ctx, ps)
+		err = stack.Save(ctx, ps, ConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}

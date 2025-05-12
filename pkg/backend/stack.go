@@ -40,7 +40,7 @@ type Stack interface {
 	// Load the stack's configuration from the backend.
 	Load(ctx context.Context, project *workspace.Project, configFileOverride string) (*workspace.ProjectStack, error)
 	// Save the stack's configuration to the backend.
-	Save(ctx context.Context, projectStack *workspace.ProjectStack) error
+	Save(ctx context.Context, projectStack *workspace.ProjectStack, configFileOverride string) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// Backend returns the backend this stack belongs to.

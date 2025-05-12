@@ -177,7 +177,8 @@ func getAndSaveSecretsManager(
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = stack.Save(ctx, workspaceStack); err != nil && state == cmdStack.SecretsManagerMustSave {
+		err = stack.Save(ctx, workspaceStack, cmdStack.ConfigFile)
+		if err != nil && state == cmdStack.SecretsManagerMustSave {
 			return nil, fmt.Errorf("save stack config: %w", err)
 		}
 	}
@@ -285,7 +286,7 @@ func copySingleConfigKey(
 		return err
 	}
 
-	return destinationStack.Save(ctx, destinationProjectStack)
+	return destinationStack.Save(ctx, destinationProjectStack, cmdStack.ConfigFile)
 }
 
 func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {

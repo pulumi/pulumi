@@ -92,7 +92,7 @@ This command displays data about previous updates for a stack.`,
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				if state != SecretsManagerUnchanged {
-					if err = s.Save(ctx, ps); err != nil {
+					if err = s.Save(ctx, ps, ConfigFile); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}

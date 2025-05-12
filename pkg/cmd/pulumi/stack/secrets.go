@@ -80,7 +80,7 @@ func CreateSecretsManagerForExistingStack(
 
 	// Handle if the configuration changed any of EncryptedKey, etc
 	if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
-		if err = stack.Save(ctx, ps); err != nil {
+		if err = stack.Save(ctx, ps, ConfigFile); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}
 	}

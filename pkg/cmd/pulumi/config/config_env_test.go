@@ -130,7 +130,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
 				},
-				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
+				SaveF: func(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error {
 					yaml, err := encoding.YAML.Marshal(project)
 					if err != nil {
 						return err

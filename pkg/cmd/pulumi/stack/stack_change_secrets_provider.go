@@ -205,7 +205,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		}
 	}
 
-	if err := currentStack.Save(ctx, reloadedProjectStack); err != nil {
+	if err := currentStack.Save(ctx, reloadedProjectStack, ConfigFile); err != nil {
 		return err
 	}
 

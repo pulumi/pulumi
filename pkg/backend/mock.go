@@ -557,7 +557,7 @@ type MockStack struct {
 	GetStackFilenameF func(ctx context.Context) (string, bool)
 	LoadF             func(ctx context.Context, project *workspace.Project, configFileOverride string,
 	) (*workspace.ProjectStack, error)
-	SaveF     func(ctx context.Context, project *workspace.ProjectStack) error
+	SaveF     func(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error
 	OrgNameF  func() string
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
@@ -603,9 +603,9 @@ func (ms *MockStack) Load(ctx context.Context, project *workspace.Project, confi
 	panic("not implemented: MockStack.Load")
 }
 
-func (ms *MockStack) Save(ctx context.Context, project *workspace.ProjectStack) error {
+func (ms *MockStack) Save(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error {
 	if ms.SaveF != nil {
-		return ms.SaveF(ctx, project)
+		return ms.SaveF(ctx, project, configFileOverride)
 	}
 	panic("not implemented: MockStack.Save")
 }
