@@ -20,12 +20,14 @@ import (
 
 func newDebugContext(events eventEmitter) plugin.DebugContext {
 	return &debugContext{
-		events: events,
+		enableDebugging: true,
+		events:          events,
 	}
 }
 
 type debugContext struct {
-	events eventEmitter // the channel to emit events into.
+	enableDebugging bool         // whether debugging is enabled.
+	events          eventEmitter // the channel to emit events into.
 }
 
 var _ plugin.DebugContext = (*debugContext)(nil)
@@ -33,4 +35,8 @@ var _ plugin.DebugContext = (*debugContext)(nil)
 func (s *debugContext) StartDebugging(info plugin.DebuggingInfo) error {
 	s.events.startDebugging(info)
 	return nil
+}
+
+func (s *debugContext) DebuggingEnabled() bool {
+	return s.enableDebugging
 }

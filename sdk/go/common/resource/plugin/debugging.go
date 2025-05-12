@@ -17,6 +17,9 @@ package plugin
 type DebugContext interface {
 	// StartDebugging asks the host to start a debug session for the given configuration.
 	StartDebugging(info DebuggingInfo) error
+
+	// DebuggingEnabled returns true if debugging is enabled.
+	DebuggingEnabled() bool
 }
 
 type DebuggingInfo struct {

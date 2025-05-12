@@ -712,6 +712,8 @@ class RunPluginRequest(google.protobuf.message.Message):
     ENV_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
     KIND_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
     pwd: builtins.str
     """The plugin program's working directory."""
     program: builtins.str
@@ -733,6 +735,10 @@ class RunPluginRequest(google.protobuf.message.Message):
         """The [plugin program](pulumirpc.ProgramInfo) to use."""
     kind: builtins.str
     """The kind of plugin to run (resource/analyzer/etc)."""
+    name: builtins.str
+    """The name of the plugin (for display purposes"""
+    attach_debugger: builtins.bool
+    """True if a plugin should be started under a debugger."""
     def __init__(
         self,
         *,
@@ -742,9 +748,11 @@ class RunPluginRequest(google.protobuf.message.Message):
         env: collections.abc.Iterable[builtins.str] | None = ...,
         info: global___ProgramInfo | None = ...,
         kind: builtins.str = ...,
+        name: builtins.str = ...,
+        attach_debugger: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "env", b"env", "info", b"info", "kind", b"kind", "program", b"program", "pwd", b"pwd"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
 
 global___RunPluginRequest = RunPluginRequest
 
