@@ -10,7 +10,7 @@ Integration tests use the built binaries for the CLI and language runtimes. We h
 
 :::{attention}
 
-Integration tests should use have a TestMain which calls the `testutils.SetupPulumiBinary()` method to set an explicit path to the binaries under test to avoid reliance on the `$PATH` which can cause the wrong binary to be used in tests, resulting in incorrect test results.
+Integration tests should have a TestMain which calls the `testutils.SetupPulumiBinary()` method to set an explicit path to the binaries under test to avoid reliance on the `$PATH` which can cause the wrong binary to be used in tests, resulting in incorrect test results.
 
 :::
 
