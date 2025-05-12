@@ -1155,9 +1155,9 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
 }
 
-// IsCopilotFeatureEnabled implements the "explainer" interface.
+// IsExplainPreviewEnabled implements the "explainer" interface.
 // Checks that the backend supports the CopilotExplainPreviewV1 capability.
-func (b *cloudBackend) IsCopilotFeatureEnabled(ctx context.Context, opts display.Options) bool {
+func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
 	return b.copilotFeatureEnabled(ctx, opts, apitype.CopilotExplainPreviewV1)
 }
 
