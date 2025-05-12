@@ -141,7 +141,7 @@ func (eng *hostServer) StartDebugging(ctx context.Context,
 		diag.Info, resource.URN(""),
 		fmt.Sprintf("Waiting for debugger to attach (%v)...", req.GetMessage()), 0)
 
-	err := eng.host.DebugContext().StartDebugging(info)
+	err := eng.host.StartDebugging(info)
 	if err != nil {
 		return nil, err
 	}

@@ -18,9 +18,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func newDebugContext(events eventEmitter) plugin.DebugContext {
+func newDebugContext(events eventEmitter, attachDebugger bool) plugin.DebugContext {
 	return &debugContext{
-		attachDebugger: true,
+		attachDebugger: attachDebugger,
 		events:         events,
 	}
 }

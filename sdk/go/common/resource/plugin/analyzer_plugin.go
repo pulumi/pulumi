@@ -77,7 +77,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
-		testConnection, dialOpts, host.DebugContext().AttachDebugger())
+		testConnection, dialOpts, host.AttachDebugger())
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func NewPolicyAnalyzer(
 
 		plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, args, env, handshake,
-			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)), host.DebugContext().AttachDebugger())
+			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)), host.AttachDebugger())
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
 
@@ -207,7 +207,7 @@ func NewPolicyAnalyzer(
 
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
-			handshake, analyzerPluginDialOptions(ctx, string(name)), host.DebugContext().AttachDebugger())
+			handshake, analyzerPluginDialOptions(ctx, string(name)), host.AttachDebugger())
 	}
 
 	if err != nil {

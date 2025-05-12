@@ -93,7 +93,10 @@ type Host interface {
 	SignalCancellation() error
 
 	// StartDebugging asks the host to start a debugging session with the given configuration.
-	DebugContext() DebugContext
+	StartDebugging(info DebuggingInfo) error
+
+	// AttachDebugger returns true if debugging is enabled.
+	AttachDebugger() bool
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -341,8 +344,15 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
 
-func (host *defaultHost) DebugContext() DebugContext {
-	return host.debugContext
+func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
+	if host.debugContext == nil {
+		return errors.New("debugging is not enabled")
+	}
+	return host.debugContext.StartDebugging(info)
+}
+
+func (host *defaultHost) AttachDebugger() bool {
+	return host.debugContext != nil && host.debugContext.AttachDebugger()
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.

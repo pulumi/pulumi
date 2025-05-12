@@ -214,8 +214,12 @@ func (h *testHost) Close() error {
 	return nil
 }
 
-func (h *testHost) DebugContext() plugin.DebugContext {
+func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
 	panic("not implemented")
+}
+
+func (h *testHost) AttachDebugger() bool {
+	return false
 }
 
 type grpcWrapper struct {
