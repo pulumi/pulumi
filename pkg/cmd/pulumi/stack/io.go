@@ -377,13 +377,15 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 		Teams: teams,
 	}
 
+	var escEnvironment string
 	if useRemoteConfig {
 		proj, found := stackRef.Project()
 		if !found {
 			return nil, errors.New("could not get project from stack reference")
 		}
+		escEnvironment = proj.String() + "/" + stackRef.Name().String()
 		opts.Config = &apitype.StackConfig{
-			Environment: proj.String() + "/" + stackRef.Name().String(),
+			Environment: escEnvironment,
 		}
 	}
 
@@ -397,6 +399,10 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 			return nil, err
 		}
 		return nil, fmt.Errorf("could not create stack: %w", err)
+	}
+
+	if escEnvironment != "" {
+		fmt.Printf("Created environment %s for stack configuration\n", escEnvironment)
 	}
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
