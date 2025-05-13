@@ -49,7 +49,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false, nil)
 			if err != nil {
 				return err
 			}

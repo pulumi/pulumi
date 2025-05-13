@@ -194,7 +194,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	statusSink := diagtest.LogSink(t)
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
-	return plugin.NewContext(sink, statusSink, host, nil, "", nil, false, nil)
+	return plugin.NewContext(context.Background(), sink, statusSink, host, nil, "", nil, false, nil)
 }
 
 type testProviderSource struct {
@@ -1960,7 +1960,7 @@ func TestInvoke(t *testing.T) {
 	t.Run("error in invoke", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(
+		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil)
@@ -2017,7 +2017,7 @@ func TestInvoke(t *testing.T) {
 	t.Run("error in invoke", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(
+		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil)
@@ -2095,7 +2095,7 @@ func TestCall(t *testing.T) {
 	t.Run("error in call", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(
+		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil)
@@ -2166,7 +2166,7 @@ func TestCall(t *testing.T) {
 	t.Run("handles args and arg dependencies", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(
+		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil)
@@ -2268,7 +2268,7 @@ func TestCall(t *testing.T) {
 	t.Run("catch invalid arg dependencies", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(
+		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil)
@@ -2333,7 +2333,7 @@ func TestCall(t *testing.T) {
 	t.Run("catch invalid arg dependencies", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(
+		plugctx, err := plugin.NewContext(context.Background(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil)

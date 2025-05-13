@@ -152,7 +152,7 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		},
 	}
 
-	pCtx, err := NewContext(nil, nil, nil, nil, "", nil, false, nil)
+	pCtx, err := NewContext(context.Background(), nil, nil, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 	host := &langhost{
 		ctx:     pCtx,

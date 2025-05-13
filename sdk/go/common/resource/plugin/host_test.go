@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -32,7 +33,7 @@ func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(sink, sink, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), sink, sink, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
