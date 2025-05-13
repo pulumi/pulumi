@@ -57,11 +57,11 @@ func newStack(ref *diyBackendReference, b *diyBackend) backend.Stack {
 func (s *diyStack) Ref() backend.StackReference { return s.ref }
 func (s *diyStack) HasRemoteConfig() bool       { return false }
 
-func (s *diyStack) LoadRemote(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+func (s *diyStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 	return nil, errors.New("remote config not implemented for the DIY backend")
 }
 
-func (s *diyStack) SaveRemote(ctx context.Context, projectStack *workspace.ProjectStack) error {
+func (s *diyStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
 	return errors.New("remote config not implemented for the DIY backend")
 }
 

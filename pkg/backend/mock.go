@@ -594,14 +594,15 @@ func (ms *MockStack) HasRemoteConfig() bool {
 	panic("not implemented: MockStack.HasRemoteConfigF")
 }
 
-func (ms *MockStack) LoadRemote(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+func (ms *MockStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project,
+) (*workspace.ProjectStack, error) {
 	if ms.LoadRemoteF != nil {
 		return ms.LoadRemoteF(ctx, project)
 	}
 	panic("not implemented: MockStack.LoadRemote")
 }
 
-func (ms *MockStack) SaveRemote(ctx context.Context, project *workspace.ProjectStack) error {
+func (ms *MockStack) SaveRemoteConfig(ctx context.Context, project *workspace.ProjectStack) error {
 	if ms.SaveRemoteF != nil {
 		return ms.SaveRemoteF(ctx, project)
 	}

@@ -37,10 +37,10 @@ type Stack interface {
 	Ref() StackReference
 	// HasRemoteConfig indicates if the backend has configuration stored independent of the local file stack config.
 	HasRemoteConfig() bool
-	// LoadRemote the stack's configuration remotely from the backend.
-	LoadRemote(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	// SaveRemote the stack's configuration remotely to the backend.
-	SaveRemote(ctx context.Context, projectStack *workspace.ProjectStack) error
+	// LoadRemoteConfig the stack's configuration remotely from the backend.
+	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	// SaveRemoteConfig the stack's configuration remotely to the backend.
+	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// Backend returns the backend this stack belongs to.
