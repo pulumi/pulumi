@@ -153,9 +153,7 @@ func pclGenerateProject(
 ) (hcl.Diagnostics, error) {
 	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
 	// We always try to copy the source directory to the target directory even if binding failed
-	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory, func(fi os.FileInfo) bool {
-		return true
-	})
+	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory, nil)
 	// And then we return the combined diagnostics and errors
 	var err error
 	if bindErr != nil || copyErr != nil {
