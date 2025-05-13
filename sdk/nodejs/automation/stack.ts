@@ -514,18 +514,18 @@ Event: ${line}\n${e.toString()}`);
 
         // Set up event log tailing
         if (opts?.previewOnly || opts?.onEvent) {
-          logFile = createLogFile("refresh");
-          args.push("--event-log", logFile);
+            logFile = createLogFile("refresh");
+            args.push("--event-log", logFile);
 
-          logPromise = this.readLines(logFile, (event) => {
-              if (event.summaryEvent) {
-                loggedSummary = event.summaryEvent.resourceChanges
-              }
+            logPromise = this.readLines(logFile, (event) => {
+                if (opts?.previewOnly && event.summaryEvent) {
+                    loggedSummary = event.summaryEvent.resourceChanges;
+                }
 
-              if (opts?.onEvent) {
-                opts?.onEvent(event);
-              }
-          });
+                if (opts?.onEvent) {
+                    opts?.onEvent(event);
+                }
+            });
         }
 
         const kind = this.workspace.program ? execKind.inline : execKind.local;
@@ -547,7 +547,7 @@ Event: ${line}\n${e.toString()}`);
         // the one we're interested in. In this case, we use the summary event
         // we found in the event log.
         if (summary && opts?.previewOnly) {
-          summary.resourceChanges = loggedSummary
+            summary.resourceChanges = loggedSummary;
         }
 
         return {
