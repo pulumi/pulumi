@@ -286,7 +286,13 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 
 	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
 	if err != nil {
-		return nil, err
+		var decryptionErr *StackOutputDecryptionError
+		if !errors.As(err, &decryptionErr) {
+			return nil, err
+		}
+
+		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), name.StringValue())
+		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), name.StringValue(), err)
 	}
 
 	secretOutputs := make([]resource.PropertyValue, 0)

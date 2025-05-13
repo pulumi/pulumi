@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -356,18 +356,27 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	if s == nil {
 		return nil, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx, c.secretsProvider)
+
+	secretsProvider := newStackOutputsProvider(c.secretsProvider)
+	snap, err := s.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return nil, err
 	}
+
 	res, err := stack.GetRootStackResource(snap)
 	if err != nil {
 		return nil, fmt.Errorf("getting root stack resources: %w", err)
 	}
-	if res == nil {
-		return resource.PropertyMap{}, nil
+
+	providerErr := secretsProvider.Error()
+	if providerErr != nil {
+		err = deploy.NewStackOutputDecryptionError(providerErr)
 	}
-	return res.Outputs, nil
+
+	if res == nil {
+		return resource.PropertyMap{}, err
+	}
+	return res.Outputs, err
 }
 
 func (c *backendClient) GetStackResourceOutputs(
