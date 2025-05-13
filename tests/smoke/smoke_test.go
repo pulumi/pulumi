@@ -1054,3 +1054,18 @@ func TestParallelCgroups(t *testing.T) {
 	// Assert that the limited parallel count is 4, i.e. 1 CPU x 4.
 	assert.Equal(t, 4, limitedParallel, "Expected --parallel=4 in limited CPU context")
 }
+
+// Quick sanity tests for running a tool plugin from source.
+func TestToolPluginFromSource(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	e.CWD = cwd
+
+	stdout, _ := e.RunCommand("pulumi", "plugin", "run", "../testprovider", "--kind=resource", "--", "--help")
+	assert.Contains(t, stdout, "Usage: testprovider")
+}

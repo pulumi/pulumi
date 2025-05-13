@@ -34,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -50,7 +51,7 @@ import (
 type langhost struct {
 	ctx     *Context
 	runtime string
-	plug    *plugin
+	plug    *Plugin
 	client  pulumirpc.LanguageRuntimeClient
 }
 
@@ -63,7 +64,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		return nil, err
 	}
 
-	var plug *plugin
+	var plug *Plugin
 	var client pulumirpc.LanguageRuntimeClient
 	if attachPort != nil {
 		port := *attachPort
@@ -96,7 +97,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			)
 		}
 
-		plug = &plugin{
+		plug = &Plugin{
 			Conn: conn,
 			// Nothing to kill.
 			Kill: func() error {
@@ -654,7 +655,9 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 	return results, nil
 }
 
-func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
+	io.Reader, io.Reader, *promise.Promise[struct{}], error,
+) {
 	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
 		h.runtime, info.Info.String())
 
@@ -663,9 +666,9 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		return nil, nil, nil, err
 	}
 
-	ctx, kill := context.WithCancel(h.ctx.Request())
+	rctx, kill := context.WithCancel(ctx)
 
-	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
+	resp, err := h.client.RunPlugin(rctx, &pulumirpc.RunPluginRequest{
 		Pwd:            info.WorkingDirectory,
 		Args:           info.Args,
 		Env:            info.Env,
@@ -682,6 +685,8 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 
 	outr, outw := io.Pipe()
 	errr, errw := io.Pipe()
+
+	cts := &promise.CompletionSource[struct{}]{}
 
 	go func() {
 		for {
@@ -705,14 +710,21 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
 			} else if _, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
 				// If stdout and stderr are empty we've flushed and are returning the exit code
-				outw.Close()
-				errw.Close()
+				err1 := outw.Close()
+				err2 := errw.Close()
+				err = errors.Join(err1, err2)
+				if err != nil {
+					cts.Reject(err)
+				} else {
+					cts.Fulfill(struct{}{})
+				}
+				kill()
 				break
 			}
 		}
 	}()
 
-	return outr, errr, kill, nil
+	return outr, errr, cts.Promise(), nil
 }
 
 func (h *langhost) GenerateProject(
