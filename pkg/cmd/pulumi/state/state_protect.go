@@ -86,7 +86,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return protectResource(ctx, ws, stack, urn, showPrompt)
+			return protectMultipleResources(ctx, ws, stack, []string{string(urn)}, showPrompt)
 		},
 	}
 
@@ -172,10 +172,4 @@ func protectMultipleResources(
 
 			return nil
 		}, protectMessage)
-}
-
-func protectResource(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
-) error {
-	return protectMultipleResources(ctx, ws, stackName, []string{string(urn)}, showPrompt)
 }
