@@ -224,28 +224,31 @@ class PulumiCommand:
             assert process.stdout is not None
             assert process.stderr is not None
 
-            streams = [process.stdout, process.stderr]
+            with open('stdout.txt', 'a') as fout:
+                with open('stderr.txt', 'a') as ferr:
+                    while True:
+                        reads, _, _ = select.select([process.stdout, process.stderr], [], [])
+                        ongoing_input = False
 
-            while len(streams):
-                reads, _, _ = select.select(streams, [], [])
+                        for incoming in reads:
+                            chunk = incoming.readline()
 
-                for incoming in reads:
-                    chunk = incoming.readline()
+                            if chunk:
+                                ongoing_input = True
 
-                    if chunk:
-                        if incoming is process.stdout:
-                            if on_output:
-                                on_output(chunk)
-                            stdout_chunks.append(chunk)
-                        elif incoming is process.stderr:
-                            stderr_chunks.append(chunk)
-                            if on_error:
-                                on_error(chunk)
-                    else:
-                        if incoming is process.stdout:
-                            streams.remove(process.stdout)
-                        elif incoming is process.stderr:
-                            streams.remove(process.stderr)
+                                if incoming is process.stdout:
+                                    fout.write(chunk)
+                                    if on_output:
+                                        on_output(chunk)
+                                    stdout_chunks.append(chunk)
+                                elif incoming is process.stderr:
+                                    ferr.write(chunk)
+                                    if on_error:
+                                        on_error(chunk)
+                                    stderr_chunks.append(chunk)
+
+                        if not ongoing_input and process.poll() is not None:
+                            break
 
             process.wait()
             code = process.returncode
