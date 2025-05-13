@@ -644,7 +644,7 @@ Event: ${line}\n${e.toString()}`);
         // the one we're interested in. In this case, we use the summary event
         // we found in the event log.
         if (summary && opts?.previewOnly) {
-          summary.resourceChanges = loggedSummary;
+            summary.resourceChanges = loggedSummary;
         }
 
         // If `opts.remove` was set, remove the stack now. We take this approach
