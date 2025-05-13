@@ -89,10 +89,10 @@ func TestConfigSet(t *testing.T) {
 				HasRemoteConfigF: func() bool {
 					return false
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStack(project, "Pulumi.stack.yaml")
 				},
-				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
+				SaveRemoteF: func(ctx context.Context, project *workspace.ProjectStack) error {
 					return project.Save(stack.ConfigFile)
 				},
 			}
@@ -197,10 +197,10 @@ func TestConfigSetTypes(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
-				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
+				SaveRemoteF: func(ctx context.Context, project *workspace.ProjectStack) error {
 					return project.Save(stack.ConfigFile)
 				},
 				HasRemoteConfigF: func() bool {

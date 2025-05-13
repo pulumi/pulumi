@@ -555,8 +555,8 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 type MockStack struct {
 	RefF             func() StackReference
 	HasRemoteConfigF func() bool
-	LoadF            func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	SaveF            func(ctx context.Context, project *workspace.ProjectStack) error
+	LoadRemoteF      func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveRemoteF      func(ctx context.Context, project *workspace.ProjectStack) error
 	OrgNameF         func() string
 	ConfigF          func() config.Map
 	SnapshotF        func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
@@ -594,18 +594,18 @@ func (ms *MockStack) HasRemoteConfig() bool {
 	panic("not implemented: MockStack.HasRemoteConfigF")
 }
 
-func (ms *MockStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
-	if ms.LoadF != nil {
-		return ms.LoadF(ctx, project)
+func (ms *MockStack) LoadRemote(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	if ms.LoadRemoteF != nil {
+		return ms.LoadRemoteF(ctx, project)
 	}
-	panic("not implemented: MockStack.Load")
+	panic("not implemented: MockStack.LoadRemote")
 }
 
-func (ms *MockStack) Save(ctx context.Context, project *workspace.ProjectStack) error {
-	if ms.SaveF != nil {
-		return ms.SaveF(ctx, project)
+func (ms *MockStack) SaveRemote(ctx context.Context, project *workspace.ProjectStack) error {
+	if ms.SaveRemoteF != nil {
+		return ms.SaveRemoteF(ctx, project)
 	}
-	panic("not implemented: MockStack.Save")
+	panic("not implemented: MockStack.SaveRemote")
 }
 
 func (ms *MockStack) OrgName() string {

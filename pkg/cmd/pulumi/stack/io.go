@@ -68,7 +68,7 @@ func LoadProjectStack(ctx context.Context, project *workspace.Project, stack bac
 			fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses remote config\n",
 				configFilePath)
 		}
-		return stack.Load(ctx, project)
+		return stack.LoadRemote(ctx, project)
 	}
 	return workspace.LoadProjectStack(project, configFilePath)
 }
@@ -78,7 +78,7 @@ func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.Pr
 		return ps.Save(ConfigFile)
 	}
 	if stack.HasRemoteConfig() {
-		return stack.Save(ctx, ps)
+		return stack.SaveRemote(ctx, ps)
 	}
 	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 }
