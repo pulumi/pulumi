@@ -597,7 +597,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil)
 	if err != nil {
 		return nil, err
 	}

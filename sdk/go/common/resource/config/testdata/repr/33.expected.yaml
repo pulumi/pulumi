@@ -18,6 +18,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFh
     secure: false
     isObject: false
+    type: 1
   my:names[1]:
     value: b
     string: b
@@ -25,6 +26,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFi
     secure: false
     isObject: false
+    type: 1
   my:names[2]:
     value: c
     string: c
@@ -32,3 +34,4 @@ paths:
     object: DhAABnN0cmluZwwDAAFj
     secure: false
     isObject: false
+    type: 1

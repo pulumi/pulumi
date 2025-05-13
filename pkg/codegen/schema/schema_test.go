@@ -1967,7 +1967,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(t, err)
 	return pluginCtx.Host
 }

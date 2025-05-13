@@ -124,7 +124,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
-	plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
+	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return err

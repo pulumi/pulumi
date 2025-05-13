@@ -1204,7 +1204,7 @@ func TestImportStep(t *testing.T) {
 			t.Parallel()
 			var diffCalled bool
 			var stderrbuff, stdoutbuff bytes.Buffer
-			ctx, _ := plugin.NewContext(
+			ctx, _ := plugin.NewContext(context.Background(),
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,         // the host that can be used to fetch providers.
@@ -1251,7 +1251,7 @@ func TestImportStep(t *testing.T) {
 		t.Run("preview: no resource input diff found -> no error, no msg", func(t *testing.T) {
 			t.Parallel()
 			var stderrbuff, stdoutbuff bytes.Buffer
-			ctx, _ := plugin.NewContext(
+			ctx, _ := plugin.NewContext(context.Background(),
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,         // the host that can be used to fetch providers.
@@ -1287,7 +1287,7 @@ func TestImportStep(t *testing.T) {
 			t.Parallel()
 			var diffCalled bool
 			var stderrbuff, stdoutbuff bytes.Buffer
-			ctx, _ := plugin.NewContext(
+			ctx, _ := plugin.NewContext(context.Background(),
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,         // the host that can be used to fetch providers.
@@ -1335,7 +1335,7 @@ func TestImportStep(t *testing.T) {
 		t.Run("up: no resource input diff found", func(t *testing.T) {
 			t.Parallel()
 			var stderrbuff, stdoutbuff bytes.Buffer
-			ctx, _ := plugin.NewContext(
+			ctx, _ := plugin.NewContext(context.Background(),
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for messages.
 				diagtest.MockSink(&stdoutbuff, &stderrbuff), // The diagnostics sink to use for status messages.
 				nil,         // the host that can be used to fetch providers.

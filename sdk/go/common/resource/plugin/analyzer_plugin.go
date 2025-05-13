@@ -62,6 +62,7 @@ var _ Analyzer = (*analyzer)(nil)
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
+		ctx.baseContext,
 		ctx.Diag,
 		workspace.PluginSpec{
 			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
@@ -77,7 +78,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
-		testConnection, dialOpts)
+		testConnection, dialOpts, host.AttachDebugger())
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +143,7 @@ func NewPolicyAnalyzer(
 	// legacy behavior.
 	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
 		path, err = workspace.GetPluginPath(
+			ctx.baseContext,
 			ctx.Diag,
 			workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin},
 			host.GetProjectPlugins())
@@ -159,7 +161,8 @@ func NewPolicyAnalyzer(
 		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 		var pluginPath string
 		pluginPath, err = workspace.GetPluginPath(
-			ctx.Diag, workspace.PluginSpec{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
+			ctx.baseContext, ctx.Diag,
+			workspace.PluginSpec{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
 
 		var e *workspace.MissingError
 		if errors.As(err, &e) {
@@ -194,7 +197,7 @@ func NewPolicyAnalyzer(
 
 		plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, args, env, handshake,
-			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
+			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)), host.AttachDebugger())
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
 
@@ -207,7 +210,7 @@ func NewPolicyAnalyzer(
 
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
-			handshake, analyzerPluginDialOptions(ctx, string(name)))
+			handshake, analyzerPluginDialOptions(ctx, string(name)), host.AttachDebugger())
 	}
 
 	if err != nil {

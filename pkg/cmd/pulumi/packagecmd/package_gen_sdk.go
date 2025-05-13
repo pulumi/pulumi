@@ -51,7 +51,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false, nil)
 			if err != nil {
 				return err
 			}
