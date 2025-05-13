@@ -67,9 +67,12 @@ let c = new Resource("resource3", { state: 3 });
 	lines := strings.Split(stdout, "\n")
 	var urns []string
 
-	// More specific matching to find only the Resource URNs we created
+	// Look for resources created by our test
 	for _, line := range lines {
-		if strings.Contains(line, "Resource::resource") {
+		// Change from "Resource::resource" to just looking for our resource names
+		if strings.Contains(line, "resource1") ||
+			strings.Contains(line, "resource2") ||
+			strings.Contains(line, "resource3") {
 			fields := strings.Fields(line)
 			for _, field := range fields {
 				// Look for the URN format
@@ -81,6 +84,11 @@ let c = new Resource("resource3", { state: 3 });
 		}
 	}
 	assert.Equal(t, 3, len(urns), "Expected to find 3 resource URNs")
+
+	// Add safety check to prevent panic if we don't have enough URNs
+	if len(urns) < 2 {
+		t.Fatalf("Not enough resource URNs found, expected at least 2, got %d", len(urns))
+	}
 
 	// STEP 1: Protect multiple resources in one command by passing all URNs
 	protectArgs := append([]string{"pulumi", "state", "protect", "--yes"}, urns[:2]...)
