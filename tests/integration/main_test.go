@@ -22,7 +22,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	testutil.SetupBinaryRebuilding()
+	testutil.SetupPulumiBinary()
 	testutil.InstallPythonProvider()
 
 	code := m.Run()

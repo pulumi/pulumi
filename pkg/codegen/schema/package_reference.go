@@ -523,6 +523,10 @@ func (p *PartialPackage) Language(language string) (any, error) {
 		}
 	}
 
+	if p.spec == nil {
+		return nil, nil
+	}
+
 	val, ok := p.spec.Language[language]
 	if !ok {
 		return nil, nil

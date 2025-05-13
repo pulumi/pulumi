@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package apitype
+package stack
 
-// CLIVersionResponse is the response from the server with information about CLI versions.
-type CLIVersionResponse struct {
-	LatestVersion        string `json:"latestVersion"`
-	OldestWithoutWarning string `json:"oldestWithoutWarning"`
-	LatestDevVersion     string `json:"latestDevVersion"`
-	CacheMS              int    `json:"cacheMS,omitempty"`
+import (
+	"os"
+	"testing"
+
+	"github.com/pulumi/pulumi/tests/testutil"
+)
+
+func TestMain(m *testing.M) {
+	testutil.SetupPulumiBinary()
+
+	code := m.Run()
+	os.Exit(code)
 }

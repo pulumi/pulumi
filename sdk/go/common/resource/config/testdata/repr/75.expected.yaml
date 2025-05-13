@@ -8,7 +8,7 @@ paths:
     - 3
     string: '[1,2,3]'
     redacted: '[1,2,3]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAI/+EIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAI/+CIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
     secure: false
     isObject: true
   my:outer[0]:
