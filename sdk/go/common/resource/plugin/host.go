@@ -128,7 +128,7 @@ func IsLocalPluginPath(source string) bool {
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter, projectName tokens.PackageName,
+	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -303,7 +303,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	projectName             tokens.PackageName               // name of the project
-	debugging               DebugEventEmitter
+	debugging               DebugContext
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex

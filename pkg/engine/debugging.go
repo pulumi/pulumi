@@ -18,19 +18,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func newDebuggingEventEmitter(events eventEmitter) plugin.DebugEventEmitter {
-	return &debuggingEventEmitter{
+func newDebugContext(events eventEmitter) plugin.DebugContext {
+	return &debugContext{
 		events: events,
 	}
 }
 
-type debuggingEventEmitter struct {
+type debugContext struct {
 	events eventEmitter // the channel to emit events into.
 }
 
-var _ plugin.DebugEventEmitter = (*debuggingEventEmitter)(nil)
+var _ plugin.DebugContext = (*debugContext)(nil)
 
-func (s *debuggingEventEmitter) StartDebugging(info plugin.DebuggingInfo) error {
+func (s *debugContext) StartDebugging(info plugin.DebuggingInfo) error {
 	s.events.startDebugging(info)
 	return nil
 }

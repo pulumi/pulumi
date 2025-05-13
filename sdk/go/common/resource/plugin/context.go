@@ -84,7 +84,7 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter,
+	config map[config.Key]string, debugging DebugContext,
 ) (*Context, error) {
 	return NewContextWithContext(
 		context.Background(), d, statusD, host, pwd, root,
@@ -97,7 +97,7 @@ func NewContextWithContext(
 	d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter,
+	config map[config.Key]string, debugging DebugContext,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
