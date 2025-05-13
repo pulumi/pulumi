@@ -126,22 +126,21 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
 					return b64.NewBase64SecretsManager(), nil
 				},
-				LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
-				},
-				SaveRemoteF: func(ctx context.Context, project *workspace.ProjectStack) error {
-					yaml, err := encoding.YAML.Marshal(project)
-					if err != nil {
-						return err
-					}
-					if newStackYAML != nil {
-						*newStackYAML = string(yaml)
-					}
-					return nil
-				},
+				HasRemoteConfigF: func() bool { return false },
 			}, nil
 		},
 
+		loadProjectStack: func(_ context.Context, p *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+			return workspace.LoadProjectStackBytes(p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
+		},
+		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack) error {
+			b, err := encoding.YAML.Marshal(ps)
+			if err != nil {
+				return err
+			}
+			*newStackYAML = string(b)
+			return nil
+		},
 		stackRef: &stackRef,
 	}
 }

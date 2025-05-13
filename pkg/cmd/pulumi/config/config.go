@@ -591,7 +591,8 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 }
 
 type configSetCmd struct {
-	Stdin *os.File
+	Stdin            *os.File
+	LoadProjectStack func(context.Context, *workspace.Project, backend.Stack) (*workspace.ProjectStack, error)
 
 	Plaintext bool
 	Secret    bool
@@ -600,7 +601,7 @@ type configSetCmd struct {
 }
 
 func newConfigSetCmd(stack *string) *cobra.Command {
-	configSetCmd := &configSetCmd{}
+	configSetCmd := &configSetCmd{LoadProjectStack: cmdStack.LoadProjectStack}
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
@@ -699,7 +700,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := cmdStack.LoadProjectStack(ctx, project, s)
+	ps, err := c.LoadProjectStack(ctx, project, s)
 	if err != nil {
 		return err
 	}

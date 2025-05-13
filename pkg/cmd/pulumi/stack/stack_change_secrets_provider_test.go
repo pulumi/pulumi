@@ -103,16 +103,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
-		LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
-			bytes, err := os.ReadFile("Pulumi.testStack.yaml")
-			if err != nil && !os.IsNotExist(err) {
-				return nil, err
-			}
-			return workspace.LoadProjectStackBytes(project, bytes, "Pulumi.testStack.yaml", encoding.YAML)
-		},
-		SaveRemoteF: func(ctx context.Context, project *workspace.ProjectStack) error {
-			return project.Save("Pulumi.testStack.yaml")
-		},
+		HasRemoteConfigF: func() bool { return false },
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
@@ -214,12 +205,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
-		LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
-			return workspace.LoadProjectStack(project, "Pulumi.testStack.yaml")
-		},
-		SaveRemoteF: func(ctx context.Context, project *workspace.ProjectStack) error {
-			return project.Save("Pulumi.testStack.yaml")
-		},
+		HasRemoteConfigF: func() bool { return false },
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
