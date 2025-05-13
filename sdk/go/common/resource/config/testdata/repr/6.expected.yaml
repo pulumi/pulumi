@@ -19,9 +19,10 @@ paths:
     secure: false
     isObject: true
   my:parent.nested.foo:
-    value: "4.2"
+    value: 4.2
     string: "4.2"
     redacted: "4.2"
-    object: EBAABnN0cmluZwwFAAM0LjI=
+    object: FhAAB2Zsb2F0NjQICgD4zczMzMzMEEA=
     secure: false
     isObject: false
+    type: 3

@@ -17,6 +17,7 @@ paths:
     object: EBAABnN0cmluZwwFAANiYXo=
     secure: false
     isObject: false
+    type: 1
   my:foo.secure:
     value: myvalue
     string: myvalue
@@ -24,3 +25,4 @@ paths:
     object: FBAABnN0cmluZwwJAAdteXZhbHVl
     secure: false
     isObject: false
+    type: 1

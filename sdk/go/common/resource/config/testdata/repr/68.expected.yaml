@@ -10,9 +10,10 @@ paths:
     secure: false
     isObject: true
   my:testKey[0]:
-    value: "0"
+    value: 0
     string: "0"
     redacted: "0"
-    object: DhAABnN0cmluZwwDAAEw
+    object: DBAABWludDY0BAIAAA==
     secure: false
     isObject: false
+    type: 2

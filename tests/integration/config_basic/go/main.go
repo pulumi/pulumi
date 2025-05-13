@@ -52,6 +52,10 @@ func main() {
 				Key:      "foo",
 				Expected: `{"bar":"don't tell"}`,
 			},
+			{
+				Key:      "phonenumber",
+				Expected: `+441234567890`,
+			},
 		}
 
 		for _, test := range tests {
