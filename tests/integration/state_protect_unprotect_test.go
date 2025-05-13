@@ -66,7 +66,7 @@ let c = new Resource("resource3", { state: 3 });
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
 	lines := strings.Split(stdout, "\n")
 	var urns []string
-	
+
 	// More specific matching to find only the Resource URNs we created
 	for _, line := range lines {
 		if strings.Contains(line, "Resource::resource") {
@@ -84,8 +84,8 @@ let c = new Resource("resource3", { state: 3 });
 
 	// STEP 1: Protect multiple resources in one command by passing all URNs
 	protectArgs := append([]string{"pulumi", "state", "protect", "--yes"}, urns[:2]...)
-	protectOutput, _ := e.RunCommand(protectArgs...)
-	
+	protectOutput, _ := e.RunCommand(protectArgs[0], protectArgs[1:]...)
+
 	// Verify the protect output shows the correct count
 	assert.Contains(t, protectOutput, "2 resources protected", "Protect command should report the correct number of resources")
 
@@ -100,8 +100,8 @@ let c = new Resource("resource3", { state: 3 });
 
 	// STEP 2: Unprotect a subset of resources to verify partial unprotect works
 	unprotectSubsetArgs := append([]string{"pulumi", "state", "unprotect", "--yes"}, urns[0])
-	unprotectOutput, _ := e.RunCommand(unprotectSubsetArgs...)
-	
+	unprotectOutput, _ := e.RunCommand(unprotectSubsetArgs[0], unprotectSubsetArgs[1:]...)
+
 	// Verify the unprotect output shows the correct count
 	assert.Contains(t, unprotectOutput, "1 resources unprotected", "Unprotect command for a single resource should report count of 1")
 
@@ -111,8 +111,8 @@ let c = new Resource("resource3", { state: 3 });
 
 	// STEP 3: Unprotect the remaining protected resource
 	unprotectArgs := append([]string{"pulumi", "state", "unprotect", "--yes"}, urns[1])
-	unprotectOutput, _ = e.RunCommand(unprotectArgs...)
-	
+	unprotectOutput, _ = e.RunCommand(unprotectArgs[0], unprotectArgs[1:]...)
+
 	// Verify the unprotect output shows the correct count
 	assert.Contains(t, unprotectOutput, "1 resources unprotected", "Unprotect command for a single resource should report count of 1")
 
