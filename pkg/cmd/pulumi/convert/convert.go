@@ -282,11 +282,9 @@ func runConvert(
 		}
 	}
 
-	if outDir != cwd {
-		err := os.MkdirAll(outDir, 0o755)
-		if err != nil {
-			return fmt.Errorf("create output directory: %w", err)
-		}
+	err = os.MkdirAll(outDir, 0o755)
+	if err != nil {
+		return fmt.Errorf("create output directory: %w", err)
 	}
 
 	log := func(sev diag.Severity, msg string) {
