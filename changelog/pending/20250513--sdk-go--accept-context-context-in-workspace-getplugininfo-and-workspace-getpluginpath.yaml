@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Accept `context.Context` in `workspace.GetPluginInfo` and `workspace.GetPluginPath`.
