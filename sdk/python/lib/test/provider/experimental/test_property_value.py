@@ -1,7 +1,28 @@
-import pulumi
-from typing import Optional, TypedDict
-from pulumi.provider.experimental.property_value import PropertyValue
+from pulumi.provider.experimental.property_value import PropertyValue, PropertyValueType
 import collections.abc as abc
+
+
+def test_property_value_type():
+    value = PropertyValue(2.0)
+    assert value.type == PropertyValueType.NUMBER
+
+    value = PropertyValue("hello")
+    assert value.type == PropertyValueType.STRING
+
+    value = PropertyValue(True)
+    assert value.type == PropertyValueType.BOOL
+
+    value = PropertyValue(None)
+    assert value.type == PropertyValueType.NULL
+
+    value = PropertyValue.computed()
+    assert value.type == PropertyValueType.COMPUTED
+
+    value = PropertyValue([1, 2, 3])
+    assert value.type == PropertyValueType.ARRAY
+
+    value = PropertyValue({"a": 1, "b": 2})
+    assert value.type == PropertyValueType.MAP
 
 
 def test_property_value_list():

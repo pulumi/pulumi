@@ -110,25 +110,14 @@ class PropertyValue:
 
     def __init__(
         self,
-        value: Optional[
-            Union[
-                bool,
-                float,
-                str,
-                pulumi.Asset,
-                pulumi.Archive,
-                Sequence["PropertyValue"],
-                Mapping[str, "PropertyValue"],
-                ResourceReference,
-                Computed,
-            ]
-        ],
+        value: PythonValue,
         is_secret: bool = False,
         dependencies: Optional[Iterable[str]] = None,
     ) -> None:
         """
         :param value: The value of the property.
-        :param is_computed: Whether the value is computed.
+        :param is_secret: Whether the value is secret.
+        :param dependencies: The dependencies of the property value.
         """
         # Wrap Sequence and Mapping types in immutable types to ensure they are hashable.
         if isinstance(value, Sequence) and not isinstance(value, str):
@@ -207,9 +196,9 @@ class PropertyValue:
             return PropertyValueType.ASSET
         if isinstance(self.value, pulumi.Archive):
             return PropertyValueType.ARCHIVE
-        if isinstance(self.value, list):
+        if isinstance(self.value, Sequence):
             return PropertyValueType.ARRAY
-        if isinstance(self.value, dict):
+        if isinstance(self.value, Mapping):
             return PropertyValueType.MAP
         if isinstance(self.value, ResourceReference):
             return PropertyValueType.RESOURCE
@@ -270,7 +259,6 @@ class PropertyValue:
         """
         Marshals a PropertyValue into a protobuf struct value.
 
-        :param value: The PropertyValue to marshal.
         :return: A protobuf struct value representation of the PropertyValue.
         """
 
