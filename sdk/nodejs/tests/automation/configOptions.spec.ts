@@ -234,10 +234,10 @@ describe("Config Options Tests", () => {
             };
 
             const ws = await LocalWorkspace.create({ pulumiCommand: mockCommand });
-            await assert.rejects(
-                ws.getAllConfigWithOptions(stackName, { showSecrets: true }),
-                (err: Error) => err.message === errorMessage,
-            );
+            await assert.rejects(ws.getAllConfigWithOptions(stackName, { showSecrets: true }), (err: Error) => {
+                // The error message should be the stderr output from the command
+                return err.message === errorMessage;
+            });
         });
 
         it("handles malformed JSON in getConfigWithOptions response", async () => {

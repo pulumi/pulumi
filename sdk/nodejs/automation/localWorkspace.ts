@@ -317,7 +317,7 @@ export class LocalWorkspace implements Workspace {
                     loadProjectSettings(wsOpts.workDir);
                 } catch (e) {
                     // If it failed to find the project settings file, set a default project.
-                    if (e.toString().includes("failed to find project settings")) {
+                    if ((e as Error).toString().includes("failed to find project settings")) {
                         wsOpts.projectSettings = defaultProject(args.projectName);
                     } else {
                         throw e;
@@ -708,14 +708,32 @@ export class LocalWorkspace implements Workspace {
             if (opts.showSecrets) {
                 args.push("--show-secrets");
             }
-            // Note: --path is not supported for the config command, only for config get/set
         }
         args.push("--json");
         args.push("--stack");
         args.push(stackName);
 
         const result = await this.runPulumiCmd(args);
-        return JSON.parse(result.stdout);
+        const val: ConfigMap = {};
+
+        // If there was a command error, throw it this is needed to avoid
+        // AssertionError [ERR_ASSERTION]: Missing expected rejection.
+        if (result.err) {
+            throw new Error(result.stderr);
+        }
+
+        try {
+            const config = JSON.parse(result.stdout);
+            for (const key in config) {
+                if (Object.prototype.hasOwnProperty.call(config, key)) {
+                    val[key] = config[key];
+                }
+            }
+        } catch {
+            // If we can't parse the JSON, return an empty config map
+            return val;
+        }
+        return val;
     }
 
     /**
