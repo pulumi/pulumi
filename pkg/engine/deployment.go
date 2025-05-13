@@ -189,7 +189,7 @@ func newDeployment(
 	}
 
 	// Create a context for plugins.
-	debugContext := newDebugContext(opts.Events)
+	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {

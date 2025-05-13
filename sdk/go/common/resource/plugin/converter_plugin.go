@@ -57,7 +57,8 @@ func NewConverter(ctx *Context, name string, version *semver.Version) (Converter
 
 	plug, _, err := newPlugin(ctx, ctx.Pwd, path, prefix,
 		apitype.ConverterPlugin, []string{}, os.Environ(),
-		testConnection, converterPluginDialOptions(ctx, name, ""))
+		testConnection, converterPluginDialOptions(ctx, name, ""),
+		ctx.Host.AttachDebugger())
 	if err != nil {
 		return nil, err
 	}

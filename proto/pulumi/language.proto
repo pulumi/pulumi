@@ -447,6 +447,12 @@ message RunPluginRequest{
 
     // The kind of plugin to run (resource/analyzer/etc).
     string kind = 6;
+
+    // The name of the plugin (for display purposes)
+    string name = 7;
+
+    // True if a plugin should be started under a debugger.
+    bool attach_debugger = 8;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
