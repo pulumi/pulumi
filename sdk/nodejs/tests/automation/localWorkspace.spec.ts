@@ -648,6 +648,7 @@ describe("LocalWorkspace", () => {
         const destroyRes = await stack.destroy({ userAgent, previewOnly: true });
         assert.strictEqual(destroyRes.summary.kind, "update");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
+        assert.deepStrictEqual(destroyRes.summary.resourceChanges, { same: 1 });
 
         await stack.workspace.removeStack(stackName);
     });
