@@ -510,22 +510,15 @@ Event: ${line}\n${e.toString()}`);
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
-        let loggedSummary: OpMap | undefined;
-
         // Set up event log tailing
-        if (opts?.previewOnly || opts?.onEvent) {
-          logFile = createLogFile("refresh");
-          args.push("--event-log", logFile);
+        if (opts?.onEvent) {
+            const onEvent = opts.onEvent;
+            logFile = createLogFile("refresh");
+            args.push("--event-log", logFile);
 
-          logPromise = this.readLines(logFile, (event) => {
-              if (opts?.previewOnly && event.summaryEvent) {
-                loggedSummary = event.summaryEvent.resourceChanges
-              }
-
-              if (opts?.onEvent) {
-                opts?.onEvent(event);
-              }
-          });
+            logPromise = this.readLines(logFile, (event) => {
+                onEvent(event);
+            });
         }
 
         const kind = this.workspace.program ? execKind.inline : execKind.local;
@@ -541,15 +534,6 @@ Event: ${line}\n${e.toString()}`);
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
         const summary = await this.info(!this.isRemote && opts?.showSecrets);
-
-        // `this.info` will return the last successful operration. However, if
-        // we're in `--preview-only` mode, the last successful operation is not
-        // the one we're interested in. In this case, we use the summary event
-        // we found in the event log.
-        if (summary && opts?.previewOnly) {
-          summary.resourceChanges = loggedSummary
-        }
-
         return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
@@ -624,19 +608,19 @@ Event: ${line}\n${e.toString()}`);
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         let loggedSummary: OpMap | undefined;
-
         // Set up event log tailing
         if (opts?.previewOnly || opts?.onEvent) {
+            const onEvent = opts.onEvent;
             logFile = createLogFile("destroy");
             args.push("--event-log", logFile);
 
             logPromise = this.readLines(logFile, (event) => {
                 if (opts?.previewOnly && event.summaryEvent) {
-                  loggedSummary = event.summaryEvent.resourceChanges;
+                    loggedSummary = event.summaryEvent.resourceChanges;
                 }
 
                 if (opts?.onEvent) {
-                  opts?.onEvent(event);
+                    opts?.onEvent(event);
                 }
             });
         }
