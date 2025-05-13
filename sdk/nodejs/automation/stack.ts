@@ -513,18 +513,20 @@ Event: ${line}\n${e.toString()}`);
         let loggedSummary: OpMap | undefined;
 
         // Set up event log tailing
-        logFile = createLogFile("refresh");
-        args.push("--event-log", logFile);
+        if (opts?.previewOnly || opts?.onEvent) {
+          logFile = createLogFile("refresh");
+          args.push("--event-log", logFile);
 
-        logPromise = this.readLines(logFile, (event) => {
-            if (event.summaryEvent) {
-              loggedSummary = event.summaryEvent.resourceChanges
-            }
+          logPromise = this.readLines(logFile, (event) => {
+              if (event.summaryEvent) {
+                loggedSummary = event.summaryEvent.resourceChanges
+              }
 
-            if (opts?.onEvent) {
-              opts?.onEvent(event);
-            }
-        });
+              if (opts?.onEvent) {
+                opts?.onEvent(event);
+              }
+          });
+        }
 
         const kind = this.workspace.program ? execKind.inline : execKind.local;
         args.push("--exec-kind", kind);
