@@ -42,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-)
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
 func runStateEdit(
@@ -57,24 +56,6 @@ func runStateEdit(
 
 		return operation(snap, res)
 	})
-}
-
-// runStateEditWithPrompt is the same as runStateEdit, but allows the caller to override the
-// prompt message.
-func runStateEditWithPrompt(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
-	urn resource.URN, operation edit.OperationFunc, overridePromptMessage string,
-) error {
-	return runTotalStateEditWithPrompt(
-		ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-			res, err := locateStackResource(opts, snap, urn)
-			if err != nil {
-				return err
-			}
-
-			return operation(snap, res)
-		},
-		overridePromptMessage)
 }
 
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
@@ -102,34 +83,6 @@ func runTotalStateEdit(
 		return err
 	}
 	return TotalStateEdit(ctx, s, showPrompt, opts, operation, nil)
-}
-
-// runTotalStateEditWithPrompt is the same as runTotalStateEdit, but allows the caller to
-// override the prompt message.
-func runTotalStateEditWithPrompt(
-	ctx context.Context,
-	ws pkgWorkspace.Context,
-	lm cmdBackend.LoginManager,
-	stackName string,
-	showPrompt bool,
-	operation func(opts display.Options, snap *deploy.Snapshot) error,
-	overridePromptMessage string,
-) error {
-	opts := display.Options{
-		Color: cmdutil.GetGlobalColorization(),
-	}
-	s, err := cmdStack.RequireStack(
-		ctx,
-		ws,
-		lm,
-		stackName,
-		cmdStack.OfferNew,
-		opts,
-	)
-	if err != nil {
-		return err
-	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, &overridePromptMessage)
 }
 
 func TotalStateEdit(
