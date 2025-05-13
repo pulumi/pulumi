@@ -1,4 +1,0 @@
-kind: improvement
-area: cli
-component: "cli/package"
-summary: "Update help text for `pulumi package add` to mention that it adds packages to Pulumi.yaml"
