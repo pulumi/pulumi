@@ -52,44 +52,51 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			kind := apitype.PluginKind(kind)
 
-			// TODO: Add support for --server and --checksums.
-			pluginSpec, err := workspace.NewPluginSpec(ctx, args[0], kind, nil, "", nil)
-			if err != nil {
-				return err
-			}
+			source := args[0]
 
-			if !tokens.IsName(pluginSpec.Name) {
-				return fmt.Errorf("invalid plugin name %q", pluginSpec.Name)
-			}
-
-			pluginDesc := fmt.Sprintf("%s %s", pluginSpec.Kind, pluginSpec.Name)
-			if pluginSpec.Version != nil {
-				pluginDesc = fmt.Sprintf("%s@%s", pluginDesc, pluginSpec.Version)
-			}
-
-			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
-
-			path, err := workspace.GetPluginPath(ctx, d, pluginSpec, nil)
-			if err != nil {
-				// Try to install the plugin, unless auto plugin installs are turned off.
-				var me *workspace.MissingError
-				if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
-					// Not a MissingError, return the original error.
-					return fmt.Errorf("could not get plugin path: %w", err)
-				}
-
-				log := func(sev diag.Severity, msg string) {
-					d.Logf(sev, diag.RawMessage("", msg))
-				}
-
-				_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+			var pluginPath string
+			if plugin.IsLocalPluginPath(ctx, source) {
+				pluginPath = source
+			} else {
+				// TODO: Add support for --server and --checksums.
+				pluginSpec, err := workspace.NewPluginSpec(ctx, source, kind, nil, "", nil)
 				if err != nil {
 					return err
 				}
 
-				path, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
+				if !tokens.IsName(pluginSpec.Name) {
+					return fmt.Errorf("invalid plugin name %q", pluginSpec.Name)
+				}
+
+				source = fmt.Sprintf("%s %s", pluginSpec.Kind, pluginSpec.Name)
+				if pluginSpec.Version != nil {
+					source = fmt.Sprintf("%s@%s", source, pluginSpec.Version)
+				}
+
+				d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
+
+				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
-					return fmt.Errorf("could not get plugin path: %w", err)
+					// Try to install the plugin, unless auto plugin installs are turned off.
+					var me *workspace.MissingError
+					if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
+						// Not a MissingError, return the original error.
+						return fmt.Errorf("could not get plugin path: %w", err)
+					}
+
+					log := func(sev diag.Severity, msg string) {
+						d.Logf(sev, diag.RawMessage("", msg))
+					}
+
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+					if err != nil {
+						return err
+					}
+
+					pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
+					if err != nil {
+						return fmt.Errorf("could not get plugin path: %w", err)
+					}
 				}
 			}
 
@@ -100,9 +107,9 @@ func newPluginRunCmd() *cobra.Command {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}
 
-			plugin, err := plugin.ExecPlugin(pctx, path, pluginDesc, kind, pluginArgs, "", nil, false)
+			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", nil, false)
 			if err != nil {
-				return fmt.Errorf("could not execute plugin %s (%s): %w", pluginDesc, path, err)
+				return fmt.Errorf("could not execute plugin %s (%s): %w", source, pluginPath, err)
 			}
 
 			// Copy the plugin's stdout and stderr to the current process's stdout and stderr, and stdin to the
@@ -126,17 +133,28 @@ func newPluginRunCmd() *cobra.Command {
 			}()
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(plugin.Stdin, os.Stdin)
-				if err != nil && !errors.Is(err, io.EOF) {
-					fmt.Fprintf(os.Stderr, "error copying plugin stdin: %v\n", err)
+				// Source based plugins don't support stdin yet.
+				if plugin.Stdin == nil {
+					b := make([]byte, 1024)
+					n, err := os.Stdin.Read(b)
+					if err != nil && !errors.Is(err, io.EOF) {
+						fmt.Fprintf(os.Stderr, "error reading plugin stdin: %v\n", err)
+					}
+					if n > 0 {
+						fmt.Fprintf(os.Stderr, "plugin stdin not supported for source based plugins\n")
+					}
+				} else {
+					_, err := io.Copy(plugin.Stdin, os.Stdin)
+					if err != nil && !errors.Is(err, io.EOF) {
+						fmt.Fprintf(os.Stderr, "error copying plugin stdin: %v\n", err)
+					}
 				}
 			}()
 
-			// Wait for the plugin and IO to finish.
+			// Wait for the plugin to finish.
 			code, err := plugin.Wait()
-			wg.Wait()
 			if err != nil {
-				return fmt.Errorf("plugin %s exited with error: %w", pluginDesc, err)
+				return fmt.Errorf("plugin %s exited with error: %w", source, err)
 			}
 			if code != 0 {
 				os.Exit(code)

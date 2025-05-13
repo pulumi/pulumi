@@ -80,15 +80,6 @@ func Install(ctx context.Context, packagemanager PackageManagerType, dir string,
 		return name, err
 	}
 
-	// Ensure the "node_modules" directory exists.
-	nodeModulesPath, err := searchup(dir, "node_modules")
-	if nodeModulesPath == "" {
-		if err != nil {
-			return name, fmt.Errorf("error while looking for 'node_modules': %w", err)
-		}
-		return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
-	}
-
 	return name, nil
 }
 

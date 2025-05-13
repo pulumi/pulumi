@@ -1262,23 +1262,26 @@ func (host *goLanguageHost) RunPlugin(
 		cmd.Stdout, cmd.Stderr = stdout, stderr
 	}
 
+	var exitcode int32
 	if err = cmd.Run(); err != nil {
+		logging.V(5).Infof("Error running plugin: %v", err)
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				err = server.Send(&pulumirpc.RunPluginResponse{
-					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
-					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
-				})
+				//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
+				exitcode = int32(status.ExitStatus())
 			} else {
-				err = fmt.Errorf("program exited unexpectedly: %w", exiterr)
+				return fmt.Errorf("program exited unexpectedly: %w", exiterr)
 			}
 		} else {
 			return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
 		}
 	}
 
+	err = server.Send(&pulumirpc.RunPluginResponse{
+		Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: exitcode},
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("could not send exit code: %w", err)
 	}
 
 	return closer.Close()

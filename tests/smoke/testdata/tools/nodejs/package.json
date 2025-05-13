@@ -1,0 +1,7 @@
+{
+    "name": "pulumi-tool",
+    "main": "index.ts",
+    "devDependencies": {
+        "typescript": "^5.8.3"
+    }
+}
