@@ -542,7 +542,7 @@ Event: ${line}\n${e.toString()}`);
         // load the project file.
         const summary = await this.info(!this.isRemote && opts?.showSecrets);
 
-        // `this.info` will return the last successful operration. However, if
+        // `this.info` will return the last successful operation. However, if
         // we're in `--preview-only` mode, the last successful operation is not
         // the one we're interested in. In this case, we use the summary event
         // we found in the event log.
