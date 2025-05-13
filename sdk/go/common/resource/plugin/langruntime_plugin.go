@@ -107,7 +107,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		client = pulumirpc.NewLanguageRuntimeClient(plug.Conn)
 	} else {
 		path, err := workspace.GetPluginPath(
-			ctx.Diag,
+			ctx.baseContext, ctx.Diag,
 			workspace.PluginSpec{
 				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
 				Kind: apitype.LanguagePlugin,
