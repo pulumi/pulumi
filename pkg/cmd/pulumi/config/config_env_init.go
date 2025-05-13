@@ -192,7 +192,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
-	if err = stack.Save(ctx, projectStack, cmdStack.ConfigFile); err != nil {
+	if err = cmdStack.SaveProjectStack(ctx, stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
@@ -203,7 +203,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	project *workspace.Project,
 	stack backend.Stack,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+	ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -214,7 +214,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
+		if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 			return nil, nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}

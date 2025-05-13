@@ -86,14 +86,13 @@ func TestConfigSet(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
-				GetStackFilenameF: func(context.Context) (string, bool) {
-					return "Pulumi.stack.yaml", true
+				HasRemoteConfigF: func() bool {
+					return false
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
-				) (*workspace.ProjectStack, error) {
+				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStack(project, "Pulumi.stack.yaml")
 				},
-				SaveF: func(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error {
+				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
 					return project.Save(stack.ConfigFile)
 				},
 			}
@@ -198,15 +197,14 @@ func TestConfigSetTypes(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
-				LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
-				) (*workspace.ProjectStack, error) {
+				LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
-				SaveF: func(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error {
+				SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
 					return project.Save(stack.ConfigFile)
 				},
-				GetStackFilenameF: func(ctx context.Context) (string, bool) {
-					return "Pulumi.stack.yaml", true
+				HasRemoteConfigF: func() bool {
+					return false
 				},
 			}
 

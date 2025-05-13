@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"time"
 
@@ -47,6 +48,40 @@ import (
 )
 
 var ConfigFile string
+
+func LoadProjectStack(ctx context.Context, project *workspace.Project, stack backend.Stack,
+) (*workspace.ProjectStack, error) {
+	if ConfigFile != "" {
+		return workspace.LoadProjectStack(project, ConfigFile)
+	}
+	project, configFilePath, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+	if err != nil {
+		return nil, fmt.Errorf("could not detect project stack path: %w", err)
+	}
+	if stack.HasRemoteConfig() {
+		// Check if the config file also exists and warn if it does.
+		_, err = os.Stat(configFilePath)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, err)
+		}
+		if err == nil {
+			fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses remote config\n",
+				configFilePath)
+		}
+		return stack.Load(ctx, project)
+	}
+	return workspace.LoadProjectStack(project, configFilePath)
+}
+
+func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error {
+	if ConfigFile != "" {
+		return ps.Save(ConfigFile)
+	}
+	if stack.HasRemoteConfig() {
+		return stack.Save(ctx, ps)
+	}
+	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+}
 
 type LoadOption int
 
@@ -365,8 +400,8 @@ func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
 	}
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
-	if needsSave && !useRemoteConfig {
-		err = stack.Save(ctx, ps, ConfigFile)
+	if needsSave {
+		err = SaveProjectStack(ctx, stack, ps)
 		if err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}

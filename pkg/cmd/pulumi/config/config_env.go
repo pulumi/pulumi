@@ -114,7 +114,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+	projectStack, err := cmdStack.LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -206,7 +206,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		}
 	}
 
-	if err = (*stack).Save(ctx, projectStack, cmdStack.ConfigFile); err != nil {
+	if err = cmdStack.SaveProjectStack(ctx, *stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

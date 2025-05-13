@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync/atomic"
 	"time"
 
@@ -119,8 +118,8 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
-	// usesRemoteConfig indicates whether this stack's config exists in ESC instead of a local file.
-	usesRemoteConfig bool
+	// hasRemoteConfig indicates whether this stack's config exists in ESC instead of a local file.
+	hasRemoteConfig bool
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -145,92 +144,59 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		currentOperation: apistack.CurrentOperation,
 		tags:             apistack.Tags,
 		b:                b,
-		usesRemoteConfig: apistack.Config != nil,
+		hasRemoteConfig:  apistack.Config != nil,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
 // GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
-func (s *cloudStack) GetStackFilename(ctx context.Context) (string, bool) {
-	if s.usesRemoteConfig {
-		return "", false
-	}
-	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
-	return path, err == nil
+func (s *cloudStack) HasRemoteConfig() bool {
+	return s.hasRemoteConfig
 }
 
-func (s *cloudStack) Load(ctx context.Context, project *workspace.Project, configFileOverride string,
-) (*workspace.ProjectStack, error) {
-	// Always use manually specified config file if specified.
-	if configFileOverride != "" {
-		if s.usesRemoteConfig {
-			fmt.Printf("Warning: using config file %s but this stack uses remote config by default\n", configFileOverride)
-		}
-		return workspace.LoadProjectStack(project, configFileOverride)
+func (s *cloudStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return nil, err
 	}
-	if s.usesRemoteConfig {
-		stackID, err := s.b.getCloudStackIdentifier(s.ref)
-		if err != nil {
-			return nil, err
-		}
-		stack, err := s.b.client.GetStack(ctx, stackID)
-		if err != nil {
-			return nil, err
-		}
-		if stack.Config != nil {
-			projectStack := &workspace.ProjectStack{
-				Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
-				SecretsProvider: stack.Config.SecretsProvider,
-				EncryptedKey:    stack.Config.EncryptedKey,
-				EncryptionSalt:  stack.Config.EncryptionSalt,
-				Config:          config.Map{},
-			}
-			// Check if the config file exists and warn if it does.
-			_, configFilePath, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
-			if err != nil {
-				return nil, fmt.Errorf("detecting config file path: %v", err)
-			}
-			_, err = os.Stat(configFilePath)
-			if err != nil && !os.IsNotExist(err) {
-				return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, err)
-			}
-			if err == nil {
-				fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses remote config\n",
-					configFilePath)
-			}
-			return projectStack, nil
-		}
-		// Allow fall-through to local file if environment was removed.
+	stack, err := s.b.client.GetStack(ctx, stackID)
+	if err != nil {
+		return nil, err
 	}
-	return workspace.DetectProjectStack(s.Ref().Name().Q())
+	if stack.Config == nil {
+		return nil, nil
+	}
+	projectStack := &workspace.ProjectStack{
+		Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
+		SecretsProvider: stack.Config.SecretsProvider,
+		EncryptedKey:    stack.Config.EncryptedKey,
+		EncryptionSalt:  stack.Config.EncryptionSalt,
+		Config:          config.Map{},
+	}
+	return projectStack, nil
 }
 
-func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack, configFileOverride string) error {
-	if configFileOverride != "" {
-		return projectStack.Save(configFileOverride)
+func (s *cloudStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	if projectStack.Config != nil {
+		return errors.New("cannot set config for a stack with cloud config")
 	}
-	if s.usesRemoteConfig {
-		if projectStack.Config != nil {
-			return errors.New("cannot set config for a stack with cloud config")
-		}
-		imports := projectStack.Environment.Imports()
-		if len(imports) != 1 {
-			return errors.New("cloud stacks must have exactly 1 import")
-		}
-		stackID, err := s.b.getCloudStackIdentifier(s.ref)
-		if err != nil {
-			return err
-		}
-		err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
-			Environment:     imports[0],
-			SecretsProvider: projectStack.SecretsProvider,
-			EncryptedKey:    projectStack.EncryptedKey,
-			EncryptionSalt:  projectStack.EncryptionSalt,
-		})
+	imports := projectStack.Environment.Imports()
+	if len(imports) != 1 {
+		return errors.New("cloud stacks must have exactly 1 import")
+	}
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
 		return err
 	}
-	return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
+	err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
+		Environment:     imports[0],
+		SecretsProvider: projectStack.SecretsProvider,
+		EncryptedKey:    projectStack.EncryptedKey,
+		EncryptionSalt:  projectStack.EncryptionSalt,
+	})
+	return err
 }
+
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }

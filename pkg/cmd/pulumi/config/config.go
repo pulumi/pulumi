@@ -84,7 +84,7 @@ func NewConfigCmd() *cobra.Command {
 				return err
 			}
 
-			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := currentStack.Load(ctx, project, cmdStack.ConfigFile)
+			currentProjectStack, err := cmdStack.LoadProjectStack(ctx, project, currentStack)
 			if err != nil {
 				return err
 			}
@@ -198,12 +198,12 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := destinationStack.Load(ctx, project, cmdStack.ConfigFile)
+			destinationProjectStack, err := cmdStack.LoadProjectStack(ctx, project, destinationStack)
 			if err != nil {
 				return err
 			}
 
-			if _, isFileConfig := destinationStack.GetStackFilename(ctx); !isFileConfig {
+			if destinationStack.HasRemoteConfig() {
 				env := "<env>"
 				imports := destinationProjectStack.Environment.Imports()
 				if len(imports) == 1 {
@@ -245,7 +245,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// The use of `requiresSaving` here ensures that there was actually some config
 			// that needed saved, otherwise it's an unnecessary save call
 			if requiresSaving {
-				err := destinationStack.Save(ctx, destinationProjectStack, cmdStack.ConfigFile)
+				err := cmdStack.SaveProjectStack(ctx, destinationStack, destinationProjectStack)
 				if err != nil {
 					return err
 				}
@@ -363,12 +363,12 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
 
-			if _, isFileConfig := stack.GetStackFilename(ctx); !isFileConfig {
+			if stack.HasRemoteConfig() {
 				env := "<env>"
 				imports := ps.Environment.Imports()
 				if len(imports) == 1 {
@@ -383,7 +383,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return stack.Save(ctx, ps, cmdStack.ConfigFile)
+			return cmdStack.SaveProjectStack(ctx, stack, ps)
 		},
 	}
 	rmCmd.PersistentFlags().BoolVar(
@@ -430,12 +430,12 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
 
-			if _, isFileConfig := stack.GetStackFilename(ctx); !isFileConfig {
+			if stack.HasRemoteConfig() {
 				env := "<env>"
 				imports := ps.Environment.Imports()
 				if len(imports) == 1 {
@@ -457,7 +457,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return stack.Save(ctx, ps, cmdStack.ConfigFile)
+			return cmdStack.SaveProjectStack(ctx, stack, ps)
 		},
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
@@ -498,17 +498,25 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
-			configPath, isFile := s.GetStackFilename(ctx)
-			if !isFile {
-				return errors.New("config refresh not supported for remote stack config")
+			var configPath string
+			if cmdStack.ConfigFile != "" {
+				configPath = cmdStack.ConfigFile
+			} else if s.HasRemoteConfig() {
+				return errors.New("cannot refresh stacks with remote config")
+			} else {
+				_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
+				if err != nil {
+					return fmt.Errorf("getting configuration file: %w", err)
+				}
+				configPath = path
 			}
 
 			c, err := backend.GetLatestConfiguration(ctx, s)
 			if err != nil {
-				return err
+				return fmt.Errorf("getting latest configuration: %w", err)
 			}
 
-			ps, err := s.Load(ctx, project, cmdStack.ConfigFile)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, s)
 			if err != nil {
 				return err
 			}
@@ -691,7 +699,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	ps, err := s.Load(ctx, project, cmdStack.ConfigFile)
+	ps, err := cmdStack.LoadProjectStack(ctx, project, s)
 	if err != nil {
 		return err
 	}
@@ -738,7 +746,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	if _, isFileConfig := s.GetStackFilename(ctx); !isFileConfig {
+	if s.HasRemoteConfig() {
 		exampleValue := "--secret <value>"
 		if !c.Secret {
 			exampleValue = value
@@ -757,7 +765,7 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		return fmt.Errorf("could not set config: %w", err)
 	}
 
-	return s.Save(ctx, ps, cmdStack.ConfigFile)
+	return cmdStack.SaveProjectStack(ctx, s, ps)
 }
 
 func newConfigSetAllCmd(stack *string) *cobra.Command {
@@ -805,7 +813,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+			ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 			if err != nil {
 				return err
 			}
@@ -848,7 +856,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return stack.Save(ctx, ps, cmdStack.ConfigFile)
+			return cmdStack.SaveProjectStack(ctx, stack, ps)
 		},
 	}
 
@@ -909,7 +917,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
+			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -939,7 +947,7 @@ func listConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
+			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1058,7 +1066,7 @@ func getConfig(
 	if err != nil {
 		return err
 	}
-	ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+	ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return err
 	}
@@ -1085,7 +1093,7 @@ func getConfig(
 		}
 		// This may have setup the stack's secrets provider, so save the stack if needed.
 		if state != cmdStack.SecretsManagerUnchanged {
-			if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
+			if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 				return fmt.Errorf("save stack config: %w", err)
 			}
 		}
@@ -1119,7 +1127,7 @@ func getConfig(
 			}
 			// This may have setup the stack's secrets provider, so save the stack if needed.
 			if state != cmdStack.SecretsManagerUnchanged {
-				if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
+				if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 					return fmt.Errorf("save stack config: %w", err)
 				}
 			}

@@ -103,15 +103,14 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
-		LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
-		) (*workspace.ProjectStack, error) {
+		LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 			bytes, err := os.ReadFile("Pulumi.testStack.yaml")
 			if err != nil && !os.IsNotExist(err) {
 				return nil, err
 			}
 			return workspace.LoadProjectStackBytes(project, bytes, "Pulumi.testStack.yaml", encoding.YAML)
 		},
-		SaveF: func(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error {
+		SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
 			return project.Save("Pulumi.testStack.yaml")
 		},
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -215,11 +214,10 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
-		LoadF: func(ctx context.Context, project *workspace.Project, configFileOverride string,
-		) (*workspace.ProjectStack, error) {
+		LoadF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
 			return workspace.LoadProjectStack(project, "Pulumi.testStack.yaml")
 		},
-		SaveF: func(ctx context.Context, project *workspace.ProjectStack, configFileOverride string) error {
+		SaveF: func(ctx context.Context, project *workspace.ProjectStack) error {
 			return project.Save("Pulumi.testStack.yaml")
 		},
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {

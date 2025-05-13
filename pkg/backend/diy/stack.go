@@ -16,6 +16,7 @@ package diy
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -54,24 +55,14 @@ func newStack(ref *diyBackendReference, b *diyBackend) backend.Stack {
 }
 
 func (s *diyStack) Ref() backend.StackReference { return s.ref }
-func (s *diyStack) GetStackFilename(ctx context.Context) (string, bool) {
-	_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
-	return path, err == nil
+func (s *diyStack) HasRemoteConfig() bool       { return false }
+
+func (s *diyStack) Load(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+	return nil, errors.New("remote config not implemented for the DIY backend")
 }
 
-func (s *diyStack) Load(ctx context.Context, project *workspace.Project, configFileOverride string,
-) (*workspace.ProjectStack, error) {
-	if configFileOverride != "" {
-		return workspace.LoadProjectStack(project, configFileOverride)
-	}
-	return workspace.DetectProjectStack(s.Ref().Name().Q())
-}
-
-func (s *diyStack) Save(ctx context.Context, projectStack *workspace.ProjectStack, configFileOverride string) error {
-	if configFileOverride != "" {
-		return projectStack.Save(configFileOverride)
-	}
-	return workspace.SaveProjectStack(s.Ref().Name().Q(), projectStack)
+func (s *diyStack) Save(ctx context.Context, projectStack *workspace.ProjectStack) error {
+	return errors.New("remote config not implemented for the DIY backend")
 }
 
 func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {

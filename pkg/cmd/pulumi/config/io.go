@@ -77,7 +77,7 @@ func getStackConfigurationWithFallback(
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := s.Load(ctx, project, cmdStack.ConfigFile)
+	workspaceStack, err := cmdStack.LoadProjectStack(ctx, project, s)
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err
@@ -177,7 +177,7 @@ func getAndSaveSecretsManager(
 		return nil, fmt.Errorf("get stack secrets manager: %w", err)
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		err = stack.Save(ctx, workspaceStack, cmdStack.ConfigFile)
+		err = cmdStack.SaveProjectStack(ctx, stack, workspaceStack)
 		if err != nil && state == cmdStack.SecretsManagerMustSave {
 			return nil, fmt.Errorf("save stack config: %w", err)
 		}
@@ -286,7 +286,7 @@ func copySingleConfigKey(
 		return err
 	}
 
-	return destinationStack.Save(ctx, destinationProjectStack, cmdStack.ConfigFile)
+	return cmdStack.SaveProjectStack(ctx, destinationStack, destinationProjectStack)
 }
 
 func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {

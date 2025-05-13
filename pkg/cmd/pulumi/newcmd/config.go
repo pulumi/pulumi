@@ -204,7 +204,7 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+	ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
@@ -214,7 +214,7 @@ func promptForConfig(
 		return nil, err
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = stack.Save(ctx, ps, cmdStack.ConfigFile); err != nil {
+		if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -329,7 +329,7 @@ func SaveConfig(ctx context.Context, ws pkgWorkspace.Context, stack backend.Stac
 		return err
 	}
 
-	ps, err := stack.Load(ctx, project, cmdStack.ConfigFile)
+	ps, err := cmdStack.LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return err
 	}
@@ -338,5 +338,5 @@ func SaveConfig(ctx context.Context, ws pkgWorkspace.Context, stack backend.Stac
 		ps.Config[k] = v
 	}
 
-	return stack.Save(ctx, ps, cmdStack.ConfigFile)
+	return cmdStack.SaveProjectStack(ctx, stack, ps)
 }

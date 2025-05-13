@@ -59,7 +59,7 @@ func CreateSecretsManagerForExistingStack(
 	if err != nil {
 		return err
 	}
-	ps, err := stack.Load(ctx, project, ConfigFile)
+	ps, err := LoadProjectStack(ctx, project, stack)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func CreateSecretsManagerForExistingStack(
 
 	// Handle if the configuration changed any of EncryptedKey, etc
 	if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
-		if err = stack.Save(ctx, ps, ConfigFile); err != nil {
+		if err = SaveProjectStack(ctx, stack, ps); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -141,7 +141,7 @@ func readStackConfiguration(ctx context.Context, ws pkgWorkspace.Context, b back
 		}
 		return workspace.DetectProjectStack(stackRef.Name().Q())
 	}
-	ps, err := s.Load(ctx, project, ConfigFile)
+	ps, err := LoadProjectStack(ctx, project, s)
 	if err != nil || ps == nil {
 		if ConfigFile != "" {
 			return workspace.LoadProjectStack(project, ConfigFile)

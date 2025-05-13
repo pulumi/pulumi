@@ -83,7 +83,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := s.Load(ctx, project, ConfigFile)
+				ps, err := LoadProjectStack(ctx, project, s)
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
@@ -92,7 +92,7 @@ This command displays data about previous updates for a stack.`,
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				if state != SecretsManagerUnchanged {
-					if err = s.Save(ctx, ps, ConfigFile); err != nil {
+					if err = SaveProjectStack(ctx, s, ps); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}
