@@ -82,6 +82,11 @@ func NewConvertCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
+			absoluteOutDir, err := filepath.Abs(outDir)
+			if err != nil {
+				return fmt.Errorf("get absolute path for output directory: %w", err)
+			}
+
 			return runConvert(
 				cmd.Context(),
 				pkgWorkspace.Instance,
@@ -91,7 +96,7 @@ func NewConvertCmd() *cobra.Command {
 				mappings,
 				from,
 				language,
-				outDir,
+				absoluteOutDir,
 				generateOnly,
 				strict,
 				name,
@@ -277,11 +282,9 @@ func runConvert(
 		}
 	}
 
-	if outDir != "." {
-		err := os.MkdirAll(outDir, 0o755)
-		if err != nil {
-			return fmt.Errorf("create output directory: %w", err)
-		}
+	err = os.MkdirAll(outDir, 0o755)
+	if err != nil {
+		return fmt.Errorf("create output directory: %w", err)
 	}
 
 	log := func(sev diag.Severity, msg string) {
@@ -356,11 +359,12 @@ func runConvert(
 		defer contract.IgnoreClose(grpcServer)
 
 		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
-			SourceDirectory: cwd,
-			TargetDirectory: pclDirectory,
-			MapperTarget:    grpcServer.Addr(),
-			LoaderTarget:    grpcServer.Addr(),
-			Args:            args,
+			SourceDirectory:           cwd,
+			TargetDirectory:           pclDirectory,
+			MapperTarget:              grpcServer.Addr(),
+			LoaderTarget:              grpcServer.Addr(),
+			Args:                      args,
+			GeneratedProjectDirectory: outDir,
 		})
 		if err != nil {
 			return err

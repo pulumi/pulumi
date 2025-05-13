@@ -74,11 +74,12 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 	req *pulumirpc.ConvertProgramRequest,
 ) (*pulumirpc.ConvertProgramResponse, error) {
 	resp, err := c.converter.ConvertProgram(ctx, &ConvertProgramRequest{
-		SourceDirectory: req.SourceDirectory,
-		TargetDirectory: req.TargetDirectory,
-		MapperTarget:    req.MapperTarget,
-		LoaderTarget:    req.LoaderTarget,
-		Args:            req.Args,
+		SourceDirectory:           req.SourceDirectory,
+		TargetDirectory:           req.TargetDirectory,
+		MapperTarget:              req.MapperTarget,
+		LoaderTarget:              req.LoaderTarget,
+		Args:                      req.Args,
+		GeneratedProjectDirectory: req.GeneratedProjectDirectory,
 	})
 	if err != nil {
 		return nil, err
