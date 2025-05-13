@@ -267,21 +267,22 @@ func TestGetLanguageTypeString(t *testing.T) {
 		},
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
 				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
 					if tt.input == nil || *tt.input {
-						t.Run("input", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+						t.Run("input", func(t *testing.T) {
+							t.Parallel()
 							actual := helper.GetTypeName(tt.schema, tt.typ, true, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
 					if tt.input == nil || !*tt.input {
-						t.Run("output", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+						t.Run("output", func(t *testing.T) {
+							t.Parallel()
 							actual := helper.GetTypeName(tt.schema, tt.typ, false, tt.module)
 							assert.Equal(t, expected, actual)
 						})
@@ -440,10 +441,9 @@ func TestGetMethodResultName(t *testing.T) {
 		},
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
 				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
@@ -560,7 +560,8 @@ func testDocsGenHelper(
 		assert.Fail(t, "Unknown language %T", language)
 	}
 
-	t.Run(name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+	t.Run(name, func(t *testing.T) {
+		t.Parallel()
 		f(t, helper())
 	})
 }
