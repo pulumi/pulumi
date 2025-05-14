@@ -668,9 +668,9 @@ func checkVersionCache(devVersion bool) (bool, bool, int64) {
 	}
 
 	// Prompt at most once a day for regular versions, and at most once an hour for dev versions.
-	promptCacheTIme := 24 * time.Hour
+	promptCacheTime := 24 * time.Hour
 	if devVersion {
-		promptCacheTIme = 1 * time.Hour
+		promptCacheTime = 1 * time.Hour
 	}
 
 	// Fallback to the file modification date if we didn't save a last prompt timestamp yet.
@@ -679,7 +679,7 @@ func checkVersionCache(devVersion bool) (bool, bool, int64) {
 		lastPrompt = time.UnixMilli(info.LastPromptTimeStampMS)
 	}
 
-	nextPrompt := lastPrompt.Add(promptCacheTIme)
+	nextPrompt := lastPrompt.Add(promptCacheTime)
 	expired := nextPrompt.Before(time.Now())
 
 	query := true
