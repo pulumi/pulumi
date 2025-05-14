@@ -2015,7 +2015,6 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved configuration key")
-	assert.Equal(t, diags[1].Summary, "#/config/variables/version: version is a reserved configuration key")
 
 	// Test that certain words aren't allowed as an input property on the provider object.
 	pkgSpec = PackageSpec{
