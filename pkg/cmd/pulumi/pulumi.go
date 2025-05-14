@@ -282,8 +282,9 @@ func NewPulumiCmd() *cobra.Command {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
+				metadata := getCLIMetadata(cmd)
 				go func() {
-					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, cmd)
+					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
 				}()
 			}
@@ -494,7 +495,7 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate(ctx context.Context, cloudURL string, cmd *cobra.Command) *diag.Diag {
+func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -509,7 +510,6 @@ func checkForUpdate(ctx context.Context, cloudURL string, cmd *cobra.Command) *d
 	shouldQuery, canPrompt, lastPromptTimestampMS := checkVersionCache(isCurVerDev)
 
 	if shouldQuery {
-		metadata := getCLIMetadata(cmd)
 		latestVer, oldestAllowedVer, devVer, cacheMS, err := getCLIVersionInfo(ctx, cloudURL, metadata)
 		if err != nil {
 			logging.V(3).Infof("error fetching latest version information "+
