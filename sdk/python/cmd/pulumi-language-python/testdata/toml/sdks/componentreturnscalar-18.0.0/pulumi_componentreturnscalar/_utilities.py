@@ -340,4 +340,4 @@ def get_plugin_download_url():
 	return None
 
 def get_version():
-    return "13.3.7"
+    return "18.0.0"

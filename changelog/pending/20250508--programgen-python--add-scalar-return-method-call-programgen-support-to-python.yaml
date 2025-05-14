@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/python
+  description: Add scalar return method call programgen support to python 
