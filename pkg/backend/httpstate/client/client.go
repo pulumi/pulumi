@@ -75,11 +75,6 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		httpClient = http.DefaultClient
 	}
 
-	httpClient.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		Proxy:           http.ProxyFromEnvironment,
-	}
-
 	return &Client{
 		apiURL:     apiURL,
 		apiToken:   apiAccessToken(apiToken),
