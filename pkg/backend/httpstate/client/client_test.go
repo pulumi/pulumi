@@ -140,7 +140,7 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 		assert.Equal(t, "foo", req.Header.Get("X-Pulumi-First"))
 		assert.Equal(t, "bar", req.Header.Get("X-Pulumi-Second"))
 		assert.Empty(t, req.Header.Get("X-Pulumi-Third"))
-		return "{}"
+		return `{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0-11-gdeadbeef"}`
 	})
 	defer server.Close()
 	client := newMockClient(server)
