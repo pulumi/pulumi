@@ -174,6 +174,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
 	events []engine.Event, plan *deploy.Plan, explainer Explainer,
+	// askOpts is used for testing to control stdin/stdout
 	askOpts ...survey.AskOpt,
 ) (*deploy.Plan, error) {
 	for {
@@ -259,7 +260,10 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 				stdout = os.Stdout
 			}
 			if err != nil {
-				_, err = stdout.Write([]byte("An error occurred while explaining the changes:\n" + err.Error() + "\n"))
+				_, err = stdout.Write([]byte(
+					opts.Display.Color.Colorize(
+						"An error occurred while explaining the changes:\n" +
+							colors.BrightRed + err.Error() + colors.Reset + "\n\n")))
 				contract.IgnoreError(err)
 				continue
 			}

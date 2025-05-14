@@ -1222,6 +1222,10 @@ func (b *cloudBackend) Explain(
 	orgID := stackID.Owner
 	summary, err := b.client.ExplainPreviewWithCopilot(ctx, orgID, string(kind), output)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			// Format a better error message for the user
+			return "", fmt.Errorf("request to %s timed out after %s", b.client.URL(), client.CopilotRequestTimeout.String())
+		}
 		return "", err
 	}
 
