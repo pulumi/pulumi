@@ -107,12 +107,12 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	latestVer, oldestAllowedVer, devVer, cacheMS, err := getCLIVersionInfo(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.NoError(t, err)
-	assert.Equal(t, 1, callCount, "should have called API once")
-	assert.Equal(t, "1.2.3", latestVer.String())
-	assert.Equal(t, "1.2.0", oldestAllowedVer.String())
-	assert.Equal(t, "0.0.0", devVer.String())
-	assert.Equal(t, 86400000, cacheMS)
+	require.NoError(t, err)
+	require.Equal(t, 1, callCount, "should have called API once")
+	require.Equal(t, "1.2.3", latestVer.String())
+	require.Equal(t, "1.2.0", oldestAllowedVer.String())
+	require.Equal(t, "0.0.0", devVer.String())
+	require.Equal(t, 86400000, cacheMS)
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -150,7 +150,7 @@ func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	_, _, _, _, err := getCLIVersionInfo(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.ErrorContains(t, err, "context deadline exceeded")
+	require.ErrorContains(t, err, "context deadline exceeded")
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -213,10 +213,10 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	_, _, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
 
 	// Assert.
-	assert.NoError(t, err)
-	assert.True(t, called, "should have called API")
-	assert.Equal(t, metadata["Command"], commandHeader)
-	assert.Equal(t, metadata["Flags"], flagsHeader)
+	require.NoError(t, err)
+	require.True(t, called, "should have called API")
+	require.Equal(t, metadata["Command"], commandHeader)
+	require.Equal(t, metadata["Flags"], flagsHeader)
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -279,10 +279,10 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	_, _, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
 
 	// Assert.
-	assert.NoError(t, err)
-	assert.True(t, called, "should have called API")
-	assert.Empty(t, commandHeader)
-	assert.Empty(t, flagsHeader)
+	require.NoError(t, err)
+	require.True(t, called, "should have called API")
+	require.Empty(t, commandHeader)
+	require.Empty(t, flagsHeader)
 }
 
 func TestGetCLIMetadata(t *testing.T) {
@@ -381,7 +381,7 @@ func TestGetCLIMetadata(t *testing.T) {
 			metadata := getCLIMetadata(c.cmd)
 
 			// Assert.
-			assert.Equal(t, c.metadata, metadata)
+			require.Equal(t, c.metadata, metadata)
 		})
 	}
 }
@@ -422,7 +422,7 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 3, callCount, "should call API every time")
+	require.Equal(t, 3, callCount, "should call API every time")
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -461,7 +461,7 @@ func TestCheckForUpdate_RespectsServerCache(t *testing.T) {
 	checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 1, callCount, "should respect the cache on the 2nd call")
+	require.Equal(t, 1, callCount, "should respect the cache on the 2nd call")
 
 	// Arrange.
 	time.Sleep(1500 * time.Millisecond) // Wait for the cache to expire
@@ -470,13 +470,13 @@ func TestCheckForUpdate_RespectsServerCache(t *testing.T) {
 	checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 2, callCount, "the cache should have expired")
+	require.Equal(t, 2, callCount, "the cache should have expired")
 
 	// Act.
 	checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 2, callCount, "should respect the cache")
+	require.Equal(t, 2, callCount, "should respect the cache")
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -530,16 +530,16 @@ func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	expired := checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 4, callCount, "should call API every time")
+	require.Equal(t, 4, callCount, "should call API every time")
 
-	assert.Contains(t, uncached.Message, "A new version of Pulumi is available")
-	assert.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '1.2.3'")
+	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '1.2.3'")
 
-	assert.Nil(t, cached)
-	assert.Nil(t, cachedAgain)
+	require.Nil(t, cached)
+	require.Nil(t, cachedAgain)
 
-	assert.Contains(t, expired.Message, "A new version of Pulumi is available")
-	assert.Contains(t, expired.Message, "upgrade from version '1.0.0' to '1.2.3'")
+	require.Contains(t, expired.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '1.2.3'")
 }
 
 func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
@@ -569,9 +569,9 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	second := checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 2, callCount, "should call API every time")
-	assert.Nil(t, first)
-	assert.Nil(t, second)
+	require.Equal(t, 2, callCount, "should call API every time")
+	require.Nil(t, first)
+	require.Nil(t, second)
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -626,16 +626,16 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	expired := checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 4, callCount, "should call API every time")
+	require.Equal(t, 4, callCount, "should call API every time")
 
-	assert.Contains(t, uncached.Message, "A new version of Pulumi is available")
-	assert.Contains(t, uncached.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
+	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 
-	assert.Nil(t, cached)
-	assert.Nil(t, cachedAgain)
+	require.Nil(t, cached)
+	require.Nil(t, cachedAgain)
 
-	assert.Contains(t, expired.Message, "A new version of Pulumi is available")
-	assert.Contains(t, expired.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
+	require.Contains(t, expired.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 }
 
 //nolint:paralleltest // changes environment variables and globals
@@ -681,8 +681,8 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	alwaysNilDiag := checkForUpdate(ctx, srv.URL, nil)
 
 	// Assert.
-	assert.Equal(t, 0, callCount, "local versions don't trigger API calls")
-	assert.Nil(t, nilDiag)
-	assert.Nil(t, stillNilDiag)
-	assert.Nil(t, alwaysNilDiag)
+	require.Equal(t, 0, callCount, "local versions don't trigger API calls")
+	require.Nil(t, nilDiag)
+	require.Nil(t, stillNilDiag)
+	require.Nil(t, alwaysNilDiag)
 }
