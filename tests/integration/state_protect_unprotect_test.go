@@ -67,15 +67,12 @@ let c = new Resource("resource3", { state: 3 });
 	lines := strings.Split(stdout, "\n")
 	var urns []string
 
-	// Look for resources created by our test
+	// Look for resources created by our test - find dynamic resources from our provider
 	for _, line := range lines {
-		// Change from "Resource::resource" to just looking for our resource names
-		if strings.Contains(line, "resource1") ||
-			strings.Contains(line, "resource2") ||
-			strings.Contains(line, "resource3") {
+		if strings.Contains(line, "pulumi:dynamic:Resource::") {
+			// This is our custom dynamic resource - extract the URN
 			fields := strings.Fields(line)
 			for _, field := range fields {
-				// Look for the URN format
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					urns = append(urns, field)
 					break
@@ -83,6 +80,10 @@ let c = new Resource("resource3", { state: 3 });
 			}
 		}
 	}
+
+	// Log the output to help debug
+	t.Logf("Stack output: %s", stdout)
+	t.Logf("Found %d URNs: %v", len(urns), urns)
 	assert.Equal(t, 3, len(urns), "Expected to find 3 resource URNs")
 
 	// Add safety check to prevent panic if we don't have enough URNs
@@ -95,7 +96,8 @@ let c = new Resource("resource3", { state: 3 });
 	protectOutput, _ := e.RunCommand(protectArgs[0], protectArgs[1:]...)
 
 	// Verify the protect output shows the correct count
-	assert.Contains(t, protectOutput, "2 resources protected", "Protect command should report the correct number of resources")
+	assert.Contains(t, protectOutput, "2 resources protected",
+		"Protect command should report the correct number of resources")
 
 	// Try to destroy - should fail because resources are now protected
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
@@ -111,7 +113,8 @@ let c = new Resource("resource3", { state: 3 });
 	unprotectOutput, _ := e.RunCommand(unprotectSubsetArgs[0], unprotectSubsetArgs[1:]...)
 
 	// Verify the unprotect output shows the correct count
-	assert.Contains(t, unprotectOutput, "1 resources unprotected", "Unprotect command for a single resource should report count of 1")
+	assert.Contains(t, unprotectOutput, "1 resources unprotected",
+		"Unprotect command for a single resource should report count of 1")
 
 	// Try to destroy - should still fail because one resource is still protected
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
@@ -122,13 +125,15 @@ let c = new Resource("resource3", { state: 3 });
 	unprotectOutput, _ = e.RunCommand(unprotectArgs[0], unprotectArgs[1:]...)
 
 	// Verify the unprotect output shows the correct count
-	assert.Contains(t, unprotectOutput, "1 resources unprotected", "Unprotect command for a single resource should report count of 1")
+	assert.Contains(t, unprotectOutput, "1 resources unprotected",
+		"Unprotect command for a single resource should report count of 1")
 
 	// Verify resources are now unprotected by successfully destroying the stack
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
 }
 
-// TestProtectAndUnprotectAllResources tests the functionality of protecting and unprotecting all resources using the --all flag.
+// TestProtectAndUnprotectAllResources tests the functionality of protecting and unprotecting all resources
+// using the --all flag.
 func TestProtectAndUnprotectAllResources(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
