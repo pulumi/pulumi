@@ -381,9 +381,11 @@ function deserializeResponse(
 }
 
 /**
- * Dynamically calls the function `tok`, which is offered by a provider plugin.
- */
-export function callAsync<T>(
+ * Helper function to call a method `tok`, which is offered by a provider plugin resource.
+ *
+ * May return a scalar as an object with a single key or a normal object.
+ **/
+function callAsync<T>(
     tok: string,
     props: Inputs,
     res?: Resource,
@@ -501,7 +503,7 @@ export function callAsync<T>(
 }
 
 /**
- * Call is the corresponding function to invokeOutput.
+ * Calls a method `tok` offered by a provider plugin resource.
  */
 export function call<T>(
     tok: string,
@@ -527,7 +529,10 @@ export function call<T>(
 }
 
 /**
- * callSingle is the corresponding function to invokeSingleOutput.
+ * Calls a method `tok` offered by a provider plugin resource, but returns a single value.
+ *
+ * This method expects the result of `callAsync` to be a map containing a single value,
+ * which it unwraps.
  */
 export function callSingle<T>(
     tok: string,

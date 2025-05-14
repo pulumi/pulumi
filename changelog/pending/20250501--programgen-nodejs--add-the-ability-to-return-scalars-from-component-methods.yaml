@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: programgen/nodejs
-  description: Add the ability to return scalars from component methods (sdk changes)
+  description: Add `callSingle` to the NodeJS SDK to support non-object method return values
