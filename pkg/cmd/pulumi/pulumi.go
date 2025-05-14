@@ -516,7 +516,9 @@ func checkForUpdate(ctx context.Context, cloudURL string, cmd *cobra.Command) *d
 				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
 		}
 
-		willPrompt := canPrompt && ((isCurVerDev && haveNewerDevVersion(devVer, curVer)) || (!isCurVerDev && oldestAllowedVer.GT(curVer)))
+		willPrompt := canPrompt &&
+			((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
+				(!isCurVerDev && oldestAllowedVer.GT(curVer)))
 		if willPrompt {
 			lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 		}
