@@ -166,14 +166,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(ctx, kind, stack, op, events, plan, explainer)
+	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
 	close(eventsChannel)
 	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
-func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
+func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
 	events []engine.Event, plan *deploy.Plan, explainer Explainer,
+	askOpts ...survey.AskOpt,
 ) (*deploy.Plan, error) {
 	for {
 		opts := op.Opts
@@ -217,11 +218,12 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 		}
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
+		allAskOpts := append([]survey.AskOpt{surveyIcons}, askOpts...)
 		if err := survey.AskOne(&survey.Select{
 			Message: prompt,
 			Options: choices,
 			Default: string(no),
-		}, &response, surveyIcons); err != nil {
+		}, &response, allAskOpts...); err != nil {
 			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
 
@@ -249,11 +251,19 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 
 		if response == explainChoice {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
-			explanation, err := explainer.Explain(ctx, stack.Ref(), kind, op, events)
-			if err != nil {
-				return nil, err
+
+			explanation, err := explainer.Explain(ctx, stackRef, kind, op, events)
+
+			stdout := op.Opts.Display.Stdout
+			if stdout == nil {
+				stdout = os.Stdout
 			}
-			_, err = os.Stdout.WriteString(explanation + "\n")
+			if err != nil {
+				_, err = stdout.Write([]byte("An error occurred while explaining the changes:\n" + err.Error() + "\n"))
+				contract.IgnoreError(err)
+				continue
+			}
+			_, err = stdout.Write([]byte(explanation + "\n"))
 			contract.IgnoreError(err)
 			continue
 		}
