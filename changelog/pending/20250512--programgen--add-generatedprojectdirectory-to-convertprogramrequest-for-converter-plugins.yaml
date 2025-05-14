@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Add GeneratedProjectDirectory to ConvertProgramRequest for converter plugins

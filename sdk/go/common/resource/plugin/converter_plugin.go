@@ -156,11 +156,12 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
-		SourceDirectory: req.SourceDirectory,
-		TargetDirectory: req.TargetDirectory,
-		MapperTarget:    req.MapperTarget,
-		LoaderTarget:    req.LoaderTarget,
-		Args:            req.Args,
+		SourceDirectory:           req.SourceDirectory,
+		TargetDirectory:           req.TargetDirectory,
+		MapperTarget:              req.MapperTarget,
+		LoaderTarget:              req.LoaderTarget,
+		Args:                      req.Args,
+		GeneratedProjectDirectory: req.GeneratedProjectDirectory,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
