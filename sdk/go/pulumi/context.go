@@ -1141,48 +1141,80 @@ func (ctx *Context) CallPackage(
 	return output, nil
 }
 
-func (ctx *Context) CallPackageSingle(
-	tok string, args Input, output Output, self Resource, packageRef string, opts ...InvokeOption,
+// ComponentCallSingleResultOutput is a wrapper around the output of a component call that will be
+// extracted to a scalar result.
+type ComponentCallSingleResultOutput struct {
+	*OutputState
+	elementType reflect.Type
+}
+
+func (c ComponentCallSingleResultOutput) ElementType() reflect.Type {
+	return c.elementType
+}
+
+func CallPackageSingle[InnerType any](
+	ctx *Context, tok string, args Input, output Output, outputInnerType InnerType, self Resource, packageRef string, opts ...InvokeOption,
 ) (Output, error) {
-	res, err := ctx.CallPackage(tok, args, output, self, packageRef, opts...)
+	intermediary, err := ctx.CallPackage(tok, args, AnyOutput{}, self, packageRef, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return res.ApplyT(func(r interface{}) (interface{}, error) {
+	intermediary = intermediary.ApplyT(func(r interface{}) (InnerType, error) {
+		zeroType := reflect.Zero(reflect.TypeOf(outputInnerType)).Interface().(InnerType)
+
 		// if the result is an object return the first element
 		v := reflect.ValueOf(r)
 
 		if v.Kind() == reflect.Ptr {
 			// Check if the pointer is nil
 			if v.IsNil() {
-				return nil, errors.New("input cannot be a nil pointer")
+				return zeroType, errors.New("input cannot be a nil pointer")
 			}
 			// Get the element the pointer points to
 			v = v.Elem()
 		}
 
 		if v.Kind() != reflect.Struct {
-			return nil, errors.New("result must be a struct")
+			return zeroType, errors.New("result must be a struct")
 		}
 
 		if v.NumField() != 1 {
-			return nil, errors.New("result must have exactly one field")
+			return zeroType, errors.New("result must have exactly one field")
 		}
 
 		field := v.Field(0)
 		if !field.CanInterface() {
-			return nil, errors.New("result field cannot be accessed")
+			return zeroType, errors.New("result field cannot be accessed")
 		}
 
-		return field.Interface(), nil
-	}), nil
+		result := field.Interface()
+
+		if resultType := reflect.TypeOf(result); resultType != output.ElementType() {
+			return zeroType, fmt.Errorf("result field type %s does not match expected type %s", resultType, output.ElementType())
+		}
+
+		fmt.Printf("HUMPH Result: %s, Result Type: %T\n", result, result)
+
+		return result.(InnerType), nil
+	})
+
+	outputState := internal.GetOutputState(intermediary.(AnyOutput))
+	if outputState == nil {
+		return nil, errors.New("intermediary output state is nil")
+	}
+
+	resValue := reflect.New(reflect.TypeOf(output)).Elem()
+	internal.SetOutputState(resValue, outputState)
+	res := resValue.Interface().(Output)
+
+	return res, nil
 }
 
 func (ctx *Context) CallSingle(
 	tok string, args Input, output Output, self Resource, opts ...InvokeOption,
 ) (Output, error) {
-	return ctx.CallPackageSingle(tok, args, output, self, "" /* packageRef */, opts...)
+	return CallPackageSingle(ctx, tok, args, output, reflect.Zero(output.ElementType()), self, "" /* packageRef */, opts...)
 }
 
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type

@@ -13,12 +13,14 @@ func main() {
 		if err != nil {
 			return err
 		}
-		callIdentity, err := "TODO: call call"
+		callIdentity, err := component1.Identity(ctx)
 		if err != nil {
 			return err
 		}
 		ctx.Export("from_identity", callIdentity)
-		callPrefixed1, err := "TODO: call call"
+		callPrefixed1, err := component1.Prefixed(ctx, &componentreturnscalar.ComponentCallablePrefixedArgs{
+			Prefix: pulumi.String("foo-"),
+		})
 		if err != nil {
 			return err
 		}

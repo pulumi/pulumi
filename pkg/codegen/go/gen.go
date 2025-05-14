@@ -2547,6 +2547,8 @@ func (pkg *pkgContext) genResource(
 			} else {
 				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 			}
+		} else if !isObjectReturnType && liftReturn {
+			outputsType = pkg.outputType(returnType)
 		}
 
 		// If this is a parameterized resource we need the package ref.

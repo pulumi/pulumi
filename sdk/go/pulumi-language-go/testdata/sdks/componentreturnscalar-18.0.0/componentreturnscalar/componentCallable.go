@@ -53,7 +53,7 @@ func (ComponentCallableArgs) ElementType() reflect.Type {
 
 // The `identity` method of the `ComponentCallable` component resource. Returns the component's `value` unaltered.
 func (r *ComponentCallable) Identity(ctx *pulumi.Context) (pulumi.StringOutput, error) {
-	out, err := ctx.CallSingle("componentreturnscalar:index:ComponentCallable/identity", nil, pulumi.AnyOutput{}, r)
+	out, err := ctx.CallSingle("componentreturnscalar:index:ComponentCallable/identity", nil, pulumi.StringOutput{}, r)
 	if err != nil {
 		return pulumi.StringOutput{}, err
 	}
@@ -62,7 +62,7 @@ func (r *ComponentCallable) Identity(ctx *pulumi.Context) (pulumi.StringOutput, 
 
 // The `prefixed` method of the `ComponentCallable` component resource. Accepts a string and returns the component's `value` prefixed with that string.
 func (r *ComponentCallable) Prefixed(ctx *pulumi.Context, args *ComponentCallablePrefixedArgs) (pulumi.StringOutput, error) {
-	out, err := ctx.CallSingle("componentreturnscalar:index:ComponentCallable/prefixed", args, pulumi.AnyOutput{}, r)
+	out, err := ctx.CallSingle("componentreturnscalar:index:ComponentCallable/prefixed", args, pulumi.StringOutput{}, r)
 	if err != nil {
 		return pulumi.StringOutput{}, err
 	}
