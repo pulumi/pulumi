@@ -20,7 +20,7 @@ var (
 	// These property names are reserved
 	reservedKeywords = []string{"pulumi"}
 
-	reservedPropertyNames = []string{"version"}
+	reservedTopLevelPropertyNames = []string{"version"}
 	// urn is a reserved property name for all resources
 	// id is a reserved property name for resources which are not components
 	reservedResourcePropertyKeys = []string{"urn"}
@@ -32,8 +32,8 @@ func isReservedKeyword(name string) bool {
 	return slices.Contains(reservedKeywords, name)
 }
 
-func isReservedPropertyName(name string) bool {
-	return slices.Contains(reservedPropertyNames, name) || isReservedKeyword(name)
+func isReservedTopLevelPropertyName(name string) bool {
+	return slices.Contains(reservedTopLevelPropertyNames, name) || isReservedKeyword(name)
 }
 
 func isReservedResourcePropertyKey(name string) bool {
@@ -42,4 +42,8 @@ func isReservedResourcePropertyKey(name string) bool {
 
 func isReservedNonComponentPropertyKey(name string) bool {
 	return slices.Contains(reservedNonComponentPropertyKeys, name)
+}
+
+func isReservedConfigKey(name string) bool {
+	return isReservedKeyword(name)
 }

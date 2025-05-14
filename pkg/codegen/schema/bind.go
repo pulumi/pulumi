@@ -1476,7 +1476,7 @@ func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, er
 		"#/config/defaults", spec.Required, false)
 
 	for _, property := range properties {
-		if isReservedPropertyName(property.Name) {
+		if isReservedConfigKey(property.Name) {
 			path := "#/config/variables/" + property.Name
 			diags = diags.Append(errorf(path, property.Name+" is a reserved configuration key"))
 		}
@@ -1625,7 +1625,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 
 	// If any input property is called "version" or "pulumi" error that it's reserved.
 	for _, property := range decl.InputProperties {
-		if isReservedPropertyName(property.Name) {
+		if isReservedTopLevelPropertyName(property.Name) {
 			path := "#/provider/properties/" + property.Name
 			diags = diags.Append(errorf(path, property.Name+" is a reserved property name"))
 		}
