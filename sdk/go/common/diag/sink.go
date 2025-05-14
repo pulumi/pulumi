@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -177,7 +178,17 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
+	// Print the original error
 	d.print(Error, msg)
+
+	// Enhancement: when the error mentions "already exists", append actionable steps.
+	if strings.Contains(msg, "already exists") {
+		remediation := "\nTo resolve this error, you can:\n" +
+			"  1. Change the name of your resource in code.\n" +
+			"  2. Import the existing resource using `pulumi import`.\n" +
+			"  3. Delete the external resource and rerun `pulumi up`.\n"
+		d.print(Error, remediation)
+	}
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
