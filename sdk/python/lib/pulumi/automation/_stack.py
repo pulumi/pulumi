@@ -368,11 +368,13 @@ class Stack:
 
         log_watcher_thread = None
         temp_dir = None
+        stop_event = None
         if on_event:
             log_file, temp_dir = _create_log_file("up")
             args.extend(["--event-log", log_file])
+            stop_event = threading.Event()
             log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event)
+                target=_watch_logs, args=(log_file, on_event, stop_event)
             )
             log_watcher_thread.start()
 
@@ -384,7 +386,7 @@ class Stack:
             summary = self.info(show_secrets and not self._remote)
             assert summary is not None
         finally:
-            _cleanup(temp_dir, log_watcher_thread, on_exit)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
 
         return UpResult(
             stdout=up_result.stdout,
@@ -508,15 +510,16 @@ class Stack:
                 on_event(event)
 
         # Start watching logs in a thread
+        stop_event = threading.Event()
         log_watcher_thread = threading.Thread(
-            target=_watch_logs, args=(log_file, on_event_callback)
+            target=_watch_logs, args=(log_file, on_event_callback, stop_event)
         )
         log_watcher_thread.start()
 
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, on_exit)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -603,19 +606,21 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         log_watcher_thread = None
+        stop_event = None
         temp_dir = None
         if on_event:
             log_file, temp_dir = _create_log_file("refresh")
             args.extend(["--event-log", log_file])
+            stop_event = threading.Event()
             log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event)
+                target=_watch_logs, args=(log_file, on_event, stop_event)
             )
             log_watcher_thread.start()
 
         try:
             refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            _cleanup(temp_dir, log_watcher_thread)
+            _cleanup(temp_dir, log_watcher_thread, stop_event)
 
         # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
         # load the project file.
@@ -729,19 +734,21 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         log_watcher_thread = None
+        stop_event = None
         temp_dir = None
         if on_event:
             log_file, temp_dir = _create_log_file("destroy")
             args.extend(["--event-log", log_file])
+            stop_event = threading.Event()
             log_watcher_thread = threading.Thread(
-                target=_watch_logs, args=(log_file, on_event)
+                target=_watch_logs, args=(log_file, on_event, stop_event)
             )
             log_watcher_thread.start()
 
         try:
             destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            _cleanup(temp_dir, log_watcher_thread)
+            _cleanup(temp_dir, log_watcher_thread, stop_event)
 
         # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
         # load the project file.
@@ -1206,15 +1213,21 @@ def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
     return filepath, log_dir
 
 
-def _watch_logs(filename: str, callback: OnEvent):
+def _watch_logs(
+    filename: str, callback: OnEvent, stopEvent: Optional[threading.Event] = None
+):
     partial_line = ""
     with open(filename, encoding="utf-8") as f:
         while True:
             line = f.readline()
 
-            # sleep if file hasn't been updated
+            # If the line hasn't updated, check if we should stop the thread.
             if not line:
-                time.sleep(0.1)
+                if stopEvent:
+                    if stopEvent.wait(0.1):
+                        break
+                else:
+                    time.sleep(0.1)
                 continue
 
             # we don't have a complete line yet.  sleep and try again.
@@ -1237,14 +1250,21 @@ def _watch_logs(filename: str, callback: OnEvent):
 def _cleanup(
     temp_dir: Optional[tempfile.TemporaryDirectory],
     thread: Optional[threading.Thread],
+    stop_event: Optional[threading.Event],
     on_exit_fn: Optional[Callable[[], None]] = None,
 ) -> None:
     # If there's an on_exit function, execute it (used in preview/up to shut down server)
     if on_exit_fn:
         on_exit_fn()
-    # If we started a thread to watch logs, wait for it to terminate, timing out after 5 seconds.
+    # If we started a thread to watch logs, wait for it to terminate. The wait times out
+    # after 5 seconds. This gives the thread some time to read the events log.
     if thread:
         thread.join(5)
+    # If an error occured before the actual Pulumi operation started, we will
+    # never write a CancelEvent to the events log, and the thread will continue
+    # polling forever. Set the stop_event to stop the polling loop.
+    if stop_event:
+        stop_event.set()
     # If we created a temp_dir for the logs, clean up.
     if temp_dir:
         temp_dir.cleanup()

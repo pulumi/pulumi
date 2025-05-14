@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/python
+  description: Fix hang in automation API operations
