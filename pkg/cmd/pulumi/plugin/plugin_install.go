@@ -89,6 +89,12 @@ type pluginInstallCmd struct {
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
 	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
+
+	installPluginSpec func(
+		ctx context.Context, label string,
+		install workspace.PluginSpec, file string,
+		sink diag.Sink, color colors.Colorization, reinstall bool,
+	) error // == installPluginSpec
 }
 
 func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
@@ -103,6 +109,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 	if cmd.pluginGetLatestVersion == nil {
 		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersion
+	}
+	if cmd.installPluginSpec == nil {
+		cmd.installPluginSpec = installPluginSpec
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -164,7 +173,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// If we don't have a version try to look one up
-		if version == nil {
+		if version == nil && pluginSpec.Version == nil {
 			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
 			if err != nil {
 				return err
@@ -215,43 +224,53 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		cmdutil.Diag().Infoerrf(
-			diag.Message("", "%s installing"), label)
-
-		// If we got here, actually try to do the download.
-		var source string
-		var payload workspace.PluginContent
-		var err error
-		if cmd.file == "" {
-			withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-				return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmd.color)
-			}
-			retry := func(err error, attempt int, limit int, delay time.Duration) {
-				cmd.diag.Warningf(
-					diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
-			}
-
-			r, err := workspace.DownloadToFile(ctx, install, withProgress, retry)
-			if err != nil {
-				return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
-			}
-			defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
-
-			payload = workspace.TarPlugin(r)
-		} else {
-			source = cmd.file
-			logging.V(1).Infof("%s opening tarball from %s", label, cmd.file)
-			payload, err = getFilePayload(cmd.file, install)
-			if err != nil {
-				return err
-			}
-		}
-		logging.V(1).Infof("%s installing tarball ...", label)
-		if err = install.InstallWithContext(ctx, payload, cmd.reinstall); err != nil {
-			return fmt.Errorf("installing %s from %s: %w", label, source, err)
+		cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
+		err := cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.color, cmd.reinstall)
+		if err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func installPluginSpec(
+	ctx context.Context, label string,
+	install workspace.PluginSpec, file string,
+	sink diag.Sink, color colors.Colorization, reinstall bool,
+) error {
+	// If we got here, actually try to do the download.
+	var source string
+	var payload workspace.PluginContent
+	var err error
+	if file == "" {
+		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+			return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", color)
+		}
+		retry := func(err error, attempt int, limit int, delay time.Duration) {
+			sink.Warningf(
+				diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
+		}
+
+		r, err := workspace.DownloadToFile(ctx, install, withProgress, retry)
+		if err != nil {
+			return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
+		}
+		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
+
+		payload = workspace.TarPlugin(r)
+	} else {
+		source = file
+		logging.V(1).Infof("%s opening tarball from %s", label, file)
+		payload, err = getFilePayload(file, install)
+		if err != nil {
+			return err
+		}
+	}
+	logging.V(1).Infof("%s installing tarball ...", label)
+	if err = install.InstallWithContext(ctx, payload, reinstall); err != nil {
+		return fmt.Errorf("installing %s from %s: %w", label, source, err)
+	}
 	return nil
 }
 
