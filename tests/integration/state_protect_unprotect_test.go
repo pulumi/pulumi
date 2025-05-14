@@ -29,48 +29,70 @@ import (
 // TestProtectAndUnprotectMultipleURNs tests the functionality of protecting and unprotecting multiple resources by URN.
 func TestProtectAndUnprotectMultipleURNs(t *testing.T) {
 	t.Parallel()
+
+	// Create a new environment
 	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
 
-	// Create a custom Pulumi program with multiple initially unprotected resources
-	const pulumiYaml = `name: protect-unprotect-test
-runtime: nodejs
-`
-	const indexTS = `
-import { Resource } from "./resource";
-
-// Allocate resources (initially unprotected):
-let a = new Resource("resource1", { state: 1 });
-let b = new Resource("resource2", { state: 2 });
-let c = new Resource("resource3", { state: 3 });
-`
-
-	// First import the protect_resources directory to get the resource.ts and package.json
-	e.ImportDirectory("protect_resources/step1")
-
-	// Then overwrite the specific files we need with our test content
-	e.WriteTestFile("Pulumi.yaml", pulumiYaml)
-	e.WriteTestFile("index.ts", indexTS)
-
-	// Create the stack and deploy
+	// Initialize a stack
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "protect-unprotect-test")
+
+	// Create a simple program that creates resources - using built-in dynamic provider
+	program := `
+const pulumi = require("@pulumi/pulumi");
+
+// Resource is a dynamic provider resource that can be used for testing
+class DynamicResource extends pulumi.dynamic.Resource {
+    constructor(name, opts) {
+        super({
+            create: (inputs) => Promise.resolve({ id: name, outs: { output: "output" } }),
+            update: (id, inputs) => Promise.resolve({ outs: { output: "output" } }),
+            delete: (id, props) => Promise.resolve(),
+        }, name, { output: undefined }, opts);
+    }
+}
+
+// Create multiple resources for testing
+const res1 = new DynamicResource("res1");
+const res2 = new DynamicResource("res2");
+const res3 = new DynamicResource("res3");
+`
+
+	// First create all necessary project files
+	e.WriteTestFile("Pulumi.yaml", `name: protect-unprotect-test
+runtime: nodejs
+description: A test for protecting and unprotecting resources
+`)
+	e.WriteTestFile("package.json", `{
+		"name": "protect-unprotect-test",
+		"dependencies": {
+			"@pulumi/pulumi": "latest"
+		}
+	}`)
+	e.WriteTestFile("index.js", program)
+
+	// Now initialize the stack and install dependencies
+	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "install")
+
+	// Deploy the stack
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
-	// Verify resources are initially unprotected by trying to destroy
-	// But cancel the destroy to keep testing
-	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes=false")
-
-	// Get the URNs of all resources
+	// Get the URNs of the resources
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
+	t.Logf("Full stack output: %s", stdout)
+
 	lines := strings.Split(stdout, "\n")
 	var urns []string
 
-	// Look for resources created by our test - find dynamic resources from our provider
+	// Look for resources created by our test - dynamic resources
 	for _, line := range lines {
-		if strings.Contains(line, "pulumi:dynamic:Resource::") {
-			// This is our custom dynamic resource - extract the URN
+		if strings.Contains(line, "pulumi-nodejs:dynamic:Resource") {
+			// This is our dynamic resource - extract the URN
 			fields := strings.Fields(line)
 			for _, field := range fields {
 				if strings.HasPrefix(field, "urn:pulumi:") {
@@ -82,7 +104,6 @@ let c = new Resource("resource3", { state: 3 });
 	}
 
 	// Log the output to help debug
-	t.Logf("Stack output: %s", stdout)
 	t.Logf("Found %d URNs: %v", len(urns), urns)
 	assert.Equal(t, 3, len(urns), "Expected to find 3 resource URNs")
 
