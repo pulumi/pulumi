@@ -1,0 +1,19 @@
+{
+    "name": "@pulumi/componentreturnscalar",
+    "version": "13.3.7",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^4.3.5"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "componentreturnscalar",
+        "version": "13.3.7"
+    }
+}
