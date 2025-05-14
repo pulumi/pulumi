@@ -101,7 +101,7 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
             except Exception as e:
                 self.assertIn("unsupported color option", str(e))
 
-            # Refres
+            # Refresh
             try:
                 stack.refresh(color="invalid color name", on_event=on_event)
                 self.assertFalse(True, "should have thrown")
