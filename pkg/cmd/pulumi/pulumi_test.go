@@ -112,7 +112,7 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	assert.Equal(t, "1.2.3", latestVer.String())
 	assert.Equal(t, "1.2.0", oldestAllowedVer.String())
 	assert.Equal(t, "0.0.0", devVer.String())
-	assert.Equal(t, int64(86400000), cacheMS)
+	assert.Equal(t, 86400000, cacheMS)
 }
 
 //nolint:paralleltest // changes environment variables and globals

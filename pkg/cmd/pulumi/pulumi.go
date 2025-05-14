@@ -525,7 +525,7 @@ func checkForUpdate(ctx context.Context, cloudURL string, cmd *cobra.Command) *d
 			LatestVersion:         latestVer.String(),
 			OldestWithoutWarning:  oldestAllowedVer.String(),
 			LatestDevVersion:      devVer.String(),
-			CacheMS:               cacheMS,
+			CacheMS:               int64(cacheMS),
 			LastPromptTimeStampMS: lastPromptTimestampMS,
 		})
 		if err != nil {
@@ -579,7 +579,7 @@ func getCLIVersionInfo(
 	ctx context.Context,
 	cloudURL string,
 	metadata map[string]string,
-) (semver.Version, semver.Version, semver.Version, int64, error) {
+) (semver.Version, semver.Version, semver.Version, int, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil || creds.Current != cloudURL {
 		metadata = nil

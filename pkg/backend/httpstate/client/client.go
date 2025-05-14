@@ -299,7 +299,7 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 func (pc *Client) GetCLIVersionInfo(
 	ctx context.Context,
 	metadata map[string]string,
-) (semver.Version, semver.Version, semver.Version, int64, error) {
+) (semver.Version, semver.Version, semver.Version, int, error) {
 	var versionInfo apitype.CLIVersionResponse
 
 	headers := map[string][]string{}

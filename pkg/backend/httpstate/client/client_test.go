@@ -82,7 +82,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -94,7 +94,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -106,7 +106,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
+		_, _, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -122,7 +122,7 @@ func TestAPIVersionResponses(t *testing.T) {
 	defer versionServer.Close()
 
 	versionClient := newMockClient(versionServer)
-	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(
+	latestVersion, oldestWithoutWarning, latestDevVersion, _, err := versionClient.GetCLIVersionInfo(
 		context.Background(), nil,
 	)
 
@@ -146,7 +146,7 @@ func TestAPIVersionMetadataHeaders(t *testing.T) {
 	client := newMockClient(server)
 
 	// Act.
-	_, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+	_, _, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
 		"First":  "foo",
 		"Second": "bar",
 	})
