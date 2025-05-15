@@ -1990,7 +1990,7 @@ func (sg *stepGenerator) generateSameViewSteps(urn resource.URN) []Step {
 	var steps []Step
 	for _, res := range sg.deployment.prev.Resources {
 		if res.ViewOf == urn {
-			step := NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res, nil, nil, nil)
+			step := NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res.Copy(), nil, nil, nil)
 			steps = append(steps, step)
 		}
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -154,6 +155,13 @@ func (rs *resourceStatusServer) unmarshalViewStep(viewOf resource.URN, step *pul
 	if err != nil {
 		return nil, err
 	}
+	if old != nil {
+		// Lookup the actual old state.
+		// TODO only do it for Update?
+		old = rs.getOldView(viewOf, old.URN)
+		contract.Assertf(old != nil,
+			"old state %s of view %s not found in previous deployment", old.URN, viewOf)
+	}
 
 	new, err := rs.unmarshalViewStepState(viewOf, step.GetNew())
 	if err != nil {
@@ -275,4 +283,14 @@ func (rs *resourceStatusServer) unmarshalPropertyDiffKind(kind pulumirpc.Propert
 	default:
 		return 0, fmt.Errorf("unknown property diff kind %v", kind)
 	}
+}
+
+// getViews returns the set of views for a given URN.
+func (rs *resourceStatusServer) getOldView(viewOf resource.URN, urn resource.URN) *resource.State {
+	for _, res := range rs.deployment.prev.Resources {
+		if res.ViewOf == viewOf && res.URN == urn {
+			return res
+		}
+	}
+	return nil
 }
