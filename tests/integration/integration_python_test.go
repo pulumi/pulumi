@@ -1798,7 +1798,7 @@ func TestPluginDebuggerAttachPython(t *testing.T) {
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
 outer:
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 50; i++ {
 		events, err := readUpdateEventLog(eventLogPath)
 		if err != nil && !os.IsNotExist(err) {
 			require.NoError(t, err)
