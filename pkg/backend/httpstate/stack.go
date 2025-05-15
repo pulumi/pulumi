@@ -178,8 +178,12 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 }
 
 func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
-	if projectStack.Config != nil {
-		return errors.New("cannot set config for a stack with cloud config")
+	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	if err != nil {
+		return err
+	}
+	if projectStack == nil {
+		return s.b.client.DeleteStackConfig(ctx, stackID)
 	}
 	imports := projectStack.Environment.Imports()
 	if len(imports) != 1 {
