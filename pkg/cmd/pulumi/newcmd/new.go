@@ -163,7 +163,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		scope = cmdTemplates.ScopeLocal
 	}
 	templateSource := cmdTemplates.New(ctx,
-		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, args.interactive)
+		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject)
 	defer func() { contract.IgnoreError(templateSource.Close()) }()
 
 	if args.templateNameOrURL == "" {
@@ -505,7 +505,7 @@ func NewNewCmd() *cobra.Command {
 			scope = cmdTemplates.ScopeLocal
 		}
 		// Attempt to retrieve available templates.
-		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject, args.interactive)
+		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject)
 		t, err := s.Templates()
 		return t, s, err
 	}
