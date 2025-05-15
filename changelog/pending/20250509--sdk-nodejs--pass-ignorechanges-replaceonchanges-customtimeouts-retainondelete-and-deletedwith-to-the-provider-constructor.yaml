@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Pass `ignoreChanges`, `replaceOnChanges`, `customTimeouts`, `retainOnDelete`, and `deletedWith` to the provider constructor

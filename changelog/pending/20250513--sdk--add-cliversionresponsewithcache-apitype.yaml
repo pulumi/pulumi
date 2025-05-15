@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk
-  description: Add optional cache duration to CLIVersionResponse apitype

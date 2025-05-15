@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.170.0 (2025-05-15)
+
+
+### Features
+
+- [engine] The engine now defers policy pack installation to the language hosts
+  [#19477](https://github.com/pulumi/pulumi/pull/19477)
+
+- [programgen] Copy assets emitted from converter plugins to target directory of the generated projects
+  [#19500](https://github.com/pulumi/pulumi/pull/19500)
+
+- [programgen] Add GeneratedProjectDirectory to ConvertProgramRequest for converter plugins
+  [#19513](https://github.com/pulumi/pulumi/pull/19513)
+
+- [sdk/nodejs] Pass `ignoreChanges`, `replaceOnChanges`, `customTimeouts`, `retainOnDelete`, and `deletedWith` to the provider constructor
+  [#19496](https://github.com/pulumi/pulumi/pull/19496)
+
+- [sdk/nodejs] Pass `ignoreChanges`, `replaceOnChanges`, `customTimeouts`, `retainOnDelete`, and `deletedWith` to the provider constructor
+  [#19494](https://github.com/pulumi/pulumi/pull/19494)
+
+
+### Bug Fixes
+
+- [auto/python] Fix hang in automation API operations
+  [#19539](https://github.com/pulumi/pulumi/pull/19539)
+
+- [cli/config] Config system now maintains types based on the YAML type from the config file
+  [#19503](https://github.com/pulumi/pulumi/pull/19503)
+
+- [cli/install] Don't overwrite versions embedded in the plugin spec
+
+
+### Miscellaneous
+
+- [engine] Split analyzer handshake into handshake and stackconfigure
+  [#19506](https://github.com/pulumi/pulumi/pull/19506)
+
+- [sdk] Add optional cache duration to CLIVersionResponse apitype
+  [#19523](https://github.com/pulumi/pulumi/pull/19523)
+
+- [sdk/go] Accept `context.Context` in `workspace.GetPluginInfo` and `workspace.GetPluginPath`.
+  [#19527](https://github.com/pulumi/pulumi/pull/19527)
+
+- [sdk/go] Accept `context.Context` wherever new `plugin.Context`s are created.
+  [#19526](https://github.com/pulumi/pulumi/pull/19526)
+
 ## 3.169.0 (2025-05-08)
 
 
