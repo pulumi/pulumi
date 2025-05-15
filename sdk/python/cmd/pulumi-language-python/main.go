@@ -843,7 +843,7 @@ func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	}
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger, name string) error {
 	// wait for the debugger to be ready
 	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	defer cancel()
@@ -854,7 +854,7 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cm
 
 	// emit a debug configuration
 	debugConfig, err := structpb.NewStruct(map[string]interface{}{
-		"name":    "Pulumi: Program (Python)",
+		"name":    name,
 		"type":    "python",
 		"request": "attach",
 		"connect": map[string]interface{}{
@@ -1048,7 +1048,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
-				err := startDebugging(ctx, engineClient, cmd, dbg)
+				err := startDebugging(ctx, engineClient, cmd, dbg, "Pulumi: Program (Python)")
 				if err != nil {
 					// kill the program if we can't start debugging.
 					logging.Errorf("Unable to start debugging: %v", err)
@@ -1358,6 +1358,12 @@ func (host *pythonLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
 
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(closer)
+
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
 	if err != nil {
 		return err
@@ -1399,6 +1405,16 @@ func (host *pythonLanguageHost) RunPlugin(
 		}
 	}
 
+	args := []string{}
+	var dbg *debugger
+	if req.GetAttachDebugger() {
+		args, dbg, err = debugCommand(server.Context(), opts)
+		if err != nil {
+			return err
+		}
+		defer dbg.Cleanup()
+	}
+
 	if hasPluginRunModule && !hasMainPy {
 		// Run `python -m pulumi.run.plugin <project name> req.Args...
 		buildable, err := toolchain.IsBuildablePackage(opts.Root)
@@ -1414,7 +1430,7 @@ func (host *pythonLanguageHost) RunPlugin(
 			return fmt.Errorf("loading pyproject: %w", err)
 		}
 
-		args := []string{pyproject.Project.Name}
+		args = append(args, pyproject.Project.Name)
 		args = append(args, req.Args...)
 		cmd, err = tc.ModuleCommand(server.Context(), "pulumi.run.plugin", args...)
 		if err != nil {
@@ -1423,7 +1439,7 @@ func (host *pythonLanguageHost) RunPlugin(
 		logging.V(5).Infof("RunPlugin: %s", cmd.String())
 	} else {
 		// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
-		args := []string{req.Info.ProgramDirectory}
+		args = append(args, req.Info.ProgramDirectory)
 		args = append(args, req.Args...)
 		cmd, err = tc.Command(server.Context(), args...)
 		if err != nil {
@@ -1442,7 +1458,28 @@ func (host *pythonLanguageHost) RunPlugin(
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
-	if err = cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			// create a sub-context to cancel the startDebugging operation when the process exits.
+			ctx, cancel := context.WithCancel(server.Context())
+			defer cancel()
+			go func() {
+				err := startDebugging(ctx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+				if err != nil {
+					// kill the program if we can't start debugging.
+					logging.Errorf("Unable to start debugging: %v", err)
+					contract.IgnoreError(cmd.Process.Kill())
+				}
+			}()
+		}
+		return cmd.Wait()
+	}
+
+	if err = run(); err != nil {
 		var exiterr *exec.ExitError
 		if errors.As(err, &exiterr) {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
