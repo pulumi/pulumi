@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/go
-  description: Accept `context.Context` wherever new `plugin.Context`s are created.

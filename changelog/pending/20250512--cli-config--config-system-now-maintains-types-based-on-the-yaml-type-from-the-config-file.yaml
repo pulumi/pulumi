@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Config system now maintains types based on the YAML type from the config file
