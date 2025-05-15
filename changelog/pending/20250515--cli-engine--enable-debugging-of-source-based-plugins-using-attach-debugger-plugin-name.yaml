@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/engine
+  description: Enable debugging of source based plugins, using `--attach-debugger plugin=<name>`
