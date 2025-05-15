@@ -599,7 +599,7 @@ func TestSearchByName(t *testing.T) {
 
 		// Set up mock server
 		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
-			assert.Contains(t, req.URL.String(), "/preview/registry/packages?limit=499")
+			assert.Contains(t, req.URL.String(), "/api/preview/registry/packages?limit=499")
 			assert.Equal(t, "GET", req.Method)
 
 			data, err := json.Marshal(mockResponse)
@@ -669,7 +669,7 @@ func TestSearchByName(t *testing.T) {
 
 			switch requestCount {
 			case 0:
-				assert.Equal(t, "/preview/registry/packages?limit=499&name=my-package", req.URL.String())
+				assert.Equal(t, "/api/preview/registry/packages?limit=499&name=my-package", req.URL.String())
 				assert.NotContains(t, "continuationToken", req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
@@ -679,7 +679,7 @@ func TestSearchByName(t *testing.T) {
 				require.NoError(t, err)
 			case 1:
 				assert.Equal(t,
-					"/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-1",
+					"/api/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-1",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
@@ -689,7 +689,7 @@ func TestSearchByName(t *testing.T) {
 				require.NoError(t, err)
 			case 2:
 				assert.Equal(t,
-					"/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-2",
+					"/api/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-2",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
