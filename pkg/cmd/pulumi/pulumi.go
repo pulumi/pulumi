@@ -604,7 +604,8 @@ func getCLIVersionInfo(
 		latest, oldest, dev = brewLatest, brewLatest, brewLatest
 	}
 
-	return latest, oldest, dev, cacheMS, err
+	// Don't return the err from getLatestBrewFormulaVersion here, we just log that above.
+	return latest, oldest, dev, cacheMS, nil
 }
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
