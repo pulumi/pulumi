@@ -58,7 +58,7 @@ type Context struct {
 // that the host is "owned" by this context from here forwards, such
 // that when the context's resources are reclaimed, so too are the
 // host's.
-func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
+func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span,
 ) (*Context, error) {
@@ -76,28 +76,15 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 		}
 	}
 
-	return NewContextWithRoot(d, statusD, host, pwd, pwd, runtimeOptions,
+	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
 		disableProviderPreview, parentSpan, plugins, packages, nil, nil)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
-func NewContextWithRoot(d, statusD diag.Sink, host Host,
+func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter,
-) (*Context, error) {
-	return NewContextWithContext(
-		context.Background(), d, statusD, host, pwd, root,
-		runtimeOptions, disableProviderPreview, parentSpan, plugins, packages, config, debugging)
-}
-
-// NewContextWithContext is a variation of NewContextWithRoot that also sets the base context.
-func NewContextWithContext(
-	ctx context.Context,
-	d, statusD diag.Sink, host Host,
-	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter,
+	config map[config.Key]string, debugging DebugContext,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})

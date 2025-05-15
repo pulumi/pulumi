@@ -909,7 +909,8 @@ proto.pulumirpc.ConvertProgramRequest.toObject = function(includeInstance, msg) 
     targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
     mapperTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
     loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
+    argsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
+    generatedProjectDirectory: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -965,6 +966,10 @@ proto.pulumirpc.ConvertProgramRequest.deserializeBinaryFromReader = function(msg
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.addArgs(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setGeneratedProjectDirectory(value);
       break;
     default:
       reader.skipField();
@@ -1027,6 +1032,13 @@ proto.pulumirpc.ConvertProgramRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeRepeatedString(
       5,
+      f
+    );
+  }
+  f = message.getGeneratedProjectDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
       f
     );
   }
@@ -1139,6 +1151,24 @@ proto.pulumirpc.ConvertProgramRequest.prototype.addArgs = function(value, opt_in
  */
 proto.pulumirpc.ConvertProgramRequest.prototype.clearArgsList = function() {
   return this.setArgsList([]);
+};
+
+
+/**
+ * optional string generated_project_directory = 6;
+ * @return {string}
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.getGeneratedProjectDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConvertProgramRequest} returns this
+ */
+proto.pulumirpc.ConvertProgramRequest.prototype.setGeneratedProjectDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 

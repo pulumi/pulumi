@@ -355,10 +355,10 @@ func TestStackEnvConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
-		config.MustMakeKey("project", "string"): config.NewValue("esc"),
-		config.MustMakeKey("aws", "region"):     config.NewValue("us-west-2"),
-		config.MustMakeKey("api", "domain"):     config.NewValue("test"),
-		config.MustMakeKey("ui", "domain"):      config.NewValue("test"),
+		config.MustMakeKey("project", "string"): config.NewTypedValue("esc", config.TypeString),
+		config.MustMakeKey("aws", "region"):     config.NewTypedValue("us-west-2", config.TypeString),
+		config.MustMakeKey("api", "domain"):     config.NewTypedValue("test", config.TypeString),
+		config.MustMakeKey("ui", "domain"):      config.NewTypedValue("test", config.TypeString),
 	}, cfg.Config)
 }
 

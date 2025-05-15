@@ -125,7 +125,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 
 	var info PackageInfo
 	if i, err := pkg.Language("python"); err == nil {
-		info = i.(PackageInfo)
+		info, _ = i.(PackageInfo)
 	}
 
 	if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
@@ -135,7 +135,9 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 			mod:         modName,
 			typeDetails: typeDetails,
 		}
-		return mod.typeString(returnType.Properties[0].Type, typeStringOpts{})
+		return mod.typeString(returnType.Properties[0].Type, typeStringOpts{
+			forDocs: true,
+		})
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
 }

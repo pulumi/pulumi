@@ -33,6 +33,7 @@ import (
 const (
 	//nolint:gosec
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
+	pulumiBinaryPathEnvVar      = "PULUMI_INTEGRATION_BINARY_PATH"
 )
 
 // Environment is an extension of the testing.T type that provides support for a test environment
@@ -55,8 +56,6 @@ type Environment struct {
 	Passphrase string
 	// Set to true to turn off setting PULUMI_CONFIG_PASSPHRASE.
 	NoPassphrase bool
-	// Set to true to use the local Pulumi dev build from ~/.pulumi-dev/bin/pulumi which get from `make install`
-	UseLocalPulumiBuild bool
 	// Content to pass on stdin, if any
 	Stdin io.Reader
 }
@@ -157,17 +156,6 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 		defer YarnInstallMutex.Unlock()
 	}
 
-	if e.UseLocalPulumiBuild {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			e.Logf("Run Error: %v", err)
-			e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
-		}
-		if home != "" {
-			cmd = filepath.Join(home, ".pulumi-dev", "bin", "pulumi")
-		}
-	}
-
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
@@ -213,9 +201,9 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.Helper()
-	e.Logf("Running command %v %v", command, strings.Join(args, " "))
 
 	cmd := e.SetupCommandIn(dir, command, args...)
+	e.Logf("Running command %v %v", cmd.Path, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
 	var outBuffer bytes.Buffer
@@ -237,7 +225,10 @@ func (e *Environment) SetupCommandIn(dir string, command string, args ...string)
 		passphrase = e.Passphrase
 	}
 
-	//nolint:gas
+	if command == "pulumi" {
+		command = e.resolvePulumiPath()
+	}
+
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	if e.Stdin != nil {
@@ -278,4 +269,19 @@ func (e *Environment) WriteTestFile(filename string, contents string) {
 	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
 		e.Fatalf("writing test file (%v): %v", filename, err)
 	}
+}
+
+func (e *Environment) resolvePulumiPath() string {
+	e.Helper()
+	if pulumiPath, isSet := os.LookupEnv(pulumiBinaryPathEnvVar); isSet {
+		return pulumiPath
+	}
+	pulumiPath, err := exec.LookPath("pulumi")
+	if err == nil {
+		return pulumiPath
+	}
+	if !os.IsNotExist(err) {
+		e.Logf("error locating pulumi binary from path: %v", err)
+	}
+	return "pulumi"
 }

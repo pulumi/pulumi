@@ -9,6 +9,9 @@ config = pulumi.Config('config_basic_py')
 value = config.require('aConfigValue')
 assert value == 'this value is a Pythonic value'
 
+phonenumber = config.require('phonenumber')
+assert phonenumber == '+441234567890'
+
 # This value is a secret and is encrypted using the passphrase `supersecret`.
 secret = config.require('bEncryptedSecret')
 assert secret == 'this super Pythonic secret is encrypted'

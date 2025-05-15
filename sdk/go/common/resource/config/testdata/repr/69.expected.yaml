@@ -6,13 +6,14 @@ paths:
     - -1
     string: '[-1]'
     redacted: '[-1]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAD/+EDAABBWludDY0BAIAAQ==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAD/+CDAABBWludDY0BAIAAQ==
     secure: false
     isObject: true
   my:testKey[0]:
-    value: "-1"
+    value: -1
     string: "-1"
     redacted: "-1"
-    object: DxAABnN0cmluZwwEAAItMQ==
+    object: DBAABWludDY0BAIAAQ==
     secure: false
     isObject: false
+    type: 2

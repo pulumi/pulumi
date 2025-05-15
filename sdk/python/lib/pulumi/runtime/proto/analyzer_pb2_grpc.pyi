@@ -76,6 +76,14 @@ class AnalyzerStub:
     analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
     used to communicate between the two parties.
     """
+    ConfigureStack: grpc.UnaryUnaryMultiCallable[
+        pulumi.analyzer_pb2.AnalyzerStackConfigureRequest,
+        pulumi.analyzer_pb2.AnalyzerStackConfigureResponse,
+    ]
+    """`ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+    This method is not always called, for example if the engine is just booting the analyzer up to call
+    GetAnalyzerInfo.
+    """
 
 class AnalyzerServicer(metaclass=abc.ABCMeta):
     """Analyzer provides a pluggable interface for checking resource definitions against some number of
@@ -142,6 +150,16 @@ class AnalyzerServicer(metaclass=abc.ABCMeta):
         """`Handshake` is the first call made by the engine to an analyzer. It is used to pass the engine's address to the
         analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
         used to communicate between the two parties.
+        """
+    
+    def ConfigureStack(
+        self,
+        request: pulumi.analyzer_pb2.AnalyzerStackConfigureRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.analyzer_pb2.AnalyzerStackConfigureResponse:
+        """`ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+        This method is not always called, for example if the engine is just booting the analyzer up to call
+        GetAnalyzerInfo.
         """
 
 def add_AnalyzerServicer_to_server(servicer: AnalyzerServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

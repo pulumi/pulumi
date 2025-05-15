@@ -346,6 +346,25 @@ resource operation follow.
 
 ![Custom Resource Lifecycle Diagram](./resource-lifecycle.svg)
 
+### Inputs, Checked Inputs, State, Outputs
+
+Nomenclature over time hasn't been entirely consistent for the data being passed to and from provider plugins. As such
+both documentation and the protobuffer definitions will have inconsistent names.
+
+The current names for things are as follows:
+
+* Inputs - The shape of data the provider defines for the resource inputs. This is what SDK generators write out the
+  resource argument type for, and the shape of data sent by the program to the engine, and then from the engine to
+  [`Check`](#check).
+* Checked inputs - The shape of the data returned from [`Check`](#check). Its value _must_ be assignable back to the
+  type of Inputs, the engine assumes this for program generation. Checked inputs is also what diff display is based on
+  and it would be confusing for users to see radically different values to what they write in their program. This value
+  is then passed on to all the other methods after [`Check`](#check), such as [`Diff`](#diff), [`Create`](#create), and
+  [`Update`](#update). Most of the docs will refer to this as just "inputs".
+* Outputs - The shape of data the provider defines for the resource outputs. This is what SDK generators write out the
+  resource type for. This is the shape of data returned from [`Create`](#create) and [`Update`](#update). Historically
+  this has often also been called state.
+
 ### Lifecycle Methods
 
 #### Check
@@ -390,7 +409,7 @@ program source or returned by Read. It will be pre-processed by replacing every
 The `Diff` method is responsible for calculating the differences between the actual and
 desired state of a resource as represented by its last recorded state and new input
 `Object` as returned from [`Check`](#check) or [`Read`](#read) and the logical
-operation necessary to reconcile the two (i.e. no operation, an `Update, or a `Replace`).
+operation necessary to reconcile the two (i.e. no operation, an `Update`, or a `Replace`).
 
 ##### Parameters
 

@@ -19,7 +19,9 @@ import time
 import unittest
 
 from pulumi.automation._stack import _watch_logs
-from pulumi.automation import EngineEvent, StdoutEngineEvent
+from pulumi.automation import EngineEvent, StdoutEngineEvent, create_stack
+import pytest
+from .test_utils import stack_namer
 
 
 class TestStack(unittest.IsolatedAsyncioTestCase):
@@ -62,3 +64,56 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
 
         watch_task = asyncio.create_task(watch_async())
         await asyncio.gather(write_task, watch_task)
+
+    # This test was hanging forever before fixing a threading issue
+    @pytest.mark.timeout(300)
+    def test_operation_exception(self):
+        def pulumi_program():
+            pass
+
+        project_name = "test_preview_errror"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        # Passing an invalid color option will throw after we've setup the
+        # log watcher thread, but before the actual Pulumi operation starts.
+        # This means that we never send a CancelEvent to the events log.
+
+        try:
+            # Preview
+            try:
+                stack.preview(color="invalid color name")
+                self.assertFalse(True, "should have thrown")
+            except Exception as e:
+                self.assertIn("unsupported color option", str(e))
+
+            # Preview always starts the log watcher thread (to gather events for the summary),
+            # but the other operations only do so if the `on_event` callback is provided.
+            def on_event(event: EngineEvent):
+                pass
+
+            # Up
+            try:
+                stack.up(color="invalid color name", on_event=on_event)
+                self.assertFalse(True, "should have thrown")
+            except Exception as e:
+                self.assertIn("unsupported color option", str(e))
+
+            # Refresh
+            try:
+                stack.refresh(color="invalid color name", on_event=on_event)
+                self.assertFalse(True, "should have thrown")
+            except Exception as e:
+                self.assertIn("unsupported color option", str(e))
+
+            # Destroy
+            try:
+                stack.destroy(color="invalid color name", on_event=on_event)
+                self.assertFalse(True, "should have thrown")
+            except Exception as e:
+                self.assertIn("unsupported color option", str(e))
+
+        finally:
+            stack.workspace.remove_stack(stack_name)

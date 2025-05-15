@@ -194,7 +194,7 @@ func TestHealthCheck(t *testing.T) {
 
 func TestStartupFailure(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")

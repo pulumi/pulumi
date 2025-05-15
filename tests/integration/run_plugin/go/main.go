@@ -63,7 +63,7 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pCtx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil)
 		if err != nil {
 			return err
 		}

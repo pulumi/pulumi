@@ -236,7 +236,7 @@ func (m *basePluginMapper) GetMapping(
 
 	// Try the list of plugins we have and see if any of them produce a mapping we can return.
 	for _, mapperSpec := range m.pluginSpecs {
-		pluginSpec, err := workspace.NewPluginSpec(mapperSpec.name, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginSpec(ctx, mapperSpec.name, apitype.ResourcePlugin, nil, "", nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create plugin spec for plugin %s: %w", pluginSpec.Name, err)
 		}

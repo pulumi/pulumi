@@ -33,7 +33,7 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
-	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	ctx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
 

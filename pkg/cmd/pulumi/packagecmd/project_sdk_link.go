@@ -597,7 +597,7 @@ func NewPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -691,7 +691,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if err != nil {
 		return nil, err
 	}
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -757,7 +757,7 @@ func SchemaFromSchemaSourceValueArgs(
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Provider, error) {
-	pluginSpec, err := workspace.NewPluginSpec(packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}

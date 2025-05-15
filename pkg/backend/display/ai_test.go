@@ -50,27 +50,6 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 	assert.Equal(t, expectedCopilotSummary, buf.String())
 }
 
-func TestRenderCopilotErrorSummaryNoLink(t *testing.T) {
-	t.Parallel()
-
-	buf := new(bytes.Buffer)
-	opts := Options{
-		Stdout:            buf,
-		Color:             colors.Never,
-		ShowLinkToCopilot: false,
-	}
-
-	RenderCopilotErrorSummary(&CopilotErrorSummaryMetadata{
-		Summary: "This is a test summary",
-	}, nil, opts, "http://foo.bar/baz")
-
-	expectedCopilotSummary := fmt.Sprintf(`Copilot Diagnostics%s
-  This is a test summary
-
-`, copilotDelimiterEmoji())
-	assert.Equal(t, expectedCopilotSummary, buf.String())
-}
-
 func TestRenderCopilotErrorSummaryError(t *testing.T) {
 	t.Parallel()
 

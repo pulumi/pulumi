@@ -439,8 +439,12 @@ func (host *pluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg strin
 	}
 }
 
-func (host *pluginHost) StartDebugging(plugin.DebuggingInfo) error {
+func (host *pluginHost) StartDebugging(info plugin.DebuggingInfo) error {
 	return nil
+}
+
+func (host *pluginHost) AttachDebugger() bool {
+	return false
 }
 
 func (host *pluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {

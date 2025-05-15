@@ -782,6 +782,7 @@ func newTestContext(t testing.TB) *Context {
 
 	sink := diagtest.LogSink(t)
 	ctx, err := NewContext(
+		context.Background(),
 		sink, sink,
 		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */)
 	require.NoError(t, err, "build context")

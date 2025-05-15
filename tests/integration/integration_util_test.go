@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The linter doesn't see the uses since the consumers are conditionally compiled tests.
-//
-//nolint:unused,deadcode,varcheck
 package ints
 
 import (

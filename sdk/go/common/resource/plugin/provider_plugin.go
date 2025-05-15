@@ -213,7 +213,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.Diag, spec, host.GetProjectPlugins())
+		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
@@ -255,7 +255,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-			handshake, providerPluginDialOptions(ctx, pkg, ""))
+			handshake, providerPluginDialOptions(ctx, pkg, ""),
+			host.AttachDebugger())
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +380,8 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-		handshake, providerPluginDialOptions(ctx, "", path))
+		handshake, providerPluginDialOptions(ctx, "", path),
+		host.AttachDebugger())
 	if err != nil {
 		return nil, err
 	}

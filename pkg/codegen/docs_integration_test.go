@@ -20,6 +20,7 @@ package codegen_test
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -266,49 +267,23 @@ func TestGetLanguageTypeString(t *testing.T) {
 		},
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
-				var name string
-				var helper func() codegen.DocLanguageHelper
-				switch lang {
-				case nodejs:
-					helper = mkHelper[nodejs_codegen.DocLanguageHelper]
-					name = "nodejs"
-				case python:
-					helper = mkHelper[python_codegen.DocLanguageHelper]
-					name = "python"
-				case golang:
-					helper = func() codegen.DocLanguageHelper {
-						h := golang_codegen.DocLanguageHelper{}
-						var info golang_codegen.GoPackageInfo
-						if i, err := tt.schema.Language("go"); err == nil && i != nil {
-							info = i.(golang_codegen.GoPackageInfo)
-						}
-						h.GeneratePackagesMap(tt.schema, "test", info)
-						return h
-					}
-					name = "go"
-				case dotnet:
-					helper = mkHelper[dotnet_codegen.DocLanguageHelper]
-					name = "dotnet"
-				default:
-					assert.Fail(t, "Unknown language %T", lang)
-				}
-
-				t.Run(name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
 					if tt.input == nil || *tt.input {
-						t.Run("input", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
-							actual := helper().GetTypeName(tt.schema, tt.typ, true, tt.module)
+						t.Run("input", func(t *testing.T) {
+							t.Parallel()
+							actual := helper.GetTypeName(tt.schema, tt.typ, true, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
 					if tt.input == nil || !*tt.input {
-						t.Run("output", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
-							actual := helper().GetTypeName(tt.schema, tt.typ, false, tt.module)
+						t.Run("output", func(t *testing.T) {
+							t.Parallel()
+							actual := helper.GetTypeName(tt.schema, tt.typ, false, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
@@ -316,6 +291,322 @@ func TestGetLanguageTypeString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetMethodResultName(t *testing.T) {
+	t.Parallel()
+
+	schema1 := bind(t, schema.PackageSpec{
+		Name: "example",
+		Resources: map[string]schema.ResourceSpec{
+			"example:index:Foo": {
+				IsComponent: true,
+				Methods: map[string]string{
+					"getKubeconfig": "example:index:Foo/getKubeconfig",
+				},
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"example:index:Foo/getKubeconfig": {
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"__self__": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/resources/example:index:Foo",
+							},
+						},
+						"profileName": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+						"roleArn": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"__self__"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"kubeconfig": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"kubeconfig"},
+				},
+			},
+		},
+		Language: map[string]schema.RawMessage{
+			"csharp": schema.RawMessage(`{"liftSingleValueMethodReturns": true}`),
+			"go": schema.RawMessage(`{
+			"importBasePath": "simple-methods-schema-single-value-returns/example",
+			"liftSingleValueMethodReturns": true,
+			"generateExtraInputTypes": true
+		}`),
+			"nodejs": schema.RawMessage(`{
+			"devDependencies": {
+				"@types/node": "ts4.3"
+			},
+			"liftSingleValueMethodReturns": true
+		}`),
+			"python": schema.RawMessage(`{"liftSingleValueMethodReturns": true}`),
+		},
+	})
+
+	schema2 := bind(t, schema.PackageSpec{
+		Name: "example",
+		Resources: map[string]schema.ResourceSpec{
+			"example:index:Foo": {
+				IsComponent: true,
+				Methods: map[string]string{
+					"getKubeconfig": "example:index:Foo/getKubeconfig",
+				},
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"example:index:Foo/getKubeconfig": {
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"__self__": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/resources/example:index:Foo",
+							},
+						},
+						"profileName": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+						"roleArn": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"__self__"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"kubeconfig": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"kubeconfig"},
+				},
+			},
+		},
+	})
+
+	tests := []struct {
+		name   string
+		schema schema.PackageReference
+
+		// Arguments
+
+		module   string
+		resource *schema.Resource
+		method   *schema.Method
+
+		expected map[language]string
+	}{
+		{
+			name:     "single-return-value",
+			schema:   schema1,
+			resource: mustToken(t, schema1.Resources().Get, "example:index:Foo"),
+			method:   mustToken(t, schema1.Resources().Get, "example:index:Foo").Methods[0],
+			expected: map[language]string{
+				golang: "pulumi.StringOutput",
+				nodejs: "string",
+				python: "str",
+				dotnet: "string",
+			},
+		},
+		{
+			name:     "object-return-value",
+			schema:   schema2,
+			resource: mustToken(t, schema2.Resources().Get, "example:index:Foo"),
+			method:   mustToken(t, schema2.Resources().Get, "example:index:Foo").Methods[0],
+			expected: map[language]string{
+				golang: "FooGetKubeconfigResultOutput",
+				nodejs: "Foo.GetKubeconfigResult",
+				python: "Foo.Get_kubeconfigResult",
+				dotnet: "Foo.GetKubeconfigResult",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.NotEmpty(t, tt.expected, "Must test at least one language")
+			for lang, expected := range tt.expected {
+				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
+					actual := helper.GetMethodResultName(tt.schema, tt.module, tt.resource, tt.method)
+					assert.Equal(t, expected, actual)
+				})
+			}
+		})
+	}
+}
+
+func TestGetMethodResultName_NoImporter(t *testing.T) {
+	t.Parallel()
+
+	schemaSpec := schema.PackageSpec{
+		Name: "example",
+		Resources: map[string]schema.ResourceSpec{
+			"example:index:Foo": {
+				IsComponent: true,
+				Methods: map[string]string{
+					"getKubeconfig": "example:index:Foo/getKubeconfig",
+				},
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"example:index:Foo/getKubeconfig": {
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"__self__": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/resources/example:index:Foo",
+							},
+						},
+						"profileName": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+						"roleArn": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"__self__"},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"kubeconfig": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"kubeconfig"},
+				},
+			},
+		},
+	}
+
+	pkg, err := schema.ImportSpec(schemaSpec, nil, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+
+	expected := map[language]string{
+		golang: "FooGetKubeconfigResultOutput",
+		nodejs: "Foo.GetKubeconfigResult",
+		python: "Foo.Get_kubeconfigResult",
+		dotnet: "Foo.GetKubeconfigResult",
+	}
+
+	// Code generation is not safe to parallelize since import binding mutates the
+	// [schema.Package].
+	for lang, expected := range expected {
+		testDocsGenHelper(t, lang, pkg.Reference(), func(t *testing.T, helper codegen.DocLanguageHelper) {
+			actual := helper.GetMethodResultName(pkg.Reference(), "",
+				mustToken(t, pkg.Reference().Resources().Get, "example:index:Foo"),
+				mustToken(t, pkg.Reference().Resources().Get, "example:index:Foo").Methods[0],
+			)
+			assert.Equal(t, expected, actual)
+		})
+	}
+}
+
+func testDocsGenHelper(
+	t *testing.T, language language, schema schema.PackageReference,
+	f func(*testing.T, codegen.DocLanguageHelper),
+) {
+	var name string
+	var helper func() codegen.DocLanguageHelper
+	switch language {
+	case nodejs:
+		helper = mkHelper[nodejs_codegen.DocLanguageHelper]
+		name = "nodejs"
+	case python:
+		helper = mkHelper[python_codegen.DocLanguageHelper]
+		name = "python"
+	case golang:
+		helper = func() codegen.DocLanguageHelper {
+			h := golang_codegen.DocLanguageHelper{}
+			var info golang_codegen.GoPackageInfo
+			if i, err := schema.Language("go"); err == nil && i != nil {
+				info = i.(golang_codegen.GoPackageInfo)
+			}
+			h.GeneratePackagesMap(schema, "test", info)
+			return h
+		}
+		name = "go"
+	case dotnet:
+		helper = mkHelper[dotnet_codegen.DocLanguageHelper]
+		name = "dotnet"
+	default:
+		assert.Fail(t, "Unknown language %T", language)
+	}
+
+	t.Run(name, func(t *testing.T) {
+		t.Parallel()
+		f(t, helper())
+	})
+}
+
+func BenchmarkGetPropertyNames(b *testing.B) {
+	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/azure-native-2.41.0.json")
+	require.NoError(b, err)
+	b.Run("full-bind", func(b *testing.B) {
+		for range b.N {
+			var spec schema.PackageSpec
+			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
+				"nodejs": nodejs_codegen.Importer,
+			}, schema.ValidationOptions{})
+			require.NoError(b, err)
+
+			res, ok := partial.GetResource("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			require.True(b, ok)
+
+			var helper nodejs_codegen.DocLanguageHelper
+			for _, prop := range res.InputProperties {
+				helper.GetTypeName(partial.Reference(), prop.Type, false, partial.TokenToModule(res.Token))
+			}
+		}
+	})
+
+	b.Run("partial-bind", func(b *testing.B) {
+		for range b.N {
+			var spec schema.PartialPackageSpec
+			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			partial, err := schema.ImportPartialSpec(spec, map[string]schema.Language{
+				"nodejs": nodejs_codegen.Importer,
+			}, nil)
+			require.NoError(b, err)
+
+			res, ok, err := partial.Resources().Get("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			require.NoError(b, err)
+			require.True(b, ok)
+
+			var helper nodejs_codegen.DocLanguageHelper
+			for _, prop := range res.InputProperties {
+				helper.GetTypeName(partial, prop.Type, false, partial.TokenToModule(res.Token))
+			}
+		}
+	})
 }
 
 func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {

@@ -15,7 +15,6 @@
 package lifecycletest
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -48,7 +47,7 @@ func (p *testRequiredPolicy) Version() string {
 	return p.version
 }
 
-func (p *testRequiredPolicy) Install(_ context.Context) (string, error) {
+func (p *testRequiredPolicy) Install(_ *plugin.Context) (string, error) {
 	return "", nil
 }
 

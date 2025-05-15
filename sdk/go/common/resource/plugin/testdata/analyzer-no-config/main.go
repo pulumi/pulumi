@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -15,24 +16,11 @@ type analyzer struct {
 }
 
 func (a *analyzer) Handshake(ctx context.Context, req *pulumirpc.AnalyzerHandshakeRequest) (*pulumirpc.AnalyzerHandshakeResponse, error) {
-	if req.StackConfiguration.Stack != "" {
-		return nil, fmt.Errorf("expected stack not to be set, got %s", req.StackConfiguration.Stack)
-	}
-	if req.StackConfiguration.Project != "" {
-		return nil, fmt.Errorf("expected project not to be set, got %s", req.StackConfiguration.Project)
-	}
-	if req.StackConfiguration.Organization != "" {
-		return nil, fmt.Errorf("expected organization not to be set, got %s", req.StackConfiguration.Organization)
-	}
-	if req.StackConfiguration.DryRun {
-		return nil, fmt.Errorf("expected dry run to be false, got true")
-	}
-
-	if req.StackConfiguration.Config != nil {
-		return nil, fmt.Errorf("expected config not to be set, got %s", req.StackConfiguration.Config)
-	}
-
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
+}
+
+func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
+	return nil, errors.New("stack configure should not be called")
 }
 
 func main() {

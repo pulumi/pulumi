@@ -21,7 +21,7 @@ import (
 type Type int
 
 const (
-	TypeUnknown = iota
+	TypeUnknown Type = iota
 	TypeString
 	TypeInt
 	TypeFloat
@@ -153,7 +153,7 @@ func (c *Value) UnmarshalJSON(b []byte) (err error) {
 	if err = obj.UnmarshalJSON(b); err != nil {
 		return err
 	}
-	c.value, c.secure, c.object, err = obj.MarshalString()
+	c.value, c.secure, c.object, c.typ, err = obj.MarshalString()
 	return err
 }
 
@@ -170,6 +170,6 @@ func (c *Value) UnmarshalYAML(unmarshal func(interface{}) error) (err error) {
 	if err = obj.UnmarshalYAML(unmarshal); err != nil {
 		return err
 	}
-	c.value, c.secure, c.object, err = obj.MarshalString()
+	c.value, c.secure, c.object, c.typ, err = obj.MarshalString()
 	return err
 }

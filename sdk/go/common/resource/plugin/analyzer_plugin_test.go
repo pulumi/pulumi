@@ -29,7 +29,7 @@ import (
 
 func TestAnalyzerSpawn(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	// Sanity test that from config.Map to envvars we see what we expect to see
@@ -72,7 +72,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 
 func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-no-config")
@@ -84,6 +84,49 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	// Pass `nil` for the config, this is used for example in `pulumi policy
 	// publish`, which does not run in the context of a stack.
 	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", nil)
+	require.NoError(t, err)
+
+	err = analyzer.Close()
+	require.NoError(t, err)
+}
+
+func TestAnalyzerSpawnViaLanguage(t *testing.T) {
+	d := diagtest.LogSink(t)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+
+	// Sanity test that from config.Map to property values we see what we expect to see
+	proj := "test-project"
+	configMap := config.Map{
+		config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
+		config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
+		config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
+		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
+	}
+
+	configDecrypted, err := configMap.AsDecryptedPropertyMap(context.Background(), config.NopDecrypter)
+	require.NoError(t, err)
+
+	opts := PolicyAnalyzerOptions{
+		Organization: "test-org",
+		Project:      proj,
+		Stack:        "test-stack",
+		DryRun:       true,
+		Config:       resource.FromResourcePropertyMap(configDecrypted),
+	}
+
+	pluginPath, err := filepath.Abs("./testdata/analyzer-language")
+	require.NoError(t, err)
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
+
+	// Check exec.LookPath finds the language
+	file, err := exec.LookPath("pulumi-language-test")
+	require.NoError(t, err)
+	require.Contains(t, file, "pulumi-language-test")
+
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts)
 	require.NoError(t, err)
 
 	err = analyzer.Close()

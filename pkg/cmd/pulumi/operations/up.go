@@ -73,9 +73,6 @@ func defaultParallel() int32 {
 	return defaultParallel
 }
 
-// intentionally disabling here for cleaner err declaration/assignment.
-//
-//nolint:vetshadow
 func NewUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
@@ -272,7 +269,7 @@ func NewUpCmd() *cobra.Command {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
-			workspace.TemplateKindPulumiProject, cmdutil.Interactive())
+			workspace.TemplateKindPulumiProject)
 		defer func() {
 			contract.IgnoreError(templateSource.Close())
 		}()

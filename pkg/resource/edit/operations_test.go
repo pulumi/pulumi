@@ -483,28 +483,6 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 }
 
-func TestUnprotectResource(t *testing.T) {
-	t.Parallel()
-
-	pA := NewProviderResource("a", "p1", "0")
-	a := NewResource("a", pA)
-	a.Protect = true
-	b := NewResource("b", pA)
-	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
-		pA,
-		a,
-		b,
-		c,
-	})
-
-	err := UnprotectResource(snap, a)
-	assert.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
-	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
-	assert.False(t, a.Protect)
-}
-
 func TestLocateResourceNotFound(t *testing.T) {
 	t.Parallel()
 

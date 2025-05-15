@@ -40,6 +40,7 @@ import (
 	"github.com/moby/term"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -281,8 +282,9 @@ func NewPulumiCmd() *cobra.Command {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
+				metadata := getCLIMetadata(cmd)
 				go func() {
-					updateCheckResult <- checkForUpdate(ctx)
+					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
 					close(updateCheckResult)
 				}()
 			}
@@ -493,59 +495,104 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate(ctx context.Context) *diag.Diag {
+func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *diag.Diag {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
 	}
 
-	// We don't care about warning for you to update if you have installed a locally complied version
+	// We don't care about warning about updates if this is a locally-compiled version
 	if isLocalVersion(curVer) {
 		return nil
 	}
 
-	isDevVersion := isDevVersion(curVer)
+	isCurVerDev := isDevVersion(curVer)
+	shouldQuery, canPrompt, lastPromptTimestampMS := checkVersionCache(isCurVerDev)
 
-	var skipUpdateCheck bool
-	latestVer, oldestAllowedVer, devVer, err := getCachedVersionInfo(isDevVersion)
-	if err == nil {
-		// If we have a cached version, we already warned the user once
-		// in the last 24 hours--the cache is considered stale after that.
-		// So we don't need to warn again.
-		skipUpdateCheck = true
-	} else {
-		latestVer, oldestAllowedVer, devVer, err = getCLIVersionInfo(ctx)
+	if shouldQuery {
+		latestVer, oldestAllowedVer, devVer, cacheMS, err := getCLIVersionInfo(ctx, cloudURL, metadata)
 		if err != nil {
 			logging.V(3).Infof("error fetching latest version information "+
 				"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
 		}
-	}
 
-	if (isDevVersion && haveNewerDevVersion(devVer, curVer)) || (!isDevVersion && oldestAllowedVer.GT(curVer)) {
-		if isDevVersion {
-			latestVer = devVer
+		willPrompt := canPrompt &&
+			((isCurVerDev && haveNewerDevVersion(devVer, curVer)) ||
+				(!isCurVerDev && oldestAllowedVer.GT(curVer)))
+		if willPrompt {
+			lastPromptTimestampMS = time.Now().UnixMilli() // We're prompting, update the timestamp
 		}
-		msg := getUpgradeMessage(latestVer, curVer, isDevVersion)
-		if skipUpdateCheck {
-			// If we're skipping the check,
-			// still log this to the internal logging system
-			// that users don't see by default.
-			logging.Warningf("%s", msg)
-			return nil
+
+		err = cacheVersionInfo(cachedVersionInfo{
+			LatestVersion:         latestVer.String(),
+			OldestWithoutWarning:  oldestAllowedVer.String(),
+			LatestDevVersion:      devVer.String(),
+			CacheMS:               int64(cacheMS),
+			LastPromptTimeStampMS: lastPromptTimestampMS,
+		})
+		if err != nil {
+			logging.V(3).Infof("failed to cache version info: %s", err)
 		}
-		return diag.RawMessage("", msg)
+
+		if willPrompt {
+			if isCurVerDev {
+				latestVer = devVer
+			}
+
+			msg := getUpgradeMessage(latestVer, curVer, isCurVerDev)
+			return diag.RawMessage("", msg)
+		}
 	}
 
 	return nil
 }
 
+// getCLIMetadata returns a map of metadata about the given CLI command.
+func getCLIMetadata(cmd *cobra.Command) map[string]string {
+	if cmd == nil {
+		return nil
+	}
+
+	command := cmd.Name()
+
+	var flags strings.Builder
+	i := 0
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			if i > 0 {
+				flags.WriteRune(' ')
+			}
+			flags.WriteString("--" + f.Name)
+			i++
+		}
+	})
+
+	metadata := map[string]string{
+		"Command": command,
+		"Flags":   flags.String(),
+	}
+
+	return metadata
+}
+
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
-// allowed without warning. It caches data from the server for a day.
-func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
-	client := client.NewClient(httpstate.DefaultURL(pkgWorkspace.Instance), "", false, cmdutil.Diag())
-	latest, oldest, dev, err := client.GetCLIVersionInfo(ctx)
+// allowed without warning, as well as the amount of time to cache this information.
+func getCLIVersionInfo(
+	ctx context.Context,
+	cloudURL string,
+	metadata map[string]string,
+) (semver.Version, semver.Version, semver.Version, int, error) {
+	creds, err := workspace.GetStoredCredentials()
+	if err != nil || creds.Current != cloudURL {
+		metadata = nil
+	}
+
+	client := client.NewClient(cloudURL, "" /*apiToken*/, false, cmdutil.Diag())
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	latest, oldest, dev, cacheMS, err := client.GetCLIVersionInfo(ctx, metadata)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
 	}
 
 	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
@@ -557,16 +604,12 @@ func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, sem
 		latest, oldest, dev = brewLatest, brewLatest, brewLatest
 	}
 
-	err = cacheVersionInfo(latest, oldest, dev)
-	if err != nil {
-		logging.V(3).Infof("failed to cache version info: %s", err)
-	}
-
-	return latest, oldest, dev, err
+	// Don't return the err from getLatestBrewFormulaVersion here, we just log that above.
+	return latest, oldest, dev, cacheMS, nil
 }
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
-func cacheVersionInfo(latest semver.Version, oldest semver.Version, dev semver.Version) error {
+func cacheVersionInfo(info cachedVersionInfo) error {
 	updateCheckFile, err := workspace.GetCachedVersionFilePath()
 	if err != nil {
 		return err
@@ -578,69 +621,86 @@ func cacheVersionInfo(latest semver.Version, oldest semver.Version, dev semver.V
 	}
 	defer contract.IgnoreClose(file)
 
-	return json.NewEncoder(file).Encode(cachedVersionInfo{
-		LatestVersion:        latest.String(),
-		OldestWithoutWarning: oldest.String(),
-		LatestDevVersion:     dev.String(),
-	})
+	return json.NewEncoder(file).Encode(info)
 }
 
-// getCachedVersionInfo reads cached information about the newest CLI version, returning the newest version available,
-// the oldest version that should be allowed without warning the user they should upgrade, as well as the
-// latest dev version.
-func getCachedVersionInfo(devVersion bool) (semver.Version, semver.Version, semver.Version, error) {
+// readVersionInfo reads version information from the cache file.
+func readVersionInfo() (cachedVersionInfo, error) {
 	updateCheckFile, err := workspace.GetCachedVersionFilePath()
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return cachedVersionInfo{}, err
+	}
+
+	file, err := os.Open(updateCheckFile)
+	if err != nil {
+		return cachedVersionInfo{}, err
+	}
+	defer contract.IgnoreClose(file)
+
+	var info cachedVersionInfo
+	if err := json.NewDecoder(file).Decode(&info); err != nil {
+		return cachedVersionInfo{}, err
+	}
+
+	return info, nil
+}
+
+// checkVersionCache determines if
+//   - we should query for the latest version
+//   - enough time has passed since we last prompted the user
+//   - the timestamp when we last prompted the user
+//
+// If we can't read the cached versions file, we return true, true and a zero time,
+// indicating that we want to query and possibly prompt the user for an upgrade.
+func checkVersionCache(devVersion bool) (bool, bool, int64) {
+	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	if err != nil {
+		return true, true, 0
 	}
 
 	ts, err := times.Stat(updateCheckFile)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return true, true, 0
 	}
 
-	cacheTime := 24 * time.Hour
+	info, err := readVersionInfo()
+	if err != nil {
+		return true, true, 0
+	}
+
+	// Prompt at most once a day for regular versions, and at most once an hour for dev versions.
+	promptCacheTime := 24 * time.Hour
 	if devVersion {
-		cacheTime = 1 * time.Hour
-	}
-	if time.Now().After(ts.ModTime().Add(cacheTime)) {
-		return semver.Version{}, semver.Version{}, semver.Version{}, errors.New("cached expired")
+		promptCacheTime = 1 * time.Hour
 	}
 
-	file, err := os.OpenFile(updateCheckFile, os.O_RDONLY, 0o600)
-	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
-	}
-	defer contract.IgnoreClose(file)
-
-	var cached cachedVersionInfo
-	if err = json.NewDecoder(file).Decode(&cached); err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+	// Fallback to the file modification date if we didn't save a last prompt timestamp yet.
+	lastPrompt := ts.ModTime()
+	if info.LastPromptTimeStampMS > 0 {
+		lastPrompt = time.UnixMilli(info.LastPromptTimeStampMS)
 	}
 
-	latest, err := semver.ParseTolerant(cached.LatestVersion)
-	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+	nextPrompt := lastPrompt.Add(promptCacheTime)
+	expired := nextPrompt.Before(time.Now())
+
+	query := true
+	// If we have a cache duration stored, see if the file was modified after
+	// that duration has elapsed.
+	if info.CacheMS > 0 {
+		cacheDuration := time.Duration(info.CacheMS) * time.Millisecond
+		query = time.Now().After(ts.ModTime().Add(cacheDuration))
 	}
 
-	oldest, err := semver.ParseTolerant(cached.OldestWithoutWarning)
-	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
-	}
-
-	dev, err := semver.ParseTolerant(cached.LatestDevVersion)
-	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
-	}
-
-	return latest, oldest, dev, err
+	return query, expired, lastPrompt.UnixMilli()
 }
 
 // cachedVersionInfo is the on disk format of the version information the CLI caches between runs.
 type cachedVersionInfo struct {
-	LatestVersion        string `json:"latestVersion"`
-	OldestWithoutWarning string `json:"oldestWithoutWarning"`
-	LatestDevVersion     string `json:"latestDevVersion"`
+	LatestVersion         string `json:"latestVersion"`
+	OldestWithoutWarning  string `json:"oldestWithoutWarning"`
+	LatestDevVersion      string `json:"latestDevVersion"`
+	LastPromptTimeStampMS int64  `json:"LastPromptMS,omitempty"`
+	CacheMS               int64  `json:"CacheMS,omitempty"`
 }
 
 // getUpgradeMessage gets a message to display to a user instructing them they are out of date and how to move from

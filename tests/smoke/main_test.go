@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	testutil.SetupBinaryRebuilding()
+	testutil.SetupPulumiBinary()
 
 	code := m.Run()
 	os.Exit(code)

@@ -85,7 +85,7 @@ func TestFilterOnName(t *testing.T) {
 
 	source := newImpl(ctx, "name1",
 		ScopeAll, workspace.TemplateKindPulumiProject,
-		false, templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 	)
 
 	template, err := source.Templates()
@@ -159,7 +159,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 
 	source := newImpl(ctx, "",
 		ScopeAll, workspace.TemplateKindPulumiProject,
-		false, repoTemplates,
+		repoTemplates,
 	)
 
 	template, err := source.Templates()
@@ -211,7 +211,7 @@ func TestSurfaceListTemplateErrors(t *testing.T) {
 
 	source := newImpl(ctx, "name1",
 		ScopeAll, workspace.TemplateKindPulumiProject,
-		false, templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 	)
 
 	_, err := source.Templates()
@@ -249,7 +249,7 @@ func TestSurfaceOnEmptyError(t *testing.T) {
 
 	source := newImpl(ctx, "name1",
 		ScopeAll, workspace.TemplateKindPulumiProject,
-		false, templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 	)
 
 	_, err := source.Templates()
@@ -316,7 +316,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 
 	source := newImpl(ctx, "name1",
 		ScopeAll, workspace.TemplateKindPulumiProject,
-		false, templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
 	)
 
 	template, err := source.Templates()

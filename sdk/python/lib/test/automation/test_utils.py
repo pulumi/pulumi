@@ -32,7 +32,7 @@ def get_test_suffix() -> int:
     return int(100000 + random() * 900000)
 
 
-def stack_namer(project_name):
+def stack_namer(project_name: str) -> str:
     return fully_qualified_stack_name(
         get_test_org(), project_name, f"int_test_{get_test_suffix()}"
     )

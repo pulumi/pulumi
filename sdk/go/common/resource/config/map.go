@@ -312,11 +312,11 @@ func adjustObjectValue(v Value) (object, error) {
 	case TypeString:
 		return newObject(v.value), nil
 	case TypeInt:
-		i, err := strconv.Atoi(v.value)
+		i, err := strconv.ParseInt(v.value, 10, 64)
 		if err != nil {
 			return object{}, err
 		}
-		return newObject(int64(i)), nil
+		return newObject(i), nil
 	case TypeBool:
 		return newObject(v.value == "true"), nil
 	case TypeFloat:
@@ -325,6 +325,8 @@ func adjustObjectValue(v Value) (object, error) {
 			return object{}, err
 		}
 		return newObject(f), nil
+	case TypeUnknown:
+		// If unknown type try the heuristics below.
 	}
 
 	// If "false" or "true", return the boolean value.

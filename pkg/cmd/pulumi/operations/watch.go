@@ -35,9 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// intentionally disabling here for cleaner err declaration/assignment.
-//
-//nolint:vetshadow
 func NewWatchCmd() *cobra.Command {
 	var debug bool
 	var message string

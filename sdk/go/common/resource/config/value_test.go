@@ -27,7 +27,7 @@ import (
 func TestMarshallNormalValueYAML(t *testing.T) {
 	t.Parallel()
 
-	v := NewValue("value")
+	v := NewTypedValue("value", TypeString)
 
 	b, err := yaml.Marshal(v)
 	assert.NoError(t, err)
@@ -55,7 +55,7 @@ func TestMarshallSecureValueYAML(t *testing.T) {
 func TestMarshallNormalValueJSON(t *testing.T) {
 	t.Parallel()
 
-	v := NewValue("value")
+	v := NewTypedValue("value", TypeString)
 
 	b, err := json.Marshal(v)
 	assert.NoError(t, err)
@@ -282,7 +282,7 @@ func TestCopyValue(t *testing.T) {
 	}{
 		{
 			Val:      NewValue("value"),
-			Expected: NewValue("value"),
+			Expected: NewTypedValue("value", TypeString),
 		},
 		{
 			Val:      NewObjectValue(`{"foo":"bar"}`),

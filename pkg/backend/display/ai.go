@@ -75,9 +75,7 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 
 	fmt.Fprintln(out)
 
-	if opts.ShowLinkToCopilot {
-		PrintCopilotLink(out, opts, permalink)
-	}
+	PrintCopilotLink(out, opts, permalink)
 }
 
 func PrintCopilotLink(out io.Writer, opts Options, permalink string) {

@@ -21,6 +21,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -71,4 +73,41 @@ func TestBundledDev(t *testing.T) {
 
 	err := cmd.Run(context.Background(), []string{"language", "nodejs"})
 	assert.ErrorContains(t, err, "404 HTTP error fetching plugin")
+}
+
+func TestGetLatestPluginIncludedVersion(t *testing.T) {
+	t.Parallel()
+
+	var pluginWasInstalled bool
+	defer func() {
+		assert.True(t, pluginWasInstalled, "installPluginSpec should have been called")
+	}()
+
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginSpec, file string,
+			_ diag.Sink, _ colors.Colorization, _ bool,
+		) error {
+			pluginWasInstalled = true
+			assert.Empty(t, file)
+			assert.Equal(t, workspace.PluginSpec{
+				Name: "aws",
+				Kind: apitype.ResourcePlugin,
+				Version: &semver.Version{
+					Major: 1000,
+					Minor: 78,
+				},
+			}, install)
+			return nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{"resource", "aws@1000.78.0"})
+	assert.NoError(t, err)
 }
