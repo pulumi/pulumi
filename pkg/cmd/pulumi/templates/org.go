@@ -62,6 +62,9 @@ func (s *Source) getOrgTemplates(
 		}
 		logging.Infof("could not get a backend for org templates")
 		return
+	} else if b == nil {
+		logging.Infof("no current logged in user")
+		return
 	}
 
 	// Attempt to retrieve the current user
