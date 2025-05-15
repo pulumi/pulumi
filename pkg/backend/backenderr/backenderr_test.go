@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2019-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package backenderr
 
 import (
-	"context"
+	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/stretchr/testify/assert"
 )
 
-type PackageRegistry interface {
-	registry.Registry
-	// Publish publishes a package to the package registry.
-	Publish(ctx context.Context, op apitype.PackagePublishOp) error
+func TestNotFoundErrorIs(t *testing.T) {
+	t.Parallel()
+	assert.ErrorIs(t, ErrNotFound, registry.ErrNotFound)
 }

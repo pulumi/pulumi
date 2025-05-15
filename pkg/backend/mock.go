@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -99,10 +100,11 @@ type MockBackend struct {
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	SupportsTemplatesF  func() bool
-	ListTemplatesF      func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
-	DownloadTemplateF   func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
-	GetPackageRegistryF func() (PackageRegistry, error)
+	SupportsTemplatesF          func() bool
+	ListTemplatesF              func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF           func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	GetPackageRegistryF         func() (PackageRegistry, error)
+	GetReadOnlyPackageRegistryF func() registry.Registry
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -483,6 +485,13 @@ func (be *MockBackend) DownloadTemplate(ctx context.Context, orgName, templateSo
 func (be *MockBackend) GetPackageRegistry() (PackageRegistry, error) {
 	if be.GetPackageRegistryF != nil {
 		return be.GetPackageRegistryF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) GetReadOnlyPackageRegistry() registry.Registry {
+	if be.GetReadOnlyPackageRegistryF != nil {
+		return be.GetReadOnlyPackageRegistryF()
 	}
 	panic("not implemented")
 }
