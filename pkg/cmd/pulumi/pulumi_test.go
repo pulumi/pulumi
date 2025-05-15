@@ -17,13 +17,13 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,24 +73,60 @@ func TestHaveNewerDevVersion(t *testing.T) {
 }
 
 //nolint:paralleltest // changes environment variables and globals
-func TestCheckForUpdate(t *testing.T) {
-	realVersion := version.Version
-	t.Cleanup(func() {
-		version.Version = realVersion
-	})
-	version.Version = "v1.0.0"
-
-	// Cached version information is stored in PULUMI_HOME.
+func TestGetCLIVersionInfo_Simple(t *testing.T) {
+	// Arrange.
 	pulumiHome := t.TempDir()
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
-	// If the cached version is missing or outdated,
-	// the HTTP server receives a request.
-	var requestCounter int // number of requests
+	callCount := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/cli/version":
-			requestCounter++
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0",
+				"cacheMS": 86400000
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	latestVer, oldestAllowedVer, devVer, cacheMS, err := getCLIVersionInfo(ctx, srv.URL, nil)
+
+	// Assert.
+	require.NoError(t, err)
+	require.Equal(t, 1, callCount, "should have called API once")
+	require.Equal(t, "1.2.3", latestVer.String())
+	require.Equal(t, "1.2.0", oldestAllowedVer.String())
+	require.Equal(t, "0.0.0", devVer.String())
+	require.Equal(t, 86400000, cacheMS)
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			time.Sleep(4 * time.Second)
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(`{
 				"latestVersion": "v1.2.3",
@@ -106,56 +142,49 @@ func TestCheckForUpdate(t *testing.T) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("PULUMI_API", srv.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	msg := checkForUpdate(ctx)
-	require.NotNil(t, msg)
-	assert.Contains(t, msg.Message, "A new version of Pulumi is available")
-	assert.Contains(t, msg.Message, "upgrade from version '1.0.0' to '1.2.3'")
-	assert.Equal(t, 1, requestCounter,
-		"expected exactly one request to the HTTP server")
+	// Act.
+	_, _, _, _, err := getCLIVersionInfo(ctx, srv.URL, nil)
 
-	t.Run("cached", func(t *testing.T) {
-		// Once we have cached version information,
-		// we will not warn the user again until the cache expires.
-		requestCounter = 0
-		require.Nil(t, checkForUpdate(ctx))
-		assert.Equal(t, 0, requestCounter,
-			"no requests are expected to the HTTP server")
-	})
-
-	t.Run("cache expired", func(t *testing.T) {
-		// Expire the cached version information
-		// and verify that we query the server again.
-
-		versionCachePath, err := workspace.GetCachedVersionFilePath()
-		require.NoError(t, err)
-
-		expiredTime := time.Now().Add(-25 * time.Hour)
-		require.NoError(t,
-			os.Chtimes(versionCachePath, expiredTime, expiredTime))
-
-		requestCounter = 0
-		require.NotNil(t, checkForUpdate(ctx))
-		assert.Equal(t, 1, requestCounter)
-	})
+	// Assert.
+	require.ErrorContains(t, err, "context deadline exceeded")
 }
 
 //nolint:paralleltest // changes environment variables and globals
-func TestCheckForUpdate_allFail(t *testing.T) {
-	// Cached version information is stored in PULUMI_HOME.
+func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
+	// Arrange.
 	pulumiHome := t.TempDir()
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
-	var requestCounter int // number of requests
+	metadata := map[string]string{
+		"Command": "test-command",
+		"Flags":   "--foo",
+	}
+
+	token := time.Now().String()
+
+	called := false
+	commandHeader := ""
+	flagsHeader := ""
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/cli/version":
-			requestCounter++
-			http.Error(w, "great sadness", http.StatusInternalServerError)
+			called = true
+			commandHeader = r.Header.Get("X-Pulumi-Command")
+			flagsHeader = r.Header.Get("X-Pulumi-Flags")
+
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
@@ -163,34 +192,405 @@ func TestCheckForUpdate_allFail(t *testing.T) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("PULUMI_API", srv.URL)
+
+	err := workspace.StoreCredentials(workspace.Credentials{
+		Current: srv.URL,
+		Accounts: map[string]workspace.Account{
+			srv.URL: {
+				AccessToken: token,
+			},
+		},
+		AccessTokens: map[string]string{
+			srv.URL: token,
+		},
+	})
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	msg := checkForUpdate(ctx)
-	assert.Nil(t, msg)
+	// Act.
+	_, _, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
 
-	// We should not make more than one attempt to get this information.
-	assert.Equal(t, 1, requestCounter)
+	// Assert.
+	require.NoError(t, err)
+	require.True(t, called, "should have called API")
+	require.Equal(t, metadata["Command"], commandHeader)
+	require.Equal(t, metadata["Flags"], flagsHeader)
 }
 
 //nolint:paralleltest // changes environment variables and globals
-func TestCheckForUpdate_devVersion(t *testing.T) {
+func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	metadata := map[string]string{
+		"Command": "test-command",
+		"Flags":   "--foo",
+	}
+
+	token := time.Now().String()
+
+	called := false
+	commandHeader := ""
+	flagsHeader := ""
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			called = true
+			commandHeader = r.Header.Get("X-Pulumi-Command")
+			flagsHeader = r.Header.Get("X-Pulumi-Flags")
+
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	err := workspace.StoreCredentials(workspace.Credentials{
+		Current: "https://example.com",
+		Accounts: map[string]workspace.Account{
+			srv.URL: {
+				AccessToken: token,
+			},
+		},
+		AccessTokens: map[string]string{
+			srv.URL: token,
+		},
+	})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	_, _, _, _, err = getCLIVersionInfo(ctx, srv.URL, metadata)
+
+	// Assert.
+	require.NoError(t, err)
+	require.True(t, called, "should have called API")
+	require.Empty(t, commandHeader)
+	require.Empty(t, flagsHeader)
+}
+
+func TestGetCLIMetadata(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	cases := []struct {
+		name     string
+		cmd      *cobra.Command
+		metadata map[string]string
+	}{
+		{
+			name:     "nil",
+			cmd:      nil,
+			metadata: nil,
+		},
+		{
+			name: "no set flags",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "no-set"}
+				cmd.Flags().Bool("bool", false, "bool flag")
+				cmd.Flags().String("string", "", "string flag")
+				return cmd
+			})(),
+			metadata: map[string]string{
+				"Command": "no-set",
+				"Flags":   "",
+			},
+		},
+		{
+			name: "one set bool flag",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "one-set"}
+				cmd.Flags().Bool("bool", false, "bool flag")
+				cmd.Flags().String("string", "", "string flag")
+
+				cmd.SetArgs([]string{"--bool"})
+
+				err := cmd.Execute()
+				require.NoError(t, err)
+
+				return cmd
+			})(),
+			metadata: map[string]string{
+				"Command": "one-set",
+				"Flags":   "--bool",
+			},
+		},
+		{
+			name: "one set string flag",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "one-set"}
+				cmd.Flags().Bool("bool", false, "bool flag")
+				cmd.Flags().String("string", "", "string flag")
+
+				cmd.SetArgs([]string{"--string=value"})
+
+				err := cmd.Execute()
+				require.NoError(t, err)
+
+				return cmd
+			})(),
+			metadata: map[string]string{
+				"Command": "one-set",
+				"Flags":   "--string",
+			},
+		},
+		{
+			name: "multiple set flags",
+			cmd: (func() *cobra.Command {
+				cmd := &cobra.Command{Use: "multiple-set"}
+				cmd.Flags().Bool("bool", false, "bool flag")
+				cmd.Flags().String("string", "", "string flag")
+
+				cmd.SetArgs([]string{"--string=value", "--bool"})
+
+				err := cmd.Execute()
+				require.NoError(t, err)
+
+				return cmd
+			})(),
+			metadata: map[string]string{
+				"Command": "multiple-set",
+				"Flags":   "--bool --string",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Act.
+			metadata := getCLIMetadata(c.cmd)
+
+			// Assert.
+			require.Equal(t, c.metadata, metadata)
+		})
+	}
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+	checkForUpdate(ctx, srv.URL, nil)
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 3, callCount, "should call API every time")
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_RespectsServerCache(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0",
+				"cacheMS": 1000
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 1, callCount, "should respect the cache on the 2nd call")
+
+	// Arrange.
+	time.Sleep(1500 * time.Millisecond) // Wait for the cache to expire
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 2, callCount, "the cache should have expired")
+
+	// Act.
+	checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 2, callCount, "should respect the cache")
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_CachesPrompts(t *testing.T) {
+	// Arrange.
+	realVersion := version.Version
+	t.Cleanup(func() {
+		version.Version = realVersion
+	})
+	version.Version = "v1.0.0"
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	uncached := checkForUpdate(ctx, srv.URL, nil)
+	cached := checkForUpdate(ctx, srv.URL, nil)
+	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
+
+	// Store an expired last prompt timesamp
+	expiredTime := time.Now().Add(-25 * time.Hour)
+	info, err := readVersionInfo()
+	require.NoError(t, err)
+	info.LastPromptTimeStampMS = expiredTime.UnixMilli()
+	require.NoError(t, cacheVersionInfo(info))
+
+	expired := checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 4, callCount, "should call API every time")
+
+	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.Message, "upgrade from version '1.0.0' to '1.2.3'")
+
+	require.Nil(t, cached)
+	require.Nil(t, cachedAgain)
+
+	require.Contains(t, expired.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.Message, "upgrade from version '1.0.0' to '1.2.3'")
+}
+
+func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
+	// Arrange.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			http.NotFound(w, r)
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	first := checkForUpdate(ctx, srv.URL, nil)
+	second := checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 2, callCount, "should call API every time")
+	require.Nil(t, first)
+	require.Nil(t, second)
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
+	// Arrange.
 	realVersion := version.Version
 	t.Cleanup(func() {
 		version.Version = realVersion
 	})
 	version.Version = "v1.0.0-11-g4ff08363"
+
 	pulumiHome := t.TempDir()
 	t.Setenv("PULUMI_HOME", pulumiHome)
 
-	// Cached version information is stored in PULUMI_HOME.
-	var requestCounter int // number of requests
+	callCount := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/cli/version":
-			requestCounter++
+			callCount++
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(`{
 				"latestVersion": "v1.2.3",
@@ -207,40 +607,82 @@ func TestCheckForUpdate_devVersion(t *testing.T) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	t.Setenv("PULUMI_API", srv.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	msg := checkForUpdate(ctx)
-	require.NotNil(t, msg)
-	assert.Contains(t, msg.Message, "A new version of Pulumi is available")
-	assert.Contains(t, msg.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
-	assert.Equal(t, 1, requestCounter,
-		"expected exactly one request to the HTTP server")
+	// Act.
+	uncached := checkForUpdate(ctx, srv.URL, nil)
+	cached := checkForUpdate(ctx, srv.URL, nil)
+	cachedAgain := checkForUpdate(ctx, srv.URL, nil)
 
-	t.Run("cached", func(t *testing.T) {
-		// Once we have cached version information,
-		// we will not warn the user again until the cache expires.
-		requestCounter = 0
-		require.Nil(t, checkForUpdate(ctx))
-		assert.Equal(t, 0, requestCounter,
-			"no requests are expected to the HTTP server")
+	// Store an expired last prompt timesamp
+	expiredTime := time.Now().Add(-2 * time.Hour)
+	info, err := readVersionInfo()
+	require.NoError(t, err)
+	info.LastPromptTimeStampMS = expiredTime.UnixMilli()
+	require.NoError(t, cacheVersionInfo(info))
+
+	expired := checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 4, callCount, "should call API every time")
+
+	require.Contains(t, uncached.Message, "A new version of Pulumi is available")
+	require.Contains(t, uncached.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
+
+	require.Nil(t, cached)
+	require.Nil(t, cachedAgain)
+
+	require.Contains(t, expired.Message, "A new version of Pulumi is available")
+	require.Contains(t, expired.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
+}
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
+	// Arrange.
+	realVersion := version.Version
+	t.Cleanup(func() {
+		version.Version = realVersion
 	})
+	version.Version = "v1.0.0-beta.1590772212"
 
-	t.Run("cache expired", func(t *testing.T) {
-		// Expire the cached version information
-		// and verify that we query the server again.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
 
-		versionCachePath, err := workspace.GetCachedVersionFilePath()
-		require.NoError(t, err)
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(`{
+				"latestVersion": "v1.2.3",
+				"oldestWithoutWarning": "v1.2.0",
+				"latestDevVersion": "v1.0.0-12-gdeadbeef"
+			}`))
+			if !assert.NoError(t, err) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 
-		expiredTime := time.Now().Add(-2 * time.Hour)
-		require.NoError(t,
-			os.Chtimes(versionCachePath, expiredTime, expiredTime))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
 
-		requestCounter = 0
-		require.NotNil(t, checkForUpdate(ctx))
-		assert.Equal(t, 1, requestCounter)
-	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Act.
+	nilDiag := checkForUpdate(ctx, srv.URL, nil)
+	stillNilDiag := checkForUpdate(ctx, srv.URL, nil)
+	alwaysNilDiag := checkForUpdate(ctx, srv.URL, nil)
+
+	// Assert.
+	require.Equal(t, 0, callCount, "local versions don't trigger API calls")
+	require.Nil(t, nilDiag)
+	require.Nil(t, stillNilDiag)
+	require.Nil(t, alwaysNilDiag)
 }
