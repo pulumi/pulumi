@@ -1,3 +1,9 @@
+## Unreleased
+
+### CLI
+- **CLI**: Enhance “already exists” errors with remediation steps (#10313)
+  - Append instructions to change the resource name, `pulumi import`, or delete the external resource.
+
 # Changelog
 
 ## 3.169.0 (2025-05-08)
