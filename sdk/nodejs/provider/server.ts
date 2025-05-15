@@ -407,8 +407,9 @@ class Server implements grpc.UntypedServiceImplementation {
                     retainOnDelete: req.getRetainondelete(),
                 };
 
-                if (req.getDeletedwith() === "") {
-                    opts.deletedWith = createProviderResource(req.getDeletedwith());
+                const deletedWith = req.getDeletedwith();
+                if (deletedWith !== "") {
+                    opts.deletedWith = createProviderResource(deletedWith);
                 }
 
                 const result = await this.provider.construct(name, type, inputs, opts);
