@@ -1773,6 +1773,10 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	if prev := sg.deployment.prev; prev != nil {
 		for _, res := range prev.Resources {
 			if res.ViewOf != "" {
+				// Temporary: Workaround deleting view steps by always emitting the delete steps here.
+				sg.deletes[res.URN] = true
+				steps = append(steps, NewViewStep(sg.deployment, OpDelete, resource.StatusOK, "", res, nil, nil, nil, nil))
+
 				// This is a view of another resource, so we don't need to delete it.
 				continue
 			}
@@ -1914,17 +1918,18 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		steps = filtered
 	}
 
-	// TODO is this the right place to do this?
-	{
-		filtered := []Step{}
-		for _, step := range steps {
-			if step.Old() == nil || step.Old().ViewOf == "" {
-				filtered = append(filtered, step)
-			}
-		}
+	// Temp
+	// // TODO is this the right place to do this?
+	// {
+	// 	filtered := []Step{}
+	// 	for _, step := range steps {
+	// 		if step.Old() == nil || step.Old().ViewOf == "" {
+	// 			filtered = append(filtered, step)
+	// 		}
+	// 	}
 
-		steps = filtered
-	}
+	// 	steps = filtered
+	// }
 
 	deletingUnspecifiedTarget := false
 	for _, step := range steps {

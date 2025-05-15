@@ -106,6 +106,10 @@ func (rs *resourceStatusServer) ReleaseToken(token string) {
 	info.mu.Unlock()
 
 	for _, steps := range batches {
+		if len(steps) == 0 {
+			continue
+		}
+
 		// Publish the steps in the batch.
 		rs.events <- &additionalStepsEvent{
 			steps: steps,
@@ -132,6 +136,14 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 
 	// Save the steps.
 	if len(steps) > 0 {
+		// Temporarily filter out delete steps. These don't work correctly with the current approach
+		// so there is a hack in place that deletes them before the owning resource.
+		for _, step := range steps {
+			if step.Op() == OpDelete {
+				return &pulumirpc.PublishViewStepsResponse{}, nil
+			}
+		}
+
 		info.mu.Lock()
 		defer info.mu.Unlock()
 		info.batches = append(info.batches, steps)

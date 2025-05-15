@@ -1,20 +1,14 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typAView resA-child <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>deleted<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pkgA:m:typA resA <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>post-step event returned an error: failed to verify snapshot: child resource urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child refers to missing parent urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
- <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
-<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
-  <{%fg 12%}>pkgA:m:typA (resA):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>post-step event returned an error: failed to verify snapshot: child resource urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child refers to missing parent urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>
-
-  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
-
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%fg 1%}>deleted<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 1%}>- 1 deleted<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

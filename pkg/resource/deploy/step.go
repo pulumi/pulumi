@@ -1954,16 +1954,16 @@ func NewViewStep(
 
 func (s *ViewStep) Op() display.StepOp      { return s.op }
 func (s *ViewStep) Deployment() *Deployment { return s.deployment }
-func (s *ViewStep) Type() tokens.Type       { return s.new.Type }
-func (s *ViewStep) Provider() string        { return s.new.Provider }
-func (s *ViewStep) URN() resource.URN       { return s.new.URN }
+func (s *ViewStep) Type() tokens.Type       { return s.Res().Type }
+func (s *ViewStep) Provider() string        { return s.Res().Provider }
+func (s *ViewStep) URN() resource.URN       { return s.Res().URN }
 func (s *ViewStep) Old() *resource.State    { return s.old }
 func (s *ViewStep) New() *resource.State    { return s.new }
 func (s *ViewStep) Res() *resource.State {
-	if s.new == nil {
-		return s.old
+	if s.new != nil {
+		return s.new
 	}
-	return s.new
+	return s.old
 }
 func (s *ViewStep) Keys() []resource.PropertyKey                 { return s.keys }
 func (s *ViewStep) Diffs() []resource.PropertyKey                { return s.diffs }
