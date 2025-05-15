@@ -30,6 +30,8 @@ import (
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// Current returns the currently logged in backend instance for the given url.
+	//
+	// If the user does not have a logged in backend, then Current will return (nil, nil).
 	Current(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
@@ -64,8 +66,8 @@ func (f *lm) Current(
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
-	_, err := lm.Current(ctx, url, insecure, setCurrent)
-	if err != nil {
+	account, err := lm.Current(ctx, url, insecure, setCurrent)
+	if err != nil || account == nil {
 		return nil, err
 	}
 	return httpstate.New(ctx, sink, url, project, insecure)
