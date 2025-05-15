@@ -40,7 +40,7 @@ import (
 
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
-	interactive bool, wg *sync.WaitGroup,
+	wg *sync.WaitGroup,
 ) {
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
