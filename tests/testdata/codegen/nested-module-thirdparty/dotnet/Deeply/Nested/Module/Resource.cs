@@ -65,14 +65,14 @@ namespace Pulumi.FooBar.Deeply.Nested.Module
     public sealed class ResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("baz")]
-        private Input<string>? _baz;
-        public Input<string>? Baz
+        private Input<string?>? _baz;
+        public Input<string?>? Baz
         {
             get => _baz;
             set
             {
                 var emptySecret = Output.CreateSecret(0);
-                _baz = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+                _baz = Output.Tuple<Input<string?>?, int>(value, emptySecret).Apply(t => t.Item1);
             }
         }
 

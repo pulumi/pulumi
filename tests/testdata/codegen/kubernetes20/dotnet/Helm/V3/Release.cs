@@ -92,26 +92,26 @@ namespace Pulumi.Kubernetes.Types.Inputs.Helm.V3
         public Input<string> Chart { get; set; } = null!;
 
         [Input("valueYamlFiles")]
-        private InputList<AssetOrArchive>? _valueYamlFiles;
+        private Input<ImmutableArray<Input<AssetOrArchive>>>? _valueYamlFiles;
 
         /// <summary>
         /// List of assets (raw yaml files). Content is read and merged with values.
         /// </summary>
-        public InputList<AssetOrArchive> ValueYamlFiles
+        public Input<ImmutableArray<Input<AssetOrArchive>>> ValueYamlFiles
         {
-            get => _valueYamlFiles ?? (_valueYamlFiles = new InputList<AssetOrArchive>());
+            get => _valueYamlFiles ?? (_valueYamlFiles = new Input<ImmutableArray<Input<AssetOrArchive>>>());
             set => _valueYamlFiles = value;
         }
 
         [Input("values")]
-        private InputMap<object>? _values;
+        private Input<ImmutableDictionary<string, Input<object>>?>? _values;
 
         /// <summary>
         /// Custom values set for the release.
         /// </summary>
-        public InputMap<object> Values
+        public Input<ImmutableDictionary<string, Input<object>>?> Values
         {
-            get => _values ?? (_values = new InputMap<object>());
+            get => _values ?? (_values = new Input<ImmutableDictionary<string, Input<object>>?>());
             set => _values = value;
         }
 

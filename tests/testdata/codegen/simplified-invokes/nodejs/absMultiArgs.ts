@@ -23,7 +23,7 @@ export interface AbsMultiArgsResult {
  * Returns the absolute value of a given float.
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
-export function absMultiArgsOutput(a: pulumi.Input<number>, b?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<AbsMultiArgsResult> {
+export function absMultiArgsOutput(a: pulumi.Input<number>, b?: pulumi.Input<number | undefined | null>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<AbsMultiArgsResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("std:index:AbsMultiArgs", {
         "a": a,

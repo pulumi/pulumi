@@ -84,13 +84,13 @@ namespace Pulumi.Myedgeorder
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
         /// </summary>
         [Input("customerSubscriptionDetails")]
-        public Input<Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
+        public Input<Inputs.CustomerSubscriptionDetailsArgs?>? CustomerSubscriptionDetails { get; set; }
 
         /// <summary>
         /// $skipToken is supported on list of configurations, which provides the next page in the list of configurations.
         /// </summary>
         [Input("skipToken")]
-        public Input<string>? SkipToken { get; set; }
+        public Input<string?>? SkipToken { get; set; }
 
         public ListConfigurationsInvokeArgs()
         {

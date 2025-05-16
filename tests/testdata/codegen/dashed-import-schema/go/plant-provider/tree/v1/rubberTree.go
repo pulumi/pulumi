@@ -37,7 +37,7 @@ func NewRubberTree(ctx *pulumi.Context,
 		args.Diameter = Diameter(6.0)
 	}
 	if args.Farm == nil {
-		args.Farm = pulumi.StringPtr("(unknown)")
+		args.Farm = interface{}("(unknown)")
 	}
 	if args.Size == nil {
 		args.Size = TreeSize("medium")
@@ -72,7 +72,7 @@ type rubberTreeState struct {
 }
 
 type RubberTreeState struct {
-	Farm pulumi.StringPtrInput
+	Farm interface{}
 }
 
 func (RubberTreeState) ElementType() reflect.Type {

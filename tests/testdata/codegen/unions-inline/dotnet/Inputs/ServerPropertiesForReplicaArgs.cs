@@ -16,7 +16,7 @@ namespace Pulumi.Example.Inputs
         public Input<string> CreateMode { get; set; } = null!;
 
         [Input("version")]
-        public Input<string>? Version { get; set; }
+        public Input<string?>? Version { get; set; }
 
         public ServerPropertiesForReplicaArgs()
         {

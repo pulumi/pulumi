@@ -24,24 +24,24 @@ MYPY = False
 
 if not MYPY:
     class PetArgsDict(TypedDict):
-        name: NotRequired[pulumi.Input[builtins.str]]
+        name: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     PetArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class PetArgs:
     def __init__(__self__, *,
-                 name: Optional[pulumi.Input[builtins.str]] = None):
+                 name: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         if name is not None:
             pulumi.set(__self__, "name", name)
 
     @property
     @pulumi.getter
-    def name(self) -> Optional[pulumi.Input[builtins.str]]:
+    def name(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "name")
 
     @name.setter
-    def name(self, value: Optional[pulumi.Input[builtins.str]]):
+    def name(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "name", value)
 
 

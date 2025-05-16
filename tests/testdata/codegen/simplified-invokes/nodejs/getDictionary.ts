@@ -12,7 +12,7 @@ export function getDictionary(a?: number, opts?: pulumi.InvokeOptions): Promise<
         "a": a,
     }, opts);
 }
-export function getDictionaryOutput(a?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<{[key: string]: outputs.AnotherCustomResult}> {
+export function getDictionaryOutput(a?: pulumi.Input<number | undefined | null>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<{[key: string]: outputs.AnotherCustomResult}> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("std:index:GetDictionary", {
         "a": a,

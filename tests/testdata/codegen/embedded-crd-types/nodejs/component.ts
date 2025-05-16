@@ -52,6 +52,6 @@ export class Component extends pulumi.ComponentResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    eniConfig?: pulumi.Input<{[key: string]: pulumi.Input<inputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpecArgs>}>;
-    pod?: pulumi.Input<pulumiKubernetes.types.input.core.v1.Pod>;
+    eniConfig?: pulumi.Input<{[key: string]: pulumi.Input<inputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpecArgs>} | undefined | null>;
+    pod?: pulumi.Input<pulumiKubernetes.types.input.core.v1.Pod | undefined | null>;
 }

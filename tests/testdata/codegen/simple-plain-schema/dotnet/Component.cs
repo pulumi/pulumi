@@ -105,7 +105,7 @@ namespace Pulumi.Example
         public string? F { get; set; }
 
         [Input("foo")]
-        public Input<Inputs.FooArgs>? Foo { get; set; }
+        public Input<Inputs.FooArgs?>? Foo { get; set; }
 
         public ComponentArgs()
         {
