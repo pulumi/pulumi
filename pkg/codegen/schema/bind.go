@@ -1680,6 +1680,27 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	}
 	decl.Properties = stringProperties
 
+	stringInputProperties := slice.Prealloc[*Property](len(decl.InputProperties))
+	for _, prop := range decl.InputProperties {
+		typ := plainType(prop.Type)
+		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
+			if tokenType.UnderlyingType != stringType {
+				continue
+			}
+		} else if enumType, isEnumType := typ.(*EnumType); isEnumType {
+			if enumType.ElementType != stringType {
+				continue
+			}
+		} else {
+			if typ != stringType {
+				continue
+			}
+		}
+
+		stringInputProperties = append(stringInputProperties, prop)
+	}
+	decl.InputProperties = stringInputProperties
+
 	return diags, nil
 }
 
