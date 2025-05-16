@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -34,10 +35,10 @@ func getResourceToken(node *Resource) (string, hcl.Range) {
 	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
 }
 
-func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
+func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	typeDiags := b.bindResourceTypes(node)
+	typeDiags := b.bindResourceTypes(ctx, node)
 	diagnostics = append(diagnostics, typeDiags...)
 
 	bodyDiags := b.bindResourceBody(node)
@@ -265,7 +266,7 @@ func (b *binder) reduceInputUnionTypes(node *Resource, inputProperties []*schema
 }
 
 // bindResourceTypes binds the input and output types for a resource.
-func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
+func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
@@ -301,7 +302,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
 		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(b.options.loader, pkg, "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 	}
 
 	if err != nil {
