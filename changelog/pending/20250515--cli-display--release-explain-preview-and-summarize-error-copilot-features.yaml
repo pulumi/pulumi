@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Release explain-preview and summarize-error Copilot features
