@@ -305,6 +305,18 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
+	// Workaround for python, some policy packs don't specify a venv but we want to use one
+	if proj.Runtime.Name() == "python" {
+		// If the policy's options provide a virtualenv use it, else default to "venv"
+		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+			proj.Runtime.SetOption("virtualenv", "venv")
+			err = proj.Save(projPath)
+			if err != nil {
+				return fmt.Errorf("failed to save policy project at %s: %w", finalDir, err)
+			}
+		}
+	}
+
 	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
 	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), info)
 	if err != nil {
