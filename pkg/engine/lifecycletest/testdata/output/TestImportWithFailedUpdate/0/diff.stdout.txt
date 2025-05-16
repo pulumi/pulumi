@@ -1,0 +1,14 @@
+<{%fg 2%}>+ pulumi:providers:pkgA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 2%}>= pkgA:m:typA: (import)
+<{%reset%}>    [id=imported-id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    foo: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=imported-id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>= 1 imported<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
