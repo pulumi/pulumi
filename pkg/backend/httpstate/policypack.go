@@ -305,9 +305,9 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
-	// Workaround for python, most of our templates don't specify a venv but we want to use one
+	// Workaround for python, some policy packs don't specify a venv but we want to use one
 	if proj.Runtime.Name() == "python" {
-		// If the template does give virtualenv use it, else default to "venv"
+		// If the policy's options provide a virtualenv use it, else default to "venv"
 		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
 			proj.Runtime.SetOption("virtualenv", "venv")
 			err = proj.Save(projPath)
