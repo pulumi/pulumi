@@ -88,6 +88,10 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return link + "Args"
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	return moduleToPackage(d.goPkgInfo.ModuleToPackage, module)
+}
+
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
 	goPkg := moduleToPackage(d.goPkgInfo.ModuleToPackage, relativeToModule)

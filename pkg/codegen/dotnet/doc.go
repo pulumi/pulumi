@@ -102,6 +102,12 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	a, _ := pkg.Language("csharp")
+	info, _ := a.(CSharpPackageInfo)
+	return namespaceName(info.Namespaces, module)
+}
+
 func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {

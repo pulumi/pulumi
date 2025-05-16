@@ -68,6 +68,10 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return d.GetDocLinkForResourceInputOrOutputType(pkg, modName, typeName, input)
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	return moduleName(module, pkg)
+}
+
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
 	// Remove the union with `undefined` for optional types,
