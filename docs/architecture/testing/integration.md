@@ -21,11 +21,14 @@ To test an alternative `pulumi` binary, set the environment variable `PULUMI_INT
 #### Build the required binaries
 
 ```bash
-# from the repostiory root, build and install `pulumi`
-make build install
-# from sdk/{python,nodejs,go}, build and install the required language runtimes
-cd sdk/python
-make build install
+# From the repository root, build the Pulumi CLI and the Go, Python and Node.js language runtimes.
+make build
+# You can also build individual SDKs
+SDKS="nodejs python" make build
+# or just the main Pulumi CLI
+SDKS= make build
+# The Node.js TypeScript SDK needs to be built separatly
+cd sdks/nodejs && make build install
 ```
 
 To run a single integration test, run the following command from the repository root.
