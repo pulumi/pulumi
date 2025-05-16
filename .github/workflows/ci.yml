@@ -112,6 +112,8 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
+      - name: Install CLI
+        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:

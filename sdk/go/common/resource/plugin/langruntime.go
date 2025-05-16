@@ -104,6 +104,7 @@ func (info ProgramInfo) Marshal() (*pulumirpc.ProgramInfo, error) {
 type InstallDependenciesRequest struct {
 	Info                    ProgramInfo
 	UseLanguageVersionTools bool
+	IsPlugin                bool
 }
 
 func (options InstallDependenciesRequest) String() string {

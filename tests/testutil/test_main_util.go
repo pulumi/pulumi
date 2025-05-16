@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -71,23 +70,8 @@ func InstallPythonProvider() {
 	}
 	repoRoot := strings.TrimSpace(string(stdout))
 
-	// TODO: Would be good if this was just `pulumi install`
-	cmd := exec.Command("python", "-m", "venv", "venv")
+	cmd := exec.Command("pulumi", "install")
 	providerRoot := filepath.Join(repoRoot, "tests", "testprovider-py")
-	cmd.Dir = providerRoot
-	stdout, err = cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("error setup venv for plugin: %v.  Output: %v\n", err, string(stdout))
-		os.Exit(1)
-	}
-
-	virtualenvBinPath := filepath.Join("venv", "bin", "python")
-	if runtime.GOOS == "windows" {
-		virtualenvBinPath = filepath.Join("venv", "Scripts", "python.exe")
-	}
-	cmd = exec.Command( //nolint:gosec
-		virtualenvBinPath,
-		"-m", "pip", "install", "-r", "requirements.txt")
 	cmd.Dir = providerRoot
 	stdout, err = cmd.CombinedOutput()
 	if err != nil {

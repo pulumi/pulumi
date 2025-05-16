@@ -921,7 +921,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			project.Runtime.Options())
 
 		installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
-			plugin.InstallDependenciesRequest{Info: programInfo},
+			plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: false},
 		)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
