@@ -57,6 +57,22 @@ func (err NotFoundError) Error() string {
 	return "not found"
 }
 
+var ErrForbidden = ForbiddenError{}
+
+type ForbiddenError struct{}
+
+func (err ForbiddenError) Error() string {
+	return "forbidden"
+}
+
+var ErrUnauthorized = UnauthorizedError{}
+
+type UnauthorizedError struct{}
+
+func (err UnauthorizedError) Error() string {
+	return "unauthorized"
+}
+
 type registryKey struct{}
 
 func Set(ctx context.Context, registry Registry) context.Context {

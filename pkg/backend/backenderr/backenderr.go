@@ -29,7 +29,48 @@ var ErrNotFound = NotFoundError{}
 var ErrNoPreviousDeployment = errors.New("no previous deployment")
 
 // ErrLoginRequired is returned when a command requires logging in.
-var ErrLoginRequired = errors.New("this command requires logging in; try running `pulumi login` first")
+var ErrLoginRequired = LoginRequiredError{}
+
+var ErrForbidden = ForbiddenError{}
+
+type ForbiddenError struct{ Err error }
+
+func (err ForbiddenError) Unwrap() error {
+	return err.Err
+}
+
+func (err ForbiddenError) Error() string {
+	if err.Err != nil {
+		return err.Err.Error()
+	}
+	return "forbidden"
+}
+
+func (ForbiddenError) Is(other error) bool {
+	switch other.(type) {
+	case ForbiddenError, *ForbiddenError,
+		registry.ForbiddenError, *registry.ForbiddenError:
+		return true
+	default:
+		return false
+	}
+}
+
+type LoginRequiredError struct{}
+
+func (LoginRequiredError) Error() string {
+	return "this command requires logging in; try running `pulumi login` first"
+}
+
+func (LoginRequiredError) Is(other error) bool {
+	switch other.(type) {
+	case LoginRequiredError, *LoginRequiredError,
+		registry.UnauthorizedError, *registry.UnauthorizedError:
+		return true
+	default:
+		return false
+	}
+}
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
 type StackAlreadyExistsError struct {
