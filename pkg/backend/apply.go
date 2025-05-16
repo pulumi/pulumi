@@ -51,8 +51,8 @@ type Explainer interface {
 	// Explain returns a human-readable explanation of the changes that will be made to the stack.
 	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
 		events []engine.Event) (string, error)
-	// IsCopilotFeatureEnabled returns whether the explainer is enabled for the given project.
-	IsCopilotFeatureEnabled(opts display.Options) bool
+	// IsExplainPreviewEnabled returns whether the explainer is enabled for the given project.
+	IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool
 }
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
@@ -195,7 +195,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 			choices = append(choices, string(details))
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
-			if explainer != nil && explainer.IsCopilotFeatureEnabled(opts.Display) {
+			if explainer != nil && explainer.IsExplainPreviewEnabled(ctx, opts.Display) {
 				choices = append(choices, explainChoice)
 			}
 		}

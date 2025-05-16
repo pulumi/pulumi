@@ -112,4 +112,30 @@ func TestCapabilities(t *testing.T) {
 			BatchEncryption: true,
 		}, actual)
 	})
+
+	t.Run("parse copilot summarize error v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: CopilotSummarizeError, Version: 1},
+			},
+		}
+		actual, err := response.Parse()
+		assert.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			CopilotSummarizeErrorV1: true,
+		}, actual)
+	})
+
+	t.Run("parse copilot summarize error with newer version", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: CopilotSummarizeError, Version: 2},
+			},
+		}
+		actual, err := response.Parse()
+		assert.NoError(t, err)
+		assert.Equal(t, Capabilities{}, actual)
+	})
 }

@@ -1155,7 +1155,23 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
 }
 
-func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
+// IsExplainPreviewEnabled implements the "explainer" interface.
+// Checks that the backend supports the CopilotExplainPreview capability and that the user has enabled
+// the Copilot features.
+func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
+	if !b.isCopilotFeaturesEnabled(opts) {
+		return false
+	}
+
+	if !b.Capabilities(ctx).CopilotExplainPreviewV1 {
+		logging.V(7).Infof("CopilotExplainPreviewV1 is not supported by the backend")
+		return false
+	}
+
+	return true
+}
+
+func (b *cloudBackend) isCopilotFeaturesEnabled(opts display.Options) bool {
 	// Have copilot features been requested by specifying the --copilot flag to the cli
 	if !opts.ShowCopilotFeatures {
 		return false
@@ -1498,35 +1514,39 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.IsCopilotFeatureEnabled(op.Opts.Display) {
-		originalEvents := events
-		// New var as we need a bidirectional channel type to be able to read from it.
-		eventsChannel := make(chan engine.Event)
-		events = eventsChannel
+	if b.isCopilotFeaturesEnabled(op.Opts.Display) {
+		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
+			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
+		} else {
+			originalEvents := events
+			// New var as we need a bidirectional channel type to be able to read from it.
+			eventsChannel := make(chan engine.Event)
+			events = eventsChannel
 
-		var renderEvents []engine.Event
-		done := make(chan bool)
-		go func() {
-			for e := range eventsChannel {
-				// Forward all events from the engine to the original channel.
-				// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
-				if originalEvents != nil {
-					originalEvents <- e
+			var renderEvents []engine.Event
+			done := make(chan bool)
+			go func() {
+				for e := range eventsChannel {
+					// Forward all events from the engine to the original channel.
+					// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
+					if originalEvents != nil {
+						originalEvents <- e
+					}
+					// Do not send internal events to the copilot summary as they are not displayed to the user either.
+					// We can skip Ephemeral events as well as we want to display the "final" output.
+					if e.Internal() || e.Ephemeral() {
+						continue
+					}
+					renderEvents = append(renderEvents, e)
 				}
-				// Do not send internal events to the copilot summary as they are not displayed to the user either.
-				// We can skip Ephemeral events as well as we want to display the "final" output.
-				if e.Internal() || e.Ephemeral() {
-					continue
-				}
-				renderEvents = append(renderEvents, e)
-			}
-			done <- true
-		}()
-		defer func() {
-			close(eventsChannel)
-			<-done
-			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
-		}()
+				done <- true
+			}()
+			defer func() {
+				close(eventsChannel)
+				<-done
+				b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
+			}()
+		}
 	}
 
 	// Display messages from the backend if present.
