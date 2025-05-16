@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -61,6 +62,10 @@ func (f *lm) Current(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
+		// Handle PostgreSQL backend URLs
+		if postgres.IsPostgresBackendURL(url) {
+			return postgres.New(ctx, sink, url, project)
+		}
 		return diy.New(ctx, sink, url, project)
 	}
 
@@ -78,6 +83,14 @@ func (f *lm) Login(
 	color colors.Colorization,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
+		// Handle PostgreSQL backend URLs
+		if postgres.IsPostgresBackendURL(url) {
+			if setCurrent {
+				return postgres.Login(ctx, sink, url, project)
+			}
+			return postgres.New(ctx, sink, url, project)
+		}
+
 		if setCurrent {
 			return diy.Login(ctx, sink, url, project)
 		}

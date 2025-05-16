@@ -93,7 +93,11 @@ func NewLoginCmd() *cobra.Command {
 			"\n" +
 			"Azure Blob:\n" +
 			"\n" +
-			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
+			"    $ pulumi login azblob://my-pulumi-state-bucket\n" +
+			"\n" +
+			"PostgreSQL:\n" +
+			"\n" +
+			"    $ pulumi login postgres://username:password@hostname:5432/database?sslmode=disable\n",
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -207,14 +211,14 @@ func NewLoginCmd() *cobra.Command {
 
 func validateCloudBackendType(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
-	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
+	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
 			return nil
 		}
 	}
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
-		"azblob://, gs://, s3://, file://, https:// and http://)",
+		"azblob://, gs://, s3://, file://, https://, http:// and postgres://)",
 		kind)
 }
 
