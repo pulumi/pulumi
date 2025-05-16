@@ -33,6 +33,7 @@ func TestMain(m *testing.M) {
 	}
 
 	testutil.SetupPulumiBinary()
+	testutil.InstallPythonProvider()
 
 	code := m.Run()
 	os.Exit(code)

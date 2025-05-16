@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -56,5 +57,40 @@ func SetupPulumiBinary() {
 			}
 		}
 		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", pulumiBinPath)
+	}
+}
+
+// This runs pulumi install on the python provider so it's venv is setup for running.
+func InstallPythonProvider() {
+	// Find the root of the repository
+	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		fmt.Printf("error finding repo root: %v\n", err)
+		os.Exit(1)
+	}
+	repoRoot := strings.TrimSpace(string(stdout))
+
+	// TODO: Would be good if this was just `pulumi install`
+	cmd := exec.Command("python", "-m", "venv", "venv")
+	providerRoot := filepath.Join(repoRoot, "tests", "testprovider-py")
+	cmd.Dir = providerRoot
+	stdout, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("error setup venv for plugin: %v.  Output: %v\n", err, string(stdout))
+		os.Exit(1)
+	}
+
+	virtualenvBinPath := filepath.Join("venv", "bin", "python")
+	if runtime.GOOS == "windows" {
+		virtualenvBinPath = filepath.Join("venv", "Scripts", "python.exe")
+	}
+	cmd = exec.Command( //nolint:gosec
+		virtualenvBinPath,
+		"-m", "pip", "install", "-r", "requirements.txt")
+	cmd.Dir = providerRoot
+	stdout, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("error install requirements for plugin: %v.  Output: %v\n", err, string(stdout))
+		os.Exit(1)
 	}
 }
