@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -41,7 +42,7 @@ func newStateProtectCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "protect [resource URN]",
+		Use:   "protect [resource URN...]",
 		Short: "protect resource in a stack's state",
 		Long: `Protect resource in a stack's state
 
@@ -58,7 +59,7 @@ the 'protect' resource option and how it can be used to protect resources in you
 To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cmdutil.MaximumNArgs(1),
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -70,21 +71,22 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return protectAllResources(ctx, ws, stack, showPrompt)
 			}
 
-			var urn resource.URN
-
-			if len(args) != 1 {
-				if !cmdutil.Interactive() {
-					return missingNonInteractiveArg("resource URN")
-				}
-				var err error
-				urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to protect:")
-				if err != nil {
-					return fmt.Errorf("failed to select resource: %w", err)
-				}
-			} else {
-				urn = resource.URN(args[0])
+			// If URN arguments were provided, use those
+			if len(args) > 0 {
+				return protectMultipleResources(ctx, ws, stack, args, showPrompt)
 			}
-			return protectResource(ctx, ws, stack, urn, showPrompt)
+
+			// Otherwise, use interactive selection
+			if !cmdutil.Interactive() {
+				return missingNonInteractiveArg("resource URN")
+			}
+
+			urn, err := getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to protect:")
+			if err != nil {
+				return fmt.Errorf("failed to select resource: %w", err)
+			}
+
+			return protectMultipleResources(ctx, ws, stack, []string{string(urn)}, showPrompt)
 		},
 	}
 
@@ -118,25 +120,56 @@ func protectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName
 	return nil
 }
 
-func protectResource(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
-) error {
-	err := runStateEditWithPrompt(
-		ctx,
-		ws,
-		backend.DefaultLoginManager,
-		stackName,
-		showPrompt,
-		urn,
-		func(_ *deploy.Snapshot, res *resource.State) error {
-			res.Protect = true
-			return nil
-		},
-		protectMessage,
-	)
-	if err != nil {
-		return err
+// protectResourcesInSnapshot handles the logic for protecting resources in a snapshot.
+func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+	if snap == nil {
+		return 0, []error{errors.New("no resources found to protect")}
 	}
-	fmt.Println("Resource protected")
-	return nil
+
+	var errs []error
+	resourceCount := 0
+
+	// Map URNs to resources for efficient lookup
+	urnToResource := make(map[resource.URN]*resource.State)
+	for _, res := range snap.Resources {
+		urnToResource[res.URN] = res
+	}
+
+	for _, urnStr := range urns {
+		urn := resource.URN(urnStr)
+		res, found := urnToResource[urn]
+
+		if found {
+			res.Protect = true
+			resourceCount++
+		} else {
+			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+		}
+	}
+
+	return resourceCount, errs
+}
+
+// protectMultipleResources protects multiple resources specified by their URNs.
+func protectMultipleResources(
+	ctx context.Context, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+) error {
+	return runTotalStateEditWithPrompt(
+		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+			resourceCount, errs := protectResourcesInSnapshot(snap, urns)
+
+			if resourceCount > 0 && len(errs) == 0 {
+				fmt.Printf("%d resources protected\n", resourceCount)
+			}
+
+			if len(errs) > 0 {
+				var errMsgs []string
+				for _, err := range errs {
+					errMsgs = append(errMsgs, err.Error())
+				}
+				return errors.New(strings.Join(errMsgs, "\n"))
+			}
+
+			return nil
+		}, protectMessage)
 }

@@ -10,9 +10,10 @@ paths:
     secure: false
     isObject: true
   my:outer.inner:
-    value: "100"
+    value: 100
     string: "100"
     redacted: "100"
-    object: EBAABnN0cmluZwwFAAMxMDA=
+    object: DRAABWludDY0BAMA/8g=
     secure: false
     isObject: false
+    type: 2

@@ -17,6 +17,7 @@ paths:
     object: GhAABnN0cmluZwwPAA1leGlzdGluZ1ZhbHVl
     secure: false
     isObject: false
+    type: 1
   my:outer.inner:
     value: value
     string: value
@@ -24,3 +25,4 @@ paths:
     object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: false
+    type: 1

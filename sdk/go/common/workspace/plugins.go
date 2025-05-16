@@ -1142,7 +1142,7 @@ func parsePluginSpecFromName(
 	spec, err := inference.parseVersion(spec, func(versionStr string) error {
 		v, err := semver.ParseTolerant(versionStr)
 		if err != nil {
-			return fmt.Errorf("VERSION must be valid semver: %w", err)
+			return fmt.Errorf("VERSION must be valid semver: %s", versionStr)
 		}
 		version = &v
 		return nil
@@ -2228,9 +2228,9 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
+func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(context.TODO(), d, spec, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2240,9 +2240,9 @@ func GetPluginPath(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 	return path, err
 }
 
-func GetPluginInfo(d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
+func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginSpec, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(context.TODO(), d, spec, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}

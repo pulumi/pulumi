@@ -30,6 +30,7 @@ paths:
     object: DhAABnN0cmluZwwDAAFi
     secure: false
     isObject: false
+    type: 1
   my:name[2]:
     value: c
     string: c
@@ -37,3 +38,4 @@ paths:
     object: DhAABnN0cmluZwwDAAFj
     secure: false
     isObject: false
+    type: 1

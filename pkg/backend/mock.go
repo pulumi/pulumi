@@ -18,10 +18,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"iter"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/esc"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -857,7 +859,11 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockPackageRegistry struct {
-	PublishF func(context.Context, apitype.PackagePublishOp) error
+	PublishF    func(context.Context, apitype.PackagePublishOp) error
+	GetPackageF func(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.PackageMetadata, error)
+	SearchByNameF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 }
 
 var _ PackageRegistry = (*MockPackageRegistry)(nil)
@@ -865,6 +871,24 @@ var _ PackageRegistry = (*MockPackageRegistry)(nil)
 func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePublishOp) error {
 	if mr.PublishF != nil {
 		return mr.PublishF(ctx, op)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockPackageRegistry) GetPackage(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.PackageMetadata, error) {
+	if mr.GetPackageF != nil {
+		return mr.GetPackageF(ctx, source, publisher, name, version)
+	}
+	panic("not implemented")
+}
+
+func (mr *MockPackageRegistry) SearchByName(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	if mr.SearchByNameF != nil {
+		return mr.SearchByNameF(ctx, name)
 	}
 	panic("not implemented")
 }

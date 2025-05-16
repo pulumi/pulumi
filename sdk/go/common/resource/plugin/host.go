@@ -93,7 +93,10 @@ type Host interface {
 	SignalCancellation() error
 
 	// StartDebugging asks the host to start a debugging session with the given configuration.
-	StartDebugging(DebuggingInfo) error
+	StartDebugging(info DebuggingInfo) error
+
+	// AttachDebugger returns true if debugging is enabled.
+	AttachDebugger() bool
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -189,7 +192,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
-		debugging:               debugging,
+		debugContext:            debugging,
 		projectName:             projectName,
 	}
 
@@ -303,7 +306,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	projectName             tokens.PackageName               // name of the project
-	debugging               DebugContext
+	debugContext            DebugContext
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -342,8 +345,14 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 }
 
 func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
-	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
-	return host.debugging.StartDebugging(info)
+	if host.debugContext == nil {
+		return errors.New("debugging is not enabled")
+	}
+	return host.debugContext.StartDebugging(info)
+}
+
+func (host *defaultHost) AttachDebugger() bool {
+	return host.debugContext != nil && host.debugContext.AttachDebugger()
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
@@ -582,7 +591,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 }
 
 func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(host.ctx.Diag, spec, host.GetProjectPlugins())
+	return workspace.GetPluginInfo(host.ctx.baseContext, host.ctx.Diag, spec, host.GetProjectPlugins())
 }
 
 func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {

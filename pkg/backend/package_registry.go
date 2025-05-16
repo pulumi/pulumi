@@ -15,12 +15,31 @@
 package backend
 
 import (
-	ctx "context"
+	"context"
+	"iter"
+
+	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 type PackageRegistry interface {
 	// Publish publishes a package to the package registry.
-	Publish(ctx ctx.Context, op apitype.PackagePublishOp) error
+	Publish(ctx context.Context, op apitype.PackagePublishOp) error
+
+	// Retrieve metadata about a specific package.
+	//
+	// {source}/{publisher}/{name} should form the identifier that describes the
+	// desired package.
+	//
+	// If version is nil, it will default to latest.
+	GetPackage(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.PackageMetadata, error)
+
+	// Retrieve a list of packages.
+	//
+	// If name is non-nil, it will filter to accessible packages that exactly match
+	// */*/{name}.
+	SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 }

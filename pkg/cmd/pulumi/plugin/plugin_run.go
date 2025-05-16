@@ -68,7 +68,7 @@ func newPluginRunCmd() *cobra.Command {
 
 			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
-			path, err := workspace.GetPluginPath(d, pluginSpec, nil)
+			path, err := workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 			if err != nil {
 				// Try to install the plugin, unless auto plugin installs are turned off.
 				var me *workspace.MissingError
@@ -86,7 +86,7 @@ func newPluginRunCmd() *cobra.Command {
 					return err
 				}
 
-				path, err = workspace.GetPluginPath(d, pluginSpec, nil)
+				path, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
 					return fmt.Errorf("could not get plugin path: %w", err)
 				}

@@ -29,7 +29,7 @@ import (
 
 func TestAnalyzerSpawn(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	// Sanity test that from config.Map to envvars we see what we expect to see
@@ -72,7 +72,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 
 func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-no-config")
@@ -92,7 +92,7 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
-	ctx, err := NewContext(d, d, nil, nil, "", nil, false, nil)
+	ctx, err := NewContext(context.Background(), d, d, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 
 	// Sanity test that from config.Map to property values we see what we expect to see

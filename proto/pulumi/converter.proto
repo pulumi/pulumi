@@ -81,6 +81,11 @@ message ConvertProgramRequest {
     string loader_target = 4;
     // the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options.
     repeated string args = 5;
+    // the directory where the final generated project for the eventual destination language will be written.
+    // use to determine relative paths of any asset that will be copied over.
+    // Do not write files to this directory as these files might be overwritten in 
+    // the project generation process.
+    string generated_project_directory = 6;
 }
 
 message ConvertProgramResponse {

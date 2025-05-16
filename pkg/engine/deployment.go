@@ -54,7 +54,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
+	ctx, err := plugin.NewContextWithRoot(context.TODO(), diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
 		projinfo.Proj.GetPackageSpecs(), config, debugging)
 	if err != nil {
@@ -189,7 +189,7 @@ func newDeployment(
 	}
 
 	// Create a context for plugins.
-	debugContext := newDebugContext(opts.Events)
+	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {

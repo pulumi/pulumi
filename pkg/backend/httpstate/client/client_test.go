@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -81,7 +82,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		unauthorizedClient := newMockClient(unauthorizedServer)
-		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
 	})
@@ -93,7 +94,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer rateLimitedServer.Close()
 
 		rateLimitedClient := newMockClient(rateLimitedServer)
-		_, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background())
+		_, _, _, _, rateLimitErr := rateLimitedClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.EqualError(t, rateLimitErr, "pulumi service: request rate-limit exceeded")
 	})
@@ -105,7 +106,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defer defaultErrorServer.Close()
 
 		defaultErrorClient := newMockClient(defaultErrorServer)
-		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background())
+		_, _, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(context.Background(), nil)
 
 		assert.Error(t, defaultErrorErr)
 	})
@@ -121,12 +122,37 @@ func TestAPIVersionResponses(t *testing.T) {
 	defer versionServer.Close()
 
 	versionClient := newMockClient(versionServer)
-	latestVersion, oldestWithoutWarning, latestDevVersion, err := versionClient.GetCLIVersionInfo(context.Background())
+	latestVersion, oldestWithoutWarning, latestDevVersion, _, err := versionClient.GetCLIVersionInfo(
+		context.Background(), nil,
+	)
 
 	assert.NoError(t, err)
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
+}
+
+func TestAPIVersionMetadataHeaders(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "foo", req.Header.Get("X-Pulumi-First"))
+		assert.Equal(t, "bar", req.Header.Get("X-Pulumi-Second"))
+		assert.Empty(t, req.Header.Get("X-Pulumi-Third"))
+		return `{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0-11-gdeadbeef"}`
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	// Act.
+	_, _, _, _, err := client.GetCLIVersionInfo(context.Background(), map[string]string{
+		"First":  "foo",
+		"Second": "bar",
+	})
+
+	// Assert.
+	assert.NoError(t, err)
 }
 
 func TestGzip(t *testing.T) {
@@ -449,3 +475,247 @@ func TestGetDefaultOrg(t *testing.T) {
 		assert.Empty(t, resp.GitHubLogin)
 	})
 }
+
+func TestGetPackage(t *testing.T) {
+	t.Parallel()
+
+	const metadataJSON = `{
+  "name": "my-package",
+  "publisher": "my-publisher",
+  "source": "my-source",
+  "version": "1.0.0",
+  "title": "Example Package",
+  "description": "This is an example package.",
+  "logoUrl": "https://example.com/logo.png",
+  "repoUrl": "https://github.com/example/package",
+  "category": "utilities",
+  "isFeatured": true,
+  "packageTypes": ["native", "component"],
+  "packageStatus": "ga",
+  "readmeURL": "https://example.com/readme",
+  "schemaURL": "https://example.com/schema",
+  "pluginDownloadURL": "https://example.com/download",
+  "createdAt": "2023-10-01T12:00:00Z",
+  "visibility": "public"
+}`
+
+	metadata := func() apitype.PackageMetadata {
+		return apitype.PackageMetadata{
+			Name:              "my-package",
+			Publisher:         "my-publisher",
+			Source:            "my-source",
+			Version:           semver.Version{Major: 1},
+			Title:             "Example Package",
+			Description:       "This is an example package.",
+			LogoURL:           "https://example.com/logo.png",
+			RepoURL:           "https://github.com/example/package",
+			Category:          "utilities",
+			IsFeatured:        true,
+			PackageTypes:      []apitype.PackageType{"native", "component"},
+			PackageStatus:     apitype.PackageStatusGA,
+			ReadmeURL:         "https://example.com/readme",
+			SchemaURL:         "https://example.com/schema",
+			PluginDownloadURL: "https://example.com/download",
+			CreatedAt:         time.Date(2023, time.October, 1, 12, 0, 0, 0, time.UTC),
+			Visibility:        apitype.VisibilityPublic,
+		}
+	}
+
+	t.Run("latest-latest", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "my-source/my-publisher/my-package/versions/latest")
+			return metadataJSON
+		})
+		defer s.Close()
+
+		c := newMockClient(s)
+
+		resp, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", nil)
+		require.NoError(t, err)
+		assert.Equal(t, metadata(), resp)
+	})
+
+	t.Run("404", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServer(404, ``)
+		defer s.Close()
+
+		c := newMockClient(s)
+
+		_, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", nil)
+		var apiError *apitype.ErrorResponse
+		require.ErrorAs(t, err, &apiError, "actual error type %T", err)
+		assert.Equal(t, 404, apiError.Code)
+	})
+
+	t.Run("specific-version", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "my-source/my-publisher/my-package/versions/1.0.0")
+			return metadataJSON
+		})
+		defer s.Close()
+
+		c := newMockClient(s)
+
+		resp, err := c.GetPackage(context.Background(), "my-source", "my-publisher", "my-package", &semver.Version{
+			Major: 1,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, metadata(), resp)
+	})
+}
+
+func TestSearchByName(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a mock response with package metadata
+		expectedPackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-1",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 1},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+			{
+				Name:          "my-package-2",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 2},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		mockResponse := apitype.ListPackagesResponse{
+			Packages: expectedPackages,
+		}
+
+		// Set up mock server
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Contains(t, req.URL.String(), "/preview/registry/packages?limit=499")
+			assert.Equal(t, "GET", req.Method)
+
+			data, err := json.Marshal(mockResponse)
+			require.NoError(t, err)
+			return string(data)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		// Call SearchByName and collect results
+		searchName := "my-package"
+		searchResults := []apitype.PackageMetadata{}
+		for pkg, err := range mockClient.SearchByName(context.Background(), &searchName) {
+			require.NoError(t, err)
+			searchResults = append(searchResults, pkg)
+		}
+		assert.Equal(t, expectedPackages, searchResults)
+	})
+
+	t.Run("with-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		// First page response
+		firstPagePackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-1",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 1},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		secondPagePackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-2",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 2},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		thirdPagePackages := []apitype.PackageMetadata{
+			{
+				Name:          "my-package-3",
+				Publisher:     "my-publisher",
+				Source:        "my-source",
+				Version:       semver.Version{Major: 3},
+				PackageStatus: apitype.PackageStatusGA,
+				Visibility:    apitype.VisibilityPrivate,
+			},
+		}
+
+		// Track which request is being made
+		requestCount := 0
+
+		// Set up mock server
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, "GET", req.Method)
+
+			var responseData []byte
+			var err error
+
+			switch requestCount {
+			case 0:
+				assert.Equal(t, "/preview/registry/packages?limit=499&name=my-package", req.URL.String())
+				assert.NotContains(t, "continuationToken", req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListPackagesResponse{
+					Packages:          firstPagePackages,
+					ContinuationToken: ptr("next-page-token-1"),
+				})
+				require.NoError(t, err)
+			case 1:
+				assert.Equal(t,
+					"/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-1",
+					req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListPackagesResponse{
+					Packages:          secondPagePackages,
+					ContinuationToken: ptr("next-page-token-2"),
+				})
+				require.NoError(t, err)
+			case 2:
+				assert.Equal(t,
+					"/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-2",
+					req.URL.String())
+
+				responseData, err = json.Marshal(apitype.ListPackagesResponse{
+					Packages: thirdPagePackages,
+				})
+				require.NoError(t, err)
+			}
+
+			requestCount++
+			return string(responseData)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		searchName := "my-package"
+		searchResults := []apitype.PackageMetadata{}
+		for pkg, err := range mockClient.SearchByName(context.Background(), &searchName) {
+			require.NoError(t, err)
+			searchResults = append(searchResults, pkg)
+		}
+
+		expectedPackages := append(append(firstPagePackages, secondPagePackages...), thirdPagePackages...)
+		assert.Equal(t, expectedPackages, searchResults)
+		assert.Equal(t, 3, requestCount) // Ensure both requests were made
+	})
+}
+
+func ptr[T any](v T) *T { return &v }

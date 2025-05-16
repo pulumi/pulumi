@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	"net/url"
 	"path"
@@ -290,8 +291,16 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
 // oldest version before the CLI should warn about an upgrade, and the current dev version).
-func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, semver.Version, error) {
+func (pc *Client) GetCLIVersionInfo(
+	ctx context.Context,
+	metadata map[string]string,
+) (semver.Version, semver.Version, semver.Version, int, error) {
 	var versionInfo apitype.CLIVersionResponse
+
+	headers := map[string][]string{}
+	for k, v := range metadata {
+		headers["X-Pulumi-"+k] = []string{v}
+	}
 
 	err := pc.restCallWithOptions(
 		ctx,
@@ -302,35 +311,36 @@ func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver
 		&versionInfo, // response
 		httpCallOptions{
 			RetryPolicy: retryNone,
+			Header:      http.Header(headers),
 		},
 	)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
 	}
 
 	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
 	}
 
 	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
 	}
 
 	// If there is no dev version, return the latest and oldest
 	// versions.  This can happen if the server does not include
 	// https://github.com/pulumi/pulumi-service/pull/17429 yet
 	if versionInfo.LatestDevVersion == "" {
-		return latestSem, oldestSem, semver.Version{}, nil
+		return latestSem, oldestSem, semver.Version{}, versionInfo.CacheMS, nil
 	}
 
 	devSem, err := semver.ParseTolerant(versionInfo.LatestDevVersion)
 	if err != nil {
-		return semver.Version{}, semver.Version{}, semver.Version{}, err
+		return semver.Version{}, semver.Version{}, semver.Version{}, 0, err
 	}
 
-	return latestSem, oldestSem, devSem, nil
+	return latestSem, oldestSem, devSem, versionInfo.CacheMS, nil
 }
 
 // GetDefaultOrg lists the backend's opinion of which user organization to use, if default organization
@@ -1541,4 +1551,49 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	}
 
 	return nil
+}
+
+func (pc *Client) GetPackage(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.PackageMetadata, error) {
+	v := "latest"
+	if version != nil {
+		v = version.String()
+	}
+	url := fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, v)
+	var resp apitype.PackageMetadata
+	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
+	return resp, err
+}
+
+func (pc *Client) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+	url := "/preview/registry/packages?limit=499"
+	if name != nil {
+		url += "&name=" + *name
+	}
+
+	var continuationToken *string
+	return func(f func(apitype.PackageMetadata, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "&continuationToken=" + *continuationToken
+			}
+			var resp apitype.ListPackagesResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.PackageMetadata{}, err)
+				return
+			}
+			for _, v := range resp.Packages {
+				if !f(v, nil) {
+					return
+				}
+			}
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
 }
