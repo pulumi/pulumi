@@ -9,9 +9,19 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Plant
 {
+    /// <summary>
+    /// The provider type for the plant package. By default, resources use package-wide configuration settings, however an explicit `Provider` instance may be created and passed during resource construction to achieve fine-grained programmatic control over provider settings.
+    /// </summary>
     [PlantResourceType("pulumi:providers:plant")]
     public partial class Provider : global::Pulumi.ProviderResource
     {
+        /// <summary>
+        /// The environment to use for the provider
+        /// </summary>
+        [Output("environment")]
+        public Output<string?> Environment { get; private set; } = null!;
+
+
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
         /// </summary>
@@ -39,8 +49,15 @@ namespace Pulumi.Plant
 
     public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
+        /// <summary>
+        /// The environment to use for the provider
+        /// </summary>
+        [Input("environment", json: true)]
+        public Input<Pulumi.Plant.ProviderEnvironment>? Environment { get; set; }
+
         public ProviderArgs()
         {
+            Environment = Pulumi.Plant.ProviderEnvironment.Development;
         }
         public static new ProviderArgs Empty => new ProviderArgs();
     }
