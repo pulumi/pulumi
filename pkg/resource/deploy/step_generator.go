@@ -75,7 +75,7 @@ type stepGenerator struct {
 	replaces  map[resource.URN]bool // set of URNs replaced in this deployment
 	updates   map[resource.URN]bool // set of URNs updated in this deployment
 	creates   map[resource.URN]bool // set of URNs created in this deployment
-	imports   map[resource.URN]bool // set of URNs impoted in this deployment
+	imports   map[resource.URN]bool // set of URNs imported in this deployment
 	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
 
@@ -866,7 +866,9 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			old, err := cts.Promise().Result(context.Background())
 
 			// Create a fresh 'new' state which will be for the final goal state, the import step will have 'mutated'
-			// the original 'new' variable.
+			// the original 'new' variable. We still need that mutated state for the display and snapshot layers to
+			// reference, but we need a new clean separate state for the the step generator and any follow up steps to
+			// use.
 			var new *resource.State
 			if err == nil {
 				new = resource.NewState(
@@ -933,6 +935,9 @@ func (sg *stepGenerator) ContinueStepsFromImport(event ContinueResourceImportEve
 	return steps, false, err
 }
 
+// This function is called either from an import continuation or from a normal step generation that did no import.
+// Either way we're going to be doing normal step generation after this. Just if we did an import the old state is what
+// we just imported.
 func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 	urn := event.URN()

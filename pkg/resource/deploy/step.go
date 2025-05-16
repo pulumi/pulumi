@@ -1187,7 +1187,7 @@ type ImportStep struct {
 	// true if this import is from an import deployment, i.e. the `pulumi import` command.
 	planned bool
 
-	// the completion source to signal when the import is complete.
+	// the completion source to signal when the import is complete, this will be nil if planned is true.
 	cts *promise.CompletionSource[*resource.State]
 }
 
@@ -1248,6 +1248,7 @@ func newImportDeploymentStep(deployment *Deployment, new *resource.State, random
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
+	contract.Assertf(len(new.Inputs) == 0, "import resource cannot have existing inputs")
 
 	return &ImportStep{
 		deployment: deployment,
@@ -1286,15 +1287,18 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		if s.cts != nil {
 			s.cts.MustFulfill(s.new)
 		}
+		// If this is a planned import we can now tell the engine the step registration is complete. For non-planned
+		// imports the CTS will signal the completion of this step to the step generator, which will either generate
+		// further steps or complete the registration itself.
 		if s.planned {
 			s.reg.Done(&RegisterResult{State: s.new})
 		}
 	}
 
-	// If this is a planned import, ensure that the resource does not exist in the old state file.
+	// If this is a planned import (i.e. from `pulumi import` command), ensure that the resource does not exist in the
+	// old state file.
 	if s.planned {
 		contract.Assertf(s.cts == nil, "planned import should not have a completion source")
-		contract.Assertf(len(s.new.Inputs) == 0, "import resource cannot have existing inputs")
 
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
