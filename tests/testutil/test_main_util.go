@@ -54,6 +54,7 @@ func SetupPulumiBinary() {
 				fmt.Printf("WARNING: pulumi binary not found at %s. "+
 					"Falling back to searching the $PATH. "+
 					"Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
+				return
 			}
 		}
 		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", pulumiBinPath)
