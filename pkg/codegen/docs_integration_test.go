@@ -516,8 +516,6 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 		dotnet: "Foo.GetKubeconfigResult",
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
 	for lang, expected := range expected {
 		testDocsGenHelper(t, lang, pkg.Reference(), func(t *testing.T, helper codegen.DocLanguageHelper) {
 			actual := helper.GetMethodResultName(pkg.Reference(), "",
@@ -525,6 +523,137 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 				mustToken(t, pkg.Reference().Resources().Get, "example:index:Foo").Methods[0],
 			)
 			assert.Equal(t, expected, actual)
+		})
+	}
+}
+
+func TestGetModuleName(t *testing.T) {
+	t.Parallel()
+
+	pkg := func(t *testing.T, language map[string]schema.RawMessage) schema.PackageReference {
+		schemaSpec := schema.PackageSpec{
+			Name: "example",
+			Resources: map[string]schema.ResourceSpec{
+				"example:index:Foo": {
+					IsComponent: true,
+					Methods: map[string]string{
+						"getKubeconfig": "example:index:Foo/getKubeconfig",
+					},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"example:index:Foo/getKubeconfig": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"__self__": {
+								TypeSpec: schema.TypeSpec{
+									Ref: "#/resources/example:index:Foo",
+								},
+							},
+						},
+						Required: []string{"__self__"},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"kubeconfig": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						Required: []string{"kubeconfig"},
+					},
+				},
+			},
+			Language: language,
+		}
+
+		return bind(t, schemaSpec)
+	}
+
+	tests := []struct {
+		name     string
+		schema   schema.PackageReference
+		token    string
+		expected map[language]string
+	}{
+		{
+			name:   "index",
+			schema: pkg(t, nil),
+			token:  "example:index:Foo",
+			expected: map[language]string{
+				golang: "",
+				nodejs: "",
+				python: "",
+				dotnet: "",
+			},
+		},
+		{
+			name:   "simple",
+			schema: pkg(t, nil),
+			token:  "example:mymodule:Foo",
+			expected: map[language]string{
+				golang: "mymodule",
+				nodejs: "mymodule",
+				python: "mymodule",
+				dotnet: "Mymodule",
+			},
+		},
+		{
+			name:   "nested",
+			schema: pkg(t, nil),
+			token:  "example:my/module:Foo",
+			expected: map[language]string{
+				golang: "my/module",
+				nodejs: "my.module",
+				python: "my/module",
+				dotnet: "My.Module",
+			},
+		},
+		{
+			name: "overwritten",
+			schema: pkg(t, map[string]schema.RawMessage{
+				"go": marshalIntoRaw(t, golang_codegen.GoPackageInfo{
+					ModuleToPackage: map[string]string{
+						"shouldoverride": "gopkg",
+					},
+				}),
+				"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpPackageInfo{
+					Namespaces: map[string]string{
+						"shouldoverride": "DotNetPkg",
+					},
+				}),
+				"nodejs": marshalIntoRaw(t, nodejs_codegen.NodePackageInfo{
+					ModuleToPackage: map[string]string{
+						"shouldoverride": "nodepkg",
+					},
+				}),
+				"python": marshalIntoRaw(t, python_codegen.PackageInfo{
+					ModuleNameOverrides: map[string]string{
+						"shouldoverride": "pythonpkg",
+					},
+				}),
+			}),
+			token: "example:shouldoverride:Foo",
+			expected: map[language]string{
+				golang: "gopkg",
+				nodejs: "nodepkg",
+				python: "pythonpkg",
+				dotnet: "DotNetPkg",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.NotEmpty(t, tt.expected)
+			for lang, expected := range tt.expected {
+				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
+					actual := helper.GetModuleName(tt.schema, tt.schema.TokenToModule(tt.token))
+					assert.Equal(t, expected, actual)
+				})
+			}
 		})
 	}
 }
