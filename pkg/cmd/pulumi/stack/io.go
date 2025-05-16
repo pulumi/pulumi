@@ -78,6 +78,11 @@ func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.Pr
 		return ps.Save(ConfigFile)
 	}
 	if stack.HasRemoteConfig() {
+		ssml := NewStackSecretsManagerLoaderFromEnv()
+		ssm, _, err := ssml.GetSecretsManager(ctx, stack, ps))
+		if err != nil {
+			return fmt.Errorf("loading secrets manager: %w", err)
+		}
 		return stack.SaveRemoteConfig(ctx, ps)
 	}
 	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)

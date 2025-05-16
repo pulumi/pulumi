@@ -61,7 +61,7 @@ func (s *diyStack) LoadRemoteConfig(ctx context.Context, project *workspace.Proj
 	return nil, errors.New("remote config not implemented for the DIY backend")
 }
 
-func (s *diyStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
+func (s *diyStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack, ssm secrets.Manager) error {
 	return errors.New("remote config not implemented for the DIY backend")
 }
 

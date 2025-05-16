@@ -40,7 +40,7 @@ type Stack interface {
 	// LoadRemoteConfig the stack's configuration remotely from the backend.
 	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
 	// SaveRemoteConfig the stack's configuration remotely to the backend.
-	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error
+	SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack, ssm secrets.Manager) error
 	// Snapshot returns the latest deployment snapshot.
 	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	// Backend returns the backend this stack belongs to.

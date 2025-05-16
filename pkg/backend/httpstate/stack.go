@@ -18,9 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/pulumi/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
@@ -30,11 +32,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"gopkg.in/yaml.v3"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -177,7 +182,8 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 	return projectStack, nil
 }
 
-func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
+func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack, ssm secrets.Manager,
+) error {
 	stackID, err := s.b.getCloudStackIdentifier(s.ref)
 	if err != nil {
 		return err
@@ -189,7 +195,7 @@ func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspa
 	if len(imports) != 1 {
 		return errors.New("cloud stacks must have exactly 1 import")
 	}
-	stackID, err := s.b.getCloudStackIdentifier(s.ref)
+	projectName, envName, _, hasVersion, err := parseEnvRef(imports[0])
 	if err != nil {
 		return err
 	}
@@ -199,7 +205,84 @@ func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspa
 		EncryptedKey:    projectStack.EncryptedKey,
 		EncryptionSalt:  projectStack.EncryptionSalt,
 	})
+	if err != nil {
+		return fmt.Errorf("updating stack config: %w", err)
+	}
+	// If the config map has values, write them to the ESC environment.
+	if len(projectStack.Config) > 0 {
+		if hasVersion {
+			return fmt.Errorf("cannot set config to an environment pinned to a specific version", imports[0])
+		}
+		if projectName == nil || envName == nil {
+			return fmt.Errorf("environment reference must be of the form <project>/<environment>")
+		}
+		yamlDef, etag, rev, err := s.b.escClient.GetEnvironment(ctx, s.OrgName(), *projectName, *envName, "", false)
+		if err != nil {
+			return fmt.Errorf("getting environment: %w", err)
+		}
+
+		var docNode yaml.Node
+		if err := yaml.Unmarshal(yamlDef, &docNode); err != nil {
+			return fmt.Errorf("unmarshaling environment definition: %w", err)
+		}
+		if docNode.Kind != yaml.DocumentNode {
+			docNode = yaml.Node{
+				Kind:    yaml.DocumentNode,
+				Content: []*yaml.Node{{}},
+			}
+		}
+		path := resource.PropertyPath{"values", "config"}
+		_, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, path, yamlValue)
+
+		newYAML, err := yaml.Marshal(docNode.Content[0])
+		if err != nil {
+			return fmt.Errorf("marshaling definition: %w", err)
+		}
+		diags, err := s.b.escClient.UpdateEnvironmentWithProject(ctx, s.OrgName(), *projectName, *envName, newYAML, etag, rev)
+		if err != nil {
+			return fmt.Errorf("updating environment definition: %w", err)
+		}
+		if len(diags) != 0 {
+			var b strings.Builder
+			for _, d := range diags {
+				b.Reset()
+
+				if d.Range != nil {
+					fmt.Fprintf(&b, "%v%v:", colors.Red, d.Range.Environment)
+					if d.Range.Begin.Line != 0 {
+						fmt.Fprintf(&b, "%v:%v:", d.Range.Begin.Line, d.Range.Begin.Column)
+					}
+					fmt.Fprintf(&b, " ")
+				}
+				fmt.Fprintln(&b, d.Summary)
+
+				fmt.Fprint(out, cmd.esc.colors.Colorize(b.String()))
+			}
+		}
+	}
 	return err
+}
+
+func parseEnvRef(ref string) (projectName *string, envName *string, versionString *string, hasVersion bool, err error) {
+	refName, version, hasVersion := strings.Cut(ref, "@")
+	if !hasVersion {
+		refName, version, hasVersion = strings.Cut(ref, ":")
+	}
+
+	first, second, hasProject := strings.Cut(refName, "/")
+
+	if hasProject {
+		if strings.Contains(second, "/") {
+			return nil, nil, nil, false, fmt.Errorf("invalid environment reference, cannot contain more than one '/'. " +
+				"The format should be 'project/environment' with optional '@version' suffix")
+		}
+		projectName = &first
+		envName = &second
+	} else {
+		envName = &first
+	}
+
+	return projectName, envName, &version, hasVersion, nil
 }
 
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }

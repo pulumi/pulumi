@@ -602,7 +602,7 @@ func (ms *MockStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 	panic("not implemented: MockStack.LoadRemote")
 }
 
-func (ms *MockStack) SaveRemoteConfig(ctx context.Context, project *workspace.ProjectStack) error {
+func (ms *MockStack) SaveRemoteConfig(ctx context.Context, project *workspace.ProjectStack, ssm secrets.Manager) error {
 	if ms.SaveRemoteF != nil {
 		return ms.SaveRemoteF(ctx, project)
 	}
