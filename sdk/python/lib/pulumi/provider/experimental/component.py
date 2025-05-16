@@ -20,8 +20,14 @@ from pulumi.provider.server import ComponentInitError
 
 from ...errors import InputPropertyError
 from ...output import Input, Inputs, Output
-from ...resource import ComponentResource, ResourceOptions
-from ..provider import ConstructResult, Provider
+from ...resource import ComponentResource
+from .provider import (
+    ConstructRequest,
+    ConstructResponse,
+    Provider,
+    GetSchemaRequest,
+    GetSchemaResponse,
+)
 from .analyzer import (
     Analyzer,
     ComponentDefinition,
@@ -30,6 +36,7 @@ from .analyzer import (
     TypeDefinition,
 )
 from .schema import generate_schema
+from .property_value import PropertyValue
 
 
 class ComponentProvider(Provider):
@@ -61,27 +68,31 @@ class ComponentProvider(Provider):
         self._component_defs = result["component_definitions"]
         self._type_defs = result["type_definitions"]
         self._dependencies = result["dependencies"]
-        schema = generate_schema(
-            name,
-            version,
-            namespace,
-            self._component_defs,
-            self._type_defs,
-            self._dependencies,
+        self._schema = json.dumps(
+            generate_schema(
+                name,
+                version,
+                namespace,
+                self._component_defs,
+                self._type_defs,
+                self._dependencies,
+            )
         )
-        super().__init__(version, json.dumps(schema.to_json()))
+        super().__init__()
 
-    def construct(
+    async def get_schema(self, request: GetSchemaRequest) -> GetSchemaResponse:
+        return GetSchemaResponse(schema=self._schema)
+
+    async def construct(
         self,
-        name: str,
-        resource_type: str,
-        inputs: Inputs,
-        options: Optional[ResourceOptions] = None,
-    ) -> ConstructResult:
-        self.validate_resource_type(self._name, resource_type)
-        component_name = resource_type.split(":")[-1]
+        request: ConstructRequest,
+    ) -> ConstructResponse:
+        self.validate_resource_type(self._name, request.resource_type)
+        component_name = request.resource_type.split(":")[-1]
         constructor = self._components[component_name]
         component_def = self._component_defs[component_name]
+
+        inputs = PropertyValue.deserialize_map(request.inputs)
         mapped_args = self.map_inputs(inputs, component_def)
         # Wrap the call to the component constuctor in a try except block to
         # catch any exceptions, so that we can re-raise a ComponentInitError.
@@ -89,11 +100,21 @@ class ComponentProvider(Provider):
         # code vs errors that occur in the SDK.
         try:
             # ComponentResource's init signature is different from the derived class signature.
-            comp_instance = constructor(name, mapped_args, options)  # type: ignore
+            comp_instance = constructor(request.name, mapped_args, request.options)  # type: ignore
         except Exception as e:  # noqa
             raise ComponentInitError(e)
-        state = self.get_state(comp_instance, component_def)
-        return ConstructResult(comp_instance.urn, state)
+
+        urn = await comp_instance.urn.future(False)
+        if urn is None:
+            raise ComponentInitError(
+                Exception(f"Component {component_name} did not return a valid URN")
+            )
+
+        state = PropertyValue.serialize_map(
+            self.get_state(comp_instance, component_def)
+        )
+
+        return ConstructResponse(urn=urn, state=state)
 
     def get_type_definition(self, prop: PropertyDefinition) -> Optional[TypeDefinition]:
         """

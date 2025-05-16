@@ -67,7 +67,7 @@ class ResourceReference:
 @dataclass(frozen=True)
 class Computed:
     def __eq__(self, value):
-        if isinstance(value, PropertyValue.Computed):
+        if isinstance(value, Computed):
             return True
         return False
 
@@ -466,8 +466,10 @@ class PropertyValue:
                 urn = fields["urn"].string_value
                 resource_id = fields.get("resource_id")
                 package_version = fields.get("package_version")
+                resource_id_value = None
                 if resource_id is not None:
                     resource_id_value = PropertyValue.unmarshal(resource_id)
+                package_version_str = None
                 if package_version is not None:
                     if not package_version.HasField("string_value"):
                         raise ValueError(
@@ -487,12 +489,12 @@ class PropertyValue:
                 if inner is None:
                     raise ValueError("Output value missing 'value' field.")
                 dependencies = fields.get("dependencies")
+                deps = set()
                 if dependencies is not None:
                     if not dependencies.HasField("list_value"):
                         raise ValueError(
                             "Output value 'dependencies' field is not a list."
                         )
-                    deps = set()
                     for dep in dependencies.list_value.values:
                         if not dep.HasField("string_value"):
                             raise ValueError(
@@ -500,6 +502,7 @@ class PropertyValue:
                             )
                         deps.add(dep.string_value)
                 secret = fields.get("secret")
+                is_secret = False
                 if secret is not None:
                     if not secret.HasField("bool_value"):
                         raise ValueError(
@@ -537,7 +540,7 @@ class PropertyValue:
 
     @staticmethod
     def marshal_map(
-        value: Dict[str, "PropertyValue"],
+        value: Mapping[str, "PropertyValue"],
     ) -> struct_pb2.Struct:
         """
         Marshals a dictionary of PropertyValues into a protobuf struct value.
@@ -549,3 +552,84 @@ class PropertyValue:
         for key, item in value.items():
             pbstruct[key] = item.marshal()
         return struct_pb2.Struct(fields=pbstruct)
+
+    def deserialize(self: "PropertyValue") -> Any:
+        """
+        Deserializes the PropertyValue into a Python value.
+
+        :return: The deserialized Python value.
+        """
+        value: Any = self.value
+
+        if self.is_secret:
+            value = pulumi.Output.secret(value)
+
+        if self.dependencies:
+            deps = set(
+                cast(pulumi.resource.Resource, pulumi.resource.DependencyResource(urn))
+                for urn in self.dependencies
+            )
+            value = pulumi.Output.from_input(value).with_dependencies(deps)
+
+        return value
+
+    @staticmethod
+    def deserialize_map(
+        value: Mapping[str, "PropertyValue"],
+    ) -> Dict[str, Any]:
+        """
+        Deserializes a dictionary of PropertyValues into a dictionary of Python values.
+
+        :param value: The dictionary of PropertyValues to deserialize.
+        :return: A dictionary of Python values.
+        """
+        result: Dict[str, Any] = {}
+        for key, item in value.items():
+            result[key] = item.deserialize()
+        return result
+
+    @staticmethod
+    def serialize(value: Any) -> "PropertyValue":
+        """
+        Serializes a Python value into a PropertyValue.
+
+        :param value: The Python value to serialize.
+        :return: A PropertyValue representation of the value.
+        """
+        if isinstance(value, PropertyValue):
+            return value
+        elif isinstance(value, bool):
+            return PropertyValue(value)
+        elif isinstance(value, float):
+            return PropertyValue(value)
+        elif isinstance(value, str):
+            return PropertyValue(value)
+        elif isinstance(value, pulumi.Asset):
+            return PropertyValue(value)
+        elif isinstance(value, pulumi.Archive):
+            return PropertyValue(value)
+        elif isinstance(value, Sequence):
+            # If the value is a sequence, we need to serialize each item in the sequence.
+            return PropertyValue([PropertyValue.serialize(item) for item in value])
+        elif isinstance(value, Mapping):
+            # If the value is a mapping, we need to serialize each item in the mapping.
+            return PropertyValue(PropertyValue.serialize_map(value))
+
+        raise ValueError(
+            f"Unsupported value type: {type(value)}. Supported types are: bool, float, str, Asset, Archive, Sequence, Mapping."
+        )
+
+    @staticmethod
+    def serialize_map(
+        value: Mapping[str, Any],
+    ) -> Dict[str, "PropertyValue"]:
+        """
+        Serializes a dictionary of Python values into dictionary of PropertyValues.
+
+        :param value: The dictionary of python values to serialize.
+        :return: A dictionary of PropertyValues values.
+        """
+        result: Dict[str, Any] = {}
+        for key, item in value.items():
+            result[key] = PropertyValue.serialize(item)
+        return result
