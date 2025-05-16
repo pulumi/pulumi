@@ -1478,15 +1478,14 @@ func TestImportWithFailedUpdate(t *testing.T) {
 	importID, inputs := resource.ID("id"), resource.PropertyMap{
 		"foo": resource.NewStringProperty("baz"),
 	}
-	seenResult := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
 			Inputs:   inputs,
 			ImportID: importID,
 		})
 		// We don't expect to get here, the engine never replies to resource registrations that fail unless
 		// continue-with-error is set.
-		seenResult = true
+		assert.Fail(t, "unexpected program execution")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1523,7 +1522,6 @@ func TestImportWithFailedUpdate(t *testing.T) {
 			return err
 		}, "0")
 	assert.ErrorContains(t, err, "step application failed: update failed")
-	assert.False(t, seenResult, "expected program to not be executed")
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
