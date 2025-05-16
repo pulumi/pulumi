@@ -211,6 +211,8 @@ func runConvert(
 		return fmt.Errorf("create plugin host for output directory: %w", err)
 	}
 
+	defer contract.IgnoreClose(schemaLoadingContext.Host)
+
 	// Translate well known sources to plugins
 	switch strings.ToLower(from) {
 	case "tf", "terraform":
