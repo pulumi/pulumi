@@ -433,6 +433,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			args.yes,
 			args.configPath,
 			opts,
+			cmdutil.Diag(),
 		)
 		if err != nil {
 			return err

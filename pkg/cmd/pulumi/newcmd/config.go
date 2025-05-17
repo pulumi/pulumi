@@ -27,6 +27,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -48,6 +49,7 @@ func HandleConfig(
 	yes bool,
 	path bool,
 	opts display.Options,
+	sink diag.Sink,
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
@@ -90,6 +92,7 @@ func HandleConfig(
 			stackConfig,
 			yes,
 			opts,
+			sink,
 		)
 		if err != nil {
 			return err
@@ -98,7 +101,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(ws, s, c); err != nil {
+		if err = SaveConfig(ws, s, c, sink); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -183,6 +186,7 @@ func promptForConfig(
 	stackConfig config.Map,
 	yes bool,
 	opts display.Options,
+	sink diag.Sink,
 ) (config.Map, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
@@ -204,7 +208,7 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack, sink)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
@@ -323,13 +327,13 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map, sink diag.Sink) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(project, stack, sink)
 	if err != nil {
 		return err
 	}

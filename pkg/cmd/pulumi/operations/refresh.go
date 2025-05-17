@@ -202,7 +202,7 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj, cmdutil.Diag())
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

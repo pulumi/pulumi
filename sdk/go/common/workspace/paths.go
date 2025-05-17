@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -190,13 +191,13 @@ func DetectProject() (*Project, error) {
 	return proj, err
 }
 
-func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
+func DetectProjectStack(stackName tokens.QName, diags diag.Sink) (*ProjectStack, error) {
 	project, path, err := DetectProjectStackPath(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadProjectStack(project, path)
+	return LoadProjectStack(project, path, diags)
 }
 
 func DetectProjectStackDeployment(stackName tokens.QName) (*ProjectStackDeployment, error) {

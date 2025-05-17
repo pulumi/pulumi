@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -141,7 +142,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
+	projectStack, config, err := cmd.getStackConfig(ctx, project, stack, cmdutil.Diag())
 	if err != nil {
 		return err
 	}
@@ -202,8 +203,9 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	ctx context.Context,
 	project *workspace.Project,
 	stack backend.Stack,
+	sink diag.Sink,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := cmd.parent.loadProjectStack(project, stack)
+	ps, err := cmd.parent.loadProjectStack(project, stack, sink)
 	if err != nil {
 		return nil, nil, err
 	}
