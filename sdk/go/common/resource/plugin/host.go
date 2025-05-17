@@ -96,7 +96,7 @@ type Host interface {
 	StartDebugging(info DebuggingInfo) error
 
 	// AttachDebugger returns true if debugging is enabled.
-	AttachDebugger() bool
+	AttachDebugger(spec DebugSpec) bool
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -351,8 +351,8 @@ func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
 	return host.debugContext.StartDebugging(info)
 }
 
-func (host *defaultHost) AttachDebugger() bool {
-	return host.debugContext != nil && host.debugContext.AttachDebugger()
+func (host *defaultHost) AttachDebugger(spec DebugSpec) bool {
+	return host.debugContext != nil && host.debugContext.AttachDebugger(spec)
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.

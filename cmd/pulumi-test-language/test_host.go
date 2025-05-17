@@ -218,7 +218,7 @@ func (h *testHost) StartDebugging(plugin.DebuggingInfo) error {
 	panic("not implemented")
 }
 
-func (h *testHost) AttachDebugger() bool {
+func (h *testHost) AttachDebugger(plugin.DebugSpec) bool {
 	return false
 }
 

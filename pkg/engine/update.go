@@ -189,8 +189,8 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
-	// AttachDebugger to launch the language host in debug mode.
-	AttachDebugger bool
+	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin=<plugin-name>".
+	AttachDebugger []string
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
