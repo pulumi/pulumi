@@ -1289,16 +1289,31 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 			}
 
+			// Copy the policy pack to a temporary directory and link in the core SDK into it
+			policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
+			err = os.MkdirAll(policyPackDir, 0o755)
+			if err != nil {
+				return nil, fmt.Errorf("create policy pack dir: %w", err)
+			}
+			err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("copy policy pack: %w", err)
+			}
+
+			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
+			err := languageClient.Link(policyInfo, localDependencies)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+			}
+
 			// Install the dependencies for the policy pack
-			policyPath := filepath.Join(token.PolicyPackDirectory, policyPack)
-			policyInfo := plugin.NewProgramInfo(policyPath, policyPath, ".", nil)
 			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
 			if resp != nil {
 				return resp, nil
 			}
 
 			pack := engine.LocalPolicyPack{
-				Path:   policyPath,
+				Path:   policyPackDir,
 				Config: policyConfigFile,
 			}
 

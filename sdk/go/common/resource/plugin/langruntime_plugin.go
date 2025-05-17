@@ -887,3 +887,28 @@ func languageHandshake(
 	logging.V(7).Infof("Handshake: success [%v]", bin)
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }
+
+func (h *langhost) Link(
+	info ProgramInfo, localDependencies map[string]string,
+) error {
+	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, localDependencies)
+	logging.V(7).Infof("%s executing", label)
+
+	minfo, err := info.Marshal()
+	if err != nil {
+		return err
+	}
+
+	_, err = h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+		Info:              minfo,
+		LocalDependencies: localDependencies,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return nil
+}
