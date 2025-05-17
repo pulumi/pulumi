@@ -628,6 +628,7 @@ describe("LocalWorkspace", () => {
         const refRes = await stack.refresh({ userAgent, previewOnly: true });
         assert.strictEqual(refRes.summary.kind, "update");
         assert.strictEqual(refRes.summary.result, "succeeded");
+        assert.deepStrictEqual(refRes.summary.resourceChanges, { same: 1 });
 
         await stack.workspace.removeStack(stackName);
     });
