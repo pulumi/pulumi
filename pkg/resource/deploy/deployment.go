@@ -51,6 +51,22 @@ type BackendClient interface {
 	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
 }
 
+type StackOutputDecryptionError struct {
+	cause error
+}
+
+func NewStackOutputDecryptionError(cause error) error {
+	if cause == nil {
+		return nil
+	}
+
+	return &StackOutputDecryptionError{cause: cause}
+}
+
+func (e *StackOutputDecryptionError) Error() string {
+	return e.cause.Error()
+}
+
 // Options controls the deployment process.
 type Options struct {
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
