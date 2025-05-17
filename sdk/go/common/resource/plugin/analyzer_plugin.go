@@ -92,9 +92,12 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`
+// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`. `hasPlugin` is a function that allows the
+// caller to configure how it is determined if the language plugin is available. If nil it will default to looking for
+// the plugin by path.
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
+	hasPlugin func(workspace.PluginSpec) bool,
 ) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
@@ -139,17 +142,24 @@ func NewPolicyAnalyzer(
 	// just be language runtimes like the rest).
 
 	var plug *plugin
-	var path string
+	var foundLanguagePlugin bool
 	// Try to load the language plugin for the runtime, except for python and node that _for now_ continue using the
 	// legacy behavior.
 	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
-		path, err = workspace.GetPluginPath(
-			ctx.baseContext,
-			ctx.Diag,
-			workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin},
-			host.GetProjectPlugins())
+		if hasPlugin == nil {
+			hasPlugin = func(spec workspace.PluginSpec) bool {
+				path, err := workspace.GetPluginPath(
+					ctx.baseContext,
+					ctx.Diag,
+					spec,
+					host.GetProjectPlugins())
+				return err == nil && path != ""
+			}
+		}
+
+		foundLanguagePlugin = hasPlugin(workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
 	}
-	if path == "" || err != nil {
+	if !foundLanguagePlugin {
 		// Couldn't get a language plugin, fall back to the old behavior
 
 		// For historical reasons, the Node.js plugin name is just "policy".

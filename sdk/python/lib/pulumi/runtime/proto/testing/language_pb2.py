@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dpulumi/testing/language.proto\x12\x11pulumirpc.testing\"\x19\n\x17GetLanguageTestsRequest\")\n\x18GetLanguageTestsResponse\x12\r\n\x05tests\x18\x01 \x03(\t\"\xf4\x04\n\x1bPrepareLanguageTestsRequest\x12\x1c\n\x14language_plugin_name\x18\x01 \x01(\t\x12\x1e\n\x16language_plugin_target\x18\x02 \x01(\t\x12\x1a\n\x12snapshot_directory\x18\x03 \x01(\t\x12\x1b\n\x13temporary_directory\x18\x04 \x01(\t\x12\x1a\n\x12\x63ore_sdk_directory\x18\x05 \x01(\t\x12\x18\n\x10\x63ore_sdk_version\x18\x06 \x01(\t\x12R\n\x0esnapshot_edits\x18\x07 \x03(\x0b\x32:.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement\x12\x15\n\rlanguage_info\x18\x08 \x01(\t\x12_\n\x11program_overrides\x18\t \x03(\x0b\x32\x44.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry\x1a\x41\n\x0bReplacement\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0f\n\x07pattern\x18\x02 \x01(\t\x12\x13\n\x0breplacement\x18\x03 \x01(\t\x1a \n\x0fProgramOverride\x12\r\n\x05paths\x18\x01 \x03(\t\x1aw\n\x15ProgramOverridesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12M\n\x05value\x18\x02 \x01(\x0b\x32>.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride:\x02\x38\x01\"-\n\x1cPrepareLanguageTestsResponse\x12\r\n\x05token\x18\x01 \x01(\t\"5\n\x16RunLanguageTestRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0c\n\x04test\x18\x02 \x01(\t\"\\\n\x17RunLanguageTestResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x10\n\x08messages\x18\x02 \x03(\t\x12\x0e\n\x06stdout\x18\x03 \x01(\t\x12\x0e\n\x06stderr\x18\x04 \x01(\t2\xe4\x02\n\x0cLanguageTest\x12m\n\x10GetLanguageTests\x12*.pulumirpc.testing.GetLanguageTestsRequest\x1a+.pulumirpc.testing.GetLanguageTestsResponse\"\x00\x12y\n\x14PrepareLanguageTests\x12..pulumirpc.testing.PrepareLanguageTestsRequest\x1a/.pulumirpc.testing.PrepareLanguageTestsResponse\"\x00\x12j\n\x0fRunLanguageTest\x12).pulumirpc.testing.RunLanguageTestRequest\x1a*.pulumirpc.testing.RunLanguageTestResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/testingb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dpulumi/testing/language.proto\x12\x11pulumirpc.testing\"\x19\n\x17GetLanguageTestsRequest\")\n\x18GetLanguageTestsResponse\x12\r\n\x05tests\x18\x01 \x03(\t\"\x93\x05\n\x1bPrepareLanguageTestsRequest\x12\x1c\n\x14language_plugin_name\x18\x01 \x01(\t\x12\x1e\n\x16language_plugin_target\x18\x02 \x01(\t\x12\x1a\n\x12snapshot_directory\x18\x03 \x01(\t\x12\x1b\n\x13temporary_directory\x18\x04 \x01(\t\x12\x1a\n\x12\x63ore_sdk_directory\x18\x05 \x01(\t\x12\x18\n\x10\x63ore_sdk_version\x18\x06 \x01(\t\x12R\n\x0esnapshot_edits\x18\x07 \x03(\x0b\x32:.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement\x12\x15\n\rlanguage_info\x18\x08 \x01(\t\x12_\n\x11program_overrides\x18\t \x03(\x0b\x32\x44.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverridesEntry\x12\x1d\n\x15policy_pack_directory\x18\n \x01(\t\x1a\x41\n\x0bReplacement\x12\x0c\n\x04path\x18\x01 \x01(\t\x12\x0f\n\x07pattern\x18\x02 \x01(\t\x12\x13\n\x0breplacement\x18\x03 \x01(\t\x1a \n\x0fProgramOverride\x12\r\n\x05paths\x18\x01 \x03(\t\x1aw\n\x15ProgramOverridesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12M\n\x05value\x18\x02 \x01(\x0b\x32>.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride:\x02\x38\x01\"-\n\x1cPrepareLanguageTestsResponse\x12\r\n\x05token\x18\x01 \x01(\t\"5\n\x16RunLanguageTestRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0c\n\x04test\x18\x02 \x01(\t\"\\\n\x17RunLanguageTestResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x10\n\x08messages\x18\x02 \x03(\t\x12\x0e\n\x06stdout\x18\x03 \x01(\t\x12\x0e\n\x06stderr\x18\x04 \x01(\t2\xe4\x02\n\x0cLanguageTest\x12m\n\x10GetLanguageTests\x12*.pulumirpc.testing.GetLanguageTestsRequest\x1a+.pulumirpc.testing.GetLanguageTestsResponse\"\x00\x12y\n\x14PrepareLanguageTests\x12..pulumirpc.testing.PrepareLanguageTestsRequest\x1a/.pulumirpc.testing.PrepareLanguageTestsResponse\"\x00\x12j\n\x0fRunLanguageTest\x12).pulumirpc.testing.RunLanguageTestRequest\x1a*.pulumirpc.testing.RunLanguageTestResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/testingb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.testing.language_pb2', globals())
@@ -28,19 +28,19 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _GETLANGUAGETESTSRESPONSE._serialized_start=79
   _GETLANGUAGETESTSRESPONSE._serialized_end=120
   _PREPARELANGUAGETESTSREQUEST._serialized_start=123
-  _PREPARELANGUAGETESTSREQUEST._serialized_end=751
-  _PREPARELANGUAGETESTSREQUEST_REPLACEMENT._serialized_start=531
-  _PREPARELANGUAGETESTSREQUEST_REPLACEMENT._serialized_end=596
-  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDE._serialized_start=598
-  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDE._serialized_end=630
-  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDESENTRY._serialized_start=632
-  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDESENTRY._serialized_end=751
-  _PREPARELANGUAGETESTSRESPONSE._serialized_start=753
-  _PREPARELANGUAGETESTSRESPONSE._serialized_end=798
-  _RUNLANGUAGETESTREQUEST._serialized_start=800
-  _RUNLANGUAGETESTREQUEST._serialized_end=853
-  _RUNLANGUAGETESTRESPONSE._serialized_start=855
-  _RUNLANGUAGETESTRESPONSE._serialized_end=947
-  _LANGUAGETEST._serialized_start=950
-  _LANGUAGETEST._serialized_end=1306
+  _PREPARELANGUAGETESTSREQUEST._serialized_end=782
+  _PREPARELANGUAGETESTSREQUEST_REPLACEMENT._serialized_start=562
+  _PREPARELANGUAGETESTSREQUEST_REPLACEMENT._serialized_end=627
+  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDE._serialized_start=629
+  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDE._serialized_end=661
+  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDESENTRY._serialized_start=663
+  _PREPARELANGUAGETESTSREQUEST_PROGRAMOVERRIDESENTRY._serialized_end=782
+  _PREPARELANGUAGETESTSRESPONSE._serialized_start=784
+  _PREPARELANGUAGETESTSRESPONSE._serialized_end=829
+  _RUNLANGUAGETESTREQUEST._serialized_start=831
+  _RUNLANGUAGETESTREQUEST._serialized_end=884
+  _RUNLANGUAGETESTRESPONSE._serialized_start=886
+  _RUNLANGUAGETESTRESPONSE._serialized_end=978
+  _LANGUAGETEST._serialized_start=981
+  _LANGUAGETEST._serialized_end=1337
 # @@protoc_insertion_point(module_scope)
