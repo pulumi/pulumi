@@ -45,6 +45,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const (
+	// 20s before we give up on a copilot request
+	CopilotRequestTimeout = 20 * time.Second
+)
+
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
@@ -1443,10 +1448,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", fmt.Errorf("preparing request: %w", err)
 	}
 
-	// Requests that take longer that 20 seconds will result in this message being printed to the user:
-	// "Error summarizing update output: making request: Post "https://api.pulumi.com/api/ai/chat/preview":
-	// context deadline exceeded" Copilot backend will see this in telemetry as well
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, CopilotRequestTimeout)
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"
