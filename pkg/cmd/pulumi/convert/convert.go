@@ -202,6 +202,17 @@ func runConvert(
 	}
 	defer contract.IgnoreClose(pCtx.Host)
 
+	// create a specialized plugin context that uses the output directory as the working directory
+	// this ensures that parameterized packages loaded via this context will use the output directory
+	// as their working directory, mimicking the behaviour of "pulumi package add ..." which
+	// is usually run from a project directory that contains the Pulumi.yaml file.
+	schemaLoadingContext, err := packagecmd.NewPluginContext(outDir)
+	if err != nil {
+		return fmt.Errorf("create plugin host for output directory: %w", err)
+	}
+
+	defer contract.IgnoreClose(schemaLoadingContext.Host)
+
 	// Translate well known sources to plugins
 	switch strings.ToLower(from) {
 	case "tf", "terraform":
@@ -294,7 +305,7 @@ func runConvert(
 			}
 
 			err = generateAndLinkSdksForPackages(
-				pCtx,
+				schemaLoadingContext,
 				ws,
 				language,
 				filepath.Join(targetDirectory, "sdks"),
@@ -338,7 +349,10 @@ func runConvert(
 		return version
 	}
 
-	loader := schema.NewPluginLoader(pCtx.Host)
+	// the loader used to host the loader server used by language plugins
+	// it uses the schema loading context to ensure that parameterized packages
+	// are loaded such that the output project directory is used as the working directory
+	loader := schema.NewPluginLoader(schemaLoadingContext.Host)
 
 	baseMapper, err := convert.NewBasePluginMapper(
 		convert.DefaultWorkspace(),

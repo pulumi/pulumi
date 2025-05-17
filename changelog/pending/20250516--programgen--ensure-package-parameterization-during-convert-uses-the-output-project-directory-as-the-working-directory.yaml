@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Ensure package parameterization during convert uses the output project directory as the working directory
