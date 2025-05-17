@@ -588,7 +588,6 @@ class ConstructResponse:
         self,
         urn: str,
         state: Dict[str, PropertyValue],
-        state_dependencies: Dict[str, Set[str]],
     ) -> None:
         """
         :param urn: The URN of the constructed resource.
@@ -597,7 +596,6 @@ class ConstructResponse:
         """
         self.urn = urn
         self.state = state
-        self.state_dependencies = state_dependencies
 
 
 class CallRequest:
