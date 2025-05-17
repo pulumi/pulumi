@@ -210,6 +210,8 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
     except sp.CalledProcessError as err:
         message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds. Also check that `make tidy` has been run."
         print(f"::error {message}", file=sys.stderr)
+        print(f"::stdout {err.stdout}", file=sys.stderr)
+        print(f"::stderr {err.stderr}", file=sys.stderr)
         raise Exception(message) from err
 
     tests: List[str] = []
