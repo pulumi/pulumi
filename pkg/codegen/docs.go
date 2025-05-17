@@ -68,6 +68,10 @@ type DocLanguageHelper interface {
 	//	qualifiedName := python.GetTypeName(pkg, prop.Type, false, "")
 	//	fmt.Println(qualifiedName) // Prints "my_module.TheType"
 	GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string
+	// GetResourceName returns the name of the resource.
+	//
+	// Implements should prefer a short name if possible: "MyResource" over "Pulumi.MyPackage.MyModule.MyResource".
+	GetResourceName(r *schema.Resource) string
 	GetFunctionName(f *schema.Function) string
 
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
