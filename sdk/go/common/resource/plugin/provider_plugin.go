@@ -1365,10 +1365,17 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+
+	refreshBeforeUpdate := false
+	if resp != nil {
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate
+	}
+
 	return CreateResponse{
-		ID:         id,
-		Properties: outs,
-		Status:     resourceStatus,
+		ID:                  id,
+		Properties:          outs,
+		Status:              resourceStatus,
+		RefreshBeforeUpdate: refreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1507,11 +1514,17 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
 
+	refreshBeforeUpdate := false
+	if resp != nil {
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate
+	}
+
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
-		ID:      readID,
-		Outputs: newState,
-		Inputs:  newInputs,
+		ID:                  readID,
+		Outputs:             newState,
+		Inputs:              newInputs,
+		RefreshBeforeUpdate: refreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }
 
@@ -1652,7 +1665,16 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
-	return UpdateResponse{Properties: outs, Status: resourceStatus}, resourceError
+	refreshBeforeUpdate := false
+	if resp != nil {
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate
+	}
+
+	return UpdateResponse{
+		Properties:          outs,
+		Status:              resourceStatus,
+		RefreshBeforeUpdate: refreshBeforeUpdate,
+	}, resourceError
 }
 
 // Delete tears down an existing resource.

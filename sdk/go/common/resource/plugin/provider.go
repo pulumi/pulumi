@@ -248,9 +248,10 @@ type CreateRequest struct {
 }
 
 type CreateResponse struct {
-	ID         resource.ID
-	Properties resource.PropertyMap
-	Status     resource.Status
+	ID                  resource.ID
+	Properties          resource.PropertyMap
+	Status              resource.Status
+	RefreshBeforeUpdate bool
 }
 
 type ReadRequest struct {
@@ -291,8 +292,9 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
-	Status     resource.Status
+	Properties          resource.PropertyMap
+	Status              resource.Status
+	RefreshBeforeUpdate bool
 }
 
 type DeleteRequest struct {
@@ -738,6 +740,9 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+
+	// The provider indicates that the resource requires refreshing on updates.
+	RefreshBeforeUpdate bool
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
