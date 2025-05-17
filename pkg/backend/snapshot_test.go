@@ -586,7 +586,7 @@ func TestVexingDeployment(t *testing.T) {
 	// cPrime now exists, c is now pending deletion
 	// dPrime now depends on cPrime, which got replaced
 	dPrime := NewResource(d.URN, cPrime.URN)
-	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil, nil))
+	applyStep(deploy.NewUpdateStep(nil, MockRegisterResourceEvent{}, d, dPrime, nil, nil, nil, nil, nil))
 
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
 	assert.Len(t, lastSnap.Resources, 6)
@@ -635,7 +635,7 @@ func TestDeletion(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -661,7 +661,7 @@ func TestFailedDelete(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -756,7 +756,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil)
+	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -797,7 +797,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil)
+	step := deploy.NewUpdateStep(nil, &MockRegisterResourceEvent{}, resourceA, resourceANew, nil, nil, nil, nil, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -834,7 +834,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -866,7 +866,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()

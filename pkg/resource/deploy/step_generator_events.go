@@ -133,3 +133,20 @@ func (g *continueResourceRefreshEvent) Aliases() []resource.URN {
 func (g *continueResourceRefreshEvent) Invalid() bool {
 	return g.invalid
 }
+
+// AdditionalStepsEvent is a step that asks the engine to add additional steps to the deployment.
+type AdditionalStepsEvent interface {
+	Steps() []Step
+}
+
+type additionalStepsEvent struct {
+	steps []Step // the additional steps.
+}
+
+var _ AdditionalStepsEvent = (*additionalStepsEvent)(nil)
+
+func (g *additionalStepsEvent) event() {}
+
+func (g *additionalStepsEvent) Steps() []Step {
+	return g.steps
+}

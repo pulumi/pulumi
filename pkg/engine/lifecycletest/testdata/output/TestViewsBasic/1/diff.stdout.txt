@@ -1,0 +1,18 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=c73f08ae-b650-4b67-99fe-87b1bbe7c23a]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=created-id-0]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typAView: (same)
+<{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
+<{%reset%}><{%reset%}>    <{%fg 1%}>- pkgA:m:typAView: (delete)
+<{%fg 1%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
+<{%reset%}><{%fg 1%}>        hello: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%reset%}><{%fg 1%}>        --outputs:--<{%reset%}>
+<{%fg 1%}>      - hello: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
