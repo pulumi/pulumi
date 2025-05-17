@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: `refresh --run-program` with aliases will new send the new resource URN for refresh, not the old URN
