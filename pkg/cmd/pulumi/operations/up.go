@@ -144,7 +144,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(ws, s, configArray, path); err != nil {
+		if err := parseAndSaveConfigArray(ctx, ws, s, configArray, path); err != nil {
 			return err
 		}
 
@@ -375,7 +375,7 @@ func NewUpCmd() *cobra.Command {
 		// Create the stack, if needed.
 		if s == nil {
 			if s, err = newcmd.PromptAndCreateStack(ctx, ws, b, ui.PromptForValue, stackName, root, false /*setCurrent*/, yes,
-				opts.Display, secretsProvider); err != nil {
+				opts.Display, secretsProvider, false /*useRemoteConfig*/); err != nil {
 				return err
 			}
 			// The backend will print "Created stack '<stack>'." on success.

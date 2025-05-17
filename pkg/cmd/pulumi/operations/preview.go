@@ -394,7 +394,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			// Save any config values passed via flags.
-			if err = parseAndSaveConfigArray(ws, s, configArray, configPath); err != nil {
+			if err = parseAndSaveConfigArray(ctx, ws, s, configArray, configPath); err != nil {
 				return err
 			}
 
