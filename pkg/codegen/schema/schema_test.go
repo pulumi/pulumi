@@ -2236,3 +2236,98 @@ func TestFunctionToken(t *testing.T) {
 		})
 	}
 }
+
+func TestEnumTypeElementTypeCheck(t *testing.T) {
+	enumTypes := map[string]ComplexTypeSpec{
+		"test::stringEnumType": {
+			ObjectTypeSpec: ObjectTypeSpec{
+				Type: "string",
+			},
+			Enum: []EnumValueSpec{
+				{Value: "one"},
+				{Value: "two"},
+				{Value: "three"},
+			},
+		},
+		"test::numberEnumType": {
+			ObjectTypeSpec: ObjectTypeSpec{
+				Type: "integer",
+			},
+			Enum: []EnumValueSpec{
+				{Value: 1},
+				{Value: 2},
+				{Value: 3},
+			},
+		},
+	}
+
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types:   enumTypes,
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Properties: map[string]PropertySpec{
+					"stringEnum": {
+						TypeSpec: TypeSpec{
+							Ref: "#/types/test::stringEnumType",
+						},
+					},
+					"numberEnum": {
+						TypeSpec: TypeSpec{
+							Ref: "#/types/test::numberEnumType",
+						},
+					},
+				},
+			},
+			InputProperties: map[string]PropertySpec{
+				"stringEnum": {
+					TypeSpec: TypeSpec{
+						Ref: "#/types/test::stringEnumType",
+					},
+				},
+				"numberEnum": {
+					TypeSpec: TypeSpec{
+						Ref: "#/types/test::numberEnumType",
+					},
+				},
+			},
+		},
+	}
+
+	loader := NewPluginLoader(utils.NewHost(""))
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+
+	provider, _ := pkg.GetResource("pulumi:providers:test")
+
+	var stringEnumProp *Property
+	var numberEnumProp *Property
+
+	for _, prop := range provider.Properties {
+		if prop.Name == "stringEnum" {
+			stringEnumProp = prop
+		}
+		if prop.Name == "numberEnum" {
+			numberEnumProp = prop
+		}
+	}
+
+	assert.NotNil(t, stringEnumProp, "String enum property should be present in provider config")
+	assert.Equal(t, "stringEnum", stringEnumProp.Name)
+	assert.Nil(t, numberEnumProp, "Number enum property should NOT be present in provider config")
+
+	for _, prop := range provider.InputProperties {
+		if prop.Name == "stringEnum" {
+			stringEnumProp = prop
+		}
+		if prop.Name == "numberEnum" {
+			numberEnumProp = prop
+		}
+	}
+	assert.NotNil(t, stringEnumProp, "String enum property should be present in provider config")
+	assert.Equal(t, "stringEnum", stringEnumProp.Name)
+	assert.Nil(t, numberEnumProp, "Number enum property should NOT be present in provider config")
+}

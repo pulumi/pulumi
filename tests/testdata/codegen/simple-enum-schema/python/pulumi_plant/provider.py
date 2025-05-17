@@ -14,16 +14,34 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
+from ._enums import *
 
 __all__ = ['ProviderArgs', 'Provider']
 
 @pulumi.input_type
 class ProviderArgs:
-    def __init__(__self__):
+    def __init__(__self__, *,
+                 environment: Optional[pulumi.Input['ProviderEnvironment']] = None):
         """
         The set of arguments for constructing a Provider resource.
+        :param pulumi.Input['ProviderEnvironment'] environment: The environment to use for the provider
         """
-        pass
+        if environment is None:
+            environment = 'dev'
+        if environment is not None:
+            pulumi.set(__self__, "environment", environment)
+
+    @property
+    @pulumi.getter
+    def environment(self) -> Optional[pulumi.Input['ProviderEnvironment']]:
+        """
+        The environment to use for the provider
+        """
+        return pulumi.get(self, "environment")
+
+    @environment.setter
+    def environment(self, value: Optional[pulumi.Input['ProviderEnvironment']]):
+        pulumi.set(self, "environment", value)
 
 
 @pulumi.type_token("pulumi:providers:plant")
@@ -32,11 +50,14 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 environment: Optional[pulumi.Input['ProviderEnvironment']] = None,
                  __props__=None):
         """
-        Create a Plant resource with the given unique name, props, and options.
+        The provider type for the plant package. By default, resources use package-wide configuration settings, however an explicit `Provider` instance may be created and passed during resource construction to achieve fine-grained programmatic control over provider settings.
+
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input['ProviderEnvironment'] environment: The environment to use for the provider
         """
         ...
     @overload
@@ -45,7 +66,8 @@ class Provider(pulumi.ProviderResource):
                  args: Optional[ProviderArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Plant resource with the given unique name, props, and options.
+        The provider type for the plant package. By default, resources use package-wide configuration settings, however an explicit `Provider` instance may be created and passed during resource construction to achieve fine-grained programmatic control over provider settings.
+
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -61,6 +83,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 environment: Optional[pulumi.Input['ProviderEnvironment']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -70,9 +93,20 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
+            if environment is None:
+                environment = 'dev'
+            __props__.__dict__["environment"] = pulumi.Output.from_input(environment).apply(pulumi.runtime.to_json) if environment is not None else None
         super(Provider, __self__).__init__(
             'plant',
             resource_name,
             __props__,
             opts)
+
+    @property
+    @pulumi.getter
+    def environment(self) -> pulumi.Output[Optional['ProviderEnvironment']]:
+        """
+        The environment to use for the provider
+        """
+        return pulumi.get(self, "environment")
 
