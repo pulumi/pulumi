@@ -1695,3 +1695,10 @@ func removeReleaseCandidateSuffix(version string) string {
 	re := regexp.MustCompile(`-?rc\d+$`)
 	return re.ReplaceAllString(version, "")
 }
+
+func (host *pythonLanguageHost) Link(
+	ctx context.Context, req *pulumirpc.LinkRequest,
+) (*pulumirpc.LinkResponse, error) {
+	// The Python language host does not support linking, so we return an empty response.
+	return &pulumirpc.LinkResponse{}, nil
+}

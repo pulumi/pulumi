@@ -154,6 +154,11 @@ class LanguageRuntimeStub:
     [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
     to standardise e.g. provider publishing workflows.
     """
+    Link: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.LinkRequest,
+        pulumi.language_pb2.LinkResponse,
+    ]
+    """`Link` links a local dependency into a project."""
 
 class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     """The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
@@ -312,5 +317,12 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
         to standardise e.g. provider publishing workflows.
         """
+    
+    def Link(
+        self,
+        request: pulumi.language_pb2.LinkRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.LinkResponse:
+        """`Link` links a local dependency into a project."""
 
 def add_LanguageRuntimeServicer_to_server(servicer: LanguageRuntimeServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

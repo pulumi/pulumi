@@ -26,6 +26,7 @@ interface ILanguageRuntimeService extends grpc.ServiceDefinition<grpc.UntypedSer
     generateProject: ILanguageRuntimeService_IGenerateProject;
     generatePackage: ILanguageRuntimeService_IGeneratePackage;
     pack: ILanguageRuntimeService_IPack;
+    link: ILanguageRuntimeService_ILink;
 }
 
 interface ILanguageRuntimeService_IHandshake extends grpc.MethodDefinition<pulumi_language_pb.LanguageHandshakeRequest, pulumi_language_pb.LanguageHandshakeResponse> {
@@ -154,6 +155,15 @@ interface ILanguageRuntimeService_IPack extends grpc.MethodDefinition<pulumi_lan
     responseSerialize: grpc.serialize<pulumi_language_pb.PackResponse>;
     responseDeserialize: grpc.deserialize<pulumi_language_pb.PackResponse>;
 }
+interface ILanguageRuntimeService_ILink extends grpc.MethodDefinition<pulumi_language_pb.LinkRequest, pulumi_language_pb.LinkResponse> {
+    path: "/pulumirpc.LanguageRuntime/Link";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_language_pb.LinkRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_language_pb.LinkRequest>;
+    responseSerialize: grpc.serialize<pulumi_language_pb.LinkResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_language_pb.LinkResponse>;
+}
 
 export const LanguageRuntimeService: ILanguageRuntimeService;
 
@@ -172,6 +182,7 @@ export interface ILanguageRuntimeServer extends grpc.UntypedServiceImplementatio
     generateProject: grpc.handleUnaryCall<pulumi_language_pb.GenerateProjectRequest, pulumi_language_pb.GenerateProjectResponse>;
     generatePackage: grpc.handleUnaryCall<pulumi_language_pb.GeneratePackageRequest, pulumi_language_pb.GeneratePackageResponse>;
     pack: grpc.handleUnaryCall<pulumi_language_pb.PackRequest, pulumi_language_pb.PackResponse>;
+    link: grpc.handleUnaryCall<pulumi_language_pb.LinkRequest, pulumi_language_pb.LinkResponse>;
 }
 
 export interface ILanguageRuntimeClient {
@@ -215,6 +226,9 @@ export interface ILanguageRuntimeClient {
     pack(request: pulumi_language_pb.PackRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
+    link(request: pulumi_language_pb.LinkRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
+    link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
+    link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class LanguageRuntimeClient extends grpc.Client implements ILanguageRuntimeClient {
@@ -259,4 +273,7 @@ export class LanguageRuntimeClient extends grpc.Client implements ILanguageRunti
     public pack(request: pulumi_language_pb.PackRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     public pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
     public pack(request: pulumi_language_pb.PackRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.PackResponse) => void): grpc.ClientUnaryCall;
+    public link(request: pulumi_language_pb.LinkRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
+    public link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
+    public link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
 }
