@@ -1,6 +1,8 @@
-<{%reset%}>  pkgA:m:typB: (same)
+<{%fg 10%}>++pkgA:m:typB: (create-replacement)
+<{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
+<{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typB: (replace)
 <{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    1 unchanged
+    <{%fg 13%}>+-1 replaced<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
