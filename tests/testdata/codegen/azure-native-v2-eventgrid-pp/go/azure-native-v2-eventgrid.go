@@ -10,9 +10,9 @@ func main() {
 		_, err := eventgrid.NewEventSubscription(ctx, "example", &eventgrid.EventSubscriptionArgs{
 			Destination: &eventgrid.EventHubEventSubscriptionDestinationArgs{
 				EndpointType: pulumi.String("EventHub"),
-				ResourceId:   pulumi.String("example"),
+				ResourceId:   "example",
 			},
-			ExpirationTimeUtc: pulumi.String("example"),
+			ExpirationTimeUtc: "example",
 			Scope:             pulumi.String("example"),
 		})
 		if err != nil {

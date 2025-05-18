@@ -57,14 +57,14 @@ namespace Pulumi.Plant.Tree.V1
     public sealed class NurseryArgs : global::Pulumi.ResourceArgs
     {
         [Input("sizes")]
-        private InputMap<Pulumi.Plant.Tree.V1.TreeSize>? _sizes;
+        private Input<ImmutableDictionary<string, Input<Pulumi.Plant.Tree.V1.TreeSize>>?>? _sizes;
 
         /// <summary>
         /// The sizes of trees available
         /// </summary>
-        public InputMap<Pulumi.Plant.Tree.V1.TreeSize> Sizes
+        public Input<ImmutableDictionary<string, Input<Pulumi.Plant.Tree.V1.TreeSize>>?> Sizes
         {
-            get => _sizes ?? (_sizes = new InputMap<Pulumi.Plant.Tree.V1.TreeSize>());
+            get => _sizes ?? (_sizes = new Input<ImmutableDictionary<string, Input<Pulumi.Plant.Tree.V1.TreeSize>>?>());
             set => _sizes = value;
         }
 

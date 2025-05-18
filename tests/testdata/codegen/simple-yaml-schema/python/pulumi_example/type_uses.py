@@ -24,10 +24,10 @@ __all__ = ['TypeUsesArgs', 'TypeUses']
 @pulumi.input_type
 class TypeUsesArgs:
     def __init__(__self__, *,
-                 bar: Optional[pulumi.Input['SomeOtherObjectArgs']] = None,
-                 baz: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']] = None,
-                 foo: Optional[pulumi.Input['ObjectArgs']] = None,
-                 qux: Optional[pulumi.Input['RubberTreeVariety']] = None):
+                 bar: Optional[pulumi.Input[Optional['SomeOtherObjectArgs']]] = None,
+                 baz: Optional[pulumi.Input[Optional['ObjectWithNodeOptionalInputsArgs']]] = None,
+                 foo: Optional[pulumi.Input[Optional['ObjectArgs']]] = None,
+                 qux: Optional[pulumi.Input[Optional['RubberTreeVariety']]] = None):
         """
         The set of arguments for constructing a TypeUses resource.
         """
@@ -42,38 +42,38 @@ class TypeUsesArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input['SomeOtherObjectArgs']]:
+    def bar(self) -> Optional[pulumi.Input[Optional['SomeOtherObjectArgs']]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input['SomeOtherObjectArgs']]):
+    def bar(self, value: Optional[pulumi.Input[Optional['SomeOtherObjectArgs']]]):
         pulumi.set(self, "bar", value)
 
     @property
     @pulumi.getter
-    def baz(self) -> Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']]:
+    def baz(self) -> Optional[pulumi.Input[Optional['ObjectWithNodeOptionalInputsArgs']]]:
         return pulumi.get(self, "baz")
 
     @baz.setter
-    def baz(self, value: Optional[pulumi.Input['ObjectWithNodeOptionalInputsArgs']]):
+    def baz(self, value: Optional[pulumi.Input[Optional['ObjectWithNodeOptionalInputsArgs']]]):
         pulumi.set(self, "baz", value)
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['ObjectArgs']]:
+    def foo(self) -> Optional[pulumi.Input[Optional['ObjectArgs']]]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['ObjectArgs']]):
+    def foo(self, value: Optional[pulumi.Input[Optional['ObjectArgs']]]):
         pulumi.set(self, "foo", value)
 
     @property
     @pulumi.getter
-    def qux(self) -> Optional[pulumi.Input['RubberTreeVariety']]:
+    def qux(self) -> Optional[pulumi.Input[Optional['RubberTreeVariety']]]:
         return pulumi.get(self, "qux")
 
     @qux.setter
-    def qux(self, value: Optional[pulumi.Input['RubberTreeVariety']]):
+    def qux(self, value: Optional[pulumi.Input[Optional['RubberTreeVariety']]]):
         pulumi.set(self, "qux", value)
 
 
@@ -83,10 +83,10 @@ class TypeUses(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict']]] = None,
-                 baz: Optional[pulumi.Input[Union['ObjectWithNodeOptionalInputsArgs', 'ObjectWithNodeOptionalInputsArgsDict']]] = None,
-                 foo: Optional[pulumi.Input[Union['ObjectArgs', 'ObjectArgsDict']]] = None,
-                 qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
+                 bar: Optional[pulumi.Input[Optional[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict']]]] = None,
+                 baz: Optional[pulumi.Input[Optional[Union['ObjectWithNodeOptionalInputsArgs', 'ObjectWithNodeOptionalInputsArgsDict']]]] = None,
+                 foo: Optional[pulumi.Input[Optional[Union['ObjectArgs', 'ObjectArgsDict']]]] = None,
+                 qux: Optional[pulumi.Input[Optional['RubberTreeVariety']]] = None,
                  __props__=None):
         """
         Create a TypeUses resource with the given unique name, props, and options.
@@ -116,10 +116,10 @@ class TypeUses(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict']]] = None,
-                 baz: Optional[pulumi.Input[Union['ObjectWithNodeOptionalInputsArgs', 'ObjectWithNodeOptionalInputsArgsDict']]] = None,
-                 foo: Optional[pulumi.Input[Union['ObjectArgs', 'ObjectArgsDict']]] = None,
-                 qux: Optional[pulumi.Input['RubberTreeVariety']] = None,
+                 bar: Optional[pulumi.Input[Optional[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict']]]] = None,
+                 baz: Optional[pulumi.Input[Optional[Union['ObjectWithNodeOptionalInputsArgs', 'ObjectWithNodeOptionalInputsArgsDict']]]] = None,
+                 foo: Optional[pulumi.Input[Optional[Union['ObjectArgs', 'ObjectArgsDict']]]] = None,
+                 qux: Optional[pulumi.Input[Optional['RubberTreeVariety']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

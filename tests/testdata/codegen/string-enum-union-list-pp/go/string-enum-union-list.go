@@ -8,7 +8,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := servicebus.NewNamespaceAuthorizationRule(ctx, "namespaceAuthorizationRule", &servicebus.NamespaceAuthorizationRuleArgs{
-			AuthorizationRuleName: pulumi.String("sdk-AuthRules-1788"),
+			AuthorizationRuleName: "sdk-AuthRules-1788",
 			NamespaceName:         pulumi.String("sdk-Namespace-6914"),
 			ResourceGroupName:     pulumi.String("ArunMonocle"),
 			Rights: pulumi.StringArray{

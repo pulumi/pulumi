@@ -1267,6 +1267,12 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 		typ := p.Type
 		if t, optional := typ.(*OptionalType); optional {
 			typ = t.ElementType
+			// If typ is an input type then the optional will be inside that as well.
+			if in, ok := typ.(*InputType); ok {
+				if t, optional := in.ElementType.(*OptionalType); optional {
+					typ = &InputType{ElementType: t.ElementType}
+				}
+			}
 		} else {
 			required = append(required, p.Name)
 		}

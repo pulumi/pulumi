@@ -57,5 +57,5 @@ export class Pet extends pulumi.CustomResource {
  * The set of arguments for constructing a Pet resource.
  */
 export interface PetArgs {
-    name?: pulumi.Input<string>;
+    name?: pulumi.Input<string | undefined | null>;
 }
