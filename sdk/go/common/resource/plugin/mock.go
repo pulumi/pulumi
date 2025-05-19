@@ -40,7 +40,7 @@ type MockHost struct {
 	SignalCancellationF func() error
 	CloseF              func() error
 	StartDebuggingF     func(info DebuggingInfo) error
-	AttachDebuggerF     func() bool
+	AttachDebuggerF     func(spec DebugSpec) bool
 }
 
 var _ Host = (*MockHost)(nil)
@@ -150,9 +150,9 @@ func (m *MockHost) StartDebugging(info DebuggingInfo) error {
 	return nil
 }
 
-func (m *MockHost) AttachDebugger() bool {
+func (m *MockHost) AttachDebugger(spec DebugSpec) bool {
 	if m.AttachDebuggerF != nil {
-		return m.AttachDebuggerF()
+		return m.AttachDebuggerF(spec)
 	}
 	return false
 }

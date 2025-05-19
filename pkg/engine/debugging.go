@@ -15,10 +15,13 @@
 package engine
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func newDebugContext(events eventEmitter, attachDebugger bool) plugin.DebugContext {
+func newDebugContext(events eventEmitter, attachDebugger []string) plugin.DebugContext {
 	return &debugContext{
 		attachDebugger: attachDebugger,
 		events:         events,
@@ -26,7 +29,7 @@ func newDebugContext(events eventEmitter, attachDebugger bool) plugin.DebugConte
 }
 
 type debugContext struct {
-	attachDebugger bool         // whether debugging is enabled.
+	attachDebugger []string     // the debugger types to attach to.
 	events         eventEmitter // the channel to emit events into.
 }
 
@@ -37,6 +40,20 @@ func (s *debugContext) StartDebugging(info plugin.DebuggingInfo) error {
 	return nil
 }
 
-func (s *debugContext) AttachDebugger() bool {
-	return s.attachDebugger
+func (s *debugContext) AttachDebugger(spec plugin.DebugSpec) bool {
+	if slices.Contains(s.attachDebugger, "all") {
+		return true
+	}
+	if spec.Type == plugin.DebugTypeProgram && slices.Contains(s.attachDebugger, "program") {
+		return true
+	}
+	if slices.Contains(s.attachDebugger, "plugins") {
+		return true
+	}
+	for _, requested := range s.attachDebugger {
+		if name := strings.TrimPrefix(requested, "plugin:"); name == spec.Name {
+			return true
+		}
+	}
+	return false
 }

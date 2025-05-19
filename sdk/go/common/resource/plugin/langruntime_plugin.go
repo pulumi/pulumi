@@ -135,7 +135,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			nil, /*env*/
 			testConnection,
 			langRuntimePluginDialOptions(ctx, runtime),
-			host.AttachDebugger(),
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: runtime}),
 		)
 		if err != nil {
 			return nil, err
