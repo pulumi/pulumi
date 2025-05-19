@@ -129,8 +129,8 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				},
 			}, nil
 		},
-		loadProjectStack: func(p *workspace.Project, _ backend.Stack, d diag.Sink) (*workspace.ProjectStack, error) {
-			return workspace.LoadProjectStackBytes(p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML, d)
+		loadProjectStack: func(d diag.Sink, p *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+			return workspace.LoadProjectStackBytes(d, p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
 		},
 		saveProjectStack: func(_ backend.Stack, ps *workspace.ProjectStack) error {
 			b, err := encoding.YAML.Marshal(ps)

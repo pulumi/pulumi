@@ -74,7 +74,7 @@ config:
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
 	var p *Project
-	projectStack, err := LoadProjectStackBytes(p, b, "Pulumi.stack.yaml", marshaller, sink)
+	projectStack, err := LoadProjectStackBytes(sink, p, b, "Pulumi.stack.yaml", marshaller)
 	require.NoError(t, err)
 	require.Contains(t, stderr.String(), "warning: No value for configuration keys")
 	require.Contains(t, stderr.String(), "project:a")
@@ -82,8 +82,8 @@ config:
 	require.Contains(t, stderr.String(), "project:c")
 	require.NotContains(t, stderr.String(), "project:d")
 	require.Len(t, projectStack.Config, 4)
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue(""))
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewValue(""))
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewTypedValue("", config.TypeUnknown))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewTypedValue("", config.TypeUnknown))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewTypedValue("", config.TypeUnknown))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewTypedValue("", config.TypeString))
 }

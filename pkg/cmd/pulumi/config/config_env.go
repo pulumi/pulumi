@@ -84,9 +84,9 @@ type configEnvCmd struct {
 	) (backend.Stack, error)
 
 	loadProjectStack func(
+		diags diag.Sink,
 		project *workspace.Project,
 		stack backend.Stack,
-		diags diag.Sink,
 	) (*workspace.ProjectStack, error)
 
 	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
@@ -127,7 +127,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
 	}
 
-	projectStack, err := cmd.loadProjectStack(project, stack, cmd.diags)
+	projectStack, err := cmd.loadProjectStack(cmd.diags, project, stack)
 	if err != nil {
 		return nil, nil, nil, err
 	}

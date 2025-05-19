@@ -205,7 +205,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	stack backend.Stack,
 	sink diag.Sink,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := cmd.parent.loadProjectStack(project, stack, sink)
+	ps, err := cmd.parent.loadProjectStack(sink, project, stack)
 	if err != nil {
 		return nil, nil, err
 	}

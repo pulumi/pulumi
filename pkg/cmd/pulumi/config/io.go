@@ -82,7 +82,7 @@ func getStackConfigurationWithFallback(
 	sink diag.Sink,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := cmdStack.LoadProjectStack(project, s, cmdutil.Diag())
+	workspaceStack, err := cmdStack.LoadProjectStack(cmdutil.Diag(), project, s)
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err

@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -165,7 +164,7 @@ func LoadProjectStack(project *Project, path string, diags diag.Sink) (*ProjectS
 		return nil, err
 	}
 
-	return LoadProjectStackBytes(project, b, path, marshaller, diags)
+	return LoadProjectStackBytes(diags, project, b, path, marshaller)
 }
 
 func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
@@ -188,11 +187,11 @@ func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
 
 // LoadProjectStack reads a stack definition from a byte slice.
 func LoadProjectStackBytes(
+	diags diag.Sink,
 	project *Project,
 	b []byte,
 	path string,
 	marshaller encoding.Marshaler,
-	diags diag.Sink,
 ) (*ProjectStack, error) {
 	var projectStackRaw interface{}
 	err := marshaller.Unmarshal(b, &projectStackRaw)
@@ -347,12 +346,9 @@ func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 		}
 	}
 
+	var pluralSuffix, keyString string
 	if len(keys) == 1 {
-		cmdutil.Diag().Warningf(&diag.Diag{
-			Message: fmt.Sprintf("No value for configuration key %q. This is currently treated as an empty string `\"\"`, "+
-				"but will be treated as `null` in a future version of pulumi.\n"+
-				"Set %q to `\"\"` to avoid this warning.", keys[0], keys[0]),
-		})
+		keyString = `"` + keys[0] + `"`
 	} else if len(keys) > 1 {
 		for i, k := range keys {
 			keys[i] = `"` + k + `"`
@@ -361,10 +357,12 @@ func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 		if len(keys) == 2 {
 			joiner = " and "
 		}
-		diags.Warningf(&diag.Diag{
-			Message: fmt.Sprintf("No value for configuration keys %s. This is currently treated as an empty string `\"\"`, "+
-				"but will be treated as `null` in a future version of pulumi.\n"+
-				"Set the values to `\"\"` to avoid this warning.", strings.Join(keys, joiner)),
-		})
+		keyString = strings.Join(keys, joiner)
+		pluralSuffix = "s"
 	}
+	diags.Warningf(&diag.Diag{
+		Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. This is currently treated as an empty string `\"\"`, "+
+			"but will be treated as `null` in a future version of pulumi.\n"+
+			"Set the value%[1]s to `\"\"` to avoid this warning.", pluralSuffix, keyString),
+	})
 }

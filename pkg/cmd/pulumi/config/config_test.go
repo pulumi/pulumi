@@ -92,11 +92,11 @@ func TestConfigSet(t *testing.T) {
 			configSetCmd := &configSetCmd{
 				Path: c.path,
 				LoadProjectStack: func(
+					diags diag.Sink,
 					project *workspace.Project,
 					_ backend.Stack,
-					diags diag.Sink,
 				) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML, diags)
+					return workspace.LoadProjectStackBytes(diags, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
 
@@ -201,8 +201,8 @@ func TestConfigSetTypes(t *testing.T) {
 			configSetCmd := &configSetCmd{
 				Path: c.path,
 				Type: c.typ,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack, d diag.Sink) (*workspace.ProjectStack, error) {
-					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML, d)
+				LoadProjectStack: func(d diag.Sink, project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+					return workspace.LoadProjectStackBytes(d, project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
 
