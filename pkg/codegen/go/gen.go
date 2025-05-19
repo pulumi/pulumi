@@ -2483,14 +2483,14 @@ func (pkg *pkgContext) genResource(
 		methodName := Title(method.Name)
 		f := method.Function
 
-		var objectReturnType *schema.ObjectType
-		if f.ReturnType != nil {
-			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				objectReturnType = objectType
-			}
-		}
+		returnType := f.ReturnType
+		objectReturnType, isObjectReturnType := returnType.(*schema.ObjectType)
 
-		liftReturn := pkg.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		liftReturn := !isObjectReturnType ||
+			(pkg.liftSingleValueMethodReturns && len(returnType.(*schema.ObjectType).Properties) == 1)
+		if isObjectReturnType && liftReturn {
+			returnType = objectReturnType.Properties[0].Type
+		}
 
 		var args []*schema.Property
 		if f.Inputs != nil {
@@ -2508,32 +2508,30 @@ func (pkg *pkgContext) genResource(
 			argsig = fmt.Sprintf("%s, args *%s%sArgs", argsig, name, methodName)
 		}
 		var retty string
-		if f.ReturnTypePlain {
-			if objectReturnType == nil {
-				t := pkg.typeString(codegen.ResolvedType(f.ReturnType))
-				retty = fmt.Sprintf("(o %s, e error)", t)
-			} else {
-				retty = fmt.Sprintf("(o %s%sResult, e error)", name, methodName)
-			}
-		} else if objectReturnType == nil {
-			retty = "error"
-		} else if liftReturn {
+		if !f.ReturnTypePlain && !liftReturn {
+			// Emit a pulumi.output object type.
+			retty = fmt.Sprintf("(%s%sResult, error)", name, methodName)
+		} else if !f.ReturnTypePlain && liftReturn {
+			// Emit a pulumi.output scalar type.
 			if useGenericVariant {
-				retty = fmt.Sprintf("(%s, error)", pkg.genericOutputType(objectReturnType.Properties[0].Type))
+				retty = fmt.Sprintf("(%s, error)", pkg.genericOutputType(returnType))
 			} else {
-				retty = fmt.Sprintf("(%s, error)", pkg.outputType(objectReturnType.Properties[0].Type))
+				retty = fmt.Sprintf("(%s, error)", pkg.outputType(returnType))
 			}
-		} else {
-			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
+		} else if f.ReturnTypePlain && !liftReturn {
+			// Emit a plain output object type.
+			retty = fmt.Sprintf("(o %s%sResult, e error)", name, methodName)
+		} else if f.ReturnTypePlain && liftReturn {
+			// Emit a plain output scalar type.
+			t := pkg.typeString(codegen.ResolvedType(f.ReturnType))
+			retty = fmt.Sprintf("(o %s, e error)", t)
 		}
 		fmt.Fprintf(w, "\n")
+
 		printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 		fmt.Fprintf(w, "func (r *%s) %s(%s) %s {\n", name, methodName, argsig, retty)
 
-		resultVar := "_"
-		if objectReturnType != nil {
-			resultVar = "out"
-		}
+		resultVar := "out"
 
 		// Make a map of inputs to pass to the runtime function.
 		inputsVar := "nil"
@@ -2543,12 +2541,14 @@ func (pkg *pkgContext) genResource(
 
 		// Now simply invoke the runtime function with the arguments.
 		outputsType := "pulumi.AnyOutput"
-		if objectReturnType != nil || f.ReturnTypePlain {
+		if isObjectReturnType || f.ReturnTypePlain {
 			if liftReturn {
 				outputsType = fmt.Sprintf("%s%sResultOutput", cgstrings.Camel(name), methodName)
 			} else {
 				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 			}
+		} else if !isObjectReturnType && liftReturn {
+			outputsType = pkg.outputType(returnType)
 		}
 
 		// If this is a parameterized resource we need the package ref.
@@ -2567,44 +2567,38 @@ func (pkg *pkgContext) genResource(
 			}
 		}
 
-		if !f.ReturnTypePlain {
+		if !f.ReturnTypePlain && !liftReturn {
+			retType := fmt.Sprintf("%s%sResult", name, methodName)
 			fmt.Fprintf(w, "\t%s, err := ctx.Call%s(%q, %s, %s{}, r%s)\n",
 				resultVar, packageRef, f.Token, inputsVar, outputsType, packageArg)
-		}
-
-		if f.ReturnTypePlain {
-			// single-value returning methods use a magic property "res" on the wire
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn %s{}, err\n", retType)
+			fmt.Fprintf(w, "\t}\n")
+			fmt.Fprintf(w, "\treturn %s.(%s), nil\n", resultVar, retType)
+		} else if !f.ReturnTypePlain && liftReturn {
+			retType := pkg.outputType(returnType)
+			fmt.Fprintf(w, "\t%s, err := ctx.CallPackageSingle(%q, %s, %s{}, r%s, \"\")\n",
+				resultVar, f.Token, inputsVar, outputsType, packageArg)
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn %s{}, err\n", retType)
+			fmt.Fprintf(w, "\t}\n")
+			fmt.Fprintf(w, "\treturn %s.(%s), nil\n", resultVar, retType)
+		} else if f.ReturnTypePlain && !liftReturn {
 			property := ""
-			if objectReturnType == nil {
+			if !isObjectReturnType {
 				property = cgstrings.UppercaseFirst("res")
 			}
-			fmt.Fprintf(w, "\tinternal.CallPlain(ctx, %q, %s, %s{}, r, %q, reflect.ValueOf(&o), &e)\n",
+			fmt.Fprintf(w, "\treturn internal.CallPlain(ctx, %q, %s, %s{}, r, %q, reflect.ValueOf(&o), &e)\n",
 				f.Token, inputsVar, outputsType, property)
-			fmt.Fprintf(w, "\treturn\n")
-		} else if objectReturnType == nil {
-			fmt.Fprintf(w, "\treturn err\n")
-		} else if liftReturn {
-			// Check the error before proceeding.
-			fmt.Fprintf(w, "\tif err != nil {\n")
-			if useGenericVariant {
-				fmt.Fprint(w, "\t\treturn nil, err\n")
-			} else {
-				fmt.Fprintf(w, "\t\treturn %s{}, err\n", pkg.outputType(objectReturnType.Properties[0].Type))
+		} else if f.ReturnTypePlain && liftReturn {
+			property := ""
+			if !isObjectReturnType {
+				property = cgstrings.UppercaseFirst("res")
 			}
-
-			fmt.Fprintf(w, "\t}\n")
-
-			// Get the name of the method to return the output
-			fmt.Fprintf(w, "\treturn %s.(%s).%s(), nil\n", resultVar, cgstrings.Camel(outputsType), Title(objectReturnType.Properties[0].Name))
-		} else {
-			// Check the error before proceeding.
-			fmt.Fprintf(w, "\tif err != nil {\n")
-			fmt.Fprintf(w, "\t\treturn %s{}, err\n", outputsType)
-			fmt.Fprintf(w, "\t}\n")
-
-			// Return the result.
-			fmt.Fprintf(w, "\treturn %s.(%s), nil\n", resultVar, outputsType)
+			fmt.Fprintf(w, "\treturn internal.CallPlainSingle(ctx, %q, %s, %s{}, r, %q, reflect.ValueOf(&o), &e)\n",
+				f.Token, inputsVar, outputsType, property)
 		}
+
 		fmt.Fprintf(w, "}\n")
 
 		// If there are argument and/or return types, emit them.
@@ -2637,12 +2631,13 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", cgstrings.Camel(name), methodName)
 			fmt.Fprintf(w, "}\n\n")
 		}
-		if objectReturnType != nil || f.ReturnTypePlain {
+
+		if isObjectReturnType || f.ReturnTypePlain {
 			outputStructName := name
 
 			var comment string
 			var properties []*schema.Property
-			if f.ReturnTypePlain && objectReturnType == nil {
+			if f.ReturnTypePlain && !isObjectReturnType {
 				properties = []*schema.Property{
 					{
 						Name:  "res",

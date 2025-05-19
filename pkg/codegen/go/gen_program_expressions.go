@@ -434,6 +434,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v.PulumiResourceName()", expr.Args[0])
 	case "pulumiResourceType":
 		g.Fgenf(w, "%v.PulumiResourceType()", expr.Args[0])
+	// case pcl.Call:
+	// TODO(#19432) implement call codegen for go.
 	default:
 		// toJSON and readDir are reduced away, shouldn't see them here
 		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
@@ -1060,7 +1062,6 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
-
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)

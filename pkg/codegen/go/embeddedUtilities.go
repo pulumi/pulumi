@@ -3,6 +3,8 @@
 package utilities
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 )
 
@@ -107,6 +109,57 @@ func CallPlain(
 
 	// return by setting the result pointer; this style of returns shortens the generated code without generics
 	resultPtr.Elem().Set(v)
+}
+
+func callPlainSingle(
+	ctx *pulumi.Context,
+	tok string,
+	args pulumi.Input,
+	output pulumi.Output,
+	self pulumi.Resource,
+	property string,
+	resultPtr reflect.Value,
+	errorPtr *error,
+	opts ...pulumi.InvokeOption,
+) {
+	res, err := callPlainInner(ctx, tok, args, output, self, opts...)
+	if err != nil {
+		*errorPtr = err
+		return
+	}
+
+	v := reflect.ValueOf(res)
+
+	// extract res.property field if asked to do so
+	if property != "" {
+		v = v.FieldByName("Res")
+	}
+
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			*errorPtr = errors.New("input cannot be a nil pointer")
+			return
+		}
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		*errorPtr = errors.New("result must be a struct")
+		return
+	}
+
+	if v.NumField() != 1 {
+		*errorPtr = errors.New("result must have exactly one field")
+		return
+	}
+
+	field := v.Field(0)
+	if !field.CanInterface() {
+		*errorPtr = errors.New("result field cannot be accessed")
+		return
+	}
+
+	resultPtr.Elem().Set(field)
 }
 
 func callPlainInner(

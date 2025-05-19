@@ -52,12 +52,8 @@ func (ProviderArgs) ElementType() reflect.Type {
 }
 
 // The `identity` method of the `call` package's provider. Returns the provider's `value` configuration unaltered.
-func (r *Provider) Identity(ctx *pulumi.Context) (ProviderIdentityResultOutput, error) {
+func (r *Provider) Identity(ctx *pulumi.Context) (ProviderIdentityResult, error) {
 	out, err := ctx.Call("pulumi:providers:call/identity", nil, ProviderIdentityResultOutput{}, r)
-	if err != nil {
-		return ProviderIdentityResultOutput{}, err
-	}
-	return out.(ProviderIdentityResultOutput), nil
 }
 
 type ProviderIdentityResult struct {
@@ -75,12 +71,8 @@ func (o ProviderIdentityResultOutput) Result() pulumi.StringOutput {
 }
 
 // The `prefixed` method of the `call` package's provider. Accepts a string and returns the provider's `value` configuration prefixed with that string.
-func (r *Provider) Prefixed(ctx *pulumi.Context, args *ProviderPrefixedArgs) (ProviderPrefixedResultOutput, error) {
+func (r *Provider) Prefixed(ctx *pulumi.Context, args *ProviderPrefixedArgs) (ProviderPrefixedResult, error) {
 	out, err := ctx.Call("pulumi:providers:call/prefixed", args, ProviderPrefixedResultOutput{}, r)
-	if err != nil {
-		return ProviderPrefixedResultOutput{}, err
-	}
-	return out.(ProviderPrefixedResultOutput), nil
 }
 
 type providerPrefixedArgs struct {

@@ -24,36 +24,36 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 )
 
-type inlineInvokeTemp struct {
+type inlineInvokeOrCallTemp struct {
 	Name  string
 	Value *model.FunctionCallExpression
 }
 
-func (temp *inlineInvokeTemp) Type() model.Type {
+func (temp *inlineInvokeOrCallTemp) Type() model.Type {
 	return temp.Value.Type()
 }
 
-func (temp *inlineInvokeTemp) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+func (temp *inlineInvokeOrCallTemp) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	return temp.Type().Traverse(traverser)
 }
 
-func (temp *inlineInvokeTemp) SyntaxNode() hclsyntax.Node {
+func (temp *inlineInvokeOrCallTemp) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-type inlineInvokeSpiller struct {
-	temps []*inlineInvokeTemp
+type inlineInvokeOrCallSpiller struct {
+	temps []*inlineInvokeOrCallTemp
 	count int
 }
 
-func (spiller *inlineInvokeSpiller) spillExpression(
+func (spiller *inlineInvokeOrCallSpiller) spillExpression(
 	expr model.Expression,
 	g *generator,
 ) (model.Expression, hcl.Diagnostics) {
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		isOutputInvoke, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
-		if expr.Name == "invoke" && !isOutputInvoke {
+		if expr.Name == pcl.Invoke && !isOutputInvoke {
 			// non-output-versioned invokes are the only ones that need to be converted
 			// because their return type Tuple(InvokeResult, error)
 			_, _, fn, _ := g.functionName(expr.Args[0])
@@ -61,7 +61,26 @@ func (spiller *inlineInvokeSpiller) spillExpression(
 			if spiller.count == 0 {
 				tempName = "invoke" + fn
 			}
-			temp := &inlineInvokeTemp{
+			temp := &inlineInvokeOrCallTemp{
+				Name:  tempName,
+				Value: expr,
+			}
+			spiller.temps = append(spiller.temps, temp)
+
+			spiller.count++
+			reference := model.VariableReference(&model.Variable{
+				Name: temp.Name,
+			})
+
+			return reference, nil
+		} else if expr.Name == pcl.Call {
+			// Args[0] is self, Args[1] is the function
+			_, _, fn, _ := g.functionName(expr.Args[1])
+			tempName := fmt.Sprintf("call%s%d", fn, spiller.count)
+			if spiller.count == 0 {
+				tempName = "call" + fn
+			}
+			temp := &inlineInvokeOrCallTemp{
 				Name:  tempName,
 				Value: expr,
 			}
@@ -81,7 +100,7 @@ func (spiller *inlineInvokeSpiller) spillExpression(
 	}
 }
 
-func (g *generator) rewriteInlineInvokes(x model.Expression) (model.Expression, []*inlineInvokeTemp) {
+func (g *generator) rewriteInlineInvokes(x model.Expression) (model.Expression, []*inlineInvokeOrCallTemp) {
 	spiller := g.inlineInvokeSpiller
 	spiller.temps = nil
 	spill := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {

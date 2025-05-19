@@ -46,27 +46,25 @@ func (ConfigurerArgs) ElementType() reflect.Type {
 }
 
 func (r *Configurer) MeaningOfLife(ctx *pulumi.Context) (o int, e error) {
-	internal.CallPlain(ctx, "metaprovider:index:Configurer/meaningOfLife", nil, ConfigurerMeaningOfLifeResultOutput{}, r, "Res", reflect.ValueOf(&o), &e)
-	return
+	return internal.CallPlainSingle(ctx, "metaprovider:index:Configurer/meaningOfLife", nil, configurerMeaningOfLifeResultOutput{}, r, "Res", reflect.ValueOf(&o), &e)
 }
 
-type ConfigurerMeaningOfLifeResult struct {
+type configurerMeaningOfLifeResult struct {
 	Res int `pulumi:"res"`
 }
 
-type ConfigurerMeaningOfLifeResultOutput struct{ *pulumi.OutputState }
+type configurerMeaningOfLifeResultOutput struct{ *pulumi.OutputState }
 
-func (ConfigurerMeaningOfLifeResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ConfigurerMeaningOfLifeResult)(nil)).Elem()
+func (configurerMeaningOfLifeResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*configurerMeaningOfLifeResult)(nil)).Elem()
 }
 
-func (o ConfigurerMeaningOfLifeResultOutput) Res() pulumi.IntOutput {
-	return o.ApplyT(func(v ConfigurerMeaningOfLifeResult) int { return v.Res }).(pulumi.IntOutput)
+func (o configurerMeaningOfLifeResultOutput) Res() pulumi.IntOutput {
+	return o.ApplyT(func(v configurerMeaningOfLifeResult) int { return v.Res }).(pulumi.IntOutput)
 }
 
 func (r *Configurer) ObjectMix(ctx *pulumi.Context) (o ConfigurerObjectMixResult, e error) {
-	internal.CallPlain(ctx, "metaprovider:index:Configurer/objectMix", nil, ConfigurerObjectMixResultOutput{}, r, "", reflect.ValueOf(&o), &e)
-	return
+	return internal.CallPlain(ctx, "metaprovider:index:Configurer/objectMix", nil, ConfigurerObjectMixResultOutput{}, r, "", reflect.ValueOf(&o), &e)
 }
 
 type ConfigurerObjectMixResult struct {
@@ -89,22 +87,21 @@ func (o ConfigurerObjectMixResultOutput) Provider() tls.ProviderOutput {
 }
 
 func (r *Configurer) TlsProvider(ctx *pulumi.Context) (o *tls.Provider, e error) {
-	internal.CallPlain(ctx, "metaprovider:index:Configurer/tlsProvider", nil, ConfigurerTlsProviderResultOutput{}, r, "Res", reflect.ValueOf(&o), &e)
-	return
+	return internal.CallPlainSingle(ctx, "metaprovider:index:Configurer/tlsProvider", nil, configurerTlsProviderResultOutput{}, r, "Res", reflect.ValueOf(&o), &e)
 }
 
-type ConfigurerTlsProviderResult struct {
+type configurerTlsProviderResult struct {
 	Res *tls.Provider `pulumi:"res"`
 }
 
-type ConfigurerTlsProviderResultOutput struct{ *pulumi.OutputState }
+type configurerTlsProviderResultOutput struct{ *pulumi.OutputState }
 
-func (ConfigurerTlsProviderResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ConfigurerTlsProviderResult)(nil)).Elem()
+func (configurerTlsProviderResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*configurerTlsProviderResult)(nil)).Elem()
 }
 
-func (o ConfigurerTlsProviderResultOutput) Res() tls.ProviderOutput {
-	return o.ApplyT(func(v ConfigurerTlsProviderResult) *tls.Provider { return v.Res }).(tls.ProviderOutput)
+func (o configurerTlsProviderResultOutput) Res() tls.ProviderOutput {
+	return o.ApplyT(func(v configurerTlsProviderResult) *tls.Provider { return v.Res }).(tls.ProviderOutput)
 }
 
 type ConfigurerInput interface {
