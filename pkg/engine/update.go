@@ -189,7 +189,7 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
-	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin=<plugin-name>".
+	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.

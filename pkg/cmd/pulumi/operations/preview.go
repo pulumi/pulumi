@@ -679,7 +679,7 @@ func NewPreviewCmd() *cobra.Command {
 	//nolint:lll // long description
 	cmd.PersistentFlags().StringArrayVar(
 		&attachDebugger, "attach-debugger", []string{},
-		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin=<name>' or 'all'.")
+		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().BoolVar(

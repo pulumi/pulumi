@@ -51,7 +51,7 @@ func (s *debugContext) AttachDebugger(spec plugin.DebugSpec) bool {
 		return true
 	}
 	for _, requested := range s.attachDebugger {
-		if name := strings.TrimPrefix(requested, "plugin="); name == spec.Name {
+		if name := strings.TrimPrefix(requested, "plugin:"); name == spec.Name {
 			return true
 		}
 	}

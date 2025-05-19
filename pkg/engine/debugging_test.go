@@ -56,8 +56,8 @@ func TestAttachDebugger(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:           "plugin=plugin-name",
-			attachDebugger: []string{"plugin=plugin-name"},
+			name:           "plugin:plugin-name",
+			attachDebugger: []string{"plugin:plugin-name"},
 			spec: plugin.DebugSpec{
 				Type: plugin.DebugTypePlugin,
 				Name: "plugin-name",
@@ -65,8 +65,8 @@ func TestAttachDebugger(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:           "plugin=other-plugin-name",
-			attachDebugger: []string{"plugin=plugin-name"},
+			name:           "plugin:other-plugin-name",
+			attachDebugger: []string{"plugin:plugin-name"},
 			spec: plugin.DebugSpec{
 				Type: plugin.DebugTypePlugin,
 				Name: "other-plugin-name",
@@ -84,7 +84,7 @@ func TestAttachDebugger(t *testing.T) {
 		},
 		{
 			name:           "plugin with program spec",
-			attachDebugger: []string{"plugin=plugin-name"},
+			attachDebugger: []string{"plugin:plugin-name"},
 			spec: plugin.DebugSpec{
 				Type: plugin.DebugTypeProgram,
 			},

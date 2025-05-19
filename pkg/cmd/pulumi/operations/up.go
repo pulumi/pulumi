@@ -762,7 +762,7 @@ func NewUpCmd() *cobra.Command {
 	//nolint:lll // long description
 	cmd.PersistentFlags().StringArrayVar(
 		&attachDebugger, "attach-debugger", []string{},
-		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin=<name>' or 'all'.")
+		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().StringVar(
@@ -826,7 +826,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 
 func validateAttachDebuggerFlag(args []string) error {
 	for _, arg := range args {
-		if arg != "program" && arg != "plugins" && arg != "all" && !strings.HasPrefix(arg, "plugin=") {
+		if arg != "program" && arg != "plugins" && arg != "all" && !strings.HasPrefix(arg, "plugin:") {
 			return fmt.Errorf("invalid --attach-debugger flag value: %s", arg)
 		}
 	}

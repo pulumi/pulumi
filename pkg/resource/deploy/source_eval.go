@@ -87,7 +87,7 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
-	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin=<plugin-name>".
+	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 }
 
