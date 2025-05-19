@@ -33,6 +33,7 @@ import (
 )
 
 type MockResourceMonitor interface {
+	Invoke(args MockCallArgs) (resource.PropertyMap, error)
 	Call(args MockCallArgs) (resource.PropertyMap, error)
 	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
@@ -149,7 +150,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 			Return: result,
 		}, nil
 	}
-	resultV, err := m.mocks.Call(MockCallArgs{
+	resultV, err := m.mocks.Invoke(MockCallArgs{
 		Token:    in.GetTok(),
 		Args:     args,
 		Provider: in.GetProvider(),
@@ -174,7 +175,34 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.ResourceCallRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.CallResponse, error) {
-	panic("not implemented")
+	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resultV, err := m.mocks.Call(MockCallArgs{
+		Token:    in.GetTok(),
+		Args:     args,
+		Provider: in.GetProvider(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.CallResponse{
+		Return: result,
+	}, nil
 }
 
 func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResourceRequest,

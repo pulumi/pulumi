@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -634,7 +635,7 @@ func TestInvokeOutput(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		InvokeF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
@@ -663,6 +664,145 @@ func TestInvokeOutput(t *testing.T) {
 	require.ErrorContains(t, err, "invoke error")
 }
 
+type callOutput struct {
+	//nolint
+	outputResult string
+	*OutputState
+}
+
+func (c callOutput) ElementType() reflect.Type {
+	return reflect.TypeOf(callOutputType{})
+}
+
+type callInput struct {
+	inputArg string
+}
+
+func (c callInput) ElementType() reflect.Type {
+	return reflect.TypeOf(callInputType{})
+}
+
+type callInputType struct {
+	//nolint
+	inputArg string
+}
+
+type callOutputType struct {
+	//nolint
+	outputResult string
+}
+
+func TestCall(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			if args.Token == "test:invoke:fail" {
+				return nil, errors.New("invoke error")
+			}
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+		},
+	}
+
+	self := newResource(t, URN("test::urn"), ID("testId"))
+
+	err := RunErr(func(ctx *Context) error {
+		outType := callOutput{}
+
+		output, err := ctx.Call(
+			"test:invoke:success", &callInput{"will succeed"}, outType, self,
+		)
+		if err != nil {
+			return err
+		}
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+
+	err = RunErr(func(ctx *Context) error {
+		outType := AnyOutput{}
+		output, err := ctx.Call(
+			"test:invoke:fail", &callInput{"will fail"}, outType, self,
+		)
+		if err != nil {
+			return err
+		}
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "invoke error")
+}
+
+func TestCallSingle(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			if args.Token == "test:invoke:fail" {
+				return nil, errors.New("invoke error")
+			}
+			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
+		},
+	}
+
+	self := newResource(t, URN("test::urn"), ID("testId"))
+
+	err := RunErr(func(ctx *Context) error {
+		output, err := ctx.CallPackageSingle(
+			"test:invoke:success", &callInput{"will succeed"}, StringOutput{}, self, "",
+		)
+		if err != nil {
+			return err
+		}
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+
+	err = RunErr(func(ctx *Context) error {
+		output, err := ctx.CallPackageSingle(
+			"test:invoke:fail", &callInput{"will fail"}, StringOutput{}, self, "",
+		)
+		if err != nil {
+			return err
+		}
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "invoke error")
+}
+
+func TestCallSingleFailsIfMultiField(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			if args.Token == "test:invoke:fail" {
+				return nil, errors.New("invoke error")
+			}
+			return resource.PropertyMap{
+				"result":    resource.NewStringProperty("success!"),
+				"resultTwo": resource.NewStringProperty("but failure"),
+			}, nil
+		},
+	}
+
+	self := newResource(t, URN("test::urn"), ID("testId"))
+
+	err := RunErr(func(ctx *Context) error {
+		output, err := ctx.CallPackageSingle(
+			"test:invoke:successButFails", &callInput{"will fail"}, StringOutput{}, self, "",
+		)
+		if err != nil {
+			return err
+		}
+		ctx.Export("output", output)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.ErrorContains(t, err, "result must have exactly one element")
+}
+
 func TestInvokePlainWithOutputArgument(t *testing.T) {
 	// Unlike Node.js and Python, Go sensibly does not permit passing in outputs
 	// as an argument to a plain invoke. This test verifies that we return an
@@ -671,7 +811,7 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		InvokeF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
 		},
 	}

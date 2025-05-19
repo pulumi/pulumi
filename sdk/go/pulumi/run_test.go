@@ -49,9 +49,17 @@ func WrapResourceMonitorClient(
 }
 
 type testMonitor struct {
+	InvokeF                  func(args MockCallArgs) (resource.PropertyMap, error)
 	CallF                    func(args MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF             func(args MockResourceArgs) (string, resource.PropertyMap, error)
 	RegisterResourceOutputsF func() (*emptypb.Empty, error)
+}
+
+func (m *testMonitor) Invoke(args MockCallArgs) (resource.PropertyMap, error) {
+	if m.InvokeF == nil {
+		return resource.PropertyMap{}, nil
+	}
+	return m.InvokeF(args)
 }
 
 func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
@@ -313,7 +321,7 @@ func TestInvoke(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		InvokeF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			assert.Equal(t, "test:index:func", args.Token)
 			assert.True(t, args.Args.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"bang": "gnab",

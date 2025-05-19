@@ -34,6 +34,10 @@ func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.Propert
 }
 
 func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	panic("methods not supported")
+}
+
+func (mocks) Invoke(args pulumi.MockInvokeArgs) (resource.PropertyMap, error) {
 	panic("functions not supported")
 }
 

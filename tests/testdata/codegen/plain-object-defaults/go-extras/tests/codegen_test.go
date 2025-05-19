@@ -51,6 +51,10 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic("Call not supported")
 }
 
+func (mocks) Invoke(args pulumi.MockInvokeArgs) (resource.PropertyMap, error) {
+	panic("Invoke not supported")
+}
+
 func TestObjectDefaults(t *testing.T) {
 	path := "thePath"
 	defaultDriver := "secret"
