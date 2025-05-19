@@ -2299,7 +2299,7 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 	assert.Len(t, diags, 1)
-	assert.Contains(t, diags[0].Summary, "is a reserved name")
+	assert.Contains(t, diags[0].Summary, "is a reserved name, cannot name resource")
 }
 
 func TestResourceWithKeynameOverlapType(t *testing.T) {
@@ -2314,14 +2314,24 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 			ObjectTypeSpec: ObjectTypeSpec{},
 		},
 		Types: map[string]ComplexTypeSpec{
-			"xyz:index:pulumi": {},
+			"xyz:index:pulumi": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"abc": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
-	assert.Len(t, diags, 2)
-	assert.Contains(t, diags[0].Summary, "is a reserved name")
-	assert.Contains(t, diags[1].Summary, "unknown primitive type")
+	assert.Len(t, diags, 1)
+	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot be used for type name")
 }
 
 func TestRoundtripAliasesJSON(t *testing.T) {
