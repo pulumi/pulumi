@@ -897,6 +897,49 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	assert.NotNil(t, pkg)
 }
 
+func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+			"test:index:TestComponent": {
+				IsComponent: true,
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	// No error as binding should work fine even with warnings
+	assert.NoError(t, err)
+	// assert that there are 2 warnings in the diagnostics because of using URN as a property
+	assert.Len(t, diags, 0)
+	assert.NotNil(t, pkg)
+}
+
 func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
@@ -931,6 +974,40 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 		)
 	}
 	assert.Nil(t, pkg)
+}
+
+func TestUsingReservedWordInFunctionParamsIsOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]FunctionSpec{
+			"test:index:fake": {
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, diags, 0)
+	assert.NotNil(t, pkg)
 }
 
 func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
@@ -968,6 +1045,41 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 		)
 	}
 	assert.Nil(t, pkg)
+}
+
+func TestUsingReservedWordInTypeIsOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types: map[string]ComplexTypeSpec{
+			"test:index:fake": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+						"version": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, diags, 0)
+	assert.NotNil(t, pkg)
 }
 
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
@@ -2117,7 +2229,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	assert.Equal(t, diags[0].Summary, "#/provider/properties/pulumi: pulumi is a reserved property name")
 	assert.Equal(t, diags[1].Summary, "#/provider/properties/version: version is a reserved property name")
 
-	// Test that reserved are allowed as an output property on the provider object.
+	// Test that reserved words are allowed as an output property on the provider object.
 	// Most providers probably won't add this, but it's there if they want to expose it.
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
