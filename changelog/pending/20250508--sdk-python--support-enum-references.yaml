@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: sdk/python
+    description: Support enum references in component providers

@@ -22,6 +22,7 @@ import pulumi_command.local as command_local
 class Args(TypedDict):
     name: str
     command_in: command_local.Command
+    loglevel_in: command_local.Logging
 
 
 class EchoCommand(pulumi.ComponentResource):
@@ -35,6 +36,7 @@ class EchoCommand(pulumi.ComponentResource):
 
     command_out: pulumi.Output[command_local.Command]
     command_in_stdout: pulumi.Output[str]
+    loglevel_out: pulumi.Output[command_local.Logging]
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("provider:index:EchoCommand", name, {}, opts)
@@ -46,9 +48,17 @@ class EchoCommand(pulumi.ComponentResource):
             },
         )
         self.command_in_stdout = args["command_in"].stdout
+        loglevel_out = args["loglevel_in"]
+        # Assert that the provider correctly deserialized into the Python enum type.
+        if not isinstance(loglevel_out, command_local.Logging):
+            raise TypeError(
+                f"loglevel_in must be a command_local.Logging, got {type(loglevel_out)}"
+            )
+        self.loglevel_out = loglevel_out
         self.register_outputs(
             {
                 "command_out": self.command_out,
                 "command_in_stdout": self.command_in_stdout,
+                "loglevel_out": self.loglevel_out,
             }
         )

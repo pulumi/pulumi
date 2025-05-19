@@ -28,6 +28,8 @@ import mock_package_para
 class Args(TypedDict):
     res: pulumi.Input[mock_package.MyResource]
     res_para: pulumi.Input[mock_package_para.MyResource]
+    enum: pulumi.Input[mock_package.MyEnum]
+    enum_para: pulumi.Input[mock_package_para.MyEnum]
 
 
 class Component(pulumi.ComponentResource):

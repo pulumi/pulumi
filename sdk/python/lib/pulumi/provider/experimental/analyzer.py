@@ -116,7 +116,7 @@ class ComponentDefinition:
     description: Optional[str] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Parameterization:
     name: str
     version: str
@@ -126,7 +126,7 @@ class Parameterization:
     value: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class Dependency:
     name: str
     version: Optional[str] = None
@@ -187,8 +187,16 @@ class DependencyError(Exception): ...
 
 class AnalyzeResult(TypedDict):
     component_definitions: dict[str, ComponentDefinition]
+    """The components defined by the package."""
     type_definitions: dict[str, TypeDefinition]
-    dependencies: list[Dependency]
+    """The types defined in the package, these are complex types or enums."""
+    external_enum_types: dict[str, type[Enum]]
+    """
+    A map of references to Python enum types. These are used to deserialize
+    raw values back into Python types.
+    """
+    dependencies: set[Dependency]
+    """The packages this package depends on."""
 
 
 class Analyzer:
@@ -234,8 +242,12 @@ class Analyzer:
 
     def __init__(self, name: str):
         self.name = name
-        self.dependencies: list[Dependency] = []
+        self.dependencies: set[Dependency] = set()
         self.type_definitions: dict[str, TypeDefinition] = {}
+        # Keep track of external enum types we encountered. We use these to map a schema
+        # reference to a type so that we can deserialize a raw value back into a Python
+        # enum type.
+        self.external_enum_types: dict[str, type[Enum]] = {}
         # For unresolved types, we need to keep track of whether we saw them in a
         # component output or an input.
         self.unresolved_forward_refs: dict[
@@ -305,6 +317,7 @@ class Analyzer:
             "component_definitions": component_defs,
             "type_definitions": self.type_definitions,
             "dependencies": self.dependencies,
+            "external_enum_types": self.external_enum_types,
         }
 
     def get_annotations(self, o: Any) -> dict[str, Any]:
@@ -563,12 +576,12 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            type_string, package_name = get_package_name(arg, typ, name)
+            resource_type_string, package_name = get_package_name(arg, typ, name)
             try:
                 dep = get_dependency_for_type(arg)
-                self.dependencies.append(dep)
+                self.dependencies.add(dep)
                 return PropertyDefinition(
-                    ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
+                    ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{resource_type_string.replace('/', '%2F')}",
                     optional=optional,
                     description=self.get_docstring(typ, name),
                 )
@@ -579,6 +592,22 @@ class Analyzer:
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
             )
         elif is_enum(arg):
+            enum_type_string = getattr(arg, "pulumi_type", None)
+            if enum_type_string:  # This is an enum from an external package
+                _, package_name = get_package_name(arg, typ, name)
+                try:
+                    dep = get_dependency_for_type(arg)
+                    self.dependencies.add(dep)
+                    ref = f"/{dep.name}/v{dep.version}/schema.json#/types/{enum_type_string.replace('/', '%2F')}"
+                    self.external_enum_types[ref] = arg
+                    return PropertyDefinition(
+                        ref=ref,
+                        optional=optional,
+                        description=self.get_docstring(typ, name),
+                    )
+                except DependencyError as e:
+                    raise Exception(f"{package_name}: {str(e)}")
+
             type_name = arg.__name__
             type_def = self.type_definitions.get(type_name)
             if not type_def:
@@ -743,13 +772,15 @@ def get_dependency_for_type(arg: type) -> Dependency:
             .read()
         )
         plugin = json.loads(pluginJSON)
-        dep = Dependency(plugin["name"], plugin["version"])
+        args = {"name": plugin["name"], "version": plugin["version"]}
         if "server" in plugin:
-            dep.downloadURL = plugin["server"]
+            args["downloadURL"] = plugin["server"]
         if "parameterization" in plugin:
             p = plugin["parameterization"]
-            dep.parameterization = Parameterization(p["name"], p["version"], p["value"])
-        return dep
+            args["parameterization"] = Parameterization(
+                p["name"], p["version"], p["value"]
+            )
+        return Dependency(**args)
     except FileNotFoundError as e:
         raise DependencyError("Could not load pulumi-plugin.json") from e
     except json.JSONDecodeError as e:

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 import json
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -42,6 +43,7 @@ class ComponentProvider(Provider):
     """The path to the Python source code."""
 
     _type_defs: dict[str, TypeDefinition]
+    _external_enum_types: dict[str, type[Enum]]
     _component_defs: dict[str, ComponentDefinition]
     _components: dict[str, type[ComponentResource]]
     _dependencies: list[Dependency]
@@ -60,7 +62,10 @@ class ComponentProvider(Provider):
         self._components = {component.__name__: component for component in components}
         self._component_defs = result["component_definitions"]
         self._type_defs = result["type_definitions"]
-        self._dependencies = result["dependencies"]
+        self._external_enum_types = result["external_enum_types"]
+        self._dependencies = sorted(
+            result["dependencies"], key=lambda d: f"{d.name}{d.version}"
+        )
         schema = generate_schema(
             name,
             version,
@@ -170,13 +175,26 @@ class ComponentProvider(Provider):
             if prop.ref:
                 # Get the type definition for the complex type
                 type_def = self.get_type_definition(prop)
-                if type_def is None:
+                # Get the type for the external enum reference
+                external_enum = self._external_enum_types.get(prop.ref)
+                if type_def is None and external_enum is None:
                     mapped_value[py_name] = input_val
                     continue
 
-                if type_def.enum:
+                # For enums we need to deserialize the raw value `input_val`
+                # back into the Python enum type.
+                # For enums defined in the package itself, we have a type
+                # definition with enum values for the given property.
+                # For external enum references, we consult the map of external
+                # enum types to retrieve the Python enum type.
+                enum_type = None
+                if type_def and type_def.enum:
+                    enum_type = type_def.python_type
+                elif external_enum:
+                    enum_type = external_enum
+                if enum_type:
                     try:
-                        mapped_value[py_name] = type_def.python_type(input_val)
+                        mapped_value[py_name] = enum_type(input_val)
                     except ValueError as e:
                         full_path = (
                             schema_name
@@ -185,7 +203,7 @@ class ComponentProvider(Provider):
                         )
                         raise InputPropertyError(
                             full_path,
-                            f"Invalid value {input_val} of type {type(input_val)} for enum '{type_def.name}'",
+                            f"Invalid value {input_val} of type {type(input_val)} for enum '{type_def.name if type_def else external_enum}'",
                         ) from e
                     continue
 
@@ -195,8 +213,8 @@ class ComponentProvider(Provider):
                 )
                 mapped_value[py_name] = self.map_input_properties(
                     input_val if isinstance(input_val, dict) else {},
-                    type_def.properties,
-                    type_def.properties_mapping,
+                    type_def.properties,  # type: ignore # We know that type_def is not None here
+                    type_def.properties_mapping,  # type: ignore # We know that type_def is not None here
                     component_name,
                     next_path,
                 )
