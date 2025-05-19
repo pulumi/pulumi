@@ -58,7 +58,7 @@ func LoadProjectStack(ctx context.Context, project *workspace.Project, stack bac
 	if err != nil {
 		return nil, fmt.Errorf("could not detect project stack path: %w", err)
 	}
-	if stack.HasRemoteConfig() {
+	if stack.ConfigLocation().IsRemote {
 		// Check if the config file also exists and warn if it does.
 		_, err = os.Stat(configFilePath)
 		if err != nil && !os.IsNotExist(err) {
@@ -77,7 +77,7 @@ func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.Pr
 	if ConfigFile != "" {
 		return ps.Save(ConfigFile)
 	}
-	if stack.HasRemoteConfig() {
+	if stack.ConfigLocation().IsRemote {
 		return stack.SaveRemoteConfig(ctx, ps)
 	}
 	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)

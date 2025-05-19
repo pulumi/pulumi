@@ -86,8 +86,8 @@ func TestConfigSet(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
-				HasRemoteConfigF: func() bool {
-					return false
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
 				},
 			}
 
@@ -195,8 +195,8 @@ func TestConfigSetTypes(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
-				HasRemoteConfigF: func() bool {
-					return false
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
 				},
 			}
 

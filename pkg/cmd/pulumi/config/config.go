@@ -203,14 +203,13 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			if destinationStack.HasRemoteConfig() {
-				env := "<env>"
-				imports := destinationProjectStack.Environment.Imports()
-				if len(imports) == 1 {
-					env = imports[0]
+			if configLocation := destinationStack.ConfigLocation(); configLocation.IsRemote {
+				err := errors.New("config copy destination not supported for remote stack config")
+				if configLocation.EscEnv != nil {
+					return fmt.Errorf("%w: use `pulumi env set %s pulumiConfig.<key>`",
+						err, *configLocation.EscEnv)
 				}
-				helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.<key>`", env)
-				return errors.New("config copy destination not supported for remote stack config: " + helpText)
+				return err
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -368,14 +367,13 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			if stack.HasRemoteConfig() {
-				env := "<env>"
-				imports := ps.Environment.Imports()
-				if len(imports) == 1 {
-					env = imports[0]
+			if configLocation := stack.ConfigLocation(); configLocation.IsRemote {
+				err := errors.New("config rm not supported for remote stack config")
+				if configLocation.EscEnv != nil {
+					return fmt.Errorf("%w: use `pulumi env rm %s pulumiConfig.%s` to update config environment",
+						err, *configLocation.EscEnv, key.String())
 				}
-				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.%s`", env, key.String())
-				return errors.New("config rm not supported for remote stack config: " + helpText)
+				return err
 			}
 
 			err = ps.Config.Remove(key, path)
@@ -435,14 +433,13 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			if stack.HasRemoteConfig() {
-				env := "<env>"
-				imports := ps.Environment.Imports()
-				if len(imports) == 1 {
-					env = imports[0]
+			if configLocation := stack.ConfigLocation(); configLocation.IsRemote {
+				err := errors.New("config rm-all not supported for remote stack config")
+				if configLocation.EscEnv != nil {
+					return fmt.Errorf("%w: use `pulumi env rm %s pulumiConfig.<key>` to update config environment",
+						err, *configLocation.EscEnv)
 				}
-				helpText := fmt.Sprintf("use `pulumi env rm %s pulumiConfig.<key>`", env)
-				return errors.New("config rm-all not supported for remote stack config: " + helpText)
+				return err
 			}
 
 			for _, arg := range args {
@@ -501,7 +498,9 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			var configPath string
 			if cmdStack.ConfigFile != "" {
 				configPath = cmdStack.ConfigFile
-			} else if s.HasRemoteConfig() {
+			} else if s.ConfigLocation().IsRemote {
+				// TODO: This should be possible in the future to reset the remote config back to previous used config.
+				// See: https://github.com/pulumi/pulumi/issues/19557
 				return errors.New("cannot refresh stacks with remote config")
 			} else {
 				_, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
@@ -747,18 +746,17 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 		}
 	}
 
-	if s.HasRemoteConfig() {
-		exampleValue := "--secret <value>"
-		if !c.Secret {
-			exampleValue = value
+	if configLocation := s.ConfigLocation(); configLocation.IsRemote {
+		err := errors.New("config set not supported for remote stack config")
+		if configLocation.EscEnv != nil {
+			exampleValue := "--secret <value>"
+			if !c.Secret {
+				exampleValue = value
+			}
+			return fmt.Errorf("%w: use `pulumi env set %s pulumiConfig.%s %s`",
+				err, *configLocation.EscEnv, key.String(), exampleValue)
 		}
-		env := "<env>"
-		imports := ps.Environment.Imports()
-		if len(imports) == 1 {
-			env = imports[0]
-		}
-		helpText := fmt.Sprintf("use `pulumi env set %s pulumiConfig.%s %s`", env, key.String(), exampleValue)
-		return errors.New("config set not supported for remote stack config: " + helpText)
+		return err
 	}
 
 	err = ps.Config.Set(key, v, c.Path)

@@ -31,12 +31,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type StackConfigLocation struct {
+	IsRemote bool
+	EscEnv   *string
+}
+
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
-	// HasRemoteConfig indicates if the backend has configuration stored independent of the local file stack config.
-	HasRemoteConfig() bool
+	// ConfigLocation indicates if the backend has configuration stored independent of the local file stack config.
+	ConfigLocation() StackConfigLocation
 	// LoadRemoteConfig the stack's configuration remotely from the backend.
 	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
 	// SaveRemoteConfig the stack's configuration remotely to the backend.

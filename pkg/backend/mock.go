@@ -553,18 +553,18 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 //
 
 type MockStack struct {
-	RefF             func() StackReference
-	HasRemoteConfigF func() bool
-	LoadRemoteF      func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	SaveRemoteF      func(ctx context.Context, project *workspace.ProjectStack) error
-	OrgNameF         func() string
-	ConfigF          func() config.Map
-	SnapshotF        func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	TagsF            func() map[apitype.StackTagName]string
-	BackendF         func() Backend
-	PreviewF         func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF          func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF          func(ctx context.Context, op UpdateOperation,
+	RefF            func() StackReference
+	ConfigLocationF func() StackConfigLocation
+	LoadRemoteF     func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveRemoteF     func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF        func() string
+	ConfigF         func() config.Map
+	SnapshotF       func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	TagsF           func() map[apitype.StackTagName]string
+	BackendF        func() Backend
+	PreviewF        func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	UpdateF         func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	ImportF         func(ctx context.Context, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
@@ -587,9 +587,9 @@ func (ms *MockStack) Ref() StackReference {
 	panic("not implemented: MockStack.Ref")
 }
 
-func (ms *MockStack) HasRemoteConfig() bool {
-	if ms.HasRemoteConfigF != nil {
-		return ms.HasRemoteConfigF()
+func (ms *MockStack) ConfigLocation() StackConfigLocation {
+	if ms.ConfigLocationF != nil {
+		return ms.ConfigLocationF()
 	}
 	panic("not implemented: MockStack.HasRemoteConfigF")
 }

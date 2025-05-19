@@ -119,7 +119,7 @@ type cloudStack struct {
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
 	// hasRemoteConfig indicates whether this stack's config exists in ESC instead of a local file.
-	hasRemoteConfig bool
+	escConfigEnv *string
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -129,6 +129,11 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
 	if err != nil {
 		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
+	}
+
+	var escConfigEnv *string
+	if apistack.Config != nil {
+		escConfigEnv = &apistack.Config.Environment
 	}
 
 	// Now assemble all the pieces into a stack structure.
@@ -144,14 +149,17 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		currentOperation: apistack.CurrentOperation,
 		tags:             apistack.Tags,
 		b:                b,
-		hasRemoteConfig:  apistack.Config != nil,
+		escConfigEnv:     escConfigEnv,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
 // GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
-func (s *cloudStack) HasRemoteConfig() bool {
-	return s.hasRemoteConfig
+func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
+	return backend.StackConfigLocation{
+		IsRemote: s.escConfigEnv != nil,
+		EscEnv:   s.escConfigEnv,
+	}
 }
 
 func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project,
@@ -179,6 +187,7 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 
 func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
 	if projectStack.Config != nil {
+		// TODO: https://github.com/pulumi/pulumi/issues/19557
 		return errors.New("cannot set config for a stack with cloud config")
 	}
 	imports := projectStack.Environment.Imports()
