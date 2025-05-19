@@ -79,7 +79,10 @@ func (e *errorExplainer) Explain(
 ) (string, error) {
 	return "", errors.New("explainer failed")
 }
-func (e *errorExplainer) IsCopilotFeatureEnabled(opts backenddisplay.Options) bool { return true }
+
+func (e *errorExplainer) IsExplainPreviewEnabled(ctx context.Context, opts backenddisplay.Options) bool {
+	return true
+}
 
 func TestConfirmBeforeUpdating_ExplainerErrorDoesNotCrash(t *testing.T) {
 	t.Parallel()
