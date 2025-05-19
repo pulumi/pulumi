@@ -124,6 +124,7 @@ func NewPolicyAnalyzer(
 				logging.V(7).Infof("Handshake: not supported by '%v'", bin)
 				return nil, nil
 			}
+			return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 		}
 
 		logging.V(7).Infof("Handshake: success [%v]", bin)
