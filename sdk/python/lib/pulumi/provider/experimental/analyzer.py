@@ -116,7 +116,7 @@ class ComponentDefinition:
     description: Optional[str] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Parameterization:
     name: str
     version: str
@@ -125,19 +125,13 @@ class Parameterization:
     # it in base64.
     value: str
 
-    def __hash__(self) -> int:
-        return hash((self.name, self.version, self.value))
 
-
-@dataclass
+@dataclass(frozen=True)
 class Dependency:
     name: str
     version: Optional[str] = None
     downloadURL: Optional[str] = None
     parameterization: Optional[Parameterization] = None
-
-    def __hash__(self) -> int:
-        return hash((self.name, self.version, self.downloadURL, self.parameterization))
 
 
 class TypeNotFoundError(Exception):
@@ -778,13 +772,15 @@ def get_dependency_for_type(arg: type) -> Dependency:
             .read()
         )
         plugin = json.loads(pluginJSON)
-        dep = Dependency(plugin["name"], plugin["version"])
+        args = {"name": plugin["name"], "version": plugin["version"]}
         if "server" in plugin:
-            dep.downloadURL = plugin["server"]
+            args["downloadURL"] = plugin["server"]
         if "parameterization" in plugin:
             p = plugin["parameterization"]
-            dep.parameterization = Parameterization(p["name"], p["version"], p["value"])
-        return dep
+            args["parameterization"] = Parameterization(
+                p["name"], p["version"], p["value"]
+            )
+        return Dependency(**args)
     except FileNotFoundError as e:
         raise DependencyError("Could not load pulumi-plugin.json") from e
     except json.JSONDecodeError as e:
