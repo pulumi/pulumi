@@ -60,6 +60,24 @@ config:
 	assert.NoError(t, err)
 }
 
+func TestNoEmptyValueWarning(t *testing.T) {
+	t.Parallel()
+	b := []byte(`
+config:
+  project:a: a
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	var p *Project
+	projectStack, err := LoadProjectStackBytes(sink, p, b, "Pulumi.stack.yaml", marshaller)
+	require.NoError(t, err)
+	require.NotContains(t, stderr.String(), "warning: No value for configuration keys")
+	require.Len(t, projectStack.Config, 1)
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewTypedValue("a", config.TypeString))
+}
+
 func TestEmptyValueWarning(t *testing.T) {
 	t.Parallel()
 	b := []byte(`

@@ -360,10 +360,13 @@ func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 		keyString = strings.Join(keys, joiner)
 		pluralSuffix = "s"
 	}
-	diags.Warningf(&diag.Diag{
-		Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. "+
-			"This is currently treated as an empty string `\"\"`, "+
-			"but will be treated as `null` in a future version of pulumi.\n"+
-			"Set the value%[1]s to `\"\"` to avoid this warning.", pluralSuffix, keyString),
-	})
+
+	if len(keys) > 0 {
+		diags.Warningf(&diag.Diag{
+			Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. "+
+				"This is currently treated as an empty string `\"\"`, "+
+				"but will be treated as `null` in a future version of pulumi.\n"+
+				"Set the value%[1]s to `\"\"` to avoid this warning.", pluralSuffix, keyString),
+		})
+	}
 }
