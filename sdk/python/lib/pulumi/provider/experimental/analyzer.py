@@ -441,7 +441,6 @@ class Analyzer:
         is always false. For properties used in an input, can_be_plain is true,
         indicating that they can potentially be plain.
         """
-        type_string: Optional[str]
         optional = optional if optional is not None else is_optional(arg)
         if is_simple(arg):
             return PropertyDefinition(
@@ -583,12 +582,12 @@ class Analyzer:
                 description=self.get_docstring(typ, name),
             )
         elif is_resource(arg):
-            type_string, package_name = get_package_name(arg, typ, name)
+            resource_type_string, package_name = get_package_name(arg, typ, name)
             try:
                 dep = get_dependency_for_type(arg)
                 self.dependencies.add(dep)
                 return PropertyDefinition(
-                    ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{type_string.replace('/', '%2F')}",
+                    ref=f"/{dep.name}/v{dep.version}/schema.json#/resources/{resource_type_string.replace('/', '%2F')}",
                     optional=optional,
                     description=self.get_docstring(typ, name),
                 )
@@ -599,13 +598,13 @@ class Analyzer:
                 f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
             )
         elif is_enum(arg):
-            type_string = getattr(arg, "pulumi_type", None)
-            if type_string:  # This is an enum from an external package
+            enum_type_string = getattr(arg, "pulumi_type", None)
+            if enum_type_string:  # This is an enum from an external package
                 _, package_name = get_package_name(arg, typ, name)
                 try:
                     dep = get_dependency_for_type(arg)
                     self.dependencies.add(dep)
-                    ref = f"/{dep.name}/v{dep.version}/schema.json#/types/{type_string.replace('/', '%2F')}"
+                    ref = f"/{dep.name}/v{dep.version}/schema.json#/types/{enum_type_string.replace('/', '%2F')}"
                     self.external_enum_types[ref] = arg
                     return PropertyDefinition(
                         ref=ref,
