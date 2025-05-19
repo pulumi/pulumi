@@ -34,10 +34,10 @@ import (
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
 func parseAndSaveConfigArray(
+	sink diag.Sink,
 	ws pkgWorkspace.Context,
 	s backend.Stack, configArray []string,
 	path bool,
-	sink diag.Sink,
 ) error {
 	if len(configArray) == 0 {
 		return nil
@@ -47,7 +47,7 @@ func parseAndSaveConfigArray(
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ws, s, commandLineConfig, sink); err != nil {
+	if err = newcmd.SaveConfig(sink, ws, s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

@@ -146,7 +146,7 @@ func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Pr
 }
 
 // LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(project *Project, path string, diags diag.Sink) (*ProjectStack, error) {
+func LoadProjectStack(diags diag.Sink, project *Project, path string) (*ProjectStack, error) {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	marshaller, err := marshallerForPath(path)
@@ -361,7 +361,8 @@ func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
 		pluralSuffix = "s"
 	}
 	diags.Warningf(&diag.Diag{
-		Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. This is currently treated as an empty string `\"\"`, "+
+		Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. "+
+			"This is currently treated as an empty string `\"\"`, "+
 			"but will be treated as `null` in a future version of pulumi.\n"+
 			"Set the value%[1]s to `\"\"` to avoid this warning.", pluralSuffix, keyString),
 	})

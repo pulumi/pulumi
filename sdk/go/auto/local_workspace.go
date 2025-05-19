@@ -92,7 +92,7 @@ func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*
 	for _, ext := range settingsExtensions {
 		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s%s", name, ext))
 		if _, err := os.Stat(stackPath); err == nil {
-			proj, err := workspace.LoadProjectStack(project, stackPath, nil)
+			proj, err := workspace.LoadProjectStack(nil /*sink*/, project, stackPath)
 			if err != nil {
 				return nil, fmt.Errorf("found stack settings, but failed to load: %w", err)
 			}

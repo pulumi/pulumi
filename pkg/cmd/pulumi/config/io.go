@@ -41,12 +41,12 @@ import (
 // Attempts to load configuration for the given stack.
 func GetStackConfiguration(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
-	sink diag.Sink,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, ssml, stack, project, sink, nil)
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -57,13 +57,13 @@ func GetStackConfiguration(
 // of that cleanup.
 func GetStackConfigurationOrLatest(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
-	sink diag.Sink,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
-		ctx, ssml, stack, project, sink,
+		ctx, sink, ssml, stack, project,
 		func(err error) (config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// This error indicates that we're not being run in a project directory.
@@ -76,10 +76,10 @@ func GetStackConfigurationOrLatest(
 
 func getStackConfigurationWithFallback(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	s backend.Stack,
 	project *workspace.Project,
-	sink diag.Sink,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(cmdutil.Diag(), project, s)

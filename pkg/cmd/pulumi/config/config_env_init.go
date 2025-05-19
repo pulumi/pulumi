@@ -142,7 +142,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, project, stack, cmdutil.Diag())
+	projectStack, config, err := cmd.getStackConfig(ctx, cmdutil.Diag(), project, stack)
 	if err != nil {
 		return err
 	}
@@ -201,9 +201,9 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 func (cmd *configEnvInitCmd) getStackConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	project *workspace.Project,
 	stack backend.Stack,
-	sink diag.Sink,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
 	ps, err := cmd.parent.loadProjectStack(sink, project, stack)
 	if err != nil {

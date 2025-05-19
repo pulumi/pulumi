@@ -157,7 +157,7 @@ runtime: mock
 	// Check the config has been updated with the salt
 	project, err := workspace.LoadProject("Pulumi.yaml")
 	require.NoError(t, err)
-	projectStack, err := workspace.LoadProjectStack(project, "Pulumi.testStack.yaml", nil)
+	projectStack, err := workspace.LoadProjectStack(nil /*sink*/, project, "Pulumi.testStack.yaml")
 	require.NoError(t, err)
 	assert.NotEmpty(t, projectStack.EncryptionSalt)
 }
@@ -279,7 +279,7 @@ runtime: mock
 	// Check the config has been updated to the new secret
 	project, err := workspace.LoadProject("Pulumi.yaml")
 	require.NoError(t, err)
-	projectStack, err := workspace.LoadProjectStack(project, "Pulumi.testStack.yaml", nil)
+	projectStack, err := workspace.LoadProjectStack(nil /*sink*/, project, "Pulumi.testStack.yaml")
 	require.NoError(t, err)
 	cfgValue, ok := projectStack.Config[cfgKey]
 	require.True(t, ok)

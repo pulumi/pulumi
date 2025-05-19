@@ -362,7 +362,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
-	projStack, err := workspace.LoadProjectStack(proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"), nil)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"))
 	require.NoError(t, err)
 
 	assert.NotContains(t, projStack.Config, config.MustMakeKey("aws", "region"))

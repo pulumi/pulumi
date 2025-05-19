@@ -296,7 +296,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			return getConfig(ctx, ssml, ws, s, key, path, jsonOut, open, cmdutil.Diag())
+			return getConfig(ctx, cmdutil.Diag(), ssml, ws, s, key, path, jsonOut, open)
 		},
 	}
 	getCmd.Flags().BoolVarP(
@@ -479,7 +479,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := workspace.LoadProjectStack(project, configPath, cmdutil.Diag())
+			ps, err := workspace.LoadProjectStack(cmdutil.Diag(), project, configPath)
 			if err != nil {
 				return err
 			}
@@ -1009,13 +1009,13 @@ func listConfig(
 
 func getConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	stack backend.Stack,
 	key config.Key,
 	path, jsonOut,
 	openEnvironment bool,
-	sink diag.Sink,
 ) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {

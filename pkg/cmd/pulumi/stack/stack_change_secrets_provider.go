@@ -149,8 +149,8 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := CreateSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
-		false /*creatingStack*/, cmdutil.Diag()); err != nil {
+	if err := CreateSecretsManagerForExistingStack(ctx, cmdutil.Diag(), ws, currentStack, secretsProvider, rotateProvider,
+		false /*creatingStack*/); err != nil {
 		return err
 	}
 
@@ -158,23 +158,25 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
 	return migrateOldConfigAndCheckpointToNewSecretsProvider(
 		ctx,
+		cmdutil.Diag(),
 		ssml,
 		cmd.secretsProvider,
 		project,
 		currentStack,
 		currentProjectStack,
 		decrypter,
-		cmdutil.Diag(),
 	)
 }
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml SecretsManagerLoader,
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
-	currentConfig *workspace.ProjectStack, decrypter config.Decrypter, sink diag.Sink,
+	currentConfig *workspace.ProjectStack,
+	decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
 	reloadedProjectStack, err := LoadProjectStack(sink, project, currentStack)

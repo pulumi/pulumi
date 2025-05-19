@@ -89,9 +89,9 @@ func TestConfigSave(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	testStack1, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"), sink)
+	testStack1, err := workspace.LoadProjectStack(sink, &project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
 	assert.NoError(t, err)
-	testStack2, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"), sink)
+	testStack2, err := workspace.LoadProjectStack(sink, &project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
 	assert.NoError(t, err)
 
 	assert.Empty(t, stdout)

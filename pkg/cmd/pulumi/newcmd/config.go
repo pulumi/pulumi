@@ -38,6 +38,7 @@ import (
 // HandleConfig handles prompting for config values (as needed) and saving config.
 func HandleConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	prompt promptForValueFunc,
@@ -49,7 +50,6 @@ func HandleConfig(
 	yes bool,
 	path bool,
 	opts display.Options,
-	sink diag.Sink,
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
@@ -83,6 +83,7 @@ func HandleConfig(
 		// Prompt for config as needed.
 		c, err = promptForConfig(
 			ctx,
+			sink,
 			ssml,
 			prompt,
 			project,
@@ -92,7 +93,6 @@ func HandleConfig(
 			stackConfig,
 			yes,
 			opts,
-			sink,
 		)
 		if err != nil {
 			return err
@@ -101,7 +101,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(ws, s, c, sink); err != nil {
+		if err = SaveConfig(sink, ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -177,6 +177,7 @@ var templateKey = config.MustMakeKey("pulumi", "template")
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
@@ -186,7 +187,6 @@ func promptForConfig(
 	stackConfig config.Map,
 	yes bool,
 	opts display.Options,
-	sink diag.Sink,
 ) (config.Map, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
@@ -327,7 +327,7 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map, sink diag.Sink) error {
+func SaveConfig(sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err

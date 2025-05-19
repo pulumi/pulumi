@@ -70,9 +70,9 @@ func loadProjectStackByReference(
 	stackRef backend.StackReference,
 ) (*workspace.ProjectStack, error) {
 	if ConfigFile == "" {
-		return workspace.DetectProjectStack(stackRef.Name().Q(), diags)
+		return workspace.DetectProjectStack(diags, stackRef.Name().Q())
 	}
-	return workspace.LoadProjectStack(project, ConfigFile, diags)
+	return workspace.LoadProjectStack(diags, project, ConfigFile)
 }
 
 func SaveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {

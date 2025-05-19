@@ -63,6 +63,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = GetStackConfiguration(
 		context.Background(),
+		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
@@ -83,7 +84,6 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 		},
 		nil,
-		nil,
 	)
 }
 
@@ -93,6 +93,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	called := false
 	_, _, _ = GetStackConfigurationOrLatest(
 		context.Background(),
+		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
@@ -115,7 +116,6 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 				}
 			},
 		},
-		nil,
 		nil,
 	)
 	if !called {

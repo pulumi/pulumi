@@ -191,13 +191,13 @@ func DetectProject() (*Project, error) {
 	return proj, err
 }
 
-func DetectProjectStack(stackName tokens.QName, diags diag.Sink) (*ProjectStack, error) {
+func DetectProjectStack(diags diag.Sink, stackName tokens.QName) (*ProjectStack, error) {
 	project, path, err := DetectProjectStackPath(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadProjectStack(project, path, diags)
+	return LoadProjectStack(diags, project, path)
 }
 
 func DetectProjectStackDeployment(stackName tokens.QName) (*ProjectStackDeployment, error) {

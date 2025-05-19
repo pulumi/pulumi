@@ -419,21 +419,21 @@ func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 	return LoadProject(path)
 }
 
-func loadProjectStackFromText(t *testing.T, project *Project, content string, sink diag.Sink) (*ProjectStack, error) {
+func loadProjectStackFromText(t *testing.T, sink diag.Sink, project *Project, content string) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
 	err = os.WriteFile(path, []byte(content), 0o600)
 	assert.NoError(t, err)
 	defer deleteFile(t, tmp)
-	return LoadProjectStack(project, path, sink)
+	return LoadProjectStack(sink, project, path)
 }
 
 func loadProjectStackFromJSONText(
 	t *testing.T,
+	sink diag.Sink,
 	project *Project,
 	content string,
-	sink diag.Sink,
 ) (*ProjectStack, error) {
 	tmp, err := os.CreateTemp(t.TempDir(), "*.json")
 	assert.NoError(t, err)
@@ -441,7 +441,7 @@ func loadProjectStackFromJSONText(
 	err = os.WriteFile(path, []byte(content), 0o600)
 	assert.NoError(t, err)
 	defer deleteFile(t, tmp)
-	return LoadProjectStack(project, path, sink)
+	return LoadProjectStack(sink, project, path)
 }
 
 func TestProjectLoadsConfigSchemas(t *testing.T) {
@@ -593,7 +593,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -633,7 +633,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -672,7 +672,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -711,7 +711,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -749,7 +749,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -785,7 +785,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -889,7 +889,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -930,7 +930,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1013,7 +1013,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1027,7 +1027,7 @@ config:
 		config.NewPanicCrypter())
 	assert.NoError(t, configError, "there should no config type error")
 
-	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid, sink)
+	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1060,7 +1060,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1094,7 +1094,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1130,7 +1130,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1161,7 +1161,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1207,7 +1207,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1221,7 +1221,7 @@ config:
 		crypter)
 	assert.NoError(t, configError, "there should no config type error")
 
-	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid, sink)
+	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
@@ -1278,7 +1278,7 @@ config:
 	require.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, stackYAML, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, stackYAML)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	require.NoError(t, stackError, "Should be able to read the stack")
@@ -1487,7 +1487,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON, sink)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
 		require.NoError(t, err)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
@@ -1523,7 +1523,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON, sink)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1580,7 +1580,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml, sink)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1611,7 +1611,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml, sink)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1667,7 +1667,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON, sink)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1733,7 +1733,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromJSONText(t, project, projectStackJSON, sink)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, projectStackJSON)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1815,7 +1815,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml, sink)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1860,7 +1860,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		var stdout, stderr bytes.Buffer
 		sink := diagtest.MockSink(&stdout, &stderr)
-		stack, err := loadProjectStackFromText(t, project, projectStackYaml, sink)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
 		assert.Empty(t, stdout)
 		assert.Empty(t, stderr)
 		require.NoError(t, err)
@@ -1920,7 +1920,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	var stdout, stderr bytes.Buffer
 	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml, sink)
+	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
 	assert.Empty(t, stdout)
 	assert.Empty(t, stderr)
 	assert.NoError(t, stackError, "Should be able to read the stack")
