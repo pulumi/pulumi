@@ -118,7 +118,7 @@ type cloudStack struct {
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
-	// hasRemoteConfig indicates whether this stack's config exists in ESC instead of a local file.
+	// escConfigEnv caches if we expect this stack to have its config stored in an ESC environment.
 	escConfigEnv *string
 }
 
