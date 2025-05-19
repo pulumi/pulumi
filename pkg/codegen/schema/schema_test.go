@@ -897,6 +897,79 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	assert.NotNil(t, pkg)
 }
 
+func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]FunctionSpec{
+			"test:index:pulumi": {
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	assert.Len(t, diags, 1)
+	for _, diag := range diags {
+		assert.Equal(t, diag.Severity, hcl.DiagError)
+		assert.True(
+			t,
+			strings.Contains(diag.Summary, "pulumi function name is reserved name"),
+		)
+	}
+	assert.Nil(t, pkg)
+}
+
+func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types: map[string]ComplexTypeSpec{
+			"test:index:pulumi": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	assert.Len(t, diags, 1)
+	for _, diag := range diags {
+		assert.Equal(t, diag.Severity, hcl.DiagError)
+		assert.True(
+			t,
+			strings.Contains(diag.Summary, "pulumi is a reserved name, cannot be used for type name"),
+		)
+	}
+	assert.Nil(t, pkg)
+}
+
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
@@ -2091,7 +2164,7 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 		},
 	}
 
-	_, diags, err := BindSpec(pkgSpec, loader)
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
 	require.ErrorContains(t, err, "function name pulumi is reserved")
 	assert.Len(t, diags, 1)
 }
@@ -2112,7 +2185,7 @@ func TestResourceWithKeynameOverlapResource(t *testing.T) {
 		},
 	}
 
-	_, diags, _ := BindSpec(pkgSpec, loader)
+	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 	assert.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "is a reserved name")
 }
@@ -2133,7 +2206,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 		},
 	}
 
-	_, diags, _ := BindSpec(pkgSpec, loader)
+	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
 	assert.Len(t, diags, 2)
 	assert.Contains(t, diags[0].Summary, "is a reserved name")
 	assert.Contains(t, diags[1].Summary, "unknown primitive type")

@@ -758,6 +758,7 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 		name := parts[2]
 		if isReservedKeyword(name) {
 			diags = append(diags, errorf(path, name+" is a reserved name, cannot be used for type name"))
+			return nil, diags, errors.New("type name " + name + " is reserved")
 		}
 	}
 
@@ -1344,10 +1345,10 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	// Ensure all of the types defined by the package are bound.
 	for _, token := range tokens {
 		_, typeDiags, err := t.bindTypeDef(token, options)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error binding type %v", token)
-		}
 		diags = diags.Extend(typeDiags)
+		if err != nil {
+			return nil, diags, fmt.Errorf("error binding type %v", token)
+		}
 	}
 
 	// Build the type list.
@@ -1516,7 +1517,7 @@ func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Pr
 		"#/config/defaults", spec.Required, false, options)
 
 	for _, property := range properties {
-		if isReservedConfigKey(property.Name) {
+		if isReservedKeyword(property.Name) {
 			path := "#/config/variables/" + property.Name
 			diags = diags.Append(errorf(path, property.Name+" is a reserved configuration key"))
 		}
@@ -1590,12 +1591,12 @@ func (t *types) bindResourceDetails(
 
 	// emit a warning if either of these are used
 	for _, property := range properties {
-		if isReservedResourcePropertyKey(property.Name) {
+		if isReservedComponentResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
 			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name"))
 		}
 
-		if !spec.IsComponent && isReservedNonComponentPropertyKey(property.Name) {
+		if !spec.IsComponent && isReservedCustomResourcePropertyKey(property.Name) {
 			warnPath := path + "/properties/" + property.Name
 			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name for resources"))
 		}
@@ -1673,7 +1674,7 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 
 	// If any input property is called "version" or "pulumi" error that it's reserved.
 	for _, property := range decl.InputProperties {
-		if isReservedTopLevelPropertyName(property.Name) {
+		if isReservedProviderPropertyName(property.Name) {
 			path := "#/provider/properties/" + property.Name
 			diags = diags.Append(errorf(path, property.Name+" is a reserved property name"))
 		}

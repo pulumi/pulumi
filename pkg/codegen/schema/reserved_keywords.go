@@ -32,18 +32,14 @@ func isReservedKeyword(name string) bool {
 	return slices.Contains(reservedKeywords, name)
 }
 
-func isReservedTopLevelPropertyName(name string) bool {
+func isReservedProviderPropertyName(name string) bool {
 	return slices.Contains(reservedTopLevelPropertyNames, name) || isReservedKeyword(name)
 }
 
-func isReservedResourcePropertyKey(name string) bool {
+func isReservedComponentResourcePropertyKey(name string) bool {
 	return slices.Contains(reservedResourcePropertyKeys, name) || isReservedKeyword(name)
 }
 
-func isReservedNonComponentPropertyKey(name string) bool {
+func isReservedCustomResourcePropertyKey(name string) bool {
 	return slices.Contains(reservedNonComponentPropertyKeys, name)
-}
-
-func isReservedConfigKey(name string) bool {
-	return isReservedKeyword(name)
 }
