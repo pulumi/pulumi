@@ -514,11 +514,30 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}
 
 	kill := func() error {
-		var result *multierror.Error
-
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 		// for the child processes to close.
+
+		// Try to shut down gracefully first, so the plugins have a chance to clean up.
+		// If that fails we'll just kill the process.
+		cmdutil.InterruptChildren(cmd.Process.Pid)
+
+		// Give the process 500ms to shut down, or kill it forcibly.
+		timer := time.NewTimer(500 * time.Millisecond)
+		defer timer.Stop()
+		done := make(chan error, 1)
+		go func() {
+			done <- cmd.Wait()
+		}()
+		select {
+		case <-done:
+			return nil
+		case <-timer.C:
+		}
+
+		// We failed to clean up the process within the allocated time.  Shut it down forcibly.
+		var result *multierror.Error
+
 		if err := cmdutil.KillChildren(cmd.Process.Pid); err != nil {
 			result = multierror.Append(result, err)
 		}
