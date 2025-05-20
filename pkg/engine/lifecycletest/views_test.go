@@ -54,6 +54,12 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"hello": req.Properties["foo"],
+								},
+								Outputs: resource.PropertyMap{
+									"hello": req.Properties["foo"],
+								},
 							},
 						},
 					})
@@ -69,6 +75,109 @@ func TestViewsBasic(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{
+							Changes: plugin.DiffSome,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"hello": resource.NewStringProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"hello": resource.NewStringProperty("bar"),
+							},
+						},
+					}, req.OldViews)
+
+					// Update the view.
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					if err != nil {
+						return plugin.UpdateResponse{}, fmt.Errorf("creating resource status client: %w", err)
+					}
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     deploy.OpUpdate,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"hello": req.NewInputs["foo"],
+								},
+								Outputs: resource.PropertyMap{
+									"hello": req.NewInputs["foo"],
+								},
+							},
+						},
+					})
+					if err != nil {
+						return plugin.UpdateResponse{}, fmt.Errorf("publishing view steps: %w", err)
+					}
+
+					return plugin.UpdateResponse{
+						Properties: req.NewInputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"hello": resource.NewStringProperty("baz"),
+							},
+							Outputs: resource.PropertyMap{
+								"hello": resource.NewStringProperty("baz"),
+							},
+						},
+					}, req.OldViews)
+
+					// Delete the view.
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					if err != nil {
+						return plugin.DeleteResponse{}, fmt.Errorf("creating resource status client: %w", err)
+					}
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     deploy.OpDelete,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+						},
+					})
+					if err != nil {
+						return plugin.DeleteResponse{}, fmt.Errorf("publishing view steps: %w", err)
+					}
+
+					return plugin.DeleteResponse{
+						Status: resource.StatusOK,
+					}, nil
+				},
 			}, nil
 		}, deploytest.WithoutGrpc),
 	}
@@ -77,11 +186,14 @@ func TestViewsBasic(t *testing.T) {
 		"foo": "bar",
 	})
 
+	creating := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: ins,
-		})
-		assert.NoError(t, err)
+		if creating {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -103,29 +215,23 @@ func TestViewsBasic(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3) // TODO: investigate failure: the view is missing; should have been samed
+	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 
-	// TODO full lifecycle
-	// Check events, including summary event counts
-}
+	// Run a third update, with a change, should update.
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	assert.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 
-// TODO:
-// - target
-// - exclude
-// - protect
-// - destroy (old style)
-// - destroy (run program)
-// - refresh (old style)
-// - refresh (run program)
-// - refresh update (old style)
-// - refresh update (run program)
-// - view replacements (delete before create)
-// - view replacements (create before delete)
-// - view replaced with a real resource
-// - real resource replaced with a view
-// - view nested parenting
-// - update plans
-// - import resource with views
-// - read resource with views
-// - pulumi:pulumi:getResource
+	// Run a fourth update, this time, deleting the resource and its view.
+	creating = false
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
+	assert.NoError(t, err)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
+}

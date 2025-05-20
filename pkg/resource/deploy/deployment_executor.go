@@ -204,6 +204,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	// Set up a step generator and executor for this deployment.
 	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
 
+	// Set up the resource status server for this deployment.
+	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, ex.stepExec)
+	if err != nil {
+		return nil, fmt.Errorf("creating resource status server: %w", err)
+	}
+
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
 	type nextEvent struct {
@@ -282,19 +288,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 						return false, result.BailError(err)
 					}
 				}
-
-			case event := <-ex.deployment.resourceStatusEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming resource status event")
-
-				if err := ex.handleSingleEvent(event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event), err)
-					}
-					cancel()
-					return false, result.BailError(err)
-				}
-
 			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
@@ -546,9 +539,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
 		ex.asyncEventsExpected--
 		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
-	case AdditionalStepsEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received AdditionalStepsEvent")
-		steps, err = ex.stepGen.HandleAdditionalSteps(e)
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		var async bool

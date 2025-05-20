@@ -421,9 +421,18 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
+	return se.continueExecuteStep(payload, workerID, step)
+}
+
+func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, step Step) error {
+	events := se.deployment.events
+
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
 	status, stepComplete, err := step.Apply()
-	if isDiff {
+
+	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
+	// the system.
+	if _, isDiff := step.(*DiffStep); isDiff {
 		return nil
 	}
 
@@ -511,6 +520,16 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
+	_, isDelete := step.(*DeleteStep)
+
+	// Calling stepComplete allows steps that depend on this step to continue. For deletes, stepComplete is called
+	// _before_ OnResourceStepPost. This way, any delete steps for view children can be executed and saved to state
+	// before OnResourceStepPost for this resource saves the results of the step in the snapshot.
+	if isDelete && stepComplete != nil {
+		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
+		stepComplete()
+	}
+
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
@@ -519,8 +538,9 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	}
 
 	// Calling stepComplete allows steps that depend on this step to continue. OnResourceStepPost saved the results
-	// of the step in the snapshot, so we are ready to go.
-	if stepComplete != nil {
+	// of the step in the snapshot, so we are ready to go. This happens _after_ OnResourceStepPost for
+	// all non-delete operations.
+	if !isDelete && stepComplete != nil {
 		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
 		stepComplete()
 	}

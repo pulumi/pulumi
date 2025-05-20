@@ -72,13 +72,62 @@ func (rs *ResourceStatus) PublishViewSteps(token string, steps []ViewStep) error
 }
 
 func (rs *ResourceStatus) marshalStep(step ViewStep) (*pulumirpc.ViewStep, error) {
+	keys := slice.Prealloc[string](len(step.Keys))
+	for _, key := range step.Keys {
+		keys = append(keys, string(key))
+	}
+
+	diffs := slice.Prealloc[string](len(step.Diffs))
+	for _, diff := range step.Diffs {
+		diffs = append(diffs, string(diff))
+	}
+
+	detailedDiff := rs.unmarshalDetailedDiff(step.DetailedDiff)
+
 	return &pulumirpc.ViewStep{
-		Op:     rs.marshalOp(step.Op),
-		Status: rs.marshalStatus(step.Status),
-		Error:  step.Error,
-		Old:    rs.marshalState(step.Old),
-		New:    rs.marshalState(step.New),
+		Op:              rs.marshalOp(step.Op),
+		Status:          rs.marshalStatus(step.Status),
+		Error:           step.Error,
+		Old:             rs.marshalState(step.Old),
+		New:             rs.marshalState(step.New),
+		Keys:            keys,
+		Diffs:           diffs,
+		DetailedDiff:    detailedDiff,
+		HasDetailedDiff: len(detailedDiff) > 0,
 	}, nil
+}
+
+func (rs *ResourceStatus) unmarshalDetailedDiff(m map[string]plugin.PropertyDiff) map[string]*pulumirpc.PropertyDiff {
+	if len(m) == 0 {
+		return nil
+	}
+
+	result := make(map[string]*pulumirpc.PropertyDiff)
+	for path, diff := range m {
+		var kind pulumirpc.PropertyDiff_Kind
+		switch diff.Kind {
+		case plugin.DiffAdd:
+			kind = pulumirpc.PropertyDiff_ADD
+		case plugin.DiffAddReplace:
+			kind = pulumirpc.PropertyDiff_ADD_REPLACE
+		case plugin.DiffDelete:
+			kind = pulumirpc.PropertyDiff_DELETE
+		case plugin.DiffDeleteReplace:
+			kind = pulumirpc.PropertyDiff_DELETE
+		case plugin.DiffUpdate:
+			kind = pulumirpc.PropertyDiff_UPDATE
+		case plugin.DiffUpdateReplace:
+			kind = pulumirpc.PropertyDiff_UPDATE_REPLACE
+		default:
+			panic(fmt.Errorf("unknown diff kind %v", diff.Kind))
+		}
+
+		result[path] = &pulumirpc.PropertyDiff{
+			Kind:      kind,
+			InputDiff: diff.InputDiff,
+		}
+	}
+	return result
 }
 
 func (rs *ResourceStatus) marshalOp(op display.StepOp) pulumirpc.ViewStep_Op {
@@ -165,12 +214,14 @@ func (rs *ResourceStatus) marshalState(state *ViewStepState) *pulumirpc.ViewStep
 }
 
 type ViewStep struct {
-	Op     display.StepOp
-	Status resource.Status
-	Error  string
-	Old    *ViewStepState
-	New    *ViewStepState
-	// TODO keys, diffs, detailedDiff
+	Op           display.StepOp
+	Status       resource.Status
+	Error        string
+	Old          *ViewStepState
+	New          *ViewStepState
+	Keys         []resource.PropertyKey
+	Diffs        []resource.PropertyKey
+	DetailedDiff map[string]plugin.PropertyDiff
 }
 
 type ViewStepState struct {
