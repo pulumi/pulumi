@@ -488,6 +488,7 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
 		Info:                    minfo,
 		UseLanguageVersionTools: request.UseLanguageVersionTools,
+		IsPlugin:                request.IsPlugin,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -1735,13 +1735,10 @@ func TestRunPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 	e.CWD = filepath.Join(e.RootPath, "provider-nodejs")
-	e.RunCommand("npm", "install")
+	e.RunCommand("pulumi", "install")
 
 	e.CWD = filepath.Join(e.RootPath, "provider-python")
-	e.RunCommand("python", "-m", "venv", "venv", "--clear")
-	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-	require.NoError(t, err)
-	e.RunCommand(filepath.Join("venv", "bin", "python"), "-m", "pip", "install", "-e", pythonSdkPath)
+	e.RunCommand("pulumi", "install")
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")

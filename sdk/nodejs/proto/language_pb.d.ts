@@ -384,6 +384,8 @@ export class InstallDependenciesRequest extends jspb.Message {
     setInfo(value?: ProgramInfo): InstallDependenciesRequest;
     getUseLanguageVersionTools(): boolean;
     setUseLanguageVersionTools(value: boolean): InstallDependenciesRequest;
+    getIsPlugin(): boolean;
+    setIsPlugin(value: boolean): InstallDependenciesRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InstallDependenciesRequest.AsObject;
@@ -401,6 +403,7 @@ export namespace InstallDependenciesRequest {
         isTerminal: boolean,
         info?: ProgramInfo.AsObject,
         useLanguageVersionTools: boolean,
+        isPlugin: boolean,
     }
 }
 
