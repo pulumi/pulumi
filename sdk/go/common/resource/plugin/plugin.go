@@ -42,6 +42,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	pulumiEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -427,6 +428,15 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
 	})
+
+	if exporterTypeStr := pulumiEnv.OpentelemetryTracing.Value(); exporterTypeStr != "" {
+		if env == nil {
+			// If we set env to only OPENTELEMETRY_INSTRUMENTATION=true it breaks because it overrides all the other environment variables
+			env = append(os.Environ(), fmt.Sprintf("OPENTELEMETRY_INSTRUMENTATION=%s", exporterTypeStr))
+		} else {
+			env = append(env, fmt.Sprintf("OPENTELEMETRY_INSTRUMENTATION=%s", exporterTypeStr))
+		}
+	}
 
 	// Check to see if we have a binary we can invoke directly
 	if _, err := os.Stat(bin); os.IsNotExist(err) {
