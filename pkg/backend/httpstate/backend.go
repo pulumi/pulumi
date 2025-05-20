@@ -2311,7 +2311,11 @@ type httpstateBackendClient struct {
 	backend deploy.BackendClient
 }
 
-func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+func (c httpstateBackendClient) GetStackOutputs(
+	ctx context.Context,
+	name string,
+	onDecryptError func(error) error,
+) (resource.PropertyMap, error) {
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
@@ -2320,7 +2324,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 			"for more information.")
 	}
 
-	return c.backend.GetStackOutputs(ctx, name)
+	return c.backend.GetStackOutputs(ctx, name, onDecryptError)
 }
 
 func (c httpstateBackendClient) GetStackResourceOutputs(

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Elide `StackReference` outputs that fail to decrypt
