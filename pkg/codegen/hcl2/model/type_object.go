@@ -47,7 +47,7 @@ type ObjectType struct {
 
 // NewObjectType creates a new object type with the given properties and annotations.
 func NewObjectType(properties map[string]Type, annotations ...interface{}) *ObjectType {
-	return &ObjectType{Properties: properties, Annotations: annotations}
+	return &ObjectType{Properties: properties, Annotations: annotations, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // Annotate adds annotations to the object type. Annotations may be retrieved by GetObjectTypeAnnotation.
@@ -257,9 +257,6 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:

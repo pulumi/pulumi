@@ -81,7 +81,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 		return elementTypes[0]
 	}
 
-	return &UnionType{ElementTypes: elementTypes, Annotations: annotations}
+	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are
@@ -235,9 +235,6 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
 		var diags []lazyDiagnostics
