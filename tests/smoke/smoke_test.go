@@ -49,16 +49,13 @@ var Languages = map[string]string{
 }
 
 // Quick sanity tests for each downstream language to check that a minimal example can be created and run.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageNewSmoke(t *testing.T) {
 	// make sure we can download needed plugins
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
+	//nolint:paralleltest // pulumi new is not parallel safe
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
-			//nolint:paralleltest
-
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 
@@ -79,8 +76,6 @@ func TestLanguageNewSmoke(t *testing.T) {
 }
 
 // Quick sanity tests that YAML convert works.
-//
-//nolint:paralleltest // sets envvars
 func TestYamlConvertSmoke(t *testing.T) {
 	// make sure we can download the yaml converter plugin
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -238,7 +233,6 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetSchema(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -312,7 +306,6 @@ func TestPackageGetSchema(t *testing.T) {
 	assert.Equal(t, "parameter", schema.Name)
 }
 
-//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMappingToFile(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -340,7 +333,6 @@ func TestPackageGetMappingToFile(t *testing.T) {
 	require.NotNil(t, contents, "mapping contents should be non-empty")
 }
 
-//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -364,15 +356,12 @@ func TestPackageGetMapping(t *testing.T) {
 }
 
 // Quick sanity tests for each downstream language to check that import works.
-//
-//nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageImportSmoke(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
+	//nolint:paralleltest // pulumi new is not parallel safe
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
-			//nolint:paralleltest
-
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 
@@ -498,8 +487,6 @@ func TestRelativePluginPath(t *testing.T) {
 }
 
 // Quick sanity tests for https://github.com/pulumi/pulumi/issues/16248. Ensure we can run plugins and auto-fetch them.
-//
-//nolint:paralleltest // changes env vars
 func TestPluginRun(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
@@ -562,8 +549,6 @@ func TestInstall(t *testing.T) {
 // A smoke test to ensure that secrets providers are correctly initialized and persisted to state upon stack creation.
 // We check also that when stack configuration exists before stack initialization, any compatible secrets provider
 // configuration is respected and not clobbered or overwritten.
-//
-//nolint:paralleltest // we set environment variables
 func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 	// Make sure we can download needed plugins
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -601,14 +586,13 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest
 	for _, runtime := range Runtimes {
 		for _, c := range cases {
 			c := c
 			name := fmt.Sprintf("%s %s", runtime, c.name)
 
 			t.Run(name, func(t *testing.T) {
-				//nolint:paralleltest
-
 				e := ptesting.NewEnvironment(t)
 				defer e.DeleteIfNotFailed()
 
