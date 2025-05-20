@@ -980,10 +980,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
-		} else if fun.ReturnTypePlain {
+		} else if fun.ReturnTypePlain && liftReturn {
 			innerType := mod.typeString(returnType, false, nil)
 			retty = fmt.Sprintf("Promise<%s>", innerType)
-		} else if liftReturn {
+		} else if fun.ReturnTypePlain && !liftReturn {
+			retty = fmt.Sprintf("Promise<%s.%sResult>", name, title(method.Name))
+		} else if !fun.ReturnTypePlain && liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(returnType, false, nil))
 		} else {
 			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
@@ -1010,7 +1012,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		} else if !fun.ReturnTypePlain && isObjectReturnType {
 			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
 		} else if fun.ReturnTypePlain && !isObjectReturnType {
-			fmt.Fprintf(w, "        %spulumi.runtime.callSingleOutput(\"%s\", {\n", ret, fun.Token)
+			fmt.Fprintf(w, "        %sutilities.callAsyncSingle(\"%s\", {\n", ret, fun.Token)
 		} else if fun.ReturnTypePlain && isObjectReturnType {
 			fmt.Fprintf(w, "        %sutilities.callAsync(\"%s\", {\n", ret, fun.Token)
 		}
@@ -1026,15 +1028,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 		}
 		fmt.Fprintf(w, "        }, this")
-
-		if fun.ReturnTypePlain {
-			// Unwrap magic property "res" for methods that return a plain non-object-type.
-			if !isObjectReturnType {
-				fmt.Fprintf(w, `, {property: "res"}`)
-			} else {
-				fmt.Fprintf(w, `, {}`)
-			}
-		}
 
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
