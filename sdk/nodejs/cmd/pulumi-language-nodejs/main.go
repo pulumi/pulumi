@@ -780,13 +780,12 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	}
 	var port int
 	if req.GetAttachDebugger() {
-		port, err = netutil.FindNextAvailablePort(preferredPort)
+		var debugArgs []string
+		port, debugArgs, err = getDebuggerPortAndFlags()
 		if err != nil {
-			return &pulumirpc.RunResponse{Error: fmt.Sprintf("could not find available port for debugger: %v", err)}
+			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
-		nodeargs = append(nodeargs, fmt.Sprintf("--inspect-brk=%d", port))
-		// suppress the console output "Debugger listening on..."
-		nodeargs = append(nodeargs, "--inspect-publish-uid=http")
+		nodeargs = append(nodeargs, debugArgs...)
 	}
 	nodeargs = append(nodeargs, args...)
 
@@ -825,31 +824,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 			return err
 		}
 		if req.GetAttachDebugger() {
-			cfg := map[string]any{
-				"name":             "Pulumi: Program (Node.js)",
-				"type":             "node",
-				"request":          "attach",
-				"processId":        cmd.Process.Pid,
-				"continueOnAttach": true,
-				"skipFiles":        []any{"<node_internals>/**"},
-			}
-			if port != preferredPort {
-				cfg["port"] = port
-			}
-			debugConfig, err := structpb.NewStruct(cfg)
+			err := startDebugging(ctx, engineClient, cmd, port, "Pulumi: Program (Node.js)")
 			if err != nil {
 				return err
-			}
-			message := fmt.Sprintf("on process id %d", cmd.Process.Pid)
-			if port != preferredPort {
-				message = fmt.Sprintf(" and port %d", port)
-			}
-			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
-				Config:  debugConfig,
-				Message: message,
-			})
-			if err != nil {
-				return fmt.Errorf("unable to start debugging: %w", err)
 			}
 		}
 		return cmd.Wait()
@@ -1439,6 +1416,54 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
+func getDebuggerPortAndFlags() (int, []string, error) {
+	port, err := netutil.FindNextAvailablePort(preferredPort)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to find available port for debugger: %w", err)
+	}
+	return port, []string{
+		fmt.Sprintf("--inspect-brk=%d", port),
+		// suppress the console output "Debugger listening on..."
+		"--inspect-publish-uid=http",
+	}, nil
+}
+
+func startDebugging(
+	ctx context.Context,
+	engineClient pulumirpc.EngineClient,
+	cmd *exec.Cmd,
+	port int,
+	name string,
+) error {
+	cfg := map[string]any{
+		"name":             name,
+		"type":             "node",
+		"request":          "attach",
+		"processId":        cmd.Process.Pid,
+		"continueOnAttach": true,
+		"skipFiles":        []any{"<node_internals>/**"},
+	}
+	if port != preferredPort {
+		cfg["port"] = port
+	}
+	debugConfig, err := structpb.NewStruct(cfg)
+	if err != nil {
+		return err
+	}
+	message := fmt.Sprintf("on process id %d", cmd.Process.Pid)
+	if port != preferredPort {
+		message += fmt.Sprintf(" and port %d", port)
+	}
+	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+		Config:  debugConfig,
+		Message: message,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start debugging: %w", err)
+	}
+	return nil
+}
+
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
@@ -1494,13 +1519,12 @@ func (host *nodeLanguageHost) RunPlugin(
 	args := []string{}
 	var port int
 	if req.GetAttachDebugger() {
-		port, err = netutil.FindNextAvailablePort(preferredPort)
+		var debugArgs []string
+		port, debugArgs, err = getDebuggerPortAndFlags()
 		if err != nil {
-			return fmt.Errorf("failed to find available port for debugger: %w", err)
+			return err
 		}
-		args = append(args, fmt.Sprintf("--inspect-brk=%d", port))
-		// suppress the console output "Debugger listening on..."
-		args = append(args, "--inspect-publish-uid=http")
+		args = append(args, debugArgs...)
 	}
 
 	args = append(args, runPath)
@@ -1526,31 +1550,9 @@ func (host *nodeLanguageHost) RunPlugin(
 			return err
 		}
 		if req.GetAttachDebugger() {
-			cfg := map[string]any{
-				"name":             fmt.Sprintf("Pulumi: Plugin (%s)", req.Name),
-				"type":             "node",
-				"request":          "attach",
-				"processId":        cmd.Process.Pid,
-				"continueOnAttach": true,
-				"skipFiles":        []any{"<node_internals>/**"},
-			}
-			if port != preferredPort {
-				cfg["port"] = port
-			}
-			debugConfig, err := structpb.NewStruct(cfg)
+			err := startDebugging(server.Context(), engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 			if err != nil {
 				return err
-			}
-			message := fmt.Sprintf("on process id %d", cmd.Process.Pid)
-			if port != preferredPort {
-				message += fmt.Sprintf(" and port %d", port)
-			}
-			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
-				Config:  debugConfig,
-				Message: message,
-			})
-			if err != nil {
-				return fmt.Errorf("unable to start debugging: %w", err)
 			}
 		}
 		return cmd.Wait()
