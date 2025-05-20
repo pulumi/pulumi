@@ -90,6 +90,7 @@ export async function callAsync<T>(
     return value;
 }
 
+/** @internal */
 export async function callAsyncSingle<T>(
     tok: string,
     props: pulumi.Inputs,
