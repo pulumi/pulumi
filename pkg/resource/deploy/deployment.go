@@ -320,8 +320,6 @@ type Deployment struct {
 	newPlans *resourcePlans
 	// the set of resources read as part of the deployment
 	reads *gsync.Map[resource.URN, *resource.State]
-	// a channel to post steps back to the step generator.
-	resourceStatusEvents <-chan SourceEvent
 	// the resource status server.
 	resourceStatus *resourceStatusServer
 }
@@ -530,14 +528,6 @@ func NewDeployment(
 		newPlans:             newResourcePlan(target.Config),
 		reads:                reads,
 	}
-
-	resourceStatusEvents := make(chan SourceEvent)
-	resourceStatus, err := newResourceStatusServer(d, resourceStatusEvents)
-	if err != nil {
-		return nil, fmt.Errorf("creating resource status server: %w", err)
-	}
-	d.resourceStatusEvents = resourceStatusEvents
-	d.resourceStatus = resourceStatus
 
 	return d, nil
 }

@@ -37,7 +37,7 @@ import (
 // functions are to be called when the engine has fully retired a step. You
 // _should not_ modify the resource state in these functions -- doing so will
 // race with the snapshot writing code.
-type StepCompleteFunc func()
+type StepCompleteFunc func() error
 
 // Step is a specification for a deployment operation.
 type Step interface {
@@ -177,7 +177,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	// TODO: should this step be marked as skipped if it comes from a targeted up?
-	complete := func() {
+	complete := func() error {
 		// It's possible that s.reg will be nil in the case that multiple same steps
 		// are emitted for a single RegisterResourceEvent. This occurs when a
 		// resource which is not targeted by a targeted operation needs to ensure
@@ -189,6 +189,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if s.reg != nil {
 			s.reg.Done(&RegisterResult{State: s.new})
 		}
+		return nil
 	}
 	return resource.StatusOK, complete, nil
 }
@@ -367,9 +368,13 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	complete := func() {
-		s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+	complete := func() error {
+		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+		if err != nil {
+			return err
+		}
 		s.reg.Done(&RegisterResult{State: s.new})
+		return nil
 	}
 
 	if resourceError != nil {
@@ -571,8 +576,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	complete := func() {
-		s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+	complete := func() error {
+		return s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
 	}
 
 	return resource.StatusOK, complete, nil
@@ -760,9 +765,13 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	// Finally, mark this operation as complete.
-	complete := func() {
-		s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+	complete := func() error {
+		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+		if err != nil {
+			return err
+		}
 		s.reg.Done(&RegisterResult{State: s.new})
+		return nil
 	}
 
 	if resourceError != nil {
@@ -841,7 +850,7 @@ func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assertf(!s.pendingDelete || s.old.Delete,
 		"old resource %v should be marked for deletion if pending delete", s.old.URN)
-	return resource.StatusOK, func() {}, nil
+	return resource.StatusOK, func() error { return nil }, nil
 }
 
 func (s *ReplaceStep) Fail() {
@@ -1031,9 +1040,13 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Modified = &now
 	}
 
-	complete := func() {
-		s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+	complete := func() error {
+		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+		if err != nil {
+			return err
+		}
 		s.event.Done(&ReadResult{State: s.new})
+		return nil
 	}
 
 	if resourceError == nil {
@@ -1270,13 +1283,15 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new = nil
 	}
 
-	complete := func() {
-		s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+	complete := func() error {
+		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
 
 		// s.cts will be empty for refreshes that are just being done on state, rather than via a program.
 		if s.cts != nil {
 			s.cts.MustFulfill(s.new)
 		}
+
+		return err
 	}
 
 	return refreshed.Status, complete, err
@@ -1485,9 +1500,13 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Set Created to now as the resource has been created in the state.
 	s.new.Created = &now
 
-	complete := func() {
-		s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+	complete := func() error {
+		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
+		if err != nil {
+			return err
+		}
 		s.reg.Done(&RegisterResult{State: s.new})
+		return nil
 	}
 
 	// If this is a component we don't need to do the rest of the input validation
@@ -1920,9 +1939,9 @@ func (s *DiffStep) Skip() {
 	s.pcs.Reject(errors.New("skipped diff resource"))
 }
 
-// ViewStep isn't really a step like a normal step. It's really a virtual step for a view resource. The step itself
-// doesn't perform any operations against a provider, it's used to communicate the steps that were taken for the
-// view resource for display purposes.
+// ViewStep isn't like a normal step. It's a virtual step for a view resource. The step itself
+// doesn't perform any operations against a provider, it's used to communicate the steps that
+// were taken for the view resource, primarily for display purposes and analysis.
 type ViewStep struct {
 	deployment   *Deployment                    // the current deployment.
 	op           display.StepOp                 // the operation that was performed.
@@ -1952,14 +1971,19 @@ func NewViewStep(
 	}
 }
 
-func (s *ViewStep) Op() display.StepOp                           { return s.op }
-func (s *ViewStep) Deployment() *Deployment                      { return s.deployment }
-func (s *ViewStep) Type() tokens.Type                            { return s.new.Type }
-func (s *ViewStep) Provider() string                             { return s.new.Provider }
-func (s *ViewStep) URN() resource.URN                            { return s.new.URN }
-func (s *ViewStep) Old() *resource.State                         { return s.old }
-func (s *ViewStep) New() *resource.State                         { return s.new }
-func (s *ViewStep) Res() *resource.State                         { return s.new }
+func (s *ViewStep) Op() display.StepOp      { return s.op }
+func (s *ViewStep) Deployment() *Deployment { return s.deployment }
+func (s *ViewStep) Type() tokens.Type       { return s.Res().Type }
+func (s *ViewStep) Provider() string        { return s.Res().Provider }
+func (s *ViewStep) URN() resource.URN       { return s.Res().URN }
+func (s *ViewStep) Old() *resource.State    { return s.old }
+func (s *ViewStep) New() *resource.State    { return s.new }
+func (s *ViewStep) Res() *resource.State {
+	if s.new != nil {
+		return s.new
+	}
+	return s.old
+}
 func (s *ViewStep) Keys() []resource.PropertyKey                 { return s.keys }
 func (s *ViewStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ViewStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }

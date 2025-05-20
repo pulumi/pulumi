@@ -1450,11 +1450,11 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			sg.sames[urn] = true
 			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
 
+			// Generate same steps for any views of this resource.
 			viewSteps := sg.generateSameViewSteps(urn)
 			for _, step := range viewSteps {
 				sg.sames[step.URN()] = true
 			}
-
 			updateSteps = append(updateSteps, viewSteps...)
 		}
 	}()
@@ -1957,14 +1957,6 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	return steps, nil
 }
 
-// This function is called by the deployment executor in response to a AdditionalStepsEvent.
-func (sg *stepGenerator) HandleAdditionalSteps(event AdditionalStepsEvent) ([]Step, error) {
-	steps := event.Steps()
-	// TODO actually validate the steps
-	// return sg.validateSteps(steps)
-	return steps, nil
-}
-
 // getViews returns the set of views for a given URN.
 func (sg *stepGenerator) getViews(urn resource.URN) []plugin.View {
 	var views []plugin.View
@@ -1986,11 +1978,12 @@ func (sg *stepGenerator) getViews(urn resource.URN) []plugin.View {
 	return views
 }
 
+// generateSameViewSteps generates a same step for each view of the given URN.
 func (sg *stepGenerator) generateSameViewSteps(urn resource.URN) []Step {
 	var steps []Step
 	for _, res := range sg.deployment.prev.Resources {
 		if res.ViewOf == urn {
-			step := NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res, nil, nil, nil)
+			step := NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res.Copy(), nil, nil, nil)
 			steps = append(steps, step)
 		}
 	}

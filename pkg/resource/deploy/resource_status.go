@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -37,8 +39,8 @@ type resourceStatusServer struct {
 	// The deployment to which this step generator belongs.
 	deployment *Deployment
 
-	// A channel to post steps back to the step generator.
-	events chan<- SourceEvent
+	// The step executor owned by this deployment.
+	stepExec *stepExecutor
 
 	// The address the server is listening on.
 	address string
@@ -48,15 +50,20 @@ type resourceStatusServer struct {
 }
 
 type tokenInfo struct {
-	urn     resource.URN
-	mu      sync.Mutex
-	batches [][]Step
+	urn   resource.URN
+	mu    sync.Mutex
+	steps []stepPre
 }
 
-func newResourceStatusServer(deployment *Deployment, events chan<- SourceEvent) (*resourceStatusServer, error) {
+type stepPre struct {
+	step    Step
+	payload interface{}
+}
+
+func newResourceStatusServer(deployment *Deployment, stepExec *stepExecutor) (*resourceStatusServer, error) {
 	rs := &resourceStatusServer{
 		deployment: deployment,
-		events:     events,
+		stepExec:   stepExec,
 		tokens:     gsync.Map[string, *tokenInfo]{},
 	}
 
@@ -90,26 +97,31 @@ func (rs *resourceStatusServer) ReserveToken(urn resource.URN) (string, error) {
 	return tokenString, nil
 }
 
-func (rs *resourceStatusServer) ReleaseToken(token string) {
+func (rs *resourceStatusServer) ReleaseToken(token string) error {
 	if token == "" {
-		return
+		return nil
 	}
 
 	info, ok := rs.tokens.LoadAndDelete(token)
 	if !ok {
-		return
+		return nil
 	}
 
 	info.mu.Lock()
-	batches := info.batches
+	steps := info.steps
 	info.mu.Unlock()
 
-	for _, steps := range batches {
-		// Publish the steps in the batch.
-		rs.events <- &additionalStepsEvent{
-			steps: steps,
+	// Execute the steps in the order they were published.
+	for _, step := range steps {
+		var saf StepApplyFailed
+		err := rs.stepExec.continueExecuteStep(step.payload, -1, step.step)
+		// We don't need to handle StepApplyFailed errors, they are handled by the
+		// step executor when recording the OnResourceStepPost event.
+		if err != nil && !errors.As(err, &saf) {
+			return err
 		}
 	}
+	return nil
 }
 
 func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
@@ -129,11 +141,31 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 		return nil, fmt.Errorf("unmarshaling steps: %w", err)
 	}
 
-	// Save the steps.
-	if len(steps) > 0 {
-		info.mu.Lock()
-		defer info.mu.Unlock()
-		info.batches = append(info.batches, steps)
+	if len(steps) == 0 {
+		return &pulumirpc.PublishViewStepsResponse{}, nil
+	}
+
+	// TODO validate steps like in the step generator?
+	// e.g. sg.validateSteps(steps)
+
+	events := rs.deployment.events
+
+	// Raise the OnResourceStepPre event and keep track of the payload context.
+	if events != nil {
+		for _, step := range steps {
+			payload, err := events.OnResourceStepPre(step)
+			if err != nil {
+				// TODO log
+				return nil, fmt.Errorf("publishing view steps: %w", err)
+			}
+
+			info.mu.Lock()
+			info.steps = append(info.steps, stepPre{
+				step:    step,
+				payload: payload,
+			})
+			info.mu.Unlock()
+		}
 	}
 
 	return &pulumirpc.PublishViewStepsResponse{}, nil
@@ -154,15 +186,66 @@ func (rs *resourceStatusServer) unmarshalViewStep(viewOf resource.URN, step *pul
 	if err != nil {
 		return nil, err
 	}
+	if old != nil {
+		// Lookup the actual old state.
+		// TODO only do it for Update?
+		old = rs.getOldView(viewOf, old.URN)
+		contract.Assertf(old != nil,
+			"old state %s of view %s not found in previous deployment", old.URN, viewOf)
+	}
 
 	new, err := rs.unmarshalViewStepState(viewOf, step.GetNew())
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO keys, diffs, detailedDiffs
+	keys := slice.Prealloc[resource.PropertyKey](len(step.GetKeys()))
+	for _, key := range step.GetKeys() {
+		keys = append(keys, resource.PropertyKey(key))
+	}
 
-	return NewViewStep(rs.deployment, op, status, step.GetError(), old, new, nil, nil, nil), nil
+	diffs := slice.Prealloc[resource.PropertyKey](len(step.GetDiffs()))
+	for _, diff := range step.GetDiffs() {
+		diffs = append(diffs, resource.PropertyKey(diff))
+	}
+
+	detailedDiff := rs.unmarshalDetailedDiff(step)
+
+	return NewViewStep(rs.deployment, op, status, step.GetError(), old, new, keys, diffs, detailedDiff), nil
+}
+
+func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) map[string]plugin.PropertyDiff {
+	if !step.GetHasDetailedDiff() {
+		return nil
+	}
+
+	detailedDiff := make(map[string]plugin.PropertyDiff)
+	for k, v := range step.GetDetailedDiff() {
+		var d plugin.DiffKind
+		switch v.GetKind() {
+		case pulumirpc.PropertyDiff_ADD:
+			d = plugin.DiffAdd
+		case pulumirpc.PropertyDiff_ADD_REPLACE:
+			d = plugin.DiffAddReplace
+		case pulumirpc.PropertyDiff_DELETE:
+			d = plugin.DiffDelete
+		case pulumirpc.PropertyDiff_DELETE_REPLACE:
+			d = plugin.DiffDeleteReplace
+		case pulumirpc.PropertyDiff_UPDATE:
+			d = plugin.DiffUpdate
+		case pulumirpc.PropertyDiff_UPDATE_REPLACE:
+			d = plugin.DiffUpdateReplace
+		default:
+			// Consider unknown diff kinds to be simple updates.
+			d = plugin.DiffUpdate
+		}
+		detailedDiff[k] = plugin.PropertyDiff{
+			Kind:      d,
+			InputDiff: v.GetInputDiff(),
+		}
+	}
+
+	return detailedDiff
 }
 
 func (rs *resourceStatusServer) unmarshalViewStepState(
@@ -275,4 +358,14 @@ func (rs *resourceStatusServer) unmarshalPropertyDiffKind(kind pulumirpc.Propert
 	default:
 		return 0, fmt.Errorf("unknown property diff kind %v", kind)
 	}
+}
+
+// getViews returns the set of views for a given URN.
+func (rs *resourceStatusServer) getOldView(viewOf resource.URN, urn resource.URN) *resource.State {
+	for _, res := range rs.deployment.prev.Resources {
+		if res.ViewOf == viewOf && res.URN == urn {
+			return res
+		}
+	}
+	return nil
 }
