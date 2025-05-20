@@ -23,6 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -30,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestViewsBasic(t *testing.T) {
@@ -204,15 +207,37 @@ func TestViewsBasic(t *testing.T) {
 
 	project := p.GetProject()
 
+	validateSummaryEvent := func(expected display.ResourceChanges) lt.ValidateFunc {
+		return func(_ workspace.Project, _ deploy.Target, _ engine.JournalEntries, events []engine.Event, _ error) error {
+			var summaryEvent engine.Event
+			for _, e := range events {
+				if e.Type == engine.SummaryEvent {
+					summaryEvent = e
+					break
+				}
+			}
+			assert.NotNil(t, summaryEvent)
+			payload := summaryEvent.Payload().(engine.SummaryEventPayload)
+			assert.Equal(t, expected, payload.ResourceChanges)
+			return nil
+		}
+	}
+
 	// Run an update to create the resource
-	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		validateSummaryEvent(display.ResourceChanges{
+			deploy.OpCreate: 2,
+		}), "0")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 
 	// Run a second update, should be same.
-	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		validateSummaryEvent(display.ResourceChanges{
+			deploy.OpSame: 2,
+		}), "1")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
@@ -222,7 +247,10 @@ func TestViewsBasic(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		validateSummaryEvent(display.ResourceChanges{
+			deploy.OpUpdate: 2,
+		}), "2")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
@@ -230,7 +258,10 @@ func TestViewsBasic(t *testing.T) {
 
 	// Run a fourth update, this time, deleting the resource and its view.
 	creating = false
-	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		validateSummaryEvent(display.ResourceChanges{
+			deploy.OpDelete: 2,
+		}), "3")
 	assert.NoError(t, err)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
