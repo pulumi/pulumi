@@ -97,7 +97,6 @@ func TestSecretsProviderOverride(t *testing.T) {
 		assert.NotNil(t, createSecretsManagerError, msg)
 	})
 
-	//nolint:paralleltest
 	t.Run("with override", func(t *testing.T) {
 		opener.wantURL = "test://bar"
 		t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")

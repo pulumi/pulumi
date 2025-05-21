@@ -816,7 +816,6 @@ func TestConstructProviderGo(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Sets env vars
 func TestGetResourceGo(t *testing.T) {
 	// This uses the random plugin so needs to be able to download it
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")

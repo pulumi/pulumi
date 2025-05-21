@@ -70,7 +70,6 @@ func TestValidateVenv(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestCommand(t *testing.T) {
 	// Poetry with `in-project = true` uses `.venv` as the default virtualenv directory.
 	// Use the same for pip to keep the tests consistent.
@@ -270,7 +269,6 @@ func TestAbout(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPyenv(t *testing.T) {
 	if runtime.GOOS == windows {
 		t.Skip("pyenv is not supported on Windows")
@@ -304,7 +302,6 @@ func TestPyenv(t *testing.T) {
 	require.Equal(t, filepath.Join(tmpDir, "bin", "pyenv"), pyenvPath)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPyenvInstall(t *testing.T) {
 	if runtime.GOOS == windows {
 		t.Skip("pyenv is not supported on Windows")

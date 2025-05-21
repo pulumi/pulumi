@@ -269,7 +269,6 @@ func makeUntypedDeploymentTimestamp(
 	}, nil
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir diy backend
 	tmpDir := t.TempDir()

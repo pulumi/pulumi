@@ -142,7 +142,6 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestValueOrDefaultURL(t *testing.T) {
 	t.Run("TestValueOrDefault", func(t *testing.T) {
 		current := ""

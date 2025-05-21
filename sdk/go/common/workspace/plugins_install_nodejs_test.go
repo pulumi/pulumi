@@ -30,7 +30,6 @@ func TestNodeNPMInstall(t *testing.T) {
 	testPluginInstall(t, "node_modules", tarball)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestNodeYarnInstall(t *testing.T) {
 	t.Setenv("PULUMI_PREFER_YARN", "true")
 	testPluginInstall(t, "node_modules", tarball)
