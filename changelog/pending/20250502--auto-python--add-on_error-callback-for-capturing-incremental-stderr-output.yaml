@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Add `on_error` callback for capturing incremental stderr output
