@@ -85,8 +85,10 @@ func (s *diyStack) Preview(
 	return backend.PreviewStack(ctx, s, op, events)
 }
 
-func (s *diyStack) Update(ctx context.Context, op backend.UpdateOperation) (display.ResourceChanges, error) {
-	return backend.UpdateStack(ctx, s, op)
+func (s *diyStack) Update(ctx context.Context,
+	op backend.UpdateOperation, events chan<- engine.Event,
+) (display.ResourceChanges, error) {
+	return backend.UpdateStack(ctx, s, op, events)
 }
 
 func (s *diyStack) Import(ctx context.Context, op backend.UpdateOperation,

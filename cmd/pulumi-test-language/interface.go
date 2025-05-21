@@ -1261,7 +1261,12 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 			eventsCts.Fulfill(events)
 		}()
-		changes, res := s.Update(ctx, updateOperation)
+		changes, res := s.Update(ctx, updateOperation, eventSink)
+		close(eventSink)
+		events, err = eventsCts.Promise().Result(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("preview events: %w", err)
+		}
 
 		var snap *deploy.Snapshot
 		if res == nil {
