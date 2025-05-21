@@ -33,7 +33,9 @@ func NewEnvCmd() *cobra.Command {
 		UserAgent:       client.UserAgent(),
 	})
 
-	// Add the `env` command to the root.
+	// Add the `env` command to the root. We'll add an alias so that users can also use `pulumi esc` to run the command.
 	envCommand := escCLI.Commands()[0]
+	envCommand.Aliases = append(envCommand.Aliases, "esc")
+
 	return envCommand
 }
