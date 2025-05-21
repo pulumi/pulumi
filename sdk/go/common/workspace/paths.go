@@ -75,6 +75,9 @@ const (
 
 	// PolicyPackFile is the base name of a Pulumi policy pack file.
 	PolicyPackFile = "PulumiPolicy"
+
+	// PluginFile is the base name of a Pulumi plugin file.
+	PluginFile = "PulumiPlugin"
 )
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
@@ -162,6 +165,29 @@ func DetectPolicyPackPathFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isPolicyPack, func(s string) bool {
 		return true
 	})
+}
+
+// DetectPluginPathFrom locates the closest plugin from the given path, searching "upwards" in the directory
+// hierarchy.  If no project is found, an empty path is returned.
+func DetectPluginPathFrom(dir string) (string, error) {
+	var path string
+	_, err := fsutil.WalkUpDirs(dir, func(dir string) bool {
+		var ok bool
+		path, ok = findPluginInDir(dir)
+		return ok
+	})
+
+	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
+	// users can run pulumi with unreadable root directories.
+	if errors.Is(err, fs.ErrPermission) {
+		err = nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to locate PulumiPlugin.yaml file: %w", err)
+	}
+
+	return path, nil
 }
 
 // DetectPolicyPackPathAt locates the PulumiPolicy file at the given path. If no project is found, an empty path is
@@ -267,6 +293,24 @@ func findProjectInDir(dir string) (string, bool) {
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func isProject(path string) bool {
 	return isMarkupFile(path, ProjectFile)
+}
+
+// Given a directory path search for files that appear to be a valid project that is satisfy [isProject].
+func findPluginInDir(dir string) (string, bool) {
+	// Check all supported extensions.
+	for _, mext := range encoding.Exts {
+		p := filepath.Join(dir, PluginFile+mext)
+		if isPlugin(p) {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// isPlugin returns true if the path references what appears to be a valid plugin.  If problems are detected -- like
+// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
+func isPlugin(path string) bool {
+	return isMarkupFile(path, PluginFile)
 }
 
 // isPolicyPack returns true if the path references what appears to be a valid policy pack project.

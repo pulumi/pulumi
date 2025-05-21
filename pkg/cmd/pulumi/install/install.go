@@ -69,7 +69,27 @@ func NewInstallCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return policy.InstallPolicyPackDependencies(ctx, root, proj)
+					return policy.InstallPluginDependencies(ctx, root, proj.Runtime)
+				}
+			}
+
+			installPluginDeps, err := shouldInstallPluginDependencies()
+			if err != nil {
+				return err
+			}
+			if installPluginDeps {
+				// No project found, check if we are in a plugin project and install the plugin dependencies if so.
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting the working directory: %w", err)
+				}
+				pluginPath, err := workspace.DetectPluginPathFrom(cwd)
+				if err == nil && pluginPath != "" {
+					proj, err := workspace.LoadPluginProject(pluginPath)
+					if err != nil {
+						return err
+					}
+					return policy.InstallPluginDependencies(ctx, filepath.Dir(pluginPath), proj.Runtime)
 				}
 			}
 
@@ -116,6 +136,7 @@ func NewInstallCmd() *cobra.Command {
 				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 					Info:                    programInfo,
 					UseLanguageVersionTools: useLanguageVersionTools,
+					IsPlugin:                false,
 				})
 				if err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)
@@ -199,7 +220,7 @@ func shouldInstallPolicyPackDependencies() (bool, error) {
 		// There's a PulumiPolicy.yaml in cwd or a parent folder. The policy pack might be nested
 		// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
 		// folder.
-		projectPath, err := workspace.DetectProjectPath()
+		projectPath, err := workspace.DetectProjectPathFrom(cwd)
 		if err != nil {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// No project found, we should install the dependencies for the policy pack.
@@ -213,6 +234,37 @@ func shouldInstallPolicyPackDependencies() (bool, error) {
 		baseProjectPath := filepath.Dir(projectPath)
 		basePolicyPackPath := filepath.Dir(policyPackPath)
 		return strings.Contains(basePolicyPackPath, baseProjectPath), nil
+	}
+	return false, nil
+}
+
+func shouldInstallPluginDependencies() (bool, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, fmt.Errorf("getting the working directory: %w", err)
+	}
+	pluginPath, err := workspace.DetectPluginPathFrom(cwd)
+	if err != nil {
+		return false, fmt.Errorf("detecting plugin path: %w", err)
+	}
+	if pluginPath != "" {
+		// There's a PulumiPlugin.yaml in cwd or a parent folder. The plugin might be nested
+		// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
+		// folder.
+		projectPath, err := workspace.DetectProjectPathFrom(cwd)
+		if err != nil {
+			if errors.Is(err, workspace.ErrProjectNotFound) {
+				// No project found, we should install the dependencies for the plugin.
+				return true, nil
+			}
+			return false, fmt.Errorf("detecting project path: %w", err)
+		}
+		// We have both a project and a plugin. If the project path is a parent of the plugin
+		// path, we should install dependencies for the plugin, otherwise we should
+		// install dependencies for the project.
+		baseProjectPath := filepath.Dir(projectPath)
+		basePluginPath := filepath.Dir(pluginPath)
+		return strings.Contains(basePluginPath, baseProjectPath), nil
 	}
 	return false, nil
 }

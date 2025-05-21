@@ -176,7 +176,7 @@ func TestBuiltinProvider(t *testing.T) {
 				var called bool
 				p := &builtinProvider{
 					backendClient: &deploytest.BackendClient{
-						GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+						GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
 							called = true
 							return resource.PropertyMap{
 								"normal": resource.NewStringProperty("foo"),

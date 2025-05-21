@@ -40,8 +40,14 @@ import (
 
 // BackendClient is used to retrieve information about stacks from a backend.
 type BackendClient interface {
-	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
-	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
+	// GetStackOutputs returns the outputs (if any) for the named stack, returning an error if the stack cannot be found
+	// or loaded. If the stack contains secrets that cannot be decrypted, the onDecryptError callback will be called
+	// with the error. The callback should return a new error to be returned to the caller, or nil to ignore the error.
+	GetStackOutputs(
+		ctx context.Context,
+		name string,
+		onDecryptError func(error) error,
+	) (resource.PropertyMap, error)
 
 	// GetStackResourceOutputs returns the resource outputs for a stack, or an error if the stack
 	// cannot be found. Resources are retrieved from the latest stack snapshot, which may include

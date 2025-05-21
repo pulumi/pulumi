@@ -112,7 +112,7 @@ func (host *testPluginHost) StartDebugging(info plugin.DebuggingInfo) error {
 	return nil
 }
 
-func (host *testPluginHost) AttachDebugger() bool {
+func (host *testPluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 	return false
 }
 

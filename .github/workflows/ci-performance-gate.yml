@@ -71,6 +71,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+      - name: Install CLI
+        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:

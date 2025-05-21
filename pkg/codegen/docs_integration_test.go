@@ -42,7 +42,118 @@ const (
 	dotnet language = iota
 )
 
-func TestGetLanguageTypeString(t *testing.T) {
+func TestGetResourceName(t *testing.T) {
+	t.Parallel()
+
+	resource := func(t *testing.T, token string) *schema.Resource {
+		schemaSpec := schema.PackageSpec{
+			Name: "example",
+			Resources: map[string]schema.ResourceSpec{
+				"example:index:ComponentResource": {
+					IsComponent: true,
+				},
+				"example:nested:Resource": {
+					IsComponent: true,
+				},
+
+				"example:override:Resource": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Language: map[string]schema.RawMessage{
+							"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpResourceInfo{
+								Name: "Overridden",
+							}),
+						},
+					},
+				},
+			},
+		}
+
+		return mustToken(t, bind(t, schemaSpec).Resources().Get, token)
+	}
+
+	tests := []struct {
+		name           string
+		resource       *schema.Resource
+		schemaOverride schema.PackageReference
+		expected       map[language]string
+	}{
+		{
+			name:     "resource",
+			resource: resource(t, "example:index:ComponentResource"),
+			expected: map[language]string{
+				golang: "ComponentResource",
+				nodejs: "ComponentResource",
+				python: "ComponentResource",
+				dotnet: "ComponentResource",
+			},
+		},
+		{
+			name:     "nested",
+			resource: resource(t, "example:nested:Resource"),
+			expected: map[language]string{
+				golang: "Resource",
+				nodejs: "Resource",
+				python: "Resource",
+				dotnet: "Resource",
+			},
+		},
+		{
+			name:     "language override",
+			resource: resource(t, "example:override:Resource"),
+			expected: map[language]string{
+				// Only C# allows resource name overrides
+				dotnet: "Overridden",
+			},
+		},
+		{
+			name:     "provider",
+			resource: must(resource(t, "example:override:Resource").PackageReference.Provider()),
+			expected: map[language]string{
+				golang: "Provider",
+				nodejs: "Provider",
+				python: "Provider",
+				dotnet: "Provider",
+			},
+		},
+		{
+			name:     "other-schema",
+			resource: resource(t, "example:index:ComponentResource"),
+			schemaOverride: bind(t, schema.PackageSpec{
+				Name: "example2",
+				Resources: map[string]schema.ResourceSpec{
+					"example2:other:ComponentResource": {
+						IsComponent: true,
+					},
+				},
+			}),
+			expected: map[language]string{
+				golang: "ComponentResource",
+				nodejs: "ComponentResource",
+				python: "ComponentResource",
+				dotnet: "ComponentResource",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.NotEmpty(t, tt.expected)
+			for lang, expected := range tt.expected {
+				schema := tt.resource.PackageReference
+				if tt.schemaOverride != nil {
+					schema = tt.schemaOverride
+				}
+				testDocsGenHelper(t, lang, schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
+					actual := helper.GetResourceName(tt.resource)
+					assert.Equal(t, expected, actual)
+				})
+			}
+		})
+	}
+}
+
+func TestGetTypeName(t *testing.T) {
 	t.Parallel()
 
 	schema1 := bind(t, schema.PackageSpec{
@@ -752,6 +863,7 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 }
 
 func mustToken[T any](t *testing.T, get func(string) (T, bool, error), token string) T {
+	t.Helper()
 	v, ok, err := get(token)
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -767,3 +879,10 @@ func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
 }
 
 func mkHelper[T codegen.DocLanguageHelper]() codegen.DocLanguageHelper { var v T; return v }
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}

@@ -69,6 +69,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -97,6 +98,10 @@ const (
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
 	nodeJSProcessExitedAfterShowingUserActionableMessage = 32
+
+	// The preferred port for debugging the language host.  Defaults to 9229, which is the default
+	// port when using the --inspect-brk flag without additional arguments.
+	preferredPort = 9229
 )
 
 // Launches the language host RPC endpoint, which in turn fires
@@ -773,10 +778,14 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
+	var port int
 	if req.GetAttachDebugger() {
-		nodeargs = append(nodeargs, "--inspect-brk")
-		// suppress the console output "Debugger listening on..."
-		nodeargs = append(nodeargs, "--inspect-publish-uid=http")
+		var debugArgs []string
+		port, debugArgs, err = getDebuggerPortAndFlags()
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
+		nodeargs = append(nodeargs, debugArgs...)
 	}
 	nodeargs = append(nodeargs, args...)
 
@@ -815,23 +824,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 			return err
 		}
 		if req.GetAttachDebugger() {
-			debugConfig, err := structpb.NewStruct(map[string]interface{}{
-				"name":             "Pulumi: Program (Node.js)",
-				"type":             "node",
-				"request":          "attach",
-				"processId":        cmd.Process.Pid,
-				"continueOnAttach": true,
-				"skipFiles":        []interface{}{"<node_internals>/**"},
-			})
+			err := startDebugging(ctx, engineClient, cmd, port, "Pulumi: Program (Node.js)")
 			if err != nil {
 				return err
-			}
-			_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
-				Config:  debugConfig,
-				Message: fmt.Sprintf("on process id %d", cmd.Process.Pid),
-			})
-			if err != nil {
-				return fmt.Errorf("unable to start debugging: %w", err)
 			}
 		}
 		return cmd.Wait()
@@ -1421,11 +1416,65 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
+func getDebuggerPortAndFlags() (int, []string, error) {
+	port, err := netutil.FindNextAvailablePort(preferredPort)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to find available port for debugger: %w", err)
+	}
+	return port, []string{
+		fmt.Sprintf("--inspect-brk=%d", port),
+		// suppress the console output "Debugger listening on..."
+		"--inspect-publish-uid=http",
+	}, nil
+}
+
+func startDebugging(
+	ctx context.Context,
+	engineClient pulumirpc.EngineClient,
+	cmd *exec.Cmd,
+	port int,
+	name string,
+) error {
+	cfg := map[string]any{
+		"name":             name,
+		"type":             "node",
+		"request":          "attach",
+		"processId":        cmd.Process.Pid,
+		"continueOnAttach": true,
+		"skipFiles":        []any{"<node_internals>/**"},
+	}
+	if port != preferredPort {
+		cfg["port"] = port
+	}
+	debugConfig, err := structpb.NewStruct(cfg)
+	if err != nil {
+		return err
+	}
+	message := fmt.Sprintf("on process id %d", cmd.Process.Pid)
+	if port != preferredPort {
+		message += fmt.Sprintf(" and port %d", port)
+	}
+	_, err = engineClient.StartDebugging(ctx, &pulumirpc.StartDebuggingRequest{
+		Config:  debugConfig,
+		Message: message,
+	})
+	if err != nil {
+		return fmt.Errorf("unable to start debugging: %w", err)
+	}
+	return nil
+}
+
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
 	ctx := context.Background()
+
+	engineClient, closer, err := host.connectToEngine()
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
 
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
 	if err != nil {
@@ -1467,7 +1516,18 @@ func (host *nodeLanguageHost) RunPlugin(
 		return err
 	}
 
-	args := []string{runPath}
+	args := []string{}
+	var port int
+	if req.GetAttachDebugger() {
+		var debugArgs []string
+		port, debugArgs, err = getDebuggerPortAndFlags()
+		if err != nil {
+			return err
+		}
+		args = append(args, debugArgs...)
+	}
+
+	args = append(args, runPath)
 
 	nodeargs, err := shlex.Split(opts.nodeargs)
 	if err != nil {
@@ -1484,7 +1544,20 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Dir = req.Pwd
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
-	if err := cmd.Run(); err != nil {
+
+	run := func() error {
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			err := startDebugging(server.Context(), engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+			if err != nil {
+				return err
+			}
+		}
+		return cmd.Wait()
+	}
+	if err := run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// The program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.

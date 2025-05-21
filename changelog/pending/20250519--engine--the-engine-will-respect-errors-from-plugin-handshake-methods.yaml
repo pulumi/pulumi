@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Make the engine respect errors from plugin Handshake methods

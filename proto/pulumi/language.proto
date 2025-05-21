@@ -354,6 +354,9 @@ message InstallDependenciesRequest {
     // True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
     // of the language toolchain used.
     bool use_language_version_tools = 4;
+
+    // True if this install is for a plugin, as opposed to a top level Pulumi program.
+    bool is_plugin = 5;
 }
 
 // `InstallDependenciesResponse` is the type of responses streamed by an

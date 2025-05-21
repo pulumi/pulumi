@@ -515,6 +515,7 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     IS_TERMINAL_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
     USE_LANGUAGE_VERSION_TOOLS_FIELD_NUMBER: builtins.int
+    IS_PLUGIN_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """The program's working directory.
 
@@ -534,6 +535,8 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     """True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
     of the language toolchain used.
     """
+    is_plugin: builtins.bool
+    """True if this install is for a plugin, as opposed to a top level Pulumi program."""
     def __init__(
         self,
         *,
@@ -541,9 +544,10 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
         is_terminal: builtins.bool = ...,
         info: global___ProgramInfo | None = ...,
         use_language_version_tools: builtins.bool = ...,
+        is_plugin: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_plugin", b"is_plugin", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
 
 global___InstallDependenciesRequest = InstallDependenciesRequest
 

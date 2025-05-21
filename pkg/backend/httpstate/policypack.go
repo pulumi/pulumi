@@ -326,6 +326,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: false,
+		IsPlugin:                true,
 	})
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)

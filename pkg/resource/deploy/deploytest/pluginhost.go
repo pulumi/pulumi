@@ -443,7 +443,7 @@ func (host *pluginHost) StartDebugging(info plugin.DebuggingInfo) error {
 	return nil
 }
 
-func (host *pluginHost) AttachDebugger() bool {
+func (host *pluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
 	return false
 }
 

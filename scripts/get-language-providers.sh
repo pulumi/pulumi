@@ -19,7 +19,7 @@ download_release() {
   if "${USE_GH}"; then
     gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
   else
-    curl -OL --fail "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
+    curl -OL --fail --retry 3 "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
   fi
 }
 

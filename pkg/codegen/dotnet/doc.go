@@ -87,6 +87,10 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 	return mod.typeString(t, qualifier, input, false /*state*/, true /*requireInitializers*/)
 }
 
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	return resourceName(r)
+}
+
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return tokenToFunctionName(f.Token)
 }

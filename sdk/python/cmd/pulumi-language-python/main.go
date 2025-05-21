@@ -1210,6 +1210,12 @@ func (host *pythonLanguageHost) InstallDependencies(
 		return err
 	}
 
+	// Default the `virtualenv` option to `venv` for plugins if not provided. We don't support running plugins using the
+	// global or ambient Python environment, but we do for programs for backwards compatibility.
+	if req.IsPlugin && opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" {
+		opts.Virtualenv = "venv"
+	}
+
 	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err

@@ -2201,37 +2201,43 @@ func TestPythonComponentProviderException(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderResourceReference(t *testing.T) {
 	// Manually set pulumi home so we can pass it to `plugin install`.
-	pulumiHome := t.TempDir()
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PulumiHomeDir:   pulumiHome,
-		Dir:             filepath.Join("component_provider", "python", "resource-ref"),
-		RelativeWorkDir: "yaml",
-		PrepareProject: func(info *engine.Projinfo) error {
-			cmd := exec.Command("pulumi", "plugin", "install", "resource", "command", "1.0.3")
-			cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
-			out, err := cmd.CombinedOutput()
-			require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-			providerPath := filepath.Join(info.Root, "..", "provider")
-			installPythonProviderDependencies(t, providerPath)
-			cmd = exec.Command("pulumi", "package", "add", providerPath)
-			cmd.Dir = info.Root
-			cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
-			out, err = cmd.CombinedOutput()
-			require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-			return nil
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
-			require.NoError(t, err)
-			t.Logf("outputs = %+v\n", stack.Outputs)
-			require.Equal(t, tokens.Type("command:local:Command"), urn.Type())
-			require.Equal(t, "echo", urn.Name())
-			commandInOutput := stack.Outputs["commandInStdout"]
-			require.Equal(t, "Hey there Fridolin!", commandInOutput)
-			commandOutStdout := stack.Outputs["commandOutStdout"]
-			require.Equal(t, "Hello, Bonnie", commandOutStdout)
-		},
-	})
+	for _, runtime := range []string{"yaml", "python"} {
+		t.Run(runtime, func(t *testing.T) {
+			pulumiHome := t.TempDir()
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				PulumiHomeDir:   pulumiHome,
+				Dir:             filepath.Join("component_provider", "python", "resource-ref"),
+				RelativeWorkDir: runtime,
+				PrepareProject: func(info *engine.Projinfo) error {
+					cmd := exec.Command("pulumi", "plugin", "install", "resource", "command", "1.0.4")
+					cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
+					out, err := cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					providerPath := filepath.Join(info.Root, "..", "provider")
+					installPythonProviderDependencies(t, providerPath)
+					cmd = exec.Command("pulumi", "package", "add", providerPath)
+					cmd.Dir = info.Root
+					cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
+					out, err = cmd.CombinedOutput()
+					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
+					return nil
+				},
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					urn, err := resource.ParseURN(stack.Outputs["urn"].(string))
+					require.NoError(t, err)
+					t.Logf("outputs = %+v\n", stack.Outputs)
+					require.Equal(t, tokens.Type("command:local:Command"), urn.Type())
+					require.Equal(t, "echo", urn.Name())
+					commandInOutput := stack.Outputs["commandInStdout"]
+					require.Equal(t, "Hey there Fridolin!", commandInOutput)
+					commandOutStdout := stack.Outputs["commandOutStdout"]
+					require.Equal(t, "Hello, Bonnie", commandOutStdout)
+					loglevelOut := stack.Outputs["loglevelOut"]
+					require.Equal(t, "stdoutAndStderr", loglevelOut)
+				},
+			})
+		})
+	}
 }
 
 func installPythonProviderDependencies(t *testing.T, dir string) {

@@ -256,7 +256,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
-			host.AttachDebugger())
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
 			return nil, err
 		}
@@ -325,6 +325,7 @@ func handshake(
 			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
 			return nil, nil
 		}
+		return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 	}
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
@@ -381,7 +382,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 		handshake, providerPluginDialOptions(ctx, "", path),
-		host.AttachDebugger())
+		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
 		return nil, err
 	}

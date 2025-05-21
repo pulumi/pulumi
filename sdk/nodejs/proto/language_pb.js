@@ -3438,7 +3438,8 @@ proto.pulumirpc.InstallDependenciesRequest.toObject = function(includeInstance, 
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     isTerminal: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
     info: (f = msg.getInfo()) && proto.pulumirpc.ProgramInfo.toObject(includeInstance, f),
-    useLanguageVersionTools: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    useLanguageVersionTools: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    isPlugin: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -3491,6 +3492,10 @@ proto.pulumirpc.InstallDependenciesRequest.deserializeBinaryFromReader = functio
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setUseLanguageVersionTools(value);
+      break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setIsPlugin(value);
       break;
     default:
       reader.skipField();
@@ -3547,6 +3552,13 @@ proto.pulumirpc.InstallDependenciesRequest.serializeBinaryToWriter = function(me
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getIsPlugin();
+  if (f) {
+    writer.writeBool(
+      5,
       f
     );
   }
@@ -3641,6 +3653,24 @@ proto.pulumirpc.InstallDependenciesRequest.prototype.getUseLanguageVersionTools 
  */
 proto.pulumirpc.InstallDependenciesRequest.prototype.setUseLanguageVersionTools = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool is_plugin = 5;
+ * @return {boolean}
+ */
+proto.pulumirpc.InstallDependenciesRequest.prototype.getIsPlugin = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.InstallDependenciesRequest} returns this
+ */
+proto.pulumirpc.InstallDependenciesRequest.prototype.setIsPlugin = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 
