@@ -91,6 +91,7 @@ func (s *State) Copy() *State {
 		SourcePosition:          s.SourcePosition,
 		IgnoreChanges:           s.IgnoreChanges,
 		ReplaceOnChanges:        s.ReplaceOnChanges,
+		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 	}
 }
 
