@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi esc` as an alias for `pulumi env`
