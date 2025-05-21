@@ -851,11 +851,6 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 								Type: "string",
 							},
 						},
-						"pulumi": {
-							TypeSpec: TypeSpec{
-								Type: "string",
-							},
-						},
 					},
 				},
 			},
@@ -864,11 +859,6 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
 						"urn": {
-							TypeSpec: TypeSpec{
-								Type: "string",
-							},
-						},
-						"pulumi": {
 							TypeSpec: TypeSpec{
 								Type: "string",
 							},
@@ -885,7 +875,7 @@ func TestUsingReservedWordInResourcePropertiesEmitsWarning(t *testing.T) {
 	// No error as binding should work fine even with warnings
 	assert.NoError(t, err)
 	// assert that there are 2 warnings in the diagnostics because of using URN as a property
-	assert.Len(t, diags, 4)
+	assert.Len(t, diags, 2)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagWarning)
 		assert.True(
@@ -935,7 +925,6 @@ func TestUsingVersionKeywordInResourcePropertiesIsOk(t *testing.T) {
 	})
 	// No error as binding should work fine even with warnings
 	assert.NoError(t, err)
-	// assert that there are 2 warnings in the diagnostics because of using URN as a property
 	assert.Len(t, diags, 0)
 	assert.NotNil(t, pkg)
 }
@@ -968,15 +957,16 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	assert.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
+		fmt.Println(diag.Summary)
 		assert.True(
 			t,
-			strings.Contains(diag.Summary, "pulumi function name is reserved name"),
+			strings.Contains(diag.Summary, "pulumi is a reserved name, cannot name function"),
 		)
 	}
 	assert.Nil(t, pkg)
 }
 
-func TestUsingReservedWordInFunctionParamsIsOk(t *testing.T) {
+func TestUsingVersionInFunctionParamsIsOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
@@ -986,11 +976,6 @@ func TestUsingReservedWordInFunctionParamsIsOk(t *testing.T) {
 			"test:index:fake": {
 				Inputs: &ObjectTypeSpec{
 					Properties: map[string]PropertySpec{
-						"pulumi": {
-							TypeSpec: TypeSpec{
-								Type: "string",
-							},
-						},
 						"version": {
 							TypeSpec: TypeSpec{
 								Type: "string",
@@ -1008,6 +993,35 @@ func TestUsingReservedWordInFunctionParamsIsOk(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.NotNil(t, pkg)
+}
+
+func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]FunctionSpec{
+			"test:index:fake": {
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	assert.Len(t, diags, 1)
+	assert.Nil(t, pkg)
 }
 
 func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
@@ -1047,7 +1061,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 	assert.Nil(t, pkg)
 }
 
-func TestUsingReservedWordInTypeIsOk(t *testing.T) {
+func TestUsingVersionPropertyNameIsOk(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := PackageSpec{
@@ -1058,11 +1072,6 @@ func TestUsingReservedWordInTypeIsOk(t *testing.T) {
 				ObjectTypeSpec: ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]PropertySpec{
-						"pulumi": {
-							TypeSpec: TypeSpec{
-								Type: "string",
-							},
-						},
 						"version": {
 							TypeSpec: TypeSpec{
 								Type: "string",
@@ -1080,6 +1089,36 @@ func TestUsingReservedWordInTypeIsOk(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, diags, 0)
 	assert.NotNil(t, pkg)
+}
+
+func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Types: map[string]ComplexTypeSpec{
+			"test:index:fake": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"pulumi": {
+							TypeSpec: TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	assert.Error(t, err)
+	assert.Len(t, diags, 1)
+	assert.Nil(t, pkg)
 }
 
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
@@ -2180,11 +2219,6 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 		Version: "0.0.1",
 		Config: ConfigSpec{
 			Variables: map[string]PropertySpec{
-				"version": {
-					TypeSpec: TypeSpec{
-						Type: "string",
-					},
-				},
 				"pulumi": {
 					TypeSpec: TypeSpec{
 						Type: "string",
@@ -2197,9 +2231,9 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.True(t, diags.HasErrors())
-	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved configuration key")
+	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved property name")
 
 	// Test that certain words aren't allowed as an input property on the provider object.
 	pkgSpec = PackageSpec{
@@ -2207,11 +2241,6 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 		Version: "0.0.1",
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
-				"version": {
-					TypeSpec: TypeSpec{
-						Type: "string",
-					},
-				},
 				"pulumi": {
 					TypeSpec: TypeSpec{
 						Type: "string",
@@ -2224,24 +2253,38 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.True(t, diags.HasErrors())
-	assert.Equal(t, diags[0].Summary, "#/provider/properties/pulumi: pulumi is a reserved property name")
-	assert.Equal(t, diags[1].Summary, "#/provider/properties/version: version is a reserved property name")
+	assert.Equal(t, diags[0].Summary, "#/provider/inputProperties/pulumi: pulumi is a reserved property name")
 
-	// Test that reserved words are allowed as an output property on the provider object.
-	// Most providers probably won't add this, but it's there if they want to expose it.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			InputProperties: map[string]PropertySpec{
+				"version": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+	}
+
+	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Error(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved provider input property name")
+
+	// Test that reserved words are not allowed as an output property on the provider object.
 	pkgSpec = PackageSpec{
 		Name:    "xyz",
 		Version: "0.0.1",
 		Provider: ResourceSpec{
 			ObjectTypeSpec: ObjectTypeSpec{
 				Properties: map[string]PropertySpec{
-					"version": {
-						TypeSpec: TypeSpec{
-							Type: "string",
-						},
-					},
 					"pulumi": {
 						TypeSpec: TypeSpec{
 							Type: "string",
@@ -2253,6 +2296,30 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	}
 
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.Error(t, err)
+	assert.True(t, diags.HasErrors())
+	assert.Nil(t, pkg)
+
+	// Version is, however only banned on input names.
+	pkgSpec = PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Provider: ResourceSpec{
+			ObjectTypeSpec: ObjectTypeSpec{
+				Properties: map[string]PropertySpec{
+					"version": {
+						TypeSpec: TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -2277,7 +2344,7 @@ func TestResourceWithKeynameOverlapFunction(t *testing.T) {
 	}
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
-	require.ErrorContains(t, err, "function name pulumi is reserved")
+	require.ErrorContains(t, err, "is a reserved name, cannot name function")
 	assert.Len(t, diags, 1)
 }
 
