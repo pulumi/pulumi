@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Ensure convert uses the output project directory as the working directory

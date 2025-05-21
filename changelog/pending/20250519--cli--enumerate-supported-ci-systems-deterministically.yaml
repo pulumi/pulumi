@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Enumerate supported CI systems deterministically
