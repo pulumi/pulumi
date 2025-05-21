@@ -269,7 +269,7 @@ func (rs *resourceStatusServer) unmarshalViewStepState(
 		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
 	}
 
-	outputs, err := plugin.UnmarshalProperties(state.GetInputs(), plugin.MarshalOptions{
+	outputs, err := plugin.UnmarshalProperties(state.GetOutputs(), plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,

@@ -58,10 +58,10 @@ func TestViewsBasic(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.PropertyMap{
-									"hello": req.Properties["foo"],
+									"input": req.Properties["foo"],
 								},
 								Outputs: resource.PropertyMap{
-									"hello": req.Properties["foo"],
+									"result": req.Properties["foo"],
 								},
 							},
 						},
@@ -79,7 +79,7 @@ func TestViewsBasic(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -93,10 +93,10 @@ func TestViewsBasic(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"hello": resource.NewStringProperty("bar"),
+								"input": resource.NewStringProperty("bar"),
 							},
 							Outputs: resource.PropertyMap{
-								"hello": resource.NewStringProperty("bar"),
+								"result": resource.NewStringProperty("bar"),
 							},
 						},
 					}, req.OldViews)
@@ -122,10 +122,10 @@ func TestViewsBasic(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.PropertyMap{
-									"hello": req.NewInputs["foo"],
+									"input": req.NewInputs["foo"],
 								},
 								Outputs: resource.PropertyMap{
-									"hello": req.NewInputs["foo"],
+									"result": req.NewInputs["foo"],
 								},
 							},
 						},
@@ -146,10 +146,10 @@ func TestViewsBasic(t *testing.T) {
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
 							Inputs: resource.PropertyMap{
-								"hello": resource.NewStringProperty("baz"),
+								"input": resource.NewStringProperty("baz"),
 							},
 							Outputs: resource.PropertyMap{
-								"hello": resource.NewStringProperty("baz"),
+								"result": resource.NewStringProperty("baz"),
 							},
 						},
 					}, req.OldViews)
@@ -232,6 +232,15 @@ func TestViewsBasic(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Outputs)
 
 	// Run a second update, should be same.
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
@@ -242,6 +251,15 @@ func TestViewsBasic(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Outputs)
 
 	// Run a third update, with a change, should update.
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -255,6 +273,15 @@ func TestViewsBasic(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("baz"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("baz"),
+	}, snap.Resources[2].Outputs)
 
 	// Run a fourth update, this time, deleting the resource and its view.
 	creating = false
