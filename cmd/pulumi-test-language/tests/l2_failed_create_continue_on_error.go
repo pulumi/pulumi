@@ -64,7 +64,7 @@ func init() {
 					for _, evt := range events {
 						if d, ok := evt.Payload().(engine.DiagEventPayload); ok {
 							if d.Severity == "error" && d.URN.Name() == "failing" {
-								require.Equal(l, "<{%reset%}>Preview failed: failed create<{%reset%}>\n", d.Message)
+								require.Equal(l, "<{%reset%}>failed create<{%reset%}>\n", d.Message)
 								found = true
 								break
 							}
