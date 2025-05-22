@@ -244,7 +244,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
 			Scopes:             backend.CancellationScopes,
-		})
+		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -477,7 +477,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
 			Scopes:             backend.CancellationScopes,
-		})
+		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")

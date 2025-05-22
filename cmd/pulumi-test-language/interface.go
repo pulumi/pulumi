@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -1274,17 +1275,35 @@ func (eng *languageTestServer) RunLanguageTest(
 		if assertPreview == nil {
 			// if no assertPreview is provided for the test run, we create a default implementation
 			// where we simply assert that the preview changes did not error
-			assertPreview = func(l *tests.L, proj string, err error, p *deploy.Plan, changes display.ResourceChanges) {
+			assertPreview = func(
+				l *tests.L, proj string, err error, p *deploy.Plan,
+				changes display.ResourceChanges, events []engine.Event,
+			) {
 				assert.NoErrorf(l, err, "expected no error in preview")
 			}
 		}
 
 		// Perform a preview on the stack
-		plan, previewChanges, res := s.Preview(ctx, updateOperation, nil)
+		eventsCts := &promise.CompletionSource[[]engine.Event]{}
+		eventSink := make(chan engine.Event, 1)
+		go func() {
+			events := []engine.Event{}
+			for event := range eventSink {
+				events = append(events, event)
+			}
+			eventsCts.Fulfill(events)
+		}()
+
+		plan, previewChanges, res := s.Preview(ctx, updateOperation, eventSink)
+		close(eventSink)
+		events, err := eventsCts.Promise().Result(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("preview events: %w", err)
+		}
 
 		// assert preview results
 		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, projectDir, res, plan, previewChanges)
+			assertPreview(l, projectDir, res, plan, previewChanges, events)
 		})
 
 		if previewResult.Failed {
@@ -1296,7 +1315,21 @@ func (eng *languageTestServer) RunLanguageTest(
 			}, nil
 		}
 
-		changes, res := s.Update(ctx, updateOperation)
+		eventsCts = &promise.CompletionSource[[]engine.Event]{}
+		eventSink = make(chan engine.Event, 1)
+		go func() {
+			events := []engine.Event{}
+			for event := range eventSink {
+				events = append(events, event)
+			}
+			eventsCts.Fulfill(events)
+		}()
+		changes, res := s.Update(ctx, updateOperation, eventSink)
+		close(eventSink)
+		events, err = eventsCts.Promise().Result(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("preview events: %w", err)
+		}
 
 		var snap *deploy.Snapshot
 		if res == nil {
@@ -1320,7 +1353,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, projectDir, res, snap, changes)
+			run.Assert(l, projectDir, res, snap, changes, events)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

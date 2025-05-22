@@ -186,10 +186,14 @@ func (s *cloudStack) Preview(
 	return backend.PreviewStack(ctx, s, op, events)
 }
 
-func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+func (s *cloudStack) Update(
+	ctx context.Context,
+	op backend.UpdateOperation,
+	events chan<- engine.Event,
+) (sdkDisplay.ResourceChanges,
 	error,
 ) {
-	return backend.UpdateStack(ctx, s, op)
+	return backend.UpdateStack(ctx, s, op, events)
 }
 
 func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,

@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")

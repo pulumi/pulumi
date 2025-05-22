@@ -173,7 +173,8 @@ type Backend interface {
 		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
 	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	Update(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	) (sdkDisplay.ResourceChanges, error)
 	// Import imports resources into a stack.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)

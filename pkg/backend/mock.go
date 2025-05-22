@@ -295,7 +295,7 @@ func (be *MockBackend) Preview(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Update(ctx context.Context, stack Stack,
-	op UpdateOperation,
+	op UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	if be.UpdateF != nil {
 		return be.UpdateF(ctx, stack, op)
@@ -631,7 +631,9 @@ func (ms *MockStack) Preview(
 	panic("not implemented")
 }
 
-func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
+func (ms *MockStack) Update(ctx context.Context,
+	op UpdateOperation, events chan<- engine.Event,
+) (sdkDisplay.ResourceChanges, error) {
 	if ms.UpdateF != nil {
 		return ms.UpdateF(ctx, op)
 	}
