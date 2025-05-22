@@ -1984,7 +1984,14 @@ func (s *ViewStep) Res() *resource.State {
 func (s *ViewStep) Keys() []resource.PropertyKey                 { return s.keys }
 func (s *ViewStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ViewStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
-func (s *ViewStep) Logical() bool                                { return true }
+func (s *ViewStep) Logical() bool {
+	switch s.op {
+	case OpCreateReplacement, OpDeleteReplaced, OpDiscardReplaced, OpRemovePendingReplace,
+		OpReadReplacement, OpRefresh, OpImportReplacement:
+		return false
+	}
+	return true
+}
 
 func (s *ViewStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// ViewStep is a special step that that represents an operation for a view resource.
