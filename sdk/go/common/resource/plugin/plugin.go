@@ -522,8 +522,8 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		// If that fails we'll just kill the process.
 		cmdutil.InterruptChildren(cmd.Process.Pid)
 
-		// Give the process 500ms to shut down, or kill it forcibly.
-		timer := time.NewTimer(500 * time.Millisecond)
+		// Give the process 5 seconds to shut down, or kill it forcibly.
+		timer := time.NewTimer(5 * time.Second)
 		defer timer.Stop()
 		done := make(chan error, 1)
 		go func() {
