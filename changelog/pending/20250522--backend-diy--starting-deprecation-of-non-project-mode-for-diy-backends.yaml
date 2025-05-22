@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: backend/diy
-  description: Starting deprecation of non-project mode for DIY backends
+  description: Start deprecation of non-project mode for DIY backends
