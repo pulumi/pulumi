@@ -16,18 +16,14 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -39,79 +35,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
-
-type hostEngine struct {
-	pulumirpc.UnimplementedEngineServer
-	t *testing.T
-
-	logLock         sync.Mutex
-	logRepeat       int
-	previousMessage string
-}
-
-func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
-	e.logLock.Lock()
-	defer e.logLock.Unlock()
-
-	var sev diag.Severity
-	switch req.Severity {
-	case pulumirpc.LogSeverity_DEBUG:
-		sev = diag.Debug
-	case pulumirpc.LogSeverity_INFO:
-		sev = diag.Info
-	case pulumirpc.LogSeverity_WARNING:
-		sev = diag.Warning
-	case pulumirpc.LogSeverity_ERROR:
-		sev = diag.Error
-	default:
-		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
-	}
-
-	message := req.Message
-	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
-		// Cut down logs so they don't overwhelm the test output
-		if len(message) > 2048 {
-			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
-		}
-	}
-
-	if e.previousMessage == message {
-		e.logRepeat++
-		return &pbempty.Empty{}, nil
-	}
-
-	if e.logRepeat > 1 {
-		e.t.Logf("Last message repeated %d times", e.logRepeat)
-	}
-	e.logRepeat = 1
-	e.previousMessage = message
-
-	if req.StreamId != 0 {
-		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
-	} else {
-		e.t.Logf("%s[%s]: %s", sev, req.Urn, message)
-	}
-	return &pbempty.Empty{}, nil
-}
-
-func runEngine(t *testing.T) string {
-	// Run a gRPC server that implements the Pulumi engine RPC interface. But all we do is forward logs on to T.
-	engine := &hostEngine{t: t}
-	stop := make(chan bool)
-	t.Cleanup(func() {
-		close(stop)
-	})
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: stop,
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterEngineServer(srv, engine)
-			return nil
-		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
-	})
-	require.NoError(t, err)
-	return fmt.Sprintf("127.0.0.1:%v", handle.Port)
-}
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
@@ -138,7 +61,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 				wg.Done()
 				return
 			}
-			t.Logf("engine: %s", text)
+			t.Log(text)
 		}
 	}()
 
@@ -168,8 +91,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 		contract.IgnoreError(cmd.Wait())
 	})
 
-	engineAddress := runEngine(t)
-	return engineAddress, client
+	return address, client
 }
 
 // Add test names here that are expected to fail and the reason why they are failing
