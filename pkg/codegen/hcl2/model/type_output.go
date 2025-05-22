@@ -35,7 +35,7 @@ type OutputType struct {
 // NewOutputType creates a new output type with the given element type after replacing any output or promise types
 // within the element type with their respective element types.
 func NewOutputType(elementType Type) *OutputType {
-	return &OutputType{ElementType: ResolveOutputs(elementType)}
+	return &OutputType{ElementType: ResolveOutputs(elementType), cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -106,9 +106,6 @@ func (t *OutputType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *OutputType:

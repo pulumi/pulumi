@@ -35,7 +35,7 @@ type ListType struct {
 
 // NewListType creates a new list type with the given element type.
 func NewListType(elementType Type) *ListType {
-	return &ListType{ElementType: elementType}
+	return &ListType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -124,9 +124,6 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ListType:

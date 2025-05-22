@@ -42,7 +42,7 @@ type TupleType struct {
 
 // NewTupleType creates a new tuple type with the given element types.
 func NewTupleType(elementTypes ...Type) Type {
-	return &TupleType{ElementTypes: elementTypes}
+	return &TupleType{ElementTypes: elementTypes, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 func (t *TupleType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -186,9 +186,6 @@ func (t *TupleType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
