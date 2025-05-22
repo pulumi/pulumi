@@ -71,13 +71,14 @@ func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID
 		contract.Failf("unexpected severity %v", sev)
 	}
 
-	h.engine.Log(context.TODO(),
+	_, err := h.engine.Log(context.TODO(),
 		&pulumirpc.LogRequest{
 			Severity: rpcsev,
 			Urn:      string(urn),
 			Message:  msg,
 			StreamId: streamID,
 		})
+	contract.IgnoreError(err)
 }
 
 func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
