@@ -43,11 +43,11 @@ func (FooArgs) ElementType() reflect.Type {
 }
 
 func (r *Foo) GetKubeconfig(ctx *pulumi.Context, args *FooGetKubeconfigArgs) (pulumi.StringOutput, error) {
-	out, err := ctx.Call("example::Foo/getKubeconfig", args, fooGetKubeconfigResultOutput{}, r)
+	out, err := ctx.CallPackageSingle("example::Foo/getKubeconfig", args, fooGetKubeconfigResultOutput{}, r, "")
 	if err != nil {
 		return pulumi.StringOutput{}, err
 	}
-	return out.(fooGetKubeconfigResultOutput).Kubeconfig(), nil
+	return out.(pulumi.StringOutput), nil
 }
 
 type fooGetKubeconfigArgs struct {

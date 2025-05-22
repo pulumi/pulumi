@@ -65,7 +65,7 @@ type generator struct {
 	readDirTempSpiller  *readDirSpiller
 	splatSpiller        *splatSpiller
 	optionalSpiller     *optionalSpiller
-	inlineInvokeSpiller *inlineInvokeSpiller
+	inlineInvokeSpiller *inlineInvokeOrCallSpiller
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
@@ -122,7 +122,7 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
-		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		inlineInvokeSpiller: &inlineInvokeOrCallSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		externalCache:       opts.ExternalCache,
@@ -1666,6 +1666,11 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	// because ctx.Export expects an output value
 	value, destType := liftValueToOutput(v.Value)
 	expr, temps := g.lowerExpression(value, destType)
+	expr, invokeTemps := g.rewriteInlineInvokes(expr)
+	for _, t := range invokeTemps {
+		temps = append(temps, t)
+	}
+
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
@@ -1748,7 +1753,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 		case *optionalTemp:
 			g.Fgenf(w, "%s := %.v\n", t.Name, t.Value)
-		case *inlineInvokeTemp:
+		case *inlineInvokeOrCallTemp:
 			g.Fgenf(w, "%s, err := %.v\n", t.Name, t.Value)
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")

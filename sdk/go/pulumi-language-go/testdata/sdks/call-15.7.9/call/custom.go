@@ -75,12 +75,8 @@ func (CustomArgs) ElementType() reflect.Type {
 }
 
 // The `providerValue` method of the `call` package's Custom resource. Returns the resource's provider's `value` and the resource's `value` concatenated.
-func (r *Custom) ProviderValue(ctx *pulumi.Context) (CustomProviderValueResultOutput, error) {
+func (r *Custom) ProviderValue(ctx *pulumi.Context) (CustomProviderValueResult, error) {
 	out, err := ctx.Call("call:index:Custom/providerValue", nil, CustomProviderValueResultOutput{}, r)
-	if err != nil {
-		return CustomProviderValueResultOutput{}, err
-	}
-	return out.(CustomProviderValueResultOutput), nil
 }
 
 type CustomProviderValueResult struct {

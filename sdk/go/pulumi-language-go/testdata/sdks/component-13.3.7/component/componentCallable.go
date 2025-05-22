@@ -52,12 +52,12 @@ func (ComponentCallableArgs) ElementType() reflect.Type {
 }
 
 // The `identity` method of the `ComponentCallable` component resource. Returns the component's `value` unaltered.
-func (r *ComponentCallable) Identity(ctx *pulumi.Context) (ComponentCallableIdentityResultOutput, error) {
+func (r *ComponentCallable) Identity(ctx *pulumi.Context) (ComponentCallableIdentityResult, error) {
 	out, err := ctx.Call("component:index:ComponentCallable/identity", nil, ComponentCallableIdentityResultOutput{}, r)
 	if err != nil {
-		return ComponentCallableIdentityResultOutput{}, err
+		return ComponentCallableIdentityResult{}, err
 	}
-	return out.(ComponentCallableIdentityResultOutput), nil
+	return out.(ComponentCallableIdentityResult), nil
 }
 
 type ComponentCallableIdentityResult struct {
@@ -75,12 +75,12 @@ func (o ComponentCallableIdentityResultOutput) Result() pulumi.StringOutput {
 }
 
 // The `prefixed` method of the `ComponentCallable` component resource. Accepts a string and returns the component's `value` prefixed with that string.
-func (r *ComponentCallable) Prefixed(ctx *pulumi.Context, args *ComponentCallablePrefixedArgs) (ComponentCallablePrefixedResultOutput, error) {
+func (r *ComponentCallable) Prefixed(ctx *pulumi.Context, args *ComponentCallablePrefixedArgs) (ComponentCallablePrefixedResult, error) {
 	out, err := ctx.Call("component:index:ComponentCallable/prefixed", args, ComponentCallablePrefixedResultOutput{}, r)
 	if err != nil {
-		return ComponentCallablePrefixedResultOutput{}, err
+		return ComponentCallablePrefixedResult{}, err
 	}
-	return out.(ComponentCallablePrefixedResultOutput), nil
+	return out.(ComponentCallablePrefixedResult), nil
 }
 
 type componentCallablePrefixedArgs struct {
