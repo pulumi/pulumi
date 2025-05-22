@@ -1484,7 +1484,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 
 	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {
-		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
+		return "", errors.New(string(body))
 	}
 
 	if copilotResp.Error != "" {
