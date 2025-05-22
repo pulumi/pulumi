@@ -190,8 +190,9 @@ func (rs *resourceStatusServer) unmarshalViewStep(viewOf resource.URN, step *pul
 		// Lookup the actual old state.
 		// TODO only do it for Update?
 		old = rs.getOldView(viewOf, old.URN)
-		contract.Assertf(old != nil,
-			"old state %s of view %s not found in previous deployment", old.URN, viewOf)
+		if old == nil {
+			contract.Failf("old state %s of view %s not found in previous deployment", old.URN, viewOf)
+		}
 	}
 
 	new, err := rs.unmarshalViewStepState(viewOf, step.GetNew())
