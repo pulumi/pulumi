@@ -30,7 +30,7 @@ import (
 )
 
 func TestRefreshBeforeUpdate(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_PROVIDER_REFRESH_BEFORE_UPDATE", "true")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
