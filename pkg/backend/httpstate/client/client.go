@@ -1469,6 +1469,12 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	}
 	defer resp.Body.Close()
 
+	// Read the body first so we can use it for error reporting if needed
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response body: %w", err)
+	}
+
 	if resp.StatusCode == http.StatusNoContent {
 		// Copilot API returns 204 No Content when it decided that it should not summarize the input.
 		// This can happen when the input is too short or Copilot thinks it cannot make it any better.
@@ -1476,15 +1482,23 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", nil
 	}
 
-	// Read the body first so we can use it for error reporting if needed
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("reading response body: %w", err)
+	if resp.StatusCode == http.StatusTooManyRequests {
+		// Status code 429 is returned when usage limits are reached
+		return "", errors.New("Usage limit reached")
+	}
+
+	if resp.StatusCode >= 400 {
+		// For other error status codes, return the body as an error if it's readable, otherwise a generic error
+		errorMsg := string(body)
+		if errorMsg == "" {
+			errorMsg = fmt.Sprintf("Copilot API returned error status: %d", resp.StatusCode)
+		}
+		return "", errors.New(errorMsg)
 	}
 
 	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {
-		return "", errors.New(string(body))
+		return "", fmt.Errorf("unable to parse Copilot response: %s", string(body))
 	}
 
 	if copilotResp.Error != "" {
