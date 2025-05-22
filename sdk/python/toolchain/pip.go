@@ -32,8 +32,7 @@ import (
 )
 
 const (
-	windows             = "windows"
-	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
+	windows = "windows"
 )
 
 type pip struct {
@@ -240,13 +239,9 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 // Command returns an *exec.Cmd for running `python`. Uses `ComandPath`
 // internally to find the correct executable.
 func Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
-	pythonPath, pythonCmd, err := CommandPath()
+	pythonPath, _, err := CommandPath()
 	if err != nil {
 		return nil, err
-	}
-	if needsPythonShim(pythonPath) {
-		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
-		return exec.CommandContext(ctx, shimCmd, arg...), nil
 	}
 	return exec.CommandContext(ctx, pythonPath, arg...), nil
 }
