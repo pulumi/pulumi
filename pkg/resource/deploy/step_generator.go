@@ -736,7 +736,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	}
 
 	// Carry the refreshBeforeUpdate flag forward if present in the old state.
-	refreshBeforeUpdate := false
+	var refreshBeforeUpdate bool
 	if old != nil {
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}

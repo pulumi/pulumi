@@ -900,8 +900,8 @@ export class CreateResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): CreateResponse;
-    getRefreshbeforeupdate(): boolean;
-    setRefreshbeforeupdate(value: boolean): CreateResponse;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): CreateResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateResponse.AsObject;
@@ -917,7 +917,7 @@ export namespace CreateResponse {
     export type AsObject = {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
-        refreshbeforeupdate: boolean,
+        refreshBeforeUpdate: boolean,
     }
 }
 
@@ -986,8 +986,8 @@ export class ReadResponse extends jspb.Message {
     clearInputs(): void;
     getInputs(): google_protobuf_struct_pb.Struct | undefined;
     setInputs(value?: google_protobuf_struct_pb.Struct): ReadResponse;
-    getRefreshbeforeupdate(): boolean;
-    setRefreshbeforeupdate(value: boolean): ReadResponse;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): ReadResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResponse.AsObject;
@@ -1004,7 +1004,7 @@ export namespace ReadResponse {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
-        refreshbeforeupdate: boolean,
+        refreshBeforeUpdate: boolean,
     }
 }
 
@@ -1083,8 +1083,8 @@ export class UpdateResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): UpdateResponse;
-    getRefreshbeforeupdate(): boolean;
-    setRefreshbeforeupdate(value: boolean): UpdateResponse;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): UpdateResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateResponse.AsObject;
@@ -1099,7 +1099,7 @@ export class UpdateResponse extends jspb.Message {
 export namespace UpdateResponse {
     export type AsObject = {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
-        refreshbeforeupdate: boolean,
+        refreshBeforeUpdate: boolean,
     }
 }
 

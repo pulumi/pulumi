@@ -7431,7 +7431,7 @@ proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    refreshbeforeupdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+    refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -7479,7 +7479,7 @@ proto.pulumirpc.CreateResponse.deserializeBinaryFromReader = function(msg, reade
       break;
     case 3:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setRefreshbeforeupdate(value);
+      msg.setRefreshBeforeUpdate(value);
       break;
     default:
       reader.skipField();
@@ -7525,7 +7525,7 @@ proto.pulumirpc.CreateResponse.serializeBinaryToWriter = function(message, write
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getRefreshbeforeupdate();
+  f = message.getRefreshBeforeUpdate();
   if (f) {
     writer.writeBool(
       3,
@@ -7591,10 +7591,10 @@ proto.pulumirpc.CreateResponse.prototype.hasProperties = function() {
 
 
 /**
- * optional bool refreshBeforeUpdate = 3;
+ * optional bool refresh_before_update = 3;
  * @return {boolean}
  */
-proto.pulumirpc.CreateResponse.prototype.getRefreshbeforeupdate = function() {
+proto.pulumirpc.CreateResponse.prototype.getRefreshBeforeUpdate = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
 };
 
@@ -7603,7 +7603,7 @@ proto.pulumirpc.CreateResponse.prototype.getRefreshbeforeupdate = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.CreateResponse} returns this
  */
-proto.pulumirpc.CreateResponse.prototype.setRefreshbeforeupdate = function(value) {
+proto.pulumirpc.CreateResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
@@ -8085,7 +8085,7 @@ proto.pulumirpc.ReadResponse.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    refreshbeforeupdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -8138,7 +8138,7 @@ proto.pulumirpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader)
       break;
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setRefreshbeforeupdate(value);
+      msg.setRefreshBeforeUpdate(value);
       break;
     default:
       reader.skipField();
@@ -8192,7 +8192,7 @@ proto.pulumirpc.ReadResponse.serializeBinaryToWriter = function(message, writer)
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getRefreshbeforeupdate();
+  f = message.getRefreshBeforeUpdate();
   if (f) {
     writer.writeBool(
       4,
@@ -8295,10 +8295,10 @@ proto.pulumirpc.ReadResponse.prototype.hasInputs = function() {
 
 
 /**
- * optional bool refreshBeforeUpdate = 4;
+ * optional bool refresh_before_update = 4;
  * @return {boolean}
  */
-proto.pulumirpc.ReadResponse.prototype.getRefreshbeforeupdate = function() {
+proto.pulumirpc.ReadResponse.prototype.getRefreshBeforeUpdate = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
 };
 
@@ -8307,7 +8307,7 @@ proto.pulumirpc.ReadResponse.prototype.getRefreshbeforeupdate = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.ReadResponse} returns this
  */
-proto.pulumirpc.ReadResponse.prototype.setRefreshbeforeupdate = function(value) {
+proto.pulumirpc.ReadResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
@@ -8947,7 +8947,7 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    refreshbeforeupdate: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+    refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -8991,7 +8991,7 @@ proto.pulumirpc.UpdateResponse.deserializeBinaryFromReader = function(msg, reade
       break;
     case 2:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setRefreshbeforeupdate(value);
+      msg.setRefreshBeforeUpdate(value);
       break;
     default:
       reader.skipField();
@@ -9030,7 +9030,7 @@ proto.pulumirpc.UpdateResponse.serializeBinaryToWriter = function(message, write
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getRefreshbeforeupdate();
+  f = message.getRefreshBeforeUpdate();
   if (f) {
     writer.writeBool(
       2,
@@ -9078,10 +9078,10 @@ proto.pulumirpc.UpdateResponse.prototype.hasProperties = function() {
 
 
 /**
- * optional bool refreshBeforeUpdate = 2;
+ * optional bool refresh_before_update = 2;
  * @return {boolean}
  */
-proto.pulumirpc.UpdateResponse.prototype.getRefreshbeforeupdate = function() {
+proto.pulumirpc.UpdateResponse.prototype.getRefreshBeforeUpdate = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
 };
 
@@ -9090,7 +9090,7 @@ proto.pulumirpc.UpdateResponse.prototype.getRefreshbeforeupdate = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.UpdateResponse} returns this
  */
-proto.pulumirpc.UpdateResponse.prototype.setRefreshbeforeupdate = function(value) {
+proto.pulumirpc.UpdateResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 2, value);
 };
 

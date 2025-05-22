@@ -59,7 +59,7 @@ type State struct {
 	SourcePosition          string                // If set, the source location of the resource registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
-	RefreshBeforeUpdate     bool                  // If set, provider requested to always refresh before updating.
+	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 }
 
 // Copy creates a deep copy of the resource state, except without copying the lock.

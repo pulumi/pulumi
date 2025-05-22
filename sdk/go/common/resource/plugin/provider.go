@@ -251,9 +251,10 @@ type CreateRequest struct {
 }
 
 type CreateResponse struct {
-	ID                  resource.ID
-	Properties          resource.PropertyMap
-	Status              resource.Status
+	ID         resource.ID
+	Properties resource.PropertyMap
+	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
 }
 
@@ -295,8 +296,9 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Properties          resource.PropertyMap
-	Status              resource.Status
+	Properties resource.PropertyMap
+	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
 }
 
@@ -743,8 +745,7 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
-
-	// The provider indicates that the resource requires refreshing on updates.
+	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
 }
 

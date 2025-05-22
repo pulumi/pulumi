@@ -810,8 +810,8 @@ message CreateResponse {
     // additional values that were computed or made available during creation.
     google.protobuf.Struct properties = 2;
 
-    // Provider indicates that this resource should always be refreshed when updating.
-    bool refreshBeforeUpdate = 3;
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 3;
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -861,8 +861,8 @@ message ReadResponse {
     // [](pulumirpc.ResourceProvider.Check) call with the same values.
     google.protobuf.Struct inputs = 3;
 
-    // Provider indicates that this resource should always be refreshed when updating.
-    bool refreshBeforeUpdate = 4;
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 4;
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -917,8 +917,8 @@ message UpdateResponse {
     // additional values that were computed or made available during the update.
     google.protobuf.Struct properties = 1;
 
-    // Provider indicates that this resource should always be refreshed when updating.
-    bool refreshBeforeUpdate = 2;
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 2;
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
