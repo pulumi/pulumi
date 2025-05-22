@@ -1482,8 +1482,8 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", nil
 	}
 
-	if resp.StatusCode == http.StatusTooManyRequests {
-		// Status code 429 is returned when usage limits are reached
+	if resp.StatusCode == http.StatusPaymentRequired {
+		// Status code 402 (Payment Required) is returned when usage limits are reached
 		return "", errors.New("Usage limit reached")
 	}
 
