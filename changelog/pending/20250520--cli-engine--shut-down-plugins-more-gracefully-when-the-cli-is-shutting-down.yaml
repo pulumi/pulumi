@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/engine
+  description: Shut down plugins more gracefully when the CLI is shutting down
