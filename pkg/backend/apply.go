@@ -275,7 +275,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, explainer Explainer,
+	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
 	if !op.Opts.SkipPreview {
@@ -313,7 +313,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
+	_, changes, res := apply(ctx, kind, stack, op, opts, events)
 	return changes, res
 }
 
