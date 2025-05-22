@@ -137,14 +137,12 @@ func getDocsForPackage(pkg *Package) []doc {
 	return allDocs
 }
 
-//nolint:paralleltest // needs to set plugin acquisition env var
 func TestParseAndRenderDocs(t *testing.T) {
 	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
-	//nolint:paralleltest // needs to set plugin acquisition env var
 	for _, f := range files {
 		f := f
 		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {

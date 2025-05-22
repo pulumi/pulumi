@@ -105,9 +105,6 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *ConstType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if t.Type.ConversionFrom(src) != NoConversion {
 			return UnsafeConversion, nil

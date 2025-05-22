@@ -43,7 +43,6 @@ import (
 // This duplicates those tests to run with legacy, non-project state,
 // validating that the legacy behavior is preserved.
 
-//nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())

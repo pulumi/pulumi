@@ -34,7 +34,7 @@ jobs:
       # on PR to get correct coverage numbers.
       test-codegen: true
       test-version-sets: 'all'
-      integration-test-platforms: ubuntu-22.04
+      integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: 'macos-latest windows-latest'
       enable-coverage: true
     secrets: inherit
@@ -49,14 +49,14 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       test-version-sets: 'all'
-      performance-test-platforms: ubuntu-22.04
+      performance-test-platforms: ubuntu-latest
     secrets: inherit
 
   ci-ok:
     name: ci-ok
     needs: [ci, performance-gate]
     if: always()
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}

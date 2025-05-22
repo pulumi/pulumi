@@ -197,7 +197,6 @@ func optsForConstructPython(
 	}
 }
 
-//nolint:paralleltest // Sets env vars
 func TestConstructComponentConfigureProviderPython(t *testing.T) {
 	// This uses the tls plugin so needs to be able to download it
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -606,7 +605,6 @@ func TestNewPythonUsesPip(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Modifies env
 func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 	// Force interactive mode to properly test `--yes`.
 	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
@@ -626,7 +624,6 @@ func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Modifies env
 func TestNewPythonChoosePoetry(t *testing.T) {
 	// The windows acceptance tests are run using git bash, but the survey library does not support this
 	// https://github.com/AlecAivazis/survey/issues/148
@@ -654,7 +651,6 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Modifies env
 func TestNewPythonChooseUv(t *testing.T) {
 	// The windows acceptance tests are run using git bash, but the survey library does not support this
 	// https://github.com/AlecAivazis/survey/issues/148

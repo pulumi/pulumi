@@ -34,7 +34,7 @@ type SetType struct {
 
 // NewSetType creates a new set type with the given element type.
 func NewSetType(elementType Type) *SetType {
-	return &SetType{ElementType: elementType}
+	return &SetType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -81,9 +81,6 @@ func (t *SetType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *SetType:

@@ -28,7 +28,6 @@ const (
 	brokenState = `{"salt":"fozI5u6B030=:v1:F+6ZduL:PGMFeIzwobWRKmEAzUdaQHqC5mMRIQ=="}`
 )
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -54,7 +53,6 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -70,7 +68,6 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -87,7 +84,6 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	assert.NotNil(t, sm)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -104,7 +100,6 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 		"PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -121,7 +116,6 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	assert.NotNil(t, sm)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	clearCachedSecretsManagers()
 
@@ -144,7 +138,6 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	assert.NotNil(t, sm)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
 	clearCachedSecretsManagers()
 

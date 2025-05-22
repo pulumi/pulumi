@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/nodejs
-  description: Add `callSingle` to the NodeJS SDK to support non-object method return values

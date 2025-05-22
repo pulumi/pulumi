@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.171.0 (2025-05-21)
+
+
+### Features
+
+- [cli] Add `pulumi esc` as an alias for `pulumi env`
+  [#19610](https://github.com/pulumi/pulumi/pull/19610)
+
+- [engine] Elide `StackReference` outputs that fail to decrypt
+  [#19533](https://github.com/pulumi/pulumi/pull/19533)
+
+- [programgen] Ensure convert uses the output project directory as the working directory
+  [#19582](https://github.com/pulumi/pulumi/pull/19582)
+
+- [cli/display] Release explain-preview and summarize-error Copilot features
+  [#19544](https://github.com/pulumi/pulumi/pull/19544)
+
+- [cli/engine] Enable debugging of source based plugins, using `--attach-debugger plugin=<name>`
+  [#19553](https://github.com/pulumi/pulumi/pull/19553)
+
+- [cli/install] Allow `pulumi install` to install dependencies inside plugin project folders
+  [#19580](https://github.com/pulumi/pulumi/pull/19580)
+
+- [auto/python] Add `on_error` callback for capturing incremental stderr output
+  [#19541](https://github.com/pulumi/pulumi/pull/19541)
+
+- [programgen/nodejs] Add `callSingle` to the NodeJS SDK to support non-object method return values
+  [#19387](https://github.com/pulumi/pulumi/pull/19387)
+
+- [programgen/python] Add sdk support for scalar call returns from providers
+  [#19419](https://github.com/pulumi/pulumi/pull/19419)
+
+- [sdk/python] Add new provider interface to `pulumi.provider.experimental.provider`
+  [#19080](https://github.com/pulumi/pulumi/pull/19080)
+
+- [sdk/python] Support enum references in component providers
+  [#19471](https://github.com/pulumi/pulumi/pull/19471)
+
+
+### Bug Fixes
+
+- [cli] Enumerate supported CI systems deterministically
+  [#19593](https://github.com/pulumi/pulumi/pull/19593)
+
+- [engine] Make the engine respect errors from plugin Handshake methods
+  [#19595](https://github.com/pulumi/pulumi/pull/19595)
+
+- [cli/install] Fix installation of python policies to default to virtualenv rather than site-packages
+  [#19570](https://github.com/pulumi/pulumi/pull/19570)
+
 ## 3.170.0 (2025-05-15)
 
 

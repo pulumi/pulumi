@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/install
-  description: Allow `pulumi install` to install dependencies inside plugin project folders

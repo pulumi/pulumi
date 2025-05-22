@@ -35,7 +35,7 @@ type MapType struct {
 
 // NewMapType creates a new map type with the given element type.
 func NewMapType(elementType Type) *MapType {
-	return &MapType{ElementType: elementType}
+	return &MapType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 func (t *MapType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -119,9 +119,6 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	if t.cache == nil {
-		t.cache = &gsync.Map[Type, cacheEntry]{}
-	}
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:

@@ -257,8 +257,6 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 // This test checks that we only write the Checkpoint once whether or
 // not there are important changes when asked to via
 // env.SkipCheckpoints.
-//
-//nolint:paralleltest // mutates environment variables
 func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
 

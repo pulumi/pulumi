@@ -7,7 +7,7 @@ on:
 
 jobs:
   command-dispatch:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Dispatch command
         uses: peter-evans/slash-command-dispatch@v2

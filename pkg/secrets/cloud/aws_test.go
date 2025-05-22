@@ -63,7 +63,6 @@ func createKey(ctx context.Context, t *testing.T, cfg aws.Config) *kms.CreateKey
 	return key
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, cfg, _ := getAwsCaller(t)
@@ -74,7 +73,6 @@ func TestAWSCloudManager(t *testing.T) {
 	testURL(ctx, t, url)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager_SessionToken(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, cfg, _ := getAwsCaller(t)
@@ -93,7 +91,6 @@ func TestAWSCloudManager_SessionToken(t *testing.T) {
 	testURL(ctx, t, url)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/11482
 	t.Setenv("AWS_REGION", "us-west-2")
@@ -194,7 +191,6 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	testURL(ctx, t, url)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSKmsExistingKey(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, _, _ := getAwsCaller(t)
@@ -220,7 +216,6 @@ func TestAWSKmsExistingKey(t *testing.T) {
 	assert.Equal(t, "plaintext", plaintext)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSKmsExistingState(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, _, _ := getAwsCaller(t)
@@ -246,7 +241,6 @@ func TestAWSKmsExistingState(t *testing.T) {
 	assert.JSONEq(t, cloudState, string(manager.State()))
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSKeyEditProjectStack(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	_, _, _ = getAwsCaller(t)
