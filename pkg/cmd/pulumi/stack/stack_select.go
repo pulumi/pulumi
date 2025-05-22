@@ -72,7 +72,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if stack == "" && !cmdutil.Interactive() {
-				return errors.New("no stack name given, and cannot prompt in non-interactive mode")
+				return errors.New("no stack name given, use --stack to specify a stack name")
 			}
 
 			if stack != "" {
