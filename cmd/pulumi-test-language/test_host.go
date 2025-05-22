@@ -229,6 +229,12 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	for _, closer := range h.connections {
+		if err := closer.Close(); err != nil {
+			return fmt.Errorf("close provider connection: %w", err)
+		}
+	}
+	h.connections = make(map[plugin.Provider]io.Closer)
 	return nil
 }
 
