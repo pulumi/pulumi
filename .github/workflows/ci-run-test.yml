@@ -429,8 +429,10 @@ jobs:
       - name: Summarize Test Times by Individual Test
         continue-on-error: true
         run: |
-          goteststats -statistic test-time test-results/*.json | head -n 100 || \
-                      if [[ $? -eq 141 ]]; then true; else exit $?; fi
+          goteststats -statistic test-time test-results/*.json | head -n 100
+          exit_status=$?
+          # Ignore SIGPIPE (exit status 141)
+          if [[ exit_status -eq 0 || exit_status -eq 141 ]]; then true; else exit $exit_status; fi
       - name: Upload artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
