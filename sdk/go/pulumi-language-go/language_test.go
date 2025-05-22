@@ -61,7 +61,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 				wg.Done()
 				return
 			}
-			t.Logf("%s", text)
+			t.Log(text)
 		}
 	}()
 
