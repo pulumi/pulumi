@@ -91,9 +91,7 @@ type AnalyzeDiagnostic struct {
 	PolicyName        string
 	PolicyPackName    string
 	PolicyPackVersion string
-	Description       string
 	Message           string
-	Tags              []string
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
 }
@@ -102,7 +100,6 @@ type AnalyzeDiagnostic struct {
 // transformed properties and associated metadata.
 type Remediation struct {
 	PolicyName        string
-	Description       string
 	PolicyPackName    string
 	PolicyPackVersion string
 	URN               resource.URN
