@@ -43,7 +43,7 @@ namespace Pulumi.Example
             => global::Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
 
         public void Baz()
-            => global::Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
+            => global::Pulumi.Deployment.Instance.CallSingle("example::Foo/baz", CallArgs.Empty, this);
 
         /// <summary>
         /// Do something with something else

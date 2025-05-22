@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet
+  description: Add sdk changes for scalar return in dotnet
