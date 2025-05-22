@@ -592,11 +592,18 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 	ctx, cancel := context.WithCancel(callerCtx)
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
 
+	// Set up the resource status server for this deployment.
+	var err error
+	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, ex.stepExec)
+	if err != nil {
+		return nil, fmt.Errorf("creating resource status server: %w", err)
+	}
+
 	importer := &importer{
 		deployment: ex.deployment,
 		executor:   stepExec,
 	}
-	err := importer.importResources(ctx)
+	err = importer.importResources(ctx)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
 
@@ -730,6 +737,14 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	ctx, cancel := context.WithCancel(callerCtx)
 
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
+
+	// Set up the resource status server for this deployment.
+	var err error
+	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, ex.stepExec)
+	if err != nil {
+		return fmt.Errorf("creating resource status server: %w", err)
+	}
+
 	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
