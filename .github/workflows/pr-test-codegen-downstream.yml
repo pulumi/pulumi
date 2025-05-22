@@ -11,7 +11,7 @@ permissions:
 jobs:
     cleanup:
       name: Remove Existing Codegen PRs
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
@@ -25,7 +25,7 @@ jobs:
       name: Test ${{ matrix.provider }} (bridged)
       needs: ["cleanup"]
       timeout-minutes: 240
-      runs-on: ubuntu-22.04
+      runs-on: ubuntu-latest
       env:
         GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
       strategy:
@@ -65,7 +65,7 @@ jobs:
     #   name: Test AWSX
     #   needs: ["cleanup"]
     #   timeout-minutes: 240
-    #   runs-on: ubuntu-22.04
+    #   runs-on: ubuntu-latest
     #   env:
     #     GOVERSION: ">=1.19.0" # from awsx: decoupled from version sets, track latest for codegen
     #     NODEVERSION: "18.x"

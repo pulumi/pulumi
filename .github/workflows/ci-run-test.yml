@@ -15,7 +15,7 @@ on:
         description: "Version to produce"
         type: string
       platform:
-        description: "OS to run tests on, e.g.: ubuntu-22.04"
+        description: "OS to run tests on, e.g.: ubuntu-latest"
         required: true
         type: string
 

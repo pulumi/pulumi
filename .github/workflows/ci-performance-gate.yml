@@ -29,7 +29,7 @@ on:
         type: string
       performance-test-platforms:
         required: false
-        default: ubuntu-22.04
+        default: ubuntu-latest
         description: Platforms on which to run performance tests, as a space delimited list
         type: string
       fail-fast:
@@ -64,7 +64,7 @@ on:
 
 jobs:
   matrix:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
@@ -81,9 +81,9 @@ jobs:
           readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p VERSION_SETS_TO_TEST;
           readarray -td' ' PERFORMANCE_TEST_PLATFORMS < <(echo -n "$INPUT_PERFORMANCE_TEST_PLATFORMS"); declare -p PERFORMANCE_TEST_PLATFORMS;
           BUILD_TARGETS='[
-              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-22.04" }
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
           ]'
 
           PERFORMANCE_TEST_MATRIX=$(

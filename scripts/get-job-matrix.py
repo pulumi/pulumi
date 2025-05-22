@@ -129,7 +129,7 @@ MAKEFILE_PERFORMANCE_TESTS: List[MakefileTest] = [
     {"name": "performance tests", "run": "./scripts/retry make test_performance", "eta": 10},
 ]
 
-ALL_PLATFORMS = ["ubuntu-22.04", "windows-latest", "macos-latest"]
+ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
 
 # When updating the minumum and current versions, consider also updating the

@@ -21,7 +21,7 @@ on:
 jobs:
   gather-info:
     name: gather-info
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +44,7 @@ jobs:
       version: ${{ inputs.version }}
 
   matrix:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,7 +77,7 @@ jobs:
       matrix:
         os: ["linux", "darwin", "windows"]
         arch: ["amd64", "arm64"]
-        build-platform: ["ubuntu-22.04"]
+        build-platform: ["ubuntu-latest"]
     uses: ./.github/workflows/ci-build-binaries.yml
     with:
       ref: ${{ inputs.ref }}
@@ -111,7 +111,7 @@ jobs:
   # Check if we need to create a new SDK dev release
   sdk-check-release:
     name: sdk-check-release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -138,7 +138,7 @@ jobs:
 
   nodejs-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
       - name: Checkout
@@ -182,7 +182,7 @@ jobs:
 
   python-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
       - name: Checkout
@@ -224,7 +224,7 @@ jobs:
 
   s3-blobs:
     name: s3 blobs
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs: [sign, gather-info]
     steps:
       - name: Configure AWS Credentials
