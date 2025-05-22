@@ -293,3 +293,176 @@ func TestViewsBasic(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
+
+func TestViewsRefresh(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					if err != nil {
+						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
+					}
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     deploy.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					if err != nil {
+						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
+					}
+
+					return plugin.CreateResponse{
+						ID:         "new-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	p.Steps = []lt.TestStep{{Op: Refresh}}
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	// TODO test updating views from the refresh.
+}
+
+func TestViewsImport(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					if err != nil {
+						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
+					}
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     deploy.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					if err != nil {
+						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
+					}
+
+					return plugin.CreateResponse{
+						ID:         "new-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewStringProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	p.Steps = []lt.TestStep{{Op: lt.ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+	}})}}
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+
+	// TODO test creating new views from the Read for the imported resource.
+}

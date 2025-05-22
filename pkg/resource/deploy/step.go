@@ -105,9 +105,6 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 		"new", "must have or be a provider if it is a custom resource")
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
-	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
-	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
-
 	return &SameStep{
 		deployment: deployment,
 		reg:        reg,

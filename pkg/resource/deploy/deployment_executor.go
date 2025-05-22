@@ -664,6 +664,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				continue
 			}
 
+			// If the resource is a view, skip it. Only the owning resource
+			// should have a refresh step.
+			if res.ViewOf != "" {
+				continue
+			}
+
 			knownToBeExcluded := false
 
 			// In the case of `--exclude-dependents`, we need to check through all
@@ -700,6 +706,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		targetsActual := ex.deployment.opts.Targets
 
 		for _, res := range prev.Resources {
+			// If the resource is a view, skip it. Only the owning resource
+			// should have a refresh step.
+			if res.ViewOf != "" {
+				continue
+			}
+
 			if targetsActual.Contains(res.URN) {
 				// For each resource we're going to refresh we need to ensure we have a provider for it
 				err := ex.deployment.EnsureProvider(res.Provider)

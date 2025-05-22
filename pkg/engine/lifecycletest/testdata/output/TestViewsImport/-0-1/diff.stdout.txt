@@ -1,0 +1,21 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=a6db6afc-dab0-4d19-89a8-9b18c85949ef]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=new-id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typAView: (same)
+<{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typAView::resA-child]
+<{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
+<{%reset%}>        result: <{%reset%}><{%reset%}>"bar"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+<{%reset%}><{%reset%}>    <{%fg 2%}>= pkgA:m:typA: (import)
+<{%reset%}>        [id=imported-id]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typA::resB]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 2%}>= 1 imported<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>. 2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
