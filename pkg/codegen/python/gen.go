@@ -1747,26 +1747,41 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		methodName := PyName(method.Name)
 		fun := method.Function
 
-		returnType := returnTypeObject(fun)
-		shouldLiftReturn := mod.liftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1
+		returnTypeObject, isObjectReturnType := fun.ReturnType.(*schema.ObjectType)
+		shouldLiftReturn := !isObjectReturnType ||
+			(mod.liftSingleValueMethodReturns && isObjectReturnType && len(returnTypeObject.Properties) == 1)
 
 		// If there is a return type, emit it.
 		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput, methodRetType string
-		if returnType != nil || fun.ReturnTypePlain {
+		if !shouldLiftReturn && !fun.ReturnTypePlain {
+			// Return a pulumi.Output object
 			retTypeName = mod.genMethodReturnType(w, method)
 			retTypeNameQualified = fmt.Sprintf("%s.%s", resourceName(res), retTypeName)
 			retTypeNameQualifiedOutput = fmt.Sprintf("pulumi.Output['%s']", retTypeNameQualified)
-			if shouldLiftReturn {
-				methodRetType = fmt.Sprintf("pulumi.Output['%s']", mod.pyType(returnType.Properties[0].Type))
-			} else if fun.ReturnTypePlain {
-				if returnType != nil {
-					methodRetType = retTypeName
-				} else {
-					methodRetType = mod.pyType(fun.ReturnType)
-				}
+			methodRetType = retTypeNameQualifiedOutput
+		} else if !shouldLiftReturn && fun.ReturnTypePlain {
+			// Return a plain/async object
+			retTypeName = mod.genMethodReturnType(w, method)
+			retTypeNameQualified = fmt.Sprintf("%s.%s", resourceName(res), retTypeName)
+			retTypeNameQualifiedOutput = fmt.Sprintf("pulumi.Output['%s']", retTypeNameQualified)
+			methodRetType = retTypeName
+		} else if shouldLiftReturn && !fun.ReturnTypePlain {
+			// Return a pulumi.Output lifted
+			if isObjectReturnType {
+				retTypeName = mod.typeString(returnTypeObject.Properties[0].Type, typeStringOpts{})
 			} else {
-				methodRetType = retTypeNameQualifiedOutput
+				retTypeName = mod.typeString(fun.ReturnType, typeStringOpts{})
 			}
+			methodRetType = fmt.Sprintf("pulumi.Output['%s']", retTypeName)
+			retTypeNameQualifiedOutput = methodRetType
+		} else {
+			// Return a plain/async object lifted
+			if isObjectReturnType {
+				methodRetType = mod.typeString(returnTypeObject.Properties[0].Type, typeStringOpts{})
+			} else {
+				methodRetType = mod.pyType(fun.ReturnType)
+			}
+			retTypeNameQualifiedOutput = methodRetType
 		}
 
 		var args []*schema.Property
@@ -1858,23 +1873,18 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
-		if fun.ReturnTypePlain {
-			property := ""
-			// For non-object singleton return types, unwrap the magic property "res".
-			if returnType == nil {
-				property = "." + PyName("res")
-			}
-			fmt.Fprintf(w, "        return _utilities.call_plain('%s', __args__, res=__self__%s)%s\n",
-				fun.Token, trailingArgs, property)
-		} else if returnType == nil {
-			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
-		} else if shouldLiftReturn {
-			// Store the return in a variable and return the property output
-			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
-			fmt.Fprintf(w, "        return __result__.%s\n", PyName(returnType.Properties[0].Name))
-		} else {
-			// Otherwise return the call directly
+		if !fun.ReturnTypePlain && !isObjectReturnType {
+			// return a pulumi.Output object that contains a scalar.
+			fmt.Fprintf(w, "        return pulumi.runtime.call_single('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
+		} else if !fun.ReturnTypePlain && isObjectReturnType {
+			// return a pulumi.Output object that contains an object.
 			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
+		} else if fun.ReturnTypePlain && !isObjectReturnType {
+			// return a plain object that contains a scalar.
+			fmt.Fprintf(w, "        return _utilities.call_plain_single('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
+		} else if fun.ReturnTypePlain && isObjectReturnType {
+			// return a plain object that contains an object.
+			fmt.Fprintf(w, "        return _utilities.call_plain('%s', __args__, res=__self__%s)\n", fun.Token, trailingArgs)
 		}
 
 		fmt.Fprintf(w, "\n")
