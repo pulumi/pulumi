@@ -127,7 +127,8 @@ type languageTestServer struct {
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
 
-	logLock   sync.Mutex
+	logLock sync.Mutex
+	// Used by the Log method to track the number of times a message has been repeated.
 	logRepeat int
 	// Used by the Log method to track the last message logged, this is so we can elide duplicate messages.
 	previousMessage string

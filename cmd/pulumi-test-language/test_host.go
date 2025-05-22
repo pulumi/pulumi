@@ -61,6 +61,8 @@ func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID
 		rpcsev = pulumirpc.LogSeverity_DEBUG
 	case diag.Info:
 		rpcsev = pulumirpc.LogSeverity_INFO
+	case diag.Infoerr:
+		rpcsev = pulumirpc.LogSeverity_INFO
 	case diag.Warning:
 		rpcsev = pulumirpc.LogSeverity_WARNING
 	case diag.Error:
