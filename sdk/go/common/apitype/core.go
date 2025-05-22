@@ -357,7 +357,7 @@ type ResourceV3 struct {
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
 	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
-	// RefreshBeforeUpdate indicates that the provider requires this resource to always be refreshed.
+	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"replaceOnChanges,omitempty"`
 }
 
