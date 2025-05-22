@@ -179,12 +179,7 @@ func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 		name = name + ".exe"
 	}
 	cmdPath := filepath.Join(virtualenvPath, virtualEnvBinDirName(), name)
-	if needsPythonShim(cmdPath) {
-		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
-		cmd = exec.CommandContext(ctx, shimCmd, args...)
-	} else {
-		cmd = exec.CommandContext(ctx, cmdPath, args...)
-	}
+	cmd = exec.CommandContext(ctx, cmdPath, args...)
 	cmd.Env = ActivateVirtualEnv(os.Environ(), virtualenvPath)
 	cmd.Dir = p.directory
 	return cmd, nil
