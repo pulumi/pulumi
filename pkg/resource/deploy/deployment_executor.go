@@ -594,7 +594,7 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 
 	// Set up the resource status server for this deployment.
 	var err error
-	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, ex.stepExec)
+	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, stepExec)
 	if err != nil {
 		return nil, fmt.Errorf("creating resource status server: %w", err)
 	}
@@ -752,7 +752,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 
 	// Set up the resource status server for this deployment.
 	var err error
-	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, ex.stepExec)
+	ex.deployment.resourceStatus, err = newResourceStatusServer(ex.deployment, stepExec)
 	if err != nil {
 		return fmt.Errorf("creating resource status server: %w", err)
 	}
