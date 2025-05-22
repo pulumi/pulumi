@@ -15,7 +15,7 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -39,7 +39,7 @@ import (
 )
 
 type testHost struct {
-	stderr      *bytes.Buffer
+	engine      pulumirpc.EngineServer
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
@@ -55,12 +55,27 @@ func (h *testHost) ServerAddr() string {
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	prefix := ""
-	if urn != "" {
-		prefix = fmt.Sprintf(" %s: ", urn)
+	var rpcsev pulumirpc.LogSeverity
+	switch sev {
+	case diag.Debug:
+		rpcsev = pulumirpc.LogSeverity_DEBUG
+	case diag.Info:
+		rpcsev = pulumirpc.LogSeverity_INFO
+	case diag.Warning:
+		rpcsev = pulumirpc.LogSeverity_WARNING
+	case diag.Error:
+		rpcsev = pulumirpc.LogSeverity_ERROR
+	default:
+		contract.Failf("unexpected severity %v", sev)
 	}
-	_, err := fmt.Fprintf(h.stderr, "[%s]%s\n", prefix, msg)
-	contract.IgnoreError(err)
+
+	h.engine.Log(context.TODO(),
+		&pulumirpc.LogRequest{
+			Severity: rpcsev,
+			Urn:      string(urn),
+			Message:  msg,
+			StreamId: streamID,
+		})
 }
 
 func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {

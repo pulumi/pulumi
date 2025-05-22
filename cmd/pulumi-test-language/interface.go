@@ -593,7 +593,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	host := &testHost{
-		stderr:      stderr,
+		engine:      eng,
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
