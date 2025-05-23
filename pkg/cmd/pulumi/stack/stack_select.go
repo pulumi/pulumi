@@ -90,7 +90,7 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider)
+					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider, false /*useRemoteConfig*/)
 					if err != nil {
 						return err
 					}
