@@ -22,4 +22,4 @@
 1966157006 18062 proto/pulumi/resource.proto
 300043576 5575 proto/pulumi/resource_status.proto
 607478140 1008 proto/pulumi/source.proto
-3324695407 3932 proto/pulumi/testing/language.proto
+4072696186 4138 proto/pulumi/testing/language.proto

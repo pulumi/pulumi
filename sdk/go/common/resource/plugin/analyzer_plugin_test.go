@@ -63,7 +63,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-analyzer-policy-test")
 
-	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts)
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts, nil)
 	require.NoError(t, err)
 
 	err = analyzer.Close()
@@ -83,7 +83,7 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 	// Pass `nil` for the config, this is used for example in `pulumi policy
 	// publish`, which does not run in the context of a stack.
-	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", nil)
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", nil, nil)
 	require.NoError(t, err)
 
 	err = analyzer.Close()
@@ -126,7 +126,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
 
-	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts)
+	analyzer, err := NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts, nil)
 	require.NoError(t, err)
 
 	err = analyzer.Close()

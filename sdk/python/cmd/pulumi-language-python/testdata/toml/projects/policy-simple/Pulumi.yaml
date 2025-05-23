@@ -1,0 +1,7 @@
+name: policy-simple
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

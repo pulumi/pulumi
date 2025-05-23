@@ -145,6 +145,7 @@ func TestLanguage(t *testing.T) {
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
+				PolicyPackDirectory:  "testdata/policies",
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "package\\.json",
