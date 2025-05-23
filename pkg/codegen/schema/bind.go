@@ -757,7 +757,7 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	if len(parts) == 3 {
 		name := parts[2]
 		if isReservedKeyword(name) {
-			diags = append(diags, errorf(path, name+" is a reserved name, cannot be used for type name"))
+			diags = append(diags, errorf(path, name+" is a reserved name, cannot name type"))
 			return nil, diags, errors.New("type name " + name + " is reserved")
 		}
 	}

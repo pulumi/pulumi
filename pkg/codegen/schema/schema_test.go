@@ -1055,7 +1055,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
 		assert.True(
 			t,
-			strings.Contains(diag.Summary, "pulumi is a reserved name, cannot be used for type name"),
+			strings.Contains(diag.Summary, "pulumi is a reserved name, cannot name type"),
 		)
 	}
 	assert.Nil(t, pkg)
@@ -2396,9 +2396,10 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 		},
 	}
 
-	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
+	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
+	assert.Error(t, err)
 	assert.Len(t, diags, 1)
-	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot be used for type name")
+	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot name type")
 }
 
 func TestRoundtripAliasesJSON(t *testing.T) {
