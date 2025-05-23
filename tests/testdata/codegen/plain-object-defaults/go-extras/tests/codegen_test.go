@@ -51,7 +51,7 @@ func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) 
 	panic("Call not supported")
 }
 
-func (mocks) Call(args pulumi.MockInvokeArgs) (resource.PropertyMap, error) {
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic("Invoke not supported")
 }
 

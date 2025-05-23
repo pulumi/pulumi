@@ -49,6 +49,6 @@ func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) 
 	return args.Args, nil
 }
 
-func (mocks) Call(args pulumi.MockInvokeArgs) (resource.PropertyMap, error) {
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return args.Args, nil
 }

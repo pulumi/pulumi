@@ -447,7 +447,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 					ctx.RegisterResource("test:index:MyResource", "testResource", tt.give, &res))
 				return nil
 			}, pulumi.WithMocks("project", "stack", &mockResourceMonitor{
-				InvokeF: func(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+				CallF: func(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 					t.Fatalf("unexpected Call(%#v)", args)
 					return nil, nil
 				},
@@ -516,19 +516,21 @@ func TestRegisterResourceOutputs(t *testing.T) {
 }
 
 type mockResourceMonitor struct {
-	InvokeF      func(pulumi.MockCallArgs) (resource.PropertyMap, error)
-	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually an "Invoke" by provider parlance, but is named so to be consistent with the interface.
+	CallF func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually an "Call" by provider parlance, but is named so to be consistent with the interface.
+	MethodCallF  func(pulumi.MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
 var _ pulumi.MockResourceMonitor = (*mockResourceMonitor)(nil)
 
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	return m.InvokeF(args)
+	return m.CallF(args)
 }
 
 func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	return m.CallF(args)
+	return m.MethodCallF(args)
 }
 
 func (m *mockResourceMonitor) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {

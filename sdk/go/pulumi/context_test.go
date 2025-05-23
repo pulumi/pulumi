@@ -635,7 +635,7 @@ func TestInvokeOutput(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		InvokeF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
@@ -696,7 +696,7 @@ func TestCall(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		MethodCallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
@@ -738,7 +738,7 @@ func TestCallSingle(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		MethodCallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
@@ -777,7 +777,7 @@ func TestCallSingleFailsIfMultiField(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		MethodCallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			if args.Token == "test:invoke:fail" {
 				return nil, errors.New("invoke error")
 			}
@@ -811,7 +811,7 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 	t.Parallel()
 
 	mocks := &testMonitor{
-		InvokeF: func(args MockCallArgs) (resource.PropertyMap, error) {
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{"result": resource.NewStringProperty("success!")}, nil
 		},
 	}

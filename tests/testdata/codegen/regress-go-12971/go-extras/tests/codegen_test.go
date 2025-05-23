@@ -191,21 +191,23 @@ func TestEnvironmentDefaults(t *testing.T) {
 }
 
 type mockResourceMonitor struct {
+	// Actually corresponds to a "Call" in provider parlance, but must be named such for consistency with the test interface.
+	MethodCallF func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually corresponds to a "Invoke" in provider parlance, but must be named such for consistency with the test interface.
 	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
-	InvokeF      func(pulumi.MockInvokeArgs) (resource.PropertyMap, error)
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	if m.InvokeF != nil {
-		return m.InvokeF(args)
+	if m.CallF != nil {
+		return m.CallF(args)
 	}
 	return args.Args, nil
 }
 
 func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	if m.CallF != nil {
-		return m.CallF(args)
+	if m.MethodCallF != nil {
+		return m.MethodCallF(args)
 	}
 	return args.Args, nil
 }
