@@ -1469,17 +1469,17 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 	}
 	defer resp.Body.Close()
 
-	// Read the body first so we can use it for error reporting if needed
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("reading response body: %w", err)
-	}
-
 	if resp.StatusCode == http.StatusNoContent {
 		// Copilot API returns 204 No Content when it decided that it should not summarize the input.
 		// This can happen when the input is too short or Copilot thinks it cannot make it any better.
 		// In this case, we will not show the summary to the user. This is better than showing a useless summary.
 		return "", nil
+	}
+
+	// Read the body first so we can use it for error reporting if needed
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
 	if resp.StatusCode >= 400 {
