@@ -70,7 +70,7 @@ func RenderCopilotErrorSummary(summary *CopilotErrorSummaryMetadata, err error, 
 
 	summaryLines := strings.Split(summary.Summary, "\n")
 	for _, line := range summaryLines {
-		fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.BrightGreen+line+colors.Reset))
+		fmt.Fprintln(out, "  "+opts.Color.Colorize(colors.Green+line+colors.Reset))
 	}
 
 	fmt.Fprintln(out)
