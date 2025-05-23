@@ -1,0 +1,19 @@
+<{%reset%}>  pulumi:providers:pkgA: (same)
+<{%reset%}>    [id=7d8ba60e-c47e-4d11-8a99-a203a4b96f07]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
+<{%reset%}><{%reset%}><{%fg 3%}>~ pkgA:m:typA: (refresh)
+<{%reset%}>    [id=new-id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%reset%}>    input : <{%reset%}><{%reset%}>"value-1"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>  ~ result: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>value-1<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}><FRESH-RESULT><{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>~ pkgA:m:typA: (update)
+<{%reset%}>    [id=new-id]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 3%}>  ~ input: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}><FRESH-INPUT><{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>value-2<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ result: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}><FRESH-RESULT><{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>value-2<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
