@@ -268,13 +268,8 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// does not, and we end up with an orphaned Python process that's
 	// busy-waiting in the eventloop and never exits.
 	var cmd *exec.Cmd
-	name, cmdPath := u.pythonExecutable()
-	if needsPythonShim(cmdPath) {
-		shimCmd := fmt.Sprintf(pythonShimCmdFormat, name)
-		cmd = exec.CommandContext(ctx, shimCmd, args...)
-	} else {
-		cmd = exec.CommandContext(ctx, cmdPath, args...)
-	}
+	_, cmdPath := u.pythonExecutable()
+	cmd = exec.CommandContext(ctx, cmdPath, args...)
 	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
 	cmd.Dir = u.root
 	return cmd, nil

@@ -1150,12 +1150,28 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, b, events)
 }
 
-func (b *cloudBackend) IsCopilotFeatureEnabled(opts display.Options) bool {
+// IsExplainPreviewEnabled implements the "explainer" interface.
+// Checks that the backend supports the CopilotExplainPreview capability and that the user has enabled
+// the Copilot features.
+func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool {
+	if !b.isCopilotFeaturesEnabled(opts) {
+		return false
+	}
+
+	if !b.Capabilities(ctx).CopilotExplainPreviewV1 {
+		logging.V(7).Infof("CopilotExplainPreviewV1 is not supported by the backend")
+		return false
+	}
+
+	return true
+}
+
+func (b *cloudBackend) isCopilotFeaturesEnabled(opts display.Options) bool {
 	// Have copilot features been requested by specifying the --copilot flag to the cli
 	if !opts.ShowCopilotFeatures {
 		return false
@@ -1206,6 +1222,10 @@ func (b *cloudBackend) Explain(
 	orgID := stackID.Owner
 	summary, err := b.client.ExplainPreviewWithCopilot(ctx, orgID, string(kind), output)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			// Format a better error message for the user
+			return "", fmt.Errorf("request to %s timed out after %s", b.client.URL(), client.CopilotRequestTimeout.String())
+		}
 		return "", err
 	}
 
@@ -1236,7 +1256,7 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b, nil)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1254,7 +1274,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, b, nil)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1272,7 +1292,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, nil)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1498,35 +1518,39 @@ func (b *cloudBackend) apply(
 		return nil, nil, err
 	}
 
-	if b.IsCopilotFeatureEnabled(op.Opts.Display) {
-		originalEvents := events
-		// New var as we need a bidirectional channel type to be able to read from it.
-		eventsChannel := make(chan engine.Event)
-		events = eventsChannel
+	if b.isCopilotFeaturesEnabled(op.Opts.Display) {
+		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
+			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
+		} else {
+			originalEvents := events
+			// New var as we need a bidirectional channel type to be able to read from it.
+			eventsChannel := make(chan engine.Event)
+			events = eventsChannel
 
-		var renderEvents []engine.Event
-		done := make(chan bool)
-		go func() {
-			for e := range eventsChannel {
-				// Forward all events from the engine to the original channel.
-				// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
-				if originalEvents != nil {
-					originalEvents <- e
+			var renderEvents []engine.Event
+			done := make(chan bool)
+			go func() {
+				for e := range eventsChannel {
+					// Forward all events from the engine to the original channel.
+					// (e.g. PreviewThenPrompt also saves events to be able to generate a diff on request).
+					if originalEvents != nil {
+						originalEvents <- e
+					}
+					// Do not send internal events to the copilot summary as they are not displayed to the user either.
+					// We can skip Ephemeral events as well as we want to display the "final" output.
+					if e.Internal() || e.Ephemeral() {
+						continue
+					}
+					renderEvents = append(renderEvents, e)
 				}
-				// Do not send internal events to the copilot summary as they are not displayed to the user either.
-				// We can skip Ephemeral events as well as we want to display the "final" output.
-				if e.Internal() || e.Ephemeral() {
-					continue
-				}
-				renderEvents = append(renderEvents, e)
-			}
-			done <- true
-		}()
-		defer func() {
-			close(eventsChannel)
-			<-done
-			b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
-		}()
+				done <- true
+			}()
+			defer func() {
+				close(eventsChannel)
+				<-done
+				b.renderAndSummarizeOutput(ctx, kind, stack, op, renderEvents, update, updateMeta, opts.DryRun)
+			}()
+		}
 	}
 
 	// Display messages from the backend if present.
@@ -2287,7 +2311,11 @@ type httpstateBackendClient struct {
 	backend deploy.BackendClient
 }
 
-func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+func (c httpstateBackendClient) GetStackOutputs(
+	ctx context.Context,
+	name string,
+	onDecryptError func(error) error,
+) (resource.PropertyMap, error) {
 	// When using the cloud backend, require that stack references are fully qualified so they
 	// look like "<org>/<project>/<stack>"
 	if strings.Count(name, "/") != 2 {
@@ -2296,7 +2324,7 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 			"for more information.")
 	}
 
-	return c.backend.GetStackOutputs(ctx, name)
+	return c.backend.GetStackOutputs(ctx, name, onDecryptError)
 }
 
 func (c httpstateBackendClient) GetStackResourceOutputs(

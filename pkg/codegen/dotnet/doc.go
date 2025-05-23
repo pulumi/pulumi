@@ -87,6 +87,10 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 	return mod.typeString(t, qualifier, input, false /*state*/, true /*requireInitializers*/)
 }
 
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	return resourceName(r)
+}
+
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	return tokenToFunctionName(f.Token)
 }
@@ -100,6 +104,12 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
+}
+
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	a, _ := pkg.Language("csharp")
+	info, _ := a.(CSharpPackageInfo)
+	return namespaceName(info.Namespaces, module)
 }
 
 func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,

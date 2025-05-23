@@ -135,7 +135,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			nil, /*env*/
 			testConnection,
 			langRuntimePluginDialOptions(ctx, runtime),
-			host.AttachDebugger(),
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: runtime}),
 		)
 		if err != nil {
 			return nil, err
@@ -488,6 +488,7 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
 		Info:                    minfo,
 		UseLanguageVersionTools: request.UseLanguageVersionTools,
+		IsPlugin:                request.IsPlugin,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -850,6 +851,7 @@ func languageHandshake(
 			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
 			return nil, nil
 		}
+		return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 	}
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)

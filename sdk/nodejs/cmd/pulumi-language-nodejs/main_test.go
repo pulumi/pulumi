@@ -792,7 +792,6 @@ func TestRunWithOutputDoesNotMissData(t *testing.T) {
 	require.Equal(t, 100+2 /* "x\n" */, *stderr.nWrites)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestUseFnm(t *testing.T) {
 	// Set $PATH to to $TMPDIR/bin so that no `fnm` executable can be found.
 	tmpDir := t.TempDir()
@@ -867,7 +866,6 @@ func TestUseFnm(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestNodeInstall(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()

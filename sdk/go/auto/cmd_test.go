@@ -115,7 +115,6 @@ func TestErrorIncompatibleVersion(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestNoGlobalPulumi(t *testing.T) {
 	dir := t.TempDir()
 	version := semver.Version{Major: 3, Minor: 98, Patch: 0}

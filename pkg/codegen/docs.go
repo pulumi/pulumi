@@ -23,6 +23,14 @@ import (
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
 // See the implementation for this interface under each of the language code generators.
 type DocLanguageHelper interface {
+	// GetModuleName returns the in-language name of the module.
+	//
+	// For example, lets get the hypothetical name of the module for the "pkg:module/nestedMod:Type" token in python:
+	//
+	//	var python python_codegen.DocLanguageHelper
+	//	python.GetModuleName(pkgRef, pkgRef.TokenToModule("pkg:module/nestedMod:Type")) // "module.nestedmod"
+	GetModuleName(pkg schema.PackageReference, modName string) string
+
 	GetPropertyName(p *schema.Property) (string, error)
 	GetEnumName(e *schema.Enum, typeName string) (string, error)
 	// GetTypeName gets the name of a type in the language of the DocLanguageHelper.
@@ -60,6 +68,10 @@ type DocLanguageHelper interface {
 	//	qualifiedName := python.GetTypeName(pkg, prop.Type, false, "")
 	//	fmt.Println(qualifiedName) // Prints "my_module.TheType"
 	GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string
+	// GetResourceName returns the name of the resource.
+	//
+	// Implements should prefer a short name if possible: "MyResource" over "Pulumi.MyPackage.MyModule.MyResource".
+	GetResourceName(r *schema.Resource) string
 	GetFunctionName(f *schema.Function) string
 
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup

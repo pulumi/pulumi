@@ -1014,7 +1014,7 @@ func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -1022,7 +1022,7 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, nil, events)
 }
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
@@ -1049,7 +1049,7 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
 }
 
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1074,7 +1074,7 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil, nil)
 }
 
 func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
@@ -1099,7 +1099,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
 
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,

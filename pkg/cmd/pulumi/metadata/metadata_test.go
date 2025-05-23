@@ -30,8 +30,6 @@ import (
 
 // TestReadingGitRepo tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
-//
-//nolint:paralleltest // mutates environment variables
 func TestReadingGitRepo(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
@@ -172,8 +170,6 @@ func TestReadingGitRepo(t *testing.T) {
 
 // TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
-//
-//nolint:paralleltest // mutates environment variables
 func TestReadingGitLabMetadata(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
@@ -315,8 +311,6 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 }
 
 // Tests that Git metadata can be read from the environment if there is no Git repository present.
-//
-//nolint:paralleltest // mutates environment variables
 func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
 	// behaviour to change if it is being run in CI.
@@ -361,8 +355,6 @@ func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 }
 
 // Tests that Git metadata is not read from the environment in the event that a real Git repository is present.
-//
-//nolint:paralleltest // mutates environment variables
 func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
 	// behaviour to change if it is being run in CI.

@@ -19,7 +19,7 @@ download_release() {
   if "${USE_GH}"; then
     gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
   else
-    curl -OL --fail "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
+    curl -OL --fail --retry 3 "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
   fi
 }
 
@@ -28,7 +28,7 @@ download_release() {
 # * When updating .Net, you should also update PulumiDotnetSDKVersion in pulumi/pkg/codegen/testing/test/helpers.go
 #
 # shellcheck disable=SC2043
-for i in "github.com/pulumi/pulumi-java java v1.11.0" "github.com/pulumi/pulumi-yaml yaml v1.19.0" "github.com/pulumi/pulumi-dotnet dotnet v3.81.0"; do
+for i in "github.com/pulumi/pulumi-java java v1.12.0" "github.com/pulumi/pulumi-yaml yaml v1.19.1" "github.com/pulumi/pulumi-dotnet dotnet v3.82.0"; do
   set -- $i # treat strings in loop as args
   REPO="$1"
   PULUMI_LANG="$2"

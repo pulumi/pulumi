@@ -14,11 +14,11 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.170.0
+	github.com/pulumi/pulumi/sdk/v3 v3.171.0
 	github.com/segmentio/encoding v0.3.6
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.67.1
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -32,15 +32,15 @@ require (
 	cloud.google.com/go/storage v1.39.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys v0.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.3.3 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
@@ -150,7 +150,7 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/esc v0.13.0 // indirect
+	github.com/pulumi/esc v0.14.2 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

@@ -21,6 +21,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -117,7 +118,7 @@ func NewUpCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeDependents bool
 	var planFilePath string
-	var attachDebugger bool
+	var attachDebugger []string
 
 	// Flags for Copilot.
 	var copilotEnabled bool
@@ -243,7 +244,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
 			Scopes:             backend.CancellationScopes,
-		})
+		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -476,7 +477,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
 			Scopes:             backend.CancellationScopes,
-		})
+		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
 			return errors.New("update cancelled")
@@ -523,6 +524,11 @@ func NewUpCmd() *cobra.Command {
 				return errors.New(
 					"--yes or --skip-preview must be passed in to proceed when running in non-interactive mode",
 				)
+			}
+
+			err := validateAttachDebuggerFlag(attachDebugger)
+			if err != nil {
+				return err
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
@@ -753,9 +759,11 @@ func NewUpCmd() *cobra.Command {
 		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue updating resources even if an error is encountered "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
-	cmd.PersistentFlags().BoolVar(
-		&attachDebugger, "attach-debugger", false,
-		"Enable the ability to attach a debugger to the program being executed")
+	//nolint:lll // long description
+	cmd.PersistentFlags().StringArrayVar(
+		&attachDebugger, "attach-debugger", []string{},
+		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
+	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
@@ -770,11 +778,6 @@ func NewUpCmd() *cobra.Command {
 		&copilotEnabled, "copilot", false,
 		"Enable Pulumi Copilot's assistance for improved CLI experience and insights."+
 			"(can also be set with PULUMI_COPILOT environment variable)")
-	// hide the copilot-summary flag for now. (Soft-release)
-	contract.AssertNoErrorf(
-		cmd.PersistentFlags().MarkHidden("copilot"),
-		`Could not mark "copilot" as hidden`,
-	)
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
@@ -813,6 +816,16 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 				`the number of "--policy-pack-config" flags must match the number of "--policy-pack" flags`)
 		}
 	}
+	return nil
+}
+
+func validateAttachDebuggerFlag(args []string) error {
+	for _, arg := range args {
+		if arg != "program" && arg != "plugins" && arg != "all" && !strings.HasPrefix(arg, "plugin:") {
+			return fmt.Errorf("invalid --attach-debugger flag value: %s", arg)
+		}
+	}
+
 	return nil
 }
 

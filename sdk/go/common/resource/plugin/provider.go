@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -833,6 +833,8 @@ type CallOptions struct {
 // CallResult is the result of a call to Call.
 type CallResult struct {
 	// The returned values, if the call was successful.
+	// In the case of a scalar/non-map result, a single key with any name can be used to return the
+	// value.
 	Return resource.PropertyMap
 	// A map from return value keys to the dependencies of the return value.
 	ReturnDependencies map[resource.PropertyKey][]resource.URN

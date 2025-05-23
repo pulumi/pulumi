@@ -532,3 +532,29 @@ def call(
     asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_call)())
 
     return out
+
+
+def call_single(
+    tok: str,
+    props: "Inputs",
+    res: Optional["Resource"] = None,
+    typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
+) -> "Output[Any]":
+    """
+    Similar to `call`, but extracts a singular value from the result (eg { "foo": "bar" } => "bar").
+    """
+
+    return call(tok, props, res, typ, package_ref).apply(_extract_single_value)
+
+
+def _extract_single_value(out: Any) -> Any:
+    """
+    Extracts the first value from a result object.
+    Does not check (throws) if the result is None or an empty.
+    """
+
+    if not isinstance(out, dict):
+        return out
+
+    return out[list(out.keys())[0]]

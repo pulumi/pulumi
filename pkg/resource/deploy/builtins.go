@@ -284,9 +284,21 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 		return nil, errors.New("no backend client is available")
 	}
 
-	outputs, err := p.backendClient.GetStackOutputs(p.context, name.StringValue())
+	// If we fail to decrypt secrets when fetching the stack's outputs, we'll catch the error and log diagnostics rather
+	// than failing outright.
+	var decryptionErr error
+	outputs, err := p.backendClient.GetStackOutputs(
+		p.context,
+		name.StringValue(),
+		func(e error) error { decryptionErr = e; return nil },
+	)
 	if err != nil {
 		return nil, err
+	}
+
+	if decryptionErr != nil {
+		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), name.StringValue())
+		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), name.StringValue(), decryptionErr)
 	}
 
 	secretOutputs := make([]resource.PropertyValue, 0)

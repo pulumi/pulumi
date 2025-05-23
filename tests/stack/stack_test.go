@@ -42,7 +42,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//nolint:paralleltest // mutates environment variables
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
@@ -220,6 +219,7 @@ func TestStackCommands(t *testing.T) {
 		}
 
 		for _, deploymentVersion := range versions {
+			//nolint:paralleltest // mutates environment variables
 			t.Run(fmt.Sprintf("Version%d", deploymentVersion), func(t *testing.T) {
 				e := ptesting.NewEnvironment(t)
 				defer e.DeleteIfNotFailed()
@@ -327,7 +327,6 @@ func TestStackCommands(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)

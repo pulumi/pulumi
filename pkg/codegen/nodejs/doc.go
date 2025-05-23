@@ -68,6 +68,10 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return d.GetDocLinkForResourceInputOrOutputType(pkg, modName, typeName, input)
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	return moduleName(module, pkg)
+}
+
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
 	// Remove the union with `undefined` for optional types,
@@ -97,6 +101,10 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 	typeName = strings.ReplaceAll(typeName, "enums.", "")
 
 	return typeName
+}
+
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	return resourceName(r)
 }
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {

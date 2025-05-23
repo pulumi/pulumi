@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -58,10 +59,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
+	pulumirpc.EngineServer
 
 	// Address returns the address at which the test RPC server may be reached.
 	Address() string
@@ -93,6 +96,7 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 	port, done, err := rpcutil.Serve(0, server.cancel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			testingrpc.RegisterLanguageTestServer(srv, server)
+			pulumirpc.RegisterEngineServer(srv, server)
 			return nil
 		},
 	}, nil)
@@ -109,6 +113,7 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 // languageTestServer is the server side of the language testing RPC machinery.
 type languageTestServer struct {
 	testingrpc.UnsafeLanguageTestServer
+	pulumirpc.UnimplementedEngineServer
 
 	ctx    context.Context
 	cancel chan bool
@@ -122,6 +127,12 @@ type languageTestServer struct {
 
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
+
+	logLock sync.Mutex
+	// Used by the Log method to track the number of times a message has been repeated.
+	logRepeat int
+	// Used by the Log method to track the last message logged, this is so we can elide duplicate messages.
+	previousMessage string
 }
 
 func (eng *languageTestServer) Address() string {
@@ -134,6 +145,59 @@ func (eng *languageTestServer) Cancel() {
 
 func (eng *languageTestServer) Done() error {
 	return <-eng.done
+}
+
+func (eng *languageTestServer) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
+	eng.logLock.Lock()
+	defer eng.logLock.Unlock()
+
+	var sev diag.Severity
+	switch req.Severity {
+	case pulumirpc.LogSeverity_DEBUG:
+		sev = diag.Debug
+	case pulumirpc.LogSeverity_INFO:
+		sev = diag.Info
+	case pulumirpc.LogSeverity_WARNING:
+		sev = diag.Warning
+	case pulumirpc.LogSeverity_ERROR:
+		sev = diag.Error
+	default:
+		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
+	}
+
+	message := req.Message
+	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
+		// Cut down logs so they don't overwhelm the test output
+		if len(message) > 2048 {
+			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
+		}
+	}
+
+	if eng.previousMessage == message {
+		eng.logRepeat++
+		return &pbempty.Empty{}, nil
+	}
+
+	if eng.logRepeat > 1 {
+		_, err := fmt.Fprintf(os.Stderr, "Last message repeated %d times\n", eng.logRepeat)
+		if err != nil {
+			return nil, err
+		}
+	}
+	eng.logRepeat = 1
+	eng.previousMessage = message
+
+	var err error
+	if req.StreamId != 0 {
+		_, err = fmt.Fprintf(os.Stderr, "(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
+	} else {
+		_, err = fmt.Fprintf(os.Stderr, "%s[%s]: %s", sev, req.Urn, message)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbempty.Empty{}, nil
 }
 
 // A providerLoader is a schema loader that loads schemas from a given set of providers.
@@ -531,7 +595,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	host := &testHost{
-		stderr:      stderr,
+		engine:      eng,
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
@@ -921,7 +985,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			project.Runtime.Options())
 
 		installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
-			plugin.InstallDependenciesRequest{Info: programInfo},
+			plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: false},
 		)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
@@ -1211,17 +1275,35 @@ func (eng *languageTestServer) RunLanguageTest(
 		if assertPreview == nil {
 			// if no assertPreview is provided for the test run, we create a default implementation
 			// where we simply assert that the preview changes did not error
-			assertPreview = func(l *tests.L, proj string, err error, p *deploy.Plan, changes display.ResourceChanges) {
+			assertPreview = func(
+				l *tests.L, proj string, err error, p *deploy.Plan,
+				changes display.ResourceChanges, events []engine.Event,
+			) {
 				assert.NoErrorf(l, err, "expected no error in preview")
 			}
 		}
 
 		// Perform a preview on the stack
-		plan, previewChanges, res := s.Preview(ctx, updateOperation, nil)
+		eventsCts := &promise.CompletionSource[[]engine.Event]{}
+		eventSink := make(chan engine.Event, 1)
+		go func() {
+			events := []engine.Event{}
+			for event := range eventSink {
+				events = append(events, event)
+			}
+			eventsCts.Fulfill(events)
+		}()
+
+		plan, previewChanges, res := s.Preview(ctx, updateOperation, eventSink)
+		close(eventSink)
+		events, err := eventsCts.Promise().Result(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("preview events: %w", err)
+		}
 
 		// assert preview results
 		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, projectDir, res, plan, previewChanges)
+			assertPreview(l, projectDir, res, plan, previewChanges, events)
 		})
 
 		if previewResult.Failed {
@@ -1233,7 +1315,21 @@ func (eng *languageTestServer) RunLanguageTest(
 			}, nil
 		}
 
-		changes, res := s.Update(ctx, updateOperation)
+		eventsCts = &promise.CompletionSource[[]engine.Event]{}
+		eventSink = make(chan engine.Event, 1)
+		go func() {
+			events := []engine.Event{}
+			for event := range eventSink {
+				events = append(events, event)
+			}
+			eventsCts.Fulfill(events)
+		}()
+		changes, res := s.Update(ctx, updateOperation, eventSink)
+		close(eventSink)
+		events, err = eventsCts.Promise().Result(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("preview events: %w", err)
+		}
 
 		var snap *deploy.Snapshot
 		if res == nil {
@@ -1257,7 +1353,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 
 		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, projectDir, res, snap, changes)
+			run.Assert(l, projectDir, res, snap, changes, events)
 		})
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{

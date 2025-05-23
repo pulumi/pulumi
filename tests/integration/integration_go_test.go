@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -817,7 +816,6 @@ func TestConstructProviderGo(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Sets env vars
 func TestGetResourceGo(t *testing.T) {
 	// This uses the random plugin so needs to be able to download it
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -1522,9 +1520,7 @@ outer:
 
 	// We've attached a debugger, so we need to connect to it and let the program continue.
 	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(int(debugEvent.Config["port"].(float64))))
-	if err != nil {
-		log.Fatalf("Failed to connect to debugger: %v", err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	seq := 0
@@ -1585,6 +1581,109 @@ outer:
 	wg.Wait()
 }
 
+func TestPluginDebuggerAttach(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.ImportDirectory(filepath.Join("debug-plugin"))
+	e.CWD = filepath.Join(e.CWD, "program")
+
+	e.RunCommand("pulumi", "package", "add", "../go-plugin")
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	eventLogPath := filepath.Join(e.RootPath, "plugin_debugger.log")
+	go func() {
+		defer wg.Done()
+		e.RunCommand("pulumi", "stack", "init", "plugin-debugger-test")
+		e.RunCommand("pulumi", "stack", "select", "plugin-debugger-test")
+		// We're disconnecting the debugger from the plugin, and it exits immediately.
+		// Therefore we expect a EOF error.
+		stdout, _ := e.RunCommandExpectError("pulumi", "preview", "--attach-debugger=plugins",
+			"--event-log", eventLogPath)
+		require.Regexp(t, "error: could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
+	}()
+
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for i := 0; i < 50; i++ {
+		events, err := readUpdateEventLog(eventLogPath)
+		if err != nil && !os.IsNotExist(err) {
+			require.NoError(t, err)
+		}
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		wait *= 2
+	}
+	require.NotNil(t, debugEvent, "did not receive start debugging event for plugin")
+
+	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(int(debugEvent.Config["port"].(float64))))
+	require.NoError(t, err)
+	defer conn.Close()
+
+	seq := 0
+	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
+		Request: newDAPRequest(seq, "initialize"),
+		Arguments: dap.InitializeRequestArguments{
+			ClientID:        "pulumi-test-plugin",
+			ClientName:      "Pulumi Test Plugin",
+			AdapterID:       "pulumi",
+			Locale:          "en-us",
+			LinesStartAt1:   true,
+			ColumnsStartAt1: true,
+		},
+	})
+	require.NoError(t, err)
+	seq++
+	reader := bufio.NewReader(conn)
+	// We need to read the response, but we don't actually care
+	// about it.  It just includes the capabilities of the
+	// debugger.
+	resp, err := dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializeResponse{}, resp)
+	json, err := json.Marshal(debugEvent.Config)
+	require.NoError(t, err)
+	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
+		Request:   newDAPRequest(seq, "attach"),
+		Arguments: json,
+	})
+	require.NoError(t, err)
+	seq++
+	// read the initialized event, and then the response to the attach request.
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializedEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.AttachResponse{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
+		Request: newDAPRequest(seq, "continue"),
+	})
+	require.NoError(t, err)
+	seq++
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ContinueResponse{}, resp)
+	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
+		Request: newDAPRequest(seq, "disconnect"),
+	})
+	assert.NoError(t, err)
+
+	// Wait for the pulumi preview command to finish.
+	wg.Wait()
+}
+
 func TestConstructFailuresGo(t *testing.T) {
 	t.Parallel()
 	testConstructFailures(t, "go", "github.com/pulumi/pulumi/sdk/v3")
@@ -1635,13 +1734,10 @@ func TestRunPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 	e.CWD = filepath.Join(e.RootPath, "provider-nodejs")
-	e.RunCommand("npm", "install")
+	e.RunCommand("pulumi", "install")
 
 	e.CWD = filepath.Join(e.RootPath, "provider-python")
-	e.RunCommand("python", "-m", "venv", "venv", "--clear")
-	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-	require.NoError(t, err)
-	e.RunCommand(filepath.Join("venv", "bin", "python"), "-m", "pip", "install", "-e", pythonSdkPath)
+	e.RunCommand("pulumi", "install")
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")

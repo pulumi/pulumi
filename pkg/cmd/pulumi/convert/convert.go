@@ -196,7 +196,10 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
-	pCtx, err := packagecmd.NewPluginContext(cwd)
+	// the plugin context uses the output directory as the working directory
+	// of the generated program because in general, where Pulumi.yaml lives is
+	// the root of the project.
+	pCtx, err := packagecmd.NewPluginContext(outDir)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}

@@ -66,10 +66,10 @@ type CopilotSummarizeUpdateParams struct {
 
 type CopilotExplainPreviewRequest struct {
 	CopilotRequest
-	DirectSkillCall CopilotExplainPreview `json:"directSkillCall"`
+	DirectSkillCall CopilotExplainPreviewSkill `json:"directSkillCall"`
 }
 
-type CopilotExplainPreview struct {
+type CopilotExplainPreviewSkill struct {
 	Skill  CopilotSkill                `json:"skill"` // Always "explainPreview"
 	Params CopilotExplainPreviewParams `json:"params"`
 }

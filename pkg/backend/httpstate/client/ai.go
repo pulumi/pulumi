@@ -84,7 +84,7 @@ func createExplainPreviewRequest(
 				},
 			},
 		},
-		DirectSkillCall: apitype.CopilotExplainPreview{
+		DirectSkillCall: apitype.CopilotExplainPreviewSkill{
 			Skill: apitype.SkillExplainPreview,
 			Params: apitype.CopilotExplainPreviewParams{
 				PulumiPreviewOutput: content,

@@ -1460,7 +1460,6 @@ func TestMissingErrorText(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestBundledPluginSearch(t *testing.T) {
 	// Get the path of this executable
 	exe, err := os.Executable()
@@ -1499,7 +1498,6 @@ func TestBundledPluginSearch(t *testing.T) {
 	assert.Equal(t, bundledPath, path)
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestAmbientPluginsWarn(t *testing.T) {
 	ctx := context.Background()
 	// Create a fake plugin in the path
@@ -1527,7 +1525,6 @@ func TestAmbientPluginsWarn(t *testing.T) {
 	assert.Equal(t, expectedMessage, stderr.String())
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestAmbientBundledPluginsWarn(t *testing.T) {
 	// Get the path of this executable
 	exe, err := os.Executable()
@@ -1569,7 +1566,6 @@ func TestAmbientBundledPluginsWarn(t *testing.T) {
 	assert.Equal(t, expectedMessage, stderr.String())
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestBundledPluginsDoNotWarn(t *testing.T) {
 	ctx := context.Background()
 	// Get the path of this executable
@@ -1606,8 +1602,6 @@ func TestBundledPluginsDoNotWarn(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/13656
-//
-//nolint:paralleltest // modifies environment variables
 func TestSymlinkPathPluginsDoNotWarn(t *testing.T) {
 	ctx := context.Background()
 	// Get the path of this executable
@@ -1689,7 +1683,6 @@ func TestPluginInfoShimless(t *testing.T) {
 	assert.Equal(t, filepath.Join(filepath.Dir(pluginPath), "schema-mock.json"), info.SchemaPath)
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestProjectPluginsWithUncleanPath(t *testing.T) {
 	ctx := context.Background()
 	tempdir := t.TempDir()
@@ -1710,7 +1703,6 @@ func TestProjectPluginsWithUncleanPath(t *testing.T) {
 	assert.Equal(t, filepath.Join(tempdir, "pulumi-resource-aws"), path)
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestProjectPluginsWithSymlink(t *testing.T) {
 	ctx := context.Background()
 	tempdir := t.TempDir()
