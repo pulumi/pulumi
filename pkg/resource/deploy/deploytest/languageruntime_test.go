@@ -15,6 +15,7 @@
 package deploytest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -128,7 +129,7 @@ func TestLanguageRuntime(t *testing.T) {
 		p := &languageRuntime{}
 		t.Run("RunPlugin", func(t *testing.T) {
 			t.Parallel()
-			_, _, _, err := p.RunPlugin(plugin.RunPluginInfo{})
+			_, _, _, err := p.RunPlugin(context.Background(), plugin.RunPluginInfo{})
 			assert.ErrorContains(t, err, "are not currently supported")
 		})
 		t.Run("GenerateProject", func(t *testing.T) {
