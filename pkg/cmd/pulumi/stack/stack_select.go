@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +69,10 @@ func newStackSelectCmd() *cobra.Command {
 				}
 
 				stack = args[0]
+			}
+
+			if stack == "" && !cmdutil.Interactive() {
+				return errors.New("no stack name given, use --stack to specify a stack name")
 			}
 
 			if stack != "" {
