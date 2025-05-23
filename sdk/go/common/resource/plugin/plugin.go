@@ -42,6 +42,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -540,6 +541,16 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return nil, err
 	}
 
+	wait := &promise.CompletionSource[struct{}]{}
+	go func() {
+		err := cmd.Wait()
+		if err != nil {
+			wait.Reject(err)
+		} else {
+			wait.Fulfill(struct{}{})
+		}
+	}()
+
 	kill := sync.OnceValue(func() error {
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
@@ -550,16 +561,11 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmdutil.InterruptChildren(cmd.Process.Pid)
 
 		// Give the process 5 seconds to shut down, or kill it forcibly.
-		timer := time.NewTimer(5 * time.Second)
-		defer timer.Stop()
-		done := make(chan error, 1)
-		go func() {
-			done <- cmd.Wait()
-		}()
-		select {
-		case <-done:
+		timeout, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		defer cancel()
+		_, err := wait.Promise().Result(timeout)
+		if !errors.Is(err, context.DeadlineExceeded) {
 			return nil
-		case <-timer.C:
 		}
 
 		// We failed to clean up the process within the allocated time.  Shut it down forcibly.
@@ -586,7 +592,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Stdout: stdout,
 		Stderr: stderr,
 		Wait: func() (int, error) {
-			err := cmd.Wait()
+			_, err := wait.Promise().Result(context.TODO())
 			if err != nil {
 				// If this is a non-zero exit code, we need to return it.
 				if exiterr, ok := err.(*exec.ExitError); ok {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -18,6 +19,14 @@ type language struct {
 func (host *language) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
+	if strings.Contains(req.Info.ProgramDirectory, "test-plugin-exit") {
+		return server.Send(&pulumirpc.RunPluginResponse{
+			Output: &pulumirpc.RunPluginResponse_Exitcode{
+				Exitcode: 1,
+			},
+		})
+	}
+
 	return fmt.Errorf("not implemented")
 }
 
