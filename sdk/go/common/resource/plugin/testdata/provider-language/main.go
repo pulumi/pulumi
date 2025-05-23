@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -20,9 +21,14 @@ func (host *language) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	if strings.Contains(req.Info.ProgramDirectory, "test-plugin-exit") {
+		exitcode, err := strconv.Atoi(os.Getenv("PULUMI_TEST_PLUGIN_EXITCODE"))
+		if err != nil {
+			return fmt.Errorf("could not convert exit code to int: %w", err)
+		}
+
 		return server.Send(&pulumirpc.RunPluginResponse{
 			Output: &pulumirpc.RunPluginResponse_Exitcode{
-				Exitcode: 1,
+				Exitcode: int32(exitcode),
 			},
 		})
 	}
