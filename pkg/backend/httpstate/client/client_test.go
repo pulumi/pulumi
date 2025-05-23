@@ -733,8 +733,8 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(noContentServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		assert.NoError(t, err)
-		assert.Equal(t, "", response)
+		require.NoError(t, err)
+		require.Empty(t, response)
 	})
 
 	t.Run("StatusPaymentRequired", func(t *testing.T) {
@@ -747,9 +747,8 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(usageLimitServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		require.Error(t, err)
-		assert.Equal(t, "Usage limit reached", err.Error())
-		assert.Equal(t, "", response)
+		require.EqualError(t, err, "Usage limit reached")
+		require.Empty(t, response)
 	})
 
 	t.Run("OtherErrorStatus", func(t *testing.T) {
@@ -762,9 +761,8 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(errorServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		require.Error(t, err)
-		assert.Equal(t, "Internal server error", err.Error())
-		assert.Equal(t, "", response)
+		require.EqualError(t, err, "Internal server error")
+		require.Empty(t, response)
 	})
 
 	t.Run("EmptyErrorBody", func(t *testing.T) {
@@ -777,9 +775,8 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(emptyBodyServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Copilot API returned error status: 400")
-		assert.Equal(t, "", response)
+		require.ErrorContains(t, err, "Copilot API returned error status: 400")
+		require.Empty(t, response)
 	})
 
 	t.Run("InvalidJSON", func(t *testing.T) {
@@ -792,9 +789,8 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(invalidJSONServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		require.Error(t, err)
-		assert.EqualError(t, err, "unable to parse Copilot response: This is not JSON")
-		assert.Equal(t, "", response)
+		require.EqualError(t, err, "unable to parse Copilot response: This is not JSON")
+		require.Empty(t, response)
 	})
 
 	t.Run("ValidJSON", func(t *testing.T) {
@@ -815,8 +811,8 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(validJSONServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		assert.NoError(t, err)
-		assert.Equal(t, "\"This is a valid response\"", response)
+		require.NoError(t, err)
+		require.Equal(t, "\"This is a valid response\"", response)
 	})
 
 	t.Run("JSONWithError", func(t *testing.T) {
@@ -832,8 +828,7 @@ func TestCallCopilot(t *testing.T) {
 		client := newMockClient(errorJSONServer)
 		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
 
-		require.Error(t, err)
-		assert.EqualError(t, err, "copilot API error: API error message\nDetailed error information")
-		assert.Equal(t, "", response)
+		require.EqualError(t, err, "copilot API error: API error message\nDetailed error information")
+		require.Empty(t, response)
 	})
 }
