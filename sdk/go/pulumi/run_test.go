@@ -55,14 +55,14 @@ type testMonitor struct {
 	RegisterResourceOutputsF func() (*emptypb.Empty, error)
 }
 
-func (m *testMonitor) Invoke(args MockCallArgs) (resource.PropertyMap, error) {
+func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
 	if m.InvokeF == nil {
 		return resource.PropertyMap{}, nil
 	}
 	return m.InvokeF(args)
 }
 
-func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
+func (m *testMonitor) MethodCall(args MockCallArgs) (resource.PropertyMap, error) {
 	if m.CallF == nil {
 		return resource.PropertyMap{}, nil
 	}

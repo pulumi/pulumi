@@ -34,7 +34,7 @@ func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.Propert
 	panic("NewResource not supported")
 }
 
-func (mocks) Invoke(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	if args.Token == "mypkg::listStorageAccountKeys" {
 
 		targs := mypkg.ListStorageAccountKeysArgs{}
@@ -138,7 +138,7 @@ func (mocks) Invoke(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic(fmt.Errorf("Unknown token: %s", args.Token))
 }
 
-func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic("Call not supported")
 }
 

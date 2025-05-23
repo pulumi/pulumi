@@ -196,14 +196,14 @@ type mockResourceMonitor struct {
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-func (m *mockResourceMonitor) Invoke(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	if m.InvokeF != nil {
 		return m.InvokeF(args)
 	}
 	return args.Args, nil
 }
 
-func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	if m.CallF != nil {
 		return m.CallF(args)
 	}

@@ -523,11 +523,11 @@ type mockResourceMonitor struct {
 
 var _ pulumi.MockResourceMonitor = (*mockResourceMonitor)(nil)
 
-func (m *mockResourceMonitor) Invoke(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return m.InvokeF(args)
 }
 
-func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return m.CallF(args)
 }
 

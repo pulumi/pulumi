@@ -33,8 +33,11 @@ import (
 )
 
 type MockResourceMonitor interface {
-	Invoke(args MockCallArgs) (resource.PropertyMap, error)
+	// This actually corresponds to Invoke on the provider, but is named so for legacy purposes
 	Call(args MockCallArgs) (resource.PropertyMap, error)
+	// This actually corresponds to Call on the provider, but is named so to differentiate from the
+	// Call method which actually corresponds to Invoke
+	MethodCall(args MockCallArgs) (resource.PropertyMap, error)
 	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
@@ -150,7 +153,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 			Return: result,
 		}, nil
 	}
-	resultV, err := m.mocks.Invoke(MockCallArgs{
+	resultV, err := m.mocks.Call(MockCallArgs{
 		Token:    in.GetTok(),
 		Args:     args,
 		Provider: in.GetProvider(),
@@ -183,7 +186,7 @@ func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.ResourceCallReques
 		return nil, err
 	}
 
-	resultV, err := m.mocks.Call(MockCallArgs{
+	resultV, err := m.mocks.MethodCall(MockCallArgs{
 		Token:    in.GetTok(),
 		Args:     args,
 		Provider: in.GetProvider(),
