@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -229,12 +230,17 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	errs := make([]error, 0)
 	for _, closer := range h.connections {
 		if err := closer.Close(); err != nil {
-			return fmt.Errorf("close provider connection: %w", err)
+			errs = append(errs, err)
 		}
 	}
 	h.connections = make(map[plugin.Provider]io.Closer)
+	err := errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("failed to close providers: %w", err)
+	}
 	return nil
 }
 
