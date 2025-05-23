@@ -6,6 +6,10 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 
+# Ensure bin directory exists before targets are evaluated
+# to avoid issues like realpath failing on macOS if the directory doesn't exist.
+_ := $(shell mkdir -p bin)
+
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
 # nodejs and python codegen tests are much slower than go/dotnet:
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
@@ -78,9 +82,6 @@ build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
 
 .PHONY: build
-# Before anything else
-_ := $(shell mkdir -p bin)
-# ...
 build:: export GOBIN=$(shell realpath ./bin)
 build:: build_proto .make/ensure/go dist build_display_wasm
 
