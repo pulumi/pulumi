@@ -1,0 +1,4 @@
+{
+    "name": "pulumi-tool",
+    "main": "index.ts"
+}

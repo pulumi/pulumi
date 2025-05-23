@@ -100,7 +100,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 	return plugin, nil
 }
 
-type plugin struct {
+type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
@@ -121,6 +121,9 @@ type plugin struct {
 	Stdin  io.WriteCloser
 	Stdout io.ReadCloser
 	Stderr io.ReadCloser
+	// Function to wait for the plugin to exit, this will either return the exitcode from the process or an
+	// error if we didn't get a normal process exit.
+	Wait func() (int, error)
 }
 
 type unstructuredOutput struct {
@@ -237,7 +240,7 @@ func newPlugin[T any](
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
-) (*plugin, *T, error) {
+) (*Plugin, *T, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -347,6 +350,15 @@ func newPlugin[T any](
 				return nil, nil, errRunPolicyModuleNotFound
 			}
 
+			// If readerr is just EOF get the actual error from the plugin.
+			if errors.Is(readerr, io.EOF) {
+				_, readerr = plug.Wait()
+				// If theres no error from waiting then just report the EOF
+				if readerr == nil {
+					readerr = io.EOF
+				}
+			}
+
 			var errMsg string
 			detailed, ok := rpcerror.FromError(readerr)
 			if ok {
@@ -416,26 +428,29 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string, attachDebugger bool,
-) (*plugin, error) {
-	args := buildPluginArguments(pluginArgumentOptions{
-		pluginArgs:      pluginArgs,
-		tracingEndpoint: cmdutil.TracingEndpoint,
-		logFlow:         logging.LogFlow,
-		logToStderr:     logging.LogToStderr,
-		verbose:         logging.Verbose,
-	})
-
+// ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
+func ExecPlugin(
+	ctx *Context,
+	bin string,
+	prefix string,
+	kind apitype.PluginKind,
+	args []string,
+	pwd string,
+	env []string,
+	attachDebugger bool,
+) (*Plugin, error) {
 	// Check to see if we have a binary we can invoke directly
-	if _, err := os.Stat(bin); os.IsNotExist(err) {
+	stat, err := os.Stat(bin)
+	if (err == nil && stat.IsDir()) || os.IsNotExist(err) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
-		pluginDir := filepath.Dir(bin)
+		pluginDir := bin
+		if stat == nil || !stat.IsDir() {
+			pluginDir = filepath.Dir(bin)
+		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
-		case apitype.ResourcePlugin, apitype.ConverterPlugin:
+		case apitype.ResourcePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
@@ -465,7 +480,9 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+		rctx, kill := context.WithCancel(ctx.Request())
+
+		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
@@ -477,13 +494,20 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, err
 		}
 
-		return &plugin{
+		return &Plugin{
 			Bin:    bin,
 			Args:   args,
 			Env:    env,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
+			Wait: func() (int, error) {
+				exitcode, err := done.Result(context.TODO())
+				if err != nil {
+					return -1, err
+				}
+				return int(exitcode), nil
+			},
 		}, nil
 	}
 
@@ -494,8 +518,8 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmd.Env = env
 	}
 	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
@@ -550,15 +574,43 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return result.ErrorOrNil()
 	})
 
-	return &plugin{
+	return &Plugin{
 		Bin:    bin,
 		Args:   args,
 		Env:    env,
 		Kill:   kill,
 		Stdin:  in,
-		Stdout: out,
-		Stderr: err,
+		Stdout: stdout,
+		Stderr: stderr,
+		Wait: func() (int, error) {
+			err := cmd.Wait()
+			if err != nil {
+				// If this is a non-zero exit code, we need to return it.
+				if exiterr, ok := err.(*exec.ExitError); ok {
+					// If the plugin is a process, we need to return the exit code.
+					if _, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+						return exiterr.ExitCode(), nil
+					}
+				}
+			}
+			return 0, err
+		},
 	}, nil
+}
+
+// execPlugin starts the plugin executable.
+func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
+	pluginArgs []string, pwd string, env []string, attachDebugger bool,
+) (*Plugin, error) {
+	args := buildPluginArguments(pluginArgumentOptions{
+		pluginArgs:      pluginArgs,
+		tracingEndpoint: cmdutil.TracingEndpoint,
+		logFlow:         logging.LogFlow,
+		logToStderr:     logging.LogToStderr,
+		verbose:         logging.Verbose,
+	})
+
+	return ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 }
 
 type pluginArgumentOptions struct {
@@ -586,7 +638,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
-func (p *plugin) healthCheck() bool {
+func (p *Plugin) healthCheck() bool {
 	if p.Conn == nil {
 		return false
 	}
@@ -629,7 +681,7 @@ func (p *plugin) healthCheck() bool {
 	}
 }
 
-func (p *plugin) Close() error {
+func (p *Plugin) Close() error {
 	// Something has gone wrong with the plugin if it is not healthy and we have not yet
 	// shut it down.
 	pluginCrashed := !p.healthCheck()

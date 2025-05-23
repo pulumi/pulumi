@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -145,7 +146,7 @@ type LanguageRuntime interface {
 	GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
 
 	// RunPlugin executes a plugin program and returns its result asynchronously.
-	RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
+	RunPlugin(ctx context.Context, info RunPluginInfo) (io.Reader, io.Reader, *promise.Promise[int32], error)
 
 	// GenerateProject generates a program project in the given directory. This will include metadata files such
 	// as Pulumi.yaml and package.json.
