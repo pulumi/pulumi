@@ -121,6 +121,9 @@ type plugin struct {
 	Stdin  io.WriteCloser
 	Stdout io.ReadCloser
 	Stderr io.ReadCloser
+	// Function to wait for the plugin to exit, this will either return the exitcode from the process or an
+	// error if we didn't get a normal process exit.
+	Wait func() (int, error)
 }
 
 type unstructuredOutput struct {
@@ -347,6 +350,21 @@ func newPlugin[T any](
 				return nil, nil, errRunPolicyModuleNotFound
 			}
 
+			// If readerr is just EOF get the actual error from the plugin.
+			if errors.Is(readerr, io.EOF) {
+				var exitcode int
+				exitcode, readerr = plug.Wait()
+				// If there's no error from waiting, but a non-zero exit code use that as the error.
+				if readerr == nil && exitcode != 0 {
+					readerr = fmt.Errorf("exit status %d", exitcode)
+				}
+
+				// If theres no error from waiting then just report the EOF
+				if readerr == nil {
+					readerr = io.EOF
+				}
+			}
+
 			var errMsg string
 			detailed, ok := rpcerror.FromError(readerr)
 			if ok {
@@ -465,7 +483,9 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+		rctx, kill := context.WithCancel(ctx.Request())
+
+		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
@@ -484,6 +504,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
+			Wait: func() (int, error) {
+				exitcode, err := done.Result(context.TODO())
+				if err != nil {
+					return -1, err
+				}
+				return int(exitcode), nil
+			},
 		}, nil
 	}
 
@@ -494,8 +521,8 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmd.Env = env
 	}
 	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
@@ -556,8 +583,21 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Env:    env,
 		Kill:   kill,
 		Stdin:  in,
-		Stdout: out,
-		Stderr: err,
+		Stdout: stdout,
+		Stderr: stderr,
+		Wait: func() (int, error) {
+			err := cmd.Wait()
+			if err != nil {
+				// If this is a non-zero exit code, we need to return it.
+				if exiterr, ok := err.(*exec.ExitError); ok {
+					// If the plugin is a process, we need to return the exit code.
+					if _, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+						return exiterr.ExitCode(), nil
+					}
+				}
+			}
+			return 0, err
+		},
 	}, nil
 }
 
