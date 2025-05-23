@@ -78,7 +78,10 @@ build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
 
 .PHONY: build
-build:: export GOBIN=$(shell mkdir -p ./bin; realpath ./bin)
+# Before anything else
+_ := $(shell mkdir -p bin)
+# ...
+build:: export GOBIN=$(shell realpath ./bin)
 build:: build_proto .make/ensure/go dist build_display_wasm
 
 install:: bin/pulumi
