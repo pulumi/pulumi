@@ -1,0 +1,3 @@
+name: validate_resource
+runtime: nodejs
+description: A program that creates some dynamic resources for testing.
