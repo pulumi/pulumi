@@ -142,6 +142,17 @@ class Output(Generic[T_co]):
             self._is_secret = asyncio.Future()
             self._is_secret.set_result(False)
 
+    def with_dependencies(self, resources: Set["Resource"]) -> "Output[T_co]":
+        """
+        Returns a new Output that has the given resources as extra dependencies.
+        """
+
+        async def run() -> Set["Resource"]:
+            current = await self._resources
+            return current.union(resources)
+
+        return Output(run(), self._future, self._is_known, self._is_secret)
+
     # Private implementation details - do not document.
     def resources(self) -> Awaitable[Set["Resource"]]:
         return self._resources
