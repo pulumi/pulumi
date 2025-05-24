@@ -607,14 +607,21 @@ Event: ${line}\n${e.toString()}`);
 
         let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
+        let loggedSummary: OpMap | undefined;
         // Set up event log tailing
-        if (opts?.onEvent) {
+        if (opts?.previewOnly || opts?.onEvent) {
             const onEvent = opts.onEvent;
             logFile = createLogFile("destroy");
             args.push("--event-log", logFile);
 
             logPromise = this.readLines(logFile, (event) => {
-                onEvent(event);
+                if (opts?.previewOnly && event.summaryEvent) {
+                    loggedSummary = event.summaryEvent.resourceChanges;
+                }
+
+                if (opts?.onEvent) {
+                    opts?.onEvent(event);
+                }
             });
         }
 
@@ -631,6 +638,14 @@ Event: ${line}\n${e.toString()}`);
         // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
         // load the project file.
         const summary = await this.info(!this.isRemote && opts?.showSecrets);
+
+        // `this.info` will return the last successful operation. However, if
+        // we're in `--preview-only` mode, the last successful operation is not
+        // the one we're interested in. In this case, we use the summary event
+        // we found in the event log.
+        if (summary && opts?.previewOnly) {
+            summary.resourceChanges = loggedSummary;
+        }
 
         // If `opts.remove` was set, remove the stack now. We take this approach
         // rather than passing `--remove` to `pulumi destroy` because the latter
