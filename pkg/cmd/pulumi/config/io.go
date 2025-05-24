@@ -29,8 +29,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -39,11 +41,12 @@ import (
 // Attempts to load configuration for the given stack.
 func GetStackConfiguration(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, ssml, stack, project, nil)
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -54,12 +57,13 @@ func GetStackConfiguration(
 // of that cleanup.
 func GetStackConfigurationOrLatest(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	stack backend.Stack,
 	project *workspace.Project,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
-		ctx, ssml, stack, project,
+		ctx, sink, ssml, stack, project,
 		func(err error) (config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// This error indicates that we're not being run in a project directory.
@@ -72,12 +76,13 @@ func GetStackConfigurationOrLatest(
 
 func getStackConfigurationWithFallback(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	s backend.Stack,
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	workspaceStack, err := cmdStack.LoadProjectStack(project, s)
+	workspaceStack, err := cmdStack.LoadProjectStack(cmdutil.Diag(), project, s)
 	if err != nil || workspaceStack == nil {
 		if fallbackGetConfig == nil {
 			return backend.StackConfiguration{}, nil, err

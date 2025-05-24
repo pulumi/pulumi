@@ -422,6 +422,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	if !args.generateOnly {
 		err = HandleConfig(
 			ctx,
+			cmdutil.Diag(),
 			ssml,
 			ws,
 			args.prompt,
