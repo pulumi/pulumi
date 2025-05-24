@@ -443,7 +443,6 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 
 		results[i] = Remediation{
 			PolicyName:        r.GetPolicyName(),
-			Description:       r.GetDescription(),
 			PolicyPackName:    r.GetPolicyPackName(),
 			PolicyPackVersion: r.GetPolicyPackVersion(),
 			Properties:        tprops,
@@ -855,9 +854,7 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic, version
 			PolicyName:        protoD.PolicyName,
 			PolicyPackName:    protoD.PolicyPackName,
 			PolicyPackVersion: policyPackVersion,
-			Description:       protoD.Description,
 			Message:           protoD.Message,
-			Tags:              protoD.Tags,
 			EnforcementLevel:  enforcementLevel,
 			URN:               resource.URN(protoD.Urn),
 		}

@@ -398,10 +398,6 @@ export class AnalyzeDiagnostic extends jspb.Message {
     setDescription(value: string): AnalyzeDiagnostic;
     getMessage(): string;
     setMessage(value: string): AnalyzeDiagnostic;
-    clearTagsList(): void;
-    getTagsList(): Array<string>;
-    setTagsList(value: Array<string>): AnalyzeDiagnostic;
-    addTags(value: string, index?: number): string;
     getEnforcementlevel(): EnforcementLevel;
     setEnforcementlevel(value: EnforcementLevel): AnalyzeDiagnostic;
     getUrn(): string;
@@ -424,7 +420,6 @@ export namespace AnalyzeDiagnostic {
         policypackversion: string,
         description: string,
         message: string,
-        tagsList: Array<string>,
         enforcementlevel: EnforcementLevel,
         urn: string,
     }
@@ -437,8 +432,6 @@ export class Remediation extends jspb.Message {
     setPolicypackname(value: string): Remediation;
     getPolicypackversion(): string;
     setPolicypackversion(value: string): Remediation;
-    getDescription(): string;
-    setDescription(value: string): Remediation;
 
     hasProperties(): boolean;
     clearProperties(): void;
@@ -462,7 +455,6 @@ export namespace Remediation {
         policyname: string,
         policypackname: string,
         policypackversion: string,
-        description: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         diagnostic: string,
     }
