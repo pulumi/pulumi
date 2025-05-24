@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/nodejs
+  description: "Make `refresh` with `previewOnly: true` report the correct summary."
