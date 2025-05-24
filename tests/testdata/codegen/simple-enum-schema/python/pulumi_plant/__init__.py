@@ -13,9 +13,12 @@ from . import outputs
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
+    import pulumi_plant.config as __config
+    config = __config
     import pulumi_plant.tree as __tree
     tree = __tree
 else:
+    config = _utilities.lazy_import('pulumi_plant.config')
     tree = _utilities.lazy_import('pulumi_plant.tree')
 
 _utilities.register(
