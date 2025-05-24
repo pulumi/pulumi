@@ -1346,7 +1346,7 @@ func TestPluginSpec_GetSource(t *testing.T) {
 				Kind:              apitype.PluginKind("resource"),
 				PluginDownloadURL: "unknown://example.com/plugin",
 			},
-			expectedErrMsg: "unknown plugin source scheme: unknown",
+			expectedErrMsg: `unknown plugin source scheme: "unknown"`,
 		},
 	}
 
