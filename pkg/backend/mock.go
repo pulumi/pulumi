@@ -555,15 +555,18 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 //
 
 type MockStack struct {
-	RefF      func() StackReference
-	OrgNameF  func() string
-	ConfigF   func() config.Map
-	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	TagsF     func() map[apitype.StackTagName]string
-	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF   func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF   func(ctx context.Context, op UpdateOperation,
+	RefF            func() StackReference
+	ConfigLocationF func() StackConfigLocation
+	LoadRemoteF     func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveRemoteF     func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF        func() string
+	ConfigF         func() config.Map
+	SnapshotF       func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	TagsF           func() map[apitype.StackTagName]string
+	BackendF        func() Backend
+	PreviewF        func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	UpdateF         func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	ImportF         func(ctx context.Context, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
 	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
@@ -583,42 +586,64 @@ func (ms *MockStack) Ref() StackReference {
 	if ms.RefF != nil {
 		return ms.RefF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Ref")
+}
+
+func (ms *MockStack) ConfigLocation() StackConfigLocation {
+	if ms.ConfigLocationF != nil {
+		return ms.ConfigLocationF()
+	}
+	panic("not implemented: MockStack.HasRemoteConfigF")
+}
+
+func (ms *MockStack) LoadRemoteConfig(ctx context.Context, project *workspace.Project,
+) (*workspace.ProjectStack, error) {
+	if ms.LoadRemoteF != nil {
+		return ms.LoadRemoteF(ctx, project)
+	}
+	panic("not implemented: MockStack.LoadRemote")
+}
+
+func (ms *MockStack) SaveRemoteConfig(ctx context.Context, project *workspace.ProjectStack) error {
+	if ms.SaveRemoteF != nil {
+		return ms.SaveRemoteF(ctx, project)
+	}
+	panic("not implemented: MockStack.SaveRemote")
 }
 
 func (ms *MockStack) OrgName() string {
 	if ms.OrgNameF != nil {
 		return ms.OrgNameF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.OrgName")
 }
 
 func (ms *MockStack) Config() config.Map {
 	if ms.ConfigF != nil {
 		return ms.ConfigF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Config")
 }
 
 func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if ms.SnapshotF != nil {
 		return ms.SnapshotF(ctx, secretsProvider)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Snapshot")
 }
 
 func (ms *MockStack) Tags() map[apitype.StackTagName]string {
 	if ms.TagsF != nil {
 		return ms.TagsF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Tags")
 }
 
 func (ms *MockStack) Backend() Backend {
 	if ms.BackendF != nil {
 		return ms.BackendF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Backend")
 }
 
 func (ms *MockStack) Preview(
@@ -628,7 +653,7 @@ func (ms *MockStack) Preview(
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Preview")
 }
 
 func (ms *MockStack) Update(ctx context.Context,
@@ -637,7 +662,7 @@ func (ms *MockStack) Update(ctx context.Context,
 	if ms.UpdateF != nil {
 		return ms.UpdateF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Update")
 }
 
 func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
@@ -646,42 +671,42 @@ func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
 	if ms.ImportF != nil {
 		return ms.ImportF(ctx, op, imports)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Import")
 }
 
 func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
 	if ms.RefreshF != nil {
 		return ms.RefreshF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Refresh")
 }
 
 func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
 	if ms.DestroyF != nil {
 		return ms.DestroyF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Destroy")
 }
 
 func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) error {
 	if ms.WatchF != nil {
 		return ms.WatchF(ctx, op, paths)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Watch")
 }
 
 func (ms *MockStack) Remove(ctx context.Context, force bool) (bool, error) {
 	if ms.RemoveF != nil {
 		return ms.RemoveF(ctx, force)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Remove")
 }
 
 func (ms *MockStack) Rename(ctx context.Context, newName tokens.QName) (StackReference, error) {
 	if ms.RenameF != nil {
 		return ms.RenameF(ctx, newName)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.Rename")
 }
 
 func (ms *MockStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
@@ -690,28 +715,28 @@ func (ms *MockStack) GetLogs(ctx context.Context, secretsProvider secrets.Provid
 	if ms.GetLogsF != nil {
 		return ms.GetLogsF(ctx, secretsProvider, cfg, query)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.GetLogs")
 }
 
 func (ms *MockStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
 	if ms.ExportDeploymentF != nil {
 		return ms.ExportDeploymentF(ctx)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.ExportDeployment")
 }
 
 func (ms *MockStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	if ms.ImportDeploymentF != nil {
 		return ms.ImportDeploymentF(ctx, deployment)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.ImportDeployment")
 }
 
 func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
 	if ms.DefaultSecretManagerF != nil {
 		return ms.DefaultSecretManagerF(info)
 	}
-	panic("not implemented")
+	panic("not implemented: MockStack.DefaultSecretManager")
 }
 
 //
@@ -734,14 +759,14 @@ func (r *MockStackReference) String() string {
 	if r.StringV != "" {
 		return r.StringV
 	}
-	panic("not implemented")
+	panic("not implemented: MockStackReference.String")
 }
 
 func (r *MockStackReference) Name() tokens.StackName {
 	if !r.NameV.IsEmpty() {
 		return r.NameV
 	}
-	panic("not implemented")
+	panic("not implemented: MockStackReference.Name")
 }
 
 func (r *MockStackReference) Project() (tokens.Name, bool) {
@@ -762,7 +787,7 @@ func (r *MockStackReference) FullyQualifiedName() tokens.QName {
 	if r.FullyQualifiedNameV != "" {
 		return r.FullyQualifiedNameV
 	}
-	panic("not implemented")
+	panic("not implemented: MockStackReference.FullyQualifiedName")
 }
 
 type MockPolicyPack struct {
@@ -781,49 +806,49 @@ func (mp *MockPolicyPack) Ref() PolicyPackReference {
 	if mp.RefF != nil {
 		return mp.RefF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Ref")
 }
 
 func (mp *MockPolicyPack) Backend() Backend {
 	if mp.BackendF != nil {
 		return mp.BackendF()
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Backend")
 }
 
 func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) error {
 	if mp.PublishF != nil {
 		return mp.PublishF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Publish")
 }
 
 func (mp *MockPolicyPack) Enable(ctx context.Context, orgName string, op PolicyPackOperation) error {
 	if mp.EnableF != nil {
 		return mp.EnableF(ctx, orgName, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Enable")
 }
 
 func (mp *MockPolicyPack) Disable(ctx context.Context, orgName string, op PolicyPackOperation) error {
 	if mp.DisableF != nil {
 		return mp.DisableF(ctx, orgName, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Disable")
 }
 
 func (mp *MockPolicyPack) Validate(ctx context.Context, op PolicyPackOperation) error {
 	if mp.ValidateF != nil {
 		return mp.ValidateF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Validate")
 }
 
 func (mp *MockPolicyPack) Remove(ctx context.Context, op PolicyPackOperation) error {
 	if mp.RemoveF != nil {
 		return mp.RemoveF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockPolicyPack.Remove")
 }
 
 type MockTarReader map[string]MockTarFile
@@ -874,7 +899,7 @@ func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePu
 	if mr.PublishF != nil {
 		return mr.PublishF(ctx, op)
 	}
-	panic("not implemented")
+	panic("not implemented: MockPackageRegistry.Publish")
 }
 
 func (mr *MockPackageRegistry) GetPackage(

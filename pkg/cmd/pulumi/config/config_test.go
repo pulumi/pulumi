@@ -75,7 +75,7 @@ func TestConfigSet(t *testing.T) {
 
 	for _, c := range cases {
 		c := c
-		t.Run("", func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			project := workspace.Project{
 				Name: "testProject",
 			}
@@ -86,11 +86,15 @@ func TestConfigSet(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
+				},
 			}
 
 			configSetCmd := &configSetCmd{
 				Path: c.path,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+				LoadProjectStack: func(_ context.Context, project *workspace.Project, _ backend.Stack,
+				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
@@ -191,12 +195,16 @@ func TestConfigSetTypes(t *testing.T) {
 						NameV: tokens.MustParseStackName("testStack"),
 					}
 				},
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{}
+				},
 			}
 
 			configSetCmd := &configSetCmd{
 				Path: c.path,
 				Type: c.typ,
-				LoadProjectStack: func(project *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+				LoadProjectStack: func(_ context.Context, project *workspace.Project, _ backend.Stack,
+				) (*workspace.ProjectStack, error) {
 					return workspace.LoadProjectStackBytes(project, []byte{}, "Pulumi.stack.yaml", encoding.YAML)
 				},
 			}
