@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 import os
-import select
 import subprocess
 import tempfile
 import urllib.request
@@ -227,24 +226,22 @@ class PulumiCommand:
             streams = [process.stdout, process.stderr]
 
             while len(streams):
-                reads, _, _ = select.select(streams, [], [])
-
-                for incoming in reads:
-                    chunk = incoming.readline()
+                for stream in streams:
+                    chunk = stream.readline()
 
                     if chunk:
-                        if incoming is process.stdout:
+                        if stream is process.stdout:
                             if on_output:
                                 on_output(chunk)
                             stdout_chunks.append(chunk)
-                        elif incoming is process.stderr:
+                        elif stream is process.stderr:
                             stderr_chunks.append(chunk)
                             if on_error:
                                 on_error(chunk)
                     else:
-                        if incoming is process.stdout:
+                        if stream is process.stdout:
                             streams.remove(process.stdout)
-                        elif incoming is process.stderr:
+                        elif stream is process.stderr:
                             streams.remove(process.stderr)
 
             process.wait()
