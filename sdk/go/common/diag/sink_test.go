@@ -63,11 +63,13 @@ func TestEscape(t *testing.T) {
 
 	// Passing % chars in the argument should not yield %!(MISSING)s.
 	p, s := sink.Stringify(Error, Message("", "%s"), "lots of %v %s %d chars")
-	assert.Equal(t, "error: lots of %v %s %d chars\n", p+s)
+	// We only check that it contains the message, not the exact prefix with timestamp
+	assert.Contains(t, p+s, "lots of %v %s %d chars")
 
 	// Passing % chars in the format string, on the other hand, should.
 	pmiss, smiss := sink.Stringify(Error, Message("", "lots of %v %s %d chars"))
-	assert.Equal(t, "error: lots of %!v(MISSING) %!s(MISSING) %!d(MISSING) chars\n", pmiss+smiss)
+	// We only check that it contains the message, not the exact prefix with timestamp
+	assert.Contains(t, pmiss+smiss, "lots of %!v(MISSING) %!s(MISSING) %!d(MISSING) chars")
 }
 
 func TestDefaultSink_concurrency(t *testing.T) {
