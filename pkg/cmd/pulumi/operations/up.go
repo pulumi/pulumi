@@ -159,7 +159,7 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
 
-		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
+		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags(), proj)
 		if err != nil {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
@@ -419,7 +419,7 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
 
-		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
+		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags(), proj)
 		if err != nil {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
