@@ -79,6 +79,7 @@ jobs:
           && 'minimum current'
           || 'current'
         }}
+      integration-test-platforms: 'macos-latest ubuntu-latest windows-latest'
       acceptance-test-platforms: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')

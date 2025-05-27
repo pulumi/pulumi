@@ -30,6 +30,11 @@ on:
         default: minimum current
         description: Version sets on which to run integration tests
         type: string
+      integration-test-platforms:
+        required: false
+        default: ubuntu-latest
+        description: Platforms on which to run integration tests, as a space delimited list
+        type: string
       acceptance-test-platforms:
         required: false
         default: macos-latest
@@ -114,6 +119,7 @@ jobs:
         env:
           TEST_CODEGEN: ${{ inputs.test-codegen }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
+          INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
         run: |
           echo "::group::Prime test timing data"

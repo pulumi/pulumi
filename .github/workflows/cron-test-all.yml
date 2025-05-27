@@ -35,6 +35,7 @@ jobs:
       test-codegen: true
       test-version-sets: 'all'
       acceptance-test-platforms: 'macos-latest windows-latest'
+      integration-test-platforms: 'macos-latest ubuntu-latest windows-latest'
       enable-coverage: true
     secrets: inherit
 
