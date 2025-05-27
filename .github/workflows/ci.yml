@@ -30,11 +30,6 @@ on:
         default: minimum current
         description: Version sets on which to run integration tests
         type: string
-      integration-test-platforms:
-        required: false
-        default: "macos-latest ubuntu-latest windows-latest"
-        description: Platforms on which to run integration tests, as a space delimited list
-        type: string
       acceptance-test-platforms:
         required: false
         default: macos-latest
@@ -119,7 +114,6 @@ jobs:
         env:
           TEST_CODEGEN: ${{ inputs.test-codegen }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
-          INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
         run: |
           echo "::group::Prime test timing data"
@@ -173,7 +167,9 @@ jobs:
             generate-matrix \
             --kind integration-test \
             "$CODEGEN_TESTS_FLAG" \
-            --platform "${INTEGRATION_PLATFORMS[@]}" \
+            --platform macos-latest \
+            --platform windows-latest \
+            --platform ubuntu-latest \
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
             --partition-module sdk 1 \

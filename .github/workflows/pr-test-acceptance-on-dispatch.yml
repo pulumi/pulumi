@@ -62,7 +62,6 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       lint: true
       test-version-sets: current
-      integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: 'windows-latest'
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false

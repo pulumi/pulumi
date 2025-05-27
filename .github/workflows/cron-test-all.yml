@@ -34,7 +34,6 @@ jobs:
       # on PR to get correct coverage numbers.
       test-codegen: true
       test-version-sets: 'all'
-      integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: 'macos-latest windows-latest'
       enable-coverage: true
     secrets: inherit
