@@ -701,6 +701,10 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 				if errors.Is(err, io.EOF) {
 					cts.Fulfill(0)
 				} else {
+					// We need this condition because although `Join` will ignore nil errors it won't return the
+					// original error if it's the only one. That is `Join(err, nil, nil) != err`. Because of that our
+					// later "is this a grpc error" check doesn't work because it sees a `joinError` instead of a
+					// `grpcError`.
 					if err1 != nil || err2 != nil {
 						err = errors.Join(err, err1, err2)
 					}

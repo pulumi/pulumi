@@ -561,7 +561,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		cmdutil.InterruptChildren(cmd.Process.Pid)
 
 		// Give the process 5 seconds to shut down, or kill it forcibly.
-		timeout, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		timeout, cancel := context.WithTimeout(ctx.Base(), 5*time.Second)
 		defer cancel()
 		_, err := wait.Promise().Result(timeout)
 		if !errors.Is(err, context.DeadlineExceeded) {
@@ -592,7 +592,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		Stdout: stdout,
 		Stderr: stderr,
 		Wait: func() (int, error) {
-			_, err := wait.Promise().Result(context.TODO())
+			_, err := wait.Promise().Result(ctx.Base())
 			if err != nil {
 				// If this is a non-zero exit code, we need to return it.
 				if exiterr, ok := err.(*exec.ExitError); ok {
