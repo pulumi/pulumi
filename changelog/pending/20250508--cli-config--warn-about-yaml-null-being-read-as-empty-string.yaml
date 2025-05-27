@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/config
+  description: Warn about YAML null being read as empty string
