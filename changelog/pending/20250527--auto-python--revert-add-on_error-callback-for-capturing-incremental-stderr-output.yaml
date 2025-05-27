@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/python
+  description: "Revert: Add `on_error` callback for capturing incremental stderr output, which used a library not compatible with Windows"
