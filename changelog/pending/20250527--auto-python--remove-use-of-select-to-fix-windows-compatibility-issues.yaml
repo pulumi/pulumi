@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/python
+  description: Remove use of `select` to fix Windows compatibility issues
