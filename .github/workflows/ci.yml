@@ -32,7 +32,7 @@ on:
         type: string
       integration-test-platforms:
         required: false
-        default: "ubuntu-latest windows-latest macos-latest"
+        default: "macos-latest ubuntu-latest windows-latest"
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       acceptance-test-platforms:
