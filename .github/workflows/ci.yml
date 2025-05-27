@@ -159,7 +159,7 @@ jobs:
             generate-matrix \
             --kind unit-test \
             "$CODEGEN_TESTS_FLAG" \
-            --platform ubuntu-latest \
+            --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
