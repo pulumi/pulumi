@@ -173,9 +173,7 @@ jobs:
             generate-matrix \
             --kind integration-test \
             "$CODEGEN_TESTS_FLAG" \
-            --platform macos-latest \
-            --platform windows-latest \
-            --platform ubuntu-latest \
+            --platform "${INTEGRATION_PLATFORMS[@]}" \
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
             --partition-module sdk 1 \
