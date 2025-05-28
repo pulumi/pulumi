@@ -73,7 +73,6 @@ export async function callAsync<T>(
     tok: string,
     props: pulumi.Inputs,
     res?: pulumi.Resource,
-    opts?: {property?: string},
 ): Promise<T> {
     const o: any = runtime.call<T>(tok, props, res);
     const value = await o.promise(true /*withUnknowns*/);
@@ -88,9 +87,24 @@ export async function callAsync<T>(
         throw new Error(`Plain resource method "${tok}" incorrectly returned ${problem}. ` +
             "This is an error in the provider, please report this to the provider developer.");
     }
-    // Extract a single property if requested.
-    if (opts && opts.property) {
-        return value[opts.property];
-    }
     return value;
+}
+
+/** @internal */
+export async function callAsyncSingle<T>(
+    tok: string,
+    props: pulumi.Inputs,
+    res?: pulumi.Resource,
+): Promise<T> {
+    const v = await callAsync<{ [key: string]: T }>(tok, props, res);
+
+    if (v == null) {
+      throw new Error(`Plain resource method "${tok}" returned null`);
+    }
+
+    if (typeof v === "object" && Object.keys(v).length !== 1) {
+        throw new Error(`Plain resource method "${tok}" returned an object with ${Object.keys(v).length} keys, expected 1`);
+    }
+
+    return v[Object.keys(v)[0]];
 }
