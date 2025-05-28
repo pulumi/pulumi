@@ -17,7 +17,6 @@
 import * as typescript from "typescript";
 import * as log from "../../log";
 import * as utils from "./utils";
-import * as util from "node:util";
 
 const ts: typeof typescript = require("../../typescript-shim");
 
