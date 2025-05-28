@@ -14,7 +14,7 @@
 
 exports.description = "Serialize minified class statement";
 
-// important thing for this case is class expressions, and that spaces are not required, e.g after class
+// This case tests the serialization of class expressions and e.g. that spaces are not required after the class keyword.
 
 exports.func = () => {
     let z = [];
