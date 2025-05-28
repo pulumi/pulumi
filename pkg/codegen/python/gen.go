@@ -1893,31 +1893,24 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		mod.collectImports(fun.Inputs.Properties, imports, true)
 	}
 
-	var returnType *schema.ObjectType
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok {
-			returnType = objectType
-		} else {
-			// TODO: remove when we add support for generalized return type for python
-			return "", fmt.Errorf("python sdk-gen doesn't support non-Object return types for function %s", fun.Token)
-		}
-	}
+	returnType := fun.ReturnType
+	returnTypeObject, returnTypeIsObject := returnType.(*schema.ObjectType)
 
-	if returnType != nil {
-		mod.collectImports(returnType.Properties, imports, false)
+	if returnType != nil && returnTypeIsObject {
+		mod.collectImports(returnTypeObject.Properties, imports, false)
 	}
 
 	mod.genFunctionHeader(w, fun, imports)
 
 	var baseName, awaitableName string
-	if returnType != nil {
-		baseName, awaitableName = awaitableTypeNames(returnType.Token)
+	if returnType != nil && returnTypeIsObject {
+		baseName, awaitableName = awaitableTypeNames(returnTypeObject.Token)
 	}
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
-	if returnType != nil {
+	if returnType != nil && returnTypeIsObject {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1932,15 +1925,18 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 
-	// If there is a return type, emit it.
+	// If there is a return ype , emit it.
 	var retTypeName string
 	var retTypeNameOutput string
 	var rets []*schema.Property
-	if returnType != nil {
-		retTypeName, rets = mod.genAwaitableType(w, returnType), returnType.Properties
-		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+	if returnType != nil && returnTypeIsObject {
+		retTypeName, rets = mod.genAwaitableType(w, returnTypeObject), returnTypeObject.Properties
+		originalOutputTypeName, _ := awaitableTypeNames(returnTypeObject.Token)
 		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 		fmt.Fprintf(w, "\n\n")
+	} else if returnType != nil && !returnTypeIsObject {
+		retTypeName = mod.pyType(returnType)
+		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", retTypeName)
 	} else {
 		retTypeName = "Awaitable[None]"
 		retTypeNameOutput = "pulumi.Output[None]"
@@ -1955,9 +1951,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		fnName := name
 		resultType := returnTypeName
 		optionsClass := "InvokeOptions"
-		if !plain {
+		if !plain && returnTypeIsObject {
 			fnName += "_output"
-			resultType, _ = awaitableTypeNames(returnType.Token)
+			resultType, _ = awaitableTypeNames(returnTypeObject.Token)
+			optionsClass = "InvokeOutputOptions"
+		} else if !plain && !returnTypeIsObject {
+			fnName += "_output"
 			optionsClass = "InvokeOutputOptions"
 		}
 
@@ -1975,7 +1974,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 		// Now simply invoke the runtime function with the arguments.
 		trailingArgs := ""
-		if returnType != nil {
+		if returnType != nil && returnTypeIsObject {
 			// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 			// the call to invoke.
 			trailingArgs += ", typ=" + baseName
@@ -1991,24 +1990,37 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
-		runtimeFunction := "invoke"
-		if !plain {
+		runtimeFunction := ""
+		if !plain && returnTypeIsObject {
 			runtimeFunction = "invoke_output"
+		} else if !plain && !returnTypeIsObject {
+			runtimeFunction = "invoke_output_single"
+		} else if plain && returnTypeIsObject {
+			runtimeFunction = "invoke"
+		} else if plain && !returnTypeIsObject {
+			runtimeFunction = "invoke_single"
 		}
 
-		fmt.Fprintf(w, "    __ret__ = pulumi.runtime.%s('%s', __args__, opts=opts%s)",
-			runtimeFunction,
-			fun.Token,
-			trailingArgs)
+		if returnTypeIsObject {
+			fmt.Fprintf(w, "    __ret__ = pulumi.runtime.%s('%s', __args__, opts=opts%s)",
+				runtimeFunction,
+				fun.Token,
+				trailingArgs)
+		} else {
+			fmt.Fprintf(w, "    return pulumi.runtime.%s('%s', __args__, opts=opts%s)",
+				runtimeFunction,
+				fun.Token,
+				trailingArgs)
+		}
 
-		if plain {
+		if plain && returnTypeIsObject {
 			// If the function is plain, we need to return the result directly.
 			fmt.Fprint(w, ".value\n")
 		}
 		fmt.Fprintf(w, "\n")
 
 		// And copy the results to an object, if there are indeed any expected returns.
-		if returnType != nil {
+		if returnType != nil && returnTypeIsObject {
 			if plain {
 				fmt.Fprintf(w, "    return %s(", resultType)
 			} else {
