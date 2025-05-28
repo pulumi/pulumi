@@ -2007,6 +2007,13 @@ func (s *ViewStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if s.error != "" {
 		return s.status, nil, errors.New(s.error)
 	}
+
+	if s.op == OpCreateReplacement && s.old != nil {
+		s.old.Lock.Lock()
+		s.old.Delete = true
+		s.old.Lock.Unlock()
+	}
+
 	return s.status, nil, nil
 }
 
