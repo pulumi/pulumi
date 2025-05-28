@@ -677,7 +677,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				step := NewRefreshStep(ex.deployment, nil, res, nil)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			}
@@ -693,7 +693,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				step := NewRefreshStep(ex.deployment, nil, res, nil)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
@@ -705,7 +705,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				// loop.
 				for _, dep := range allDeps {
 					if targetsActual.Contains(dep.URN) {
-						step := NewRefreshStep(ex.deployment, nil, res)
+						step := NewRefreshStep(ex.deployment, nil, res, nil)
 						steps = append(steps, step)
 						resourceToStep[res] = step
 
