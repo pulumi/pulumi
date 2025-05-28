@@ -1962,13 +1962,18 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	require.NoError(t, err)
 
 	tarReader := tar.NewReader(zip)
-	header, err := tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/", header.Name)
-
-	header, err = tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/test", header.Name)
+	for {
+		header, err := tarReader.Next()
+		require.NoError(t, err)
+		if header.Name == "path/" {
+			// Some of the implementations of tar in Go (in particular Go 1.23 and earlier) don't
+			// include the directory entry in the tar stream.  So we can skip over that here, and
+			// make sure we find the file entry we really care about.
+			continue
+		}
+		require.Equal(t, "path/test", header.Name)
+		break
+	}
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -2005,13 +2010,18 @@ func TestGitSourceDownloadHEAD(t *testing.T) {
 	require.NoError(t, err)
 
 	tarReader := tar.NewReader(zip)
-	header, err := tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/", header.Name)
-
-	header, err = tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/test", header.Name)
+	for {
+		header, err := tarReader.Next()
+		require.NoError(t, err)
+		if header.Name == "path/" {
+			// Some of the implementations of tar in Go (in particular Go 1.23 and earlier) don't
+			// include the directory entry in the tar stream.  So we can skip over that here, and
+			// make sure we find the file entry we really care about.
+			continue
+		}
+		require.Equal(t, "path/test", header.Name)
+		break
+	}
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
@@ -2048,13 +2058,18 @@ func TestGitSourceDownloadHash(t *testing.T) {
 	require.NoError(t, err)
 
 	tarReader := tar.NewReader(zip)
-	header, err := tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/", header.Name)
-
-	header, err = tarReader.Next()
-	require.NoError(t, err)
-	require.Equal(t, "path/test", header.Name)
+	for {
+		header, err := tarReader.Next()
+		require.NoError(t, err)
+		if header.Name == "path/" {
+			// Some of the implementations of tar in Go (in particular Go 1.23 and earlier) don't
+			// include the directory entry in the tar stream.  So we can skip over that here, and
+			// make sure we find the file entry we really care about.
+			continue
+		}
+		require.Equal(t, "path/test", header.Name)
+		break
+	}
 
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
