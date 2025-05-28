@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import assert from "assert";
+import * as fs from "fs";
+import * as os from "os";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as upath from "upath";
-import * as fs from "fs";
+import assert from "assert";
 
 import {
     CommandResult,
@@ -1555,7 +1556,12 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(result.summary.kind, kind);
         assert.strictEqual(result.summary.result, "succeeded");
 
-        const expectedGeneratedCode = fs.readFileSync(upath.joinSafe(workDir, "expected_generated_code.txt"), "utf8");
+        let expectedGeneratedCode = fs.readFileSync(upath.joinSafe(workDir, "expected_generated_code.txt"), "utf8");
+
+        if (os.platform() === "win32") {
+            expectedGeneratedCode = expectedGeneratedCode.replace(/\n/g, "\r\n");
+        }
+
         assert.strictEqual(result.generatedCode, expectedGeneratedCode);
         await stack.destroy();
         await stack.workspace.removeStack(stackName);
