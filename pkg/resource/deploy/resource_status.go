@@ -50,8 +50,16 @@ type resourceStatusServer struct {
 }
 
 type tokenInfo struct {
-	urn   resource.URN
-	mu    sync.Mutex
+	// The owning resource URN for this token.
+	urn resource.URN
+
+	// Whether this token is for a refresh operation.
+	refresh bool
+
+	// Protects the steps slice.
+	mu sync.Mutex
+
+	// Steps that were published with this token.
 	steps []stepPre
 }
 
@@ -87,13 +95,16 @@ func (rs *resourceStatusServer) Address() string {
 	return rs.address
 }
 
-func (rs *resourceStatusServer) ReserveToken(urn resource.URN) (string, error) {
+func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh bool) (string, error) {
 	token, err := uuid.NewV4()
 	if err != nil {
 		return "", fmt.Errorf("creating token: %w", err)
 	}
 	tokenString := token.String()
-	rs.tokens.Store(tokenString, &tokenInfo{urn: urn})
+	rs.tokens.Store(tokenString, &tokenInfo{
+		urn:     urn,
+		refresh: refresh,
+	})
 	return tokenString, nil
 }
 
@@ -135,7 +146,7 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 
 	// Unmarshal the steps.
 	steps, err := slice.MapError(req.Steps, func(step *pulumirpc.ViewStep) (Step, error) {
-		return rs.unmarshalViewStep(viewOf, step)
+		return rs.unmarshalViewStep(viewOf, step, info.refresh)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling steps: %w", err)
@@ -171,7 +182,9 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 	return &pulumirpc.PublishViewStepsResponse{}, nil
 }
 
-func (rs *resourceStatusServer) unmarshalViewStep(viewOf resource.URN, step *pulumirpc.ViewStep) (Step, error) {
+func (rs *resourceStatusServer) unmarshalViewStep(
+	viewOf resource.URN, step *pulumirpc.ViewStep, refresh bool,
+) (Step, error) {
 	status, err := rs.unmarshalStepStatus(step.GetStatus())
 	if err != nil {
 		return nil, err
@@ -211,7 +224,13 @@ func (rs *resourceStatusServer) unmarshalViewStep(viewOf resource.URN, step *pul
 
 	detailedDiff := rs.unmarshalDetailedDiff(step)
 
-	return NewViewStep(rs.deployment, op, status, step.GetError(), old, new, keys, diffs, detailedDiff), nil
+	result := NewViewStep(rs.deployment, op, status, step.GetError(), old, new, keys, diffs, detailedDiff).(*ViewStep)
+	if refresh {
+		// If this is a refresh step, we need to set the result operation to the same as the original operation.
+		result.resultOp = op
+		result.op = OpRefresh
+	}
+	return result, nil
 }
 
 func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) map[string]plugin.PropertyDiff {

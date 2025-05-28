@@ -650,7 +650,8 @@ func (acts *updateActions) OnResourceStepPost(
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			resultOp := step.(interface{ ResultOp() display.StepOp })
+			op, record = resultOp.ResultOp(), true
 		}
 
 		if step.Op() == deploy.OpRead {
@@ -819,7 +820,8 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			resultOp := step.(interface{ ResultOp() display.StepOp })
+			op, record = resultOp.ResultOp(), true
 		}
 
 		if step.Op() == deploy.OpRead {
