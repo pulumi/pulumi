@@ -113,7 +113,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 				resources = append(resources, e.Step.New())
 			case deploy.OpRefresh:
 				step, ok := e.Step.(*deploy.RefreshStep)
-				if !ok || step.Persisted() {
+				if ok && step.Persisted() {
 					if e.Step.New() != nil {
 						resources = append(resources, e.Step.New())
 					} else {
