@@ -208,8 +208,8 @@ func TestStartupFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
 
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin", "test-plugin"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin/test-plugin]: not implemented")
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin]: not implemented")
 }
 
 func TestNonZeroExitcode(t *testing.T) {
@@ -229,8 +229,8 @@ func TestNonZeroExitcode(t *testing.T) {
 	require.Contains(t, file, "pulumi-language-test")
 
 	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "1")
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit/test-plugin-exit]: exit status 1")
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: exit status 1")
 
 	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
 	tmp := t.TempDir()
@@ -281,8 +281,8 @@ func TestZeroExitcode(t *testing.T) {
 	require.Contains(t, file, "pulumi-language-test")
 
 	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "0")
-	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit/test-plugin-exit]: EOF")
+	_, err = NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-exit"))
+	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: EOF")
 
 	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
 	tmp := t.TempDir()
