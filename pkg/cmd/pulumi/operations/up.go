@@ -206,6 +206,7 @@ func NewUpCmd() *cobra.Command {
 			Parallel:                  parallel,
 			Debug:                     debug,
 			Refresh:                   refreshOption,
+			RefreshProgram:            runProgram,
 			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 			UseLegacyDiff:             env.EnableLegacyDiff.Value(),
 			UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
