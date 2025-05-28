@@ -40,9 +40,9 @@ LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
 
 ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 .make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
-	cd sdk && go mod download
-	cd pkg && go mod download
-	cd tests && go mod download
+	cd sdk && ../scripts/retry go mod download
+	cd pkg && ../scripts/retry go mod download
+	cd tests && ../scripts/retry go mod download
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
