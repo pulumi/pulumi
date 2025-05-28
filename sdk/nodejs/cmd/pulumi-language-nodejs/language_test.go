@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -100,7 +101,10 @@ var expectedFailures = map[string]string{
 }
 
 func TestLanguage(t *testing.T) {
-	t.Parallel()
+	// Set PATH to include the local dist directory so policy can run.
+	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
+	require.NoError(t, err)
+	t.Setenv("PATH", fmt.Sprintf("%s%c%s", dist, os.PathListSeparator, os.Getenv("PATH")))
 
 	engineAddress, engine := runTestingHost(t)
 
@@ -145,6 +149,7 @@ func TestLanguage(t *testing.T) {
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
+				PolicyPackDirectory:  "testdata/policies",
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "package\\.json",

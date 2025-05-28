@@ -417,7 +417,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts)
+		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts, nil)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {

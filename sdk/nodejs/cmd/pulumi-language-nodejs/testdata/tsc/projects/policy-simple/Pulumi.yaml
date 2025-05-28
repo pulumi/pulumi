@@ -1,0 +1,5 @@
+name: policy-simple
+runtime:
+  name: nodejs
+  options:
+    typescript: false

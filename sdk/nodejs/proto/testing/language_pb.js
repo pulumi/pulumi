@@ -496,7 +496,8 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.toObject = function(includeI
     snapshotEditsList: jspb.Message.toObjectList(msg.getSnapshotEditsList(),
     proto.pulumirpc.testing.PrepareLanguageTestsRequest.Replacement.toObject, includeInstance),
     languageInfo: jspb.Message.getFieldWithDefault(msg, 8, ""),
-    programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : []
+    programOverridesMap: (f = msg.getProgramOverridesMap()) ? f.toObject(includeInstance, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.toObject) : [],
+    policyPackDirectory: jspb.Message.getFieldWithDefault(msg, 10, "")
   };
 
   if (includeInstance) {
@@ -571,6 +572,10 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.deserializeBinaryFromReader 
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.deserializeBinaryFromReader, "", new proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride());
          });
+      break;
+    case 10:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPolicyPackDirectory(value);
       break;
     default:
       reader.skipField();
@@ -661,6 +666,13 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.serializeBinaryToWriter = fu
   f = message.getProgramOverridesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(9, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.testing.PrepareLanguageTestsRequest.ProgramOverride.serializeBinaryToWriter);
+  }
+  f = message.getPolicyPackDirectory();
+  if (f.length > 0) {
+    writer.writeString(
+      10,
+      f
+    );
   }
 };
 
@@ -1195,6 +1207,24 @@ proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getProgramOverride
 proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.clearProgramOverridesMap = function() {
   this.getProgramOverridesMap().clear();
   return this;};
+
+
+/**
+ * optional string policy_pack_directory = 10;
+ * @return {string}
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.getPolicyPackDirectory = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.testing.PrepareLanguageTestsRequest} returns this
+ */
+proto.pulumirpc.testing.PrepareLanguageTestsRequest.prototype.setPolicyPackDirectory = function(value) {
+  return jspb.Message.setProto3StringField(this, 10, value);
+};
 
 
 

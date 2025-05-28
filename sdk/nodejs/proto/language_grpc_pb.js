@@ -232,6 +232,28 @@ function deserialize_pulumirpc_LanguageHandshakeResponse(buffer_arg) {
   return pulumi_language_pb.LanguageHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_LinkRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.LinkRequest)) {
+    throw new Error('Expected argument of type pulumirpc.LinkRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LinkRequest(buffer_arg) {
+  return pulumi_language_pb.LinkRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_LinkResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.LinkResponse)) {
+    throw new Error('Expected argument of type pulumirpc.LinkResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LinkResponse(buffer_arg) {
+  return pulumi_language_pb.LinkResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PackRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.PackRequest)) {
     throw new Error('Expected argument of type pulumirpc.PackRequest');
@@ -545,6 +567,18 @@ pack: {
     requestDeserialize: deserialize_pulumirpc_PackRequest,
     responseSerialize: serialize_pulumirpc_PackResponse,
     responseDeserialize: deserialize_pulumirpc_PackResponse,
+  },
+  // `Link` links a local dependency into a project.
+link: {
+    path: '/pulumirpc.LanguageRuntime/Link',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.LinkRequest,
+    responseType: pulumi_language_pb.LinkResponse,
+    requestSerialize: serialize_pulumirpc_LinkRequest,
+    requestDeserialize: deserialize_pulumirpc_LinkRequest,
+    responseSerialize: serialize_pulumirpc_LinkResponse,
+    responseDeserialize: deserialize_pulumirpc_LinkResponse,
   },
 };
 

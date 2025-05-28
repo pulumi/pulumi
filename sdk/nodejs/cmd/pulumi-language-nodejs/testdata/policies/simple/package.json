@@ -1,0 +1,11 @@
+{
+    "name": "simple-policy-pack",
+    "version": "1.0.0",
+    "dependencies": {
+        "@pulumi/policy": "latest",
+        "@pulumi/pulumi": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^10.0.0"
+    }
+}

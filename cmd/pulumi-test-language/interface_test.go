@@ -44,7 +44,9 @@ func TestTestNames(t *testing.T) {
 		isl1 := strings.HasPrefix(name, "l1-")
 		isl2 := strings.HasPrefix(name, "l2-")
 		isl3 := strings.HasPrefix(name, "l3-")
-		assert.True(t, isInternal || isl1 || isl2 || isl3, "test name %s must start with internal-, l1-, l2-, or l3-", name)
+		isPolicy := strings.HasPrefix(name, "policy-")
+		assert.True(t, isInternal || isl1 || isl2 || isl3 || isPolicy,
+			"test name %s must start with internal-, l1-, l2-, l3-, or policy-", name)
 	}
 }
 
@@ -55,6 +57,30 @@ func TestL1NoProviders(t *testing.T) {
 	for name, test := range tests.LanguageTests {
 		if strings.HasPrefix(name, "l1-") {
 			assert.Empty(t, test.Providers, "test name %s must not use providers", name)
+		}
+	}
+}
+
+// Ensure policy tests do use policy packs and no other test does.
+func TestPolicyPacks(t *testing.T) {
+	t.Parallel()
+
+	for name, test := range tests.LanguageTests {
+		isPolicy := strings.HasPrefix(name, "policy-")
+		// A policy test must use a policy pack in at least one run, a non-policy test must not use a policy pack in any run.
+		policies := []string{}
+		for _, run := range test.Runs {
+			for policy := range run.PolicyPacks {
+				policies = append(policies, policy)
+			}
+		}
+
+		if isPolicy {
+			assert.NotEmpty(t, policies,
+				"test name %s must use policy packs", name)
+		} else {
+			assert.Empty(t, policies,
+				"test name %s must not use policy packs", name)
 		}
 	}
 }
