@@ -30,6 +30,7 @@ package main
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"go/format"
@@ -40,7 +41,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -115,7 +115,7 @@ func (g *generator) Err() error {
 	if len(g.errors) == 0 {
 		return nil
 	}
-	return &multierror.Error{Errors: g.errors}
+	return errors.Join(g.errors...)
 }
 
 // Generate generates apply functions for parameters in the range

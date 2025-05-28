@@ -15,10 +15,9 @@
 package diy
 
 import (
+	"errors"
 	"runtime"
 	"sync"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 // workerPool is a worker pool that runs tasks in parallel.
@@ -140,7 +139,7 @@ func (p *workerPool) Enqueue(task func() error) {
 
 // Wait blocks until all enqueued tasks have finished
 // and returns all errors encountered while running them.
-// The errors may be combined into a multierror.
+// The errors may be combined into a joinError.
 //
 // Consecutive calls to Wait return errors encountered since last Wait.
 // Typically, you'll want to call Wait after all Enqueue calls
@@ -164,17 +163,17 @@ func (p *workerPool) Wait() error {
 	p.ongoing.Wait()
 
 	p.errMu.Lock()
-	var errors []error
-	errors, p.errs = p.errs, nil
+	var errs []error
+	errs, p.errs = p.errs, nil
 	p.errMu.Unlock()
 
-	switch len(errors) {
+	switch len(errs) {
 	case 0:
 		return nil
 	case 1:
-		return errors[0]
+		return errs[0]
 	default:
-		return multierror.Append(errors[0], errors[1:]...)
+		return errors.Join(errs...)
 	}
 }
 

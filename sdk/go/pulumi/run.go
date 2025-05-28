@@ -22,8 +22,6 @@ import (
 	"os"
 	"strconv"
 
-	multierror "github.com/hashicorp/go-multierror"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -118,14 +116,14 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	ctx.state.stack = &stack
 
 	// Execute the body.
-	var result error
+	var errs []error
 	if err = body(ctx); err != nil {
-		result = multierror.Append(result, err)
+		errs = append(errs, err)
 	}
 
 	// Register all the outputs to the stack object.
 	if err = ctx.RegisterResourceOutputs(ctx.state.stack, Map(ctx.state.exports)); err != nil {
-		result = multierror.Append(result, err)
+		errs = append(errs, err)
 	}
 
 	if err = ctx.wait(); err != nil {
@@ -133,7 +131,7 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	}
 
 	// Propagate the error from the body, if any.
-	return result
+	return errors.Join(errs...)
 }
 
 // RunFunc executes the body of a Pulumi program.  It may register resources using the deployment context

@@ -31,7 +31,6 @@ import (
 	"strings"
 	"sync"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -756,12 +755,12 @@ func (ctx *Context) invokePackageRaw(
 	// If there were any failures from the provider, return them.
 	if len(resp.Failures) > 0 {
 		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
-		var ferr error
+		var errs []error
 		for _, failure := range resp.Failures {
-			ferr = multierror.Append(ferr,
+			errs = append(errs,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, errors.Join(errs...)
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
@@ -1116,10 +1115,12 @@ func (ctx *Context) CallPackage(
 			logging.V(9).Infof("Call(%s, ...): error: %v", tok, err)
 		} else if len(resp.Failures) > 0 {
 			logging.V(9).Infof("Call(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+			var errs []error
 			for _, failure := range resp.Failures {
-				err = multierror.Append(err,
+				errs = append(errs,
 					fmt.Errorf("%s call failed: %s (%s)", tok, failure.Reason, failure.Property))
 			}
+			err = errors.Join(errs...)
 		}
 
 		if resp != nil {
@@ -1418,12 +1419,12 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	// If there were any failures from the provider, return them.
 	if len(resp.Failures) > 0 {
 		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
-		var ferr error
+		var errs []error
 		for _, failure := range resp.Failures {
-			ferr = multierror.Append(ferr,
+			errs = append(errs,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, errors.Join(errs...)
 	}
 
 	return &pulumirpc.RegisterResourceResponse{

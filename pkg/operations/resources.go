@@ -15,10 +15,10 @@
 package operations
 
 import (
+	"errors"
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -189,19 +189,19 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		}()
 	}
 	// Handle results from GetLogs calls as they complete
-	var err error
+	var errs []error
 	for range ops.resource.Children {
 		childLogs := <-ch
 		childErr := <-errch
 		if childErr != nil {
-			err = multierror.Append(err, childErr)
+			errs = append(errs, childErr)
 		}
 		if childLogs != nil {
 			logs = append(logs, *childLogs...)
 		}
 	}
-	if err != nil {
-		return &logs, err
+	if len(errs) != 0 {
+		return &logs, errors.Join(errs...)
 	}
 	// Sort
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
