@@ -438,5 +438,5 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
+          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}-${{ runner.os }}
           path: test-results/*.json
