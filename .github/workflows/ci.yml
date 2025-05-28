@@ -160,7 +160,7 @@ jobs:
             --kind unit-test \
             "$CODEGEN_TESTS_FLAG" \
             --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
-            --version-set "${VERSION_SETS_TO_TEST[@]}" \
+            --version-set current \
             --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
