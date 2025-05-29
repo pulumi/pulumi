@@ -673,17 +673,12 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			continue
 		}
 
-		if err != nil {
-			if result.IsBail(err) {
-				t.Logf("Got unexpected bail result: %v", err)
-				t.FailNow()
-			} else {
-				t.Logf("Got unexpected error result: %v", err)
-				t.FailNow()
-			}
+		errString := "unexpected error result"
+		if result.IsBail(err) {
+			errString = "unexpected bail result"
 		}
 
-		assert.NoError(t, err)
+		require.NoError(t, err, errString)
 	}
 
 	p.run++
