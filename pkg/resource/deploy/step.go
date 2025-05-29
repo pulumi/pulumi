@@ -1957,7 +1957,8 @@ type ViewStep struct {
 	keys         []resource.PropertyKey         // the keys causing replacement (only for replacements).
 	diffs        []resource.PropertyKey         // the keys causing a diff (only for replacements).
 	detailedDiff map[string]plugin.PropertyDiff // the structured property diff (only for replacements).
-	resultOp     display.StepOp                 // the operation that corresponds to this resource after reading its current state, if any.
+	//nolint:lll
+	resultOp display.StepOp // the operation that corresponds to this resource after reading its current state, if any.
 }
 
 func NewViewStep(

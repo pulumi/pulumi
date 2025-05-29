@@ -670,6 +670,7 @@ func (acts *updateActions) OnResourceStepPost(
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
+		//nolint:lll
 		if step.Res().ViewOf != "" || step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh || step.Op() == deploy.OpDelete {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,

@@ -360,6 +360,7 @@ func (rs *resourceStatusServer) unmarshalStepStatus(s pulumirpc.ViewStep_Status)
 	}
 }
 
+//nolint:unused
 func (rs *resourceStatusServer) unmarshalPropertyDiffKind(kind pulumirpc.PropertyDiff_Kind) (plugin.DiffKind, error) {
 	switch kind {
 	case pulumirpc.PropertyDiff_ADD:

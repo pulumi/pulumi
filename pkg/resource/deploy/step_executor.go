@@ -527,7 +527,7 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 	// before OnResourceStepPost for this resource saves the results of the step in the snapshot.
 	if isDelete && stepComplete != nil {
 		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
-		stepComplete()
+		contract.IgnoreError(stepComplete())
 	}
 
 	if events != nil {
@@ -542,7 +542,7 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 	// all non-delete operations.
 	if !isDelete && stepComplete != nil {
 		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
-		stepComplete()
+		contract.IgnoreError(stepComplete())
 	}
 
 	if err != nil {
