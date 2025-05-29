@@ -2319,7 +2319,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
 						{
-							Op:     apitype.OpCreate,
+							Op:     apitype.OpUpdate,
 							Status: resource.StatusOK,
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),

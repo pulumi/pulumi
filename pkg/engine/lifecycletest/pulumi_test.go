@@ -1140,7 +1140,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		})
 		require.NoError(t, err)
 		if !info.DryRun {
-			assert.Equal(t, "bar", resp.Outputs["outputs"].ObjectValue()["foo"].StringValue())
+			require.Equal(t, "bar", resp.Outputs["outputs"].ObjectValue()["foo"].StringValue())
 		}
 		return nil
 	})
@@ -3323,7 +3323,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Dependencies: []resource.URN{resp.URN},
 		})
 		if failCreationOfTypB {
-			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			require.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		} else {
 			require.NoError(t, err)
 		}
@@ -3342,7 +3342,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Trigger a replacement of A but fail to create B
 	failCreationOfTypB = true

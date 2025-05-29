@@ -891,6 +891,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
+	opts.PulumiHomeDir = "/home/tgummerer/.pulumi"
 	var home string
 	if opts.PulumiHomeDir != "" {
 		home = opts.PulumiHomeDir
@@ -908,8 +909,9 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 
 // MakeTempBackend creates a temporary backend directory which will clean up on test exit.
 func MakeTempBackend(t *testing.T) string {
-	tempDir := t.TempDir()
-	return "file://" + filepath.ToSlash(tempDir)
+	return "http://127.0.0.1:8080"
+	// tempDir := t.TempDir()
+	// return "file://" + filepath.ToSlash(tempDir)
 }
 
 func (pt *ProgramTester) GetTmpDir() string {
