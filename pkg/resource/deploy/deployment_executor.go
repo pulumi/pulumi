@@ -150,6 +150,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	// Close the deployment when we're finished.
 	defer contract.IgnoreClose(ex.deployment)
+	if ex.deployment.rebase && ex.deployment.events != nil {
+		err := ex.deployment.events.OnRebase(ex.deployment.prev)
+		if err != nil {
+			return nil, result.BailErrorf("failed to rebase deployment: %v", err)
+		}
+	}
 
 	// If this deployment is an import, run the imports and exit.
 	if ex.deployment.isImport {
@@ -791,6 +797,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 	}
 
 	ex.rebuildBaseState(resourceToStep)
+
+	if ex.deployment.events != nil {
+		if err := ex.deployment.events.OnRebase(prev); err != nil {
+			return result.BailErrorf("failed to report refresh event: %v", err)
+		}
+	}
 
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.

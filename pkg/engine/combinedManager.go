@@ -27,6 +27,16 @@ type CombinedManager struct {
 	Managers []SnapshotManager
 }
 
+func (c *CombinedManager) Rebase(base *deploy.Snapshot) error {
+	var errs []error
+	for _, m := range c.Managers {
+		if err := m.Rebase(base); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func (c *CombinedManager) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	var errs []error
 	mutations := &CombinedMutation{}
