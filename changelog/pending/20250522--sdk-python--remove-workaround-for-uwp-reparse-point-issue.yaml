@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/python
-  description: Remove workaround for UWP reparse point issue
