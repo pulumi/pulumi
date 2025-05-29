@@ -1141,60 +1141,6 @@ func (ctx *Context) CallPackage(
 	return output, nil
 }
 
-// CallPackageSingle is like CallPackage, but extracts a single entry from a map for scalar return
-// values from providers.
-func (ctx *Context) CallPackageSingle(
-	tok string, args Input, output Output, self Resource, packageRef string, opts ...InvokeOption,
-) (Output, error) {
-	intermediary, err := ctx.CallPackage(tok, args, AnyOutput{}, self, packageRef, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	intermediary = intermediary.ApplyT(func(r interface{}) (interface{}, error) {
-		zeroType := reflect.Zero(reflect.TypeOf(output.ElementType())).Interface()
-
-		// if the result is an object return the first element
-		v := reflect.ValueOf(r)
-
-		if v.Kind() == reflect.Ptr {
-			// Check if the pointer is nil
-			if v.IsNil() {
-				return zeroType, errors.New("input cannot be a nil pointer")
-			}
-			// Get the element the pointer points to
-			v = v.Elem()
-		}
-
-		if v.Kind() != reflect.Map {
-			return zeroType, errors.New("result must be a map, but was a " + v.Kind().String())
-		}
-
-		asMap := v.Interface().(map[string]interface{})
-		if len(asMap) != 1 {
-			return zeroType, errors.New("result must have exactly one element")
-		}
-
-		result := maps.Values(asMap)[0]
-		if resultType := reflect.TypeOf(result); resultType != output.ElementType() {
-			return zeroType, fmt.Errorf("result field type %s does not match expected type %s", resultType, output.ElementType())
-		}
-
-		return result, nil
-	})
-
-	outputState := internal.GetOutputState(intermediary.(AnyOutput))
-	if outputState == nil {
-		return nil, errors.New("intermediary output state is nil")
-	}
-
-	resValue := reflect.New(reflect.TypeOf(output)).Elem()
-	internal.SetOutputState(resValue, outputState)
-	res := resValue.Interface().(Output)
-
-	return res, nil
-}
-
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
 // token and name is the "name" part to use in creating a stable and globally unique URN for the object. id is the ID
 // of the resource to read, and props contains any state necessary to perform the read (typically props will be nil).

@@ -120,10 +120,6 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic(fmt.Errorf("Unknown token: %s", args.Token))
 }
 
-func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	panic("Call not supported")
-}
-
 func TestListStorageAccountKeysOutput(t *testing.T) {
 	pulumiTest(t, func(ctx *pulumi.Context) error {
 		output := mypkg.ListStorageAccountKeysOutput(ctx, mypkg.ListStorageAccountKeysOutputArgs{
