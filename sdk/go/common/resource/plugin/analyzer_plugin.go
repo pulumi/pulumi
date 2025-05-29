@@ -213,13 +213,6 @@ func NewPolicyAnalyzer(
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
 
-		// newPlugin expects a path to a binary, not a folder so we make up a binary name here just so newPlugin will
-		// then look for PulumiPolicy.yaml in the right place.
-		//
-		// TODO(https://github.com/pulumi/pulumi/issues/19462): There's a few places we call down to plugin code where
-		// really it could be a file or a folder, we should stop abusing made up file names for this.
-		policyPackPath = filepath.Join(policyPackPath, "pulumi-analyzer-policy-"+string(name.Name()))
-
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
