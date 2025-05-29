@@ -105,7 +105,7 @@ func TestParsePort(t *testing.T) {
 func TestHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	startServer := func(healthService bool) (*grpc.Server, *plugin) {
+	startServer := func(healthService bool) (*grpc.Server, *Plugin) {
 		listener, _ := net.Listen("tcp", "127.0.0.1:0")
 		server := grpc.NewServer()
 
@@ -134,7 +134,7 @@ func TestHealthCheck(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		return server, &plugin{Conn: conn}
+		return server, &Plugin{Conn: conn}
 	}
 
 	tests := []struct {
