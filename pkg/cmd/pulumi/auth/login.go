@@ -97,7 +97,7 @@ func NewLoginCmd() *cobra.Command {
 			"\n" +
 			"PostgreSQL:\n" +
 			"\n" +
-			"    $ pulumi login postgres://username:password@hostname:5432/database?sslmode=disable\n",
+			"    $ pulumi login postgres://username:password@hostname:5432/database\n",
 		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
