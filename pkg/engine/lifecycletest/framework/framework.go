@@ -310,7 +310,8 @@ func (op TestOp) runWithContext(
 		},
 	}
 	secretsManager := b64.NewBase64SecretsManager()
-	snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+	journaler := backend.NewSnapshotJournaler(persister, secretsManager, target.Snapshot)
+	snapshotManager := backend.NewSnapshotManager(journaler, target.Snapshot)
 
 	combined := &engine.CombinedManager{
 		Managers: []engine.SnapshotManager{journal, snapshotManager},

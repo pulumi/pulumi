@@ -1652,7 +1652,8 @@ func (b *cloudBackend) runEngineAction(
 	var snapshotManager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !dryRun {
 		persister := b.newSnapshotPersister(ctx, update, tokenSource)
-		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+		journal := backend.NewSnapshotJournaler(persister, op.SecretsManager, u.Target.Snapshot)
+		snapshotManager = backend.NewSnapshotManager(journal, u.Target.Snapshot)
 	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and

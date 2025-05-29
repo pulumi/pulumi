@@ -93,6 +93,10 @@ func (e *mockEvents) OnPolicyRemediation(resource.URN, plugin.Remediation, resou
 	panic("unimplemented")
 }
 
+func (e *mockEvents) OnRebase(base *Snapshot) error {
+	return nil
+}
+
 var _ Events = (*mockEvents)(nil)
 
 func TestStepExecutor(t *testing.T) {
