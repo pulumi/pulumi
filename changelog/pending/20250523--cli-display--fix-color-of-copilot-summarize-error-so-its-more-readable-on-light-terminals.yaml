@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix color of Copilot summarize-error so its more readable on light terminals

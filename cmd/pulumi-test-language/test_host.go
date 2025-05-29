@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -39,19 +40,22 @@ import (
 )
 
 type testHost struct {
-	engine      pulumirpc.EngineServer
+	engine      *languageTestServer
+	ctx         *plugin.Context
 	host        plugin.Host
 	runtime     plugin.LanguageRuntime
 	runtimeName string
 	providers   map[string]plugin.Provider
 
 	connections map[plugin.Provider]io.Closer
+
+	policies []plugin.Analyzer
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
-	panic("not implemented")
+	return h.engine.addr
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -92,12 +96,20 @@ func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 func (h *testHost) PolicyAnalyzer(
 	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	panic("not implemented")
+	hasPlugin := func(spec workspace.PluginSpec) bool {
+		// This is only called for the language runtime, so we can just do a simple check.
+		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
+	}
+	analyzer, err := plugin.NewPolicyAnalyzer(h, h.ctx, name, path, opts, hasPlugin)
+	if err != nil {
+		return nil, err
+	}
+	h.policies = append(h.policies, analyzer)
+	return analyzer, nil
 }
 
 func (h *testHost) ListAnalyzers() []plugin.Analyzer {
-	// We're not using analyzers for matrix tests, yet.
-	return nil
+	return h.policies
 }
 
 func (h *testHost) Provider(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
@@ -229,6 +241,25 @@ func (h *testHost) SignalCancellation() error {
 }
 
 func (h *testHost) Close() error {
+	errs := make([]error, 0)
+	for _, closer := range h.connections {
+		if err := closer.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	h.connections = make(map[plugin.Provider]io.Closer)
+
+	for _, policy := range h.policies {
+		if err := policy.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	h.policies = nil
+
+	err := errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("failed to close plugins: %w", err)
+	}
 	return nil
 }
 

@@ -136,11 +136,12 @@ func (p *providerServer) Handshake(
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
-		SupportsViews:    req.SupportsViews,
+		EngineAddress:               req.EngineAddress,
+		RootDirectory:               req.RootDirectory,
+		ProgramDirectory:            req.ProgramDirectory,
+		ConfigureWithUrn:            req.ConfigureWithUrn,
+		SupportsViews:               req.SupportsViews,
+		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		return nil, err
@@ -566,8 +567,9 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	return &pulumirpc.CreateResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -629,9 +631,10 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
-		Inputs:     rpcInputs,
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -700,7 +703,10 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
+	return &pulumirpc.UpdateResponse{
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
 }
 
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {

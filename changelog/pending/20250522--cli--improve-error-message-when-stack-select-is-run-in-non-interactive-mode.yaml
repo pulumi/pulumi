@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Improve error message when stack select is run in non-interactive mode

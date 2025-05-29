@@ -797,7 +797,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.Run
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
 	// #nosec G204
-	cmd := exec.Command(nodeBin, nodeargs...)
+	cmd := exec.CommandContext(ctx, nodeBin, nodeargs...)
 	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
 	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
 	// `runWithOutput` for more details.

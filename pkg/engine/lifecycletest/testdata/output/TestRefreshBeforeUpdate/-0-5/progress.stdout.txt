@@ -1,0 +1,15 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test running 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 2%}>= <{%reset%}> pkgA:m:typA resB <{%bold%}><{%fg 2%}>importing<{%reset%}> 
+ <{%fg 2%}>= <{%reset%}> pkgA:m:typA resB <{%fg 2%}>imported<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>= 1 imported<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

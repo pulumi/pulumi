@@ -164,9 +164,6 @@ jobs:
             --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
-            --partition-module sdk/go/pulumi-language-go 1 \
-            --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
-            --partition-module sdk/python/cmd/pulumi-language-python 1 \
             --partition-module tests 8
           )
 
