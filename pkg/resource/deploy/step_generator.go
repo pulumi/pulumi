@@ -1062,6 +1062,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 								PolicyName:        tresult.PolicyName,
 								PolicyPackName:    tresult.PolicyPackName,
 								PolicyPackVersion: tresult.PolicyPackVersion,
+								Description:       tresult.Description,
 								Message:           tresult.Diagnostic,
 								EnforcementLevel:  apitype.Advisory,
 								URN:               new.URN,

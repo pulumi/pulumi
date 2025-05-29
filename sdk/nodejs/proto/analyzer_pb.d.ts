@@ -432,6 +432,8 @@ export class Remediation extends jspb.Message {
     setPolicypackname(value: string): Remediation;
     getPolicypackversion(): string;
     setPolicypackversion(value: string): Remediation;
+    getDescription(): string;
+    setDescription(value: string): Remediation;
 
     hasProperties(): boolean;
     clearProperties(): void;
@@ -455,6 +457,7 @@ export namespace Remediation {
         policyname: string,
         policypackname: string,
         policypackversion: string,
+        description: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         diagnostic: string,
     }

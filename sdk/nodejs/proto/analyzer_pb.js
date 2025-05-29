@@ -3643,6 +3643,7 @@ proto.pulumirpc.Remediation.toObject = function(includeInstance, msg) {
     policyname: jspb.Message.getFieldWithDefault(msg, 1, ""),
     policypackname: jspb.Message.getFieldWithDefault(msg, 2, ""),
     policypackversion: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    description: jspb.Message.getFieldWithDefault(msg, 4, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     diagnostic: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
@@ -3692,6 +3693,10 @@ proto.pulumirpc.Remediation.deserializeBinaryFromReader = function(msg, reader) 
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setPolicypackversion(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDescription(value);
       break;
     case 5:
       var value = new google_protobuf_struct_pb.Struct;
@@ -3749,6 +3754,13 @@ proto.pulumirpc.Remediation.serializeBinaryToWriter = function(message, writer) 
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getDescription();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -3821,6 +3833,24 @@ proto.pulumirpc.Remediation.prototype.getPolicypackversion = function() {
  */
 proto.pulumirpc.Remediation.prototype.setPolicypackversion = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string description = 4;
+ * @return {string}
+ */
+proto.pulumirpc.Remediation.prototype.getDescription = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.Remediation} returns this
+ */
+proto.pulumirpc.Remediation.prototype.setDescription = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 

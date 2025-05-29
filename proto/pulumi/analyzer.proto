@@ -171,7 +171,7 @@ message AnalyzeDiagnostic {
     string policyName = 1;                 // Name of the violated policy.
     string policyPackName = 2;             // Name of the policy pack the policy is in.
     string policyPackVersion = 3;          // Version of the policy pack.
-    string description = 4 [deprecated = true]; // Description of policy rule. e.g., "encryption enabled.".
+    string description = 4;                // Description of policy rule. e.g., "encryption enabled."
     string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
 
     // Keywords/terms to associate with a policy, e.g., "cost". This was unused by the engine and policy SDKs.
@@ -187,11 +187,7 @@ message Remediation {
     string policyName = 1;                 // Name of the policy that performed the remediation.
     string policyPackName = 2;             // Name of the policy pack the transform is in.
     string policyPackVersion = 3;          // Version of the policy pack.
-
-    // Description of transform rule. e.g., "auto-tag resources." This was unused by the engine.
-    reserved 4;
-    reserved "description";
-
+    string description = 4;                // Description of transform rule. e.g., "auto-tag resources."
     google.protobuf.Struct properties = 5; // the transformed properties to use.
     string diagnostic = 6;                 // an optional warning diagnostic to emit, if a transform failed.
 }

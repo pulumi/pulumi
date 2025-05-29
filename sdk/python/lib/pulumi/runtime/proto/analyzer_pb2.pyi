@@ -454,7 +454,7 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
     policyPackVersion: builtins.str
     """Version of the policy pack."""
     description: builtins.str
-    """Description of policy rule. e.g., "encryption enabled."."""
+    """Description of policy rule. e.g., "encryption enabled." """
     message: builtins.str
     """Message to display on policy violation, e.g., remediation steps."""
     enforcementLevel: global___EnforcementLevel.ValueType
@@ -485,6 +485,7 @@ class Remediation(google.protobuf.message.Message):
     POLICYNAME_FIELD_NUMBER: builtins.int
     POLICYPACKNAME_FIELD_NUMBER: builtins.int
     POLICYPACKVERSION_FIELD_NUMBER: builtins.int
+    DESCRIPTION_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     DIAGNOSTIC_FIELD_NUMBER: builtins.int
     policyName: builtins.str
@@ -493,6 +494,8 @@ class Remediation(google.protobuf.message.Message):
     """Name of the policy pack the transform is in."""
     policyPackVersion: builtins.str
     """Version of the policy pack."""
+    description: builtins.str
+    """Description of transform rule. e.g., "auto-tag resources." """
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the transformed properties to use."""
@@ -504,11 +507,12 @@ class Remediation(google.protobuf.message.Message):
         policyName: builtins.str = ...,
         policyPackName: builtins.str = ...,
         policyPackVersion: builtins.str = ...,
+        description: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         diagnostic: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["diagnostic", b"diagnostic", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "diagnostic", b"diagnostic", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "properties", b"properties"]) -> None: ...
 
 global___Remediation = Remediation
 
