@@ -10,47 +10,47 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := awsstaticwebsite.NewWebsite(ctx, "websiteResource", &awsstaticwebsite.WebsiteArgs{
 			SitePath:  pulumi.String("string"),
-			IndexHTML: pulumi.String("string"),
-			CacheTTL:  pulumi.Float64(0),
-			CdnArgs: &awsstaticwebsite.CDNArgsArgs{
-				CloudfrontFunctionAssociations: cloudfront.DistributionOrderedCacheBehaviorFunctionAssociationArray{
-					&cloudfront.DistributionOrderedCacheBehaviorFunctionAssociationArgs{
+			IndexHTML: "string",
+			CacheTTL:  0,
+			CdnArgs: &*awsstaticwebsite.CDNArgsArgs{
+				CloudfrontFunctionAssociations: []cloudfront.DistributionOrderedCacheBehaviorFunctionAssociationArgs{
+					{
 						EventType:   pulumi.String("string"),
 						FunctionArn: pulumi.String("string"),
 					},
 				},
-				ForwardedValues: &cloudfront.DistributionDefaultCacheBehaviorForwardedValuesArgs{
+				ForwardedValues: &*cloudfront.DistributionDefaultCacheBehaviorForwardedValuesArgs{
 					Cookies: &cloudfront.DistributionDefaultCacheBehaviorForwardedValuesCookiesArgs{
 						Forward: pulumi.String("string"),
-						WhitelistedNames: pulumi.StringArray{
+						WhitelistedNames: []pulumi.String{
 							pulumi.String("string"),
 						},
 					},
 					QueryString: pulumi.Bool(false),
-					Headers: pulumi.StringArray{
+					Headers: []pulumi.String{
 						pulumi.String("string"),
 					},
-					QueryStringCacheKeys: pulumi.StringArray{
+					QueryStringCacheKeys: []pulumi.String{
 						pulumi.String("string"),
 					},
 				},
-				LambdaFunctionAssociations: cloudfront.DistributionOrderedCacheBehaviorLambdaFunctionAssociationArray{
-					&cloudfront.DistributionOrderedCacheBehaviorLambdaFunctionAssociationArgs{
+				LambdaFunctionAssociations: []cloudfront.DistributionOrderedCacheBehaviorLambdaFunctionAssociationArgs{
+					{
 						EventType:   pulumi.String("string"),
 						LambdaArn:   pulumi.String("string"),
-						IncludeBody: pulumi.Bool(false),
+						IncludeBody: false,
 					},
 				},
 			},
-			CertificateARN:          pulumi.String("string"),
-			Error404:                pulumi.String("string"),
-			AddWebsiteVersionHeader: pulumi.Bool(false),
-			PriceClass:              pulumi.String("string"),
-			AtomicDeployments:       pulumi.Bool(false),
-			Subdomain:               pulumi.String("string"),
-			TargetDomain:            pulumi.String("string"),
-			WithCDN:                 pulumi.Bool(false),
-			WithLogs:                pulumi.Bool(false),
+			CertificateARN:          "string",
+			Error404:                "string",
+			AddWebsiteVersionHeader: false,
+			PriceClass:              "string",
+			AtomicDeployments:       false,
+			Subdomain:               "string",
+			TargetDomain:            "string",
+			WithCDN:                 false,
+			WithLogs:                false,
 		})
 		if err != nil {
 			return err

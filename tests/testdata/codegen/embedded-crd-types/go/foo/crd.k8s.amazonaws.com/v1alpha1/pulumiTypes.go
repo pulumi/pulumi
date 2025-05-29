@@ -36,8 +36,8 @@ type ENIConfigSpecInput interface {
 }
 
 type ENIConfigSpecArgs struct {
-	SecurityGroups pulumi.StringArrayInput `pulumi:"securityGroups"`
-	Subnet         pulumi.StringPtrInput   `pulumi:"subnet"`
+	SecurityGroups []pulumi.StringInput `pulumi:"securityGroups"`
+	Subnet         *string              `pulumi:"subnet"`
 }
 
 func (ENIConfigSpecArgs) ElementType() reflect.Type {

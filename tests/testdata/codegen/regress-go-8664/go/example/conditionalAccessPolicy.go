@@ -55,7 +55,7 @@ type conditionalAccessPolicyState struct {
 }
 
 type ConditionalAccessPolicyState struct {
-	Conditions ConditionalAccessPolicyConditionsPtrInput
+	Conditions *ConditionalAccessPolicyConditionsArgs
 }
 
 func (ConditionalAccessPolicyState) ElementType() reflect.Type {

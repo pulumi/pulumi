@@ -50,5 +50,5 @@ export interface ProviderArgs {
     /**
      * BETA FEATURE - Options to configure the Helm Release resource.
      */
-    helmReleaseSettings?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    helmReleaseSettings?: pulumi.Input<inputs.HelmReleaseSettingsArgs | undefined | null>;
 }

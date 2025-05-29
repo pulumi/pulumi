@@ -11,62 +11,62 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := appsv1.NewDeployment(ctx, "pulumi_kubernetes_operatorDeployment", &appsv1.DeploymentArgs{
-			ApiVersion: pulumi.String("apps/v1"),
-			Kind:       pulumi.String("Deployment"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Name: pulumi.String("pulumi-kubernetes-operator"),
+			ApiVersion: "apps/v1",
+			Kind:       "Deployment",
+			Metadata: &*metav1.ObjectMetaArgs{
+				Name: "pulumi-kubernetes-operator",
 			},
-			Spec: &appsv1.DeploymentSpecArgs{
-				Replicas: pulumi.Int(1),
+			Spec: &*appsv1.DeploymentSpecArgs{
+				Replicas: 1,
 				Selector: &metav1.LabelSelectorArgs{
-					MatchLabels: pulumi.StringMap{
+					MatchLabels: map[string]pulumi.String{
 						"name": pulumi.String("pulumi-kubernetes-operator"),
 					},
 				},
 				Template: &corev1.PodTemplateSpecArgs{
-					Metadata: &metav1.ObjectMetaArgs{
-						Labels: pulumi.StringMap{
+					Metadata: &*metav1.ObjectMetaArgs{
+						Labels: map[string]pulumi.String{
 							"name": pulumi.String("pulumi-kubernetes-operator"),
 						},
 					},
-					Spec: &corev1.PodSpecArgs{
-						ServiceAccountName: pulumi.String("pulumi-kubernetes-operator"),
-						ImagePullSecrets: corev1.LocalObjectReferenceArray{
-							&corev1.LocalObjectReferenceArgs{
-								Name: pulumi.String("pulumi-kubernetes-operator"),
+					Spec: &*corev1.PodSpecArgs{
+						ServiceAccountName: "pulumi-kubernetes-operator",
+						ImagePullSecrets: []corev1.LocalObjectReferenceArgs{
+							{
+								Name: "pulumi-kubernetes-operator",
 							},
 						},
 						Containers: corev1.ContainerArray{
 							&corev1.ContainerArgs{
 								Name:  pulumi.String("pulumi-kubernetes-operator"),
-								Image: pulumi.String("pulumi/pulumi-kubernetes-operator:v0.0.2"),
-								Command: pulumi.StringArray{
+								Image: "pulumi/pulumi-kubernetes-operator:v0.0.2",
+								Command: []pulumi.String{
 									pulumi.String("pulumi-kubernetes-operator"),
 								},
-								Args: pulumi.StringArray{
+								Args: []pulumi.String{
 									pulumi.String("--zap-level=debug"),
 								},
-								ImagePullPolicy: pulumi.String("Always"),
-								Env: corev1.EnvVarArray{
-									&corev1.EnvVarArgs{
+								ImagePullPolicy: "Always",
+								Env: []corev1.EnvVarArgs{
+									{
 										Name: pulumi.String("WATCH_NAMESPACE"),
-										ValueFrom: &corev1.EnvVarSourceArgs{
-											FieldRef: &corev1.ObjectFieldSelectorArgs{
+										ValueFrom: {
+											FieldRef: {
 												FieldPath: pulumi.String("metadata.namespace"),
 											},
 										},
 									},
-									&corev1.EnvVarArgs{
+									{
 										Name: pulumi.String("POD_NAME"),
-										ValueFrom: &corev1.EnvVarSourceArgs{
-											FieldRef: &corev1.ObjectFieldSelectorArgs{
+										ValueFrom: {
+											FieldRef: {
 												FieldPath: pulumi.String("metadata.name"),
 											},
 										},
 									},
-									&corev1.EnvVarArgs{
+									{
 										Name:  pulumi.String("OPERATOR_NAME"),
-										Value: pulumi.String("pulumi-kubernetes-operator"),
+										Value: "pulumi-kubernetes-operator",
 									},
 								},
 							},
@@ -79,18 +79,18 @@ func main() {
 			return err
 		}
 		_, err = rbacv1.NewRole(ctx, "pulumi_kubernetes_operatorRole", &rbacv1.RoleArgs{
-			ApiVersion: pulumi.String("rbac.authorization.k8s.io/v1"),
-			Kind:       pulumi.String("Role"),
-			Metadata: &metav1.ObjectMetaArgs{
+			ApiVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "Role",
+			Metadata: &*metav1.ObjectMetaArgs{
 				CreationTimestamp: nil,
-				Name:              pulumi.String("pulumi-kubernetes-operator"),
+				Name:              "pulumi-kubernetes-operator",
 			},
-			Rules: rbacv1.PolicyRuleArray{
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+			Rules: []rbacv1.PolicyRuleArgs{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String(""),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("pods"),
 						pulumi.String("services"),
 						pulumi.String("services/finalizers"),
@@ -110,11 +110,11 @@ func main() {
 						pulumi.String("watch"),
 					},
 				},
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String("apps"),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("deployments"),
 						pulumi.String("daemonsets"),
 						pulumi.String("replicasets"),
@@ -130,11 +130,11 @@ func main() {
 						pulumi.String("watch"),
 					},
 				},
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String("monitoring.coreos.com"),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("servicemonitors"),
 					},
 					Verbs: pulumi.StringArray{
@@ -142,36 +142,36 @@ func main() {
 						pulumi.String("create"),
 					},
 				},
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String("apps"),
 					},
-					ResourceNames: pulumi.StringArray{
+					ResourceNames: []pulumi.String{
 						pulumi.String("pulumi-kubernetes-operator"),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("deployments/finalizers"),
 					},
 					Verbs: pulumi.StringArray{
 						pulumi.String("update"),
 					},
 				},
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String(""),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("pods"),
 					},
 					Verbs: pulumi.StringArray{
 						pulumi.String("get"),
 					},
 				},
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String("apps"),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("replicasets"),
 						pulumi.String("deployments"),
 					},
@@ -179,11 +179,11 @@ func main() {
 						pulumi.String("get"),
 					},
 				},
-				&rbacv1.PolicyRuleArgs{
-					ApiGroups: pulumi.StringArray{
+				{
+					ApiGroups: []pulumi.String{
 						pulumi.String("pulumi.com"),
 					},
-					Resources: pulumi.StringArray{
+					Resources: []pulumi.String{
 						pulumi.String("*"),
 					},
 					Verbs: pulumi.StringArray{
@@ -202,13 +202,13 @@ func main() {
 			return err
 		}
 		_, err = rbacv1.NewRoleBinding(ctx, "pulumi_kubernetes_operatorRoleBinding", &rbacv1.RoleBindingArgs{
-			Kind:       pulumi.String("RoleBinding"),
-			ApiVersion: pulumi.String("rbac.authorization.k8s.io/v1"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Name: pulumi.String("pulumi-kubernetes-operator"),
+			Kind:       "RoleBinding",
+			ApiVersion: "rbac.authorization.k8s.io/v1",
+			Metadata: &*metav1.ObjectMetaArgs{
+				Name: "pulumi-kubernetes-operator",
 			},
-			Subjects: rbacv1.SubjectArray{
-				&rbacv1.SubjectArgs{
+			Subjects: []rbacv1.SubjectArgs{
+				{
 					Kind: pulumi.String("ServiceAccount"),
 					Name: pulumi.String("pulumi-kubernetes-operator"),
 				},
@@ -223,10 +223,10 @@ func main() {
 			return err
 		}
 		_, err = corev1.NewServiceAccount(ctx, "pulumi_kubernetes_operatorServiceAccount", &corev1.ServiceAccountArgs{
-			ApiVersion: pulumi.String("v1"),
-			Kind:       pulumi.String("ServiceAccount"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Name: pulumi.String("pulumi-kubernetes-operator"),
+			ApiVersion: "v1",
+			Kind:       "ServiceAccount",
+			Metadata: &*metav1.ObjectMetaArgs{
+				Name: "pulumi-kubernetes-operator",
 			},
 		})
 		if err != nil {

@@ -58,6 +58,6 @@ export class ModuleTest extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleTest resource.
  */
 export interface ModuleTestArgs {
-    mod1?: pulumi.Input<inputs.mod1.TypArgs>;
-    val?: pulumi.Input<inputs.TypArgs>;
+    mod1?: pulumi.Input<inputs.mod1.TypArgs | undefined | null>;
+    val?: pulumi.Input<inputs.TypArgs | undefined | null>;
 }

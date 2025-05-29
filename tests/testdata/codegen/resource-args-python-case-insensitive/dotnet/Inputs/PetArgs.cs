@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     public sealed class PetArgs : global::Pulumi.ResourceArgs
     {
         [Input("name")]
-        public Input<string>? Name { get; set; }
+        public Input<string?>? Name { get; set; }
 
         public PetArgs()
         {

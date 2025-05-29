@@ -21,8 +21,8 @@ __all__ = ['TrailArgs', 'Trail']
 @pulumi.input_type
 class TrailArgs:
     def __init__(__self__, *,
-                 advanced_event_selectors: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]] = None,
-                 trail: Optional[pulumi.Input['pulumi_aws.cloudtrail.Trail']] = None):
+                 advanced_event_selectors: Optional[pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]] = None,
+                 trail: Optional[pulumi.Input[Optional['pulumi_aws.cloudtrail.Trail']]] = None):
         """
         The set of arguments for constructing a Trail resource.
         """
@@ -33,20 +33,20 @@ class TrailArgs:
 
     @property
     @pulumi.getter(name="advancedEventSelectors")
-    def advanced_event_selectors(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]:
+    def advanced_event_selectors(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]]:
         return pulumi.get(self, "advanced_event_selectors")
 
     @advanced_event_selectors.setter
-    def advanced_event_selectors(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]):
+    def advanced_event_selectors(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]]):
         pulumi.set(self, "advanced_event_selectors", value)
 
     @property
     @pulumi.getter
-    def trail(self) -> Optional[pulumi.Input['pulumi_aws.cloudtrail.Trail']]:
+    def trail(self) -> Optional[pulumi.Input[Optional['pulumi_aws.cloudtrail.Trail']]]:
         return pulumi.get(self, "trail")
 
     @trail.setter
-    def trail(self, value: Optional[pulumi.Input['pulumi_aws.cloudtrail.Trail']]):
+    def trail(self, value: Optional[pulumi.Input[Optional['pulumi_aws.cloudtrail.Trail']]]):
         pulumi.set(self, "trail", value)
 
 
@@ -56,8 +56,8 @@ class Trail(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 advanced_event_selectors: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]] = None,
-                 trail: Optional[pulumi.Input['pulumi_aws.cloudtrail.Trail']] = None,
+                 advanced_event_selectors: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]]] = None,
+                 trail: Optional[pulumi.Input[Optional['pulumi_aws.cloudtrail.Trail']]] = None,
                  __props__=None):
         """
         Create a Trail resource with the given unique name, props, and options.
@@ -87,8 +87,8 @@ class Trail(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 advanced_event_selectors: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]] = None,
-                 trail: Optional[pulumi.Input['pulumi_aws.cloudtrail.Trail']] = None,
+                 advanced_event_selectors: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_aws.cloudtrail.TrailAdvancedEventSelectorArgs']]]]]] = None,
+                 trail: Optional[pulumi.Input[Optional['pulumi_aws.cloudtrail.Trail']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
