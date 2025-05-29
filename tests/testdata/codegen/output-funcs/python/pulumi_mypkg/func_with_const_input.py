@@ -27,5 +27,4 @@ def func_with_const_input(plain_input: Optional[builtins.str] = None,
     __args__ = dict()
     __args__['plainInput'] = plain_input
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('mypkg::funcWithConstInput', __args__, opts=opts).value
-
+    return pulumi.runtime.invoke_single('mypkg::funcWithConstInput', __args__, opts=opts)

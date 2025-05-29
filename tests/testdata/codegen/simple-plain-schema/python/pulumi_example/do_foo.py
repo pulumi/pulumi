@@ -28,5 +28,4 @@ def do_foo(foo: Optional[Union['Foo', 'FooDict']] = None,
     __args__ = dict()
     __args__['foo'] = foo
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('example::doFoo', __args__, opts=opts).value
-
+    return pulumi.runtime.invoke_single('example::doFoo', __args__, opts=opts)

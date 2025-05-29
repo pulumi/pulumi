@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/python
-  description: Add sdkgen for scalar invoke return types in python
