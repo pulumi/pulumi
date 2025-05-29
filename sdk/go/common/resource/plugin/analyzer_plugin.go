@@ -92,9 +92,12 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	}, nil
 }
 
-// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`
+// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`. `hasPlugin` is a function that allows the
+// caller to configure how it is determined if the language plugin is available. If nil it will default to looking for
+// the plugin by path.
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
+	hasPlugin func(workspace.PluginSpec) bool,
 ) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
@@ -139,17 +142,24 @@ func NewPolicyAnalyzer(
 	// just be language runtimes like the rest).
 
 	var plug *plugin
-	var path string
+	var foundLanguagePlugin bool
 	// Try to load the language plugin for the runtime, except for python and node that _for now_ continue using the
 	// legacy behavior.
 	if proj.Runtime.Name() != "python" && proj.Runtime.Name() != "nodejs" {
-		path, err = workspace.GetPluginPath(
-			ctx.baseContext,
-			ctx.Diag,
-			workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin},
-			host.GetProjectPlugins())
+		if hasPlugin == nil {
+			hasPlugin = func(spec workspace.PluginSpec) bool {
+				path, err := workspace.GetPluginPath(
+					ctx.baseContext,
+					ctx.Diag,
+					spec,
+					host.GetProjectPlugins())
+				return err == nil && path != ""
+			}
+		}
+
+		foundLanguagePlugin = hasPlugin(workspace.PluginSpec{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
 	}
-	if path == "" || err != nil {
+	if !foundLanguagePlugin {
 		// Couldn't get a language plugin, fall back to the old behavior
 
 		// For historical reasons, the Node.js plugin name is just "policy".
@@ -202,13 +212,6 @@ func NewPolicyAnalyzer(
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	} else {
 		// Else we _did_ get a lanuage plugin so just use RunPlugin to invoke the policy pack.
-
-		// newPlugin expects a path to a binary, not a folder so we make up a binary name here just so newPlugin will
-		// then look for PulumiPolicy.yaml in the right place.
-		//
-		// TODO(https://github.com/pulumi/pulumi/issues/19462): There's a few places we call down to plugin code where
-		// really it could be a file or a folder, we should stop abusing made up file names for this.
-		policyPackPath = filepath.Join(policyPackPath, "pulumi-analyzer-policy-"+string(name.Name()))
 
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
 			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, os.Environ(),

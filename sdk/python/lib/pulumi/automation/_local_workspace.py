@@ -636,16 +636,13 @@ class LocalWorkspace(Workspace):
         return "--remote-inherit-settings" in help_string
 
     def _run_pulumi_cmd_sync(
-        self,
-        args: List[str],
-        on_output: Optional[OnOutput] = None,
-        on_error: Optional[OnOutput] = None,
+        self, args: List[str], on_output: Optional[OnOutput] = None
     ) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         if self._remote:
             envs["PULUMI_EXPERIMENTAL"] = "true"
         envs = {**envs, **self.env_vars}
-        return self.pulumi_command.run(args, self.work_dir, envs, on_output, on_error)
+        return self.pulumi_command.run(args, self.work_dir, envs, on_output)
 
     def _remote_args(self) -> List[str]:
         args: List[str] = []

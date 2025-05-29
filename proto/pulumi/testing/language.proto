@@ -77,6 +77,10 @@ message PrepareLanguageTestsRequest {
     // desirable to test that feature set) but where program code generation is not yet complete enough to support
     // generating programs which exercise that functionality.
     map<string, ProgramOverride> program_overrides = 9;
+
+    // A folder pointing to policy packs to use for the tests. This is used to test the language plugin's policy pack
+    // support. These must be manually written.
+    string policy_pack_directory = 10;
 }
 
 message PrepareLanguageTestsResponse {

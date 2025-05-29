@@ -27,6 +27,7 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -37,6 +38,7 @@ import (
 // HandleConfig handles prompting for config values (as needed) and saving config.
 func HandleConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	ws pkgWorkspace.Context,
 	prompt promptForValueFunc,
@@ -81,6 +83,7 @@ func HandleConfig(
 		// Prompt for config as needed.
 		c, err = promptForConfig(
 			ctx,
+			sink,
 			ssml,
 			prompt,
 			project,
@@ -98,7 +101,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(ws, s, c); err != nil {
+		if err = SaveConfig(sink, ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -174,6 +177,7 @@ var templateKey = config.MustMakeKey("pulumi", "template")
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml cmdStack.SecretsManagerLoader,
 	prompt promptForValueFunc,
 	project *workspace.Project,
@@ -204,7 +208,7 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(sink, project, stack)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
@@ -323,13 +327,13 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func SaveConfig(sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
-	ps, err := cmdStack.LoadProjectStack(project, stack)
+	ps, err := cmdStack.LoadProjectStack(sink, project, stack)
 	if err != nil {
 		return err
 	}

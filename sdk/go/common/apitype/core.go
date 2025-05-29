@@ -360,6 +360,8 @@ type ResourceV3 struct {
 	// TODO: This is here temporarily. It will be moved to ResourceV4.
 	// ViewOf is a reference to the resource that this resource is a view of.
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
+	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"replaceOnChanges,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

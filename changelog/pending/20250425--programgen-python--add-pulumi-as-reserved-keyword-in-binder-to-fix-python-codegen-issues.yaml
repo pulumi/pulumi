@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/python
+  description: Add pulumi as reserved keyword in binder to fix python codegen issues
