@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -85,6 +86,7 @@ type SnapshotManager struct {
 	journalEntries JournalEntries // The journal entries for this plan, which are used to replay the journal and produce a snapshot.
 
 	origResources []*resource.State // The original resources that were present in the base snapshot. This is used to determine which resources have been deleted.
+	newResources  gsync.Map[*resource.State, string]
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -395,7 +397,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	journalEntry.DeleteOld = -1 // Default to -1, which means no deletion.
 	// TODO: we should always have a base snapshot
 	if old := step.Old(); old != nil && ssm.manager.baseSnapshot != nil {
-		for i, res := range ssm.manager.baseSnapshot.Resources {
+		for i, res := range ssm.manager.origResources {
 			if res == old {
 				journalEntry.DeleteOld = i
 				break
@@ -409,6 +411,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	sameStep := step.(*deploy.SameStep)
 	if !sameStep.IsSkippedCreate() {
 		journalEntry.State = step.New()
+		ssm.manager.newResources.Store(step.New(), ssm.operationUUID)
 	}
 
 	return ssm.manager.journalMutation(journalEntry)
@@ -442,8 +445,9 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 		State:         step.New(),
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
+	csm.manager.newResources.Store(step.New(), csm.operationUUID)
 	if old := step.Old(); old != nil && old.PendingReplacement {
-		for i, res := range csm.manager.baseSnapshot.Resources {
+		for i, res := range csm.manager.origResources {
 			if res == old {
 				journalEntry.DeleteOld = i
 				break
@@ -488,7 +492,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 	if successful {
 		if old := step.Old(); old != nil {
 			//			fmt.Println("deleting old resource in update")
-			for i, res := range usm.manager.baseSnapshot.Resources {
+			for i, res := range usm.manager.origResources {
 				if res == old {
 					journalEntry.DeleteOld = i
 					break
@@ -499,6 +503,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 			}
 		}
 		journalEntry.State = step.New()
+		usm.manager.newResources.Store(step.New(), usm.operationUUID)
 	}
 	return usm.manager.journalMutation(journalEntry)
 }
@@ -510,7 +515,7 @@ func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (eng
 		DeleteOld: -1, // Default to -1, which means no deletion.
 	}
 	if old := step.Old(); old != nil && sm.baseSnapshot != nil {
-		for i, res := range sm.baseSnapshot.Resources {
+		for i, res := range sm.origResources {
 			if res == old {
 				journalEntry.DeleteOld = i
 				break
@@ -551,16 +556,23 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			step.Old().Protect, step.Op())
 
 		if !step.Old().PendingReplacement {
-			for i, res := range dsm.manager.baseSnapshot.Resources {
+			for i, res := range dsm.manager.origResources {
+				fmt.Println(res.URN)
 				if res == step.Old() {
 					//					fmt.Println("deleting old resource in delete")
 					journalEntry.DeleteOld = i
 					break
 				}
 			}
-			// if journalEntry.DeleteOld == -1 {
-			// 	panic("could not find old resource in base snapshot")
-			// }
+			if journalEntry.DeleteOld == -1 {
+				dsm.manager.newResources.Range(func(res *resource.State, uuid string) bool {
+					if res == step.Old() {
+						journalEntry.DeleteNew = uuid
+						return true
+					}
+					return false
+				})
+			}
 		}
 	}
 	return dsm.manager.journalMutation(journalEntry)
@@ -615,8 +627,9 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 		State:         step.New(),
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
+	rsm.manager.newResources.Store(step.New(), rsm.operationUUID)
 	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
-		for i, res := range rsm.manager.baseSnapshot.Resources {
+		for i, res := range rsm.manager.origResources {
 			if res == old {
 				journalEntry.DeleteOld = i
 				break
@@ -655,11 +668,11 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	journalEntry := JournalEntry{
 		Kind:          kind,
 		OperationUUID: rsm.operationUUID,
-		State:         nil, // Might be nil if the resource was deleted.
+		State:         nil, // We don't need to store the new state, it's already updated in the base snapshot.  We only need to do this to delete resources that are deleted by refresh.
 		DeleteOld:     -1,  // Default to -1, which means no deletion.
 	}
 	if old := step.Old(); step.New() == nil && old != nil && rsm.manager.baseSnapshot != nil {
-		for i, res := range rsm.manager.baseSnapshot.Resources {
+		for i, res := range rsm.manager.origResources {
 			if res == old {
 				journalEntry.DeleteOld = i
 				break
@@ -702,7 +715,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
 	if step.Old() != nil {
-		for i, res := range rsm.manager.baseSnapshot.Resources {
+		for i, res := range rsm.manager.origResources {
 			if res == step.Old() {
 				journalEntry.DeleteOld = i
 				break
@@ -746,7 +759,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 		State:         step.New(),
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
-
+	ism.manager.newResources.Store(step.New(), ism.operationUUID)
 	return ism.manager.journalMutation(journalEntry)
 }
 
@@ -811,13 +824,21 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 	newResources := make([]*resource.State, 0, len(sm.resources))
 	toDelete := make(map[int]struct{})
+	newToDelete := make(map[string]struct{})
+	for _, entry := range sm.journalEntries {
+		if entry.Kind == JournalEntrySuccess && entry.DeleteNew != "" {
+			newToDelete[entry.DeleteNew] = struct{}{}
+		}
+	}
+
 	for _, entry := range sm.journalEntries {
 		switch entry.Kind {
 		case JournalEntryBegin:
 			// TODO: deal with pending resources
 		case JournalEntrySuccess:
 			// If this is a success, we need to add the resource to the list of resources.
-			if entry.State != nil {
+			_, delete := newToDelete[entry.OperationUUID]
+			if entry.State != nil && !delete {
 				//			fmt.Println("Adding new resource:", entry.State.URN, entry.State.Provider, entry.State.ID)
 				newResources = append(newResources, entry.State)
 			}
@@ -890,7 +911,6 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sm *SnapshotManager) saveSnapshot() error {
-	//	q.Q(sm.snap())
 	snap, err := sm.snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
@@ -940,6 +960,9 @@ serviceLoop:
 		select {
 		case request := <-journalEvents:
 			sm.journalEntries = append(sm.journalEntries, request)
+			if request.State != nil {
+				fmt.Println(request, request.State.URN)
+			}
 			if request.result != nil {
 				request.result <- sm.saveSnapshot()
 			}
@@ -1016,22 +1039,6 @@ func NewSnapshotManager(
 		journalEntries:   []JournalEntry{},
 		origResources:    origResources,
 	}
-
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case e := <-manager.journalEvents:
-	// 			manager.journalEntries = append(manager.journalEntries, e)
-	// 		case <-manager.cancel:
-	// 			close(manager.journalEvents)
-	// 			close(manager.mutationRequests)
-	// 			return
-	// 			// 	// TODO: cancel this thing properly
-	// 			// 	close(manager.journalEvents)
-	// 			// 	return
-	// 		}
-	// 	}
-	// }()
 
 	serviceLoop := manager.defaultServiceLoop
 
