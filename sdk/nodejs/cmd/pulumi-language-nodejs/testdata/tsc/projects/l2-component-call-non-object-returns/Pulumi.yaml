@@ -1,4 +1,4 @@
-name: l2-component-call-simple-liftedreturn
+name: l2-component-call-non-object-returns
 runtime:
   name: nodejs
   options:
