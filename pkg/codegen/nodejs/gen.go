@@ -48,9 +48,10 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^18"
+	MinimumValidSDKVersion                 string = "^3.142.0"
+	MinimumValidSDKVersionWithScalarReturn string = "^3.173.0"
+	MinimumTypescriptVersion               string = "^4.3.5"
+	MinimumNodeTypesVersion                string = "^18"
 )
 
 type typeDetails struct {
@@ -2525,8 +2526,10 @@ func genNPMPackageMetadata(
 		}
 		if path, ok := localDependencies["pulumi"]; ok {
 			npminfo.Dependencies[sdkPack] = path
-		} else {
+		} else if !hasScalarReturnMethods(pkg) {
 			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersion
+		} else {
+			npminfo.Dependencies[sdkPack] = MinimumValidSDKVersionWithScalarReturn
 		}
 	}
 
@@ -2534,6 +2537,18 @@ func genNPMPackageMetadata(
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.AssertNoErrorf(err, "error serializing package.json")
 	return string(npmjson) + "\n", nil
+}
+
+func hasScalarReturnMethods(pkg *schema.Package) bool {
+	for _, r := range pkg.Resources {
+		for _, m := range r.Methods {
+			if m.Function.ReturnType.(*schema.ObjectType) == nil {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func genPostInstallScript() []byte {
