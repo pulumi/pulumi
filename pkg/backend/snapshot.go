@@ -557,7 +557,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 		if !step.Old().PendingReplacement {
 			for i, res := range dsm.manager.origResources {
-				fmt.Println(res.URN)
+				//				fmt.Println(res.URN)
 				if res == step.Old() {
 					//					fmt.Println("deleting old resource in delete")
 					journalEntry.DeleteOld = i
@@ -752,7 +752,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	if !successful {
 		kind = JournalEntryFailure
 	}
-	fmt.Println("importing", step.New().URN)
+	//	fmt.Println("importing", step.New().URN)
 	journalEntry := JournalEntry{
 		Kind:          kind,
 		OperationUUID: ism.operationUUID,
@@ -960,9 +960,6 @@ serviceLoop:
 		select {
 		case request := <-journalEvents:
 			sm.journalEntries = append(sm.journalEntries, request)
-			if request.State != nil {
-				fmt.Println(request, request.State.URN)
-			}
 			if request.result != nil {
 				request.result <- sm.saveSnapshot()
 			}
