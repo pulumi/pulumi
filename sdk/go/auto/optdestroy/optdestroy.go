@@ -165,6 +165,20 @@ func RunProgram(f bool) Option {
 	})
 }
 
+// SkipPreview(true) disables calculating a preview before performing the destroy.
+func SkipPreview(doSkipPreview bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.SkipPreview = doSkipPreview
+	})
+}
+
+// PreviewOnly(true) only shows a preview of the destroy, but does not perform the destroy itself.
+func PreviewOnly(previewDestroy bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PreviewOnly = previewDestroy
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -216,6 +230,10 @@ type Options struct {
 	ConfigFile string
 	// When set to true, run the program in the workspace to perform the destroy.
 	RunProgram *bool
+	// Disable calculating a preview before performing the destroy.
+	SkipPreview bool
+	// Only show a preview of the destroy, but does not perform the destroy itself.
+	PreviewOnly bool
 }
 
 type optionFunc func(*Options)

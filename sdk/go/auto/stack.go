@@ -1063,6 +1063,12 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) []string {
 			args = append(args, "--run-program=false")
 		}
 	}
+	if destroyOpts.SkipPreview {
+		args = append(args, "--skip-preview")
+	}
+	if destroyOpts.PreviewOnly {
+		args = append(args, "--preview-only")
+	}
 
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
