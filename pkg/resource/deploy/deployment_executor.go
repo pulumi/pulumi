@@ -433,6 +433,7 @@ func (ex *deploymentExecutor) performPostSteps(
 	ex.stepExec.Lock()
 
 	if ex.stepGen.mode == refreshMode {
+		// TODO JVP: handle view refresh steps (add to resourceToStep)
 		steps, resourceToStep, err := ex.stepGen.GenerateRefreshes(targetsOpt, excludesOpt)
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
@@ -760,6 +761,13 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
+
+	viewRefreshSteps := ex.deployment.resourceStatus.RefreshSteps()
+	for _, s := range ex.deployment.prev.Resources {
+		if step, has := viewRefreshSteps[s.URN]; has {
+			resourceToStep[s] = step
+		}
+	}
 
 	ex.rebuildBaseState(resourceToStep)
 

@@ -47,6 +47,12 @@ type resourceStatusServer struct {
 
 	// A map of tokens to URNs.
 	tokens gsync.Map[string, *tokenInfo] // token -> tokenInfo
+
+	// Protects refresh steps
+	refreshStepsLock sync.Mutex
+
+	// Refresh steps that were published to the status server.
+	refreshSteps []Step
 }
 
 type tokenInfo struct {
@@ -135,6 +141,23 @@ func (rs *resourceStatusServer) ReleaseToken(token string) error {
 	return nil
 }
 
+// Returns refresh steps that were published to the status server.
+func (rs *resourceStatusServer) RefreshSteps() map[resource.URN]Step {
+	rs.refreshStepsLock.Lock()
+	steps := rs.refreshSteps
+	rs.refreshStepsLock.Unlock()
+
+	if len(steps) == 0 {
+		return nil
+	}
+
+	result := make(map[resource.URN]Step, len(steps))
+	for _, step := range steps {
+		result[step.URN()] = step
+	}
+	return result
+}
+
 func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 	req *pulumirpc.PublishViewStepsRequest,
 ) (*pulumirpc.PublishViewStepsResponse, error) {
@@ -158,6 +181,15 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 
 	// TODO validate steps like in the step generator?
 	// e.g. sg.validateSteps(steps)
+
+	// Save any refresh steps.
+	for _, step := range steps {
+		if step.Op() == OpRefresh {
+			rs.refreshStepsLock.Lock()
+			rs.refreshSteps = append(rs.refreshSteps, step)
+			rs.refreshStepsLock.Unlock()
+		}
+	}
 
 	events := rs.deployment.events
 
