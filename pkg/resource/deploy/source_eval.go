@@ -648,6 +648,7 @@ type resmon struct {
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
 	callbacksLock             sync.Mutex
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
+	grpcDialOptions           func(metadata interface{}) []grpc.DialOption
 
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -701,6 +702,7 @@ func newResourceMonitor(
 		callbacks:          map[string]*CallbacksClient{},
 		resourceTransforms: map[resource.URN][]TransformFunction{},
 		packageRefMap:      map[string]providers.ProviderRequest{},
+		grpcDialOptions:    src.plugctx.DialOptions,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -763,7 +765,16 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 		return client, nil
 	}
 
-	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if rm.grpcDialOptions != nil {
+		opts := rm.grpcDialOptions(map[string]interface{}{
+			"mode": "client",
+			"kind": "callbacks",
+		})
+		dialOpts = append(dialOpts, opts...)
+	}
+
+	conn, err := grpc.NewClient(target, dialOpts...)
 	if err != nil {
 		return nil, err
 	}
