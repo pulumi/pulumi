@@ -551,10 +551,10 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			step.Old().Protect, step.Op())
 
 		if !step.Old().PendingReplacement {
-			dsm.manager.markEntryForDeletion(&journalEntry, step.Old())
-			// if err != nil {
-			// 	panic(err)
-			// }
+			err := dsm.manager.markEntryForDeletion(&journalEntry, step.Old())
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 	return dsm.manager.journalMutation(journalEntry)
@@ -644,6 +644,9 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		OperationUUID: rsm.operationUUID,
 		State:         nil, // We don't need to store the new state, it's already updated in the base snapshot.  We only need to do this to delete resources that are deleted by refresh.
 		DeleteOld:     -1,  // Default to -1, which means no deletion.
+	}
+	if old := step.Old(); step.New() == nil && old != nil && rsm.manager.baseSnapshot != nil {
+		rsm.manager.markEntryForDeletion(&journalEntry, old)
 	}
 	// TODO: is this ther ight thing to do?
 	// if step.New() == nil {
