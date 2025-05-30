@@ -390,6 +390,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	journalEntry := JournalEntry{
 		Kind:          kind,
 		OperationUUID: ssm.operationUUID,
+		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
 	journalEntry.DeleteOld = -1 // Default to -1, which means no deletion.
 	// TODO: we should always have a base snapshot
@@ -622,10 +623,10 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 			}
 		}
 		if journalEntry.DeleteOld == -1 {
-			//			panic("could not find old resource in base snapshot")
+			panic("could not find old resource in base snapshot")
 		}
 	}
-	return nil
+	return rsm.manager.journalMutation(journalEntry)
 }
 
 func (sm *SnapshotManager) doRefresh(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
@@ -654,21 +655,24 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 	journalEntry := JournalEntry{
 		Kind:          kind,
 		OperationUUID: rsm.operationUUID,
-		State:         step.New(), // Might be nil if the resource was deleted.
-		DeleteOld:     -1,         // Default to -1, which means no deletion.
+		State:         nil, // Might be nil if the resource was deleted.
+		DeleteOld:     -1,  // Default to -1, which means no deletion.
 	}
-	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
+	if old := step.Old(); step.New() == nil && old != nil && rsm.manager.baseSnapshot != nil {
 		for i, res := range rsm.manager.baseSnapshot.Resources {
 			if res == old {
 				journalEntry.DeleteOld = i
 				break
 			}
 		}
+		if journalEntry.DeleteOld == -1 {
+			panic("didn't find resource")
+		}
 	}
 	// TODO: is this ther ight thing to do?
-	if step.New() == nil {
-		rsm.manager.refreshDeletes[step.Old().URN] = true
-	}
+	// if step.New() == nil {
+	// 	rsm.manager.refreshDeletes[step.Old().URN] = true
+	// }
 
 	return rsm.manager.journalMutation(journalEntry)
 }
@@ -695,6 +699,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 	journalEntry := JournalEntry{
 		Kind:          JournalEntrySuccess,
 		OperationUUID: rsm.operationUUID,
+		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
 	if step.Old() != nil {
 		for i, res := range rsm.manager.baseSnapshot.Resources {
@@ -730,10 +735,11 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement, "step.Op",
 		"must be %q or %q, got %q", deploy.OpImport, deploy.OpImportReplacement, step.Op())
-	kind := JournalEntryBegin
+	kind := JournalEntrySuccess
 	if !successful {
 		kind = JournalEntryFailure
 	}
+	fmt.Println("importing", step.New().URN)
 	journalEntry := JournalEntry{
 		Kind:          kind,
 		OperationUUID: ism.operationUUID,
@@ -801,6 +807,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// Start with a copy of the resources produced during the evaluation of the current plan.
 	resources := make([]*resource.State, 0, len(sm.resources))
 
+	// fmt.Println("snapshotting", sm.origResources)
+
 	newResources := make([]*resource.State, 0, len(sm.resources))
 	toDelete := make(map[int]struct{})
 	for _, entry := range sm.journalEntries {
@@ -810,7 +818,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		case JournalEntrySuccess:
 			// If this is a success, we need to add the resource to the list of resources.
 			if entry.State != nil {
-				//				fmt.Println("Adding new resource:", entry.State.URN, entry.State.Provider, entry.State.ID)
+				//			fmt.Println("Adding new resource:", entry.State.URN, entry.State.Provider, entry.State.ID)
 				newResources = append(newResources, entry.State)
 			}
 			if entry.DeleteOld >= 0 {
@@ -819,23 +827,14 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		}
 	}
 
-	var baseSnapCopy []*resource.State
-	for i, res := range sm.origResources {
-		if _, ok := toDelete[i]; !ok {
-			baseSnapCopy = append(baseSnapCopy, res)
-		}
-	}
-	// if len(newResources) > 0 {
-	// 	resources = newResources
-	// }
-
 	if len(newResources) > 0 {
 		resources = append(resources, newResources...)
 	}
 
 	// Append any resources from the base plan that were not produced by the current plan.
-	for _, res := range baseSnapCopy {
-		if !sm.dones[res] {
+	for i, res := range sm.origResources {
+		if _, ok := toDelete[i]; !ok {
+			//			fmt.Println("adding existing resource:", res.URN, res.Provider, res.ID)
 			resources = append(resources, res)
 		}
 	}
@@ -891,6 +890,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // written, in order to aid debugging should future operations fail with an
 // error.
 func (sm *SnapshotManager) saveSnapshot() error {
+	//	q.Q(sm.snap())
 	snap, err := sm.snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
