@@ -79,25 +79,12 @@ class Foo(pulumi.ComponentResource):
             opts,
             remote=True)
 
-    @pulumi.output_type
-    class GetKubeconfigResult:
-        def __init__(__self__, kubeconfig=None):
-            if kubeconfig and not isinstance(kubeconfig, str):
-                raise TypeError("Expected argument 'kubeconfig' to be a str")
-            pulumi.set(__self__, "kubeconfig", kubeconfig)
-
-        @property
-        @pulumi.getter
-        def kubeconfig(self) -> builtins.str:
-            return pulumi.get(self, "kubeconfig")
-
     def get_kubeconfig(__self__, *,
                        profile_name: Optional[pulumi.Input[builtins.str]] = None,
-                       role_arn: Optional[pulumi.Input[builtins.str]] = None) -> pulumi.Output['str']:
+                       role_arn: Optional[pulumi.Input[builtins.str]] = None) -> pulumi.Output['builtins.str']:
         __args__ = dict()
         __args__['__self__'] = __self__
         __args__['profileName'] = profile_name
         __args__['roleArn'] = role_arn
-        __result__ = pulumi.runtime.call('example::Foo/getKubeconfig', __args__, res=__self__, typ=Foo.GetKubeconfigResult)
-        return __result__.kubeconfig
+        return pulumi.runtime.call('example::Foo/getKubeconfig', __args__, res=__self__)
 

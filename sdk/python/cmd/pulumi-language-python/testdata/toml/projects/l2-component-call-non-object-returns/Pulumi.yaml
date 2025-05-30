@@ -1,0 +1,7 @@
+name: l2-component-call-non-object-returns
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv
