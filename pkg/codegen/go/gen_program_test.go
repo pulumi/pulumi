@@ -462,7 +462,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
-		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		inlineInvokeSpiller: &inlineInvokeOrCallSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),

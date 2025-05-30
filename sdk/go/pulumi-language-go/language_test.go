@@ -103,15 +103,14 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":  "pulumi#18570 Support can in Go program generation",
 
 	// pulumi/pulumi#18345
-	"l1-keyword-overlap":                   "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
-	"l2-plain":                             "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
-	"l2-map-keys":                          "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
-	"l2-component-program-resource-ref":    "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
-	"l2-component-component-resource-ref":  "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
-	"l2-component-call-simple":             "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
-	"l2-invoke-scalar":                     "not implemented yet: #19388",
-	"l2-component-call-non-object-returns": "will be followed up after nodejs implementation submitted https://github.com/pulumi/pulumi/issues/7435", //nolint:lll
-	"l2-resource-invoke-dynamic-function":  "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                              //nolint:lll
+	"l1-keyword-overlap":                  "outputs are not cast correctly from pcl to their pulumi types",                                                 //nolint:lll
+	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
+	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",       //nolint:lll
+	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
+	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement", //nolint:lll
+	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
+	"l2-invoke-scalar":                    "not implemented yet: #19388",
+	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -127,6 +126,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 	"l2-provider-call": {
 		Paths: []string{
 			filepath.Join("testdata", "overrides", "l2-provider-call"),
+		},
+	},
+
+	// TODO[pulumi/pulumi#19432]: Delete this override once call programgen is implemented for go.
+	"l2-component-call-non-object-returns": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-component-call-non-object-returns"),
 		},
 	},
 
