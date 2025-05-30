@@ -186,6 +186,26 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return nil
 }
 
+func (sm *SnapshotManager) markEntryForDeletion(journalEntry *JournalEntry, toDelete *resource.State) error {
+	for i, res := range sm.origResources {
+		if res == toDelete {
+			journalEntry.DeleteOld = i
+			return nil
+		}
+	}
+	sm.newResources.Range(func(res *resource.State, uuid string) bool {
+		if res == toDelete {
+			journalEntry.DeleteNew = uuid
+			return true
+		}
+		return false
+	})
+	if journalEntry.DeleteOld == -1 && journalEntry.DeleteNew == "" {
+		return fmt.Errorf("could not find resource %s in base snapshot or new resources", toDelete.URN)
+	}
+	return nil
+}
+
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
 // by performing the given Step. This function gives the SnapshotManager a chance to record the
 // intent to mutate before the mutation occurs.
@@ -396,16 +416,8 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	}
 	journalEntry.DeleteOld = -1 // Default to -1, which means no deletion.
 	// TODO: we should always have a base snapshot
-	if old := step.Old(); old != nil && ssm.manager.baseSnapshot != nil {
-		for i, res := range ssm.manager.origResources {
-			if res == old {
-				journalEntry.DeleteOld = i
-				break
-			}
-		}
-		if journalEntry.DeleteOld == -1 {
-			fmt.Println("could not find old resource", old.URN)
-		}
+	if old := step.Old(); old != nil {
+		ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
 
 	sameStep := step.(*deploy.SameStep)
@@ -447,15 +459,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	}
 	csm.manager.newResources.Store(step.New(), csm.operationUUID)
 	if old := step.Old(); old != nil && old.PendingReplacement {
-		for i, res := range csm.manager.origResources {
-			if res == old {
-				journalEntry.DeleteOld = i
-				break
-			}
-		}
-		if journalEntry.DeleteOld == -1 {
-			panic("could not find old resource in base snapshot")
-		}
+		csm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
 
 	return csm.manager.journalMutation(journalEntry)
@@ -491,16 +495,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 	}
 	if successful {
 		if old := step.Old(); old != nil {
-			//			fmt.Println("deleting old resource in update")
-			for i, res := range usm.manager.origResources {
-				if res == old {
-					journalEntry.DeleteOld = i
-					break
-				}
-			}
-			if journalEntry.DeleteOld == -1 {
-				panic("could not find old resource in base snapshot")
-			}
+			usm.manager.markEntryForDeletion(&journalEntry, step.Old())
 		}
 		journalEntry.State = step.New()
 		usm.manager.newResources.Store(step.New(), usm.operationUUID)
@@ -556,22 +551,9 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			step.Old().Protect, step.Op())
 
 		if !step.Old().PendingReplacement {
-			for i, res := range dsm.manager.origResources {
-				//				fmt.Println(res.URN)
-				if res == step.Old() {
-					//					fmt.Println("deleting old resource in delete")
-					journalEntry.DeleteOld = i
-					break
-				}
-			}
-			if journalEntry.DeleteOld == -1 {
-				dsm.manager.newResources.Range(func(res *resource.State, uuid string) bool {
-					if res == step.Old() {
-						journalEntry.DeleteNew = uuid
-						return true
-					}
-					return false
-				})
+			err := dsm.manager.markEntryForDeletion(&journalEntry, step.Old())
+			if err != nil {
+				panic(err)
 			}
 		}
 	}
@@ -629,15 +611,7 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	}
 	rsm.manager.newResources.Store(step.New(), rsm.operationUUID)
 	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
-		for i, res := range rsm.manager.origResources {
-			if res == old {
-				journalEntry.DeleteOld = i
-				break
-			}
-		}
-		if journalEntry.DeleteOld == -1 {
-			panic("could not find old resource in base snapshot")
-		}
+		rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
 	return rsm.manager.journalMutation(journalEntry)
 }
@@ -672,15 +646,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		DeleteOld:     -1,  // Default to -1, which means no deletion.
 	}
 	if old := step.Old(); step.New() == nil && old != nil && rsm.manager.baseSnapshot != nil {
-		for i, res := range rsm.manager.origResources {
-			if res == old {
-				journalEntry.DeleteOld = i
-				break
-			}
-		}
-		if journalEntry.DeleteOld == -1 {
-			panic("didn't find resource")
-		}
+		rsm.manager.markEntryForDeletion(&journalEntry, old)
 	}
 	// TODO: is this ther ight thing to do?
 	// if step.New() == nil {
@@ -715,15 +681,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
 	if step.Old() != nil {
-		for i, res := range rsm.manager.origResources {
-			if res == step.Old() {
-				journalEntry.DeleteOld = i
-				break
-			}
-		}
-		if journalEntry.DeleteOld == -1 {
-			panic("could not find old resource in base snapshot")
-		}
+		rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
 	return rsm.manager.journalMutation(journalEntry)
 }
