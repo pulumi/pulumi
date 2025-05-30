@@ -668,11 +668,11 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			// Don't run validate on the preview step
 			_, err := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				require.Error(t, err)
 				continue
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		var err error

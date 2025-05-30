@@ -84,7 +84,7 @@ type SnapshotManager struct {
 	journalEvents  chan JournalEntry
 	journalEntries JournalEntries // The journal entries for this plan, which are used to replay the journal and produce a snapshot.
 
-	numRes int
+	origResources []*resource.State // The original resources that were present in the base snapshot. This is used to determine which resources have been deleted.
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -114,6 +114,7 @@ type JournalEntry struct {
 	DeleteOld     int
 	DeleteNew     string          // UUID for the delete Operation
 	State         *resource.State // The resource state associated with this journal entry.
+	result        chan<- error    // The result channel to send the result of the journal entry processing.
 }
 
 type JournalEntries []JournalEntry
@@ -152,6 +153,17 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 	}
 }
 
+func (sm *SnapshotManager) journalMutation(journalEntry JournalEntry) error {
+	result := make(chan error)
+	journalEntry.result = result
+	select {
+	case sm.journalEvents <- journalEntry:
+		return <-result
+	case <-sm.cancel:
+		return errors.New("snapshot manager closed")
+	}
+}
+
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
 // completed. This is accomplished by doing an in-place mutation of the resources currently
 // resident in the snapshot.
@@ -164,15 +176,12 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 // Note that this is completely not thread-safe and defeats the purpose of having a `mutate` callback
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	return sm.mutate(func() bool {
-		old, new := step.Old(), step.New()
-		if old != nil && new != nil && old.Outputs.DeepEquals(new.Outputs) {
-			logging.V(9).Infof("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
-			return false
-		}
-
-		return true
-	})
+	// TODO: actually register the resource outputs in the snapshot.
+	// Probably just need to call save snapshot, or maybe another journal entry type
+	sm.journalEvents <- JournalEntry{
+		Kind: JournalEntryOutputs,
+	}
+	return nil
 }
 
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
@@ -198,19 +207,34 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 		return sm.doDelete(step, operationUUID.String())
 	case deploy.OpReplace:
-		return &replaceSnapshotMutation{sm}, nil
+		return sm.doReplace(step, operationUUID.String())
 	case deploy.OpRead, deploy.OpReadReplacement:
 		return sm.doRead(step, operationUUID.String())
 	case deploy.OpRefresh:
-		return &refreshSnapshotMutation{sm}, nil
+		return sm.doRefresh(step, operationUUID.String())
 	case deploy.OpRemovePendingReplace:
-		return &removePendingReplaceSnapshotMutation{sm}, nil
+		return sm.doRemovePendingReplace(step, operationUUID.String())
 	case deploy.OpImport, deploy.OpImportReplacement:
-		return sm.doImport(step)
+		return sm.doImport(step, operationUUID.String())
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
 	return nil, nil
+}
+
+func (sm *SnapshotManager) Rebase(base *deploy.Snapshot) error {
+	//	fmt.Println("rebasing")
+	if base == nil {
+		return nil
+	}
+	sm.baseSnapshot = base
+	newResources := make([]*resource.State, 0, len(base.Resources))
+	for _, res := range base.Resources {
+		//		fmt.Println("rebasing resource", res.URN, res.ID)
+		newResources = append(newResources, res)
+	}
+	sm.origResources = newResources
+	return nil
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -376,9 +400,9 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 				break
 			}
 		}
-		// if journalEntry.DeleteOld == -1 {
-		// 	panic("could not find old resource in base snapshot")
-		// }
+		if journalEntry.DeleteOld == -1 {
+			fmt.Println("could not find old resource", old.URN)
+		}
 	}
 
 	sameStep := step.(*deploy.SameStep)
@@ -386,22 +410,16 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		journalEntry.State = step.New()
 	}
 
-	ssm.manager.journalEvents <- journalEntry
-	time.Sleep(100 * time.Millisecond) // Simulate some delay for the journal entry to be processed
-
-	return ssm.manager.mutate(func() bool {
-		// TODO: elide some writes maybe?
-		return true
-	})
+	return ssm.manager.journalMutation(journalEntry)
 }
 
 func (sm *SnapshotManager) doCreate(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
-	sm.journalEvents <- JournalEntry{
+	sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
 		State:         step.New(),
-	}
+	})
 	return &createSnapshotMutation{sm, operationUUID}, nil
 }
 
@@ -434,11 +452,8 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 			panic("could not find old resource in base snapshot")
 		}
 	}
-	csm.manager.journalEvents <- journalEntry
-	time.Sleep(100 * time.Millisecond) // Simulate some delay for the journal entry to be processed
-	return csm.manager.mutate(func() bool {
-		return true
-	})
+
+	return csm.manager.journalMutation(journalEntry)
 }
 
 func (sm *SnapshotManager) doUpdate(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
@@ -484,11 +499,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 		}
 		journalEntry.State = step.New()
 	}
-	usm.manager.journalEvents <- journalEntry
-	time.Sleep(100 * time.Millisecond) // Simulate some delay for the journal entry to be processed
-	return usm.manager.mutate(func() bool {
-		return true
-	})
+	return usm.manager.journalMutation(journalEntry)
 }
 
 func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
@@ -551,19 +562,26 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			// }
 		}
 	}
-	dsm.manager.journalEvents <- journalEntry
-	time.Sleep(100 * time.Millisecond)
-	return dsm.manager.mutate(func() bool {
-		return true
-	})
+	return dsm.manager.journalMutation(journalEntry)
+}
+
+func (sm *SnapshotManager) doReplace(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doReplace(%s)", step.URN())
+	sm.journalEvents <- JournalEntry{
+		Kind:          JournalEntryBegin,
+		OperationUUID: operationUUID,
+	}
+	return &replaceSnapshotMutation{sm, operationUUID}, nil
 }
 
 type replaceSnapshotMutation struct {
-	manager *SnapshotManager
+	manager       *SnapshotManager
+	operationUUID string
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
 	logging.V(9).Infof("SnapshotManager: replaceSnapshotMutation.End(..., %v)", successful)
+	// TODO: do we actually need to do anything here? Feels weird that this does nothing.
 	return nil
 }
 
@@ -604,91 +622,126 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 			}
 		}
 		if journalEntry.DeleteOld == -1 {
-			panic("could not find old resource in base snapshot")
+			//			panic("could not find old resource in base snapshot")
 		}
 	}
-	return rsm.manager.mutate(func() bool {
-		return true
-	})
+	return nil
+}
+
+func (sm *SnapshotManager) doRefresh(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doRefresh(%s)", step.URN())
+	sm.journalEvents <- JournalEntry{
+		Kind:          JournalEntryBegin,
+		OperationUUID: operationUUID,
+		State:         step.New(),
+	}
+	return &refreshSnapshotMutation{sm, operationUUID}, nil
 }
 
 type refreshSnapshotMutation struct {
-	manager *SnapshotManager
+	manager       *SnapshotManager
+	operationUUID string // The UUID of the operation that this mutation is associated with.
 }
 
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpRefresh, "step.Op", "must be %q, got %q", deploy.OpRefresh, step.Op())
 	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
-	return rsm.manager.mutate(func() bool {
-		// We normally elide refreshes. The expectation is that all of these run before any actual mutations and that
-		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
-		// manager needs to take other than to remember that the base snapshot--and therefore the actual snapshot--may
-		// have changed.
-		// The exception to this is persisted refreshes, which are not elided and are treated as normal operations.
-		// These can either update or delete a resource.
-		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
-		if isRefreshStep && refreshStep.Persisted() {
-			if successful {
-				rsm.manager.markDone(step.Old())
-				if step.New() != nil {
-					rsm.manager.markNew(step.New())
-				} else {
-					rsm.manager.refreshDeletes[step.Old().URN] = true
-				}
+	kind := JournalEntrySuccess
+	if !successful {
+		kind = JournalEntryFailure
+	}
+	journalEntry := JournalEntry{
+		Kind:          kind,
+		OperationUUID: rsm.operationUUID,
+		State:         step.New(), // Might be nil if the resource was deleted.
+		DeleteOld:     -1,         // Default to -1, which means no deletion.
+	}
+	if old := step.Old(); old != nil && rsm.manager.baseSnapshot != nil {
+		for i, res := range rsm.manager.baseSnapshot.Resources {
+			if res == old {
+				journalEntry.DeleteOld = i
+				break
 			}
-			return true
 		}
+	}
+	// TODO: is this ther ight thing to do?
+	if step.New() == nil {
+		rsm.manager.refreshDeletes[step.Old().URN] = true
+	}
 
-		return false
-	})
+	return rsm.manager.journalMutation(journalEntry)
+}
+
+func (sm *SnapshotManager) doRemovePendingReplace(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
+	sm.journalEvents <- JournalEntry{
+		Kind:          JournalEntryBegin,
+		OperationUUID: operationUUID,
+		State:         step.Old(),
+	}
+	return &removePendingReplaceSnapshotMutation{sm, operationUUID}, nil
 }
 
 type removePendingReplaceSnapshotMutation struct {
-	manager *SnapshotManager
+	manager       *SnapshotManager
+	operationUUID string
 }
 
 func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpRemovePendingReplace, "step.Op",
 		"must be %q, got %q", deploy.OpRemovePendingReplace, step.Op())
-	return rsm.manager.mutate(func() bool {
-		res := step.Old()
-		contract.Assertf(res.PendingReplacement, "resource %q must be pending replacement", res.URN)
-		rsm.manager.markDone(res)
-		return true
-	})
+	journalEntry := JournalEntry{
+		Kind:          JournalEntrySuccess,
+		OperationUUID: rsm.operationUUID,
+	}
+	if step.Old() != nil {
+		for i, res := range rsm.manager.baseSnapshot.Resources {
+			if res == step.Old() {
+				journalEntry.DeleteOld = i
+				break
+			}
+		}
+		if journalEntry.DeleteOld == -1 {
+			panic("could not find old resource in base snapshot")
+		}
+	}
+	return rsm.manager.journalMutation(journalEntry)
 }
 
-func (sm *SnapshotManager) doImport(step deploy.Step) (engine.SnapshotMutation, error) {
+func (sm *SnapshotManager) doImport(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
-	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeImporting)
-		return true
-	})
-	if err != nil {
-		return nil, err
+	sm.journalEvents <- JournalEntry{
+		Kind:          JournalEntryBegin,
+		OperationUUID: operationUUID,
+		State:         step.New(),
 	}
 
-	return &importSnapshotMutation{sm}, nil
+	return &importSnapshotMutation{sm, operationUUID}, nil
 }
 
 type importSnapshotMutation struct {
-	manager *SnapshotManager
+	manager       *SnapshotManager
+	operationUUID string
 }
 
 func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement, "step.Op",
 		"must be %q or %q, got %q", deploy.OpImport, deploy.OpImportReplacement, step.Op())
+	kind := JournalEntryBegin
+	if !successful {
+		kind = JournalEntryFailure
+	}
+	journalEntry := JournalEntry{
+		Kind:          kind,
+		OperationUUID: ism.operationUUID,
+		State:         step.New(),
+		DeleteOld:     -1, // Default to -1, which means no deletion.
+	}
 
-	return ism.manager.mutate(func() bool {
-		ism.manager.markOperationComplete(step.New())
-		if successful {
-			ism.manager.markNew(step.New())
-		}
-		return true
-	})
+	return ism.manager.journalMutation(journalEntry)
 }
 
 // markDone marks a resource as having been processed. Resources that have been marked
@@ -697,17 +750,6 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.dones[state] = true
 	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
-}
-
-// markNew marks a resource as existing in the new snapshot. This occurs on
-// successful non-deletion operations where the given state is the new state
-// of a resource that will be persisted to the snapshot.
-func (sm *SnapshotManager) markNew(state *resource.State) {
-	contract.Requiref(state != nil, "state", "must not be nil")
-	//	fmt.Println("marking new resource", state.URN)
-	sm.resources = append(sm.resources, state)
-	//	debug.PrintStack()
-	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
@@ -778,23 +820,17 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	var baseSnapCopy []*resource.State
-	if sm.baseSnapshot != nil {
-		for i, res := range sm.baseSnapshot.Resources {
-			if _, ok := toDelete[i]; !ok {
-				baseSnapCopy = append(baseSnapCopy, res)
-			}
+	for i, res := range sm.origResources {
+		if _, ok := toDelete[i]; !ok {
+			baseSnapCopy = append(baseSnapCopy, res)
 		}
 	}
-	if len(newResources) > 0 {
-		resources = newResources
-	}
+	// if len(newResources) > 0 {
+	// 	resources = newResources
+	// }
 
-	// If any resources are "done", we need to filter them out here. These could be resources that have been later
-	// deleted, or had some other operation performed on them such as an import then an update.
-	for _, res := range sm.resources {
-		if !sm.dones[res] {
-			resources = append(resources, res)
-		}
+	if len(newResources) > 0 {
+		resources = append(resources, newResources...)
 	}
 
 	// Append any resources from the base plan that were not produced by the current plan.
@@ -803,6 +839,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 			resources = append(resources, res)
 		}
 	}
+
 	// Filter any refresh deletes
 	engine.FilterRefreshDeletes(sm.refreshDeletes, resources)
 
@@ -893,7 +930,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 }
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
-func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, journalEvents chan JournalEntry, done chan error) {
 	// True if we have elided writes since the last actual write.
 	hasElidedWrites := true
 
@@ -901,15 +938,11 @@ func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequ
 serviceLoop:
 	for {
 		select {
-		case request := <-mutationRequests:
-			var err error
-			if request.mutator() {
-				err = sm.saveSnapshot()
-				hasElidedWrites = false
-			} else {
-				hasElidedWrites = true
+		case request := <-journalEvents:
+			sm.journalEntries = append(sm.journalEntries, request)
+			if request.result != nil {
+				request.result <- sm.saveSnapshot()
 			}
-			request.result <- err
 		case <-sm.cancel:
 			break serviceLoop
 		}
@@ -927,7 +960,7 @@ serviceLoop:
 // unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
 // SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
 // cause a Snapshot to be serialized to the user's state backend.
-func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, journalEvents chan JournalEntry, done chan error) {
 	for {
 		select {
 		case request := <-mutationRequests:
@@ -960,12 +993,14 @@ func NewSnapshotManager(
 	baseSnap *deploy.Snapshot,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
-
 	var origResources []*resource.State
-	for _, res := range baseSnap.Resources {
-		// We need to make a copy of the resources so that we can mutate them without affecting the original snapshot.
-		origResources = append(origResources, res)
+	if baseSnap != nil {
+		for _, res := range baseSnap.Resources {
+			// We need to make a copy of the resources so that we can mutate them without affecting the original snapshot.
+			origResources = append(origResources, res)
+		}
 	}
+	journalEvents := make(chan JournalEntry)
 
 	manager := &SnapshotManager{
 		persister:        persister,
@@ -977,22 +1012,26 @@ func NewSnapshotManager(
 		cancel:           cancel,
 		done:             done,
 		refreshDeletes:   make(map[resource.URN]bool),
-		journalEvents:    make(chan JournalEntry),
+		journalEvents:    journalEvents,
 		journalEntries:   []JournalEntry{},
+		origResources:    origResources,
 	}
 
-	go func() {
-		for {
-			select {
-			case e := <-manager.journalEvents:
-				manager.journalEntries = append(manager.journalEntries, e)
-				// case <-manager.cancel:
-				// 	// TODO: cancel this thing properly
-				// 	close(manager.journalEvents)
-				// 	return
-			}
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case e := <-manager.journalEvents:
+	// 			manager.journalEntries = append(manager.journalEntries, e)
+	// 		case <-manager.cancel:
+	// 			close(manager.journalEvents)
+	// 			close(manager.mutationRequests)
+	// 			return
+	// 			// 	// TODO: cancel this thing properly
+	// 			// 	close(manager.journalEvents)
+	// 			// 	return
+	// 		}
+	// 	}
+	// }()
 
 	serviceLoop := manager.defaultServiceLoop
 
@@ -1000,7 +1039,7 @@ func NewSnapshotManager(
 		serviceLoop = manager.unsafeServiceLoop
 	}
 
-	go serviceLoop(mutationRequests, done)
+	go serviceLoop(mutationRequests, journalEvents, done)
 
 	return manager
 }

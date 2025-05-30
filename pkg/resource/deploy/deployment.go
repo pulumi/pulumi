@@ -230,6 +230,7 @@ func (t *UrnTargets) addLiteral(urn resource.URN) {
 
 // StepExecutorEvents is an interface that can be used to hook resource lifecycle events.
 type StepExecutorEvents interface {
+	OnRebase(base *Snapshot) error
 	OnResourceStepPre(step Step) (interface{}, error)
 	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
@@ -291,6 +292,8 @@ type Deployment struct {
 	opts *Options
 	// event handlers for this deployment.
 	events Events
+	// TODO: update comment rebase indicates whether or not the deployment should rebase the old snapshot
+	rebase bool
 	// the deployment target.
 	target *Target
 	// the old resource snapshot for comparison.
@@ -397,6 +400,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	// If any default providers are necessary, prepend their definitions to the snapshot's resources. This trivially
 	// guarantees that all default provider references name providers that precede the referent in the snapshot.
 	if len(defaultProviders) != 0 {
+		// TODO: snapshot has changed here
 		prev.Resources = append(defaultProviders, prev.Resources...)
 	}
 
@@ -426,6 +430,7 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
 				res.Outputs = make(resource.PropertyMap)
 				for k, v := range res.Inputs {
+					// TODO: snapshot has changed here
 					if k == "__internal" {
 						continue
 					}
@@ -539,6 +544,7 @@ func NewDeployment(
 		ctx:                             ctx,
 		opts:                            opts,
 		events:                          events,
+		rebase:                          true, // TODO: be more judicious about rebasing
 		target:                          target,
 		prev:                            prev,
 		plan:                            plan,
