@@ -936,9 +936,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		// The return type may be lifted from a single value based on the language schema property
 		// "liftSingleValueMethodReturns", Or it may simply be a plain scalar type.  In each case we
-		// need to handle code generation slightly differently. When it is lifted we generate a
-		// function that accesses the single value property of the object, when it is plain the
-		// returning object has a single "result__" property.
+		// need to handle code generation slightly differently. When it is lifted we call CallSingle
+		// in the SDK, which will unwrap the value from an object/map with a single key.
 		returnType := fun.ReturnType
 		_, isObjectReturnType := returnType.(*schema.ObjectType)
 
@@ -1090,19 +1089,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 
 		if fun.ReturnType != nil {
-			genReturnType := func(properties []*schema.Property, w io.Writer) error {
+			genReturnType := func(properties []*schema.Property) error {
 				comment := fun.Inputs.Comment
 				if comment == "" {
 					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Result", comment, properties, false, true, 1); err != nil {
+				if err := mod.genPlainType(exportedTypesWriter, methodName+"Result", comment, properties, false, true, 1); err != nil {
 					return err
 				}
-				fmt.Fprintf(w, "\n")
+				fmt.Fprintf(exportedTypesWriter, "\n")
 				return nil
 			}
+
 			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				if err := genReturnType(objectType.Properties, exportedTypesWriter); err != nil {
+				if err := genReturnType(objectType.Properties); err != nil {
 					return err
 				}
 			}

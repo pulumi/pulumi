@@ -1,8 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as componentreturnscalar from "@pulumi/componentreturnscalar";
+import * as callreturnsprovider from "@pulumi/callreturnsprovider";
 
-const component1 = new componentreturnscalar.ComponentCallable("component1", {value: "bar"});
-export const from_identity = component1.identity();
-export const from_prefixed = component1.prefixed(({
-    prefix: "foo-",
+const component1 = new callreturnsprovider.ComponentCallable("component1", {});
+export const from_identity = component1.identity(({
+    value: "bar",
 }));

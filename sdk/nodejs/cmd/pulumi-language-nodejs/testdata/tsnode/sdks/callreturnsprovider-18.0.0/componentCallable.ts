@@ -9,7 +9,7 @@ import * as utilities from "./utilities";
  */
 export class ComponentCallable extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'componentreturnscalar:index:ComponentCallable';
+    public static readonly __pulumiType = 'callreturnsprovider:index:ComponentCallable';
 
     /**
      * Returns true if the given object is an instance of ComponentCallable.  This is designed to work even
@@ -22,7 +22,6 @@ export class ComponentCallable extends pulumi.ComponentResource {
         return obj['__pulumiType'] === ComponentCallable.__pulumiType;
     }
 
-    public readonly value!: pulumi.Output<string>;
 
     /**
      * Create a ComponentCallable resource with the given unique name, arguments, and options.
@@ -31,16 +30,11 @@ export class ComponentCallable extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: ComponentCallableArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: ComponentCallableArgs, opts?: pulumi.ComponentResourceOptions) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.value === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'value'");
-            }
-            resourceInputs["value"] = args ? args.value : undefined;
         } else {
-            resourceInputs["value"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(ComponentCallable.__pulumiType, name, resourceInputs, opts, true /*remote*/);
@@ -49,19 +43,11 @@ export class ComponentCallable extends pulumi.ComponentResource {
     /**
      * The `identity` method of the `ComponentCallable` component resource. Returns the component's `value` unaltered.
      */
-    identity(): pulumi.Output<string> {
-        return pulumi.runtime.callSingle("componentreturnscalar:index:ComponentCallable/identity", {
+    identity(args?: ComponentCallable.IdentityArgs): pulumi.Output<string> {
+        args = args || {};
+        return pulumi.runtime.callSingle("callreturnsprovider:index:ComponentCallable/identity", {
             "__self__": this,
-        }, this);
-    }
-
-    /**
-     * The `prefixed` method of the `ComponentCallable` component resource. Accepts a string and returns the component's `value` prefixed with that string.
-     */
-    prefixed(args: ComponentCallable.PrefixedArgs): pulumi.Output<string> {
-        return pulumi.runtime.callSingle("componentreturnscalar:index:ComponentCallable/prefixed", {
-            "__self__": this,
-            "prefix": args.prefix,
+            "value": args.value,
         }, this);
     }
 }
@@ -70,15 +56,14 @@ export class ComponentCallable extends pulumi.ComponentResource {
  * The set of arguments for constructing a ComponentCallable resource.
  */
 export interface ComponentCallableArgs {
-    value: pulumi.Input<string>;
 }
 
 export namespace ComponentCallable {
     /**
-     * The set of arguments for the ComponentCallable.prefixed method.
+     * The set of arguments for the ComponentCallable.identity method.
      */
-    export interface PrefixedArgs {
-        prefix: pulumi.Input<string>;
+    export interface IdentityArgs {
+        value?: pulumi.Input<string>;
     }
 
 }

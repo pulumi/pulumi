@@ -26,7 +26,7 @@ import (
 
 func init() {
 	LanguageTests["l2-component-call-non-object-returns"] = LanguageTest{
-		Providers: []plugin.Provider{&providers.ComponentProviderReturnScalar{}},
+		Providers: []plugin.Provider{&providers.CallReturnsProvider{}},
 		Runs: []TestRun{
 			{
 				Assert: func(l *L,
@@ -39,44 +39,25 @@ func init() {
 					//
 					// 0. The stack
 					//
-					// 1. The builtin Pulumi provider (used for hydrating resource references)
-					// 2. The default component provider
+					// 1. The default component provider
 					//
-					// 3. The component1 resource
-					// 4. The child of the component1 resource
-					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
-
-					builtinProvider := RequireSingleNamedResource(l, snap.Resources, "default")
-					require.Equal(
-						l, "pulumi:providers:pulumi", builtinProvider.Type.String(),
-						"expected builtin provider",
-					)
+					// 2. The component1 resource
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_18_0_0")
 					require.Equal(
-						l, "pulumi:providers:componentreturnscalar", defaultProvider.Type.String(),
+						l, "pulumi:providers:callreturnsprovider", defaultProvider.Type.String(),
 						"expected default component provider",
 					)
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					component1 := RequireSingleNamedResource(l, snap.Resources, "component1")
-
-					// component1 should satisfy the following properties:
-					//
-					// * Its value output should be "bar".
-					require.Equal(
-						l, "bar", component1.Outputs["value"].StringValue(),
-						"expected component1 to have correct value output",
-					)
 
 					// The stack should have the following outputs:
 					//
-					// * from_identity, whose value should be the value output of component1
-					// * from_prefixed, whose value should be the value output of component1, prefixed with "foo-".
+					// * from_identity, whose value should be the value of the input
 					outputs := stack.Outputs
-					require.Len(l, outputs, 2, "expected 2 outputs")
+					require.Len(l, outputs, 1, "expected 1 output")
 					AssertPropertyMapMember(l, outputs, "from_identity", resource.NewStringProperty("bar"))
-					AssertPropertyMapMember(l, outputs, "from_prefixed", resource.NewStringProperty("foo-bar"))
 				},
 			},
 		},

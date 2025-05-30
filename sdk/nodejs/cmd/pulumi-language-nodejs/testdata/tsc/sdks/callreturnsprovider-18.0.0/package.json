@@ -1,5 +1,5 @@
 {
-    "name": "@pulumi/componentreturnscalar",
+    "name": "@pulumi/callreturnsprovider",
     "version": "18.0.0",
     "scripts": {
         "build": "tsc"
@@ -13,7 +13,7 @@
     },
     "pulumi": {
         "resource": true,
-        "name": "componentreturnscalar",
+        "name": "callreturnsprovider",
         "version": "18.0.0"
     }
 }

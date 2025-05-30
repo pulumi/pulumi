@@ -92,7 +92,10 @@ export async function callAsync<T>(
     return value;
 }
 
-/** @internal */
+/**
+ * @internal
+ * Same as callAsync but extracts the first key from the object, throwing if there is more than one key.
+ **/
 export async function callAsyncSingle<T>(
     tok: string,
     props: pulumi.Inputs,
