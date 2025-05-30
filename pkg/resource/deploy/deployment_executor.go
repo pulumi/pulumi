@@ -833,7 +833,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 
 		if new == nil {
-			contract.Assertf(old.Custom, "expected custom resource")
+			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
 			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
