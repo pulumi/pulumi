@@ -1146,27 +1146,26 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fun := method.Function
 
 		var objectReturnType *schema.ObjectType
-
+		isObjectReturnType := false
 		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-				objectReturnType = objectType
-			}
+			objectReturnType, isObjectReturnType = fun.ReturnType.(*schema.ObjectType)
 		}
 
-		liftReturn := mod.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		liftReturn := !isObjectReturnType ||
+			(mod.liftSingleValueMethodReturns && len(objectReturnType.Properties) == 1)
 
 		fmt.Fprintf(w, "\n")
 
-		returnType, typeParameter, lift := "void", "", ""
+		returnType, typeParameter := "void", ""
 		if fun.ReturnType != nil {
-			typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
-			if liftReturn {
-				returnType = fmt.Sprintf("global::Pulumi.Output<%s>",
-					mod.typeString(objectReturnType.Properties[0].Type, "", false, false, false))
-
-				fieldName := mod.propertyName(objectReturnType.Properties[0])
-				lift = fmt.Sprintf(".Apply(v => v.%s)", fieldName)
+			if liftReturn && isObjectReturnType {
+				typeParameter = "<" + mod.typeString(objectReturnType.Properties[0].Type, "", false, false, false) + ">"
+				returnType = "global::Pulumi.Output" + typeParameter
+			} else if liftReturn && !isObjectReturnType {
+				typeParameter = "<" + mod.typeString(fun.ReturnType, "", false, false, false) + ">"
+				returnType = "global::Pulumi.Output" + typeParameter
 			} else {
+				typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
 				returnType = "global::Pulumi.Output" + typeParameter
 			}
 		}
@@ -1203,13 +1202,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		fmt.Fprintf(w, "        public %s %s(%s)\n", returnType, methodName, argsParamDef)
+		appendSingleString := ""
+		if liftReturn {
+			appendSingleString = "Single"
+		}
 		if mod.parameterization != nil {
 			// pass null for CallOptions parameter
-			fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this, null, %s)%s;\n",
-				typeParameter, fun.Token, argsParamRef, "Utilities.PackageParameterization()", lift)
+			fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s%s(\"%s\", %s, this, null, %s);\n",
+				appendSingleString, typeParameter, fun.Token, argsParamRef, "Utilities.PackageParameterization()")
 		} else {
-			fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
-				typeParameter, fun.Token, argsParamRef, lift)
+			fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s%s(\"%s\", %s, this);\n",
+				appendSingleString, typeParameter, fun.Token, argsParamRef)
 		}
 	}
 	for _, method := range r.Methods {
@@ -1307,7 +1310,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		// Generate result type.
 		if objectReturnType != nil {
-			shouldLiftReturn := mod.liftSingleValueMethodReturns && len(objectReturnType.Properties) == 1
+			objectReturnType, isObjectReturnType := fun.ReturnType.(*schema.ObjectType)
+			shouldLiftReturn := !isObjectReturnType ||
+				(mod.liftSingleValueMethodReturns && len(objectReturnType.Properties) == 1)
 
 			comment, escape := fun.Inputs.Comment, true
 			if comment == "" {
