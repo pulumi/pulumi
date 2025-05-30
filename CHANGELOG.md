@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.173.0 (2025-05-29)
+
+
+### Bug Fixes
+
+- [sdk/go] Revert breaking change to WithMocks
+  [#19683](https://github.com/pulumi/pulumi/pull/19683)
+
 ## 3.172.0 (2025-05-29)
 
 
