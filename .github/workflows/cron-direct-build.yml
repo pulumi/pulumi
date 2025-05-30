@@ -24,9 +24,9 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Install Pulumi dev release
-        shell: bash
-        run: curl -fsSL https://get.pulumi.com | sh -s -- --version dev
+      - uses: pulumi/actions@v6
+        with:
+          pulumi-version: dev
 
       - name: Build
         shell: bash
