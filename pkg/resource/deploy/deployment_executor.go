@@ -788,6 +788,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 
 	ex.rebuildBaseState(resourceToStep)
 
+	if ex.deployment.events != nil {
+		if err := ex.deployment.events.OnRebase(prev); err != nil {
+			return result.BailErrorf("failed to report refresh event: %v", err)
+		}
+	}
+
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.
 	canceled := callerCtx.Err() != nil

@@ -137,6 +137,7 @@ func NewImportDeployment(
 		ctx:                             ctx,
 		opts:                            opts,
 		events:                          events,
+		rebase:                          true, // only rebase when we actually migrate providers
 		target:                          target,
 		prev:                            prev,
 		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
