@@ -1273,7 +1273,9 @@ func parsePluginSpecFromRegistry(
 		pkg, err := r.GetPackage(ctx, "private", parts[0], parts[1], version)
 		if err == nil {
 			return pluginFromMeta(pkg)
-		} else if !errors.Is(err, registry.ErrNotFound) && !errors.Is(err, registry.ErrUnauthorized) && !errors.Is(err, registry.ErrForbidden) {
+		} else if !errors.Is(err, registry.ErrNotFound) &&
+			!errors.Is(err, registry.ErrUnauthorized) &&
+			!errors.Is(err, registry.ErrForbidden) {
 			return PluginSpec{}, inference, fmt.Errorf("unable to check on private/%s: %w", spec, err)
 		}
 
@@ -1972,7 +1974,8 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 
 			// Don't retry, since the request was processed and rejected.
 			var downloadErr *downloadError
-			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403 || downloadErr.code == 401) {
+			if errors.As(readErr, &downloadErr) &&
+				(downloadErr.code == 404 || downloadErr.code == 403 || downloadErr.code == 401) {
 				return false, "", readErr
 			}
 
