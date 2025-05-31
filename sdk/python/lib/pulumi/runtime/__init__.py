@@ -53,8 +53,10 @@ from .stack import (
 
 from .invoke import (
     invoke,
+    invoke_single,
     invoke_async,
     invoke_output,
+    invoke_output_single,
     call,
     call_single,
 )
@@ -100,8 +102,10 @@ __all__ = [
     "register_invoke_transform",
     # invoke
     "invoke",
+    "invoke_single",
     "invoke_async",
     "invoke_output",
+    "invoke_output_single",
     "call",
     "call_single",
     # _json

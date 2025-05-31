@@ -127,6 +127,20 @@ def invoke(
     return _sync_await(awaitableInvokeResult)
 
 
+def invoke_single(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions] = None,
+    typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
+):
+    """
+    Similar to `invoke`, but extracts a singular value from the result (eg { "foo": "bar" } => "bar").
+    """
+    result = invoke(tok, props, opts, typ, package_ref)
+    return _extract_single_value(result)
+
+
 def invoke_output(
     tok: str,
     props: "Inputs",
@@ -172,6 +186,18 @@ def invoke_output(
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("invoke", do_invoke_output)())
     return out
+
+
+def invoke_output_single(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[Union[InvokeOptions, InvokeOutputOptions]] = None,
+    typ: Optional[type] = None,
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
+) -> "Output[Any]":
+    return invoke_output(tok, props, opts, typ, package_ref).apply(
+        _extract_single_value
+    )
 
 
 async def invoke_async(
