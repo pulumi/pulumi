@@ -67,7 +67,7 @@ class ResourceReference:
 @dataclass(frozen=True)
 class Computed:
     def __eq__(self, value):
-        if isinstance(value, PropertyValue.Computed):
+        if isinstance(value, Computed):
             return True
         return False
 
@@ -466,8 +466,10 @@ class PropertyValue:
                 urn = fields["urn"].string_value
                 resource_id = fields.get("resource_id")
                 package_version = fields.get("package_version")
+                resource_id_value = None
                 if resource_id is not None:
                     resource_id_value = PropertyValue.unmarshal(resource_id)
+                package_version_str = None
                 if package_version is not None:
                     if not package_version.HasField("string_value"):
                         raise ValueError(
@@ -487,12 +489,12 @@ class PropertyValue:
                 if inner is None:
                     raise ValueError("Output value missing 'value' field.")
                 dependencies = fields.get("dependencies")
+                deps = set()
                 if dependencies is not None:
                     if not dependencies.HasField("list_value"):
                         raise ValueError(
                             "Output value 'dependencies' field is not a list."
                         )
-                    deps = set()
                     for dep in dependencies.list_value.values:
                         if not dep.HasField("string_value"):
                             raise ValueError(
@@ -500,6 +502,7 @@ class PropertyValue:
                             )
                         deps.add(dep.string_value)
                 secret = fields.get("secret")
+                is_secret = False
                 if secret is not None:
                     if not secret.HasField("bool_value"):
                         raise ValueError(
@@ -537,7 +540,7 @@ class PropertyValue:
 
     @staticmethod
     def marshal_map(
-        value: Dict[str, "PropertyValue"],
+        value: Mapping[str, "PropertyValue"],
     ) -> struct_pb2.Struct:
         """
         Marshals a dictionary of PropertyValues into a protobuf struct value.
