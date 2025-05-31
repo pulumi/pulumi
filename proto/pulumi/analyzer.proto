@@ -173,7 +173,11 @@ message AnalyzeDiagnostic {
     string policyPackVersion = 3;          // Version of the policy pack.
     string description = 4;                // Description of policy rule. e.g., "encryption enabled."
     string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
-    repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
+
+    // Keywords/terms to associate with a policy, e.g., "cost". This was unused by the engine and policy SDKs.
+    reserved 6;
+    reserved "tags";
+
     EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
     string urn = 8;                        // URN of the resource that violates the policy.
 }

@@ -860,7 +860,6 @@ func convertDiagnostics(protoDiagnostics []*pulumirpc.AnalyzeDiagnostic, version
 			PolicyPackVersion: policyPackVersion,
 			Description:       protoD.Description,
 			Message:           protoD.Message,
-			Tags:              protoD.Tags,
 			EnforcementLevel:  enforcementLevel,
 			URN:               resource.URN(protoD.Urn),
 		}

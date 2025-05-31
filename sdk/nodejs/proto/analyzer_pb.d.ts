@@ -398,10 +398,6 @@ export class AnalyzeDiagnostic extends jspb.Message {
     setDescription(value: string): AnalyzeDiagnostic;
     getMessage(): string;
     setMessage(value: string): AnalyzeDiagnostic;
-    clearTagsList(): void;
-    getTagsList(): Array<string>;
-    setTagsList(value: Array<string>): AnalyzeDiagnostic;
-    addTags(value: string, index?: number): string;
     getEnforcementlevel(): EnforcementLevel;
     setEnforcementlevel(value: EnforcementLevel): AnalyzeDiagnostic;
     getUrn(): string;
@@ -424,7 +420,6 @@ export namespace AnalyzeDiagnostic {
         policypackversion: string,
         description: string,
         message: string,
-        tagsList: Array<string>,
         enforcementlevel: EnforcementLevel,
         urn: string,
     }

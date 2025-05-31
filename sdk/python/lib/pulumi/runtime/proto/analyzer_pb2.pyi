@@ -445,7 +445,6 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
     POLICYPACKVERSION_FIELD_NUMBER: builtins.int
     DESCRIPTION_FIELD_NUMBER: builtins.int
     MESSAGE_FIELD_NUMBER: builtins.int
-    TAGS_FIELD_NUMBER: builtins.int
     ENFORCEMENTLEVEL_FIELD_NUMBER: builtins.int
     URN_FIELD_NUMBER: builtins.int
     policyName: builtins.str
@@ -458,9 +457,6 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
     """Description of policy rule. e.g., "encryption enabled." """
     message: builtins.str
     """Message to display on policy violation, e.g., remediation steps."""
-    @property
-    def tags(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """Keywords/terms to associate with a policy, e.g., "cost"."""
     enforcementLevel: global___EnforcementLevel.ValueType
     """Severity of the policy violation."""
     urn: builtins.str
@@ -473,11 +469,10 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
         policyPackVersion: builtins.str = ...,
         description: builtins.str = ...,
         message: builtins.str = ...,
-        tags: collections.abc.Iterable[builtins.str] | None = ...,
         enforcementLevel: global___EnforcementLevel.ValueType = ...,
         urn: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "enforcementLevel", b"enforcementLevel", "message", b"message", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "tags", b"tags", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["description", b"description", "enforcementLevel", b"enforcementLevel", "message", b"message", "policyName", b"policyName", "policyPackName", b"policyPackName", "policyPackVersion", b"policyPackVersion", "urn", b"urn"]) -> None: ...
 
 global___AnalyzeDiagnostic = AnalyzeDiagnostic
 

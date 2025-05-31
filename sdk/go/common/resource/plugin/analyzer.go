@@ -93,7 +93,6 @@ type AnalyzeDiagnostic struct {
 	PolicyPackVersion string
 	Description       string
 	Message           string
-	Tags              []string
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
 }

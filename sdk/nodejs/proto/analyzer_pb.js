@@ -305,7 +305,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.AnalyzeDiagnostic = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.AnalyzeDiagnostic.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.pulumirpc.AnalyzeDiagnostic, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -3299,13 +3299,6 @@ proto.pulumirpc.AnalyzeResponse.prototype.clearDiagnosticsList = function() {
 
 
 
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.pulumirpc.AnalyzeDiagnostic.repeatedFields_ = [6];
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -3342,7 +3335,6 @@ proto.pulumirpc.AnalyzeDiagnostic.toObject = function(includeInstance, msg) {
     policypackversion: jspb.Message.getFieldWithDefault(msg, 3, ""),
     description: jspb.Message.getFieldWithDefault(msg, 4, ""),
     message: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    tagsList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
     enforcementlevel: jspb.Message.getFieldWithDefault(msg, 7, 0),
     urn: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
@@ -3400,10 +3392,6 @@ proto.pulumirpc.AnalyzeDiagnostic.deserializeBinaryFromReader = function(msg, re
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setMessage(value);
-      break;
-    case 6:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addTags(value);
       break;
     case 7:
       var value = /** @type {!proto.pulumirpc.EnforcementLevel} */ (reader.readEnum());
@@ -3474,13 +3462,6 @@ proto.pulumirpc.AnalyzeDiagnostic.serializeBinaryToWriter = function(message, wr
   if (f.length > 0) {
     writer.writeString(
       5,
-      f
-    );
-  }
-  f = message.getTagsList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      6,
       f
     );
   }
@@ -3588,43 +3569,6 @@ proto.pulumirpc.AnalyzeDiagnostic.prototype.getMessage = function() {
  */
 proto.pulumirpc.AnalyzeDiagnostic.prototype.setMessage = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
-};
-
-
-/**
- * repeated string tags = 6;
- * @return {!Array<string>}
- */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.getTagsList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 6));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.pulumirpc.AnalyzeDiagnostic} returns this
- */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.setTagsList = function(value) {
-  return jspb.Message.setField(this, 6, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.pulumirpc.AnalyzeDiagnostic} returns this
- */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.addTags = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 6, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.pulumirpc.AnalyzeDiagnostic} returns this
- */
-proto.pulumirpc.AnalyzeDiagnostic.prototype.clearTagsList = function() {
-  return this.setTagsList([]);
 };
 
 
