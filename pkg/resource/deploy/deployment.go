@@ -320,6 +320,8 @@ type Deployment struct {
 	newPlans *resourcePlans
 	// the set of resources read as part of the deployment
 	reads *gsync.Map[resource.URN, *resource.State]
+	// the resource status server.
+	resourceStatus *resourceStatusServer
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -509,7 +511,7 @@ func NewDeployment(
 	// so we just pass all of the old resources.
 	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
-	return &Deployment{
+	d := &Deployment{
 		ctx:                  ctx,
 		opts:                 opts,
 		events:               events,
@@ -525,7 +527,9 @@ func NewDeployment(
 		news:                 newResources,
 		newPlans:             newResourcePlan(target.Config),
 		reads:                reads,
-	}, nil
+	}
+
+	return d, nil
 }
 
 func (d *Deployment) Ctx() *plugin.Context                   { return d.ctx }
