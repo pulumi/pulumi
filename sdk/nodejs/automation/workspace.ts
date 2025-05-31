@@ -168,6 +168,19 @@ export interface Workspace {
     getConfig(stackName: string, key: string, path?: boolean): Promise<ConfigValue>;
 
     /**
+     * Returns the value associated with the specified stack name and key,
+     * scoped to the Workspace.
+     *
+     * @param stackName
+     *  The stack to read config from
+     * @param key
+     *  The key to use for the config lookup
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    getConfigWithOptions(stackName: string, key: string, opts?: ConfigOptions): Promise<ConfigValue>;
+
+    /**
      * Returns the config map for the specified stack name, scoped to the
      * current Workspace.
      *
@@ -175,6 +188,15 @@ export interface Workspace {
      *  The stack to read config from
      */
     getAllConfig(stackName: string): Promise<ConfigMap>;
+
+    /**
+     * Returns the config map for the specified stack name with GetAllConfigOptions
+     * @param stackName
+     *  The stack to read config from
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    getAllConfigWithOptions(stackName: string, opts?: GetAllConfigOptions): Promise<ConfigMap>;
 
     /**
      * Sets the specified key-value pair on the provided stack name.
@@ -191,6 +213,19 @@ export interface Workspace {
     setConfig(stackName: string, key: string, value: ConfigValue, path?: boolean): Promise<void>;
 
     /**
+     * Sets the specified key-value pair on the provided stack name, with options
+     * @param stackName
+     *  The stack to operate on
+     * @param key
+     *  The config key to set
+     * @param value
+     *  The value to set
+     * @param opts
+     *  The options to use for the config lookup
+     **/
+    setConfigWithOptions(stackName: string, key: string, value: ConfigValue, opts?: ConfigOptions): Promise<void>;
+
+    /**
      * Sets all values in the provided config map for the specified stack name.
      *
      * @param stackName
@@ -201,6 +236,17 @@ export interface Workspace {
      *  The keys contain a path to a property in a map or list to set
      */
     setAllConfig(stackName: string, config: ConfigMap, path?: boolean): Promise<void>;
+
+    /**
+     * Sets all values in the provided config map for the specified stack name, with options. {@link LocalWorkspace} writes the config to the matching config file.
+     * @param stackName
+     *  The stack to operate on
+     * @param config
+     *  The {@link ConfigMap} to upsert against the existing config
+     * @param opts
+     *  The options to use for the config lookup
+     **/
+    setAllConfigWithOptions(stackName: string, config: ConfigMap, opts?: ConfigOptions): Promise<void>;
 
     /**
      * Removes the specified key-value pair on the provided stack name.
@@ -215,6 +261,18 @@ export interface Workspace {
     removeConfig(stackName: string, key: string, path?: boolean): Promise<void>;
 
     /**
+     * Removes the specified key-value pair on the provided stack name with options.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param key
+     *  The config key to remove
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    removeConfigWithOptions(stackName: string, key: string, opts?: ConfigOptions): Promise<void>;
+
+    /**
      * Removes all values in the provided key list for the specified stack name.
      *
      * @param stackName
@@ -225,6 +283,18 @@ export interface Workspace {
      *  The keys contain a path to a property in a map or list to remove
      */
     removeAllConfig(stackName: string, keys: string[], path?: boolean): Promise<void>;
+
+    /**
+     * Removes all values in the provided key list for the specified stack name with options.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param keys
+     *  The list of keys to remove from the underlying config
+     * @param opts
+     *  The options to use for the config lookup
+     */
+    removeAllConfigWithOptions(stackName: string, keys: string[], opts?: ConfigOptions): Promise<void>;
 
     /**
      * Gets and sets the config map used with the last update for Stack matching
@@ -460,3 +530,25 @@ export interface PluginInfo {
 }
 
 export type PluginKind = "analyzer" | "language" | "resource";
+
+export interface GetAllConfigOptions {
+    /**
+     * Use the configuration values in the specified file rather than detecting the file name.
+     */
+    configFile?: string;
+    /**
+     * Show secret values when getting config.
+     */
+    showSecrets?: boolean;
+}
+
+export interface ConfigOptions {
+    /**
+     * Allows to use the path flag while getting/setting the configuration.
+     */
+    path?: boolean;
+    /**
+     * Use the configuration values in the specified file rather than detecting the file name.
+     */
+    configFile?: string;
+}
