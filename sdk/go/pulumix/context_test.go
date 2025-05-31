@@ -516,14 +516,25 @@ func TestRegisterResourceOutputs(t *testing.T) {
 }
 
 type mockResourceMonitor struct {
-	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually an "Invoke" by provider parlance, but is named so to be consistent with the interface.
+	CallF func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually an "Call" by provider parlance, but is named so to be consistent with the interface.
+	MethodCallF  func(pulumi.MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-var _ pulumi.MockResourceMonitor = (*mockResourceMonitor)(nil)
+var (
+	// Ensure we implement the appropriate interfaces for testing.
+	_ pulumi.MockResourceMonitor               = (*mockResourceMonitor)(nil)
+	_ pulumi.MockResourceMonitorWithMethodCall = (*mockResourceMonitor)(nil)
+)
 
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return m.CallF(args)
+}
+
+func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return m.MethodCallF(args)
 }
 
 func (m *mockResourceMonitor) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"simple-enum-schema/plant"
 	"sync"
 	"testing"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
-	"simple-enum-schema/plant"
 	tree "simple-enum-schema/plant/tree/v1"
 )
 
@@ -182,5 +182,9 @@ func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.Propert
 }
 
 func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return args.Args, nil
+}
+
+func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	return args.Args, nil
 }
