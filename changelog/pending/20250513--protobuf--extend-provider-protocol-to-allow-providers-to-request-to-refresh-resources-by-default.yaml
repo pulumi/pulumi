@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: protobuf
-  description: Extend provider protocol to allow providers to request to --refresh resources by default

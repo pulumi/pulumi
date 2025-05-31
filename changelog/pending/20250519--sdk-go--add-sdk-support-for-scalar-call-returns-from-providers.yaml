@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Add sdk support for scalar call returns from providers

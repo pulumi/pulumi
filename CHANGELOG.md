@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.173.0 (2025-05-29)
+
+
+### Bug Fixes
+
+- [sdk/go] Revert breaking change to WithMocks
+  [#19683](https://github.com/pulumi/pulumi/pull/19683)
+
+## 3.172.0 (2025-05-29)
+
+
+### Features
+
+- [protobuf] Extend provider protocol to allow providers to request to --refresh resources by default
+  [#19487](https://github.com/pulumi/pulumi/pull/19487)
+
+- [sdk/go] Add sdk support for scalar call returns from providers
+  [#19589](https://github.com/pulumi/pulumi/pull/19589)
+
+
+### Bug Fixes
+
+- [auto/python] Revert: Add `on_error` callback for capturing incremental stderr output, which used a library not compatible with Windows
+  [#19649](https://github.com/pulumi/pulumi/pull/19649)
+
+- [cli] Improve error message when stack select is run in non-interactive mode
+  [#19628](https://github.com/pulumi/pulumi/pull/19628)
+
+- [cli] Fix `up --refresh --run-program` to use the new program based refresh logic
+  [#19667](https://github.com/pulumi/pulumi/pull/19667)
+
+- [sdkgen] Fix data race in codegen type conversions
+  [#19604](https://github.com/pulumi/pulumi/pull/19604)
+
+- [cli/config] Warn about YAML null being read as empty string
+  [#19483](https://github.com/pulumi/pulumi/pull/19483)
+
+- [cli/display] Fix color of Copilot summarize-error so its more readable on light terminals
+  [#19644](https://github.com/pulumi/pulumi/pull/19644)
+
+- [cli/engine] Shut down plugins more gracefully when the CLI is shutting down
+  [#19603](https://github.com/pulumi/pulumi/pull/19603)
+
+- [programgen/python] Add pulumi as reserved keyword in binder to fix python codegen issues
+  [#19277](https://github.com/pulumi/pulumi/pull/19277)
+
+
+### Miscellaneous
+
+- [sdk/python] Remove workaround for UWP reparse point issue
+  [#19627](https://github.com/pulumi/pulumi/pull/19627)
+
 ## 3.171.0 (2025-05-21)
 
 
