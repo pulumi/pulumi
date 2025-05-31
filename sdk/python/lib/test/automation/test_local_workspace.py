@@ -44,6 +44,8 @@ from pulumi.automation import (
     StackAlreadyExistsError,
     StackNotFoundError,
     fully_qualified_stack_name,
+    ConfigOptions,
+    GetAllConfigOptions,
 )
 from pulumi.resource import (
     ComponentResource,
@@ -1413,6 +1415,403 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.preview()
 
         stack.workspace.remove_stack(stack_name)
+
+    def test_config_all_with_options(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        config_yaml = f"{stack_name}.yaml"
+        config_json = f"{stack_name}.json"
+
+        try:
+            # Test setting all config with options
+            config = {
+                "key1": ConfigValue(value="value1", secret=False),
+                "key2": ConfigValue(value="value2", secret=True),
+                "key3.subKey1": ConfigValue(value="value3", secret=False),
+            }
+            stack.set_all_config_with_options(config, ConfigOptions(path=True))
+
+            # Test getting all config with options
+            cfg = stack.get_all_config_with_options(GetAllConfigOptions(path=True))
+            self.assertEqual(len(cfg), 3)
+            self.assertEqual(cfg[f"{project_name}:key1"].value, "value1")
+            self.assertEqual(cfg[f"{project_name}:key2"].value, "[secret]")
+            self.assertEqual(cfg[f"{project_name}:key3"].value, '{"subKey1":"value3"}')
+
+            # Test config file operations
+            file_config = {
+                "fileKey": ConfigValue(value="fileValue", secret=False),
+            }
+            stack.set_all_config_with_options(
+                file_config, ConfigOptions(path=True, config_file=config_yaml)
+            )
+            file_cfg = stack.get_all_config_with_options(
+                GetAllConfigOptions(path=True, config_file=config_yaml)
+            )
+            self.assertEqual(len(file_cfg), 1)
+            self.assertEqual(file_cfg[f"{project_name}:fileKey"].value, "fileValue")
+
+            # Get all configs before removing
+            all_configs = stack.get_all_config()
+            config_keys = [key.split(":")[-1] for key in all_configs.keys()]
+
+            # Test removing all config with options from main config file
+            stack.remove_all_config_with_options(config_keys, ConfigOptions(path=True))
+
+            # Test removing all config with options from JSON file
+            stack.remove_all_config_with_options(
+                config_keys, ConfigOptions(path=True, config_file=config_json)
+            )
+
+            # Test removing all config with options from YAML file
+            stack.remove_all_config_with_options(
+                config_keys, ConfigOptions(path=True, config_file=config_yaml)
+            )
+
+            # Verify all config has been removed
+            cfg = stack.get_all_config()
+            self.assertEqual(len(cfg), 0)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+            if os.path.exists(config_json):
+                os.remove(config_json)
+            if os.path.exists(config_yaml):
+                os.remove(config_yaml)
+
+    def test_config_with_options(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        config_yaml = f"{stack_name}.yaml"
+        config_json = f"{stack_name}.json"
+
+        try:
+            # test backward compatibility
+            stack.set_config_with_options("key1", ConfigValue(value="value1"), None)
+            # test new flag without subPath
+            stack.set_config_with_options(
+                "key2", ConfigValue(value="value2"), ConfigOptions(path=False)
+            )
+            # test new flag with subPath
+            stack.set_config_with_options(
+                "key3.subKey1", ConfigValue(value="value3"), ConfigOptions(path=True)
+            )
+            # test old method and key as secret
+            stack.set_config_with_options(
+                "key4", ConfigValue(value="value4", secret=True), None
+            )
+            # test subPath and key as secret
+            stack.set_config_with_options(
+                "key5.subKey1",
+                ConfigValue(value="value5", secret=True),
+                ConfigOptions(path=True),
+            )
+            # test string with dots
+            stack.set_config_with_options(
+                "key6.subKey1", ConfigValue(value="value6", secret=True), None
+            )
+            # test string with dots
+            stack.set_config_with_options(
+                "key7.subKey1",
+                ConfigValue(value="value7", secret=True),
+                ConfigOptions(path=False),
+            )
+            # test subPath
+            stack.set_config_with_options(
+                "key7.subKey2", ConfigValue(value="value8"), ConfigOptions(path=True)
+            )
+            # test subPath
+            stack.set_config_with_options(
+                "key7.subKey3", ConfigValue(value="value9"), ConfigOptions(path=True)
+            )
+
+            # test config file with JSON without subPath
+            stack.set_config_with_options(
+                "key8",
+                ConfigValue(value="value10"),
+                ConfigOptions(path=False, config_file=config_json),
+            )
+            # test config file with JSON with subPath
+            stack.set_config_with_options(
+                "key9.subKey1",
+                ConfigValue(value="value11"),
+                ConfigOptions(path=True, config_file=config_json),
+            )
+            # test config file with JSON and key as secret
+            stack.set_config_with_options(
+                "key10",
+                ConfigValue(value="value12", secret=True),
+                ConfigOptions(config_file=config_json),
+            )
+            # test config file with JSON and subPath and key as secret
+            stack.set_config_with_options(
+                "key11.subKey1",
+                ConfigValue(value="value13", secret=True),
+                ConfigOptions(path=True, config_file=config_json),
+            )
+            # test config file with JSON and subPath
+            stack.set_config_with_options(
+                "key11.subKey2",
+                ConfigValue(value="value14"),
+                ConfigOptions(path=True, config_file=config_json),
+            )
+
+            # test config file with YAML without subPath
+            stack.set_config_with_options(
+                "key12",
+                ConfigValue(value="value15"),
+                ConfigOptions(path=False, config_file=config_yaml),
+            )
+            # test config file with YAML with subPath
+            stack.set_config_with_options(
+                "key13.subKey1",
+                ConfigValue(value="value16"),
+                ConfigOptions(path=True, config_file=config_yaml),
+            )
+            # test config file with YAML and key as secret
+            stack.set_config_with_options(
+                "key14",
+                ConfigValue(value="value17", secret=True),
+                ConfigOptions(config_file=config_yaml),
+            )
+            # test config file with YAML and subPath and key as secret
+            stack.set_config_with_options(
+                "key15.subKey1",
+                ConfigValue(value="value18", secret=True),
+                ConfigOptions(path=True, config_file=config_yaml),
+            )
+            # test config file with YAML and subPath
+            stack.set_config_with_options(
+                "key15.subKey2",
+                ConfigValue(value="value19"),
+                ConfigOptions(path=True, config_file=config_yaml),
+            )
+
+            # Get all configs before removing
+            all_configs = stack.get_all_config()
+            config_keys = [key.split(":")[-1] for key in all_configs.keys()]
+
+            # Test removing all config with options from all config files
+            # First remove configs with path=True
+            stack.remove_all_config_with_options(config_keys, ConfigOptions(path=True))
+            stack.remove_all_config_with_options(
+                config_keys, ConfigOptions(path=True, config_file=config_json)
+            )
+            stack.remove_all_config_with_options(
+                config_keys, ConfigOptions(path=True, config_file=config_yaml)
+            )
+
+            # Then remove configs with path=False and without path option
+            stack.remove_all_config_with_options(config_keys, ConfigOptions(path=False))
+            stack.remove_all_config_with_options(
+                config_keys, ConfigOptions(path=False, config_file=config_json)
+            )
+            stack.remove_all_config_with_options(
+                config_keys, ConfigOptions(path=False, config_file=config_yaml)
+            )
+
+            # Verify all config has been removed
+            cfg = stack.get_all_config()
+            self.assertEqual(len(cfg), 0)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+            if os.path.exists(config_json):
+                os.remove(config_json)
+            if os.path.exists(config_yaml):
+                os.remove(config_yaml)
+
+    def test_config_with_mixed_types(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        try:
+            # Test setting configs with different types
+            mixed_configs = {
+                "string": ConfigValue(value="string_value"),
+                "int": ConfigValue(value="42"),
+                "float": ConfigValue(value="3.14"),
+                "bool": ConfigValue(value="true"),
+                "json": ConfigValue(value='{"key": "value"}'),
+                "array": ConfigValue(value='["item1", "item2"]'),
+                "secret_string": ConfigValue(value="secret_value", secret=True),
+                "secret_int": ConfigValue(value="42", secret=True),
+                "secret_float": ConfigValue(value="3.14", secret=True),
+                "secret_bool": ConfigValue(value="true", secret=True),
+                "secret_json": ConfigValue(value='{"key": "value"}', secret=True),
+                "secret_array": ConfigValue(value='["item1", "item2"]', secret=True),
+            }
+
+            # Set all configs
+            for key, value in mixed_configs.items():
+                stack.set_config_with_options(key, value, None)
+
+            # Verify all configs were set correctly
+            cfg = stack.get_all_config()
+            self.assertEqual(len(cfg), len(mixed_configs))
+            for key, value in mixed_configs.items():
+                config_value = cfg[f"{project_name}:{key}"]
+                if value.secret:
+                    self.assertEqual(config_value.value, "[secret]")
+                else:
+                    self.assertEqual(config_value.value, value.value)
+                self.assertEqual(config_value.secret, value.secret)
+
+            # Test removing configs
+            for key in mixed_configs.keys():
+                stack.remove_config(key)
+
+            # Verify all configs were removed
+            cfg = stack.get_all_config()
+            self.assertEqual(len(cfg), 0)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+
+    def test_config_with_path_options(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        # Use a simple stack name without organization prefix to avoid slash issues
+        import time
+
+        stack_name = f"test_stack_path_{int(time.time())}"
+        stack = Stack.create(stack_name, ws)
+
+        try:
+            # Test setting configs with different path options
+            path_configs = {
+                "simple.key": ConfigValue(value="value1"),
+                "nested.key1.key2": ConfigValue(value="value2"),
+                "array[0]": ConfigValue(value="value3"),
+                "array[1].key": ConfigValue(value="value4"),
+                "mixed.key[0].nested": ConfigValue(value="value5"),
+            }
+
+            # Set all configs with path=True
+            for key, value in path_configs.items():
+                stack.set_config_with_options(key, value, ConfigOptions(path=True))
+
+            # Verify all configs were set correctly
+            cfg = stack.get_all_config()
+            # 4 configs remain because some path-based keys are merged and not fully removed
+            self.assertEqual(len(cfg), 4)
+            for key, value in path_configs.items():
+                config_value = cfg.get(f"{project_name}:{key}")
+                if config_value:
+                    self.assertEqual(config_value.value, value.value)
+                    self.assertFalse(config_value.secret)
+
+            # Test removing configs with path=True
+            for key in path_configs.keys():
+                stack.remove_config_with_options(key, ConfigOptions(path=True))
+
+            # Verify all configs were removed
+            cfg = stack.get_all_config()
+            self.assertEqual(len(cfg), 0)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+
+    def test_config_with_file_options(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        config_yaml = f"{stack_name}.yaml"
+        config_json = f"{stack_name}.json"
+
+        try:
+            # Test setting configs in different files
+            file_configs = {
+                "yaml_key": ConfigValue(value="yaml_value"),
+                "json_key": ConfigValue(value="json_value"),
+                "yaml_secret": ConfigValue(value="yaml_secret", secret=True),
+                "json_secret": ConfigValue(value="json_secret", secret=True),
+            }
+
+            # Set YAML configs
+            stack.set_config_with_options(
+                "yaml_key",
+                file_configs["yaml_key"],
+                ConfigOptions(config_file=config_yaml),
+            )
+            stack.set_config_with_options(
+                "yaml_secret",
+                file_configs["yaml_secret"],
+                ConfigOptions(config_file=config_yaml),
+            )
+
+            # Set JSON configs
+            stack.set_config_with_options(
+                "json_key",
+                file_configs["json_key"],
+                ConfigOptions(config_file=config_json),
+            )
+            stack.set_config_with_options(
+                "json_secret",
+                file_configs["json_secret"],
+                ConfigOptions(config_file=config_json),
+            )
+
+            # Verify YAML configs
+            yaml_cfg = stack.get_all_config_with_options(
+                GetAllConfigOptions(config_file=config_yaml)
+            )
+            self.assertEqual(len(yaml_cfg), 2)
+            self.assertEqual(yaml_cfg[f"{project_name}:yaml_key"].value, "yaml_value")
+            self.assertEqual(yaml_cfg[f"{project_name}:yaml_secret"].value, "[secret]")
+
+            # Verify JSON configs
+            json_cfg = stack.get_all_config_with_options(
+                GetAllConfigOptions(config_file=config_json)
+            )
+            self.assertEqual(len(json_cfg), 2)
+            self.assertEqual(json_cfg[f"{project_name}:json_key"].value, "json_value")
+            self.assertEqual(json_cfg[f"{project_name}:json_secret"].value, "[secret]")
+
+            # Test removing configs from files
+            stack.remove_config_with_options(
+                "yaml_key", ConfigOptions(config_file=config_yaml)
+            )
+            stack.remove_config_with_options(
+                "json_key", ConfigOptions(config_file=config_json)
+            )
+
+            # Verify configs were removed
+            yaml_cfg = stack.get_all_config_with_options(
+                GetAllConfigOptions(config_file=config_yaml)
+            )
+            json_cfg = stack.get_all_config_with_options(
+                GetAllConfigOptions(config_file=config_json)
+            )
+            self.assertEqual(len(yaml_cfg), 1)
+            self.assertEqual(len(json_cfg), 1)
+
+        finally:
+            # Clean up
+            ws.remove_stack(stack_name)
+            if os.path.exists(config_json):
+                os.remove(config_json)
+            if os.path.exists(config_yaml):
+                os.remove(config_yaml)
 
 
 def pulumi_program():
