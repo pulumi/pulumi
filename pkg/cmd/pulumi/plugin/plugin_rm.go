@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/spf13/cobra"
 
@@ -119,16 +118,15 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			// Run the actual delete operations.
-			var result error
+			var errs []error
 			for _, plugin := range deletes {
 				if err := plugin.Delete(); err == nil {
 					fmt.Printf("removed: %s %v\n", plugin.Kind, plugin)
 				} else {
-					result = multierror.Append(
-						result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
+					errs = append(errs, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
 				}
 			}
-			return result
+			return errors.Join(errs...)
 		},
 	}
 

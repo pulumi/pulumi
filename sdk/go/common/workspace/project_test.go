@@ -226,10 +226,9 @@ func TestProjectLoadJSON(t *testing.T) {
 		// Assert.
 		// The order can vary here, so we use Contains and not Equals.
 		expected := []string{
-			"3 errors occurred:",
-			"* #/runtime: oneOf failed",
-			"* #/runtime: expected string, but got number",
-			"* #/runtime: expected object, but got number",
+			"#/runtime: oneOf failed",
+			"#/runtime: expected string, but got number",
+			"#/runtime: expected object, but got number",
 		}
 
 		for _, e := range expected {
@@ -246,9 +245,8 @@ func TestProjectLoadJSON(t *testing.T) {
 		// Assert.
 		// The order can vary here, so we use Contains and not Equals.
 		expected := []string{
-			"2 errors occurred:",
-			"* #/main: expected string or null, but got object",
-			"* #/backend: expected object or null, but got number",
+			"#/main: expected string or null, but got object",
+			"#/backend: expected object or null, but got number",
 		}
 
 		for _, e := range expected {
@@ -1341,10 +1339,9 @@ func TestProjectLoadYAML(t *testing.T) {
 	_, err = loadProjectFromText(t, "name: project\nruntime: 4")
 	// These can vary in order, so contains not equals check
 	expected := []string{
-		"3 errors occurred:",
-		"* #/runtime: oneOf failed",
-		"* #/runtime: expected string, but got number",
-		"* #/runtime: expected object, but got number",
+		"#/runtime: oneOf failed",
+		"#/runtime: expected string, but got number",
+		"#/runtime: expected object, but got number",
 	}
 	for _, e := range expected {
 		assert.ErrorContains(t, err, e)
@@ -1352,9 +1349,8 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	_, err = loadProjectFromText(t, "name: project\nruntime: test\nbackend: 4\nmain: {}")
 	expected = []string{
-		"2 errors occurred:",
-		"* #/main: expected string or null, but got object",
-		"* #/backend: expected object or null, but got number",
+		"#/main: expected string or null, but got object",
+		"#/backend: expected object or null, but got number",
 	}
 	for _, e := range expected {
 		assert.ErrorContains(t, err, e)

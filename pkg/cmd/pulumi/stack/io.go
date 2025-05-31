@@ -24,7 +24,6 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -456,7 +455,7 @@ func CopyEntireConfigMap(
 
 func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapshot, force bool) error {
 	stackName := s.Ref().Name()
-	var result error
+	var errs []error
 	for _, res := range snapshot.Resources {
 		if res.URN.Stack() != stackName.Q() {
 			msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
@@ -469,7 +468,7 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 				cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg))
 			} else {
 				// Otherwise, gather up an error so that we can quit before doing damage.
-				result = multierror.Append(result, errors.New(msg))
+				errs = append(errs, errors.New(msg))
 			}
 		}
 	}
@@ -480,13 +479,13 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 			if force {
 				cmdutil.Diag().Warningf(diag.Message("", msg))
 			} else {
-				result = multierror.Append(result, errors.New(msg))
+				errs = append(errs, errors.New(msg))
 			}
 		}
 	}
-	if result != nil {
-		return multierror.Append(result,
-			errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
+	if len(errs) != 0 {
+		errs = append(errs, errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
+		return errors.Join(errs...)
 	}
 
 	// Explicitly clear-out any pending operations.
