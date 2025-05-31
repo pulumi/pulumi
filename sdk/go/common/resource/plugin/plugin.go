@@ -101,7 +101,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 	return plugin, nil
 }
 
-type plugin struct {
+type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
@@ -241,7 +241,7 @@ func newPlugin[T any](
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
-) (*plugin, *T, error) {
+) (*Plugin, *T, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -435,18 +435,17 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
-	pluginArgs []string, pwd string, env []string, attachDebugger bool,
-) (*plugin, error) {
-	args := buildPluginArguments(pluginArgumentOptions{
-		pluginArgs:      pluginArgs,
-		tracingEndpoint: cmdutil.TracingEndpoint,
-		logFlow:         logging.LogFlow,
-		logToStderr:     logging.LogToStderr,
-		verbose:         logging.Verbose,
-	})
-
+// ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
+func ExecPlugin(
+	ctx *Context,
+	bin string,
+	prefix string,
+	kind apitype.PluginKind,
+	args []string,
+	pwd string,
+	env []string,
+	attachDebugger bool,
+) (*Plugin, error) {
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
 	if (err == nil && stat.IsDir()) || os.IsNotExist(err) {
@@ -458,7 +457,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
-		case apitype.ResourcePlugin, apitype.ConverterPlugin:
+		case apitype.ResourcePlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
@@ -502,7 +501,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, err
 		}
 
-		return &plugin{
+		return &Plugin{
 			Bin:    bin,
 			Args:   args,
 			Env:    env,
@@ -587,7 +586,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return result.ErrorOrNil()
 	})
 
-	return &plugin{
+	return &Plugin{
 		Bin:    bin,
 		Args:   args,
 		Env:    env,
@@ -609,6 +608,21 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return 0, err
 		},
 	}, nil
+}
+
+// execPlugin starts the plugin executable.
+func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
+	pluginArgs []string, pwd string, env []string, attachDebugger bool,
+) (*Plugin, error) {
+	args := buildPluginArguments(pluginArgumentOptions{
+		pluginArgs:      pluginArgs,
+		tracingEndpoint: cmdutil.TracingEndpoint,
+		logFlow:         logging.LogFlow,
+		logToStderr:     logging.LogToStderr,
+		verbose:         logging.Verbose,
+	})
+
+	return ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 }
 
 type pluginArgumentOptions struct {
@@ -636,7 +650,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
-func (p *plugin) healthCheck() bool {
+func (p *Plugin) healthCheck() bool {
 	if p.Conn == nil {
 		return false
 	}
@@ -679,7 +693,7 @@ func (p *plugin) healthCheck() bool {
 	}
 }
 
-func (p *plugin) Close() error {
+func (p *Plugin) Close() error {
 	// Something has gone wrong with the plugin if it is not healthy and we have not yet
 	// shut it down.
 	pluginCrashed := !p.healthCheck()
