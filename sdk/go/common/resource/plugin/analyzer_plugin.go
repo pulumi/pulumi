@@ -50,7 +50,7 @@ import (
 type analyzer struct {
 	ctx     *Context
 	name    tokens.QName
-	plug    *plugin
+	plug    *Plugin
 	client  pulumirpc.AnalyzerClient
 	version string
 }
@@ -141,7 +141,7 @@ func NewPolicyAnalyzer(
 	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be moved to
 	// just be language runtimes like the rest).
 
-	var plug *plugin
+	var plug *Plugin
 	var foundLanguagePlugin bool
 	// Try to load the language plugin for the runtime, except for python and node that _for now_ continue using the
 	// legacy behavior.

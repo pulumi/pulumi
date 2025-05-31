@@ -101,7 +101,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 	return plugin, nil
 }
 
-type plugin struct {
+type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
@@ -241,7 +241,7 @@ func newPlugin[T any](
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
-) (*plugin, *T, error) {
+) (*Plugin, *T, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -266,7 +266,7 @@ func newPlugin[T any](
 	defer tracingSpan.Finish()
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
+	plug, err := ExecPlugin(ctx, bin, prefix, kind, args, pwd, env, attachDebugger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
@@ -435,10 +435,10 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
+// ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
+func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, env []string, attachDebugger bool,
-) (*plugin, error) {
+) (*Plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -502,7 +502,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, err
 		}
 
-		return &plugin{
+		return &Plugin{
 			Bin:    bin,
 			Args:   args,
 			Env:    env,
@@ -587,7 +587,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return result.ErrorOrNil()
 	})
 
-	return &plugin{
+	return &Plugin{
 		Bin:    bin,
 		Args:   args,
 		Env:    env,
@@ -636,7 +636,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
-func (p *plugin) healthCheck() bool {
+func (p *Plugin) healthCheck() bool {
 	if p.Conn == nil {
 		return false
 	}
@@ -679,7 +679,7 @@ func (p *plugin) healthCheck() bool {
 	}
 }
 
-func (p *plugin) Close() error {
+func (p *Plugin) Close() error {
 	// Something has gone wrong with the plugin if it is not healthy and we have not yet
 	// shut it down.
 	pluginCrashed := !p.healthCheck()
