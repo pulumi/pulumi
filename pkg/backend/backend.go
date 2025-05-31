@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -242,8 +243,17 @@ type Backend interface {
 	// to ListTemplates.
 	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 
-	// GetPackageRegistry returns a PackageRegistry object tied to this backend
+	// GetPackageRegistry returns a PackageRegistry object tied to this backend. Not
+	// all backends are required to support GetPackageRegistry. Those that don't
+	// should return a non-nil error when GetPackageRegistry is called.
+	//
+	// PackageRegistry is a superset of [registry.Registry] that supports publishing
+	// packages.
 	GetPackageRegistry() (PackageRegistry, error)
+
+	// GetReadOnlyPackageRegistry retusn a [registry.Registry] object tied to this
+	// backend. All backends should support GetReadOnlyPackageRegistry.
+	GetReadOnlyPackageRegistry() registry.Registry
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.

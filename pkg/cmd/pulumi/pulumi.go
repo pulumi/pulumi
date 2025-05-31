@@ -43,6 +43,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
@@ -77,6 +79,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -258,6 +261,18 @@ func NewPulumiCmd() *cobra.Command {
 					TracingHeader:  tracingHeader,
 				}
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
+			}
+
+			// Inject a registry from the current backend into the root context.
+			if b, err := cmdBackend.NonInteractiveCurrentBackend(
+				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
+			); err == nil && b != nil {
+				ctx = registry.Set(ctx, b.GetReadOnlyPackageRegistry())
+			} else if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+				ctx = registry.Set(ctx, unauthenticatedregistry.New(cmdutil.Diag()))
+			} else {
+				ctx = registry.Set(ctx, registry.FailedRegistry(
+					fmt.Errorf("could not get registry backend: %w", err)))
 			}
 			cmd.SetContext(ctx)
 
