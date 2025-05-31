@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -2372,4 +2373,8 @@ func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Ma
 
 func (b *cloudBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
 	return newCloudPackageRegistry(b.client), nil
+}
+
+func (b *cloudBackend) GetReadOnlyPackageRegistry() registry.Registry {
+	return newCloudPackageRegistry(b.client)
 }
