@@ -17,6 +17,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +31,11 @@ import (
 	"gocloud.dev/blob/driver"
 	"gocloud.dev/gcerrors"
 )
+
+// blobData represents the JSON structure for storing blob data in PostgreSQL
+type blobData struct {
+	Data string `json:"data"` // base64 encoded binary data
+}
 
 // PostgresBucket implements blob.Bucket storage using PostgreSQL.
 type PostgresBucket struct {
@@ -150,8 +157,8 @@ func (d *postgresBucketDriver) ErrorCode(err error) gcerrors.ErrorCode {
 func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.CopyOptions) error {
 	// Read the source data
 	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName)
-	var data []byte
-	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&data)
+	var dataJSON string
+	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&dataJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("source key not found: %w", err)
@@ -161,7 +168,7 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 
 	// Write to the destination key
 	insertQuery := fmt.Sprintf("INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()", d.bucket.tableName)
-	_, err = d.bucket.db.ExecContext(ctx, insertQuery, dstKey, data)
+	_, err = d.bucket.db.ExecContext(ctx, insertQuery, dstKey, dataJSON)
 	return err
 }
 
@@ -239,7 +246,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		// Get metadata for the object
 		var updatedAt time.Time
 		var size int64
-		metaQuery := fmt.Sprintf("SELECT updated_at, length(data::text) FROM %s WHERE key = $1", d.bucket.tableName)
+		metaQuery := fmt.Sprintf("SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1", d.bucket.tableName)
 		err := d.bucket.db.QueryRowContext(ctx, metaQuery, key).Scan(&updatedAt, &size)
 		if err != nil {
 			return nil, err
@@ -272,7 +279,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 
 // Attributes implements driver.Bucket.Attributes.
 func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
-	query := fmt.Sprintf("SELECT updated_at, length(data::text) FROM %s WHERE key = $1", d.bucket.tableName)
+	query := fmt.Sprintf("SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1", d.bucket.tableName)
 	var updatedAt time.Time
 	var size int64
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&updatedAt, &size)
@@ -300,13 +307,24 @@ func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*dri
 // NewRangeReader implements driver.Bucket.NewRangeReader.
 func (d *postgresBucketDriver) NewRangeReader(ctx context.Context, key string, offset, length int64, opts *driver.ReaderOptions) (driver.Reader, error) {
 	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName)
-	var data []byte
-	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&data)
+	var dataJSON string
+	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&dataJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("key not found: %w", err)
 		}
 		return nil, err
+	}
+
+	// Parse the JSON and decode the base64 data
+	var blobData blobData
+	if err := json.Unmarshal([]byte(dataJSON), &blobData); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON data: %w", err)
+	}
+
+	data, err := base64.StdEncoding.DecodeString(blobData.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 
 	// Apply offset and length
@@ -428,8 +446,16 @@ func (w *postgresWriter) Write(p []byte) (n int, err error) {
 
 // Close implements io.Closer.
 func (w *postgresWriter) Close() error {
+	// Encode the binary data as base64 and wrap in JSON
+	encodedData := base64.StdEncoding.EncodeToString(w.buf)
+	blobData := blobData{Data: encodedData}
+	jsonData, err := json.Marshal(blobData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON data: %w", err)
+	}
+
 	query := fmt.Sprintf("INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()", w.bucket.tableName)
-	_, err := w.bucket.db.ExecContext(w.ctx, query, w.key, w.buf)
+	_, err = w.bucket.db.ExecContext(w.ctx, query, w.key, string(jsonData))
 	return err
 }
 
