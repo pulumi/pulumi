@@ -160,7 +160,7 @@ jobs:
             --kind unit-test \
             "$CODEGEN_TESTS_FLAG" \
             --platform ubuntu-latest \
-            --version-set current \
+            --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \

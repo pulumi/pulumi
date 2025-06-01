@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix `up --refresh --run-program` to use the new program based refresh logic

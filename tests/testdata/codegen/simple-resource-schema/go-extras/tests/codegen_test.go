@@ -16,13 +16,14 @@ package codegentest
 
 import (
 	"fmt"
-	"simple-resource-schema/example"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+
+	"simple-resource-schema/example"
 )
 
 type mocks int
@@ -35,12 +36,7 @@ func pulumiTest(t *testing.T, body func(ctx *pulumi.Context) error) {
 func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
 	return args.ID, args.Inputs, nil
 }
-
 func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	panic("Invoke not supported")
-}
-
-func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic("Call not supported")
 }
 

@@ -23,6 +23,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
+
+      - uses: pulumi/actions@v6
+        with:
+          pulumi-version: dev
+
       - name: Build
         shell: bash
         run: |

@@ -47,12 +47,8 @@ func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.Propert
 	return args.Name, args.Inputs.Copy(), nil
 }
 
-func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	panic("Call not supported")
-}
-
 func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	panic("Invoke not supported")
+	panic("Call not supported")
 }
 
 func TestObjectDefaults(t *testing.T) {

@@ -448,9 +448,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	})
 
 	// Check to see if we have a binary we can invoke directly
-	if _, err := os.Stat(bin); os.IsNotExist(err) {
+	stat, err := os.Stat(bin)
+	if (err == nil && stat.IsDir()) || os.IsNotExist(err) {
 		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
-		pluginDir := filepath.Dir(bin)
+		pluginDir := bin
+		if stat == nil || !stat.IsDir() {
+			pluginDir = filepath.Dir(bin)
+		}
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
 		switch kind { //nolint:exhaustive // golangci-lint v2 upgrade
