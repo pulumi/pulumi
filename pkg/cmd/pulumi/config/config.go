@@ -137,7 +137,11 @@ func NewConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigRmCmd(&stack))
 	cmd.AddCommand(newConfigRmAllCmd(&stack))
 	cmd.AddCommand(newConfigSetCmd(&stack))
-	cmd.AddCommand(newConfigSetAllCmd(&stack))
+	cmd.AddCommand(newConfigSetAllCmd(
+		&stack,
+		pkgWorkspace.Instance,
+		cmdBackend.DefaultLoginManager,
+	))
 	cmd.AddCommand(newConfigRefreshCmd(&stack))
 	cmd.AddCommand(newConfigCopyCmd(&stack))
 	cmd.AddCommand(newConfigEnvCmd(&stack))
@@ -722,10 +726,15 @@ func (c *configSetCmd) Run(ctx context.Context, args []string, project *workspac
 	return cmdStack.SaveProjectStack(s, ps)
 }
 
-func newConfigSetAllCmd(stack *string) *cobra.Command {
+func newConfigSetAllCmd(
+	stack *string,
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
+) *cobra.Command {
 	var plaintextArgs []string
 	var secretArgs []string
 	var path bool
+	var jsonArg string
 
 	setCmd := &cobra.Command{
 		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
@@ -740,11 +749,20 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"  - `pulumi config set-all --path --plaintext parent.nested=value --plaintext parent.other=value2` \n" +
 			"    will set the value of `parent` to a map `{nested: value, other: value2}`.\n" +
 			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
-			"    value of `parent.name` to a map `nested.name: value`.",
+			"    value of `parent.name` to a map `nested.name: value`.\n\n" +
+			"The `--json` flag can be used to pass a JSON string from which values should be read.\n" +
+			"The JSON string should follow the same format as that produced by `pulumi config --json`. If the\n" +
+			"`--json` option is passed, the `--plaintext`, `--secret` and `--path` flags must not be used.",
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
+
+			// If the --json option is passed, the --plaintext, --secret and --path arguments are not allowed.
+			nonJSONArgs := len(plaintextArgs) > 0 || len(secretArgs) > 0 || path
+			if jsonArg != "" && nonJSONArgs {
+				return errors.New("the --json option cannot be used with the --plaintext, --secret or --path options")
+			}
+
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -758,7 +776,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			stack, err := cmdStack.RequireStack(
 				ctx,
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.OfferNew,
 				opts,
@@ -787,18 +805,36 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
+			// We only want to fetch the stack encrypter once, and then only if we actually have one or more secrets to
+			// encrypt. We thus set up a little helper function to encrypt a value, caching the crypter once we've initially
+			// loaded it.
+			var c config.Encrypter
+			encrypt := func(plaintext string) (string, error) {
+				if c == nil {
+					var cerr error
+
+					// We're always going to save, so can ignore the bool for if GetStackEncrypter changed the config data.
+					c, _, cerr = ssml.GetEncrypter(ctx, stack, ps)
+					if cerr != nil {
+						return "", cerr
+					}
+				}
+
+				enc, eerr := c.EncryptValue(ctx, plaintext)
+				if eerr != nil {
+					return "", eerr
+				}
+
+				return enc, nil
+			}
+
 			for _, sArg := range secretArgs {
 				key, value, err := parseKeyValuePair(sArg, path)
 				if err != nil {
 					return err
 				}
-				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-				// config data.
-				c, _, cerr := ssml.GetEncrypter(ctx, stack, ps)
-				if cerr != nil {
-					return cerr
-				}
-				enc, eerr := c.EncryptValue(ctx, value)
+
+				enc, eerr := encrypt(value)
 				if eerr != nil {
 					return eerr
 				}
@@ -807,6 +843,60 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				err = ps.Config.Set(key, v, path)
 				if err != nil {
 					return err
+				}
+			}
+
+			if jsonArg != "" {
+				jsonConfig := make(map[string]configValueJSON)
+				err := json.Unmarshal([]byte(jsonArg), &jsonConfig)
+				if err != nil {
+					return fmt.Errorf("could not parse --json argument: %w", err)
+				}
+
+				for jsonKey, jsonValue := range jsonConfig {
+					// Every key in the JSON must have a value. While `pulumi config --json` may produce empty values for secrets
+					// where --show-secrets is not passed, we don't allow setting those same (missing) values back into
+					// configuration.
+					if jsonValue.Value == nil {
+						return fmt.Errorf("value for --json object key %q is nil", jsonKey)
+					}
+
+					key, err := ParseConfigKey(ws, jsonKey, false /*path*/)
+					if err != nil {
+						return fmt.Errorf("invalid --json object key %q: %w", jsonKey, err)
+					}
+
+					var value config.Value
+					var path bool
+					if jsonValue.ObjectValue != nil {
+						// If we have an ObjectValue, Value will be the stringified version of the object. We'll thus operate on
+						// ObjectValue directly.
+						path = true
+						if jsonValue.Secret {
+							enc, err := encrypt(*jsonValue.Value)
+							if err != nil {
+								return err
+							}
+
+							value = config.NewSecureObjectValue(enc)
+						} else {
+							value = config.NewObjectValue(*jsonValue.Value)
+						}
+					} else if jsonValue.Secret {
+						enc, err := encrypt(*jsonValue.Value)
+						if err != nil {
+							return err
+						}
+
+						value = config.NewSecureValue(enc)
+					} else {
+						value = config.NewValue(*jsonValue.Value)
+					}
+
+					err = ps.Config.Set(key, value, path)
+					if err != nil {
+						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
+					}
 				}
 			}
 
@@ -823,6 +913,10 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 	setCmd.PersistentFlags().StringArrayVar(
 		&secretArgs, "secret", []string{},
 		"Marks a value as secret to be encrypted")
+	setCmd.PersistentFlags().StringVar(
+		&jsonArg, "json", "",
+		"Read values from a JSON string in the format produced by 'pulumi config --json'",
+	)
 
 	return setCmd
 }
