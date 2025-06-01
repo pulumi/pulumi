@@ -14,13 +14,17 @@
 
 // Package postgres provides a PostgreSQL-based backend implementation for Pulumi state storage.
 //
+// This package automatically registers the PostgreSQL bucket provider with the default
+// blob.URLMux during initialization, allowing DIY backends to work seamlessly with PostgreSQL URLs.
+//
 // Example usage:
 //
 //	import (
 //	    "context"
 //	    "os"
 //
-//	    "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres"
+//	    "github.com/pulumi/pulumi/pkg/v3/backend/diy"
+//	    _ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // Import to register PostgreSQL provider
 //	    "github.com/pulumi/pulumi/pkg/v3/diag"
 //	)
 //
@@ -28,7 +32,7 @@
 //	    // Initialize a PostgreSQL backend
 //	    ctx := context.Background()
 //	    postgresURL := "postgres://username:password@hostname:5432/database"
-//	    backend, err := postgres.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{}), postgresURL, nil)
+//	    backend, err := diy.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{}), postgresURL, nil)
 //	    if err != nil {
 //	        panic(err)
 //	    }

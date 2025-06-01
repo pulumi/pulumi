@@ -20,10 +20,6 @@ import (
 
 	_ "github.com/lib/pq" // Import PostgreSQL driver
 	"gocloud.dev/blob"
-
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const (
@@ -68,21 +64,4 @@ func IsPostgresBackendURL(urlstr string) bool {
 		return false
 	}
 	return u.Scheme == PostgresScheme
-}
-
-// New creates a new DIY backend using PostgreSQL as the storage layer.
-func New(ctx context.Context, d diag.Sink, postgresURL string, project *workspace.Project) (diy.Backend, error) {
-	// The PostgreSQL bucket provider is automatically registered via init()
-	// Configure and initialize the PostgreSQL bucket
-	return diy.New(ctx, d, postgresURL, project)
-}
-
-// Login creates or connects to a DIY backend using PostgreSQL as the storage layer.
-func Login(ctx context.Context, d diag.Sink, postgresURL string, project *workspace.Project) (diy.Backend, error) {
-	// The PostgreSQL bucket provider is automatically registered via init()
-	be, err := diy.New(ctx, d, postgresURL, project)
-	if err != nil {
-		return nil, err
-	}
-	return be, workspace.StoreAccount(be.URL(), workspace.Account{}, true)
 }

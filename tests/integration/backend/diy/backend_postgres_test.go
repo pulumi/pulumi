@@ -26,7 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // Import to register PostgreSQL provider
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -50,7 +51,7 @@ func TestPostgresBackend(t *testing.T) {
 
 	// Create a new PostgreSQL backend
 	ctx := context.Background()
-	b, err := postgres.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+	b, err := diy.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	}), url, nil)
 	require.NoError(t, err, "Failed to create PostgreSQL backend")
@@ -122,13 +123,13 @@ func TestPostgresBackendMultipleTables(t *testing.T) {
 	table1 := "pulumi_test_1_" + pgtest.GenerateID()
 	table2 := "pulumi_test_2_" + pgtest.GenerateID()
 
-	backend1, err := postgres.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+	backend1, err := diy.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	}), pg.ConnectionStringWithTable(table1), nil)
 	require.NoError(t, err, "Failed to create first PostgreSQL backend")
 	backend1.SetCurrentProject(&project)
 
-	backend2, err := postgres.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+	backend2, err := diy.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	}), pg.ConnectionStringWithTable(table2), nil)
 	require.NoError(t, err, "Failed to create second PostgreSQL backend")
