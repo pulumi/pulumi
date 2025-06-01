@@ -198,11 +198,6 @@ func IsDIYBackendURL(urlstr string) bool {
 		return false
 	}
 
-	// Check for PostgreSQL URLs (postgres://)
-	if u.Scheme == "postgres" {
-		return true
-	}
-
 	return blob.DefaultURLMux().ValidBucketScheme(u.Scheme)
 }
 

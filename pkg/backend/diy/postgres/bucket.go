@@ -41,7 +41,7 @@ type PostgresBucket struct {
 const tableSchema = `
 CREATE TABLE IF NOT EXISTS %s (
     key TEXT PRIMARY KEY,
-    data BYTEA NOT NULL,
+    data JSON NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS %s_key_prefix_idx ON %s (key text_pattern_ops);
@@ -239,7 +239,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		// Get metadata for the object
 		var updatedAt time.Time
 		var size int64
-		metaQuery := fmt.Sprintf("SELECT updated_at, octet_length(data) FROM %s WHERE key = $1", d.bucket.tableName)
+		metaQuery := fmt.Sprintf("SELECT updated_at, length(data::text) FROM %s WHERE key = $1", d.bucket.tableName)
 		err := d.bucket.db.QueryRowContext(ctx, metaQuery, key).Scan(&updatedAt, &size)
 		if err != nil {
 			return nil, err
@@ -272,7 +272,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 
 // Attributes implements driver.Bucket.Attributes.
 func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
-	query := fmt.Sprintf("SELECT updated_at, octet_length(data) FROM %s WHERE key = $1", d.bucket.tableName)
+	query := fmt.Sprintf("SELECT updated_at, length(data::text) FROM %s WHERE key = $1", d.bucket.tableName)
 	var updatedAt time.Time
 	var size int64
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&updatedAt, &size)

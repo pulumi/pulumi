@@ -76,23 +76,26 @@ pulumi login postgres://username:password@hostname:port/database
 ```
 
 ## Environment Setup
-For most secure setups, use environment variables to store your PostgreSQL credentials:
+For most secure setups, use environment variables to store your PostgreSQL credentials. The following standard PostgreSQL environment variables are supported:
+
 ```bash
-export PGUSER=username
-export PGPASSWORD=password
-export PGHOST=hostname
-export PGPORT=5432
-export PGDATABASE=database
+export PGUSER=username        # Defaults to current system user
+export PGPASSWORD=password    # Required - no default
+export PGHOST=hostname        # Defaults to "localhost"
+export PGPORT=5432           # Defaults to 5432
+export PGDATABASE=database   # Defaults to the value of PGUSER
 # Then login with minimal connection string
 pulumi login postgres://
 ```
+
+**Note**: Only `PGPASSWORD` is required when using environment variables. All others have sensible defaults as noted above.
 
 ## Table Schema
 The PostgreSQL backend will automatically create the necessary table for state storage. The table has the following schema:
 ```sql
 CREATE TABLE IF NOT EXISTS pulumi_state (
     key TEXT PRIMARY KEY,
-    data BYTEA NOT NULL,
+    data JSON NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS pulumi_state_key_prefix_idx ON pulumi_state (key text_pattern_ops);

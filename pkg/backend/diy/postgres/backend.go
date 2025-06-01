@@ -31,6 +31,12 @@ const (
 	PostgresScheme = "postgres"
 )
 
+func init() {
+	// Register the PostgreSQL bucket provider with the default blob.URLMux
+	// This allows the default muxer to recognize PostgreSQL URLs automatically
+	_ = PostgresSchemeMux{}.RegisterBucketMux(blob.DefaultURLMux())
+}
+
 // PostgresSchemeMux is a URL opener for PostgreSQL URLs.
 type PostgresSchemeMux struct{}
 
@@ -50,7 +56,7 @@ func (p PostgresSchemeMux) RegisterBucketMux(mux *blob.URLMux) error {
 	if mux.ValidBucketScheme(PostgresScheme) {
 		return nil
 	}
-	
+
 	mux.RegisterBucket(PostgresScheme, p)
 	return nil
 }
@@ -66,26 +72,14 @@ func IsPostgresBackendURL(urlstr string) bool {
 
 // New creates a new DIY backend using PostgreSQL as the storage layer.
 func New(ctx context.Context, d diag.Sink, postgresURL string, project *workspace.Project) (diy.Backend, error) {
-	// Register the PostgreSQL bucket provider with the blob.URLMux
-	mux := blob.DefaultURLMux()
-	err := PostgresSchemeMux{}.RegisterBucketMux(mux)
-	if err != nil {
-		return nil, err
-	}
-
+	// The PostgreSQL bucket provider is automatically registered via init()
 	// Configure and initialize the PostgreSQL bucket
 	return diy.New(ctx, d, postgresURL, project)
 }
 
 // Login creates or connects to a DIY backend using PostgreSQL as the storage layer.
 func Login(ctx context.Context, d diag.Sink, postgresURL string, project *workspace.Project) (diy.Backend, error) {
-	// Register the PostgreSQL bucket provider with the blob.URLMux
-	mux := blob.DefaultURLMux()
-	err := PostgresSchemeMux{}.RegisterBucketMux(mux)
-	if err != nil {
-		return nil, err
-	}
-
+	// The PostgreSQL bucket provider is automatically registered via init()
 	be, err := diy.New(ctx, d, postgresURL, project)
 	if err != nil {
 		return nil, err
