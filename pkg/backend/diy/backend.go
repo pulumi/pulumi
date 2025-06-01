@@ -37,6 +37,7 @@ import (
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
 	"gocloud.dev/blob/gcsblob"     // driver for gs://
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
