@@ -17,6 +17,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -152,22 +153,24 @@ func NewLoginCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
-			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
-				strings.HasPrefix(url, "pulumi.com") {
-				return fmt.Errorf("%s is not a valid self-hosted backend, "+
-					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
-				if err := validateCloudBackendType(cloudURL); err != nil {
+				isCloudBackend, err := validateCloudBackendType(cloudURL)
+				if err != nil {
 					return err
+				}
+				if isCloudBackend {
+					cloudURL, err = checkHTTPCloudBackendURL(cloudURL)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
 			be, err := backend.DefaultLoginManager.Login(
 				ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, displayOptions.Color)
 			if err != nil {
-				return fmt.Errorf("problem logging in: %w", err)
+				return fmt.Errorf("please provide the api url and not the ui url. error occured while logging in: %w", err)
 			}
 
 			if diy.IsDIYBackendURL(cloudURL) {
@@ -205,17 +208,45 @@ func NewLoginCmd() *cobra.Command {
 	return cmd
 }
 
-func validateCloudBackendType(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+// validateCloudBackendType validates the cloud backend type.
+// It returns true if the cloud backend type is http or https.
+// It returns false if the cloud backend type is azblob, gs, s3, or file.
+// It returns an error if the cloud backend type is not supported.
+func validateCloudBackendType(typ string) (bool, error) {
+	parseURL, err := url.Parse(typ)
+	if err != nil {
+		return false, fmt.Errorf("provided invalid url %s. error occured: %q", typ, err)
+	}
+	kind := parseURL.Scheme
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
-			return nil
+			if strings.Contains(kind, "http") {
+				return true, nil
+			}
+			return false, nil
 		}
 	}
-	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
+	return false, fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind)
+}
+
+// checkHTTPCloudBackendURL checks if the cloud backend URL is a valid HTTP cloud backend URL.
+// It returns the parsed URL if it is a valid HTTP cloud backend URL.
+// It returns an error if the cloud backend URL is not a valid HTTP cloud backend URL.
+func checkHTTPCloudBackendURL(backendURL string) (string, error) {
+	parsedBackendURL, err := url.Parse(backendURL)
+	if err != nil {
+		return "", fmt.Errorf("not a valid login url, please check the provided url %s", backendURL)
+	}
+	parsedHost := parsedBackendURL.Host
+
+	if parsedHost == "app.pulumi.com" {
+		return "https://api.pulumi.com", nil
+	}
+
+	return backendURL, nil
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.
