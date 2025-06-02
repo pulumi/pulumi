@@ -17,9 +17,9 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"os/exec"
-	"syscall"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -94,27 +95,52 @@ func newPluginRunCmd() *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pluginCmd := exec.Command(path, pluginArgs...)
-			pluginCmd.Stdout = os.Stdout
-			pluginCmd.Stderr = os.Stderr
-			pluginCmd.Stdin = os.Stdin
-			if err := pluginCmd.Run(); err != nil {
-				var pathErr *os.PathError
-				if errors.As(err, &pathErr) {
-					syscallErr, ok := pathErr.Err.(syscall.Errno)
-					if ok && syscallErr == syscall.ENOENT {
-						return fmt.Errorf("could not find execute plugin %s, binary not found at %s", pluginDesc, path)
-					}
-				}
+			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil)
+			if err != nil {
+				return fmt.Errorf("could not create plugin context: %w", err)
+			}
 
-				var exitErr *exec.ExitError
-				if errors.As(err, &exitErr) {
-					os.Exit(exitErr.ExitCode())
-				}
-
+			plugin, err := plugin.ExecPlugin(pctx, path, pluginDesc, kind, pluginArgs, "", nil, false)
+			if err != nil {
 				return fmt.Errorf("could not execute plugin %s (%s): %w", pluginDesc, path, err)
 			}
 
+			// Copy the plugin's stdout and stderr to the current process's stdout and stderr, and stdin to the
+			// plugin's stdin.
+
+			var wg sync.WaitGroup
+			wg.Add(3)
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(os.Stdout, plugin.Stdout)
+				if err != nil && !errors.Is(err, io.EOF) {
+					fmt.Fprintf(os.Stderr, "error reading plugin stdout: %v\n", err)
+				}
+			}()
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(os.Stderr, plugin.Stderr)
+				if err != nil && !errors.Is(err, io.EOF) {
+					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
+				}
+			}()
+			go func() {
+				defer wg.Done()
+				_, err := io.Copy(plugin.Stdin, os.Stdin)
+				if err != nil && !errors.Is(err, io.EOF) {
+					fmt.Fprintf(os.Stderr, "error copying plugin stdin: %v\n", err)
+				}
+			}()
+
+			// Wait for the plugin and IO to finish.
+			code, err := plugin.Wait()
+			wg.Wait()
+			if err != nil {
+				return fmt.Errorf("plugin %s exited with error: %w", pluginDesc, err)
+			}
+			if code != 0 {
+				os.Exit(code)
+			}
 			return nil
 		},
 	}

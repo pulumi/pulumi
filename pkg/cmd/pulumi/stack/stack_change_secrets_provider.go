@@ -111,6 +111,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Get the current stack and its project
 	currentStack, err := RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stack,
@@ -121,7 +122,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	currentProjectStack, err := LoadProjectStack(cmdutil.Diag(), project, currentStack)
+	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack)
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := LoadProjectStack(sink, project, currentStack)
+	reloadedProjectStack, err := LoadProjectStack(ctx, sink, project, currentStack)
 	if err != nil {
 		return err
 	}
@@ -209,7 +210,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		}
 	}
 
-	if err := SaveProjectStack(currentStack, reloadedProjectStack); err != nil {
+	if err := SaveProjectStack(ctx, currentStack, reloadedProjectStack); err != nil {
 		return err
 	}
 

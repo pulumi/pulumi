@@ -1179,22 +1179,25 @@ func (s *RefreshStep) Skip() {
 }
 
 type ImportStep struct {
-	deployment    *Deployment                    // the current deployment.
-	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
-	original      *resource.State                // the original resource, if this is an import-replace.
-	old           *resource.State                // the state of the resource fetched from the provider.
-	new           *resource.State                // the newly computed state of the resource after importing.
-	replacing     bool                           // true if we are replacing a Pulumi-managed resource.
-	planned       bool                           // true if this import is from an import deployment.
-	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
-	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
-	ignoreChanges []string                       // a list of property paths to ignore when updating.
-	randomSeed    []byte                         // the random seed to use for Check.
-	provider      plugin.Provider                // the optional provider to use.
+	deployment    *Deployment           // the current deployment.
+	reg           RegisterResourceEvent // the registration intent to convey a URN back to.
+	original      *resource.State       // the original resource, if this is an import-replace.
+	old           *resource.State       // the state of the resource fetched from the provider.
+	new           *resource.State       // the newly computed state of the resource after importing.
+	replacing     bool                  // true if we are replacing a Pulumi-managed resource.
+	ignoreChanges []string              // a list of property paths to ignore when updating.
+	randomSeed    []byte                // the random seed to use for Check.
+	provider      plugin.Provider       // the optional provider to use.
+
+	// true if this import is from an import deployment, i.e. the `pulumi import` command.
+	planned bool
+
+	// the completion source to signal when the import is complete, this will be nil if planned is true.
+	cts *promise.CompletionSource[*resource.State]
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string, randomSeed []byte,
+	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
@@ -1211,11 +1214,12 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 		new:           new,
 		ignoreChanges: ignoreChanges,
 		randomSeed:    randomSeed,
+		cts:           cts,
 	}
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string, randomSeed []byte,
+	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(original != nil, "original", "must not be nil")
 
@@ -1237,6 +1241,7 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 		replacing:     true,
 		ignoreChanges: ignoreChanges,
 		randomSeed:    randomSeed,
+		cts:           cts,
 	}
 }
 
@@ -1248,6 +1253,7 @@ func newImportDeploymentStep(deployment *Deployment, new *resource.State, random
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
+	contract.Assertf(len(new.Inputs) == 0, "import resource cannot have existing inputs")
 
 	return &ImportStep{
 		deployment: deployment,
@@ -1265,24 +1271,40 @@ func (s *ImportStep) Op() display.StepOp {
 	return OpImport
 }
 
-func (s *ImportStep) Deployment() *Deployment                      { return s.deployment }
-func (s *ImportStep) Type() tokens.Type                            { return s.new.Type }
-func (s *ImportStep) Provider() string                             { return s.new.Provider }
-func (s *ImportStep) URN() resource.URN                            { return s.new.URN }
-func (s *ImportStep) Old() *resource.State                         { return s.old }
-func (s *ImportStep) New() *resource.State                         { return s.new }
-func (s *ImportStep) Res() *resource.State                         { return s.new }
-func (s *ImportStep) Logical() bool                                { return !s.replacing }
-func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.diffs }
-func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *ImportStep) Deployment() *Deployment { return s.deployment }
+func (s *ImportStep) Type() tokens.Type       { return s.new.Type }
+func (s *ImportStep) Provider() string        { return s.new.Provider }
+func (s *ImportStep) URN() resource.URN       { return s.new.URN }
+func (s *ImportStep) Old() *resource.State    { return s.old }
+func (s *ImportStep) New() *resource.State    { return s.new }
+func (s *ImportStep) Res() *resource.State    { return s.new }
+func (s *ImportStep) Logical() bool           { return !s.replacing }
 
-func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
+func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) {
+	defer func() {
+		// Ensure that we reject the completion source if we fail to complete the import.
+		if err != nil && s.cts != nil {
+			s.cts.MustReject(err)
+		}
+	}()
+
 	complete := func() {
-		s.reg.Done(&RegisterResult{State: s.new})
+		if s.cts != nil {
+			s.cts.MustFulfill(s.new)
+		}
+		// If this is a planned import we can now tell the engine the step registration is complete. For non-planned
+		// imports the CTS will signal the completion of this step to the step generator, which will either generate
+		// further steps or complete the registration itself.
+		if s.planned {
+			s.reg.Done(&RegisterResult{State: s.new})
+		}
 	}
 
-	// If this is a planned import, ensure that the resource does not exist in the old state file.
+	// If this is a planned import (i.e. from `pulumi import` command), ensure that the resource does not exist in the
+	// old state file.
 	if s.planned {
+		contract.Assertf(s.cts == nil, "planned import should not have a completion source")
+
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
 		}
@@ -1347,6 +1369,7 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		defer s.new.Lock.Unlock()
 	}
 
+	s.new.Inputs = inputs
 	s.new.Outputs = outputs
 	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
 	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
@@ -1370,8 +1393,6 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
-		contract.Assertf(len(s.new.Inputs) == 0, "import resource cannot have existing inputs")
-
 		// Historically, we would never set ImportID for resources imported via `pulumi import`. This
 		// continues that behavior. When adding support for https://github.com/pulumi/pulumi/issues/8836,
 		// we'll likly need to make this toggleable.
@@ -1437,8 +1458,6 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, resp.Failures)
 
-		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
-
 		return rst, complete, nil
 	}
 
@@ -1449,59 +1468,11 @@ func (s *ImportStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 	s.new.Inputs = processedInputs
 
-	// Check the inputs using the provider inputs for defaults.
-	resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
-		URN:           s.new.URN,
-		Name:          s.new.URN.Name(),
-		Type:          s.new.URN.Type(),
-		Olds:          s.old.Inputs,
-		News:          s.new.Inputs,
-		AllowUnknowns: s.deployment.opts.DryRun,
-		RandomSeed:    s.randomSeed,
-	})
-	if err != nil {
-		return rst, nil, err
-	}
-	if issueCheckErrors(s.deployment, s.new, s.new.URN, resp.Failures) {
-		return rst, nil, errors.New("one or more inputs failed to validate")
-	}
-	s.new.Inputs = resp.Properties
-
-	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
-	// is from an import deployment.
-	diff, err := diffResource(
-		s.new.URN, s.new.ID,
-		s.old.Inputs, s.old.Outputs,
-		s.new.Inputs,
-		prov,
-		s.deployment.opts.DryRun,
-		s.ignoreChanges,
-	)
-	if err != nil {
-		return rst, nil, err
-	}
-
-	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
-
-	if diff.Changes != plugin.DiffNone {
-		message := fmt.Sprintf("inputs to import do not match the existing resource: %v", s.diffs)
-
-		if s.deployment.opts.DryRun {
-			s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,
-				message+"; importing this resource will fail", 0))
-		} else {
-			err = errors.New(message)
-		}
-	}
-
 	// If we were asked to replace an existing, non-External resource, pend the deletion here.
-	if err == nil && s.replacing {
+	if s.replacing {
 		s.original.Delete = true
 	}
 
-	if err != nil {
-		return rst, nil, err
-	}
 	return rst, complete, nil
 }
 

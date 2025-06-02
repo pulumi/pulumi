@@ -51,7 +51,7 @@ import (
 type langhost struct {
 	ctx     *Context
 	runtime string
-	plug    *plugin
+	plug    *Plugin
 	client  pulumirpc.LanguageRuntimeClient
 }
 
@@ -64,7 +64,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 		return nil, err
 	}
 
-	var plug *plugin
+	var plug *Plugin
 	var client pulumirpc.LanguageRuntimeClient
 	if attachPort != nil {
 		port := *attachPort
@@ -97,7 +97,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 			)
 		}
 
-		plug = &plugin{
+		plug = &Plugin{
 			Conn: conn,
 			// Nothing to kill.
 			Kill: func() error {

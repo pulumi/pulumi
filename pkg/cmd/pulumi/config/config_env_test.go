@@ -100,6 +100,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 		requireStack: func(
 			ctx context.Context,
+			sink diag.Sink,
 			ws pkgWorkspace.Context,
 			lm cmdBackend.LoginManager,
 			stackName string,
@@ -127,12 +128,16 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 				DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
 					return b64.NewBase64SecretsManager(), nil
 				},
+				ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 			}, nil
 		},
-		loadProjectStack: func(d diag.Sink, p *workspace.Project, _ backend.Stack) (*workspace.ProjectStack, error) {
+
+		loadProjectStack: func(
+			_ context.Context, d diag.Sink, p *workspace.Project, _ backend.Stack,
+		) (*workspace.ProjectStack, error) {
 			return workspace.LoadProjectStackBytes(d, p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
 		},
-		saveProjectStack: func(_ backend.Stack, ps *workspace.ProjectStack) error {
+		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack) error {
 			b, err := encoding.YAML.Marshal(ps)
 			if err != nil {
 				return err
@@ -140,7 +145,6 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			*newStackYAML = string(b)
 			return nil
 		},
-
 		stackRef: &stackRef,
 	}
 }

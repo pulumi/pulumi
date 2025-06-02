@@ -53,6 +53,7 @@ func newStackImportCmd() *cobra.Command {
 			// Fetch the current stack and import a deployment.
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,

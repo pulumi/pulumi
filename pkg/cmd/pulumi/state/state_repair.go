@@ -126,6 +126,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 	s, err := cmdStack.RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		cmd.Workspace,
 		cmd.LoginManager,
 		cmd.Args.Stack,

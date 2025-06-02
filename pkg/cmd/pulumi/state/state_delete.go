@@ -57,6 +57,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			yes = yes || env.SkipConfirmations.Value()
 			var urn resource.URN
 			if all {
@@ -70,7 +71,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					}
 
 					var err error
-					urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil,
+					urn, err = getURNFromState(ctx, sink, ws, backend.DefaultLoginManager, stack, nil,
 						"Select the resource to delete")
 					if err != nil {
 						return fmt.Errorf("failed to select resource: %w", err)
@@ -95,19 +96,20 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// If we're deleting everything then run a total state edit, else run on just the resource given.
 			var err error
 			if all {
-				err = runTotalStateEdit(ctx, ws, lm, stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-					// Iterate the resources backwards (so we delete dependents first) and delete them.
-					for i := len(snap.Resources) - 1; i >= 0; i-- {
-						res := snap.Resources[i]
-						if err := edit.DeleteResource(snap, res, handleProtected, targetDependents); err != nil {
-							return err
+				err = runTotalStateEdit(ctx, sink, ws, lm, stack, showPrompt,
+					func(opts display.Options, snap *deploy.Snapshot) error {
+						// Iterate the resources backwards (so we delete dependents first) and delete them.
+						for i := len(snap.Resources) - 1; i >= 0; i-- {
+							res := snap.Resources[i]
+							if err := edit.DeleteResource(snap, res, handleProtected, targetDependents); err != nil {
+								return err
+							}
 						}
-					}
-					return nil
-				})
+						return nil
+					})
 			} else {
 				err = runStateEdit(
-					ctx, ws, lm, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+					ctx, sink, ws, lm, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 						return edit.DeleteResource(snap, res, handleProtected, targetDependents)
 					})
 			}

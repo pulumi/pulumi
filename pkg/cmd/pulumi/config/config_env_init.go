@@ -110,6 +110,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	stack, err := cmd.parent.requireStack(
 		ctx,
+		cmd.parent.diags,
 		cmd.parent.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.parent.stackRef,
@@ -193,7 +194,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
-	if err = cmd.parent.saveProjectStack(stack, projectStack); err != nil {
+	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
@@ -205,7 +206,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	project *workspace.Project,
 	stack backend.Stack,
 ) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := cmd.parent.loadProjectStack(sink, project, stack)
+	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -216,7 +217,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
+		if err = cmd.parent.saveProjectStack(ctx, stack, ps); err != nil {
 			return nil, nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}

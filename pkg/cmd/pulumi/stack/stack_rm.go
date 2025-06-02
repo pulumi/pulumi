@@ -69,6 +69,7 @@ func newStackRmCmd() *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				stack,

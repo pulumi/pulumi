@@ -80,7 +80,7 @@
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=20"
     },
     "mocha": {
         "require": ["source-map-support/register"],

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -47,18 +48,19 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			yes = yes || env.SkipConfirmations.Value()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
 			if unprotectAll {
-				return unprotectAllResources(ctx, ws, stack, showPrompt)
+				return unprotectAllResources(ctx, sink, ws, stack, showPrompt)
 			}
 
 			// If URN arguments were provided, use those
 			if len(args) > 0 {
-				return unprotectMultipleResources(ctx, ws, stack, args, showPrompt)
+				return unprotectMultipleResources(ctx, sink, ws, stack, args, showPrompt)
 			}
 
 			// Otherwise, use interactive selection
@@ -66,12 +68,20 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return missingNonInteractiveArg("resource URN")
 			}
 
-			urn, err := getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
+			urn, err := getURNFromState(
+				ctx,
+				sink,
+				ws,
+				backend.DefaultLoginManager,
+				stack,
+				nil,
+				"Select a resource to unprotect:",
+			)
 			if err != nil {
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return unprotectResource(ctx, ws, stack, urn, showPrompt)
+			return unprotectResource(ctx, sink, ws, stack, urn, showPrompt)
 		},
 	}
 
@@ -84,9 +94,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 	return cmd
 }
 
-func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
+func unprotectAllResources(
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+) error {
 	err := runTotalStateEdit(
-		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		func(_ display.Options, snap *deploy.Snapshot) error {
 			// Protects against Panic when a user tries to unprotect non-existing resources
 			if snap == nil {
 				return errors.New("no resources found to unprotect")
@@ -137,10 +150,11 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 
 // unprotectMultipleResources unprotects multiple resources specified by their URNs.
 func unprotectMultipleResources(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEdit(
-		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		func(_ display.Options, snap *deploy.Snapshot) error {
 			resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
 			if resourceCount > 0 && len(errs) == 0 {
@@ -160,7 +174,7 @@ func unprotectMultipleResources(
 }
 
 func unprotectResource(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	return unprotectMultipleResources(ctx, ws, stackName, []string{string(urn)}, showPrompt)
+	return unprotectMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
 }

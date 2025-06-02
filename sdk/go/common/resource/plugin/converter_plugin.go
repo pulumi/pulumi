@@ -37,7 +37,7 @@ import (
 // converter reflects a converter plugin, loaded dynamically from another process over gRPC.
 type converter struct {
 	name      string
-	plug      *plugin                   // the actual plugin process wrapper.
+	plug      *Plugin                   // the actual plugin process wrapper.
 	clientRaw pulumirpc.ConverterClient // the raw provider client; usually unsafe to use directly.
 }
 

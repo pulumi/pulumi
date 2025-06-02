@@ -135,6 +135,7 @@ func initializeDeploymentSettingsCmd(
 
 	s, err := cmdStack.RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		ws,
 		cmdBackend.DefaultLoginManager,
 		stack,

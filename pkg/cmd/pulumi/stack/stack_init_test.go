@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // When a backend doesn't support the --teams flag,
@@ -117,9 +116,8 @@ func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 			t.Parallel()
 			// If the test case provides at least one valid team,
 			// then the options should be non-nil.
-			got := newCreateStackOptions(tt.giveTeams)
-			require.NotNil(t, got)
-			assert.ElementsMatch(t, tt.wantTeams, got.Teams)
+			got := sanitizeTeams(tt.giveTeams)
+			assert.ElementsMatch(t, tt.wantTeams, got)
 		})
 	}
 }
