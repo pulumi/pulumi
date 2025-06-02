@@ -110,6 +110,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	stack, err := cmd.parent.requireStack(
 		ctx,
+		cmd.parent.diags,
 		cmd.parent.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.parent.stackRef,

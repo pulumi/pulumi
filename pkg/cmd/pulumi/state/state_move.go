@@ -71,6 +71,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 
 			if sourceStackName == "" && destStackName == "" {
@@ -78,6 +79,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			}
 			sourceStack, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				sourceStackName,
@@ -92,6 +94,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			}
 			destStack, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				destStackName,

@@ -115,11 +115,11 @@ func (o LoadOption) SetCurrent() bool {
 // RequireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func RequireStack(ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	stackName string, lopt LoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(ctx, ws, lm, lopt, opts)
+		return requireCurrentStack(ctx, sink, ws, lm, lopt, opts)
 	}
 
 	// Try to read the current project
@@ -156,14 +156,15 @@ func RequireStack(ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.Lo
 			return nil, err
 		}
 
-		return CreateStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
 func requireCurrentStack(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, lopt LoadOption, opts display.Options,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager, lopt LoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	// Try to read the current project
 	project, _, err := ws.ReadProject()
@@ -184,12 +185,12 @@ func requireCurrentStack(
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return ChooseStack(ctx, ws, b, lopt, opts)
+	return ChooseStack(ctx, sink, ws, b, lopt, opts)
 }
 
 // ChooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
+func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, lopt LoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	lopt ^= SetCurrent
@@ -298,7 +299,7 @@ func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
 			return nil, parseErr
 		}
 
-		return CreateStack(ctx, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -327,23 +328,23 @@ func ChooseStack(ctx context.Context, ws pkgWorkspace.Context,
 
 // InitStack creates the stack.
 func InitStack(
-	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, stackName string,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend, stackName string,
 	root string, setCurrent bool, secretsProvider string, useRemoteConfig bool,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig)
+	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig)
 }
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
-func CreateStack(ctx context.Context, ws pkgWorkspace.Context,
+func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, teams []string, setCurrent bool,
 	secretsProvider string, useRemoteConfig bool,
 ) (backend.Stack, error) {
-	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, ws, b, stackRef, secretsProvider)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, sink, ws, b, stackRef, secretsProvider)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -75,7 +76,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 				}
 			},
 			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
-				return workspace.LoadProjectStack(project, "Pulumi.name.yaml")
+				return workspace.LoadProjectStack(cmdutil.Diag(), project, "Pulumi.name.yaml")
 			},
 			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
 				return nil, nil

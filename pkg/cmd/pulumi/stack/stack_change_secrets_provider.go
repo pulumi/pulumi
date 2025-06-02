@@ -111,6 +111,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Get the current stack and its project
 	currentStack, err := RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stack,

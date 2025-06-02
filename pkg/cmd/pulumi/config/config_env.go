@@ -76,6 +76,7 @@ type configEnvCmd struct {
 
 	requireStack func(
 		ctx context.Context,
+		sink diag.Sink,
 		ws pkgWorkspace.Context,
 		lm cmdBackend.LoginManager,
 		stackName string,
@@ -113,6 +114,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 
 	stack, err := cmd.requireStack(
 		ctx,
+		cmd.diags,
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.stackRef,

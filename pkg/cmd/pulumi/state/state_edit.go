@@ -62,9 +62,11 @@ a preview showing a diff of the altered state.`,
 				return errors.New("pulumi state edit must be run in interactive mode")
 			}
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			s, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,

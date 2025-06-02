@@ -94,6 +94,7 @@ func CreateSecretsManagerForExistingStack(
 // fall back to a default defined by the backend that will manage the stack.
 func createSecretsManagerForNewStack(
 	ctx context.Context,
+	sink diag.Sink,
 	ws pkgWorkspace.Context,
 	b backend.Backend,
 	stackRef backend.StackReference,
@@ -101,7 +102,7 @@ func createSecretsManagerForNewStack(
 ) (*workspace.ProjectStack, bool, secrets.Manager, error) {
 	var sm secrets.Manager
 
-	ps, err := readStackConfiguration(ctx, ws, b, stackRef)
+	ps, err := readStackConfiguration(ctx, sink, ws, b, stackRef)
 	if err != nil {
 		return nil, false, nil, err
 	}
@@ -124,7 +125,7 @@ func createSecretsManagerForNewStack(
 	return ps, needsSave, sm, err
 }
 
-func readStackConfiguration(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend,
+func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
 	stackRef backend.StackReference,
 ) (*workspace.ProjectStack, error) {
 	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
@@ -138,16 +139,16 @@ func readStackConfiguration(ctx context.Context, ws pkgWorkspace.Context, b back
 	if err != nil || s == nil {
 		// Attempt to load file directly as it might already exist even though not in the backend
 		if ConfigFile != "" {
-			return workspace.LoadProjectStack(project, ConfigFile)
+			return workspace.LoadProjectStack(sink, project, ConfigFile)
 		}
-		return workspace.DetectProjectStack(stackRef.Name().Q())
+		return workspace.DetectProjectStack(sink, stackRef.Name().Q())
 	}
-	ps, err := LoadProjectStack(ctx, project, s)
+	ps, err := LoadProjectStack(ctx, sink, project, s)
 	if err != nil || ps == nil {
 		if ConfigFile != "" {
-			return workspace.LoadProjectStack(project, ConfigFile)
+			return workspace.LoadProjectStack(sink, project, ConfigFile)
 		}
-		return workspace.DetectProjectStack(stackRef.Name().Q())
+		return workspace.DetectProjectStack(sink, stackRef.Name().Q())
 	}
 
 	return ps, err

@@ -75,6 +75,7 @@ func NewConfigCmd() *cobra.Command {
 
 			stack, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stack,
@@ -170,6 +171,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// Get current stack and ensure that it is a different stack to the destination stack
 			currentStack, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -190,6 +192,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			// Get the destination stack
 			destinationStack, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				destinationStackName,
@@ -289,6 +292,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -348,6 +352,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 
 			stack, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -419,6 +424,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 
 			stack, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -486,6 +492,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 			// Ensure the stack exists.
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stk,
@@ -635,6 +642,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			// Ensure the stack exists.
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -803,6 +811,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			// Ensure the stack exists.
 			stack, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,

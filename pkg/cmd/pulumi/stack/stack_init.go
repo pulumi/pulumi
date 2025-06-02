@@ -183,7 +183,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	teams := sanitizeTeams(cmd.teams)
-	newStack, err := CreateStack(ctx, ws, b, stackRef, root, teams,
+	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
 		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
@@ -201,6 +201,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		// load the old stack and its project
 		copyStack, err := RequireStack(
 			ctx,
+			cmdutil.Diag(),
 			ws,
 			cmdBackend.DefaultLoginManager,
 			cmd.stackToCopy,

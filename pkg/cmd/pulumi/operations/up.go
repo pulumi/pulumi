@@ -134,6 +134,7 @@ func NewUpCmd() *cobra.Command {
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
+			cmdutil.Diag(),
 			ws,
 			lm,
 			stackName,
@@ -376,8 +377,8 @@ func NewUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = newcmd.PromptAndCreateStack(ctx, ws, b, ui.PromptForValue, stackName, root, false /*setCurrent*/, yes,
-				opts.Display, secretsProvider, false /*useRemoteConfig*/); err != nil {
+			if s, err = newcmd.PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, ui.PromptForValue, stackName, root,
+				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/); err != nil {
 				return err
 			}
 			// The backend will print "Created stack '<stack>'." on success.

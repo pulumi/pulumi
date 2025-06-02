@@ -63,6 +63,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stack,
