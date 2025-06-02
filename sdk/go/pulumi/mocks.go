@@ -38,7 +38,7 @@ type MockResourceMonitor interface {
 	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-// mockResourceMonitorWithMethodCall is an optional interface that mock resource monitors
+// MockResourceMonitorWithMethodCall is an optional interface that mock resource monitors
 // can implement to support method calls. This is separate from MockResourceMonitor to
 // maintain backward compatibility with existing implementations.
 type MockResourceMonitorWithMethodCall interface {
