@@ -1,4 +1,4 @@
 changes:
 - type: chore
   scope: sdk/nodejs
-  description: Upgrade to NodeJS 20
+  description: Require Node.js >= 20 
