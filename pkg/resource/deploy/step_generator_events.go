@@ -133,3 +133,66 @@ func (g *continueResourceRefreshEvent) Aliases() []resource.URN {
 func (g *continueResourceRefreshEvent) Invalid() bool {
 	return g.invalid
 }
+
+// ContinueResourceImportEvent is a step that asks the engine to continue provisioning a resource after an import, it is
+// always created from a base RegisterResourceEvent.
+type ContinueResourceImportEvent interface {
+	RegisterResourceEvent
+
+	Error() error
+	URN() resource.URN
+	New() *resource.State
+	Old() *resource.State
+	Provider() plugin.Provider
+	Invalid() bool
+	Recreating() bool
+	RandomSeed() []byte
+}
+
+type continueResourceImportEvent struct {
+	RegisterResourceEvent
+	err        error
+	urn        resource.URN // the URN of the resource being processed.
+	old        *resource.State
+	new        *resource.State
+	provider   plugin.Provider
+	invalid    bool
+	recreating bool
+	randomSeed []byte
+}
+
+var _ ContinueResourceImportEvent = (*continueResourceImportEvent)(nil)
+
+func (g *continueResourceImportEvent) event() {}
+
+func (g *continueResourceImportEvent) Error() error {
+	return g.err
+}
+
+func (g *continueResourceImportEvent) URN() resource.URN {
+	return g.urn
+}
+
+func (g *continueResourceImportEvent) Old() *resource.State {
+	return g.old
+}
+
+func (g *continueResourceImportEvent) New() *resource.State {
+	return g.new
+}
+
+func (g *continueResourceImportEvent) Provider() plugin.Provider {
+	return g.provider
+}
+
+func (g *continueResourceImportEvent) Invalid() bool {
+	return g.invalid
+}
+
+func (g *continueResourceImportEvent) Recreating() bool {
+	return g.recreating
+}
+
+func (g *continueResourceImportEvent) RandomSeed() []byte {
+	return g.randomSeed
+}

@@ -75,6 +75,7 @@ type stepGenerator struct {
 	replaces  map[resource.URN]bool // set of URNs replaced in this deployment
 	updates   map[resource.URN]bool // set of URNs updated in this deployment
 	creates   map[resource.URN]bool // set of URNs created in this deployment
+	imports   map[resource.URN]bool // set of URNs imported in this deployment
 	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
 
@@ -703,19 +704,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	goal := event.Goal()
 	urn := event.URN()
 	old := event.Old()
-	invalid := event.Invalid()
 	aliasUrns := event.Aliases()
-
-	// Create the desired inputs from the goal state
-	inputs := goal.Properties
-	if old != nil {
-		// Set inputs back to their old values (if any) for any "ignored" properties
-		processedInputs, err := processIgnoreChanges(inputs, old.Inputs, goal.IgnoreChanges)
-		if err != nil {
-			return nil, false, err
-		}
-		inputs = processedInputs
-	}
 
 	var createdAt *time.Time
 	var modifiedAt *time.Time
@@ -741,7 +730,8 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		refreshBeforeUpdate = old.RefreshBeforeUpdate
 	}
 
-	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, protectState, false,
+	new := resource.NewState(
+		goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
@@ -836,14 +826,8 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		return nil, false, err
 	}
 
-	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
-	allowUnknowns := sg.deployment.opts.DryRun
-
 	// We may be re-creating this resource if it got deleted earlier in the execution of this deployment.
 	_, recreating := sg.deletes[urn]
-
-	// We may be creating this resource if it previously existed in the snapshot as an External resource
-	wasExternal := old != nil && old.External
 
 	// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
 	var randomSeed []byte
@@ -860,15 +844,6 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		contract.AssertNoErrorf(err, "failed to generate random seed")
 		contract.Assertf(n == len(randomSeed),
 			"generated fewer (%d) than expected (%d) random bytes", n, len(randomSeed))
-	}
-	var autonaming *plugin.AutonamingOptions
-	if sg.deployment.opts.Autonamer != nil && goal.Custom {
-		var dbr bool
-		autonaming, dbr = sg.deployment.opts.Autonamer.AutonamingForResource(urn, randomSeed)
-		// If autonaming settings had no randomness in the name, we must delete before creating a replacement.
-		if dbr {
-			goal.DeleteBeforeReplace = &dbr
-		}
 	}
 
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
@@ -897,13 +872,127 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
+		cts := &promise.CompletionSource[*resource.State]{}
+		// Set up the cts to trigger a continueStepsFromImport when it resolves
+		go func() {
+			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
+			// but a goroutine blocked on Result and then posting to a channel is very cheap.
+			old, err := cts.Promise().Result(context.Background())
+
+			// Create a fresh 'new' state which will be for the final goal state, the import step will have 'mutated'
+			// the original 'new' variable. We still need that mutated state for the display and snapshot layers to
+			// reference, but we need a new clean separate state for the the step generator and any follow up steps to
+			// use.
+			var new *resource.State
+			if err == nil {
+				new = resource.NewState(
+					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false,
+					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
+					goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
+					createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges, refreshBeforeUpdate)
+			}
+
+			sg.events <- &continueResourceImportEvent{
+				RegisterResourceEvent: event,
+				err:                   err,
+				urn:                   urn,
+				old:                   old,
+				new:                   new,
+				provider:              prov,
+				invalid:               event.Invalid(),
+				recreating:            recreating,
+				randomSeed:            randomSeed,
+			}
+		}()
+
+		sg.imports[urn] = true
 		if isReplace := old != nil && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed),
+				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed, cts),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
-			}, false, nil
+			}, true, nil
 		}
-		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, false, nil
+		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed, cts)}, true, nil
+	}
+
+	// Anything else just flow on to the normal step generation.
+	continueEvent := &continueResourceImportEvent{
+		RegisterResourceEvent: event,
+		urn:                   urn,
+		old:                   old,
+		new:                   new,
+		provider:              prov,
+		invalid:               event.Invalid(),
+		recreating:            recreating,
+		randomSeed:            randomSeed,
+	}
+
+	return sg.continueStepsFromImport(continueEvent)
+}
+
+// This function is called by the deployment executor in response to a ContinueResourceImportEvent. It simply
+// calls into continueStepsFromImport and then validateSteps to continue the work that GenerateSteps would
+// have done without an import step.
+func (sg *stepGenerator) ContinueStepsFromImport(event ContinueResourceImportEvent) ([]Step, bool, error) {
+	steps, async, err := sg.continueStepsFromImport(event)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if async {
+		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
+		// DiffStep.
+		return steps, true, nil
+	}
+
+	steps, err = sg.validateSteps(steps)
+	return steps, false, err
+}
+
+// This function is called either from an import continuation or from a normal step generation that did no import.
+// Either way we're going to be doing normal step generation after this. Just if we did an import the old state is what
+// we just imported.
+func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEvent) ([]Step, bool, error) {
+	goal := event.Goal()
+	urn := event.URN()
+	old := event.Old()
+	new := event.New()
+	prov := event.Provider()
+	invalid := event.Invalid()
+	recreating := event.Recreating()
+	randomSeed := event.RandomSeed()
+
+	// If the import failed just exit out, the step executor will already have signaled the error to the
+	// deployment.
+	err := event.Error()
+	if err != nil {
+		return nil, false, nil
+	}
+
+	inputs := new.Inputs
+	if old != nil {
+		// Set inputs back to their old values (if any) for any "ignored" properties
+		processedInputs, err := processIgnoreChanges(inputs, old.Inputs, goal.IgnoreChanges)
+		if err != nil {
+			return nil, false, err
+		}
+		inputs = processedInputs
+	}
+
+	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
+	allowUnknowns := sg.deployment.opts.DryRun
+
+	// We may be creating this resource if it previously existed in the snapshot as an External resource
+	wasExternal := old != nil && old.External
+
+	var autonaming *plugin.AutonamingOptions
+	if sg.deployment.opts.Autonamer != nil && goal.Custom {
+		var dbr bool
+		autonaming, dbr = sg.deployment.opts.Autonamer.AutonamingForResource(urn, randomSeed)
+		// If autonaming settings had no randomness in the name, we must delete before creating a replacement.
+		if dbr {
+			goal.DeleteBeforeReplace = &dbr
+		}
 	}
 
 	isImplicitlyTargetedResource := providers.IsProviderType(urn.Type()) || urn.QualifiedType() == resource.RootStackType
@@ -1459,6 +1548,15 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
 
 			// No need to update anything, the properties didn't change.
+
+			// If this was imported don't generate a new same step, just resolve it with the old state (i.e.
+			// the thing that was imported).
+			if sg.imports[urn] {
+				event.Done(&RegisterResult{State: old, Result: ResultStateSuccess})
+				updateSteps = nil
+				return
+			}
+
 			sg.sames[urn] = true
 			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
 		}
@@ -2769,6 +2867,7 @@ func newStepGenerator(
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
 		sames:                make(map[resource.URN]bool),
+		imports:              make(map[resource.URN]bool),
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Overhaul of how the import option works, the engine can now import and then update a resource in a single deployment
