@@ -62,6 +62,7 @@ func NewStackCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -69,6 +70,7 @@ func NewStackCmd() *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,

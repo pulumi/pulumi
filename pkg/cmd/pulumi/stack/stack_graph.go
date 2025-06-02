@@ -75,6 +75,7 @@ func newStackGraphCmd() *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				cmdOpts.stackName,

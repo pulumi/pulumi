@@ -70,6 +70,7 @@ func NewLogsCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				stackName,

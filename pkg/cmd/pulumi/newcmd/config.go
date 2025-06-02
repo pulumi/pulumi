@@ -101,7 +101,7 @@ func HandleConfig(
 
 	// Save the config.
 	if len(c) > 0 {
-		if err = SaveConfig(sink, ws, s, c); err != nil {
+		if err = SaveConfig(ctx, sink, ws, s, c); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
@@ -208,7 +208,7 @@ func promptForConfig(
 	sort.Sort(keys)
 
 	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(sink, project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return nil, fmt.Errorf("loading stack config: %w", err)
 	}
@@ -218,7 +218,7 @@ func promptForConfig(
 		return nil, err
 	}
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmdStack.SaveProjectStack(stack, ps); err != nil {
+		if err = cmdStack.SaveProjectStack(ctx, stack, ps); err != nil {
 			return nil, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -327,13 +327,13 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 }
 
 // SaveConfig saves the config for the stack.
-func SaveConfig(sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
+func SaveConfig(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map) error {
 	project, _, err := ws.ReadProject()
 	if err != nil {
 		return err
 	}
 
-	ps, err := cmdStack.LoadProjectStack(sink, project, stack)
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return err
 	}
@@ -342,5 +342,5 @@ func SaveConfig(sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c 
 		ps.Config[k] = v
 	}
 
-	return cmdStack.SaveProjectStack(stack, ps)
+	return cmdStack.SaveProjectStack(ctx, stack, ps)
 }

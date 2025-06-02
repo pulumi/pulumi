@@ -103,6 +103,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},
@@ -204,6 +205,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				NameV:   tokens.MustParseStackName("testStack"),
 			}
 		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 			return snapshot, nil
 		},

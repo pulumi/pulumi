@@ -83,6 +83,7 @@ type newArgs struct {
 	aiLanguage           httpstate.PulumiAILanguage
 	templateMode         bool
 	runtimeOptions       []string
+	remoteStackConfig    bool
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -376,8 +377,8 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = PromptAndCreateStack(ctx, ws, b, args.prompt,
-			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
+		if s, err = PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, args.prompt,
+			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider, args.remoteStackConfig); err != nil {
 			return err
 		}
 		// The backend will print "Created stack '<stack>'" on success.
@@ -665,6 +666,12 @@ func NewNewCmd() *cobra.Command {
 		&args.runtimeOptions, "runtime-options", []string{},
 		"Additional options for the language runtime (format: key1=value1,key2=value2)",
 	)
+
+	cmd.PersistentFlags().BoolVar(
+		&args.remoteStackConfig, "remote-stack-config", false,
+		"Store stack configuration remotely",
+	)
+	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 
 	return cmd
 }

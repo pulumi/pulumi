@@ -63,6 +63,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stack,
@@ -83,7 +84,7 @@ This command displays data about previous updates for a stack.`,
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := LoadProjectStack(cmdutil.Diag(), project, s)
+				ps, err := LoadProjectStack(ctx, cmdutil.Diag(), project, s)
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
@@ -92,7 +93,7 @@ This command displays data about previous updates for a stack.`,
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				if state != SecretsManagerUnchanged {
-					if err = SaveProjectStack(s, ps); err != nil {
+					if err = SaveProjectStack(ctx, s, ps); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}

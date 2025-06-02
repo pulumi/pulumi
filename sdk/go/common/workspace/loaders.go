@@ -146,7 +146,7 @@ func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Pr
 }
 
 // LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(diags diag.Sink, project *Project, path string) (*ProjectStack, error) {
+func LoadProjectStack(sink diag.Sink, project *Project, path string) (*ProjectStack, error) {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	marshaller, err := marshallerForPath(path)
@@ -164,7 +164,7 @@ func LoadProjectStack(diags diag.Sink, project *Project, path string) (*ProjectS
 		return nil, err
 	}
 
-	return LoadProjectStackBytes(diags, project, b, path, marshaller)
+	return LoadProjectStackBytes(sink, project, b, path, marshaller)
 }
 
 func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {

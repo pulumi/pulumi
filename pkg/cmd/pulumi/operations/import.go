@@ -829,6 +829,7 @@ func NewImportCmd() *cobra.Command {
 			// Fetch the current stack.
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,

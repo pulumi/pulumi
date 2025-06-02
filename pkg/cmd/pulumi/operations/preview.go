@@ -389,6 +389,7 @@ func NewPreviewCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -400,7 +401,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			// Save any config values passed via flags.
-			if err = parseAndSaveConfigArray(cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
+			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
 				return err
 			}
 

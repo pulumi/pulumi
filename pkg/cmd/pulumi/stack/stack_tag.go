@@ -63,6 +63,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
 
@@ -71,6 +72,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			}
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -105,6 +107,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -112,6 +115,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -169,6 +173,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
 
@@ -177,6 +182,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			}
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
@@ -207,6 +213,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
 			value := args[1]
@@ -216,6 +223,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			}
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
