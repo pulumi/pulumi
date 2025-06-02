@@ -13,6 +13,29 @@
 // limitations under the License.
 
 // Package pgtest contains supporting code for running tests that hit PostgreSQL.
+//
+// This package uses testcontainers-go to provide isolated PostgreSQL 17 containers
+// for each test, ensuring consistent and reliable test environments.
+//
+// Example usage:
+//
+//	func TestMyFunction(t *testing.T) {
+//		// Start a PostgreSQL 17 container for this test
+//		pg := pgtest.New(t)
+//
+//		// Get connection string for the database
+//		connStr := pg.ConnectionString()
+//
+//		// Or get connection string with a specific table parameter
+//		connStrWithTable := pg.ConnectionStringWithTable("my_table")
+//
+//		// Use the connection string with your database logic
+//		db, err := sql.Open("pgx", connStr)
+//		require.NoError(t, err)
+//		defer db.Close()
+//
+//		// Container is automatically cleaned up when test completes
+//	}
 package pgtest
 
 import (
@@ -20,121 +43,114 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
-	"fmt"
-	"net"
 	"strconv"
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
-	"github.com/pulumi/pulumi/tests/integration/backend/diy/docker"
+	_ "github.com/jackc/pgx/v5/stdlib" // PostgreSQL pgx driver
+	_ "github.com/lib/pq"              // PostgreSQL pq driver (for compatibility)
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 // Database owns state for running and shutting down PostgreSQL test containers.
 type Database struct {
-	container    docker.Container
+	container    *postgres.PostgresContainer
 	connString   string
 	databaseName string
 }
 
-// New creates a new test PostgreSQL database inside a Docker container.
+// New creates a new test PostgreSQL database using testcontainers.
 // The container is automatically cleaned up when the test completes.
 func New(t *testing.T) *Database {
 	t.Helper()
 
-	// Generate unique identifiers for this test
-	containerName := "pulumi-pgtest-" + GenerateID() + "-" + strconv.FormatInt(time.Now().Unix(), 10)
+	// Generate unique identifier for this test
 	dbName := "pulumitest_" + GenerateID()
-
-	// PostgreSQL Docker settings
-	image := "postgres:17"
-	port := "5432"
+	user := "postgres"
 	password := "testpassword"
 
-	dockerArgs := []string{
-		"-e", "POSTGRES_PASSWORD=" + password,
-		"-e", "POSTGRES_DB=" + dbName,
-		"-e", "POSTGRES_HOST_AUTH_METHOD=trust", // Allow connections without password for postgres user
-	}
+	ctx := context.Background()
 
-	appArgs := []string{
-		"-c", "log_statement=all",
-		"-c", "shared_buffers=128MB",
-		"-c", "max_connections=100",
-	}
-
-	// Start the container
-	container, err := docker.StartContainer(image, containerName, port, dockerArgs, appArgs)
+	// Start PostgreSQL 17 container using testcontainers
+	postgresContainer, err := postgres.Run(ctx,
+		"postgres:17-alpine",
+		postgres.WithDatabase(dbName),
+		postgres.WithUsername(user),
+		postgres.WithPassword(password),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(30*time.Second),
+		),
+		postgres.WithSQLDriver("pgx"),
+	)
 	if err != nil {
 		t.Fatalf("Failed to start PostgreSQL container: %v", err)
 	}
 
-	t.Logf("Started PostgreSQL container: %s (ID: %s)", container.Name, container.ID)
-	t.Logf("Host port: %s", container.HostPort)
-
-	// Wait for PostgreSQL to be ready
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := docker.WaitForReady(ctx, container.HostPort, 30*time.Second); err != nil {
-		if stopErr := docker.StopContainer(container.ID); stopErr != nil {
-			t.Logf("Warning: failed to stop container after startup failure: %v", stopErr)
-		}
-		t.Fatalf("PostgreSQL container failed to become ready: %v", err)
-	}
-
-	// Build connection string
-	host, port, err := net.SplitHostPort(container.HostPort)
+	// Get connection string
+	connStr, err := postgresContainer.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
-		if stopErr := docker.StopContainer(container.ID); stopErr != nil {
-			t.Logf("Warning: failed to stop container after host port parsing failure: %v", stopErr)
+		if termErr := testcontainers.TerminateContainer(postgresContainer); termErr != nil {
+			t.Logf("Warning: failed to terminate container after connection string error: %v", termErr)
 		}
-		t.Fatalf("Failed to parse host port: %v", err)
+		t.Fatalf("Failed to get connection string: %v", err)
 	}
-
-	connString := fmt.Sprintf("postgres://postgres:%s@%s:%s/%s?sslmode=disable",
-		password, host, port, dbName)
 
 	// Verify we can connect
-	db, err := sql.Open("postgres", connString)
+	db, err := sql.Open("pgx", connStr)
 	if err != nil {
-		if stopErr := docker.StopContainer(container.ID); stopErr != nil {
-			t.Logf("Warning: failed to stop container after connection failure: %v", stopErr)
+		if termErr := testcontainers.TerminateContainer(postgresContainer); termErr != nil {
+			t.Logf("Warning: failed to terminate container after connection failure: %v", termErr)
 		}
 		t.Fatalf("Failed to open database connection: %v", err)
 	}
 	defer db.Close()
 
 	// Wait for database to be fully ready
+	pingCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	for i := 0; i < 30; i++ {
-		if err := db.PingContext(ctx); err == nil {
+		if err := db.PingContext(pingCtx); err == nil {
 			break
 		}
 		if i == 29 {
-			logs := docker.DumpContainerLogs(container.ID)
-			if stopErr := docker.StopContainer(container.ID); stopErr != nil {
-				t.Logf("Warning: failed to stop container after ping failures: %v", stopErr)
+			if termErr := testcontainers.TerminateContainer(postgresContainer); termErr != nil {
+				t.Logf("Warning: failed to terminate container after ping failures: %v", termErr)
 			}
-			t.Fatalf("Database failed to become ready after 30 attempts. Container logs:\n%s", logs)
+			t.Fatalf("Database failed to become ready after 30 attempts: %v", err)
 		}
 		time.Sleep(time.Second)
 	}
 
-	t.Logf("PostgreSQL is ready. Connection string: postgres://postgres:****@%s:%s/%s?sslmode=disable",
-		host, port, dbName)
+	// Get connection details for logging
+	host, err := postgresContainer.Host(ctx)
+	if err != nil {
+		host = "unknown"
+	}
+	port, err := postgresContainer.MappedPort(ctx, "5432")
+	if err != nil {
+		port = "unknown"
+	}
+
+	t.Logf("PostgreSQL 17 is ready. Connection: postgres://%s:****@%s:%s/%s?sslmode=disable",
+		user, host, port.Port(), dbName)
 
 	// Set up cleanup
 	t.Cleanup(func() {
 		t.Helper()
-		t.Logf("Stopping PostgreSQL container: %s", container.Name)
-		if err := docker.StopContainer(container.ID); err != nil {
-			t.Logf("Warning: failed to stop container: %v", err)
+		t.Logf("Terminating PostgreSQL container")
+		if err := testcontainers.TerminateContainer(postgresContainer); err != nil {
+			t.Logf("Warning: failed to terminate container: %v", err)
 		}
 	})
 
 	return &Database{
-		container:    container,
-		connString:   connString,
+		container:    postgresContainer,
+		connString:   connStr,
 		databaseName: dbName,
 	}
 }

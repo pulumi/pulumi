@@ -13,13 +13,14 @@
 // limitations under the License.
 
 // Package diy contains tests for the DIY backend with PostgreSQL storage.
-// These tests use Docker to spin up isolated PostgreSQL containers for each test,
+// These tests use testcontainers to spin up isolated PostgreSQL 17 containers for each test,
 // ensuring no global setup is required and tests work consistently across all environments.
 package diy
 
 import (
 	"context"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,16 +36,21 @@ import (
 )
 
 // TestPostgresBackend tests basic functionality of the PostgreSQL DIY backend.
-// This test automatically starts a PostgreSQL Docker container for isolated testing.
+// This test automatically starts a PostgreSQL 17 Docker container using testcontainers for isolated testing.
 func TestPostgresBackend(t *testing.T) {
 	t.Parallel()
+
+	// Skip on Windows as it doesn't support Linux containers by default
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping PostgreSQL test on Windows - Linux containers not supported by default")
+	}
 
 	// Skip if Docker is not available
 	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
 		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
 	}
 
-	// Start a PostgreSQL container for this test
+	// Start a PostgreSQL 17 container for this test using testcontainers
 	pg := pgtest.New(t)
 
 	// Generate a unique table name for this test
@@ -103,16 +109,21 @@ func TestPostgresBackend(t *testing.T) {
 }
 
 // TestPostgresBackendMultipleTables tests that multiple backends can use different tables
-// in the same PostgreSQL instance without conflicts.
+// in the same PostgreSQL 17 instance without conflicts.
 func TestPostgresBackendMultipleTables(t *testing.T) {
 	t.Parallel()
+
+	// Skip on Windows as it doesn't support Linux containers by default
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping PostgreSQL test on Windows - Linux containers not supported by default")
+	}
 
 	// Skip if Docker is not available
 	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
 		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
 	}
 
-	// Start a PostgreSQL container for this test
+	// Start a PostgreSQL 17 container for this test using testcontainers
 	pg := pgtest.New(t)
 
 	ctx := context.Background()
