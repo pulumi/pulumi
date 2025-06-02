@@ -132,8 +132,9 @@ func newPluginRunCmd() *cobra.Command {
 				}
 			}()
 
-			// Wait for the plugin to finish.
+			// Wait for the plugin and IO to finish.
 			code, err := plugin.Wait()
+			wg.Wait()
 			if err != nil {
 				return fmt.Errorf("plugin %s exited with error: %w", pluginDesc, err)
 			}
