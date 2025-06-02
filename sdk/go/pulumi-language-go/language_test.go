@@ -111,6 +111,8 @@ var expectedFailures = map[string]string{
 	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                       //nolint:lll
 	"l2-invoke-scalar":                    "not implemented yet: #19388",
 	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )", //nolint:lll
+	"policy-simple":                       "Go doesn't support policy packs yet",
+	"policy-config":                       "Go doesn't support policy packs yet",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

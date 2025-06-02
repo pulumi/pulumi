@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -32,7 +33,12 @@ import (
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArray []string, path bool) error {
+func parseAndSaveConfigArray(
+	sink diag.Sink,
+	ws pkgWorkspace.Context,
+	s backend.Stack, configArray []string,
+	path bool,
+) error {
 	if len(configArray) == 0 {
 		return nil
 	}
@@ -41,7 +47,7 @@ func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArr
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(sink, ws, s, commandLineConfig); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil

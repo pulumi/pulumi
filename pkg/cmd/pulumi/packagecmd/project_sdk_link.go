@@ -841,17 +841,11 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 		return nil, fmt.Errorf("could not find file %s", packageSource)
 	} else if err != nil {
 		return nil, err
-	} else if info.IsDir() {
-		// If it's a directory we need to add a fake provider binary to the path because that's what NewProviderFromPath
-		// expects.
-		packageSource = filepath.Join(packageSource, "pulumi-resource-"+info.Name())
-	} else {
-		if !isExecutable(info) {
-			if p, err := filepath.Abs(packageSource); err == nil {
-				packageSource = p
-			}
-			return nil, fmt.Errorf("plugin at path %q not executable", packageSource)
+	} else if !info.IsDir() && !isExecutable(info) {
+		if p, err := filepath.Abs(packageSource); err == nil {
+			packageSource = p
 		}
+		return nil, fmt.Errorf("plugin at path %q not executable", packageSource)
 	}
 
 	p, err := plugin.NewProviderFromPath(pctx.Host, pctx, packageSource)

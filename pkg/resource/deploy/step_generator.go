@@ -275,8 +275,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		nil,   /* created */
 		nil,   /* modified */
 		event.SourcePosition(),
-		nil, /* ignoreChanges */
-		nil, /* replaceOnChanges */
+		nil,   /* ignoreChanges */
+		nil,   /* replaceOnChanges */
+		false, /* refreshBeforeUpdate */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -636,31 +637,36 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// lookup providers for calculating replacement of resources that use the provider.
 	sg.deployment.goals.Store(urn, goal)
 
-	// If we're doing refreshes then this is the point where we need to fire off a refresh step for this
-	// resource, to call back into GenerateSteps later.
-	if sg.refresh {
-		// Only need to do refresh steps here for custom non-provider resources that have an old state.
-		if old != nil && goal.Custom && !providers.IsProviderType(goal.Type) {
-			cts := &promise.CompletionSource[*resource.State]{}
-			// Set up the cts to trigger a continueStepsFromRefresh when it resolves
-			go func() {
-				// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
-				// but a goroutine blocked on Result and then posting to a channel is very cheap.
-				state, err := cts.Promise().Result(context.Background())
-				contract.AssertNoErrorf(err, "expected a result from refresh step")
-				sg.events <- &continueResourceRefreshEvent{
-					RegisterResourceEvent: event,
-					urn:                   urn,
-					old:                   state,
-					aliases:               aliasUrns,
-					invalid:               invalid,
-				}
-			}()
+	// If we're doing refreshes (pulumi up --refresh) then this is the point where we need to fire off a refresh
+	// step for this resource, to call back into GenerateSteps later.
+	//
+	// Only need to do refresh steps here for custom non-provider resources that have an old state.
+	//
+	// Even if refreshes are not requested on the command line, provider may have requested them for this resource
+	// and recorded a RefreshBeforeUpdate flag in the state. This is respected as well.
+	if old != nil &&
+		(sg.refresh || old.RefreshBeforeUpdate) &&
+		goal.Custom &&
+		!providers.IsProviderType(goal.Type) {
+		cts := &promise.CompletionSource[*resource.State]{}
+		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
+		go func() {
+			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
+			// but a goroutine blocked on Result and then posting to a channel is very cheap.
+			state, err := cts.Promise().Result(context.Background())
+			contract.AssertNoErrorf(err, "expected a result from refresh step")
+			sg.events <- &continueResourceRefreshEvent{
+				RegisterResourceEvent: event,
+				urn:                   urn,
+				old:                   state,
+				aliases:               aliasUrns,
+				invalid:               invalid,
+			}
+		}()
 
-			step := NewRefreshStep(sg.deployment, cts, old)
-			sg.refreshes[urn] = true
-			return []Step{step}, true, nil
-		}
+		step := NewRefreshStep(sg.deployment, cts, old)
+		sg.refreshes[urn] = true
+		return []Step{step}, true, nil
 	}
 
 	// Anything else just flow on to the normal step generation.
@@ -717,11 +723,19 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 	if goal.RetainOnDelete != nil {
 		retainOnDelete = *goal.RetainOnDelete
 	}
+
+	// Carry the refreshBeforeUpdate flag forward if present in the old state.
+	var refreshBeforeUpdate bool
+	if old != nil {
+		refreshBeforeUpdate = old.RefreshBeforeUpdate
+	}
+
 	new := resource.NewState(
 		goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
-		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges)
+		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
+		refreshBeforeUpdate)
 
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new

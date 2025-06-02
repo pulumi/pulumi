@@ -145,7 +145,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// Save any config values passed via flags.
-		if err := parseAndSaveConfigArray(ws, s, configArray, path); err != nil {
+		if err := parseAndSaveConfigArray(cmdutil.Diag(), ws, s, configArray, path); err != nil {
 			return err
 		}
 
@@ -154,7 +154,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -206,6 +206,7 @@ func NewUpCmd() *cobra.Command {
 			Parallel:                  parallel,
 			Debug:                     debug,
 			Refresh:                   refreshOption,
+			RefreshProgram:            runProgram,
 			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 			UseLegacyDiff:             env.EnableLegacyDiff.Value(),
 			UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
@@ -385,6 +386,7 @@ func NewUpCmd() *cobra.Command {
 		// Prompt for config values (if needed) and save.
 		if err = newcmd.HandleConfig(
 			ctx,
+			cmdutil.Diag(),
 			ssml,
 			ws,
 			ui.PromptForValue,
@@ -414,7 +416,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, ssml, s, proj)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}

@@ -83,6 +83,73 @@ func newLanguageTestServer() *languageTestServer {
 	}
 }
 
+func installDependencies(
+	languageClient plugin.LanguageRuntime,
+	programInfo plugin.ProgramInfo,
+	isPlugin bool,
+) *testingrpc.RunLanguageTestResponse {
+	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
+		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
+	)
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("install dependencies: %v", err))
+	}
+
+	// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
+	// done channel to close (3), before we carry on.
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	var installStdoutBytes []byte
+	var installStderrBytes []byte
+
+	installErrorChan := make(chan error, 3)
+
+	go func() {
+		defer wg.Done()
+		var err error
+		if installStdoutBytes, err = io.ReadAll(installStdout); err != nil {
+			installErrorChan <- err
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		if installStderrBytes, err = io.ReadAll(installStderr); err != nil {
+			installErrorChan <- err
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := <-installDone; err != nil {
+			installErrorChan <- err
+		}
+	}()
+
+	var installErrs []error
+	wg.Wait()
+	close(installErrorChan)
+	for err := range installErrorChan {
+		if err != nil {
+			installErrs = append(installErrs, err)
+		}
+	}
+
+	err = errors.Join(installErrs...)
+	if err != nil {
+		return &testingrpc.RunLanguageTestResponse{
+			Success:  false,
+			Messages: []string{fmt.Sprintf("install dependencies: %v", err)},
+			Stdout:   string(installStdoutBytes),
+			Stderr:   string(installStderrBytes),
+		}
+	}
+
+	return nil
+}
+
 func Start(ctx context.Context) (LanguageTestServer, error) {
 	// New up an engine RPC server.
 	server := &languageTestServer{
@@ -374,6 +441,7 @@ type testToken struct {
 	SnapshotEdits        []replacement
 	LanguageInfo         string
 	ProgramOverrides     map[string]programOverride
+	PolicyPackDirectory  string
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -477,6 +545,16 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		}
 	}
 
+	var policyPackDirectory string
+	// If the policy pack directory is set, we need to absolute it so that later tests can find the policies
+	// regardless of their working directory.
+	if req.PolicyPackDirectory != "" {
+		policyPackDirectory, err = filepath.Abs(req.PolicyPackDirectory)
+		if err != nil {
+			return nil, fmt.Errorf("get absolute path for policy pack directory %s: %w", req.PolicyPackDirectory, err)
+		}
+	}
+
 	tokenBytes, err := json.Marshal(&testToken{
 		LanguagePluginName:   req.LanguagePluginName,
 		LanguagePluginTarget: req.LanguagePluginTarget,
@@ -487,6 +565,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		SnapshotEdits:        edits,
 		LanguageInfo:         req.LanguageInfo,
 		ProgramOverrides:     programOverrides,
+		PolicyPackDirectory:  policyPackDirectory,
 	})
 	contract.AssertNoErrorf(err, "could not marshal test token")
 
@@ -596,6 +675,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	host := &testHost{
 		engine:      eng,
+		ctx:         pctx,
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
@@ -984,63 +1064,9 @@ func (eng *languageTestServer) RunLanguageTest(
 			main,
 			project.Runtime.Options())
 
-		installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
-			plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: false},
-		)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("install dependencies: %v", err)), nil
-		}
-
-		// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
-		// done channel to close (3), before we carry on.
-		var wg sync.WaitGroup
-		wg.Add(3)
-
-		var installStdoutBytes []byte
-		var installStderrBytes []byte
-
-		installErrorChan := make(chan error, 3)
-
-		go func() {
-			defer wg.Done()
-			var err error
-			if installStdoutBytes, err = io.ReadAll(installStdout); err != nil {
-				installErrorChan <- err
-			}
-		}()
-
-		go func() {
-			defer wg.Done()
-			var err error
-			if installStderrBytes, err = io.ReadAll(installStderr); err != nil {
-				installErrorChan <- err
-			}
-		}()
-
-		go func() {
-			defer wg.Done()
-			if err := <-installDone; err != nil {
-				installErrorChan <- err
-			}
-		}()
-
-		var installErrs []error
-		wg.Wait()
-		close(installErrorChan)
-		for err := range installErrorChan {
-			if err != nil {
-				installErrs = append(installErrs, err)
-			}
-		}
-
-		err = errors.Join(installErrs...)
-		if err != nil {
-			return &testingrpc.RunLanguageTestResponse{
-				Success:  false,
-				Messages: []string{fmt.Sprintf("install dependencies: %v", err)},
-				Stdout:   string(installStdoutBytes),
-				Stderr:   string(installStderrBytes),
-			}, nil
+		resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
+		if resp != nil {
+			return resp, nil
 		}
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
@@ -1242,6 +1268,42 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		updateOptions := run.UpdateOptions
 		updateOptions.Host = pctx.Host
+
+		// Translate the policy pack option on the test to point to the paths given by the testdata
+		if len(run.PolicyPacks) > 0 && token.PolicyPackDirectory == "" {
+			return nil, errors.New("policy packs specified but no policy pack directory given")
+		}
+
+		for policyPack, policyConfig := range run.PolicyPacks {
+			// Write the policy config to a JSON file
+			var policyConfigFile string
+			if len(policyConfig) != 0 {
+				policyConfigFile = filepath.Join(projectDir, policyPack+".json")
+				jsonBytes, err := json.Marshal(policyConfig)
+				if err != nil {
+					return nil, fmt.Errorf("marshal policy config: %w", err)
+				}
+				err = os.WriteFile(policyConfigFile, jsonBytes, 0o600)
+				if err != nil {
+					return nil, fmt.Errorf("write policy config: %w", err)
+				}
+			}
+
+			// Install the dependencies for the policy pack
+			policyPath := filepath.Join(token.PolicyPackDirectory, policyPack)
+			policyInfo := plugin.NewProgramInfo(policyPath, policyPath, ".", nil)
+			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
+
+			pack := engine.LocalPolicyPack{
+				Path:   policyPath,
+				Config: policyConfigFile,
+			}
+
+			updateOptions.LocalPolicyPacks = append(updateOptions.LocalPolicyPacks, pack)
+		}
 
 		// Set up the stack and engine configuration
 		opts := backend.UpdateOptions{
