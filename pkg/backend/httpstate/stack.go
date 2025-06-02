@@ -154,7 +154,7 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
-// GetStackFilename returns the path to the stack file and a bool indicating if it's managed as a file.
+// ConfigLocation returns the ESC environment of the stack config if applicable.
 func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
 	return backend.StackConfigLocation{
 		IsRemote: s.escConfigEnv != nil,

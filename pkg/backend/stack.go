@@ -32,8 +32,10 @@ import (
 )
 
 type StackConfigLocation struct {
+	// IsRemote indicates if the stack's configuration is stored remotely instead of in a local file.
 	IsRemote bool
-	EscEnv   *string
+	// EscEnv is the optional name of an ESC Environment being used to store the stack's configuration.
+	EscEnv *string
 }
 
 // Stack is used to manage stacks of resources against a pluggable backend.
