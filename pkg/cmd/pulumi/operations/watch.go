@@ -158,7 +158,7 @@ func NewWatchCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 			}
 
-			err = s.Watch(ctx, backend.UpdateOperation{
+			err = backend.WatchStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

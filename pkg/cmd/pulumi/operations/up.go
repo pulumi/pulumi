@@ -237,7 +237,7 @@ func NewUpCmd() *cobra.Command {
 			opts.Engine.Plan = p
 		}
 
-		changes, err := s.Update(ctx, backend.UpdateOperation{
+		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -471,7 +471,7 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := s.Update(ctx, backend.UpdateOperation{
+		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
