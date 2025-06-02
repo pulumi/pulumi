@@ -17,14 +17,16 @@ package pgtest
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/pulumi/pulumi/tests/integration/backend/diy/docker"
 )
 
@@ -41,8 +43,8 @@ func New(t *testing.T) *Database {
 	t.Helper()
 
 	// Generate unique identifiers for this test
-	containerName := fmt.Sprintf("pulumi-pgtest-%s-%d", GenerateID(), time.Now().Unix())
-	dbName := fmt.Sprintf("pulumitest_%s", GenerateID())
+	containerName := "pulumi-pgtest-" + GenerateID() + "-" + strconv.FormatInt(time.Now().Unix(), 10)
+	dbName := "pulumitest_" + GenerateID()
 
 	// PostgreSQL Docker settings
 	image := "postgres:17"
@@ -50,8 +52,8 @@ func New(t *testing.T) *Database {
 	password := "testpassword"
 
 	dockerArgs := []string{
-		"-e", fmt.Sprintf("POSTGRES_PASSWORD=%s", password),
-		"-e", fmt.Sprintf("POSTGRES_DB=%s", dbName),
+		"-e", "POSTGRES_PASSWORD=" + password,
+		"-e", "POSTGRES_DB=" + dbName,
 		"-e", "POSTGRES_HOST_AUTH_METHOD=trust", // Allow connections without password for postgres user
 	}
 
@@ -75,14 +77,18 @@ func New(t *testing.T) *Database {
 	defer cancel()
 
 	if err := docker.WaitForReady(ctx, container.HostPort, 30*time.Second); err != nil {
-		docker.StopContainer(container.ID)
+		if stopErr := docker.StopContainer(container.ID); stopErr != nil {
+			t.Logf("Warning: failed to stop container after startup failure: %v", stopErr)
+		}
 		t.Fatalf("PostgreSQL container failed to become ready: %v", err)
 	}
 
 	// Build connection string
 	host, port, err := net.SplitHostPort(container.HostPort)
 	if err != nil {
-		docker.StopContainer(container.ID)
+		if stopErr := docker.StopContainer(container.ID); stopErr != nil {
+			t.Logf("Warning: failed to stop container after host port parsing failure: %v", stopErr)
+		}
 		t.Fatalf("Failed to parse host port: %v", err)
 	}
 
@@ -92,7 +98,9 @@ func New(t *testing.T) *Database {
 	// Verify we can connect
 	db, err := sql.Open("postgres", connString)
 	if err != nil {
-		docker.StopContainer(container.ID)
+		if stopErr := docker.StopContainer(container.ID); stopErr != nil {
+			t.Logf("Warning: failed to stop container after connection failure: %v", stopErr)
+		}
 		t.Fatalf("Failed to open database connection: %v", err)
 	}
 	defer db.Close()
@@ -104,7 +112,9 @@ func New(t *testing.T) *Database {
 		}
 		if i == 29 {
 			logs := docker.DumpContainerLogs(container.ID)
-			docker.StopContainer(container.ID)
+			if stopErr := docker.StopContainer(container.ID); stopErr != nil {
+				t.Logf("Warning: failed to stop container after ping failures: %v", stopErr)
+			}
 			t.Fatalf("Database failed to become ready after 30 attempts. Container logs:\n%s", logs)
 		}
 		time.Sleep(time.Second)
@@ -136,20 +146,15 @@ func (d *Database) ConnectionString() string {
 
 // ConnectionStringWithTable returns a connection string with a specific table parameter.
 func (d *Database) ConnectionStringWithTable(tableName string) string {
-	return fmt.Sprintf("%s&table=%s", d.connString, tableName)
+	return d.connString + "&table=" + tableName
 }
 
 // GenerateID creates a short random string suitable for use as a unique identifier.
 func GenerateID() string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	result := make([]byte, 6)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
+	bytes := make([]byte, 3)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to current time if crypto/rand fails
+		return strconv.FormatInt(time.Now().UnixNano()%1000000, 10)
 	}
-	return string(result)
-}
-
-func init() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
+	return hex.EncodeToString(bytes)
 }

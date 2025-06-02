@@ -37,8 +37,8 @@ type blobData struct {
 	Data string `json:"data"` // base64 encoded binary data
 }
 
-// PostgresBucket implements blob.Bucket storage using PostgreSQL.
-type PostgresBucket struct {
+// Bucket implements blob.Bucket storage using PostgreSQL.
+type Bucket struct {
 	db        *sql.DB
 	tableName string
 	bucket    *blob.Bucket
@@ -54,8 +54,8 @@ CREATE TABLE IF NOT EXISTS %s (
 CREATE INDEX IF NOT EXISTS %s_key_prefix_idx ON %s (key text_pattern_ops);
 `
 
-// NewPostgresBucket creates a new PostgresBucket.
-func NewPostgresBucket(ctx context.Context, connString string) (*PostgresBucket, error) {
+// NewPostgresBucket creates a new Bucket.
+func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) {
 	u, err := url.Parse(connString)
 	if err != nil {
 		return nil, fmt.Errorf("invalid PostgreSQL connection string: %w", err)
@@ -94,7 +94,7 @@ func NewPostgresBucket(ctx context.Context, connString string) (*PostgresBucket,
 		return nil, fmt.Errorf("failed to create table %s: %w", tableName, err)
 	}
 
-	bucket := &PostgresBucket{
+	bucket := &Bucket{
 		db:        db,
 		tableName: tableName,
 	}
@@ -108,12 +108,12 @@ func NewPostgresBucket(ctx context.Context, connString string) (*PostgresBucket,
 }
 
 // Bucket returns the blob.Bucket.
-func (b *PostgresBucket) Bucket() *blob.Bucket {
+func (b *Bucket) Bucket() *blob.Bucket {
 	return b.bucket
 }
 
 // Close closes the bucket.
-func (b *PostgresBucket) Close() error {
+func (b *Bucket) Close() error {
 	err := b.bucket.Close()
 	if b.db != nil {
 		dbErr := b.db.Close()
@@ -127,12 +127,12 @@ func (b *PostgresBucket) Close() error {
 
 // postgresBucketDriver implements driver.Bucket.
 type postgresBucketDriver struct {
-	bucket *PostgresBucket
+	bucket *Bucket
 }
 
 // As implements driver.Bucket.As.
 func (d *postgresBucketDriver) As(i interface{}) bool {
-	p, ok := i.(**PostgresBucket)
+	p, ok := i.(**Bucket)
 	if !ok {
 		return false
 	}
@@ -156,7 +156,8 @@ func (d *postgresBucketDriver) ErrorCode(err error) gcerrors.ErrorCode {
 // Copy implements driver.Bucket.Copy.
 func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.CopyOptions) error {
 	// Read the source data
-	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName)
+	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
+	// table name is controlled by application
 	var dataJSON string
 	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&dataJSON)
 	if err != nil {
@@ -167,7 +168,10 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 	}
 
 	// Write to the destination key
-	insertQuery := fmt.Sprintf("INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()", d.bucket.tableName)
+	insertQuery := fmt.Sprintf( //nolint:gosec
+		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
+		d.bucket.tableName,
+	) // table name is controlled by application
 	_, err = d.bucket.db.ExecContext(ctx, insertQuery, dstKey, dataJSON)
 	return err
 }
@@ -175,7 +179,8 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 // ListPaged implements driver.Bucket.ListPaged.
 func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
 	// The SQL query to list blob keys
-	query := fmt.Sprintf("SELECT key FROM %s", d.bucket.tableName)
+	query := "SELECT key FROM " + d.bucket.tableName //nolint:gosec
+	// table name is controlled by application
 	args := []interface{}{}
 
 	// Add conditions to filter by prefix
@@ -192,7 +197,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		query += fmt.Sprintf(" LIMIT %d", opts.PageSize)
 	}
 	if len(opts.PageToken) > 0 {
-		query += " OFFSET $" + fmt.Sprintf("%d", len(args)+1)
+		query += " OFFSET $" + strconv.Itoa(len(args)+1)
 		offset, err := strconv.Atoi(string(opts.PageToken))
 		if err != nil {
 			return nil, err
@@ -246,7 +251,10 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		// Get metadata for the object
 		var updatedAt time.Time
 		var size int64
-		metaQuery := fmt.Sprintf("SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1", d.bucket.tableName)
+		metaQuery := fmt.Sprintf( //nolint:gosec
+			"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
+			d.bucket.tableName,
+		) // table name is controlled by application
 		err := d.bucket.db.QueryRowContext(ctx, metaQuery, key).Scan(&updatedAt, &size)
 		if err != nil {
 			return nil, err
@@ -270,7 +278,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		// Remove the extra item
 		page.Objects = page.Objects[:opts.PageSize]
 		// Generate next page token
-		offsetStr := fmt.Sprintf("%d", opts.PageSize)
+		offsetStr := strconv.Itoa(opts.PageSize)
 		page.NextPageToken = []byte(offsetStr)
 	}
 
@@ -279,7 +287,10 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 
 // Attributes implements driver.Bucket.Attributes.
 func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
-	query := fmt.Sprintf("SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1", d.bucket.tableName)
+	query := fmt.Sprintf( //nolint:gosec
+		"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
+		d.bucket.tableName,
+	) // table name is controlled by application
 	var updatedAt time.Time
 	var size int64
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&updatedAt, &size)
@@ -305,8 +316,11 @@ func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*dri
 }
 
 // NewRangeReader implements driver.Bucket.NewRangeReader.
-func (d *postgresBucketDriver) NewRangeReader(ctx context.Context, key string, offset, length int64, opts *driver.ReaderOptions) (driver.Reader, error) {
-	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName)
+func (d *postgresBucketDriver) NewRangeReader(
+	ctx context.Context, key string, offset, length int64, opts *driver.ReaderOptions,
+) (driver.Reader, error) {
+	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
+	// table name is controlled by application
 	var dataJSON string
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&dataJSON)
 	if err != nil {
@@ -350,7 +364,9 @@ func (d *postgresBucketDriver) NewRangeReader(ctx context.Context, key string, o
 }
 
 // NewTypedWriter implements driver.Bucket.NewTypedWriter.
-func (d *postgresBucketDriver) NewTypedWriter(ctx context.Context, key string, contentType string, opts *driver.WriterOptions) (driver.Writer, error) {
+func (d *postgresBucketDriver) NewTypedWriter(
+	ctx context.Context, key string, contentType string, opts *driver.WriterOptions,
+) (driver.Writer, error) {
 	return &postgresWriter{
 		ctx:         ctx,
 		bucket:      d.bucket,
@@ -362,7 +378,8 @@ func (d *postgresBucketDriver) NewTypedWriter(ctx context.Context, key string, c
 
 // Delete implements driver.Bucket.Delete.
 func (d *postgresBucketDriver) Delete(ctx context.Context, key string) error {
-	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName)
+	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
+	// table name is controlled by application
 	result, err := d.bucket.db.ExecContext(ctx, query, key)
 	if err != nil {
 		return err
@@ -381,9 +398,11 @@ func (d *postgresBucketDriver) Delete(ctx context.Context, key string) error {
 }
 
 // SignedURL implements driver.Bucket.SignedURL.
-func (d *postgresBucketDriver) SignedURL(ctx context.Context, key string, opts *driver.SignedURLOptions) (string, error) {
+func (d *postgresBucketDriver) SignedURL(
+	ctx context.Context, key string, opts *driver.SignedURLOptions,
+) (string, error) {
 	// PostgreSQL doesn't support pre-signed URLs
-	return "", fmt.Errorf("signed URLs not supported with PostgreSQL backend")
+	return "", errors.New("signed URLs not supported with PostgreSQL backend")
 }
 
 // Close implements driver.Bucket.Close.
@@ -431,7 +450,7 @@ func (r *postgresReader) As(i interface{}) bool {
 // postgresWriter implements driver.Writer for PostgreSQL.
 type postgresWriter struct {
 	ctx         context.Context
-	bucket      *PostgresBucket
+	bucket      *Bucket
 	key         string
 	contentType string
 	opts        *driver.WriterOptions
@@ -454,7 +473,10 @@ func (w *postgresWriter) Close() error {
 		return fmt.Errorf("failed to marshal JSON data: %w", err)
 	}
 
-	query := fmt.Sprintf("INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()", w.bucket.tableName)
+	query := fmt.Sprintf( //nolint:gosec
+		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
+		w.bucket.tableName,
+	) // table name is controlled by application
 	_, err = w.bucket.db.ExecContext(w.ctx, query, w.key, string(jsonData))
 	return err
 }

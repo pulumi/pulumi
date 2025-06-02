@@ -37,6 +37,8 @@ import (
 // TestPostgresBackend tests basic functionality of the PostgreSQL DIY backend.
 // This test automatically starts a PostgreSQL Docker container for isolated testing.
 func TestPostgresBackend(t *testing.T) {
+	t.Parallel()
+
 	// Skip if Docker is not available
 	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
 		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
@@ -103,6 +105,8 @@ func TestPostgresBackend(t *testing.T) {
 // TestPostgresBackendMultipleTables tests that multiple backends can use different tables
 // in the same PostgreSQL instance without conflicts.
 func TestPostgresBackendMultipleTables(t *testing.T) {
+	t.Parallel()
+
 	// Skip if Docker is not available
 	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
 		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")

@@ -80,7 +80,7 @@ func WaitForReady(ctx context.Context, hostPort string, timeout time.Duration) e
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for container to be ready")
+			return errors.New("timeout waiting for container to be ready")
 		default:
 			conn, err := net.DialTimeout("tcp", hostPort, time.Second)
 			if err == nil {
@@ -100,7 +100,7 @@ func startContainer(image string, name string, port string, dockerArgs []string,
 	}
 
 	// Just in case there is a container with the same name.
-	exec.Command("docker", "rm", name, "-v").Run()
+	_ = exec.Command("docker", "rm", name, "-v").Run() // ignore error as container might not exist
 
 	arg := []string{"run", "-P", "-d", "--name", name}
 	arg = append(arg, dockerArgs...)
@@ -117,7 +117,7 @@ func startContainer(image string, name string, port string, dockerArgs []string,
 	id := out.String()[:12]
 	hostIP, hostPort, err := extractIPPort(id, port)
 	if err != nil {
-		StopContainer(id)
+		_ = StopContainer(id) // ignore error as original error is more important
 		return Container{}, fmt.Errorf("could not extract ip/port: %w", err)
 	}
 
@@ -133,7 +133,7 @@ func startContainer(image string, name string, port string, dockerArgs []string,
 func exists(name string, port string) (Container, error) {
 	// Get the container ID first
 	var idOut bytes.Buffer
-	idCmd := exec.Command("docker", "ps", "-aqf", fmt.Sprintf("name=%s", name))
+	idCmd := exec.Command("docker", "ps", "-aqf", "name="+name) //nolint:gosec
 	idCmd.Stdout = &idOut
 	if err := idCmd.Run(); err != nil {
 		return Container{}, errors.New("container not running")
@@ -163,7 +163,8 @@ func extractIPPort(name string, port string) (hostIP string, hostPort string, er
 	// Got [{"HostIp":"0.0.0.0","HostPort":"49190"}{"HostIp":"::","HostPort":"49190"}]
 	// Need [{"HostIp":"0.0.0.0","HostPort":"49190"},{"HostIp":"::","HostPort":"49190"}]
 	// '[{{range $i,$v := (index .NetworkSettings.Ports "5432/tcp")}}{{if $i}},{{end}}{{json $v}}{{end}}]'
-	tmpl := fmt.Sprintf(`[{{range $i,$v := (index .NetworkSettings.Ports "%s/tcp")}}{{if $i}},{{end}}{{json $v}}{{end}}]`, port)
+	tmpl := `[{{range $i,$v := (index .NetworkSettings.Ports "` + port +
+		`/tcp")}}{{if $i}},{{end}}{{json $v}}{{end}}]`
 
 	var out bytes.Buffer
 	cmd := exec.Command("docker", "inspect", "-f", tmpl, name)
@@ -191,5 +192,5 @@ func extractIPPort(name string, port string) (hostIP string, hostPort string, er
 		}
 	}
 
-	return "", "", fmt.Errorf("could not locate ip/port")
+	return "", "", errors.New("could not locate ip/port")
 }
