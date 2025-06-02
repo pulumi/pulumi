@@ -57,7 +57,7 @@ on:
           {
             "dotnet": "8.0.x",
             "go": "1.18.x",
-            "nodejs": "16.x",
+            "nodejs": "20.x",
             "python": "3.9.x"
           }
       continue-on-error:
