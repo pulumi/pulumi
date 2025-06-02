@@ -20,6 +20,7 @@ package codegen_test
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -41,7 +42,118 @@ const (
 	dotnet language = iota
 )
 
-func TestGetLanguageTypeString(t *testing.T) {
+func TestGetResourceName(t *testing.T) {
+	t.Parallel()
+
+	resource := func(t *testing.T, token string) *schema.Resource {
+		schemaSpec := schema.PackageSpec{
+			Name: "example",
+			Resources: map[string]schema.ResourceSpec{
+				"example:index:ComponentResource": {
+					IsComponent: true,
+				},
+				"example:nested:Resource": {
+					IsComponent: true,
+				},
+
+				"example:override:Resource": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Language: map[string]schema.RawMessage{
+							"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpResourceInfo{
+								Name: "Overridden",
+							}),
+						},
+					},
+				},
+			},
+		}
+
+		return mustToken(t, bind(t, schemaSpec).Resources().Get, token)
+	}
+
+	tests := []struct {
+		name           string
+		resource       *schema.Resource
+		schemaOverride schema.PackageReference
+		expected       map[language]string
+	}{
+		{
+			name:     "resource",
+			resource: resource(t, "example:index:ComponentResource"),
+			expected: map[language]string{
+				golang: "ComponentResource",
+				nodejs: "ComponentResource",
+				python: "ComponentResource",
+				dotnet: "ComponentResource",
+			},
+		},
+		{
+			name:     "nested",
+			resource: resource(t, "example:nested:Resource"),
+			expected: map[language]string{
+				golang: "Resource",
+				nodejs: "Resource",
+				python: "Resource",
+				dotnet: "Resource",
+			},
+		},
+		{
+			name:     "language override",
+			resource: resource(t, "example:override:Resource"),
+			expected: map[language]string{
+				// Only C# allows resource name overrides
+				dotnet: "Overridden",
+			},
+		},
+		{
+			name:     "provider",
+			resource: must(resource(t, "example:override:Resource").PackageReference.Provider()),
+			expected: map[language]string{
+				golang: "Provider",
+				nodejs: "Provider",
+				python: "Provider",
+				dotnet: "Provider",
+			},
+		},
+		{
+			name:     "other-schema",
+			resource: resource(t, "example:index:ComponentResource"),
+			schemaOverride: bind(t, schema.PackageSpec{
+				Name: "example2",
+				Resources: map[string]schema.ResourceSpec{
+					"example2:other:ComponentResource": {
+						IsComponent: true,
+					},
+				},
+			}),
+			expected: map[language]string{
+				golang: "ComponentResource",
+				nodejs: "ComponentResource",
+				python: "ComponentResource",
+				dotnet: "ComponentResource",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.NotEmpty(t, tt.expected)
+			for lang, expected := range tt.expected {
+				schema := tt.resource.PackageReference
+				if tt.schemaOverride != nil {
+					schema = tt.schemaOverride
+				}
+				testDocsGenHelper(t, lang, schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
+					actual := helper.GetResourceName(tt.resource)
+					assert.Equal(t, expected, actual)
+				})
+			}
+		})
+	}
+}
+
+func TestGetTypeName(t *testing.T) {
 	t.Parallel()
 
 	schema1 := bind(t, schema.PackageSpec{
@@ -266,21 +378,22 @@ func TestGetLanguageTypeString(t *testing.T) {
 		},
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
 				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
 					if tt.input == nil || *tt.input {
-						t.Run("input", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+						t.Run("input", func(t *testing.T) {
+							t.Parallel()
 							actual := helper.GetTypeName(tt.schema, tt.typ, true, tt.module)
 							assert.Equal(t, expected, actual)
 						})
 					}
 					if tt.input == nil || !*tt.input {
-						t.Run("output", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+						t.Run("output", func(t *testing.T) {
+							t.Parallel()
 							actual := helper.GetTypeName(tt.schema, tt.typ, false, tt.module)
 							assert.Equal(t, expected, actual)
 						})
@@ -439,10 +552,9 @@ func TestGetMethodResultName(t *testing.T) {
 		},
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
-	for _, tt := range tests { //nolint:paralleltest
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			require.NotEmpty(t, tt.expected, "Must test at least one language")
 			for lang, expected := range tt.expected {
 				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
@@ -515,8 +627,6 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 		dotnet: "Foo.GetKubeconfigResult",
 	}
 
-	// Code generation is not safe to parallelize since import binding mutates the
-	// [schema.Package].
 	for lang, expected := range expected {
 		testDocsGenHelper(t, lang, pkg.Reference(), func(t *testing.T, helper codegen.DocLanguageHelper) {
 			actual := helper.GetMethodResultName(pkg.Reference(), "",
@@ -524,6 +634,137 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 				mustToken(t, pkg.Reference().Resources().Get, "example:index:Foo").Methods[0],
 			)
 			assert.Equal(t, expected, actual)
+		})
+	}
+}
+
+func TestGetModuleName(t *testing.T) {
+	t.Parallel()
+
+	pkg := func(t *testing.T, language map[string]schema.RawMessage) schema.PackageReference {
+		schemaSpec := schema.PackageSpec{
+			Name: "example",
+			Resources: map[string]schema.ResourceSpec{
+				"example:index:Foo": {
+					IsComponent: true,
+					Methods: map[string]string{
+						"getKubeconfig": "example:index:Foo/getKubeconfig",
+					},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"example:index:Foo/getKubeconfig": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"__self__": {
+								TypeSpec: schema.TypeSpec{
+									Ref: "#/resources/example:index:Foo",
+								},
+							},
+						},
+						Required: []string{"__self__"},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"kubeconfig": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						Required: []string{"kubeconfig"},
+					},
+				},
+			},
+			Language: language,
+		}
+
+		return bind(t, schemaSpec)
+	}
+
+	tests := []struct {
+		name     string
+		schema   schema.PackageReference
+		token    string
+		expected map[language]string
+	}{
+		{
+			name:   "index",
+			schema: pkg(t, nil),
+			token:  "example:index:Foo",
+			expected: map[language]string{
+				golang: "",
+				nodejs: "",
+				python: "",
+				dotnet: "",
+			},
+		},
+		{
+			name:   "simple",
+			schema: pkg(t, nil),
+			token:  "example:mymodule:Foo",
+			expected: map[language]string{
+				golang: "mymodule",
+				nodejs: "mymodule",
+				python: "mymodule",
+				dotnet: "Mymodule",
+			},
+		},
+		{
+			name:   "nested",
+			schema: pkg(t, nil),
+			token:  "example:my/module:Foo",
+			expected: map[language]string{
+				golang: "my/module",
+				nodejs: "my.module",
+				python: "my/module",
+				dotnet: "My.Module",
+			},
+		},
+		{
+			name: "overwritten",
+			schema: pkg(t, map[string]schema.RawMessage{
+				"go": marshalIntoRaw(t, golang_codegen.GoPackageInfo{
+					ModuleToPackage: map[string]string{
+						"shouldoverride": "gopkg",
+					},
+				}),
+				"csharp": marshalIntoRaw(t, dotnet_codegen.CSharpPackageInfo{
+					Namespaces: map[string]string{
+						"shouldoverride": "DotNetPkg",
+					},
+				}),
+				"nodejs": marshalIntoRaw(t, nodejs_codegen.NodePackageInfo{
+					ModuleToPackage: map[string]string{
+						"shouldoverride": "nodepkg",
+					},
+				}),
+				"python": marshalIntoRaw(t, python_codegen.PackageInfo{
+					ModuleNameOverrides: map[string]string{
+						"shouldoverride": "pythonpkg",
+					},
+				}),
+			}),
+			token: "example:shouldoverride:Foo",
+			expected: map[language]string{
+				golang: "gopkg",
+				nodejs: "nodepkg",
+				python: "pythonpkg",
+				dotnet: "DotNetPkg",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.NotEmpty(t, tt.expected)
+			for lang, expected := range tt.expected {
+				testDocsGenHelper(t, lang, tt.schema, func(t *testing.T, helper codegen.DocLanguageHelper) {
+					actual := helper.GetModuleName(tt.schema, tt.schema.TokenToModule(tt.token))
+					assert.Equal(t, expected, actual)
+				})
+			}
 		})
 	}
 }
@@ -559,8 +800,52 @@ func testDocsGenHelper(
 		assert.Fail(t, "Unknown language %T", language)
 	}
 
-	t.Run(name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+	t.Run(name, func(t *testing.T) {
+		t.Parallel()
 		f(t, helper())
+	})
+}
+
+func BenchmarkGetPropertyNames(b *testing.B) {
+	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/azure-native-2.41.0.json")
+	require.NoError(b, err)
+	b.Run("full-bind", func(b *testing.B) {
+		for range b.N {
+			var spec schema.PackageSpec
+			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
+				"nodejs": nodejs_codegen.Importer,
+			}, schema.ValidationOptions{})
+			require.NoError(b, err)
+
+			res, ok := partial.GetResource("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			require.True(b, ok)
+
+			var helper nodejs_codegen.DocLanguageHelper
+			for _, prop := range res.InputProperties {
+				helper.GetTypeName(partial.Reference(), prop.Type, false, partial.TokenToModule(res.Token))
+			}
+		}
+	})
+
+	b.Run("partial-bind", func(b *testing.B) {
+		for range b.N {
+			var spec schema.PartialPackageSpec
+			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
+			partial, err := schema.ImportPartialSpec(spec, map[string]schema.Language{
+				"nodejs": nodejs_codegen.Importer,
+			}, nil)
+			require.NoError(b, err)
+
+			res, ok, err := partial.Resources().Get("azure-native:eventgrid/v20220615:DomainTopicEventSubscription")
+			require.NoError(b, err)
+			require.True(b, ok)
+
+			var helper nodejs_codegen.DocLanguageHelper
+			for _, prop := range res.InputProperties {
+				helper.GetTypeName(partial, prop.Type, false, partial.TokenToModule(res.Token))
+			}
+		}
 	})
 }
 
@@ -578,6 +863,7 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 }
 
 func mustToken[T any](t *testing.T, get func(string) (T, bool, error), token string) T {
+	t.Helper()
 	v, ok, err := get(token)
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -593,3 +879,10 @@ func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
 }
 
 func mkHelper[T codegen.DocLanguageHelper]() codegen.DocLanguageHelper { var v T; return v }
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}

@@ -152,7 +152,7 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		},
 	}
 
-	pCtx, err := NewContext(nil, nil, nil, nil, "", nil, false, nil)
+	pCtx, err := NewContext(context.Background(), nil, nil, nil, nil, "", nil, false, nil)
 	require.NoError(t, err)
 	host := &langhost{
 		ctx:     pCtx,
@@ -162,7 +162,7 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 	}
 
 	// Test that the plugin is run with the correct working directory.
-	_, _, _, err = host.RunPlugin(RunPluginInfo{
+	_, _, _, err = host.RunPlugin(pCtx.Request(), RunPluginInfo{
 		WorkingDirectory: "/tmp",
 	})
 	require.Equal(t, returnErr, err)

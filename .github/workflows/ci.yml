@@ -32,7 +32,7 @@ on:
         type: string
       integration-test-platforms:
         required: false
-        default: ubuntu-22.04
+        default: ubuntu-latest
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       acceptance-test-platforms:
@@ -80,7 +80,7 @@ on:
 
 jobs:
   matrix:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
@@ -112,6 +112,8 @@ jobs:
           path: test-results
           key: read-gotestsum-timing-${{ github.run_number }}
           restore-keys: gotestsum-timing-
+      - name: Install CLI
+        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:
@@ -136,12 +138,12 @@ jobs:
           readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
           readarray -td' ' ACCEPTANCE_PLATFORMS < <(echo -n "$INPUT_ACCEPTANCE_TEST_PLATFORMS"); declare -p ACCEPTANCE_PLATFORMS;
           BUILD_TARGETS='[
-              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-22.04" },
-              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-22.04" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-22.04" }
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
           ]'
 
           CODEGEN_TESTS_FLAG=--codegen-tests
@@ -157,14 +159,11 @@ jobs:
             generate-matrix \
             --kind unit-test \
             "$CODEGEN_TESTS_FLAG" \
-            --platform ubuntu-22.04 \
-            --version-set current \
+            --platform ubuntu-latest \
+            --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module cmd/pulumi-test-language 1 \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
-            --partition-module sdk/go/pulumi-language-go 1 \
-            --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
-            --partition-module sdk/python/cmd/pulumi-language-python 1 \
             --partition-module tests 8
           )
 
@@ -307,7 +306,7 @@ jobs:
       version: ${{ inputs.version }}
       os: js
       arch: wasm
-      build-platform: "ubuntu-22.04"
+      build-platform: "ubuntu-latest"
       version-set: ${{ needs.matrix.outputs.version-set }}
     secrets: inherit
 
@@ -436,7 +435,7 @@ jobs:
   test-collect-reports:
     needs: [unit-test, integration-test, acceptance-test-macos]
     if: ${{ always() }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v4
         with:
@@ -457,7 +456,7 @@ jobs:
   test-collect-coverage:
     needs: [unit-test, integration-test]
     if: ${{ inputs.enable-coverage }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       # Check that there are no failed tests.
       - name: Check tests completed successfully.

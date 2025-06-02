@@ -362,7 +362,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
-	projStack, err := workspace.LoadProjectStack(proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"))
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"))
 	require.NoError(t, err)
 
 	assert.NotContains(t, projStack.Config, config.MustMakeKey("aws", "region"))
@@ -919,8 +919,6 @@ Available Templates:
 
 // TestPulumiNewWithoutPulumiAccessToken checks that we won't error if we run `pulumi new
 // --list-templates` without PULUMI_ACCESS_TOKEN set.
-//
-//nolint:paralleltest // Changes environmental variables
 func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
@@ -975,8 +973,6 @@ Available Templates:
 
 // We should be able to list the templates even when not logged in.
 // Regression test for https://github.com/pulumi/pulumi/issues/19073
-//
-//nolint:paralleltest // Modifies env
 func TestPulumiNewNotLoggedIn(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 

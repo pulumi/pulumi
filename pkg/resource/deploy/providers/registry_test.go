@@ -108,8 +108,12 @@ func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.Progr
 	return nil, nil
 }
 
-func (host *testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
+func (host *testPluginHost) StartDebugging(info plugin.DebuggingInfo) error {
 	return nil
+}
+
+func (host *testPluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
+	return false
 }
 
 type testProvider struct {

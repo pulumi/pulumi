@@ -88,6 +88,10 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return link + "Args"
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	return moduleToPackage(d.goPkgInfo.ModuleToPackage, module)
+}
+
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
 	goPkg := moduleToPackage(d.goPkgInfo.ModuleToPackage, relativeToModule)
@@ -120,6 +124,14 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 		name = e.Name
 	}
 	return makeSafeEnumName(name, typeName)
+}
+
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	pkg, ok := d.packages[tokenToPackage(r.PackageReference, d.goPkgInfo.ModuleToPackage, r.Token)]
+	if !ok {
+		return rawResourceName(r)
+	}
+	return disambiguatedResourceName(r, pkg)
 }
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {

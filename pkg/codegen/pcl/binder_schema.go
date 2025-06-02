@@ -147,7 +147,10 @@ func (c *PackageCache) getPackageSchema(pkg PackageInfo) (*packageSchema, bool) 
 // loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
 // GetSchema method.
 // If a version is passed in, the cache will be bypassed and the package will be reloaded.
-func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version string) (*packageSchema, error) {
+func (c *PackageCache) loadPackageSchema(
+	ctx context.Context, loader schema.Loader,
+	name, version, pluginDownloadURL string,
+) (*packageSchema, error) {
 	pkgInfo := PackageInfo{
 		name:    name,
 		version: version,
@@ -161,7 +164,11 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 		versionSemver = &v
 	}
 
-	pkg, err := schema.LoadPackageReference(loader, name, versionSemver)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, &schema.PackageDescriptor{
+		Name:        name,
+		Version:     versionSemver,
+		DownloadURL: pluginDownloadURL,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +277,7 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 }
 
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
-func (b *binder) loadReferencedPackageSchemas(n Node) error {
+func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
@@ -314,7 +321,10 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
 			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
 		} else {
-			pkg, err = b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+			pkg, err = b.options.packageCache.loadPackageSchema(
+				ctx, b.options.loader,
+				name, pkgOpts.version, pkgOpts.pluginDownloadURL,
+			)
 		}
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {

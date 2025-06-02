@@ -37,13 +37,41 @@ func init() {
 				AssertPreview: func(l *L,
 					projectDirectory string, err error,
 					plan *deploy.Plan, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					require.True(l, result.IsBail(err), "expected a bail result on preview")
+
+					// Expect the error diagnostic for the failed resource
+					found := false
+					for _, evt := range events {
+						if d, ok := evt.Payload().(engine.DiagEventPayload); ok {
+							if d.Severity == "error" && d.URN.Name() == "failing" {
+								require.Equal(l, "<{%reset%}>Preview failed: failed create<{%reset%}>\n", d.Message)
+								found = true
+								break
+							}
+						}
+					}
+					require.True(l, found, "expected to find error diagnostic for failing resource")
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
+					// Expect the error diagnostic for the failed resource
+					found := false
+					for _, evt := range events {
+						if d, ok := evt.Payload().(engine.DiagEventPayload); ok {
+							if d.Severity == "error" && d.URN.Name() == "failing" {
+								require.Equal(l, "<{%reset%}>failed create<{%reset%}>\n", d.Message)
+								found = true
+								break
+							}
+						}
+					}
+					require.True(l, found, "expected to find error diagnostic for failing resource")
+
 					require.True(l, result.IsBail(err), "expected a bail result")
 					require.Equal(l, 1, len(changes), "expected 1 StepOp")
 					require.Equal(l, 2, changes[deploy.OpCreate], "expected 2 Creates")

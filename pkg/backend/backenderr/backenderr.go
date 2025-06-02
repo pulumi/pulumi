@@ -22,6 +22,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
+var ErrNotFound = NotFoundError{}
+
 // ErrNoPreviousDeployment is returned when there isn't a previous deployment.
 var ErrNoPreviousDeployment = errors.New("no previous deployment")
 
@@ -68,4 +70,25 @@ type MissingEnvVarForNonInteractiveError struct {
 
 func (err MissingEnvVarForNonInteractiveError) Error() string {
 	return err.Var.Name() + " must be set for login during non-interactive CLI sessions"
+}
+
+// NotFoundError wraps another error, indicating that the underlying problem was that a
+// resource was not found.
+type NotFoundError struct {
+	Err error
+}
+
+func (err NotFoundError) Error() string {
+	if err.Err == nil {
+		return "not found"
+	}
+	return err.Err.Error()
+}
+
+func (err NotFoundError) Unwrap() error { return err.Err }
+
+func (err NotFoundError) Is(other error) bool {
+	_, ok := other.(NotFoundError)
+	_, ptr := other.(*NotFoundError)
+	return ok || ptr
 }

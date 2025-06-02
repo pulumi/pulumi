@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -82,6 +83,11 @@ func NewConvertCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
+			absoluteOutDir, err := filepath.Abs(outDir)
+			if err != nil {
+				return fmt.Errorf("get absolute path for output directory: %w", err)
+			}
+
 			return runConvert(
 				cmd.Context(),
 				pkgWorkspace.Instance,
@@ -91,7 +97,7 @@ func NewConvertCmd() *cobra.Command {
 				mappings,
 				from,
 				language,
-				outDir,
+				absoluteOutDir,
 				generateOnly,
 				strict,
 				name,
@@ -152,7 +158,7 @@ func pclGenerateProject(
 ) (hcl.Diagnostics, error) {
 	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
 	// We always try to copy the source directory to the target directory even if binding failed
-	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
+	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory, nil)
 	// And then we return the combined diagnostics and errors
 	var err error
 	if bindErr != nil || copyErr != nil {
@@ -190,7 +196,10 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
-	pCtx, err := packagecmd.NewPluginContext(cwd)
+	// the plugin context uses the output directory as the working directory
+	// of the generated program because in general, where Pulumi.yaml lives is
+	// the root of the project.
+	pCtx, err := packagecmd.NewPluginContext(outDir)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -255,6 +264,32 @@ func runConvert(
 				return nil, err
 			}
 
+			// copy all non-PCL files from the source directory to the target directory
+			// such that any assets are copied over, excluding the Pulumi.yaml project file
+			err = aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory,
+				func(file os.FileInfo) bool {
+					if file.IsDir() {
+						sourceAbsPath, err := filepath.Abs(filepath.Join(sourceDirectory, file.Name()))
+						if err != nil {
+							return false
+						}
+
+						targetAbsPath, err := filepath.Abs(targetDirectory)
+						if err != nil {
+							return false
+						}
+						// if the target directory is a subdirectory of the source directory,
+						// skip copying it over
+						return sourceAbsPath != targetAbsPath
+					}
+
+					return file.Name() != "Pulumi.yaml" &&
+						path.Ext(file.Name()) != ".pp"
+				})
+			if err != nil {
+				return nil, fmt.Errorf("copying files from source directory: %w", err)
+			}
+
 			packageBlockDescriptors, ds, err := getPackagesToGenerateSdks(sourceDirectory)
 			diags = append(diags, ds...)
 			if err != nil {
@@ -277,11 +312,9 @@ func runConvert(
 		}
 	}
 
-	if outDir != "." {
-		err := os.MkdirAll(outDir, 0o755)
-		if err != nil {
-			return fmt.Errorf("create output directory: %w", err)
-		}
+	err = os.MkdirAll(outDir, 0o755)
+	if err != nil {
+		return fmt.Errorf("create output directory: %w", err)
 	}
 
 	log := func(sev diag.Severity, msg string) {
@@ -356,11 +389,12 @@ func runConvert(
 		defer contract.IgnoreClose(grpcServer)
 
 		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
-			SourceDirectory: cwd,
-			TargetDirectory: pclDirectory,
-			MapperTarget:    grpcServer.Addr(),
-			LoaderTarget:    grpcServer.Addr(),
-			Args:            args,
+			SourceDirectory:           cwd,
+			TargetDirectory:           pclDirectory,
+			MapperTarget:              grpcServer.Addr(),
+			LoaderTarget:              grpcServer.Addr(),
+			Args:                      args,
+			GeneratedProjectDirectory: outDir,
 		})
 		if err != nil {
 			return err

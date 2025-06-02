@@ -18,13 +18,29 @@
 package cmdutil
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
 
 	multierror "github.com/hashicorp/go-multierror"
 	ps "github.com/mitchellh/go-ps"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+var generateConsoleCtrlEvent *syscall.Proc
+
+func init() {
+	dll, err := syscall.LoadDLL("kernel32.dll")
+	if err != nil {
+		panic(fmt.Errorf("loading kernel32.dll: %w", err))
+	}
+	proc, err := dll.FindProc("GenerateConsoleCtrlEvent")
+	if err != nil {
+		panic(fmt.Errorf("finding GenerateConsoleCtrlEvent: %w", err))
+	}
+	generateConsoleCtrlEvent = proc
+}
 
 // killProcessGroup kills a process group by calling Process.Kill()
 // (which calls TerminateProcess on Windows) on all processes in the group.
@@ -100,4 +116,9 @@ func RegisterProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
 	}
+}
+
+func InterruptChildren(pid int) {
+	_, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_BREAK_EVENT, uintptr(pid))
+	contract.IgnoreError(err)
 }

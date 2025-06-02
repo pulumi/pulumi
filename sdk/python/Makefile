@@ -17,8 +17,8 @@ include ../../build/common.mk
 TEST_ALL_DEPS ?= build
 
 ensure:: .make/ensure/uv
-	uv venv --allow-existing
-	uv sync --dev
+	../../scripts/retry uv venv --allow-existing
+	../../scripts/retry uv sync --dev
 
 build_package:: ensure
 	uv run -m build --outdir ./build --installer uv

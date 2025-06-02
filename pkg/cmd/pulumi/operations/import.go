@@ -599,31 +599,19 @@ func NewImportCmd() *cobra.Command {
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
-			"If using the JSON file format to define the imported resource(s), use this instead:\n" +
+			"When importing multiple resources at once the `--file` option can be used to pass a JSON file\n" +
+			"containing multiple resources: " +
 			"\n" +
-			"     pulumi import -f import.json\n" +
+			"     pulumi import --file import.json\n" +
 			"\n" +
 			"Where import.json is a file that matches the following JSON format:\n" +
 			"\n" +
 			"    {\n" +
-			"        \"nameTable\": {\n" +
-			"            \"provider-or-parent-name-0\": \"provider-or-parent-urn-0\",\n" +
-			"            ...\n" +
-			"            \"provider-or-parent-name-n\": \"provider-or-parent-urn-n\",\n" +
-			"        },\n" +
 			"        \"resources\": [\n" +
 			"            {\n" +
-			"                \"type\": \"type-token\",\n" +
-			"                \"name\": \"name\",\n" +
-			"                \"id\": \"resource-id\",\n" +
-			"                \"parent\": \"optional-parent-name\",\n" +
-			"                \"provider\": \"optional-provider-name\",\n" +
-			"                \"version\": \"optional-provider-version\",\n" +
-			"                \"pluginDownloadUrl\": \"optional-provider-plugin-url\",\n" +
-			"                \"logicalName\": \"optionalLogicalName\",\n" +
-			"                \"properties\": [\"optional-property-names\"],\n" +
-			"                \"component\": false,\n" +
-			"                \"remote\": false,\n" +
+			"                \"type\": \"aws:ec2/vpc:Vpc\",\n" +
+			"                \"name\": \"application-vpc\",\n" +
+			"                \"id\": \"vpc-0ad77710973388316\"\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -632,34 +620,16 @@ func NewImportCmd() *cobra.Command {
 			"        ],\n" +
 			"    }\n" +
 			"\n" +
-			"The name table maps language names to parent and provider URNs. These names are\n" +
-			"used in the generated definitions, and should match the corresponding declarations\n" +
-			"in the source program. This table is required if any parents or providers are\n" +
-			"specified by the resources to import.\n" +
+			"The full import file schema references can be found in the [import documentation]\n" +
+			"(https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
 			"\n" +
-			"The resources list contains the set of resources to import. Each resource is\n" +
-			"specified as a triple of its type, name, and ID. The format of the ID is specific\n" +
-			"to the resource type. Each resource may specify the name of a parent or provider;\n" +
-			"these names must correspond to entries in the name table. If a resource does not\n" +
-			"specify a provider, it will be imported using the default provider for its type. A\n" +
-			"resource that does specify a provider may specify the version of the provider\n" +
-			"that will be used for its import.\n" +
+			"The import JSON file can be generated from a Pulumi program by running\n" +
 			"\n" +
-			"A resource can define a logical name as well as its name for the name table.\n" +
-			"If a logical name is given, it will be used to name the resource in the Pulumi state.\n" +
+			"    pulumi preview --import-file import.json\n" +
 			"\n" +
-			"A resource can also be declared as a \"component\" (and optionally as \"remote\"). These resources\n" +
-			"don't have an id set and instead just create an empty placeholder component resource in the Pulumi state.\n" +
-			"\n" +
-			"Each resource may specify which input properties to import with;\n" +
-			"\n" +
-			"If a resource does not specify any properties the default behaviour is to\n" +
-			"import using all required properties.\n" +
-			"\n" +
-			"You can use `pulumi preview` with the `--import-file` option to emit an import file\n" +
-			"for all resources that need creating from the preview. This will fill in all the name,\n" +
-			"type, parent and provider information for you and just require you to fill in resource\n" +
-			"IDs and any properties.\n",
+			"This will create entries for all resources that need creating from the preview, filling\n" +
+			"in the name, type, parent and provider information and just requiring you to fill in the\n" +
+			"resource IDs.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -670,7 +640,7 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -883,7 +853,7 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -913,7 +883,7 @@ func NewImportCmd() *cobra.Command {
 				return files, diagnostics, nil
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

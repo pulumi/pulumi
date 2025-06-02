@@ -55,6 +55,11 @@ class AnalyzerStub(object):
                 request_serializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.SerializeToString,
                 response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.FromString,
                 )
+        self.ConfigureStack = channel.unary_unary(
+                '/pulumirpc.Analyzer/ConfigureStack',
+                request_serializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.SerializeToString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.FromString,
+                )
 
 
 class AnalyzerServicer(object):
@@ -119,6 +124,15 @@ class AnalyzerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ConfigureStack(self, request, context):
+        """`ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+        This method is not always called, for example if the engine is just booting the analyzer up to call
+        GetAnalyzerInfo.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AnalyzerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -156,6 +170,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
                     servicer.Handshake,
                     request_deserializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.FromString,
                     response_serializer=pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.SerializeToString,
+            ),
+            'ConfigureStack': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConfigureStack,
+                    request_deserializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.FromString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -287,5 +306,22 @@ class Analyzer(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Handshake',
             pulumi_dot_analyzer__pb2.AnalyzerHandshakeRequest.SerializeToString,
             pulumi_dot_analyzer__pb2.AnalyzerHandshakeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ConfigureStack(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/ConfigureStack',
+            pulumi_dot_analyzer__pb2.AnalyzerStackConfigureRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.AnalyzerStackConfigureResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

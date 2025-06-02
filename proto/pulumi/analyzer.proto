@@ -48,10 +48,15 @@ service Analyzer {
     // analyzer so that it may establish its own connections back, and to establish protocol configuration that will be
     // used to communicate between the two parties.
     rpc Handshake(AnalyzerHandshakeRequest) returns (AnalyzerHandshakeResponse) {}
+
+    // `ConfigureStack` is always called if the engine is using the analyzer to analyze resources in a specific stack.
+    // This method is not always called, for example if the engine is just booting the analyzer up to call
+    // GetAnalyzerInfo.
+    rpc ConfigureStack(AnalyzerStackConfigureRequest) returns (AnalyzerStackConfigureResponse) {}
 }
 
-// `AnalyzerStackConfiguration` is the message for the stack configuration of the stack being analyzed.
-message AnalyzerStackConfiguration {
+// `AnalyzerStackConfigureRequest` is the message for the stack configuration of the stack being analyzed.
+message AnalyzerStackConfigureRequest {
     // The stack name being analyzed.
     string stack = 1;
     // The project name of the stack being analyzed.
@@ -64,6 +69,9 @@ message AnalyzerStackConfiguration {
     google.protobuf.Struct config = 5;
 }
 
+// `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.
+message AnalyzerStackConfigureResponse {
+}
 
 // `AnalyzerHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.Analyzer.Handshake) call.
 message AnalyzerHandshakeRequest {
@@ -81,10 +89,6 @@ message AnalyzerHandshakeRequest {
     // in the case that the engine has been asked to attach to an existing running analyzer instance via a host/port
     // number), this field will be empty.
     optional string program_directory = 3;
-
-    // The stack configuration of the stack being analyzed, if any. Analyzers may be started without an
-    // associated stack, for example to query GetPluginInfo or GetAnalyzerInfo.
-    optional AnalyzerStackConfiguration stack_configuration = 4;
 }
 
 // `AnalyzerHandshakeResponse` is the type of responses sent by a [](pulumirpc.Analyzer.Handshake) call.
@@ -169,7 +173,11 @@ message AnalyzeDiagnostic {
     string policyPackVersion = 3;          // Version of the policy pack.
     string description = 4;                // Description of policy rule. e.g., "encryption enabled."
     string message = 5;                    // Message to display on policy violation, e.g., remediation steps.
-    repeated string tags = 6;              // Keywords/terms to associate with a policy, e.g., "cost".
+
+    // Keywords/terms to associate with a policy, e.g., "cost". This was unused by the engine and policy SDKs.
+    reserved 6;
+    reserved "tags";
+
     EnforcementLevel enforcementLevel = 7; // Severity of the policy violation.
     string urn = 8;                        // URN of the resource that violates the policy.
 }

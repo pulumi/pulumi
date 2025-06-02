@@ -15,6 +15,8 @@
 package pcl
 
 import (
+	"context"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -55,7 +57,7 @@ func mutuallyDependantComponents(a Node, b Node) bool {
 
 // bindNode binds a single node in a program. The node's dependencies are bound prior to the node itself; it is an
 // error for a node to depend--directly or indirectly--upon itself.
-func (b *binder) bindNode(node Node) hcl.Diagnostics {
+func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 	if node.isBound() {
 		return nil
 	}
@@ -89,7 +91,7 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 			// that are components and reference each other (mutually dependant components)
 			continue
 		}
-		diags := b.bindNode(dep)
+		diags := b.bindNode(ctx, dep)
 		diagnostics = append(diagnostics, diags...)
 	}
 
@@ -101,7 +103,7 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 		diags := b.bindLocalVariable(node)
 		diagnostics = append(diagnostics, diags...)
 	case *Resource:
-		diags := b.bindResource(node)
+		diags := b.bindResource(ctx, node)
 		diagnostics = append(diagnostics, diags...)
 	case *Component:
 		diags := b.bindComponent(node)

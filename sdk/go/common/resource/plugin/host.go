@@ -93,7 +93,10 @@ type Host interface {
 	SignalCancellation() error
 
 	// StartDebugging asks the host to start a debugging session with the given configuration.
-	StartDebugging(DebuggingInfo) error
+	StartDebugging(info DebuggingInfo) error
+
+	// AttachDebugger returns true if debugging is enabled.
+	AttachDebugger(spec DebugSpec) bool
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -128,7 +131,7 @@ func IsLocalPluginPath(source string) bool {
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string, debugging DebugEventEmitter, projectName tokens.PackageName,
+	config map[config.Key]string, debugging DebugContext, projectName tokens.PackageName,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -189,7 +192,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
-		debugging:               debugging,
+		debugContext:            debugging,
 		projectName:             projectName,
 	}
 
@@ -303,7 +306,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 	projectName             tokens.PackageName               // name of the project
-	debugging               DebugEventEmitter
+	debugContext            DebugContext
 
 	// Used to synchronize shutdown with in-progress plugin loads.
 	pluginLock sync.RWMutex
@@ -342,8 +345,14 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 }
 
 func (host *defaultHost) StartDebugging(info DebuggingInfo) error {
-	contract.Assertf(host.debugging != nil, "expected host.debugging to be non-nil")
-	return host.debugging.StartDebugging(info)
+	if host.debugContext == nil {
+		return errors.New("debugging is not enabled")
+	}
+	return host.debugContext.StartDebugging(info)
+}
+
+func (host *defaultHost) AttachDebugger(spec DebugSpec) bool {
+	return host.debugContext != nil && host.debugContext.AttachDebugger(spec)
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
@@ -408,7 +417,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts)
+		plug, err := NewPolicyAnalyzer(host, host.ctx, name, path, opts, nil)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -582,7 +591,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 }
 
 func (host *defaultHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(host.ctx.Diag, spec, host.GetProjectPlugins())
+	return workspace.GetPluginInfo(host.ctx.baseContext, host.ctx.Diag, spec, host.GetProjectPlugins())
 }
 
 func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {

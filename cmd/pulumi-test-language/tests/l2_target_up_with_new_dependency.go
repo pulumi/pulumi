@@ -31,6 +31,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					RequireStackResource(l, err, changes)
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
@@ -54,6 +55,7 @@ func init() {
 				Assert: func(l *L,
 					projectDirectory string, err error,
 					snap *deploy.Snapshot, changes display.ResourceChanges,
+					events []engine.Event,
 				) {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 

@@ -15,9 +15,11 @@
 package workspace
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,4 +58,50 @@ config:
 
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
 	assert.NoError(t, err)
+}
+
+func TestNoEmptyValueWarning(t *testing.T) {
+	t.Parallel()
+	b := []byte(`
+config:
+  project:a: a
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	var p *Project
+	projectStack, err := LoadProjectStackBytes(sink, p, b, "Pulumi.stack.yaml", marshaller)
+	require.NoError(t, err)
+	require.NotContains(t, stderr.String(), "warning: No value for configuration keys")
+	require.Len(t, projectStack.Config, 1)
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewTypedValue("a", config.TypeString))
+}
+
+func TestEmptyValueWarning(t *testing.T) {
+	t.Parallel()
+	b := []byte(`
+config:
+  project:a:
+  project:b: null
+  project:c: ~
+  project:d: ""
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	var p *Project
+	projectStack, err := LoadProjectStackBytes(sink, p, b, "Pulumi.stack.yaml", marshaller)
+	require.NoError(t, err)
+	require.Contains(t, stderr.String(), "warning: No value for configuration keys")
+	require.Contains(t, stderr.String(), "project:a")
+	require.Contains(t, stderr.String(), "project:b")
+	require.Contains(t, stderr.String(), "project:c")
+	require.NotContains(t, stderr.String(), "project:d")
+	require.Len(t, projectStack.Config, 4)
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewTypedValue("", config.TypeUnknown))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewTypedValue("", config.TypeUnknown))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewTypedValue("", config.TypeUnknown))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewTypedValue("", config.TypeString))
 }

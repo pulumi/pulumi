@@ -515,6 +515,7 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     IS_TERMINAL_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
     USE_LANGUAGE_VERSION_TOOLS_FIELD_NUMBER: builtins.int
+    IS_PLUGIN_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """The program's working directory.
 
@@ -534,6 +535,8 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     """True if the host should use language-specific version managers, such as `pyenv` or `nvm`, to set up the version
     of the language toolchain used.
     """
+    is_plugin: builtins.bool
+    """True if this install is for a plugin, as opposed to a top level Pulumi program."""
     def __init__(
         self,
         *,
@@ -541,9 +544,10 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
         is_terminal: builtins.bool = ...,
         info: global___ProgramInfo | None = ...,
         use_language_version_tools: builtins.bool = ...,
+        is_plugin: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "info", b"info", "is_plugin", b"is_plugin", "is_terminal", b"is_terminal", "use_language_version_tools", b"use_language_version_tools"]) -> None: ...
 
 global___InstallDependenciesRequest = InstallDependenciesRequest
 
@@ -712,6 +716,8 @@ class RunPluginRequest(google.protobuf.message.Message):
     ENV_FIELD_NUMBER: builtins.int
     INFO_FIELD_NUMBER: builtins.int
     KIND_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
     pwd: builtins.str
     """The plugin program's working directory."""
     program: builtins.str
@@ -733,6 +739,10 @@ class RunPluginRequest(google.protobuf.message.Message):
         """The [plugin program](pulumirpc.ProgramInfo) to use."""
     kind: builtins.str
     """The kind of plugin to run (resource/analyzer/etc)."""
+    name: builtins.str
+    """The name of the plugin (for display purposes)"""
+    attach_debugger: builtins.bool
+    """True if a plugin should be started under a debugger."""
     def __init__(
         self,
         *,
@@ -742,9 +752,11 @@ class RunPluginRequest(google.protobuf.message.Message):
         env: collections.abc.Iterable[builtins.str] | None = ...,
         info: global___ProgramInfo | None = ...,
         kind: builtins.str = ...,
+        name: builtins.str = ...,
+        attach_debugger: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "env", b"env", "info", b"info", "kind", b"kind", "program", b"program", "pwd", b"pwd"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
 
 global___RunPluginRequest = RunPluginRequest
 

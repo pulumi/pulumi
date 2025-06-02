@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -120,7 +121,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	currentProjectStack, err := LoadProjectStack(ctx, project, currentStack)
+	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack)
 	if err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := CreateSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
+	if err := CreateSecretsManagerForExistingStack(ctx, cmdutil.Diag(), ws, currentStack, secretsProvider, rotateProvider,
 		false /*creatingStack*/); err != nil {
 		return err
 	}
@@ -157,6 +158,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
 	return migrateOldConfigAndCheckpointToNewSecretsProvider(
 		ctx,
+		cmdutil.Diag(),
 		ssml,
 		cmd.secretsProvider,
 		project,
@@ -168,14 +170,16 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml SecretsManagerLoader,
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
-	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
+	currentConfig *workspace.ProjectStack,
+	decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := LoadProjectStack(ctx, project, currentStack)
+	reloadedProjectStack, err := LoadProjectStack(ctx, sink, project, currentStack)
 	if err != nil {
 		return err
 	}

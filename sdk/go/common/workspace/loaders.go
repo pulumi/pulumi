@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -145,7 +146,7 @@ func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Pr
 }
 
 // LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
+func LoadProjectStack(sink diag.Sink, project *Project, path string) (*ProjectStack, error) {
 	contract.Requiref(path != "", "path", "must not be empty")
 
 	marshaller, err := marshallerForPath(path)
@@ -163,7 +164,7 @@ func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
 		return nil, err
 	}
 
-	return LoadProjectStackBytes(project, b, path, marshaller)
+	return LoadProjectStackBytes(sink, project, b, path, marshaller)
 }
 
 func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
@@ -186,6 +187,7 @@ func LoadProjectStackDeployment(path string) (*ProjectStackDeployment, error) {
 
 // LoadProjectStack reads a stack definition from a byte slice.
 func LoadProjectStackBytes(
+	diags diag.Sink,
 	project *Project,
 	b []byte,
 	path string,
@@ -220,6 +222,16 @@ func LoadProjectStackBytes(
 	//     config:
 	//       {projectName}:instanceSize: t3.micro
 	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackForm)
+
+	if diags != nil {
+		configObj, ok := simplifiedStackForm["config"]
+		if ok {
+			if configMap, ok := configObj.(map[string]interface{}); ok {
+				checkForEmptyConfig(configMap, diags)
+			}
+		}
+	}
+
 	modifiedProjectStack, _ := marshaller.Marshal(projectStackWithNamespacedConfig)
 
 	var projectStack ProjectStack
@@ -304,4 +316,57 @@ func LoadPolicyPack(path string) (*PolicyPackProject, error) {
 	}
 
 	return &policyPackProject, nil
+}
+
+// checkForEmptyConfig emits a warning for any config values that are `null` in
+// the YAML/JSON. These are currently loaded into a `config.Value` that's
+// interpreted as an empty string when we unmarshal into `ProjectStack.Config`,
+// but we want to change this in the future to maintain nullness.
+// Note that for object values, null is maintained inside objects already.
+//
+// ```yaml
+// # somekey{1,2,3} are all `null` in YAML, but `""` in pulumi.
+// somekey1:
+// somekey2: null
+// somekey3: ~
+//
+// # someobj.somekey{4,5,6} is `null` in both YAML and pulumi
+// someobj:
+//
+//	somekey4:
+//	somekey5: null
+//	somekey6: ~
+//
+// ```
+func checkForEmptyConfig(config map[string]interface{}, diags diag.Sink) {
+	keys := []string{}
+	for k, v := range config {
+		if v == nil {
+			keys = append(keys, k)
+		}
+	}
+
+	var pluralSuffix, keyString string
+	if len(keys) == 1 {
+		keyString = `"` + keys[0] + `"`
+	} else if len(keys) > 1 {
+		for i, k := range keys {
+			keys[i] = `"` + k + `"`
+		}
+		joiner := ", "
+		if len(keys) == 2 {
+			joiner = " and "
+		}
+		keyString = strings.Join(keys, joiner)
+		pluralSuffix = "s"
+	}
+
+	if len(keys) > 0 {
+		diags.Warningf(&diag.Diag{
+			Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. "+
+				"This is currently treated as an empty string `\"\"`, "+
+				"but will be treated as `null` in a future version of pulumi.\n"+
+				"Set the value%[1]s to `\"\"` to avoid this warning.", pluralSuffix, keyString),
+		})
+	}
 }

@@ -210,13 +210,13 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		copyProjectStack, err := LoadProjectStack(ctx, proj, copyStack)
+		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack)
 		if err != nil {
 			return err
 		}
 
 		// get the project for the newly created stack
-		newProjectStack, err := LoadProjectStack(ctx, proj, newStack)
+		newProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack)
 		if err != nil {
 			return err
 		}

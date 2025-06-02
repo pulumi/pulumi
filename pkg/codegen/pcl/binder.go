@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/fs"
@@ -164,6 +165,7 @@ func NonStrictBindOptions() []BindOption {
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
 func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	ctx := context.TODO()
 	var options bindOptions
 	for _, o := range opts {
 		o(&options)
@@ -174,7 +176,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
+		ctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -224,7 +226,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		return files[i].Name < files[j].Name
 	})
 	for _, f := range files {
-		fileDiags, err := b.declareNodes(f)
+		fileDiags, err := b.declareNodes(ctx, f)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -233,7 +235,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 	// Now bind the nodes.
 	for _, n := range b.nodes {
-		diagnostics = append(diagnostics, b.bindNode(n)...)
+		diagnostics = append(diagnostics, b.bindNode(ctx, n)...)
 	}
 
 	if diagnostics.HasErrors() {
@@ -363,7 +365,7 @@ func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectTyp
 // Temporarily, we load all resources first, as convert sets the highest package version seen
 // under all resources' options. Once this is supported for invokes, the order of declaration will not
 // impact which package is actually loaded.
-func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
+func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
 
 	for _, item := range model.SourceOrderBody(file.Body) {
@@ -381,7 +383,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
 
-				if err := b.loadReferencedPackageSchemas(resource); err != nil {
+				if err := b.loadReferencedPackageSchemas(ctx, resource); err != nil {
 					return nil, err
 				}
 			}
@@ -395,7 +397,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 			attrDiags := b.declareNode(item.Name, v)
 			diagnostics = append(diagnostics, attrDiags...)
 
-			if err := b.loadReferencedPackageSchemas(v); err != nil {
+			if err := b.loadReferencedPackageSchemas(ctx, v); err != nil {
 				return nil, err
 			}
 		case *hclsyntax.Block:
@@ -443,7 +445,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
 
-				if err := b.loadReferencedPackageSchemas(v); err != nil {
+				if err := b.loadReferencedPackageSchemas(ctx, v); err != nil {
 					return nil, err
 				}
 			case "output":
@@ -468,7 +470,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
 
-				if err := b.loadReferencedPackageSchemas(v); err != nil {
+				if err := b.loadReferencedPackageSchemas(ctx, v); err != nil {
 					return nil, err
 				}
 			case "component":

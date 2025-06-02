@@ -15,7 +15,10 @@
 package apitype
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
+	"time"
 
 	"github.com/blang/semver"
 )
@@ -73,4 +76,122 @@ type PackagePublishOp struct {
 	// InstallDocs is a reader containing the markdown content of the package's installation documentation.
 	// This is optional, and if omitted, the package will not have installation documentation.
 	InstallDocs io.Reader
+}
+
+type ListPackagesResponse struct {
+	Packages          []PackageMetadata `json:"packages"`
+	ContinuationToken *string           `json:"continuationToken,omitempty"`
+}
+
+type PackageMetadata struct {
+	// The name of the package.
+	Name string `json:"name"`
+	// The publisher of the package.
+	Publisher string `json:"publisher"`
+	// The source of the package.
+	Source string `json:"source"`
+	// The version of the package in semver format.
+	Version semver.Version `json:"version"`
+	// The title/display name of the package.
+	Title string `json:"title,omitempty"`
+	// The description of the package.
+	Description string `json:"description,omitempty"`
+	// The URL of the logo for the package.
+	LogoURL string `json:"logoUrl,omitempty"`
+	// The URL of the repository the package is hosted in.
+	RepoURL string `json:"repoUrl,omitempty"`
+	// The category of the package.
+	Category string `json:"category,omitempty"`
+	// Whether the package is featured.
+	IsFeatured bool `json:"isFeatured"`
+	// The package types, e.g. "native", "component", "bridged"
+	PackageTypes []PackageType `json:"packageTypes,omitempty"`
+	// The maturity level of the package, e.g. "ga", "public_preview"
+	PackageStatus PackageStatus `json:"packageStatus"`
+	// The URL of the readme for the package.
+	ReadmeURL string `json:"readmeURL"`
+	// The URL of the schema for the package.
+	SchemaURL string `json:"schemaURL"`
+	// The URL to download the plugin at, as found in the schema.
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
+	// The date and time the package version was created.
+	CreatedAt time.Time `json:"createdAt"`
+	// The visibility of the package.
+	Visibility Visibility `json:"visibility"`
+}
+
+type PackageType string
+
+const (
+	// A package that offers native resources.
+	PackageTypeNative PackageType = "native"
+	// A package that offers component resources.
+	PackageTypeComponent PackageType = "component"
+	// A package that is bridged from a different ecosystem (e.g. OpenTofu).
+	PackageTypeBridged PackageType = "bridged"
+)
+
+type PackageStatus struct{ status string }
+
+var (
+	PackageStatusGA            = PackageStatus{"ga"}
+	PackageStatusPublicPreview = PackageStatus{"public_preview"}
+)
+
+func (ps PackageStatus) String() string {
+	if ps.status == "" {
+		return "<empty>"
+	}
+	return ps.status
+}
+
+func (ps PackageStatus) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ps.String())
+}
+
+func (ps *PackageStatus) UnmarshalJSON(data []byte) error {
+	var status string
+	if err := json.Unmarshal(data, &status); err != nil {
+		return err
+	}
+
+	switch status {
+	case PackageStatusGA.status, PackageStatusPublicPreview.status:
+		ps.status = status
+		return nil
+	default:
+		return fmt.Errorf("unknown package status: %q", status)
+	}
+}
+
+type Visibility struct{ status string }
+
+var (
+	VisibilityPublic  = Visibility{"public"}
+	VisibilityPrivate = Visibility{"private"}
+)
+
+func (v Visibility) String() string {
+	if v.status == "" {
+		return "<empty>"
+	}
+	return v.status
+}
+
+func (v Visibility) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.status)
+}
+
+func (v *Visibility) UnmarshalJSON(data []byte) error {
+	var status string
+	if err := json.Unmarshal(data, &status); err != nil {
+		return err
+	}
+	switch status {
+	case VisibilityPublic.status, VisibilityPrivate.status:
+		*v = Visibility{status}
+	default:
+		return fmt.Errorf("unknown visibility: %q", status)
+	}
+	return nil
 }

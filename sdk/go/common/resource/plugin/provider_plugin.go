@@ -55,6 +55,11 @@ import (
 // Temporary feature flag to enable support for view resources.
 var supportsViews bool = cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW"))
 
+// TODO[pulumi/pulumi#19620]: Remove this temporary envvar when we no longer want to provide a way to disable it.
+// Temporary feature flag to disable support for refresh before update.
+var supportsRefreshBeforeUpdate bool = !cmdutil.IsTruthy(
+	os.Getenv("PULUMI_DISABLE_REFRESH_BEFORE_UPDATE"))
+
 // The package name for the NodeJS dynamic provider.
 const nodejsDynamicProviderPackage = "pulumi-nodejs"
 
@@ -190,10 +195,11 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 			req := &ProviderHandshakeRequest{
 				EngineAddress: host.ServerAddr(),
 				// If we're attaching then we don't know the root or program directory.
-				RootDirectory:    nil,
-				ProgramDirectory: nil,
-				ConfigureWithUrn: true,
-				SupportsViews:    supportsViews,
+				RootDirectory:               nil,
+				ProgramDirectory:            nil,
+				ConfigureWithUrn:            true,
+				SupportsViews:               supportsViews,
+				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -213,7 +219,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.Diag, spec, host.GetProjectPlugins())
+		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
@@ -244,18 +250,20 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 		) (*ProviderHandshakeResponse, error) {
 			dir := filepath.Dir(bin)
 			req := &ProviderHandshakeRequest{
-				EngineAddress:    host.ServerAddr(),
-				RootDirectory:    &dir,
-				ProgramDirectory: &dir,
-				ConfigureWithUrn: true,
-				SupportsViews:    supportsViews,
+				EngineAddress:               host.ServerAddr(),
+				RootDirectory:               &dir,
+				ProgramDirectory:            &dir,
+				ConfigureWithUrn:            true,
+				SupportsViews:               supportsViews,
+				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
 
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-			handshake, providerPluginDialOptions(ctx, pkg, ""))
+			handshake, providerPluginDialOptions(ctx, pkg, ""),
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
 			return nil, err
 		}
@@ -311,11 +319,12 @@ func handshake(
 ) (*ProviderHandshakeResponse, error) {
 	client := pulumirpc.NewResourceProviderClient(conn)
 	res, err := client.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
-		SupportsViews:    req.SupportsViews,
+		EngineAddress:               req.EngineAddress,
+		RootDirectory:               req.RootDirectory,
+		ProgramDirectory:            req.ProgramDirectory,
+		ConfigureWithUrn:            req.ConfigureWithUrn,
+		SupportsViews:               req.SupportsViews,
+		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -324,6 +333,7 @@ func handshake(
 			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
 			return nil, nil
 		}
+		return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 	}
 
 	logging.V(7).Infof("Handshake: success [%v]", bin)
@@ -368,18 +378,20 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	) (*ProviderHandshakeResponse, error) {
 		dir := filepath.Dir(bin)
 		req := &ProviderHandshakeRequest{
-			EngineAddress:    host.ServerAddr(),
-			RootDirectory:    &dir,
-			ProgramDirectory: &dir,
-			ConfigureWithUrn: true,
-			SupportsViews:    supportsViews,
+			EngineAddress:               host.ServerAddr(),
+			RootDirectory:               &dir,
+			ProgramDirectory:            &dir,
+			ConfigureWithUrn:            true,
+			SupportsViews:               supportsViews,
+			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
 
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
-		handshake, providerPluginDialOptions(ctx, "", path))
+		handshake, providerPluginDialOptions(ctx, "", path),
+		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
 		return nil, err
 	}
@@ -481,11 +493,12 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 
 func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) (*ProviderHandshakeResponse, error) {
 	res, err := p.clientRaw.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{
-		EngineAddress:    req.EngineAddress,
-		RootDirectory:    req.RootDirectory,
-		ProgramDirectory: req.ProgramDirectory,
-		ConfigureWithUrn: req.ConfigureWithUrn,
-		SupportsViews:    req.SupportsViews,
+		EngineAddress:               req.EngineAddress,
+		RootDirectory:               req.RootDirectory,
+		ProgramDirectory:            req.ProgramDirectory,
+		ConfigureWithUrn:            req.ConfigureWithUrn,
+		SupportsViews:               req.SupportsViews,
+		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 	})
 	if err != nil {
 		return nil, err
@@ -1363,10 +1376,17 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+
+	var refreshBeforeUpdate bool
+	if resp != nil {
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
+	}
+
 	return CreateResponse{
-		ID:         id,
-		Properties: outs,
-		Status:     resourceStatus,
+		ID:                  id,
+		Properties:          outs,
+		Status:              resourceStatus,
+		RefreshBeforeUpdate: refreshBeforeUpdate,
 	}, resourceError
 }
 
@@ -1505,11 +1525,17 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
 
+	var refreshBeforeUpdate bool
+	if resp != nil {
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
+	}
+
 	logging.V(7).Infof("%s success; #outs=%d, #inputs=%d", label, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
-		ID:      readID,
-		Outputs: newState,
-		Inputs:  newInputs,
+		ID:                  readID,
+		Outputs:             newState,
+		Inputs:              newInputs,
+		RefreshBeforeUpdate: refreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }
 
@@ -1650,7 +1676,16 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
-	return UpdateResponse{Properties: outs, Status: resourceStatus}, resourceError
+	var refreshBeforeUpdate bool
+	if resp != nil {
+		refreshBeforeUpdate = resp.RefreshBeforeUpdate && supportsRefreshBeforeUpdate
+	}
+
+	return UpdateResponse{
+		Properties:          outs,
+		Status:              resourceStatus,
+		RefreshBeforeUpdate: refreshBeforeUpdate,
+	}, resourceError
 }
 
 // Delete tears down an existing resource.

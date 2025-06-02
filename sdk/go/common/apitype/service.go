@@ -34,10 +34,11 @@ const (
 	// Indicates that the service backend supports batch encryption.
 	BatchEncrypt APICapability = "batch-encrypt"
 
-	// Indicates whether the service supports a notion of providing an opinion on a
-	// default organization among the user's org memberships, if a default org has
-	// not been explicitly defined.
-	DefaultOrg APICapability = "default-org"
+	// Indicates whether the service supports summarizing errors via Copilot.
+	CopilotSummarizeError APICapability = "copilot-summarize-error"
+
+	// Indicates whether the service supports the Copilot explainer.
+	CopilotExplainPreview APICapability = "copilot-explain-preview"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -69,10 +70,11 @@ type Capabilities struct {
 	// Indicates whether the service supports batch encryption.
 	BatchEncryption bool
 
-	// Indicates whether the service supports a notion of providing an opinion on a
-	// default organization among the user's org memberships, if a default org has
-	// not been explicitly defined.
-	DefaultOrg bool
+	// Indicates whether the service supports summarizing errors via Copilot.
+	CopilotSummarizeErrorV1 bool
+
+	// Indicates whether the service supports the Copilot explainer.
+	CopilotExplainPreviewV1 bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -96,8 +98,14 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 			}
 		case BatchEncrypt:
 			parsed.BatchEncryption = true
-		case DefaultOrg:
-			parsed.DefaultOrg = true
+		case CopilotSummarizeError:
+			if entry.Version == 1 {
+				parsed.CopilotSummarizeErrorV1 = true
+			}
+		case CopilotExplainPreview:
+			if entry.Version == 1 {
+				parsed.CopilotExplainPreviewV1 = true
+			}
 		default:
 			continue
 		}

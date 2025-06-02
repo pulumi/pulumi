@@ -490,6 +490,7 @@ func TestConfigBasicNodeJS(t *testing.T) {
 		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
+			"phonenumber":  "+441234567890",
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
@@ -1420,7 +1421,6 @@ func TestNpmWorkspace(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestYarnWorkspace(t *testing.T) {
 	t.Setenv("PULUMI_PREFER_YARN", "true")
 	preparePropject := func(projinfo *engine.Projinfo) error {
@@ -1450,7 +1450,6 @@ func TestYarnWorkspace(t *testing.T) {
 	require.NoError(t, pt.TestLifeCycleDestroy(), "destroy")
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestYarnWorkspaceNoHoist(t *testing.T) {
 	t.Setenv("PULUMI_PREFER_YARN", "true")
 	preparePropject := func(projinfo *engine.Projinfo) error {
@@ -2130,8 +2129,6 @@ func TestNodeOOM(t *testing.T) {
 }
 
 // Test a parameterized provider with nodejs.
-//
-//nolint:paralleltest // mutates environment
 func TestParameterizedNode(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 
@@ -2666,10 +2663,7 @@ func TestNodejsComponentProviderGetSchema(t *testing.T) {
 }
 
 // Tests that we can run a Node.js component provider using component_provider_host
-//
-//nolint:paralleltest // Sets env vars
 func TestNodejsComponentProviderRun(t *testing.T) {
-	//nolint:paralleltest // Sets env vars
 	for _, runtime := range []string{"yaml", "python"} {
 		t.Run(runtime, func(t *testing.T) {
 			// This uses the random plugin so needs to be able to download it

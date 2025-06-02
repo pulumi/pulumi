@@ -35,7 +35,7 @@ func SetupPulumiBinary() {
 	}
 	repoRoot := strings.TrimSpace(string(stdout))
 	if os.Getenv("PULUMI_INTEGRATION_REBUILD_BINARIES") == "true" {
-		cmd := exec.Command("make", "build_local")
+		cmd := exec.Command("make", "build")
 		cmd.Dir = repoRoot
 		stdout, err = cmd.CombinedOutput()
 		if err != nil {
@@ -52,9 +52,30 @@ func SetupPulumiBinary() {
 			if _, err := os.Stat(pulumiBinPath); os.IsNotExist(err) {
 				fmt.Printf("WARNING: pulumi binary not found at %s. "+
 					"Falling back to searching the $PATH. "+
-					"Run `make build_local` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
+					"Run `make build` or set `PULUMI_INTEGRATION_REBUILD_BINARIES=true`.\n", pulumiBinPath)
+				return
 			}
 		}
 		os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", pulumiBinPath)
+	}
+}
+
+// This runs pulumi install on the python provider so it's venv is setup for running.
+func InstallPythonProvider() {
+	// Find the root of the repository
+	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		fmt.Printf("error finding repo root: %v\n", err)
+		os.Exit(1)
+	}
+	repoRoot := strings.TrimSpace(string(stdout))
+
+	cmd := exec.Command("pulumi", "install")
+	providerRoot := filepath.Join(repoRoot, "tests", "testprovider-py")
+	cmd.Dir = providerRoot
+	stdout, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("error install requirements for plugin: %v.  Output: %v\n", err, string(stdout))
+		os.Exit(1)
 	}
 }

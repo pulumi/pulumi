@@ -146,7 +146,6 @@ func TestCommandNoVenv(t *testing.T) {
 	require.Nil(t, cmd.Env)
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestCommandPulumiPythonCommand(t *testing.T) {
 	t.Setenv("PULUMI_PYTHON_CMD", "python-not-found")
 

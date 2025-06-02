@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +59,9 @@ type ProviderHandshakeRequest struct {
 	// If true the engine supports views and can send an address of the resource status service that
 	// can be used to create or update view resources.
 	SupportsViews bool
+
+	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
+	SupportsRefreshBeforeUpdate bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -251,6 +254,8 @@ type CreateResponse struct {
 	ID         resource.ID
 	Properties resource.PropertyMap
 	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 type ReadRequest struct {
@@ -293,6 +298,8 @@ type UpdateRequest struct {
 type UpdateResponse struct {
 	Properties resource.PropertyMap
 	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 type DeleteRequest struct {
@@ -738,6 +745,8 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
@@ -833,6 +842,8 @@ type CallOptions struct {
 // CallResult is the result of a call to Call.
 type CallResult struct {
 	// The returned values, if the call was successful.
+	// In the case of a scalar/non-map result, a single key with any name can be used to return the
+	// value.
 	Return resource.PropertyMap
 	// A map from return value keys to the dependencies of the return value.
 	ReturnDependencies map[resource.PropertyKey][]resource.URN

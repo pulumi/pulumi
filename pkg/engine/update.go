@@ -189,8 +189,8 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
-	// AttachDebugger to launch the language host in debug mode.
-	AttachDebugger bool
+	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
+	AttachDebugger []string
 
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
@@ -415,6 +415,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
 				if err != nil {
 					errs <- err
+					plugctx.Diag.Infof(diag.Message("", "LoadPolicyPackConfigFromFile %s"), err.Error())
 					return
 				}
 			}
@@ -422,11 +423,13 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context,
 				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
 			if err != nil {
 				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				plugctx.Diag.Infof(diag.Message("", "ReconcilePolicyPackConfig %s"), err.Error())
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
 			if err = analyzer.Configure(config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
+				plugctx.Diag.Infof(diag.Message("", "Configure %s"), err.Error())
 				return
 			}
 		}(i, pack)

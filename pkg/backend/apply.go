@@ -51,8 +51,8 @@ type Explainer interface {
 	// Explain returns a human-readable explanation of the changes that will be made to the stack.
 	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
 		events []engine.Event) (string, error)
-	// IsCopilotFeatureEnabled returns whether the explainer is enabled for the given project.
-	IsCopilotFeatureEnabled(opts display.Options) bool
+	// IsExplainPreviewEnabled returns whether the explainer is enabled for the given project.
+	IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool
 }
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
@@ -166,14 +166,16 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(ctx, kind, stack, op, events, plan, explainer)
+	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
 	close(eventsChannel)
 	return plan, changes, err
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
-func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
+func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
 	events []engine.Event, plan *deploy.Plan, explainer Explainer,
+	// askOpts is used for testing to control stdin/stdout
+	askOpts ...survey.AskOpt,
 ) (*deploy.Plan, error) {
 	for {
 		opts := op.Opts
@@ -195,7 +197,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 			choices = append(choices, string(details))
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
-			if explainer != nil && explainer.IsCopilotFeatureEnabled(opts.Display) {
+			if explainer != nil && explainer.IsExplainPreviewEnabled(ctx, opts.Display) {
 				choices = append(choices, explainChoice)
 			}
 		}
@@ -217,11 +219,12 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 		}
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
+		allAskOpts := append([]survey.AskOpt{surveyIcons}, askOpts...)
 		if err := survey.AskOne(&survey.Select{
 			Message: prompt,
 			Options: choices,
 			Default: string(no),
-		}, &response, surveyIcons); err != nil {
+		}, &response, allAskOpts...); err != nil {
 			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
 
@@ -249,11 +252,22 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 
 		if response == explainChoice {
 			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
-			explanation, err := explainer.Explain(ctx, stack.Ref(), kind, op, events)
-			if err != nil {
-				return nil, err
+
+			explanation, err := explainer.Explain(ctx, stackRef, kind, op, events)
+
+			stdout := op.Opts.Display.Stdout
+			if stdout == nil {
+				stdout = os.Stdout
 			}
-			_, err = os.Stdout.WriteString(explanation + "\n")
+			if err != nil {
+				_, err = stdout.Write([]byte(
+					opts.Display.Color.Colorize(
+						"An error occurred while explaining the changes:\n" +
+							colors.BrightRed + err.Error() + colors.Reset + "\n\n")))
+				contract.IgnoreError(err)
+				continue
+			}
+			_, err = stdout.Write([]byte(explanation + "\n"))
 			contract.IgnoreError(err)
 			continue
 		}
@@ -261,7 +275,7 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stack S
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, explainer Explainer,
+	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
 	if !op.Opts.SkipPreview {
@@ -299,7 +313,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
+	_, changes, res := apply(ctx, kind, stack, op, opts, events)
 	return changes, res
 }
 

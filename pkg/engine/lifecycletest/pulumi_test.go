@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -996,7 +996,7 @@ func TestStackReference(t *testing.T) {
 	})
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
 				switch name {
 				case "other":
 					return resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1154,7 +1154,7 @@ func TestStackReferenceRegister(t *testing.T) {
 
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (resource.PropertyMap, error) {
 				switch name {
 				case "other":
 					return resource.NewPropertyMapFromMap(map[string]interface{}{

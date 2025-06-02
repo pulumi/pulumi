@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -173,7 +173,8 @@ type Backend interface {
 		ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
 	) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
+	Update(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
+	) (sdkDisplay.ResourceChanges, error)
 	// Import imports resources into a stack.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
 		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
@@ -344,7 +345,11 @@ type backendClient struct {
 }
 
 // GetStackOutputs returns the outputs of the stack with the given name.
-func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+func (c *backendClient) GetStackOutputs(
+	ctx context.Context,
+	name string,
+	onDecryptError func(err error) error,
+) (resource.PropertyMap, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return nil, err
@@ -356,14 +361,18 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	if s == nil {
 		return nil, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx, c.secretsProvider)
+
+	secretsProvider := newErrorCatchingSecretsProvider(c.secretsProvider, onDecryptError)
+	snap, err := s.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return nil, err
 	}
+
 	res, err := stack.GetRootStackResource(snap)
 	if err != nil {
 		return nil, fmt.Errorf("getting root stack resources: %w", err)
 	}
+
 	if res == nil {
 		return resource.PropertyMap{}, nil
 	}

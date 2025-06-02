@@ -108,7 +108,7 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			// Save any config values passed via flags.
-			if err := parseAndSaveConfigArray(ctx, ws, s, configArray, configPath); err != nil {
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath); err != nil {
 				return err
 			}
 
@@ -117,7 +117,7 @@ func NewWatchCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

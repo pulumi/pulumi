@@ -59,7 +59,7 @@ type Stack interface {
 		ctx context.Context, op UpdateOperation, events chan<- engine.Event,
 	) (*deploy.Plan, display.ResourceChanges, error)
 	// Update this stack.
-	Update(ctx context.Context, op UpdateOperation) (display.ResourceChanges, error)
+	Update(ctx context.Context, op UpdateOperation, events chan<- engine.Event) (display.ResourceChanges, error)
 	// Import resources into this stack.
 	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (display.ResourceChanges, error)
 	// Refresh this stack's state from the cloud provider.
@@ -106,8 +106,13 @@ func PreviewStack(
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (display.ResourceChanges, error) {
-	return s.Backend().Update(ctx, s, op)
+func UpdateStack(
+	ctx context.Context,
+	s Stack,
+	op UpdateOperation,
+	events chan<- engine.Event,
+) (display.ResourceChanges, error) {
+	return s.Backend().Update(ctx, s, op, events)
 }
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).

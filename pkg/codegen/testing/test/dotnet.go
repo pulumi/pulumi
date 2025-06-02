@@ -15,6 +15,7 @@
 package test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -121,8 +122,13 @@ func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet, pulu
 	if err = os.Remove(programFile); !os.IsNotExist(err) {
 		require.NoError(t, err)
 	}
+	dotnetVersion := "8"
+	if version := os.Getenv("DOTNET_VERSION"); version != "" {
+		dotnetVersion = version
+	}
+	dotnetVersion = fmt.Sprintf("net%s.0", dotnetVersion)
 	err = integration.RunCommand(t, "create dotnet project",
-		[]string{ex, "new", "console", "-f", "net8.0"}, dir, &integration.ProgramTestOptions{})
+		[]string{ex, "new", "console", "-f", dotnetVersion}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to create C# project")
 
 	// Remove Program.cs again generated from "dotnet new console"

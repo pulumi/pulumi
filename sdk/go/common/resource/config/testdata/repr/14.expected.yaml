@@ -9,7 +9,7 @@ paths:
       c: d
     string: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
     redacted: '{"a":{"bar":"blah","secure":"foo"},"c":"d"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAFr/gFcAAgFjBnN0cmluZwwDAAFkAWEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gCoAAgNiYXIGc3RyaW5nDAYABGJsYWgGc2VjdXJlBnN0cmluZwwFAANmb28=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAFr/gFcAAgFhF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4AqAAIDYmFyBnN0cmluZwwGAARibGFoBnNlY3VyZQZzdHJpbmcMBQADZm9vAWMGc3RyaW5nDAMAAWQ=
     secure: false
     isObject: true
   my:mapKey.a:
@@ -18,7 +18,7 @@ paths:
       secure: foo
     string: '{"bar":"blah","secure":"foo"}'
     redacted: '{"bar":"blah","secure":"foo"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC3/gCoAAgZzZWN1cmUGc3RyaW5nDAUAA2ZvbwNiYXIGc3RyaW5nDAYABGJsYWg=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC3/gCoAAgNiYXIGc3RyaW5nDAYABGJsYWgGc2VjdXJlBnN0cmluZwwFAANmb28=
     secure: false
     isObject: true
   my:mapKey.a.bar:
@@ -28,6 +28,7 @@ paths:
     object: ERAABnN0cmluZwwGAARibGFo
     secure: false
     isObject: false
+    type: 1
   my:mapKey.a.secure:
     value: foo
     string: foo
@@ -35,6 +36,7 @@ paths:
     object: EBAABnN0cmluZwwFAANmb28=
     secure: false
     isObject: false
+    type: 1
   my:mapKey.c:
     value: d
     string: d
@@ -42,3 +44,4 @@ paths:
     object: DhAABnN0cmluZwwDAAFk
     secure: false
     isObject: false
+    type: 1

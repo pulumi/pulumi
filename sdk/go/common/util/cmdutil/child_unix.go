@@ -21,6 +21,8 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // KillChildren calls os.Process.Kill() on every child process of `pid`'s, stoping after the first error (if any). It
@@ -49,4 +51,9 @@ func killProcessGroup(proc *os.Process) error {
 // in the same process group.
 func RegisterProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+}
+
+func InterruptChildren(pid int) {
+	err := syscall.Kill(-pid, syscall.SIGINT)
+	contract.IgnoreError(err)
 }

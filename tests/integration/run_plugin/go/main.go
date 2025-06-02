@@ -29,10 +29,7 @@ import (
 
 func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, name string) error {
 	providerLocation := filepath.Join("..", name)
-	// NewProviderFromPath requires a "binary", so we use a fake one. It then uses the directory for
-	// that to run the plugin.
-	fakeProviderBinary := filepath.Join(providerLocation, "pulumi-bin")
-	prov, err := plugin.NewProviderFromPath(host, pCtx, fakeProviderBinary)
+	prov, err := plugin.NewProviderFromPath(host, pCtx, providerLocation)
 	if err != nil {
 		return err
 	}
@@ -63,7 +60,7 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pCtx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil)
 		if err != nil {
 			return err
 		}

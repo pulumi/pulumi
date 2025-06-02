@@ -9,38 +9,55 @@ import * as pulumi_plugin_pb from "./plugin_pb";
 import * as google_protobuf_empty_pb from "google-protobuf/google/protobuf/empty_pb";
 import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 
-export class AnalyzerStackConfiguration extends jspb.Message { 
+export class AnalyzerStackConfigureRequest extends jspb.Message { 
     getStack(): string;
-    setStack(value: string): AnalyzerStackConfiguration;
+    setStack(value: string): AnalyzerStackConfigureRequest;
     getProject(): string;
-    setProject(value: string): AnalyzerStackConfiguration;
+    setProject(value: string): AnalyzerStackConfigureRequest;
     getOrganization(): string;
-    setOrganization(value: string): AnalyzerStackConfiguration;
+    setOrganization(value: string): AnalyzerStackConfigureRequest;
     getDryRun(): boolean;
-    setDryRun(value: boolean): AnalyzerStackConfiguration;
+    setDryRun(value: boolean): AnalyzerStackConfigureRequest;
 
     hasConfig(): boolean;
     clearConfig(): void;
     getConfig(): google_protobuf_struct_pb.Struct | undefined;
-    setConfig(value?: google_protobuf_struct_pb.Struct): AnalyzerStackConfiguration;
+    setConfig(value?: google_protobuf_struct_pb.Struct): AnalyzerStackConfigureRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): AnalyzerStackConfiguration.AsObject;
-    static toObject(includeInstance: boolean, msg: AnalyzerStackConfiguration): AnalyzerStackConfiguration.AsObject;
+    toObject(includeInstance?: boolean): AnalyzerStackConfigureRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzerStackConfigureRequest): AnalyzerStackConfigureRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: AnalyzerStackConfiguration, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): AnalyzerStackConfiguration;
-    static deserializeBinaryFromReader(message: AnalyzerStackConfiguration, reader: jspb.BinaryReader): AnalyzerStackConfiguration;
+    static serializeBinaryToWriter(message: AnalyzerStackConfigureRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzerStackConfigureRequest;
+    static deserializeBinaryFromReader(message: AnalyzerStackConfigureRequest, reader: jspb.BinaryReader): AnalyzerStackConfigureRequest;
 }
 
-export namespace AnalyzerStackConfiguration {
+export namespace AnalyzerStackConfigureRequest {
     export type AsObject = {
         stack: string,
         project: string,
         organization: string,
         dryRun: boolean,
         config?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
+export class AnalyzerStackConfigureResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AnalyzerStackConfigureResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzerStackConfigureResponse): AnalyzerStackConfigureResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AnalyzerStackConfigureResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzerStackConfigureResponse;
+    static deserializeBinaryFromReader(message: AnalyzerStackConfigureResponse, reader: jspb.BinaryReader): AnalyzerStackConfigureResponse;
+}
+
+export namespace AnalyzerStackConfigureResponse {
+    export type AsObject = {
     }
 }
 
@@ -58,11 +75,6 @@ export class AnalyzerHandshakeRequest extends jspb.Message {
     getProgramDirectory(): string | undefined;
     setProgramDirectory(value: string): AnalyzerHandshakeRequest;
 
-    hasStackConfiguration(): boolean;
-    clearStackConfiguration(): void;
-    getStackConfiguration(): AnalyzerStackConfiguration | undefined;
-    setStackConfiguration(value?: AnalyzerStackConfiguration): AnalyzerHandshakeRequest;
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerHandshakeRequest.AsObject;
     static toObject(includeInstance: boolean, msg: AnalyzerHandshakeRequest): AnalyzerHandshakeRequest.AsObject;
@@ -78,7 +90,6 @@ export namespace AnalyzerHandshakeRequest {
         engineAddress: string,
         rootDirectory?: string,
         programDirectory?: string,
-        stackConfiguration?: AnalyzerStackConfiguration.AsObject,
     }
 }
 
@@ -387,10 +398,6 @@ export class AnalyzeDiagnostic extends jspb.Message {
     setDescription(value: string): AnalyzeDiagnostic;
     getMessage(): string;
     setMessage(value: string): AnalyzeDiagnostic;
-    clearTagsList(): void;
-    getTagsList(): Array<string>;
-    setTagsList(value: Array<string>): AnalyzeDiagnostic;
-    addTags(value: string, index?: number): string;
     getEnforcementlevel(): EnforcementLevel;
     setEnforcementlevel(value: EnforcementLevel): AnalyzeDiagnostic;
     getUrn(): string;
@@ -413,7 +420,6 @@ export namespace AnalyzeDiagnostic {
         policypackversion: string,
         description: string,
         message: string,
-        tagsList: Array<string>,
         enforcementlevel: EnforcementLevel,
         urn: string,
     }

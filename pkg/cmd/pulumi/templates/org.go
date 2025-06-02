@@ -40,7 +40,7 @@ import (
 
 func (s *Source) getOrgTemplates(
 	ctx context.Context, templateName string,
-	interactive bool, wg *sync.WaitGroup,
+	wg *sync.WaitGroup,
 ) {
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject()
@@ -61,6 +61,9 @@ func (s *Source) getOrgTemplates(
 			s.addError(fmt.Errorf("could not get the current backend: %w", err))
 		}
 		logging.Infof("could not get a backend for org templates")
+		return
+	} else if b == nil {
+		logging.Infof("no current logged in user")
 		return
 	}
 

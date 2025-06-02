@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,7 +37,7 @@ import (
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.
 func CreateSecretsManagerForExistingStack(
-	ctx context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -59,7 +60,7 @@ func CreateSecretsManagerForExistingStack(
 	if err != nil {
 		return err
 	}
-	ps, err := LoadProjectStack(ctx, project, stack)
+	ps, err := LoadProjectStack(ctx, sink, project, stack)
 	if err != nil {
 		return err
 	}

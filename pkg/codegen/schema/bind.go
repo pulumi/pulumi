@@ -16,7 +16,9 @@ package schema
 
 import (
 	"cmp"
+	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -149,44 +151,44 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	// Validate the package against the metaschema.
 	if validate {
 		validationDiags, err := validateSpec(spec)
-		if err != nil {
-			return nil, nil, fmt.Errorf("validating spec: %w", err)
-		}
 		diags = diags.Extend(validationDiags)
+		if err != nil {
+			return nil, diags, fmt.Errorf("validating spec: %w", err)
+		}
 	}
 
 	types, pkgDiags, err := newBinder(spec.Info(), packageSpecSource{&spec}, loader, nil)
+	diags = diags.Extend(pkgDiags)
 	if err != nil {
-		return nil, nil, err
+		return nil, diags, err
 	}
 	defer contract.IgnoreClose(types)
-	diags = diags.Extend(pkgDiags)
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
 	config, configDiags, err := bindConfig(spec.Config, types, options)
-	if err != nil {
-		return nil, nil, err
-	}
 	diags = diags.Extend(configDiags)
+	if err != nil {
+		return nil, diags, err
+	}
 
 	provider, resources, resourceDiags, err := types.finishResources(sortedKeys(spec.Resources), options)
-	if err != nil {
-		return nil, nil, err
-	}
 	diags = diags.Extend(resourceDiags)
+	if err != nil {
+		return nil, diags, err
+	}
 
 	functions, functionDiags, err := types.finishFunctions(sortedKeys(spec.Functions), options)
-	if err != nil {
-		return nil, nil, err
-	}
 	diags = diags.Extend(functionDiags)
+	if err != nil {
+		return nil, diags, err
+	}
 
 	typeList, typeDiags, err := types.finishTypes(sortedKeys(spec.Types), options)
-	if err != nil {
-		return nil, nil, err
-	}
 	diags = diags.Extend(typeDiags)
+	if err != nil {
+		return nil, diags, err
+	}
 
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
@@ -295,7 +297,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
+		ctx, err := plugin.NewContext(context.TODO(), nil, nil, nil, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -749,7 +751,16 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 		return nil, nil, err
 	}
 
+	var diags hcl.Diagnostics
 	path := memberPath("types", token)
+	parts := strings.Split(token, ":")
+	if len(parts) == 3 {
+		name := parts[2]
+		if isReservedKeyword(name) {
+			diags = append(diags, errorf(path, name+" is a reserved name, cannot name type"))
+			return nil, diags, errors.New("type name " + name + " is reserved")
+		}
+	}
 
 	// Is this an object type?
 	if spec.Type == "object" {
@@ -766,7 +777,8 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 		}
 		t.typeDefs[token] = obj
 
-		diags, err := t.bindObjectTypeDetails(path, obj, token, spec.ObjectTypeSpec, options)
+		oDiags, err := t.bindObjectTypeDetails(path, obj, token, spec.ObjectTypeSpec, options)
+		diags = append(diags, oDiags...)
 		if err != nil {
 			return nil, diags, err
 		}
@@ -774,7 +786,8 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	}
 
 	// Otherwise, bind an enum type.
-	enum, diags := t.bindEnumType(token, spec)
+	enum, eDiags := t.bindEnumType(token, spec)
+	diags = append(diags, eDiags...)
 	t.typeDefs[token] = enum
 	return enum, diags, nil
 }
@@ -786,10 +799,10 @@ func (t *types) bindResourceTypeDef(token string, options ValidationOptions) (*R
 
 	res, diags, err := t.bindResourceDef(token, options)
 	if err != nil {
-		return nil, nil, err
+		return nil, diags, err
 	}
 	if res == nil {
-		return nil, nil, nil
+		return nil, diags, nil
 	}
 	typ := &ResourceType{Token: token, Resource: res}
 	t.resources[token] = typ
@@ -1147,10 +1160,19 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	inputShape bool, options ValidationOptions,
 ) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
+	for name := range properties {
+		if isReservedKeyword(name) {
+			diags = diags.Append(errorf(path+"/"+name, name+" is a reserved property name"))
+		}
+	}
+	if diags.HasErrors() {
+		return nil, nil, diags, errors.New("invalid property names")
+	}
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
 	result := slice.Prealloc[*Property](len(properties))
+
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
 
@@ -1332,10 +1354,10 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 	// Ensure all of the types defined by the package are bound.
 	for _, token := range tokens {
 		_, typeDiags, err := t.bindTypeDef(token, options)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error binding type %v", token)
-		}
 		diags = diags.Extend(typeDiags)
+		if err != nil {
+			return nil, diags, fmt.Errorf("error binding type %v", token)
+		}
 	}
 
 	// Build the type list.
@@ -1438,10 +1460,10 @@ func bindMethods(
 		methodPath := path + "/" + name
 
 		function, functionDiags, err := types.bindFunctionDef(token, options)
-		if err != nil {
-			return nil, nil, err
-		}
 		diags = diags.Extend(functionDiags)
+		if err != nil {
+			return nil, diags, err
+		}
 
 		if function == nil {
 			diags = diags.Append(errorf(methodPath, "unknown function %s", token))
@@ -1503,13 +1525,6 @@ func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Pr
 	properties, _, diags, err := types.bindProperties("#/config/variables", spec.Variables,
 		"#/config/defaults", spec.Required, false, options)
 
-	// If any property is called "version" error that it's reserved.
-	for _, property := range properties {
-		if property.Name == "version" {
-			diags = diags.Append(errorf("#/config/variables/version", "version is a reserved configuration key"))
-		}
-	}
-
 	return properties, diags, err
 }
 
@@ -1533,7 +1548,19 @@ func (t *types) bindResourceDef(
 			return nil, nil, err
 		}
 		t.resourceDefs[token] = res
-		diags, err = t.bindResourceDetails(memberPath("resources", token), token, spec, res, options)
+
+		path := memberPath("resources", token)
+		parts := strings.Split(token, ":")
+		if len(parts) == 3 {
+			name := parts[2]
+			if isReservedKeyword(name) {
+				diags = diags.Append(errorf(path, name+" is a reserved name, cannot name resource"))
+			}
+		}
+
+		var rDiags hcl.Diagnostics
+		rDiags, err = t.bindResourceDetails(path, token, spec, res, options)
+		diags = append(diags, rDiags...)
 	}
 	if err != nil {
 		return nil, diags, err
@@ -1564,16 +1591,16 @@ func (t *types) bindResourceDetails(
 		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
 	}
 
-	// urn is a reserved property name for all resources
-	// id is a reserved property name for resources which are not components
 	// emit a warning if either of these are used
 	for _, property := range properties {
-		if property.Name == "urn" {
-			diags = diags.Append(warningf(path+"/properties/urn", "urn is a reserved property name"))
+		if isReservedComponentResourcePropertyKey(property.Name) {
+			warnPath := path + "/properties/" + property.Name
+			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name"))
 		}
 
-		if !spec.IsComponent && property.Name == "id" {
-			diags = diags.Append(warningf(path+"/properties/id", "id is a reserved property name for resources"))
+		if !spec.IsComponent && isReservedCustomResourcePropertyKey(property.Name) {
+			warnPath := path + "/properties/" + property.Name
+			diags = diags.Append(warningf(warnPath, property.Name+" is a reserved property name for resources"))
 		}
 	}
 
@@ -1647,10 +1674,14 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	}
 	decl.IsProvider = true
 
-	// If any input property is called "version" error that it's reserved.
+	// If any input property is called "version" or "pulumi" error that it's reserved.
 	for _, property := range decl.InputProperties {
-		if property.Name == "version" {
-			diags = diags.Append(errorf("#/provider/properties/version", "version is a reserved property name"))
+		if isReservedProviderPropertyName(property.Name) {
+			path := "#/provider/properties/" + property.Name
+			diags = diags.Append(errorf(path, property.Name+" is a reserved provider input property name"))
+		}
+		if diags.HasErrors() {
+			return diags, errors.New("invalid property names")
 		}
 	}
 
@@ -1685,10 +1716,10 @@ func (t *types) finishResources(
 	var diags hcl.Diagnostics
 
 	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:"+t.pkg.Name, options)
+	diags = diags.Extend(provDiags)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
 	}
-	diags = diags.Extend(provDiags)
 
 	resources := slice.Prealloc[*Resource](len(tokens))
 	for _, token := range tokens {
@@ -1720,6 +1751,14 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	var diags hcl.Diagnostics
 
 	path := memberPath("functions", token)
+	parts := strings.Split(token, ":")
+	if len(parts) == 3 {
+		name := parts[2]
+		if isReservedKeyword(name) {
+			diags = diags.Append(errorf(path, name+" is a reserved name, cannot name function"))
+			return nil, diags, errors.New(name + " is a reserved name, cannot name function")
+		}
+	}
 
 	// Check that spec.MultiArgumentInputs => spec.Inputs
 	if len(spec.MultiArgumentInputs) > 0 && spec.Inputs == nil {
@@ -1834,6 +1873,19 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		outputs = outs
 		returnType = outs
 		inlineObjectAsReturnType = true
+	}
+
+	if inputs != nil {
+		for _, input := range inputs.Properties {
+			if input == nil {
+				continue
+			}
+
+			if isReservedKeyword(input.Name) {
+				diags = diags.Append(errorf(path+"/inputs/"+input.Name, input.Name+" is a reserved input name"))
+				return nil, diags, errors.New("input name " + input.Name + " is reserved")
+			}
+		}
 	}
 
 	fn := &Function{

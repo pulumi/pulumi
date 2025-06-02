@@ -113,6 +113,8 @@ export class ConvertProgramRequest extends jspb.Message {
     getArgsList(): Array<string>;
     setArgsList(value: Array<string>): ConvertProgramRequest;
     addArgs(value: string, index?: number): string;
+    getGeneratedProjectDirectory(): string;
+    setGeneratedProjectDirectory(value: string): ConvertProgramRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertProgramRequest.AsObject;
@@ -131,6 +133,7 @@ export namespace ConvertProgramRequest {
         mapperTarget: string,
         loaderTarget: string,
         argsList: Array<string>,
+        generatedProjectDirectory: string,
     }
 }
 

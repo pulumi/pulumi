@@ -124,6 +124,7 @@ func TestRepr(t *testing.T) {
 		Secure       bool      `yaml:"secure"`                 // The result of Value.Secure()
 		IsObject     bool      `yaml:"isObject"`               // The result of Value.Object()
 		SecureValues []string  `yaml:"secureValues,omitempty"` // The result of Value.SecureValues()
+		Type         Type      `yaml:"type,omitempty"`         // The result of Value.typ
 	}
 
 	type expectedRepr struct {
@@ -195,6 +196,7 @@ func TestRepr(t *testing.T) {
 					Secure:       v.Secure(),
 					IsObject:     v.Object(),
 					SecureValues: secureValues,
+					Type:         v.typ,
 				}
 			}
 

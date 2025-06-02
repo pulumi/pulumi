@@ -384,6 +384,8 @@ export class InstallDependenciesRequest extends jspb.Message {
     setInfo(value?: ProgramInfo): InstallDependenciesRequest;
     getUseLanguageVersionTools(): boolean;
     setUseLanguageVersionTools(value: boolean): InstallDependenciesRequest;
+    getIsPlugin(): boolean;
+    setIsPlugin(value: boolean): InstallDependenciesRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InstallDependenciesRequest.AsObject;
@@ -401,6 +403,7 @@ export namespace InstallDependenciesRequest {
         isTerminal: boolean,
         info?: ProgramInfo.AsObject,
         useLanguageVersionTools: boolean,
+        isPlugin: boolean,
     }
 }
 
@@ -570,6 +573,10 @@ export class RunPluginRequest extends jspb.Message {
     setInfo(value?: ProgramInfo): RunPluginRequest;
     getKind(): string;
     setKind(value: string): RunPluginRequest;
+    getName(): string;
+    setName(value: string): RunPluginRequest;
+    getAttachDebugger(): boolean;
+    setAttachDebugger(value: boolean): RunPluginRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunPluginRequest.AsObject;
@@ -589,6 +596,8 @@ export namespace RunPluginRequest {
         envList: Array<string>,
         info?: ProgramInfo.AsObject,
         kind: string,
+        name: string,
+        attachDebugger: boolean,
     }
 }
 

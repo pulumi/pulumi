@@ -59,24 +59,6 @@ func runStateEdit(
 	})
 }
 
-// runStateEditWithPrompt is the same as runStateEdit, but allows the caller to override the
-// prompt message.
-func runStateEditWithPrompt(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
-	urn resource.URN, operation edit.OperationFunc, overridePromptMessage string,
-) error {
-	return runTotalStateEditWithPrompt(
-		ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-			res, err := locateStackResource(opts, snap, urn)
-			if err != nil {
-				return err
-			}
-
-			return operation(snap, res)
-		},
-		overridePromptMessage)
-}
-
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(

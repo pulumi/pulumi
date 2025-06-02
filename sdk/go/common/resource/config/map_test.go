@@ -35,8 +35,8 @@ func TestMarshalMap(t *testing.T) {
 	}{
 		{
 			Value: Map{
-				MustMakeKey("my", "testKey"):        NewValue("testValue"),
-				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+				MustMakeKey("my", "testKey"):        NewTypedValue("testValue", TypeString),
+				MustMakeKey("my", "anotherTestKey"): NewTypedValue("anotherTestValue", TypeString),
 			},
 			ExpectedYAML: "my:anotherTestKey: anotherTestValue\nmy:testKey: testValue\n",
 			ExpectedJSON: `{"my:anotherTestKey":"anotherTestValue","my:testKey":"testValue"}`,
@@ -119,8 +119,8 @@ func TestMarshalling(t *testing.T) {
 				"my:testKey":        "testValue",
 			},
 			Expected: Map{
-				MustMakeKey("my", "testKey"):        NewValue("testValue"),
-				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+				MustMakeKey("my", "testKey"):        NewTypedValue("testValue", TypeString),
+				MustMakeKey("my", "anotherTestKey"): NewTypedValue("anotherTestValue", TypeString),
 			},
 		},
 		{
@@ -376,7 +376,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"value"}`),
 			},
-			Expected: NewValue("value"),
+			Expected: NewTypedValue("value", TypeString),
 		},
 		{
 			Key:  `my:outer.inner`,
@@ -392,7 +392,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":true}`),
 			},
-			Expected: NewValue("true"),
+			Expected: NewTypedValue("true", TypeBool),
 		},
 		{
 			Key:  `my:outer.inner`,
@@ -400,7 +400,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":false}`),
 			},
-			Expected: NewValue("false"),
+			Expected: NewTypedValue("false", TypeBool),
 		},
 		{
 			Key:  `my:outer.inner`,
@@ -408,7 +408,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":100}`),
 			},
-			Expected: NewValue("100"),
+			Expected: NewTypedValue("100", TypeInt),
 		},
 		{
 			Key:  `my:outer.inner`,
@@ -416,7 +416,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":-2}`),
 			},
-			Expected: NewValue("-2"),
+			Expected: NewTypedValue("-2", TypeInt),
 		},
 		{
 			Key:  `my:outer.inner`,
@@ -456,7 +456,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			Expected: NewValue("a"),
+			Expected: NewTypedValue("a", TypeString),
 		},
 		{
 			Key:  `my:names[1]`,
@@ -464,7 +464,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			Expected: NewValue("b"),
+			Expected: NewTypedValue("b", TypeString),
 		},
 		{
 			Key:  `my:names[2]`,
@@ -472,7 +472,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "names"): NewObjectValue(`["a","b","c"]`),
 			},
-			Expected: NewValue("c"),
+			Expected: NewTypedValue("c", TypeString),
 		},
 		{
 			Key:  `my:names[3]`,
@@ -496,7 +496,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":12321123131}`),
 			},
-			Expected: NewValue("12321123131"),
+			Expected: NewTypedValue("12321123131", TypeInt),
 		},
 		{
 			Key:  `my:parent.nested`,
@@ -504,7 +504,7 @@ func TestGetSuccess(t *testing.T) {
 			Config: Map{
 				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":4.2}`),
 			},
-			Expected: NewValue("4.2"),
+			Expected: NewTypedValue("4.2", TypeFloat),
 		},
 	}
 
@@ -1368,10 +1368,10 @@ func TestCopyMap(t *testing.T) {
 	}{
 		{
 			Config: Map{
-				MustMakeKey("my", "testKey"): NewValue("testValue"),
+				MustMakeKey("my", "testKey"): NewTypedValue("testValue", TypeString),
 			},
 			Expected: Map{
-				MustMakeKey("my", "testKey"): NewValue("testValue"),
+				MustMakeKey("my", "testKey"): NewTypedValue("testValue", TypeString),
 			},
 		},
 		{
@@ -1410,10 +1410,10 @@ func TestCopyMap(t *testing.T) {
 		},
 		{
 			Config: Map{
-				MustMakeKey("my", "test.Key"): NewValue("testValue"),
+				MustMakeKey("my", "test.Key"): NewTypedValue("testValue", TypeString),
 			},
 			Expected: Map{
-				MustMakeKey("my", "test.Key"): NewValue("testValue"),
+				MustMakeKey("my", "test.Key"): NewTypedValue("testValue", TypeString),
 			},
 		},
 		{

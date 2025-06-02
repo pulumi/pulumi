@@ -88,7 +88,7 @@ func (pd *PackageDescriptor) String() string {
 }
 
 type Loader interface {
-	// deprecated: use LoadPackageV2
+	// Deprecated: use LoadPackageV2
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
 
 	LoadPackageV2(ctx context.Context, descriptor *PackageDescriptor) (*Package, error)
@@ -97,7 +97,7 @@ type Loader interface {
 type ReferenceLoader interface {
 	Loader
 
-	// deprecated: use LoadPackageReferenceV2
+	// Deprecated: use LoadPackageReferenceV2
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 
 	LoadPackageReferenceV2(ctx context.Context, descriptor *PackageDescriptor) (PackageReference, error)
@@ -222,7 +222,10 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 	return p, nil
 }
 
-// deprecated: use LoadPackageReferenceV2
+// LoadPackageReference loads a package reference for the given pkg+version using the
+// given loader.
+//
+// Deprecated: use LoadPackageReferenceV2
 func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
 	return LoadPackageReferenceV2(
 		context.TODO(),

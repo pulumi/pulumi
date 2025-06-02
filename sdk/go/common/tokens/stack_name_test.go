@@ -115,7 +115,6 @@ func TestStackNameValidation_AssertsNonEmpty(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // Modifies the environment
 func TestStackNameValidation_CanBeDisabled(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_VALIDATION", "true")
 

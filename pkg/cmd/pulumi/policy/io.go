@@ -47,14 +47,14 @@ func ReadPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string
 	return proj, path, filepath.Dir(path), nil
 }
 
-func InstallPolicyPackDependencies(ctx context.Context, root string, proj *workspace.PolicyPackProject) error {
+func InstallPluginDependencies(ctx context.Context, root string, projRuntime workspace.ProjectRuntimeInfo) error {
 	span := opentracing.SpanFromContext(ctx)
 	// Bit of a hack here. Creating a plugin context requires a "program project", but we've only got a
 	// policy project. Ideally we should be able to make a plugin context without any related project. But
 	// fow now this works.
 	projinfo := &engine.Projinfo{Proj: &workspace.Project{
-		Main:    proj.Main,
-		Runtime: proj.Runtime,
+		Main:    ".",
+		Runtime: projRuntime,
 	}, Root: root}
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
 		projinfo,
@@ -71,13 +71,16 @@ func InstallPolicyPackDependencies(ctx context.Context, root string, proj *works
 	}
 	defer pluginCtx.Close()
 
-	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, proj.Runtime.Options())
-	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, projRuntime.Options())
+	lang, err := pluginCtx.Host.LanguageRuntime(projRuntime.Name(), programInfo)
 	if err != nil {
-		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+		return fmt.Errorf("failed to load language plugin %s: %w", projRuntime.Name(), err)
 	}
 
-	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{Info: programInfo})
+	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+		Info:     programInfo,
+		IsPlugin: true,
+	})
 	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}

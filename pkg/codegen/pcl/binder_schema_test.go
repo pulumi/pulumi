@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -31,7 +32,7 @@ func BenchmarkLoadPackage(b *testing.B) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	for n := 0; n < b.N; n++ {
-		_, err := NewPackageCache().loadPackageSchema(loader, "aws", "")
+		_, err := NewPackageCache().loadPackageSchema(context.Background(), loader, "aws", "", "")
 		if err != nil {
 			b.Fatalf("failed to load package schema: %v", err)
 		}

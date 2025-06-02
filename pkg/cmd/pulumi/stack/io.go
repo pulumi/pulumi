@@ -49,10 +49,14 @@ import (
 
 var ConfigFile string
 
-func LoadProjectStack(ctx context.Context, project *workspace.Project, stack backend.Stack,
+func LoadProjectStack(
+	ctx context.Context,
+	sink diag.Sink,
+	project *workspace.Project,
+	stack backend.Stack,
 ) (*workspace.ProjectStack, error) {
 	if ConfigFile != "" {
-		return workspace.LoadProjectStack(project, ConfigFile)
+		return workspace.LoadProjectStack(sink, project, ConfigFile)
 	}
 	project, configFilePath, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
 	if err != nil {
@@ -70,7 +74,7 @@ func LoadProjectStack(ctx context.Context, project *workspace.Project, stack bac
 		}
 		return stack.LoadRemoteConfig(ctx, project)
 	}
-	return workspace.LoadProjectStack(project, configFilePath)
+	return workspace.LoadProjectStack(sink, project, configFilePath)
 }
 
 func SaveProjectStack(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack) error {

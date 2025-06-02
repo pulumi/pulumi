@@ -139,11 +139,11 @@ var (
 // Create a new [Template] [Source] associated with a given [SearchScope].
 func New(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
-	templateKind workspace.TemplateKind, interactive bool,
+	templateKind workspace.TemplateKind,
 ) *Source {
 	return newImpl(
 		ctx, templateNamePathOrURL, scope,
-		templateKind, interactive,
+		templateKind,
 		workspace.RetrieveTemplates,
 	)
 }
@@ -153,7 +153,7 @@ func New(
 // having a separate impl function allows mocking out getWorkspaceTemplates.
 func newImpl(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
-	templateKind workspace.TemplateKind, interactive bool,
+	templateKind workspace.TemplateKind,
 	getWorkspaceTemplates getWorkspaceTemplateFunc,
 ) *Source {
 	var source Source
@@ -171,7 +171,7 @@ func newImpl(
 	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
 		source.wg.Add(1)
 		go func() {
-			source.getOrgTemplates(ctx, templateNamePathOrURL, interactive, &source.wg)
+			source.getOrgTemplates(ctx, templateNamePathOrURL, &source.wg)
 			source.wg.Done()
 		}()
 	}

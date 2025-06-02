@@ -6,6 +6,10 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 
+# Ensure bin directory exists before targets are evaluated
+# to avoid issues like realpath failing on macOS if the directory doesn't exist.
+_ := $(shell mkdir -p bin)
+
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
 # nodejs and python codegen tests are much slower than go/dotnet:
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
@@ -36,9 +40,9 @@ LIFECYCLE_TEST_FUZZ_CHECKS ?= 1000
 
 ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 .make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
-	cd sdk && go mod download
-	cd pkg && go mod download
-	cd tests && go mod download
+	cd sdk && ../scripts/retry go mod download
+	cd pkg && ../scripts/retry go mod download
+	cd tests && ../scripts/retry go mod download
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
@@ -74,15 +78,12 @@ generate::
 bin/pulumi: build_proto .make/ensure/go .make/ensure/phony
 	go build -C pkg -o ../$@ -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
-.PHONY: build
-build:: bin/pulumi build_display_wasm
-
 build_display_wasm:: .make/ensure/go
 	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ./backend/display/wasm
 
-.PHONY: build_local
-build_local: export GOBIN=$(shell realpath ./bin)
-build_local: build_proto .make/ensure/go dist
+.PHONY: build
+build:: export GOBIN=$(shell realpath ./bin)
+build:: build_proto .make/ensure/go dist build_display_wasm
 
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
