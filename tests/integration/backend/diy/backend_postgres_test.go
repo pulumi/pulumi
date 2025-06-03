@@ -51,7 +51,7 @@ func TestPostgresBackend(t *testing.T) {
 
 	// Skip on Windows as it doesn't support Linux containers by default
 	if runtime.GOOS == "windows" {
-		t.Skip("Skipping PostgreSQL comprehensive test on Windows - Linux containers not supported by default")
+		t.Skip("Skipping PostgreSQL test on Windows - Linux containers not supported by default")
 	}
 
 	// Skip if Docker is not available
@@ -59,15 +59,15 @@ func TestPostgresBackend(t *testing.T) {
 		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
 	}
 
-	// Start a PostgreSQL 17 container for this comprehensive test
+	// Start a PostgreSQL 17 container for this test
 	pg := pgtest.New(t)
 
 	// Generate unique identifiers
-	tableName := "pulumi_comprehensive_" + pgtest.GenerateID()
-	stackName1 := "comprehensive-stack-1-" + pgtest.GenerateID()
-	stackName2 := "comprehensive-stack-2-" + pgtest.GenerateID()
+	tableName := "pulumi_test_" + pgtest.GenerateID()
+	stackName1 := "test-stack-1-" + pgtest.GenerateID()
+	stackName2 := "test-stack-2-" + pgtest.GenerateID()
 	renamedStackName := "renamed-stack-" + pgtest.GenerateID()
-	projectName := tokens.PackageName("comprehensive-test-project")
+	projectName := tokens.PackageName("test-project")
 
 	ctx := context.Background()
 	url := pg.ConnectionStringWithTable(tableName)
@@ -96,7 +96,7 @@ func TestPostgresBackend(t *testing.T) {
 	t.Log("Testing project and organization operations")
 
 	// Set up project
-	desc := "Comprehensive test project for PostgreSQL backend"
+	desc := "Test project for PostgreSQL backend"
 	project := workspace.Project{
 		Name:        projectName,
 		Runtime:     workspace.NewProjectRuntimeInfo("nodejs", nil),
