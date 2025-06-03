@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +51,8 @@ import (
 
 	// Import the PostgreSQL driver
 	_ "github.com/lib/pq"
+	// Automatically set GOMAXPROCS to match container CPU quota/limits
+	_ "go.uber.org/automaxprocs"
 )
 
 // blobData represents the JSON structure for storing blob data in PostgreSQL
@@ -92,9 +95,10 @@ func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) 
 		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}
 
-	// Set connection pool parameters
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
+	// Set connection pool parameters based on CPU count
+	numCPU := runtime.GOMAXPROCS(0)
+	db.SetMaxOpenConns(max(numCPU*2, 2))
+	db.SetMaxIdleConns(max(numCPU, 1))
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	// Test the connection
