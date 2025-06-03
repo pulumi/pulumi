@@ -49,7 +49,10 @@ func (host *clientLanguageRuntimeHost) LanguageRuntime(
 	runtime string,
 	info plugin.ProgramInfo,
 ) (plugin.LanguageRuntime, error) {
-	return host.languageRuntime, nil
+	if runtime == clientRuntimeName {
+		return host.languageRuntime, nil
+	}
+	return host.Host.LanguageRuntime(runtime, info)
 }
 
 func langRuntimePluginDialOptions(ctx *plugin.Context, address string) []grpc.DialOption {
