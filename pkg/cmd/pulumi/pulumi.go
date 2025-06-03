@@ -173,7 +173,7 @@ func (loggingWriter) Write(bytes []byte) (int, error) {
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() *cobra.Command {
+func NewPulumiCmd() (*cobra.Command, func()) {
 	var cwd string
 	var logFlow bool
 	var logToStderr bool
@@ -185,6 +185,17 @@ func NewPulumiCmd() *cobra.Command {
 	var memProfileRate int
 
 	updateCheckResult := make(chan *diag.Diag)
+
+	cleanup := func() {
+		logging.Flush()
+		cmdutil.CloseTracing()
+
+		if profiling != "" {
+			if err := cmdutil.CloseProfiling(profiling); err != nil {
+				logging.Warningf("could not close profiling: %v", err)
+			}
+		}
+	}
 
 	cmd := &cobra.Command{
 		Use:           "pulumi",
@@ -299,15 +310,6 @@ func NewPulumiCmd() *cobra.Command {
 			checkVersionMsg, ok := <-updateCheckResult
 			if ok && checkVersionMsg != nil && !isJSON {
 				cmdutil.Diag().Warningf(checkVersionMsg)
-			}
-
-			logging.Flush()
-			cmdutil.CloseTracing()
-
-			if profiling != "" {
-				if err := cmdutil.CloseProfiling(profiling); err != nil {
-					logging.Warningf("could not close profiling: %v", err)
-				}
 			}
 		},
 	}
@@ -452,7 +454,7 @@ func NewPulumiCmd() *cobra.Command {
 	// completion command as a recommended best practice.
 	cmd.CompletionOptions.DisableDefaultCmd = true
 
-	return cmd
+	return cmd, cleanup
 }
 
 // haveNewerDevVersion checks whethere we have a newer dev version available.
