@@ -242,7 +242,6 @@ func TestConfigBasicGo(t *testing.T) {
 		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
-			"phonenumber":  "+441234567890",
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",

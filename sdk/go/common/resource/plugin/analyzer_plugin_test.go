@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
@@ -41,7 +40,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
 	}
 
-	configDecrypted, err := configMap.AsDecryptedPropertyMap(context.Background(), config.NopDecrypter)
+	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
 	require.NoError(t, err)
 
 	opts := PolicyAnalyzerOptions{
@@ -49,7 +48,7 @@ func TestAnalyzerSpawn(t *testing.T) {
 		Project:      proj,
 		Stack:        "test-stack",
 		DryRun:       true,
-		Config:       resource.FromResourcePropertyMap(configDecrypted),
+		Config:       configDecrypted,
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer")
@@ -104,7 +103,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
 	}
 
-	configDecrypted, err := configMap.AsDecryptedPropertyMap(context.Background(), config.NopDecrypter)
+	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
 	require.NoError(t, err)
 
 	opts := PolicyAnalyzerOptions{
@@ -112,7 +111,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 		Project:      proj,
 		Stack:        "test-stack",
 		DryRun:       true,
-		Config:       resource.FromResourcePropertyMap(configDecrypted),
+		Config:       configDecrypted,
 	}
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-language")

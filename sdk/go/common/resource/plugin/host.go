@@ -36,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
@@ -279,11 +278,12 @@ func parsePluginOpts(
 
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
-	Organization string
-	Project      string
-	Stack        string
-	Config       property.Map
-	DryRun       bool
+	Organization     string
+	Project          string
+	Stack            string
+	Config           map[config.Key]string
+	ConfigSecretKeys []config.Key
+	DryRun           bool
 }
 
 type pluginLoadRequest struct {

@@ -9,7 +9,6 @@ paths:
     object: HRAABnN0cmluZwwSABBhbm90aGVyVGVzdFZhbHVl
     secure: false
     isObject: false
-    type: 1
   my:testKey:
     value: testValue
     string: testValue
@@ -17,4 +16,3 @@ paths:
     object: FhAABnN0cmluZwwLAAl0ZXN0VmFsdWU=
     secure: false
     isObject: false
-    type: 1
