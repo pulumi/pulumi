@@ -30,31 +30,25 @@ const (
 func init() {
 	// Register the PostgreSQL bucket provider with the default blob.URLMux
 	// This allows the default muxer to recognize PostgreSQL URLs automatically
-	_ = SchemeMux{}.RegisterBucketMux(blob.DefaultURLMux())
+	mux := blob.DefaultURLMux()
+
+	// Check if the scheme is already registered to avoid double registration
+	if !mux.ValidBucketScheme(PostgresScheme) {
+		mux.RegisterBucket(PostgresScheme, URLHandler{})
+	}
 }
 
-// SchemeMux is a URL opener for PostgreSQL URLs.
-type SchemeMux struct{}
+// URLHandler is a URL opener for PostgreSQL URLs.
+type URLHandler struct{}
 
 // OpenBucketURL implements blob.BucketURLOpener.
-func (p SchemeMux) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.Bucket, error) {
+func (p URLHandler) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.Bucket, error) {
 	config := u.String()
 	pg, err := NewPostgresBucket(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 	return pg.Bucket(), nil
-}
-
-// RegisterBucketMux registers the blob.URLMux provider for PostgreSQL.
-func (p SchemeMux) RegisterBucketMux(mux *blob.URLMux) error {
-	// Check if the scheme is already registered to avoid double registration
-	if mux.ValidBucketScheme(PostgresScheme) {
-		return nil
-	}
-
-	mux.RegisterBucket(PostgresScheme, p)
-	return nil
 }
 
 // IsPostgresBackendURL returns true if the URL is a PostgreSQL backend URL.

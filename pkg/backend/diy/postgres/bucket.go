@@ -12,6 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package postgres implements a blob.Bucket storage backend using PostgreSQL.
+//
+// SECURITY NOTE - SQL Injection Prevention:
+// This implementation uses dynamic table names in SQL queries, which could appear
+// to be vulnerable to SQL injection. However, this is safe because:
+//
+//  1. Table names come from the PostgreSQL connection string configuration,
+//     which is controlled by system administrators/developers, not end users
+//  2. The connection string is part of the backend configuration, not user input
+//  3. All actual user-provided data (keys, blob data) are properly parameterized
+//     using prepared statement placeholders ($1, $2, etc.)
+//  4. This pattern allows for configurable table schemas while maintaining security
+//
+// The //nolint:gosec comments acknowledge that static analysis tools may flag
+// these patterns, but they are intentionally safe in this controlled context.
 package postgres
 
 import (
@@ -27,9 +42,14 @@ import (
 	"strings"
 	"time"
 
+	_ "embed"
+
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
 	"gocloud.dev/gcerrors"
+
+	// Import the PostgreSQL driver
+	_ "github.com/lib/pq"
 )
 
 // blobData represents the JSON structure for storing blob data in PostgreSQL
@@ -44,15 +64,8 @@ type Bucket struct {
 	bucket    *blob.Bucket
 }
 
-// tableSchema defines the SQL schema for the table that will store the blobs.
-const tableSchema = `
-CREATE TABLE IF NOT EXISTS %s (
-    key TEXT PRIMARY KEY,
-    data JSON NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS %s_key_prefix_idx ON %s (key text_pattern_ops);
-`
+//go:embed schema.sql
+var tableSchema string
 
 // NewPostgresBucket creates a new Bucket.
 func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) {
@@ -62,6 +75,9 @@ func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) 
 	}
 
 	// Extract table name from query parameters or use default
+	// SECURITY NOTE: The table name comes from the connection string configuration,
+	// which is controlled by system administrators/developers, not end users.
+	// This is not user input and therefore safe from SQL injection.
 	q := u.Query()
 	tableName := q.Get("table")
 	if tableName == "" {
@@ -77,8 +93,8 @@ func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) 
 	}
 
 	// Set connection pool parameters
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	// Test the connection
@@ -88,6 +104,7 @@ func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) 
 	}
 
 	// Create table if it doesn't exist
+	// SECURITY NOTE: tableName is from connection string config, not user input - safe from SQL injection
 	createTableSQL := fmt.Sprintf(tableSchema, tableName, tableName, tableName)
 	if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
 		db.Close()
@@ -156,8 +173,8 @@ func (d *postgresBucketDriver) ErrorCode(err error) gcerrors.ErrorCode {
 // Copy implements driver.Bucket.Copy.
 func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.CopyOptions) error {
 	// Read the source data
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
-	// table name is controlled by application
 	var dataJSON string
 	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&dataJSON)
 	if err != nil {
@@ -168,10 +185,11 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 	}
 
 	// Write to the destination key
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	insertQuery := fmt.Sprintf( //nolint:gosec
 		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
 		d.bucket.tableName,
-	) // table name is controlled by application
+	)
 	_, err = d.bucket.db.ExecContext(ctx, insertQuery, dstKey, dataJSON)
 	return err
 }
@@ -179,8 +197,8 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 // ListPaged implements driver.Bucket.ListPaged.
 func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driver.ListPage, error) {
 	// The SQL query to list blob keys
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := "SELECT key FROM " + d.bucket.tableName //nolint:gosec
-	// table name is controlled by application
 	args := []interface{}{}
 
 	// Add conditions to filter by prefix
@@ -251,10 +269,11 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		// Get metadata for the object
 		var updatedAt time.Time
 		var size int64
+		// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 		metaQuery := fmt.Sprintf( //nolint:gosec
 			"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
 			d.bucket.tableName,
-		) // table name is controlled by application
+		)
 		err := d.bucket.db.QueryRowContext(ctx, metaQuery, key).Scan(&updatedAt, &size)
 		if err != nil {
 			return nil, err
@@ -287,10 +306,11 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 
 // Attributes implements driver.Bucket.Attributes.
 func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf( //nolint:gosec
 		"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
 		d.bucket.tableName,
-	) // table name is controlled by application
+	)
 	var updatedAt time.Time
 	var size int64
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&updatedAt, &size)
@@ -319,8 +339,8 @@ func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*dri
 func (d *postgresBucketDriver) NewRangeReader(
 	ctx context.Context, key string, offset, length int64, opts *driver.ReaderOptions,
 ) (driver.Reader, error) {
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
-	// table name is controlled by application
 	var dataJSON string
 	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&dataJSON)
 	if err != nil {
@@ -378,8 +398,8 @@ func (d *postgresBucketDriver) NewTypedWriter(
 
 // Delete implements driver.Bucket.Delete.
 func (d *postgresBucketDriver) Delete(ctx context.Context, key string) error {
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
-	// table name is controlled by application
 	result, err := d.bucket.db.ExecContext(ctx, query, key)
 	if err != nil {
 		return err
@@ -473,10 +493,11 @@ func (w *postgresWriter) Close() error {
 		return fmt.Errorf("failed to marshal JSON data: %w", err)
 	}
 
+	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf( //nolint:gosec
 		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
 		w.bucket.tableName,
-	) // table name is controlled by application
+	)
 	_, err = w.bucket.db.ExecContext(w.ctx, query, w.key, string(jsonData))
 	return err
 }

@@ -91,15 +91,7 @@ pulumi login postgres://
 **Note**: Only `PGPASSWORD` is required when using environment variables. All others have sensible defaults as noted above.
 
 ## Table Schema
-The PostgreSQL backend will automatically create the necessary table for state storage. The table has the following schema:
-```sql
-CREATE TABLE IF NOT EXISTS pulumi_state (
-    key TEXT PRIMARY KEY,
-    data JSON NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS pulumi_state_key_prefix_idx ON pulumi_state (key text_pattern_ops);
-```
+The PostgreSQL backend will automatically create the necessary table for state storage. The table schema is defined in [`schema.sql`](./schema.sql).
 
 ## Security Considerations
 - Always use SSL connections in production (`sslmode=require` or `sslmode=verify-full`)
