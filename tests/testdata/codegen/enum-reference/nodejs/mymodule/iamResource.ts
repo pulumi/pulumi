@@ -45,5 +45,5 @@ export class IamResource extends pulumi.ComponentResource {
  * The set of arguments for constructing a IamResource resource.
  */
 export interface IamResourceArgs {
-    config?: pulumi.Input<pulumiGoogleNative.types.input.iam.v1.AuditConfigArgs>;
+    config?: pulumi.Input<pulumiGoogleNative.types.input.iam.v1.AuditConfigArgs | undefined | null>;
 }

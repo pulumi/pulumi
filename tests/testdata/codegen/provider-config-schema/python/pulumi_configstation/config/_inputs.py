@@ -24,16 +24,16 @@ MYPY = False
 
 if not MYPY:
     class SandwichArgsDict(TypedDict):
-        bread: NotRequired[pulumi.Input[builtins.str]]
-        veggies: NotRequired[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]]
+        bread: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
+        veggies: NotRequired[pulumi.Input[NotRequired[Sequence[pulumi.Input[builtins.str]]]]]
 elif False:
     SandwichArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class SandwichArgs:
     def __init__(__self__, *,
-                 bread: Optional[pulumi.Input[builtins.str]] = None,
-                 veggies: Optional[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]] = None):
+                 bread: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 veggies: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[builtins.str]]]]] = None):
         if bread is not None:
             pulumi.set(__self__, "bread", bread)
         if veggies is not None:
@@ -41,20 +41,20 @@ class SandwichArgs:
 
     @property
     @pulumi.getter
-    def bread(self) -> Optional[pulumi.Input[builtins.str]]:
+    def bread(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "bread")
 
     @bread.setter
-    def bread(self, value: Optional[pulumi.Input[builtins.str]]):
+    def bread(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "bread", value)
 
     @property
     @pulumi.getter
-    def veggies(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]]:
+    def veggies(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input[builtins.str]]]]]:
         return pulumi.get(self, "veggies")
 
     @veggies.setter
-    def veggies(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]]):
+    def veggies(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[builtins.str]]]]]):
         pulumi.set(self, "veggies", value)
 
 

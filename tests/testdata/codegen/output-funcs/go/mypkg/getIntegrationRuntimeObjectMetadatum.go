@@ -58,7 +58,7 @@ type GetIntegrationRuntimeObjectMetadatumOutputArgs struct {
 	// The integration runtime name.
 	IntegrationRuntimeName pulumi.StringInput `pulumi:"integrationRuntimeName"`
 	// Metadata path.
-	MetadataPath pulumi.StringPtrInput `pulumi:"metadataPath"`
+	MetadataPath *string `pulumi:"metadataPath"`
 	// The resource group name.
 	ResourceGroupName pulumi.StringInput `pulumi:"resourceGroupName"`
 }

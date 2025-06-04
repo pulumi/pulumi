@@ -69,13 +69,13 @@ namespace Other.Example
     public sealed class TypeUsesArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<Inputs.SomeOtherObjectArgs>? Bar { get; set; }
+        public Input<Inputs.SomeOtherObjectArgs?>? Bar { get; set; }
 
         [Input("baz")]
-        public Input<Inputs.ObjectWithNodeOptionalInputsArgs>? Baz { get; set; }
+        public Input<Inputs.ObjectWithNodeOptionalInputsArgs?>? Baz { get; set; }
 
         [Input("foo")]
-        public Input<Inputs.ObjectArgs>? Foo { get; set; }
+        public Input<Inputs.ObjectArgs?>? Foo { get; set; }
 
         public TypeUsesArgs()
         {

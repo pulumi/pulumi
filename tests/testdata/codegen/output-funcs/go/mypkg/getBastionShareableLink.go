@@ -54,7 +54,7 @@ type GetBastionShareableLinkOutputArgs struct {
 	// The name of the resource group.
 	ResourceGroupName pulumi.StringInput `pulumi:"resourceGroupName"`
 	// List of VM references.
-	Vms BastionShareableLinkArrayInput `pulumi:"vms"`
+	Vms []BastionShareableLinkInput `pulumi:"vms"`
 }
 
 func (GetBastionShareableLinkOutputArgs) ElementType() reflect.Type {

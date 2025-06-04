@@ -49,7 +49,7 @@ func NewExampleComponent(
 	}
 	password, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-password", name), &random.RandomPasswordArgs{
 		Length:          pulumi.Int(16),
-		Special:         pulumi.Bool(true),
+		Special:         true,
 		OverrideSpecial: args.Input,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
@@ -57,7 +57,7 @@ func NewExampleComponent(
 	}
 	_, err = random.NewRandomPassword(ctx, fmt.Sprintf("%s-githubPassword", name), &random.RandomPasswordArgs{
 		Length:          pulumi.Int(16),
-		Special:         pulumi.Bool(true),
+		Special:         true,
 		OverrideSpecial: args.GithubApp.WebhookSecret,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
@@ -70,8 +70,8 @@ func NewExampleComponent(
 		val0 := index
 		__res, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-serverPasswords-%v", name, key0), &random.RandomPasswordArgs{
 			Length:          pulumi.Int(16),
-			Special:         pulumi.Bool(true),
-			OverrideSpecial: args.Servers[val0].Name,
+			Special:         true,
+			OverrideSpecial: pulumi.String(args.Servers[val0].Name),
 		}, pulumi.Parent(&componentResource))
 		if err != nil {
 			return nil, err
@@ -83,7 +83,7 @@ func NewExampleComponent(
 	for key0, val0 := range args.DeploymentZones {
 		__res, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-zonePasswords-%v", name, key0), &random.RandomPasswordArgs{
 			Length:          pulumi.Int(16),
-			Special:         pulumi.Bool(true),
+			Special:         true,
 			OverrideSpecial: pulumi.String(val0),
 		}, pulumi.Parent(&componentResource))
 		if err != nil {
