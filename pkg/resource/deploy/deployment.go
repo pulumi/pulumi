@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -297,7 +298,7 @@ type Deployment struct {
 	// a map of all old resources.
 	olds map[resource.URN]*resource.State
 	// a map of all old resource views, keyed by the owning resource's URN.
-	oldViews map[resource.URN][]plugin.View
+	oldViews map[resource.URN][]*resource.State
 	// a map of all planned resource changes, if any.
 	plan *Plan
 	// resources to import, if this is an import deployment.
@@ -435,13 +436,17 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 	return nil
 }
 
+// buildResourceMaps produces maps of old resources and views from the previous snapshot for fast access.
+// It returns the old resources, a map of old resources keyed by URN, and a map of old resource views keyed by URN
+// of the resource they are a view of. It returns an error if there are duplicate resources in the previous snapshot.
 func buildResourceMaps(prev *Snapshot) (
 	[]*resource.State,
 	map[resource.URN]*resource.State,
-	map[resource.URN][]plugin.View, error,
+	map[resource.URN][]*resource.State,
+	error,
 ) {
 	olds := make(map[resource.URN]*resource.State)
-	oldViews := make(map[resource.URN][]plugin.View)
+	oldViews := make(map[resource.URN][]*resource.State)
 	if prev == nil {
 		return nil, olds, oldViews, nil
 	}
@@ -460,27 +465,11 @@ func buildResourceMaps(prev *Snapshot) (
 
 		// If this resource is a view of another resource, add it to the list of views for that resource.
 		if oldres.ViewOf != "" {
-			view := viewFromState(oldres)
-			oldViews[oldres.ViewOf] = append(oldViews[oldres.ViewOf], view)
+			oldViews[oldres.ViewOf] = append(oldViews[oldres.ViewOf], oldres)
 		}
 	}
 
 	return prev.Resources, olds, oldViews, nil
-}
-
-// viewFromState creates a new View from the given resource state.
-func viewFromState(res *resource.State) plugin.View {
-	view := plugin.View{
-		Type:    res.URN.Type(),
-		Name:    res.URN.Name(),
-		Inputs:  res.Inputs,
-		Outputs: res.Outputs,
-	}
-	if res.Parent != "" && res.Parent != res.ViewOf {
-		view.ParentType = res.Parent.Type()
-		view.ParentName = res.Parent.Name()
-	}
-	return view
 }
 
 // NewDeployment creates a new deployment from a resource snapshot plus a package to evaluate.
@@ -539,7 +528,7 @@ func NewDeployment(
 	// so we just pass all of the old resources.
 	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
-	return &Deployment{
+	deployment := &Deployment{
 		ctx:                  ctx,
 		opts:                 opts,
 		events:               events,
@@ -556,7 +545,15 @@ func NewDeployment(
 		news:                 newResources,
 		newPlans:             newResourcePlan(target.Config),
 		reads:                reads,
-	}, nil
+	}
+
+	// Create a new resource status server for this deployment.
+	deployment.resourceStatus, err = newResourceStatusServer(deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return deployment, nil
 }
 
 func (d *Deployment) Ctx() *plugin.Context                   { return d.ctx }
@@ -614,6 +611,23 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 	return d.providers.GetProvider(ref)
 }
 
+// GetOldViews returns the old views for the given URN.
+func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
+	return slice.Map(d.oldViews[urn], func(res *resource.State) plugin.View {
+		view := plugin.View{
+			Type:    res.URN.Type(),
+			Name:    res.URN.Name(),
+			Inputs:  res.Inputs,
+			Outputs: res.Outputs,
+		}
+		if res.Parent != "" && res.Parent != res.ViewOf {
+			view.ParentType = res.Parent.Type()
+			view.ParentName = res.Parent.Name()
+		}
+		return view
+	})
+}
+
 // generateURN generates a resource's URN from its parent, type, and name under the scope of the deployment's stack and
 // project.
 func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name string) resource.URN {
@@ -653,4 +667,16 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
 	deploymentExec := &deploymentExecutor{deployment: d}
 	return deploymentExec.Execute(ctx)
+}
+
+// Close cleans up any resources associated with the deployment, such as the resource status server.
+func (d *Deployment) Close() error {
+	if d.resourceStatus != nil {
+		if err := d.resourceStatus.Close(); err != nil {
+			return err
+		}
+		d.resourceStatus = nil
+	}
+
+	return nil
 }

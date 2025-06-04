@@ -37,7 +37,7 @@ import (
 // functions are to be called when the engine has fully retired a step. You
 // _should not_ modify the resource state in these functions -- doing so will
 // race with the snapshot writing code.
-type StepCompleteFunc func() error
+type StepCompleteFunc func()
 
 // Step is a specification for a deployment operation.
 type Step interface {
@@ -174,7 +174,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	// TODO: should this step be marked as skipped if it comes from a targeted up?
-	complete := func() error {
+	complete := func() {
 		// It's possible that s.reg will be nil in the case that multiple same steps
 		// are emitted for a single RegisterResourceEvent. This occurs when a
 		// resource which is not targeted by a targeted operation needs to ensure
@@ -186,7 +186,6 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if s.reg != nil {
 			s.reg.Done(&RegisterResult{State: s.new})
 		}
-		return nil
 	}
 	return resource.StatusOK, complete, nil
 }
@@ -299,8 +298,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	outs := s.new.Outputs
 	refreshBeforeUpdate := false
 
-	var resourceStatusToken string
-
 	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
 		prov, err := getProvider(s, s.provider)
@@ -309,7 +306,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err = s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -367,11 +364,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	complete := func() error {
-		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
-		s.reg.Done(&RegisterResult{State: s.new})
-		return err
-	}
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 
 	if resourceError != nil {
 		// If we have a failure, we should return an empty complete function
@@ -499,8 +492,6 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	var resourceStatusToken string
-
 	// Refuse to delete protected resources (unless we're replacing them in
 	// which case we will of checked protect elsewhere)
 	if !s.replacing && s.old.Protect {
@@ -525,7 +516,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err = s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -572,11 +563,7 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.Lock.Unlock()
 	}
 
-	complete := func() error {
-		return s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
-	}
-
-	return resource.StatusOK, complete, nil
+	return resource.StatusOK, func() {}, nil
 }
 
 func (s *DeleteStep) Fail() {
@@ -702,9 +689,6 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
-
-	var resourceStatusToken string
-
 	if s.new.Custom {
 		// Invoke the Update RPC function for this provider:
 		prov, err := getProvider(s, s.provider)
@@ -713,7 +697,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err = s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -762,11 +746,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	// Finally, mark this operation as complete.
-	complete := func() error {
-		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
-		s.reg.Done(&RegisterResult{State: s.new})
-		return err
-	}
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 
 	if resourceError != nil {
 		// If we have a failure, we should return an empty complete function
@@ -843,7 +823,7 @@ func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assertf(!s.pendingDelete || s.old.Delete,
 		"old resource %v should be marked for deletion if pending delete", s.old.URN)
-	return resource.StatusOK, nil, nil
+	return resource.StatusOK, func() {}, nil
 }
 
 func (s *ReplaceStep) Fail() {
@@ -947,9 +927,6 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
-
-	var resourceStatusToken string
-
 	// Unlike most steps, Read steps run during previews. The only time
 	// we can't run is if the ID we are given is unknown.
 	if id == plugin.UnknownStringValue {
@@ -964,7 +941,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err = s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1032,12 +1009,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Modified = &now
 	}
 
-	complete := func() error {
-		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
-		s.event.Done(&ReadResult{State: s.new})
-		return err
-	}
-
+	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -1273,15 +1245,11 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new = nil
 	}
 
-	complete := func() error {
-		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
-
+	complete := func() {
 		// s.cts will be empty for refreshes that are just being done on state, rather than via a program.
 		if s.cts != nil {
 			s.cts.MustFulfill(s.new)
 		}
-
-		return err
 	}
 
 	return refreshed.Status, complete, err
@@ -1411,6 +1379,18 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 	}()
 
+	complete := func() {
+		if s.cts != nil {
+			s.cts.MustFulfill(s.new)
+		}
+		// If this is a planned import we can now tell the engine the step registration is complete. For non-planned
+		// imports the CTS will signal the completion of this step to the step generator, which will either generate
+		// further steps or complete the registration itself.
+		if s.planned {
+			s.reg.Done(&RegisterResult{State: s.new})
+		}
+	}
+
 	// If this is a planned import (i.e. from `pulumi import` command), ensure that the resource does not exist in the
 	// old state file.
 	if s.planned {
@@ -1432,7 +1412,6 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	inputs := resource.PropertyMap{}
 	outputs := resource.PropertyMap{}
 	var prov plugin.Provider
-	var resourceStatusToken string
 	rst := resource.StatusOK
 	if s.new.Custom {
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
@@ -1506,22 +1485,6 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	s.new.Modified = &now
 	// Set Created to now as the resource has been created in the state.
 	s.new.Created = &now
-
-	complete := func() error {
-		err := s.deployment.resourceStatus.ReleaseToken(resourceStatusToken)
-
-		if s.cts != nil {
-			s.cts.MustFulfill(s.new)
-		}
-		// If this is a planned import we can now tell the engine the step registration is complete. For non-planned
-		// imports the CTS will signal the completion of this step to the step generator, which will either generate
-		// further steps or complete the registration itself.
-		if s.planned {
-			s.reg.Done(&RegisterResult{State: s.new})
-		}
-
-		return err
-	}
 
 	// If this is a component we don't need to do the rest of the input validation
 	if !s.new.Custom {

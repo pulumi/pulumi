@@ -57,10 +57,12 @@ func (m *Map[K, V]) LoadOrStore(k K, v V) (value V, ok bool) {
 
 // LoadAndDelete deletes the value for a key, returning the previous value if any.
 // The loaded result reports whether the key was present.
-func (m *Map[K, V]) LoadAndDelete(k K) (value V, loaded bool) {
+func (m *Map[K, V]) LoadAndDelete(k K) (value V, ok bool) {
 	var s any
-	s, loaded = m.m.LoadAndDelete(k)
-	value = s.(V)
+	s, ok = m.m.LoadAndDelete(k)
+	if ok {
+		value = s.(V)
+	}
 	return
 }
 

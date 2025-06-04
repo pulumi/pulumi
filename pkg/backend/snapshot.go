@@ -203,7 +203,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		old.External, new.External)
 
 	if sameStep, isSameStep := step.(*deploy.SameStep); isSameStep {
-		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for step")
+		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for SameStep")
 	}
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a

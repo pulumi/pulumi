@@ -16,9 +16,9 @@ package deploy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/gofrs/uuid"
@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -49,11 +50,11 @@ type resourceStatusServer struct {
 	// The deployment to which this step generator belongs.
 	deployment *Deployment
 
-	// The step executor owned by this deployment.
-	stepExec *stepExecutor
-
 	// The address the server is listening on.
 	address string
+
+	// A map of URNs to tokens.
+	urns gsync.Map[resource.URN, string] // urn -> token
 
 	// A map of tokens to URNs.
 	tokens gsync.Map[string, *tokenInfo] // token -> tokenInfo
@@ -77,11 +78,11 @@ type tokenInfo struct {
 	mu sync.Mutex
 
 	// Steps that were published with this token.
-	steps []stepPre
+	steps []stepInfo
 }
 
-// stepPre holds the step and the payload context associated with the OnResourceStepPre event.
-type stepPre struct {
+// stepInfo holds the step and the payload context associated with the OnResourceStepPre event.
+type stepInfo struct {
 	// The step.
 	step Step
 
@@ -90,12 +91,16 @@ type stepPre struct {
 }
 
 // newResourceStatusServer creates a new resource status server and starts listening for incoming requests.
-func newResourceStatusServer(deployment *Deployment, stepExec *stepExecutor) (*resourceStatusServer, error) {
+func newResourceStatusServer(deployment *Deployment) (*resourceStatusServer, error) {
+	if !cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW")) {
+		return nil, nil
+	}
+
 	cancel := make(chan bool)
 
 	rs := &resourceStatusServer{
 		deployment: deployment,
-		stepExec:   stepExec,
+		urns:       gsync.Map[resource.URN, string]{},
 		tokens:     gsync.Map[string, *tokenInfo]{},
 	}
 
@@ -143,7 +148,7 @@ func resourceStatusServeOptions(ctx *plugin.Context, logFile string) []grpc.Serv
 
 // Close stops the resource status server.
 func (rs *resourceStatusServer) Close() error {
-	if rs.cancel != nil {
+	if rs != nil && rs.cancel != nil {
 		rs.cancel <- true
 		err := <-rs.handle.Done
 		rs.cancel = nil
@@ -174,6 +179,7 @@ func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh bool) (st
 		return "", fmt.Errorf("creating token: %w", err)
 	}
 	tokenString := token.String()
+	rs.urns.Store(urn, tokenString)
 	rs.tokens.Store(tokenString, &tokenInfo{
 		urn:     urn,
 		refresh: refresh,
@@ -181,16 +187,21 @@ func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh bool) (st
 	return tokenString, nil
 }
 
-// ReleaseToken releases a token reserved for a resource status operation, executing any view steps
-// that were published with the token.
-func (rs *resourceStatusServer) ReleaseToken(token string) error {
+// ReleaseToken returns the view steps published for the URN and releases the associated token so that no further
+// steps can be published for it.
+func (rs *resourceStatusServer) ReleaseToken(urn resource.URN) []stepInfo {
 	if rs == nil {
 		return nil
 	}
 
-	logging.V(5).Infof("Releasing token %s", token)
+	logging.V(5).Infof("ReleaseToken %s", urn)
 
-	if token == "" {
+	if urn == "" {
+		return nil
+	}
+
+	token, ok := rs.urns.LoadAndDelete(urn)
+	if !ok {
 		return nil
 	}
 
@@ -200,17 +211,8 @@ func (rs *resourceStatusServer) ReleaseToken(token string) error {
 	}
 
 	info.mu.Lock()
-	steps := info.steps
-	info.mu.Unlock()
-
-	// Execute the steps in the order they were published.
-	var errs []error
-	for _, step := range steps {
-		if err := rs.stepExec.continueExecuteStep(step.payload, viewWorkerID, step.step); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
+	defer info.mu.Unlock()
+	return info.steps
 }
 
 // Returns refresh steps that were published to the status server.
@@ -281,7 +283,7 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 			}
 
 			info.mu.Lock()
-			info.steps = append(info.steps, stepPre{
+			info.steps = append(info.steps, stepInfo{
 				step:    step,
 				payload: payload,
 			})

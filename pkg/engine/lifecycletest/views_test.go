@@ -16,12 +16,12 @@ package lifecycletest
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
@@ -35,6 +35,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// TestViewsBasic tests the basic functionality of views in a resource lifecycle, doing an update to create
+// the resources including a view, then running a second update expecting sames, then a third update that
+// should update, and finally deleting the resource and its view.
 func TestViewsBasic(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -43,9 +46,7 @@ func TestViewsBasic(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -64,9 +65,7 @@ func TestViewsBasic(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -99,9 +98,7 @@ func TestViewsBasic(t *testing.T) {
 
 					// Update the view.
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -126,9 +123,7 @@ func TestViewsBasic(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
@@ -152,9 +147,7 @@ func TestViewsBasic(t *testing.T) {
 
 					// Delete the view.
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.DeleteResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -169,9 +162,7 @@ func TestViewsBasic(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.DeleteResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.DeleteResponse{
 						Status: resource.StatusOK,
@@ -290,6 +281,7 @@ func TestViewsBasic(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 }
 
+// TestViewsUpdateError tests that an error from a view update step is properly propagated.
 func TestViewsUpdateError(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -298,9 +290,7 @@ func TestViewsUpdateError(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -319,9 +309,7 @@ func TestViewsUpdateError(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -354,9 +342,7 @@ func TestViewsUpdateError(t *testing.T) {
 
 					// Update the view.
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -378,9 +364,7 @@ func TestViewsUpdateError(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
@@ -465,9 +449,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -486,9 +468,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -521,9 +501,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 
 					// Update the view.
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -538,9 +516,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
@@ -623,6 +599,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
 }
 
+// TestViewRefreshSame tests that same view steps work from a refresh operation.
 func TestViewsRefreshSame(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -631,9 +608,7 @@ func TestViewsRefreshSame(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -652,9 +627,7 @@ func TestViewsRefreshSame(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -678,9 +651,7 @@ func TestViewsRefreshSame(t *testing.T) {
 					}, req.OldViews)
 
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.ReadResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -701,9 +672,7 @@ func TestViewsRefreshSame(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.ReadResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
@@ -763,6 +732,7 @@ func TestViewsRefreshSame(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 }
 
+// TestViewsRefreshUpdate tests that an update view step works from a refresh operation.
 func TestViewsRefreshUpdate(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -771,9 +741,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -792,9 +760,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -818,9 +784,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 					}, req.OldViews)
 
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.ReadResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -845,9 +809,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.ReadResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
@@ -907,6 +869,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 }
 
+// TestViewsRefreshDelete tests that a delete view step works from a refresh operation.
 func TestViewsRefreshDelete(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -915,9 +878,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -936,9 +897,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -962,9 +921,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 					}, req.OldViews)
 
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.ReadResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -979,9 +936,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.ReadResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
@@ -1041,9 +996,7 @@ func TestViewsImport(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -1062,9 +1015,7 @@ func TestViewsImport(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -1131,6 +1082,7 @@ func TestViewsImport(t *testing.T) {
 	assert.Equal(t, "imported-id", snap.Resources[4].ID.String())
 }
 
+// TestViewsDeleteBeforeReplace tests that a sequence of DeleteBeforeReplace view steps works as expected.
 func TestViewsDeleteBeforeReplace(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -1139,9 +1091,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -1160,9 +1110,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -1195,9 +1143,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 
 					// Update the view.
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -1246,9 +1192,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
@@ -1340,6 +1284,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 }
 
+// TestViewsCreateBeforeReplace tests that a sequence of CreateBeforeReplace view steps works as expected.
 func TestViewsCreateBeforeReplace(t *testing.T) {
 	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
 
@@ -1348,9 +1293,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -1369,9 +1312,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.CreateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
@@ -1404,9 +1345,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 
 					// Update the view.
 					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("creating resource status client: %w", err)
-					}
+					require.NoError(t, err)
 					defer rs.Close()
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
@@ -1461,9 +1400,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							},
 						},
 					})
-					if err != nil {
-						return plugin.UpdateResponse{}, fmt.Errorf("publishing view steps: %w", err)
-					}
+					require.NoError(t, err)
 
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,

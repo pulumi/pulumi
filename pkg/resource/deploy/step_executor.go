@@ -32,8 +32,6 @@ const (
 	// Dummy workerID for synchronous operations.
 	synchronousWorkerID = -1
 	infiniteWorkerID    = -2
-	// Dummy workerID used when executing view steps.
-	viewWorkerID = -3
 
 	// Utility constant for easy debugging.
 	stepExecutorLogLevel = 4
@@ -518,22 +516,26 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 		}
 	}
 
-	_, isDelete := step.(*DeleteStep)
-
-	doStepComplete := func() error {
-		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
-		if err := stepComplete(); err != nil {
-			se.log(workerID, "step %v on %v failed to complete (isDelete=%v): %v", step.Op(), step.URN(), isDelete, err)
-			return err
+	// Executes view steps serially, in the order they were published to the resource status server.
+	executeViewSteps := func() error {
+		steps := se.deployment.resourceStatus.ReleaseToken(step.URN())
+		// Execute the steps in the order they were published.
+		var errs []error
+		for _, step := range steps {
+			if err := se.continueExecuteStep(step.payload, workerID, step.step); err != nil {
+				errs = append(errs, err)
+			}
 		}
-		return nil
+		return errors.Join(errs...)
 	}
 
-	// Calling stepComplete allows steps that depend on this step to continue. For deletes, stepComplete is called
-	// _before_ OnResourceStepPost. This way, any delete steps for view children can be executed and saved to state
-	// before OnResourceStepPost for this resource saves the results of the step in the snapshot.
-	if isDelete && stepComplete != nil {
-		if err := doStepComplete(); err != nil {
+	_, isDelete := step.(*DeleteStep)
+
+	// For delete operations, execute view steps before the post-step event. This way, any delete steps for child views
+	// are executed and saved to state before OnResourceStepPost for this resource saves the results of the step in the
+	// snapshot.
+	if isDelete {
+		if err := executeViewSteps(); err != nil {
 			return err
 		}
 	}
@@ -545,13 +547,18 @@ func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, s
 		}
 	}
 
-	// Calling stepComplete allows steps that depend on this step to continue. OnResourceStepPost saved the results
-	// of the step in the snapshot, so we are ready to go. This happens _after_ OnResourceStepPost for
-	// all non-delete operations.
-	if !isDelete && stepComplete != nil {
-		if err := doStepComplete(); err != nil {
+	// For non-delete operations, execute view steps after the post-step event.
+	if !isDelete {
+		if err := executeViewSteps(); err != nil {
 			return err
 		}
+	}
+
+	// Calling stepComplete allows steps that depend on this step to continue. OnResourceStepPost saved the results
+	// of the step in the snapshot, so we are ready to go.
+	if stepComplete != nil {
+		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
+		stepComplete()
 	}
 
 	if err != nil {

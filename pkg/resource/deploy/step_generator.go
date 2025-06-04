@@ -665,7 +665,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 			}
 		}()
 
-		oldViews := sg.deployment.oldViews[old.URN]
+		oldViews := sg.deployment.GetOldViews(old.URN)
 		step := NewRefreshStep(sg.deployment, cts, old, oldViews)
 		sg.refreshes[urn] = true
 		return []Step{step}, true, nil
@@ -1563,8 +1563,10 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			sg.sames[urn] = true
 			updateSteps = []Step{NewSameStep(sg.deployment, event, old, new)}
 
-			// Generate same steps for any views of this resource.
-			viewSteps := sg.generateSameViewSteps(urn)
+			// We're generating a same step for a resource. Generate same steps for any of its views as well.
+			viewSteps := slice.Map(sg.deployment.oldViews[urn], func(res *resource.State) Step {
+				return NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res.Copy(), nil, nil, nil, "")
+			})
 			for _, step := range viewSteps {
 				sg.sames[step.URN()] = true
 			}
@@ -1723,7 +1725,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 					// This resource might already be pending-delete
 					if dependentResource.Delete {
-						oldViews := sg.deployment.oldViews[dependentResource.URN]
+						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
 						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource, oldViews))
 					} else {
 						// Check if the resource is protected, if it is we can't do this replacement chain.
@@ -1738,7 +1740,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 							sg.sawError = true
 							return nil, result.BailErrorf("%s", message)
 						}
-						oldViews := sg.deployment.oldViews[dependentResource.URN]
+						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
 						steps = append(steps,
 							NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true, oldViews))
 					}
@@ -1759,7 +1761,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// currently pending replace resource will get removed from the state when the CreateReplacementStep is
 				// successful.
 				if !old.PendingReplacement {
-					oldViews := sg.deployment.oldViews[old.URN]
+					oldViews := sg.deployment.GetOldViews(old.URN)
 					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true, oldViews))
 				}
 
@@ -1783,7 +1785,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 		if logging.V(7) {
 			logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v)", urn, old.Inputs, new.Inputs)
 		}
-		oldViews := sg.deployment.oldViews[old.URN]
+		oldViews := sg.deployment.GetOldViews(old.URN)
 		return []Step{
 			NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
 				goal.IgnoreChanges, oldViews),
@@ -1794,7 +1796,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	// step to attempt to "continue" awaiting initialization.
 	if hasInitErrors {
 		sg.updates[urn] = true
-		oldViews := sg.deployment.oldViews[old.URN]
+		oldViews := sg.deployment.GetOldViews(old.URN)
 		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil, oldViews)}, nil
 	}
 
@@ -1866,7 +1868,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 
 				if add {
 					logging.V(7).Infof("Planner decided to refresh '%v'", res.URN)
-					oldViews := sg.deployment.oldViews[res.URN]
+					oldViews := sg.deployment.GetOldViews(res.URN)
 					step := NewRefreshStep(sg.deployment, nil, res, oldViews)
 					sg.refreshes[res.URN] = true
 					steps = append(steps, step)
@@ -1928,13 +1930,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
-				oldViews := sg.deployment.oldViews[res.URN]
+				oldViews := sg.deployment.GetOldViews(res.URN)
 				steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
 			} else if sg.isOperatedOn(res.URN) {
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				if !res.PendingReplacement {
-					oldViews := sg.deployment.oldViews[res.URN]
+					oldViews := sg.deployment.GetOldViews(res.URN)
 					steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
 				} else {
 					steps = append(steps, NewRemovePendingReplaceStep(sg.deployment, res))
@@ -1955,7 +1957,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	// operation.
 	for _, res := range sg.toDelete {
 		sg.deletes[res.URN] = true
-		oldViews := sg.deployment.oldViews[res.URN]
+		oldViews := sg.deployment.GetOldViews(res.URN)
 		steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
 	}
 
@@ -2063,18 +2065,6 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 	}
 
 	return steps, nil
-}
-
-// generateSameViewSteps generates a same step for each view of the given URN.
-func (sg *stepGenerator) generateSameViewSteps(urn resource.URN) []Step {
-	var steps []Step
-	for _, res := range sg.deployment.prev.Resources {
-		if res.ViewOf == urn {
-			step := NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res.Copy(), nil, nil, nil, "")
-			steps = append(steps, step)
-		}
-	}
-	return steps
 }
 
 // getTargetDependents returns the (transitive) set of dependents on the target resources.
