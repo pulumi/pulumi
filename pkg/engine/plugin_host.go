@@ -49,6 +49,9 @@ func (host *clientLanguageRuntimeHost) LanguageRuntime(
 	runtime string,
 	info plugin.ProgramInfo,
 ) (plugin.LanguageRuntime, error) {
+	// If the system has asked for the special "client" runtime, return the connection we have to the language runtime
+	// plugin. Else, delegate to the host's LanguageRuntime method for loading other actual runtimes like
+	// nodejs/python/etc.
 	if runtime == clientRuntimeName {
 		return host.languageRuntime, nil
 	}

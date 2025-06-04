@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix loading of non-client language runtimes when running inline programs
