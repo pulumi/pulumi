@@ -68,10 +68,10 @@ message AnalyzerStackConfigureRequest {
 
     reserved 5; // This was used to send stack config as property values.
 
-    // The configuration of the stack being analyzed.
-    map<string, string> config = 7;
     // A list of configuration keys whose values should be treated as secrets.
     repeated string config_secret_keys = 6;
+    // The configuration of the stack being analyzed.
+    map<string, string> config = 7;
 }
 
 // `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.
