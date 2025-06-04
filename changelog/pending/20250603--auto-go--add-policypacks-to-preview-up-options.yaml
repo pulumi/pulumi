@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Add PolicyPacks to preview/up options

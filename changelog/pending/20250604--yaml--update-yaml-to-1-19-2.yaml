@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: yaml
-  description: Update YAML to 1.19.2
