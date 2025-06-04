@@ -259,6 +259,10 @@ class MockMonitor:
         has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
+    def RegisterPackage(self, request):
+        # Mocks don't _really_ support packages, so we just return a fake package ref.
+        return resource_pb2.RegisterPackageResponse(ref="mock-uuid")
+
 
 class MockEngine:
     logger: logging.Logger
