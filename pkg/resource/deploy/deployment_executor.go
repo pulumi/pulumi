@@ -148,6 +148,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		}
 	}()
 
+	// Close the deployment when we're finished.
+	defer contract.IgnoreClose(ex.deployment)
+
 	// If this deployment is an import, run the imports and exit.
 	if ex.deployment.isImport {
 		return ex.importResources(callerCtx)
@@ -659,6 +662,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				continue
 			}
 
+			// If the resource is a view, skip it. Only the owning resource
+			// should have a refresh step.
+			if res.ViewOf != "" {
+				continue
+			}
+
 			knownToBeExcluded := false
 
 			// In the case of `--exclude-dependents`, we need to check through all
@@ -685,7 +694,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				oldViews := ex.deployment.GetOldViews(res.URN)
+				step := NewRefreshStep(ex.deployment, nil, res, oldViews)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			}
@@ -694,6 +704,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		targetsActual := ex.deployment.opts.Targets
 
 		for _, res := range prev.Resources {
+			// If the resource is a view, skip it. Only the owning resource
+			// should have a refresh step.
+			if res.ViewOf != "" {
+				continue
+			}
+
 			if targetsActual.Contains(res.URN) {
 				// For each resource we're going to refresh we need to ensure we have a provider for it
 				err := ex.deployment.EnsureProvider(res.Provider)
@@ -701,7 +717,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 
-				step := NewRefreshStep(ex.deployment, nil, res)
+				oldViews := ex.deployment.GetOldViews(res.URN)
+				step := NewRefreshStep(ex.deployment, nil, res, oldViews)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
@@ -713,7 +730,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				// loop.
 				for _, dep := range allDeps {
 					if targetsActual.Contains(dep.URN) {
-						step := NewRefreshStep(ex.deployment, nil, res)
+						oldViews := ex.deployment.GetOldViews(res.URN)
+						step := NewRefreshStep(ex.deployment, nil, res, oldViews)
 						steps = append(steps, step)
 						resourceToStep[res] = step
 
@@ -729,9 +747,18 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 	ctx, cancel := context.WithCancel(callerCtx)
 
 	stepExec := newStepExecutor(ctx, cancel, ex.deployment, true)
+
 	stepExec.ExecuteParallel(steps)
 	stepExec.SignalCompletion()
 	stepExec.WaitForCompletion()
+
+	// Apply view refresh steps published to the resource status server, if any.
+	viewRefreshSteps := ex.deployment.resourceStatus.RefreshSteps()
+	for _, s := range ex.deployment.prev.Resources {
+		if step, has := viewRefreshSteps[s.URN]; has {
+			resourceToStep[s] = step
+		}
+	}
 
 	ex.rebuildBaseState(resourceToStep)
 
@@ -797,7 +824,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 
 		if new == nil {
-			contract.Assertf(old.Custom, "expected custom resource")
+			contract.Assertf(old.Custom || old.ViewOf != "", "expected custom or view resource")
 			contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
 			continue
 		}
