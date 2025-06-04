@@ -483,6 +483,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Regress pulumi/pulumi#17219 affecting Python",
 		Skip:        allLanguages.Except("python/any"),
 	},
+	{
+		Directory:   "map-map-union-schema",
+		Description: "Regress pulumi/pulumi-terraform-bridge#3103",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
