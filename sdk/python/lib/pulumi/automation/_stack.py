@@ -293,6 +293,7 @@ class Stack:
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
         config_file: Optional[str] = None,
+        run_program: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -337,6 +338,12 @@ class Stack:
         if plan is not None:
             args.append("--plan")
             args.append(plan)
+
+        if run_program is not None:Add commentMore actions
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
 
         args.extend(self._remote_args())
 
@@ -424,6 +431,7 @@ class Stack:
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
         config_file: Optional[str] = None,
+        run_program: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -471,6 +479,12 @@ class Stack:
         if plan is not None:
             args.append("--save-plan")
             args.append(plan)
+
+        if run_program is not None:
+            if run_program:
+                args.append("--run-program=true")
+            else:
+                args.append("--run-program=false")
 
         args.extend(self._remote_args())
 
