@@ -559,7 +559,7 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.deserializeBinaryFromReader = func
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDryRun(value);
       break;
-    case 5:
+    case 7:
       var value = msg.getConfigMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
@@ -628,7 +628,7 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.serializeBinaryToWriter = function
   }
   f = message.getConfigMap(true);
   if (f && f.getLength() > 0) {
-    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+    f.serializeBinary(7, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
   f = message.getConfigSecretKeysList();
   if (f.length > 0) {
@@ -713,14 +713,14 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.setDryRun = function(val
 
 
 /**
- * map<string, string> config = 5;
+ * map<string, string> config = 7;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,string>}
  */
 proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.getConfigMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,string>} */ (
-      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      jspb.Message.getMapField(this, 7, opt_noLazyCreate,
       null));
 };
 
