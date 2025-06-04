@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1537,6 +1536,41 @@ func TestEvalSource(t *testing.T) {
 			assert.ErrorContains(t, err, "failed to decrypt config")
 			assert.True(t, decrypterCalled)
 		})
+		t.Run("failed to convert config to map", func(t *testing.T) {
+			t.Parallel()
+
+			var called int
+			var decrypterCalled bool
+			src := &evalSource{
+				plugctx: &plugin.Context{
+					Diag: &deploytest.NoopSink{},
+				},
+				runinfo: &EvalRunInfo{
+					ProjectRoot: "/",
+					Pwd:         "/",
+					Program:     ".",
+					Target: &Target{
+						Config: config.Map{
+							config.MustMakeKey("test", "secret"): config.NewSecureValue("secret"),
+						},
+						Decrypter: &decrypterMock{
+							DecryptValueF: func(ctx context.Context, ciphertext string) (string, error) {
+								decrypterCalled = true
+								if called == 0 {
+									// Will cause the next invocation to fail.
+									called++
+									return "", nil
+								}
+								return "", errors.New("expected fail")
+							},
+						},
+					},
+				},
+			}
+			_, err := src.Iterate(context.Background(), &providerSourceMock{})
+			assert.ErrorContains(t, err, "failed to convert config to map")
+			assert.True(t, decrypterCalled)
+		})
 	})
 }
 
@@ -1988,7 +2022,7 @@ func TestInvoke(t *testing.T) {
 					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, property.Map{}, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2051,7 +2085,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, property.Map{}, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2123,7 +2157,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, property.Map{}, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2225,7 +2259,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, property.Map{}, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2308,7 +2342,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, property.Map{}, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2389,7 +2423,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, property.Map{}, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{

@@ -490,17 +490,17 @@ func newUpdateSource(ctx context.Context,
 	//
 
 	// Decrypt the configuration.
-	config, err := target.Config.AsDecryptedPropertyMap(ctx, target.Decrypter)
+	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
 		return nil, err
 	}
-	pconfig := resource.FromResourcePropertyMap(config)
 	analyzerOpts := &plugin.PolicyAnalyzerOptions{
-		Organization: target.Organization.String(),
-		Project:      proj.Name.String(),
-		Stack:        target.Name.String(),
-		Config:       pconfig,
-		DryRun:       opts.DryRun,
+		Organization:     target.Organization.String(),
+		Project:          proj.Name.String(),
+		Stack:            target.Name.String(),
+		Config:           config,
+		ConfigSecretKeys: target.Config.SecureKeys(),
+		DryRun:           opts.DryRun,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err

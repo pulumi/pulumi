@@ -12,26 +12,23 @@ paths:
     secure: false
     isObject: true
   my:outer[0]:
-    value: 1
+    value: "1"
     string: "1"
     redacted: "1"
-    object: DBAABWludDY0BAIAAg==
+    object: DhAABnN0cmluZwwDAAEx
     secure: false
     isObject: false
-    type: 2
   my:outer[1]:
-    value: 2
+    value: "2"
     string: "2"
     redacted: "2"
-    object: DBAABWludDY0BAIABA==
+    object: DhAABnN0cmluZwwDAAEy
     secure: false
     isObject: false
-    type: 2
   my:outer[2]:
-    value: 3
+    value: "3"
     string: "3"
     redacted: "3"
-    object: DBAABWludDY0BAIABg==
+    object: DhAABnN0cmluZwwDAAEz
     secure: false
     isObject: false
-    type: 2

@@ -25,8 +25,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
@@ -196,19 +197,21 @@ type RunPluginInfo struct {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	Info           ProgramInfo  // the information about the program to run.
-	MonitorAddress string       // the RPC address to the host resource monitor.
-	Project        string       // the project name housing the program being run.
-	Stack          string       // the stack name being evaluated.
-	Pwd            string       // the program's working directory.
-	Args           []string     // any arguments to pass to the program.
-	Config         property.Map // the configuration as a property map.
-	DryRun         bool         // true if we are performing a dry-run (preview).
-	QueryMode      bool         // true if we're only doing a query.
-	Parallel       int32        // the degree of parallelism for resource operations (<=1 for serial).
-	Organization   string       // the organization name housing the program being run (might be empty).
-	LoaderAddress  string       // the RPC address of the host's schema loader.
-	AttachDebugger bool         // true if we are starting the program under a debugger.
+	Info              ProgramInfo           // the information about the program to run.
+	MonitorAddress    string                // the RPC address to the host resource monitor.
+	Project           string                // the project name housing the program being run.
+	Stack             string                // the stack name being evaluated.
+	Pwd               string                // the program's working directory.
+	Args              []string              // any arguments to pass to the program.
+	Config            map[config.Key]string // the configuration variables to apply before running.
+	ConfigSecretKeys  []config.Key          // the configuration keys that have secret values.
+	ConfigPropertyMap resource.PropertyMap  // the configuration as a property map.
+	DryRun            bool                  // true if we are performing a dry-run (preview).
+	QueryMode         bool                  // true if we're only doing a query.
+	Parallel          int32                 // the degree of parallelism for resource operations (<=1 for serial).
+	Organization      string                // the organization name housing the program being run (might be empty).
+	LoaderAddress     string                // the RPC address of the host's schema loader.
+	AttachDebugger    bool                  // true if we are starting the program under a debugger.
 }
 
 type RuntimeOptionType int
