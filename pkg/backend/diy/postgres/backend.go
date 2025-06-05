@@ -51,11 +51,3 @@ func (p URLHandler) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.Bucket
 	return pg.Bucket(), nil
 }
 
-// IsPostgresBackendURL returns true if the URL is a PostgreSQL backend URL.
-func IsPostgresBackendURL(urlstr string) bool {
-	u, err := url.Parse(urlstr)
-	if err != nil {
-		return false
-	}
-	return u.Scheme == PostgresScheme
-}
