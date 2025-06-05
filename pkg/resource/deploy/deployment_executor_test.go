@@ -16,7 +16,7 @@ package deploy
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -218,10 +218,11 @@ func (iter *iterator) Next() (SourceEvent, error) {
 	// return fairly early, letting us get away with mocking less of the system
 	// to test the closing behaviour.
 	// It also ensures we do call `Close` in the presence of an error.
-	return nil, fmt.Errorf("error")
+	return nil, errors.New("error")
 }
 
 func TestSourceIteratorClose(t *testing.T) {
+	t.Parallel()
 	iter := &iterator{}
 	ex := &deploymentExecutor{
 		deployment: &Deployment{
@@ -234,6 +235,7 @@ func TestSourceIteratorClose(t *testing.T) {
 		stepGen: &stepGenerator{},
 	}
 
-	ex.Execute(context.Background())
+	_, err := ex.Execute(context.Background())
+	require.ErrorContains(t, err, "BAIL")
 	require.True(t, iter.closed, "The source iterator should be closed after execution")
 }
