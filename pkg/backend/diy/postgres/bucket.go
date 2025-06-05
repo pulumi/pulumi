@@ -69,12 +69,7 @@ type Bucket struct {
 var tableSchema string
 
 // NewPostgresBucket creates a new Bucket.
-func NewPostgresBucket(ctx context.Context, connString string) (*Bucket, error) {
-	u, err := url.Parse(connString)
-	if err != nil {
-		return nil, fmt.Errorf("invalid PostgreSQL connection string: %w", err)
-	}
-
+func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 	// Extract table name from query parameters or use default
 	// SECURITY NOTE: The table name comes from the connection string configuration,
 	// which is controlled by system administrators/developers, not end users.

@@ -43,11 +43,9 @@ type URLHandler struct{}
 
 // OpenBucketURL implements blob.BucketURLOpener.
 func (p URLHandler) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.Bucket, error) {
-	config := u.String()
-	pg, err := NewPostgresBucket(ctx, config)
+	pg, err := NewPostgresBucket(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 	return pg.Bucket(), nil
 }
-
