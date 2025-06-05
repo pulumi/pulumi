@@ -298,6 +298,25 @@ func TestPackageGetSchema(t *testing.T) {
 	// Sub-schema is a very simple empty schema with the name set from the argument given
 	assert.Equal(t, "parameter", schema.Name)
 
+	// Now try and get the parameterized schema from within a Pulumi project with a packages declaration.
+	err = os.WriteFile(
+		filepath.Join(e.CWD, "Pulumi.yaml"),
+		[]byte(fmt.Sprintf(`name: project
+runtime: yaml
+packages:
+  tp: %s
+backend:
+  url: '%s'`,
+			providerDir,
+			e.LocalURL(),
+		)), 0o600)
+	require.NoError(t, err)
+
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "tp", "parameter")
+	schema = bindSchema("testprovider", schemaJSON)
+	// Sub-schema is a very simple empty schema with the name set from the argument given
+	assert.Equal(t, "parameter", schema.Name)
+
 	// get-schema '.' works
 	e.CWD = providerDir
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", ".", "parameter")
