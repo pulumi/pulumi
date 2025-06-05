@@ -283,6 +283,17 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  registerLifecycleHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_callback_pb.Callback,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_Callback,
+    requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 // Multiple requests are idempotent and guaranteed to return the same result.
 registerPackage: {

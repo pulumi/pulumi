@@ -296,6 +296,8 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		}
 	}
 
+	// TODO: check hooks here, ordering of hooks matters
+
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint. Likewise source positions are purely metadata and do not affect the system correctness, so
 	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when

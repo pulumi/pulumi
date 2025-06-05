@@ -362,6 +362,10 @@ type ResourceV3 struct {
 	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// ViewOf is a reference to the resource that this resource is a view of.
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
+	// TODO: versioning of hooks
+	// TODO: should we only write delete hooks to state?
+	// LifecycleHooks is a map of hook types to lists of hook names for the given type.
+	LifecycleHooks map[string][]string `json:"lifecycleHooks,omitempty" yaml:"lifecycleHooks,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

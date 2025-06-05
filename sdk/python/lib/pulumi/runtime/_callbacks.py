@@ -44,7 +44,12 @@ from .rpc import deserialize_properties, serialize_properties
 from ..invoke import InvokeOptions, InvokeTransform
 
 if TYPE_CHECKING:
-    from ..resource import Alias, ResourceOptions, ResourceTransform
+    from ..resource import (
+        Alias,
+        ResourceOptions,
+        ResourceTransform,
+    )
+    from ..lifecycle_hooks import LifecycleHook
 
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -235,6 +240,56 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         except:
             # Remove the transform since we didn't manage to actually register it.
             self._transforms.pop(transform)
+            self._callbacks.pop(callback.token)
+            raise
+
+    def do_register_lifecycle_hook(self, hook: LifecycleHook) -> callback_pb2.Callback:
+        log.debug(f"do_register_lifecycle_hook {hook.name}")
+        # TODO: this isn't working correctly?
+        if self._callbacks.get(hook.name):
+            raise ValueError(
+                f"A hook was already registered for the name '{hook.name}'"
+            )
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.LifecycleHookRequest = (
+                resource_pb2.LifecycleHookRequest.FromString(s)
+            )
+
+            try:
+                from ..lifecycle_hooks import LifecycleHookArgs
+
+                maybeAwaitable = hook(
+                    LifecycleHookArgs(
+                        urn=request.urn,
+                        id=request.id,
+                        outputs=deserialize_properties(
+                            request.outputs,
+                            keep_unknowns=True,
+                        ),
+                    )
+                )
+                if isinstance(maybeAwaitable, Awaitable):
+                    await maybeAwaitable
+                return resource_pb2.LifecycleHookResponse()
+            except Exception as e:  # noqa: BLE001 catch blind exception
+                log.debug(f"Exception while executing hook: {e}")
+                return resource_pb2.LifecycleHookResponse(error=str(e))
+
+        self._callbacks[hook.name] = cb
+        callback = callback_pb2.Callback(
+            token=hook.name,
+            target=self._target,
+        )
+        return callback
+
+    def register_lifecycle_hook(self, hook: LifecycleHook) -> callback_pb2.Callback:
+        callback = self.do_register_lifecycle_hook(hook)
+        try:
+            self._monitor.RegisterLifecycleHook(callback)
+            return callback
+        except:
+            # Remove the hook since we didn't manage to actually register it.
             self._callbacks.pop(callback.token)
             raise
 

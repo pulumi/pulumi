@@ -123,6 +123,21 @@ func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor
 	return &ResourceMonitor{resmon: resmon}
 }
 
+// TODO: This will move to the Go SDK
+type LifecycleHook struct {
+	Callback *pulumirpc.Callback
+	// TODO: options go here
+}
+
+type LifecycleHookBindings struct {
+	BeforeCreate []LifecycleHook
+	AfterCreate  []LifecycleHook
+	BeforeUpdate []LifecycleHook
+	AfterUpdate  []LifecycleHook
+	BeforeDelete []LifecycleHook
+	AfterDelete  []LifecycleHook
+}
+
 type ResourceOptions struct {
 	Parent                  resource.URN
 	Protect                 *bool
@@ -153,7 +168,8 @@ type ResourceOptions struct {
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
 
-	Transforms []*pulumirpc.Callback
+	Transforms            []*pulumirpc.Callback
+	LifecycleHookBindings LifecycleHookBindings
 
 	SupportsResultReporting bool
 	PackageRef              string
@@ -254,6 +270,21 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
+	// TODO: use something similar to getHookNames?
+	lifecycleHooks := &pulumirpc.RegisterResourceRequest_LifecycleHooksBinding{}
+	for _, hook := range opts.LifecycleHookBindings.BeforeCreate {
+		lifecycleHooks.BeforeCreate = append(lifecycleHooks.BeforeCreate, hook.Callback)
+	}
+	for _, hook := range opts.LifecycleHookBindings.AfterCreate {
+		lifecycleHooks.AfterCreate = append(lifecycleHooks.AfterCreate, hook.Callback)
+	}
+	for _, hook := range opts.LifecycleHookBindings.BeforeDelete {
+		lifecycleHooks.BeforeDelete = append(lifecycleHooks.BeforeDelete, hook.Callback)
+	}
+	for _, hook := range opts.LifecycleHookBindings.AfterDelete {
+		lifecycleHooks.AfterDelete = append(lifecycleHooks.AfterDelete, hook.Callback)
+	}
+
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -288,6 +319,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Transforms:                 opts.Transforms,
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
+		LifecycleHooks:             lifecycleHooks,
 	}
 
 	ctx := context.Background()
@@ -513,6 +545,11 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 		return "", err
 	}
 	return resp.Ref, nil
+}
+
+func (rm *ResourceMonitor) RegisterLifecycleHook(ctx context.Context, callback *pulumirpc.Callback) error {
+	_, err := rm.resmon.RegisterLifecycleHook(ctx, callback)
+	return err
 }
 
 func (rm *ResourceMonitor) WaitForShutdown(ctx context.Context) error {
