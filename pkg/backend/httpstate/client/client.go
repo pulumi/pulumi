@@ -1482,9 +1482,18 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody interface{}) (str
 		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
+	if resp.StatusCode >= 400 {
+		// For other error status codes, return the body as an error if it's readable, otherwise a generic error
+		errorMsg := string(body)
+		if errorMsg == "" {
+			errorMsg = fmt.Sprintf("Copilot API returned error status: %d", resp.StatusCode)
+		}
+		return "", errors.New(errorMsg)
+	}
+
 	var copilotResp apitype.CopilotResponse
 	if err := json.Unmarshal(body, &copilotResp); err != nil {
-		return "", fmt.Errorf("got non-JSON response from Copilot: %s", body)
+		return "", fmt.Errorf("unable to parse Copilot response: %s", string(body))
 	}
 
 	if copilotResp.Error != "" {
