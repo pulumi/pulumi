@@ -34,6 +34,30 @@ var replaceH2Pattern = regexp.MustCompile(`(?m)^## .*$`)
 // Used to promote the `###` headings to `##` in generated markdown files.
 var h3Pattern = regexp.MustCompile(`(?m)^###\s`)
 
+// generateMetaDescription creates contextual meta descriptions for CLI commands
+func generateMetaDescription(title, commandName string) string {
+	baseDesc := fmt.Sprintf("Learn about the %s command.", title)
+	
+	// Add specific descriptions for common commands
+	descriptions := map[string]string{
+		"pulumi": "Modern Infrastructure as Code. Create, deploy, and manage cloud resources using familiar programming languages.",
+		"pulumi_up": "Create or update resources in a stack. Deploy your infrastructure changes to the cloud.",
+		"pulumi_destroy": "Delete all resources in a stack. Safely tear down your cloud infrastructure.",
+		"pulumi_preview": "Preview changes to your infrastructure before deploying. See what will be created, updated, or deleted.",
+		"pulumi_config": "Manage stack configuration. Set and get configuration values for your Pulumi programs.",
+		"pulumi_stack": "Manage stacks and view stack state. Create, select, and manage your deployment environments.",
+		"pulumi_new": "Create a new Pulumi project from a template. Bootstrap your infrastructure as code projects.",
+		"pulumi_login": "Authenticate with the Pulumi Cloud or self-hosted backend. Manage your login credentials.",
+		"pulumi_logout": "Log out of the current backend. Clear your authentication credentials.",
+	}
+	
+	if desc, exists := descriptions[commandName]; exists {
+		return desc
+	}
+	
+	return baseDesc
+}
+
 // NewGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
@@ -57,10 +81,13 @@ func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				ymlIndent := "  " // 2 spaces
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
-				fmt.Fprintf(buf, "title: %q\n", title)
+				fmt.Fprintf(buf, "title: \"%s | CLI commands\"\n", title)
 				// Add redirect aliases to the front matter.
 				fmt.Fprint(buf, "aliases:\n")
 				fmt.Fprintf(buf, "%s- /docs/reference/cli/%s/\n", ymlIndent, fileNameWithoutExtension)
+				// Add meta description for SEO
+				metaDesc := generateMetaDescription(title, fileNameWithoutExtension)
+				fmt.Fprintf(buf, "meta_desc: %q\n", metaDesc)
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}
