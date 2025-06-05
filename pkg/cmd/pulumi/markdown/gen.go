@@ -40,15 +40,17 @@ func generateMetaDescription(title, commandName string) string {
 
 	// Add specific descriptions for common commands
 	descriptions := map[string]string{
-		"pulumi":         "Modern Infrastructure as Code. Create, deploy, and manage cloud resources using familiar programming languages.",
+		"pulumi": "Modern Infrastructure as Code. Create, deploy, and manage cloud resources using familiar " +
+			"programming languages.",
 		"pulumi_up":      "Create or update resources in a stack. Deploy your infrastructure changes to the cloud.",
 		"pulumi_destroy": "Delete all resources in a stack. Safely tear down your cloud infrastructure.",
-		"pulumi_preview": "Preview changes to your infrastructure before deploying. See what will be created, updated, or deleted.",
-		"pulumi_config":  "Manage stack configuration. Set and get configuration values for your Pulumi programs.",
-		"pulumi_stack":   "Manage stacks and view stack state. Create, select, and manage your deployment environments.",
-		"pulumi_new":     "Create a new Pulumi project from a template. Bootstrap your infrastructure as code projects.",
-		"pulumi_login":   "Authenticate with the Pulumi Cloud or self-hosted backend. Manage your login credentials.",
-		"pulumi_logout":  "Log out of the current backend. Clear your authentication credentials.",
+		"pulumi_preview": "Preview changes to your infrastructure before deploying. See what will be created, " +
+			"updated, or deleted.",
+		"pulumi_config": "Manage stack configuration. Set and get configuration values for your Pulumi programs.",
+		"pulumi_stack":  "Manage stacks and view stack state. Create, select, and manage your deployment environments.",
+		"pulumi_new":    "Create a new Pulumi project from a template. Bootstrap your infrastructure as code projects.",
+		"pulumi_login":  "Authenticate with the Pulumi Cloud or self-hosted backend. Manage your login credentials.",
+		"pulumi_logout": "Log out of the current backend. Clear your authentication credentials.",
 	}
 
 	if desc, exists := descriptions[commandName]; exists {
