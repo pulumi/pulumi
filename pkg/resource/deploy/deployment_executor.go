@@ -524,19 +524,19 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	var steps []Step
 	var err error
 	switch e := event.(type) {
-	case ContinueResourceRefreshEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
-		ex.asyncEventsExpected--
-		var async bool
-		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
-		if async {
-			ex.asyncEventsExpected++
-		}
 	case ContinueResourceImportEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceImportEvent")
 		ex.asyncEventsExpected--
 		var async bool
 		steps, async, err = ex.stepGen.ContinueStepsFromImport(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
+	case ContinueResourceRefreshEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
+		ex.asyncEventsExpected--
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -695,7 +695,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)
-				step := NewRefreshStep(ex.deployment, nil, res, oldViews)
+				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			}
@@ -718,7 +718,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)
-				step := NewRefreshStep(ex.deployment, nil, res, oldViews)
+				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
 				steps = append(steps, step)
 				resourceToStep[res] = step
 			} else if ex.deployment.opts.TargetDependents {
@@ -731,7 +731,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 				for _, dep := range allDeps {
 					if targetsActual.Contains(dep.URN) {
 						oldViews := ex.deployment.GetOldViews(res.URN)
-						step := NewRefreshStep(ex.deployment, nil, res, oldViews)
+						step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
 						steps = append(steps, step)
 						resourceToStep[res] = step
 

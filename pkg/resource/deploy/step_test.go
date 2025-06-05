@@ -804,16 +804,18 @@ func TestRefreshStepPatterns(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		state := &resource.State{
+			URN:      "urn:pulumi:stack::project::some-type::some-urn",
+			ID:       "some-id",
+			Type:     "some-type",
+			Custom:   true,
+			Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+			Inputs:   tc.inputs,
+			Outputs:  tc.outputs,
+		}
 		s := &RefreshStep{
-			old: &resource.State{
-				URN:      "urn:pulumi:stack::project::some-type::some-urn",
-				ID:       "some-id",
-				Type:     "some-type",
-				Custom:   true,
-				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
-				Inputs:   tc.inputs,
-				Outputs:  tc.outputs,
-			},
+			old: state,
+			new: state.Copy(),
 			deployment: &Deployment{
 				opts: &Options{
 					DryRun: true,
@@ -848,18 +850,16 @@ func TestRefreshStep(t *testing.T) {
 		t.Parallel()
 		t.Run("error getting provider", func(t *testing.T) {
 			t.Parallel()
-			s := &RefreshStep{
-				deployment: &Deployment{
-					opts: &Options{
-						DryRun: true,
-					},
-				},
-				old: &resource.State{
-					Custom: true,
-					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
-				},
+			state := &resource.State{
+				Custom: true,
+				// Use denydefaultprovider ID to ensure failure.
+				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
 			}
+			s := NewRefreshStep(&Deployment{
+				opts: &Options{
+					DryRun: true,
+				},
+			}, nil, state, nil, nil)
 			status, _, err := s.Apply()
 			assert.ErrorContains(t, err, "Default provider for 'default_5_42_0' disabled.")
 			assert.Equal(t, resource.StatusOK, status)
@@ -867,65 +867,63 @@ func TestRefreshStep(t *testing.T) {
 		t.Run("failure in provider", func(t *testing.T) {
 			t.Parallel()
 			expectedErr := errors.New("expected error")
-			s := &RefreshStep{
-				old: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					ID:     "some-id",
-					Custom: true,
-					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
-				},
-				deployment: &Deployment{
+			state := &resource.State{
+				URN:    "urn:pulumi:stack::project::some-type::some-urn",
+				ID:     "some-id",
+				Custom: true,
+				// Use denydefaultprovider ID to ensure failure.
+				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+			}
+			s := NewRefreshStep(
+				&Deployment{
 					opts: &Options{
 						DryRun: true,
 					},
-				},
-				provider: &deploytest.Provider{
-					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{}, expectedErr
-					},
+				}, nil, state, nil, nil).(*RefreshStep)
+			s.provider = &deploytest.Provider{
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{}, expectedErr
 				},
 			}
+
 			status, _, err := s.Apply()
 			assert.ErrorIs(t, err, expectedErr)
 			assert.Equal(t, resource.StatusOK, status)
 		})
 		t.Run("partial failure in provider", func(t *testing.T) {
 			t.Parallel()
-			s := &RefreshStep{
-				old: &resource.State{
-					URN:    "urn:pulumi:stack::project::some-type::some-urn",
-					ID:     "some-id",
-					Type:   "some-type",
-					Custom: true,
-					// Use denydefaultprovider ID to ensure failure.
-					Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+			state := &resource.State{
+				URN:    "urn:pulumi:stack::project::some-type::some-urn",
+				ID:     "some-id",
+				Type:   "some-type",
+				Custom: true,
+				// Use denydefaultprovider ID to ensure failure.
+				Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+			}
+			s := NewRefreshStep(&Deployment{
+				ctx: &plugin.Context{Diag: &deploytest.NoopSink{}},
+				opts: &Options{
+					DryRun: true,
 				},
-				deployment: &Deployment{
-					ctx: &plugin.Context{Diag: &deploytest.NoopSink{}},
-					opts: &Options{
-						DryRun: true,
-					},
-				},
-				provider: &deploytest.Provider{
-					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
-								ReadResult: plugin.ReadResult{
-									ID: "new-id",
-									Inputs: resource.PropertyMap{
-										"inputs-key": resource.NewStringProperty("expected-value"),
-									},
-									Outputs: resource.PropertyMap{
-										"outputs-key": resource.NewStringProperty("expected-value"),
-									},
+			}, nil, state, nil, nil).(*RefreshStep)
+			s.provider = &deploytest.Provider{
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								ID: "new-id",
+								Inputs: resource.PropertyMap{
+									"inputs-key": resource.NewStringProperty("expected-value"),
 								},
-								Status: resource.StatusPartialFailure,
-							}, &plugin.InitError{
-								Reasons: []string{
-									"intentional error",
+								Outputs: resource.PropertyMap{
+									"outputs-key": resource.NewStringProperty("expected-value"),
 								},
-							}
-					},
+							},
+							Status: resource.StatusPartialFailure,
+						}, &plugin.InitError{
+							Reasons: []string{
+								"intentional error",
+							},
+						}
 				},
 			}
 			status, _, err := s.Apply()

@@ -102,7 +102,7 @@ type ContinueResourceRefreshEvent interface {
 
 	URN() resource.URN
 	Old() *resource.State
-	Aliases() []resource.URN
+	New() *resource.State
 	Invalid() bool
 }
 
@@ -110,7 +110,7 @@ type continueResourceRefreshEvent struct {
 	RegisterResourceEvent
 	urn     resource.URN    // the URN of the resource being processed.
 	old     *resource.State // the old state of the resource being processed.
-	aliases []resource.URN  // the aliases of the resource being processed.
+	new     *resource.State // the new state of the resource being processed.
 	invalid bool            // whether the resource is invalid.
 }
 
@@ -126,8 +126,8 @@ func (g *continueResourceRefreshEvent) Old() *resource.State {
 	return g.old
 }
 
-func (g *continueResourceRefreshEvent) Aliases() []resource.URN {
-	return g.aliases
+func (g *continueResourceRefreshEvent) New() *resource.State {
+	return g.new
 }
 
 func (g *continueResourceRefreshEvent) Invalid() bool {

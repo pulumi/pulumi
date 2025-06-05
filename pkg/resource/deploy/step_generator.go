@@ -638,76 +638,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// lookup providers for calculating replacement of resources that use the provider.
 	sg.deployment.goals.Store(urn, goal)
 
-	// If we're doing refreshes (pulumi up --refresh) then this is the point where we need to fire off a refresh
-	// step for this resource, to call back into GenerateSteps later.
-	//
-	// Only need to do refresh steps here for custom non-provider resources that have an old state.
-	//
-	// Even if refreshes are not requested on the command line, provider may have requested them for this resource
-	// and recorded a RefreshBeforeUpdate flag in the state. This is respected as well.
-	if old != nil &&
-		(sg.refresh || old.RefreshBeforeUpdate) &&
-		goal.Custom &&
-		!providers.IsProviderType(goal.Type) {
-		cts := &promise.CompletionSource[*resource.State]{}
-		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
-		go func() {
-			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
-			// but a goroutine blocked on Result and then posting to a channel is very cheap.
-			state, err := cts.Promise().Result(context.Background())
-			contract.AssertNoErrorf(err, "expected a result from refresh step")
-			sg.events <- &continueResourceRefreshEvent{
-				RegisterResourceEvent: event,
-				urn:                   urn,
-				old:                   state,
-				aliases:               aliasUrns,
-				invalid:               invalid,
-			}
-		}()
-
-		oldViews := sg.deployment.GetOldViews(old.URN)
-		step := NewRefreshStep(sg.deployment, cts, old, oldViews)
-		sg.refreshes[urn] = true
-		return []Step{step}, true, nil
-	}
-
-	// Anything else just flow on to the normal step generation.
-	continueEvent := &continueResourceRefreshEvent{
-		RegisterResourceEvent: event,
-		urn:                   urn,
-		old:                   old,
-		aliases:               aliasUrns,
-		invalid:               invalid,
-	}
-
-	return sg.continueStepsFromRefresh(continueEvent)
-}
-
-// This function is called by the deployment executor in response to a ContinueResourceRefreshEvent. It simply
-// calls into continueStepsFromRefresh and then validateSteps to continue the work that GenerateSteps would
-// have done without a refresh step.
-func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
-	steps, async, err := sg.continueStepsFromRefresh(event)
-	if err != nil {
-		return nil, false, err
-	}
-
-	if async {
-		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
-		// DiffStep.
-		return steps, true, nil
-	}
-
-	steps, err = sg.validateSteps(steps)
-	return steps, false, err
-}
-
-func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
-	goal := event.Goal()
-	urn := event.URN()
-	old := event.Old()
-	aliasUrns := event.Aliases()
-
 	var createdAt *time.Time
 	var modifiedAt *time.Time
 	if old != nil {
@@ -745,6 +675,76 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			sg.providers[aliasURN] = new
 		}
 	}
+
+	// If we're doing refreshes (pulumi up --refresh) then this is the point where we need to fire off a refresh
+	// step for this resource, to call back into GenerateSteps later.
+	//
+	// Only need to do refresh steps here for custom non-provider resources that have an old state.
+	//
+	// Even if refreshes are not requested on the command line, provider may have requested them for this resource
+	// and recorded a RefreshBeforeUpdate flag in the state. This is respected as well.
+	if old != nil &&
+		(sg.refresh || old.RefreshBeforeUpdate) &&
+		goal.Custom &&
+		!providers.IsProviderType(goal.Type) {
+		cts := &promise.CompletionSource[*resource.State]{}
+		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
+		go func() {
+			// if promise had an "ContinueWith" like method to run code after a promise resolved we'd use it here,
+			// but a goroutine blocked on Result and then posting to a channel is very cheap.
+			state, err := cts.Promise().Result(context.Background())
+			contract.AssertNoErrorf(err, "expected a result from refresh step")
+			sg.events <- &continueResourceRefreshEvent{
+				RegisterResourceEvent: event,
+				urn:                   urn,
+				old:                   state,
+				new:                   new,
+				invalid:               invalid,
+			}
+		}()
+
+		oldViews := sg.deployment.GetOldViews(old.URN)
+		step := NewRefreshStep(sg.deployment, cts, old, oldViews, new)
+		sg.refreshes[urn] = true
+		return []Step{step}, true, nil
+	}
+
+	// Anything else just flow on to the normal step generation.
+	continueEvent := &continueResourceRefreshEvent{
+		RegisterResourceEvent: event,
+		urn:                   urn,
+		old:                   old,
+		new:                   new,
+		invalid:               invalid,
+	}
+
+	return sg.continueStepsFromRefresh(continueEvent)
+}
+
+// This function is called by the deployment executor in response to a ContinueResourceRefreshEvent. It simply
+// calls into continueStepsFromRefresh and then validateSteps to continue the work that GenerateSteps would
+// have done without a refresh step.
+func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
+	steps, async, err := sg.continueStepsFromRefresh(event)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if async {
+		// We only need to validate _real_ steps. If we're returning async work then steps should just be a
+		// DiffStep.
+		return steps, true, nil
+	}
+
+	steps, err = sg.validateSteps(steps)
+	return steps, false, err
+}
+
+func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshEvent) ([]Step, bool, error) {
+	goal := event.Goal()
+	urn := event.URN()
+	old := event.Old()
+	new := event.New()
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
 	// custom non-provider resources.
@@ -885,14 +885,14 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 			// the original 'new' variable. We still need that mutated state for the display and snapshot layers to
 			// reference, but we need a new clean separate state for the the step generator and any follow up steps to
 			// use.
-			var new *resource.State
+			var newnew *resource.State
 			if err == nil {
-				new = resource.NewState(
-					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, protectState, false,
+				newnew = resource.NewState(
+					goal.Type, urn, goal.Custom, false, "", goal.Properties, nil, goal.Parent, new.Protect, false,
 					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-					goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
-					createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-					refreshBeforeUpdate, "")
+					goal.AdditionalSecretOutputs, new.Aliases, &goal.CustomTimeouts, "", new.RetainOnDelete, goal.DeletedWith,
+					new.Created, new.Modified, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
+					new.RefreshBeforeUpdate, "")
 			}
 
 			sg.events <- &continueResourceImportEvent{
@@ -900,7 +900,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				err:                   err,
 				urn:                   urn,
 				old:                   old,
-				new:                   new,
+				new:                   newnew,
 				provider:              prov,
 				invalid:               event.Invalid(),
 				recreating:            recreating,
@@ -1869,7 +1869,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 				if add {
 					logging.V(7).Infof("Planner decided to refresh '%v'", res.URN)
 					oldViews := sg.deployment.GetOldViews(res.URN)
-					step := NewRefreshStep(sg.deployment, nil, res, oldViews)
+					step := NewRefreshStep(sg.deployment, nil, res, oldViews, nil)
 					sg.refreshes[res.URN] = true
 					steps = append(steps, step)
 					resourceToStep[res] = step

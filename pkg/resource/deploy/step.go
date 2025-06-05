@@ -1028,27 +1028,40 @@ func (s *ReadStep) Skip() {
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
 // instead, they are issued by the deployment executor as the optional first step in deployment execution.
 type RefreshStep struct {
-	deployment *Deployment                                // the deployment that produced this refresh
-	old        *resource.State                            // the old resource state, if one exists for this urn
-	new        *resource.State                            // the new resource state, to be used to query the provider
-	provider   plugin.Provider                            // the optional provider to use.
-	diff       plugin.DiffResult                          // the diff between the cloud provider and the state file
-	cts        *promise.CompletionSource[*resource.State] // the completion source to signal when the refresh is complete
-	oldViews   []plugin.View                              // the old views for this resource.
+	// the deployment that produced this refresh
+	deployment *Deployment
+	// the old resource state, if one exists for this urn
+	old *resource.State
+	// the new resource state, to be used to query the provider
+	new *resource.State
+	// isDeleted is true if `New()` should return nil because the refresh determined the resource was deleted.
+	isDeleted bool
+	// the optional provider to use.
+	provider plugin.Provider
+	// the diff between the cloud provider and the state file
+	diff plugin.DiffResult
+	// the completion source to signal when the refresh is complete
+	cts *promise.CompletionSource[*resource.State]
+	// the old views for this resource.
+	oldViews []plugin.View
 }
 
 // NewRefreshStep creates a new Refresh step.
 func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resource.State], old *resource.State,
-	oldViews []plugin.View,
+	oldViews []plugin.View, new *resource.State,
 ) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
 
 	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
+	if new == nil {
+		new = old
+	}
+
 	return &RefreshStep{
 		deployment: deployment,
 		old:        old,
-		new:        old,
+		new:        new,
 		cts:        cts,
 		oldViews:   oldViews,
 	}
@@ -1057,13 +1070,18 @@ func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resou
 // True if this is a persisted refresh step that should be respected by the snapshot system.
 func (s *RefreshStep) Persisted() bool { return s.cts != nil }
 
-func (s *RefreshStep) Op() display.StepOp                           { return OpRefresh }
-func (s *RefreshStep) Deployment() *Deployment                      { return s.deployment }
-func (s *RefreshStep) Type() tokens.Type                            { return s.old.Type }
-func (s *RefreshStep) Provider() string                             { return s.old.Provider }
-func (s *RefreshStep) URN() resource.URN                            { return s.old.URN }
-func (s *RefreshStep) Old() *resource.State                         { return s.old }
-func (s *RefreshStep) New() *resource.State                         { return s.new }
+func (s *RefreshStep) Op() display.StepOp      { return OpRefresh }
+func (s *RefreshStep) Deployment() *Deployment { return s.deployment }
+func (s *RefreshStep) Type() tokens.Type       { return s.new.Type }
+func (s *RefreshStep) Provider() string        { return s.new.Provider }
+func (s *RefreshStep) URN() resource.URN       { return s.new.URN }
+func (s *RefreshStep) Old() *resource.State    { return s.old }
+func (s *RefreshStep) New() *resource.State {
+	if s.isDeleted {
+		return nil
+	}
+	return s.new
+}
 func (s *RefreshStep) Res() *resource.State                         { return s.old }
 func (s *RefreshStep) Logical() bool                                { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
@@ -1072,7 +1090,7 @@ func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.d
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
 func (s *RefreshStep) ResultOp() display.StepOp {
-	if s.new == nil {
+	if s.isDeleted {
 		return OpDelete
 	}
 
@@ -1123,9 +1141,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	var initErrors []string
 	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
-		URN:                   s.old.URN,
-		Name:                  s.old.URN.Name(),
-		Type:                  s.old.URN.Type(),
+		URN:                   s.new.URN,
+		Name:                  s.new.URN.Name(),
+		Type:                  s.new.URN.Type(),
 		ID:                    resourceID,
 		Inputs:                s.old.Inputs,
 		State:                 s.old.Outputs,
@@ -1167,13 +1185,14 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			resourceID = refreshed.ID
 		}
 
-		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
-			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
-			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
-			s.old.SourcePosition, s.old.IgnoreChanges, s.old.ReplaceOnChanges,
-			refreshed.RefreshBeforeUpdate, s.old.ViewOf,
-		)
+		// We need to take a copy of the state before modifying it
+		s.new = s.new.Copy()
+		s.new.ID = resourceID
+		s.new.InitErrors = initErrors
+		s.new.RefreshBeforeUpdate = refreshed.RefreshBeforeUpdate
+		s.new.Inputs = inputs
+		s.new.Outputs = outputs
+
 		var inputsChange, outputsChange bool
 		if s.old != nil {
 			// There are two cases in which we'll diff only resource outputs on a
@@ -1242,7 +1261,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			logging.V(7).Infof("Refresh diff for %s: %v", s.URN(), s.diff)
 		}
 	} else {
-		s.new = nil
+		s.isDeleted = true
 	}
 
 	complete := func() {
