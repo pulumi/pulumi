@@ -30,6 +30,7 @@ from typing import (
     Tuple,
     Union,
 )
+import uuid
 
 import grpc
 from google.protobuf import struct_pb2
@@ -38,6 +39,7 @@ from .. import _types, log
 from .. import urn as urn_util
 from ..output import Input, Output
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
+from ..lifecycle_hooks import LifecycleHook, LifecycleHookBinding, LifecycleHookFunction
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
 from .rpc import _expand_dependencies
@@ -1003,6 +1005,8 @@ def register_resource(
             else:
                 alias_urns = [alias.urn for alias in resolver.aliases]
 
+            lifecycle_hooks = _prepare_lifecycle_hooks(opts.lifecycle_hooks)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -1035,6 +1039,7 @@ def register_resource(
                 transforms=callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
+                lifecycleHooks=lifecycle_hooks,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1232,3 +1237,42 @@ def _pkg_from_type(ty: str) -> Optional[str]:
     if len(parts) != 3:
         return None
     return parts[0]
+
+
+def _prepare_lifecycle_hooks(
+    hooks: Optional[LifecycleHookBinding],
+) -> resource_pb2.RegisterResourceRequest.LifecycleHooksBinding:
+    proto = resource_pb2.RegisterResourceRequest.LifecycleHooksBinding()
+    if not hooks:
+        return proto
+
+    for hook_type in [
+        "before_create",
+        "after_create",
+        "before_update",
+        "after_update",
+        "before_delete",
+        "after_delete",
+    ]:
+        hooks_for_type: list[LifecycleHook | LifecycleHookFunction] = getattr(
+            hooks, hook_type, []
+        )
+        for hook in hooks_for_type or []:
+            # Convert callables into LifecycleHooks
+            if not isinstance(hook, LifecycleHook):
+                # Delete hooks can't be anonymous
+                if hook_type in ("before_delete", "after_delete"):
+                    raise ValueError(
+                        "Delete lifecycle hooks must be LifecycleHook instances"
+                    )
+                if not isinstance(hook, Callable):
+                    raise ValueError(
+                        "Lifecycle hook must be a Callable or LifecycleHook"
+                    )
+                name = str(uuid.uuid4())
+                hook = LifecycleHook(name, hook)
+            if not hook.callback:
+                raise ValueError("Lifecycle hook callback cannot be None")
+            getattr(proto, hook_type).append(hook.callback)
+
+    return proto

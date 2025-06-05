@@ -290,7 +290,31 @@ func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 
+// make method on deployment maybe?
+func RunHooks(hookType string, d *Deployment, s *resource.State, canFail bool) error {
+	logging.V(3).Infof("RunHooks %s", hookType)
+	for _, hookName := range s.LifecycleHooks[hookType] {
+		hook, err := d.lifecycleHooks.GetLifecycleHook(hookName)
+		if err != nil {
+			return errors.New("hook %q was not registered")
+		}
+		err = hook(context.Background(), s.URN, s.ID)
+		logging.V(3).Infof("calling hook %q urn=%v id=%v", hookName, s.URN, s.ID)
+		if err != nil {
+			logging.V(3).Infof("hook %q failed urn=%v: %s", hookName, s.URN, err)
+			if canFail {
+				return fmt.Errorf("hook %q failed: %w", hookName, err)
+			}
+		}
+	}
+	return nil
+}
+
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	if err := RunHooks("beforeCreate", s.Deployment(), s.new, true); err != nil {
+		return resource.StatusOK, nil, err
+	}
+
 	var resourceError error
 	resourceStatus := resource.StatusOK
 
@@ -370,6 +394,10 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// If we have a failure, we should return an empty complete function
 		// and let the Fail method handle the registration.
 		return resourceStatus, nil, resourceError
+	}
+
+	if err := RunHooks("afterCreate", s.Deployment(), s.new, false); err != nil {
+		return resourceStatus, complete, err
 	}
 
 	return resourceStatus, complete, nil
@@ -680,6 +708,10 @@ func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	if err := RunHooks("beforeUpdate", s.Deployment(), s.new, true); err != nil {
+		return resource.StatusOK, nil, err
+	}
+
 	// Always propagate the ID and timestamps even in previews and refreshes.
 	s.new.Lock.Lock()
 	s.new.ID = s.old.ID
@@ -753,6 +785,11 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// and let the Fail method handle the registration.
 		return resourceStatus, nil, resourceError
 	}
+
+	if err := RunHooks("afterUpdate", s.Deployment(), s.new, true); err != nil {
+		return resourceStatus, nil, err
+	}
+
 	return resourceStatus, complete, nil
 }
 
@@ -1172,7 +1209,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
 			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified,
 			s.old.SourcePosition, s.old.IgnoreChanges, s.old.ReplaceOnChanges,
-			refreshed.RefreshBeforeUpdate, s.old.ViewOf,
+			refreshed.RefreshBeforeUpdate, s.old.ViewOf, s.old.LifecycleHooks,
 		)
 		var inputsChange, outputsChange bool
 		if s.old != nil {
@@ -1478,7 +1515,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
 		s.new.DeletedWith, nil, nil, s.new.SourcePosition, s.new.IgnoreChanges, s.new.ReplaceOnChanges,
-		s.new.RefreshBeforeUpdate, s.new.ViewOf)
+		s.new.RefreshBeforeUpdate, s.new.ViewOf, nil)
 
 	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
 	now := time.Now().UTC()

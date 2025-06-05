@@ -279,6 +279,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		nil,   /* replaceOnChanges */
 		false, /* refreshBeforeUpdate */
 		"",    /* viewOf */
+		nil,   /* lifecycleHooks */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -737,7 +738,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, goal.ID, retainOnDelete, goal.DeletedWith,
 		createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-		refreshBeforeUpdate, "")
+		refreshBeforeUpdate, "", goal.LifecycleHooks)
 
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
@@ -892,7 +893,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 					goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 					goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", retainOnDelete, goal.DeletedWith,
 					createdAt, modifiedAt, goal.SourcePosition, goal.IgnoreChanges, goal.ReplaceOnChanges,
-					refreshBeforeUpdate, "")
+					refreshBeforeUpdate, "", nil)
 			}
 
 			sg.events <- &continueResourceImportEvent{

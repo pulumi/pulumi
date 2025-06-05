@@ -97,12 +97,14 @@ func NewEvalSource(
 	plugctx *plugin.Context,
 	runinfo *EvalRunInfo,
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor,
+	lifecycleHooks *LifecycleHooks,
 	opts EvalSourceOptions,
 ) Source {
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
 		defaultProviderInfo: defaultProviderInfo,
+		lifecycleHooks:      lifecycleHooks,
 		opts:                opts,
 	}
 }
@@ -111,7 +113,8 @@ type evalSource struct {
 	plugctx             *plugin.Context                                // the plugin context.
 	runinfo             *EvalRunInfo                                   // the directives to use when running the program.
 	defaultProviderInfo map[tokens.Package]workspace.PackageDescriptor // the default provider versions for this source.
-	opts                EvalSourceOptions                              // options for the evaluation source.
+	lifecycleHooks      *LifecycleHooks
+	opts                EvalSourceOptions // options for the evaluation source.
 }
 
 func (src *evalSource) Close() error {
@@ -443,7 +446,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.DefaultName(), true, inputs, "", nil, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, nil, "", ""),
+			nil, nil, nil, "", nil, nil, nil, "", "", nil),
 		done: done,
 	}
 	return event, done, nil
@@ -619,6 +622,9 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 	}
 }
 
+// DialOptions returns dial options to be used for the gRPC client.
+type DialOptions func(metadata any) []grpc.DialOption
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
@@ -656,9 +662,10 @@ type resmon struct {
 	stackInvokeTransforms     []TransformInvokeFunction // invoke transformation functions
 	resourceTransformsLock    sync.Mutex
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
+	lifecycleHooks            *LifecycleHooks
 	callbacksLock             sync.Mutex
 	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
-	grpcDialOptions           func(metadata interface{}) []grpc.DialOption
+	grpcDialOptions           DialOptions
 
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -711,6 +718,7 @@ func newResourceMonitor(
 		cancel:             cancel,
 		opts:               src.opts,
 		callbacks:          map[string]*CallbacksClient{},
+		lifecycleHooks:     src.lifecycleHooks,
 		resourceTransforms: map[resource.URN][]TransformFunction{},
 		packageRefMap:      map[string]providers.ProviderRequest{},
 		grpcDialOptions:    src.plugctx.DialOptions,
@@ -1567,6 +1575,52 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 	return &emptypb.Empty{}, nil
 }
 
+func (rm *resmon) wrapLifecycleHookCallback(cb *pulumirpc.Callback) (LifecycleHookFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, urn resource.URN, id resource.ID) error {
+		logging.V(6).Infof("LifecycleHook call token=%s target=%s urn=%s", cb.Token, cb.Target, urn)
+		request, err := proto.Marshal(&pulumirpc.LifecycleHookRequest{
+			Urn: string(urn),
+			Id:  string(id),
+		})
+		if err != nil {
+			return fmt.Errorf("marshaling lifecycle hook request: %w", err)
+		}
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   cb.Token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(6).Infof("LifecycleHook call error: %v", err)
+			return err
+		}
+		var response pulumirpc.LifecycleHookResponse
+		err = proto.Unmarshal(resp.Response, &response)
+		if err != nil {
+			return fmt.Errorf("unmarshaling lifecycle hook response: %w", err)
+		}
+		if response.Error != "" {
+			return fmt.Errorf("hook error: %s", response.Error)
+		}
+		return nil
+	}, nil
+}
+
+func (rm *resmon) RegisterLifecycleHook(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+	logging.V(6).Infof("RegisterLifecycleHook token=%s target=%s", cb.Token, cb.Target)
+	wrapped, err := rm.wrapLifecycleHookCallback(cb)
+	if err != nil {
+		return nil, err
+	}
+	hook := LifecycleHookFunction(wrapped)
+	rm.lifecycleHooks.RegisterLifecycleHook(cb.Token, hook)
+	return &emptypb.Empty{}, nil
+}
+
 // inheritFromParent returns a new goal that inherits from the given parent goal.
 // Currently only inherits DeletedWith, Protect, and RetainOnDelete from parent.
 func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
@@ -2183,6 +2237,31 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	additionalSecretOutputs := opts.GetAdditionalSecretOutputs()
 
+	getHookNames := func(hookType string) []string {
+		results := []string{}
+		lifecycleHooks := req.GetLifecycleHooks()
+		lifecycleHooksValue := reflect.ValueOf(lifecycleHooks)
+		if lifecycleHooksValue.IsValid() {
+			hooks := reflect.Indirect(lifecycleHooksValue).FieldByName(hookType)
+			if hooks.IsValid() {
+				hookCallbacks := hooks.Interface().([]*pulumirpc.Callback)
+				for _, cb := range hookCallbacks {
+					results = append(results, cb.Token)
+				}
+			}
+		}
+		return results
+	}
+
+	lifecycleHooks := map[string][]string{
+		"beforeCreate": getHookNames("BeforeCreate"),
+		"afterCreate":  getHookNames("AfterCreate"),
+		"beforeUpdate": getHookNames("BeforeUpdate"),
+		"afterUpdate":  getHookNames("AfterUpdate"),
+		"beforeDelete": getHookNames("BeforeDelete"),
+		"afterDelete":  getHookNames("AfterDelete"),
+	}
+
 	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
 	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
 	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
@@ -2312,7 +2391,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, rawDependencies,
 			providerRef.String(), nil, rawPropertyDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 			additionalSecretKeys, parsedAliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
-			sourcePosition,
+			sourcePosition, lifecycleHooks,
 		)
 
 		if goal.Parent != "" {
