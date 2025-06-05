@@ -24,7 +24,6 @@
 //	    "os"
 //
 //	    "github.com/pulumi/pulumi/pkg/v3/backend/diy"
-//	    _ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // Import to register PostgreSQL provider
 //	    "github.com/pulumi/pulumi/pkg/v3/diag"
 //	)
 //
