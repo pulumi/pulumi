@@ -369,18 +369,16 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     async def _call_response(self, result: provider.CallResponse) -> proto.CallResponse:
-        # Note: ret_deps is populated by rpc.serialize_properties.
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
-        ret = await rpc.serialize_properties(
-            inputs=result.return_value, property_deps=ret_deps
-        )
+        property_deps: Dict[str, Set[str]] = {}
+        # Get the property dependencies from the result
+        for k, v in result.return_value.items():
+            property_deps[k] = v.all_dependencies()
+
+        return_value = PropertyValue.marshal_map(result.return_value)
 
         deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
-        for k, resources in ret_deps.items():
-            urns = await asyncio.gather(*(r.urn.future() for r in resources))
-            # filter out any unknowns
-            knownUrns = [u for u in urns if u is not None]
-            deps[k] = proto.CallResponse.ReturnDependencies(urns=knownUrns)
+        for k, urns in property_deps.items():
+            deps[k] = proto.CallResponse.ReturnDependencies(urns=urns)
 
         failures = None
         if result.failures:
@@ -390,8 +388,33 @@ class ProviderServicer(ResourceProviderServicer):
             ]
         resp = proto.CallResponse(returnDependencies=deps, failures=failures)
         # Since `return` is a keyword, we need to use getattr: https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
-        getattr(resp, "return").CopyFrom(ret)
+        getattr(resp, "return").CopyFrom(return_value)
         return resp
+
+    async def Parameterize(
+        self, request: proto.ParameterizeRequest, context
+    ) -> proto.ParameterizeResponse:
+        which = request.WhichOneof("parameters")
+        parameters: provider.Parameters
+        if which == "args":
+            parameters = provider.ParametersArgs(list(request.args.args))
+        elif which == "value":
+            parameters = provider.ParametersValue(
+                name=request.value.name,
+                version=request.value.version,
+                value=request.value.value,
+            )
+        else:
+            raise ValueError("ParameterizeRequest must contain either args or value")
+
+        resp = await self._provider.parameterize(
+            provider.ParameterizeRequest(parameters=parameters)
+        )
+
+        return proto.ParameterizeResponse(
+            name=resp.name,
+            version=resp.version,
+        )
 
     async def Invoke(
         self, request: proto.InvokeRequest, context
