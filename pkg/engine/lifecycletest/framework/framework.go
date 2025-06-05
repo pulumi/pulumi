@@ -238,6 +238,9 @@ func (op TestOp) runWithContext(
 	}
 
 	updateOpts := opts.Options()
+	// We want to always run with plan generation to ensure that plans _can_ be generated.
+	// This is to prevent regressions such as https://github.com/pulumi/pulumi/pull/19750.
+	updateOpts.GeneratePlan = true
 	defer func() {
 		if updateOpts.Host != nil {
 			contract.IgnoreClose(updateOpts.Host)

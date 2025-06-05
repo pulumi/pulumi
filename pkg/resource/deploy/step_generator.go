@@ -905,6 +905,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 				invalid:               event.Invalid(),
 				recreating:            recreating,
 				randomSeed:            randomSeed,
+				isImported:            true,
 			}
 		}()
 
@@ -928,6 +929,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(event ContinueResourceRefreshE
 		invalid:               event.Invalid(),
 		recreating:            recreating,
 		randomSeed:            randomSeed,
+		isImported:            false,
 	}
 
 	return sg.continueStepsFromImport(continueEvent)
@@ -964,6 +966,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	invalid := event.Invalid()
 	recreating := event.Recreating()
 	randomSeed := event.RandomSeed()
+	imported := event.IsImported()
 
 	// If the import failed just exit out, the step executor will already have signaled the error to the
 	// deployment.
@@ -1073,8 +1076,8 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		}
 		inputDiff := oldInputs.Diff(inputs)
 
-		// Generate the output goal plan, if we're recreating this it should already exist
-		if recreating {
+		// Generate the output goal plan, if we're recreating or imported this it should already exist
+		if recreating || imported {
 			plan, ok := sg.deployment.newPlans.get(urn)
 			if !ok {
 				return nil, false, fmt.Errorf("no plan for resource %v", urn)
