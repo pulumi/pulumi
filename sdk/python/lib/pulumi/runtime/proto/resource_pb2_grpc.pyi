@@ -62,6 +62,10 @@ class ResourceMonitorStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Register an invoke transform for the stack"""
+    RegisterLifecycleHook: grpc.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
+        google.protobuf.empty_pb2.Empty,
+    ]
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
@@ -123,6 +127,12 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty:
         """Register an invoke transform for the stack"""
+    
+    def RegisterLifecycleHook(
+        self,
+        request: pulumi.callback_pb2.Callback,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty: ...
     
     def RegisterPackage(
         self,

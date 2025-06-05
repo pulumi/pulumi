@@ -325,6 +325,8 @@ type Deployment struct {
 	reads *gsync.Map[resource.URN, *resource.State]
 	// the resource status server.
 	resourceStatus *resourceStatusServer
+	// the lifecycle hook registry for this deployment
+	lifecycleHooks *LifecycleHooks
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -491,6 +493,7 @@ func NewDeployment(
 	source Source,
 	localPolicyPackPaths []string,
 	backendClient BackendClient,
+	lifecycleHooks *LifecycleHooks,
 ) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
@@ -545,6 +548,7 @@ func NewDeployment(
 		news:                 newResources,
 		newPlans:             newResourcePlan(target.Config),
 		reads:                reads,
+		lifecycleHooks:       lifecycleHooks,
 	}
 
 	// Create a new resource status server for this deployment.

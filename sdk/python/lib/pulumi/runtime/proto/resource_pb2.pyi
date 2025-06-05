@@ -312,6 +312,42 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class LifecycleHooksBinding(google.protobuf.message.Message):
+        """TODO all types"""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        BEFORE_CREATE_FIELD_NUMBER: builtins.int
+        AFTER_CREATE_FIELD_NUMBER: builtins.int
+        BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+        AFTER_UPDATE_FIELD_NUMBER: builtins.int
+        BEFORE_DELETE_FIELD_NUMBER: builtins.int
+        AFTER_DELETE_FIELD_NUMBER: builtins.int
+        @property
+        def before_create(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        @property
+        def after_create(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        @property
+        def before_update(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        @property
+        def after_update(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        @property
+        def before_delete(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        @property
+        def after_delete(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.callback_pb2.Callback]: ...
+        def __init__(
+            self,
+            *,
+            before_create: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+            after_create: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+            before_update: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+            after_update: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+            before_delete: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+            after_delete: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["after_create", b"after_create", "after_delete", b"after_delete", "after_update", b"after_update", "before_create", b"before_create", "before_delete", b"before_delete", "before_update", b"before_update"]) -> None: ...
+
     TYPE_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
@@ -345,6 +381,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     TRANSFORMS_FIELD_NUMBER: builtins.int
     SUPPORTSRESULTREPORTING_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
+    LIFECYCLEHOOKS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -431,6 +468,8 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     """true if the request is from an SDK that supports the result field in the response."""
     packageRef: builtins.str
     """a reference from RegisterPackageRequest."""
+    @property
+    def lifecycleHooks(self) -> global___RegisterResourceRequest.LifecycleHooksBinding: ...
     def __init__(
         self,
         *,
@@ -467,9 +506,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         transforms: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
         supportsResultReporting: builtins.bool = ...,
         packageRef: builtins.str = ...,
+        lifecycleHooks: global___RegisterResourceRequest.LifecycleHooksBinding | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "lifecycleHooks", b"lifecycleHooks", "object", b"object", "protect", b"protect", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "lifecycleHooks", b"lifecycleHooks", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing_extensions.Literal["_protect", b"_protect"]) -> typing_extensions.Literal["protect"] | None: ...
     @typing.overload
@@ -1020,6 +1060,40 @@ class TransformInvokeOptions(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "provider", b"provider", "version", b"version"]) -> None: ...
 
 global___TransformInvokeOptions = TransformInvokeOptions
+
+@typing_extensions.final
+class LifecycleHookRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """TODO: all all args go here"""
+    id: builtins.str
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "urn", b"urn"]) -> None: ...
+
+global___LifecycleHookRequest = LifecycleHookRequest
+
+@typing_extensions.final
+class LifecycleHookResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ERROR_FIELD_NUMBER: builtins.int
+    error: builtins.str
+    def __init__(
+        self,
+        *,
+        error: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["error", b"error"]) -> None: ...
+
+global___LifecycleHookResponse = LifecycleHookResponse
 
 @typing_extensions.final
 class RegisterPackageRequest(google.protobuf.message.Message):
