@@ -1044,7 +1044,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 		return nil
 	})
@@ -1113,7 +1113,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUnchangedTarget(
 		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 		return nil
 	})
@@ -1197,7 +1197,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetPropertyDe
 				"prop": {resA.URN},
 			},
 		})
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 		return nil
 	})
@@ -1279,7 +1279,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetDeletedWit
 		_, err = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			DeletedWith: resA.URN,
 		})
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 		return nil
 	})
@@ -1364,7 +1364,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetParent(t *
 			Parent:    resA.URN,
 			AliasURNs: []resource.URN{resBOldURN},
 		})
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 		return nil
 	})

@@ -379,12 +379,14 @@ func TestViewsUpdateError(t *testing.T) {
 		"foo": "bar",
 	})
 
-	creating := true
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		if creating {
-			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: ins,
-			})
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		if expectError {
+			assert.Error(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
 			assert.NoError(t, err)
 		}
 		return nil
@@ -433,6 +435,7 @@ func TestViewsUpdateError(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run a second update, we should get an error for the view.
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
