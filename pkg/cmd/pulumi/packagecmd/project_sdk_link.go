@@ -779,12 +779,8 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
 	if !plugin.IsLocalPluginPath(packageSource) {
-		host, err := plugin.NewDefaultHost(pctx, nil, false, nil, nil, nil, nil, "")
-		if err != nil {
-			return nil, err
-		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		provider, err := host.Provider(descriptor)
+		provider, err := pctx.Host.Provider(descriptor)
 		if err != nil {
 			// There is an executable or directory with the same name, so suggest that
 			if info, statErr := os.Stat(descriptor.Name); statErr == nil && (isExecutable(info) || info.IsDir()) {
@@ -806,7 +802,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 					if depErr != nil {
 						return nil, fmt.Errorf("installing plugin dependencies: %w", depErr)
 					}
-					return host.Provider(descriptor)
+					return pctx.Host.Provider(descriptor)
 				}
 			}
 
@@ -817,7 +813,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 			}
 
 			log := func(sev diag.Severity, msg string) {
-				host.Log(sev, "", msg, 0)
+				pctx.Host.Log(sev, "", msg, 0)
 			}
 
 			_, err = pkgWorkspace.InstallPlugin(pctx.Base(), descriptor.PluginSpec, log)
@@ -825,7 +821,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 				return nil, err
 			}
 
-			p, err := host.Provider(descriptor)
+			p, err := pctx.Host.Provider(descriptor)
 			if err != nil {
 				return nil, err
 			}
