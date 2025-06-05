@@ -719,3 +719,116 @@ func TestSearchByName(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func TestCallCopilot(t *testing.T) {
+	t.Parallel()
+
+	t.Run("StatusNoContent", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns 204 No Content, it should return an empty string without error
+		noContentServer := newMockServer(http.StatusNoContent, "")
+		defer noContentServer.Close()
+
+		client := newMockClient(noContentServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.NoError(t, err)
+		require.Empty(t, response)
+	})
+
+	t.Run("StatusPaymentRequired", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns 402 Payment Required (usage limit), it should return an error with the body message
+		usageLimitServer := newMockServer(http.StatusPaymentRequired, "Usage limit reached")
+		defer usageLimitServer.Close()
+
+		client := newMockClient(usageLimitServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "Usage limit reached")
+		require.Empty(t, response)
+	})
+
+	t.Run("OtherErrorStatus", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns other error status codes, it should return an error with the body message
+		errorServer := newMockServer(http.StatusInternalServerError, "Internal server error")
+		defer errorServer.Close()
+
+		client := newMockClient(errorServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "Internal server error")
+		require.Empty(t, response)
+	})
+
+	t.Run("EmptyErrorBody", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns error status with empty body, it should return a generic error
+		emptyBodyServer := newMockServer(http.StatusBadRequest, "")
+		defer emptyBodyServer.Close()
+
+		client := newMockClient(emptyBodyServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.ErrorContains(t, err, "Copilot API returned error status: 400")
+		require.Empty(t, response)
+	})
+
+	t.Run("InvalidJSON", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns a non-JSON response with status 200, it should return an error
+		invalidJSONServer := newMockServer(http.StatusOK, "This is not JSON")
+		defer invalidJSONServer.Close()
+
+		client := newMockClient(invalidJSONServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "unable to parse Copilot response: This is not JSON")
+		require.Empty(t, response)
+	})
+
+	t.Run("ValidJSON", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns a valid JSON response, it should process it correctly
+		validJSONServer := newMockServer(http.StatusOK, `{
+			"messages": [
+				{
+					"role": "assistant",
+					"kind": "response",
+					"content": "\"This is a valid response\""
+				}
+			]
+		}`)
+		defer validJSONServer.Close()
+
+		client := newMockClient(validJSONServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.NoError(t, err)
+		require.Equal(t, "\"This is a valid response\"", response)
+	})
+
+	t.Run("JSONWithError", func(t *testing.T) {
+		t.Parallel()
+
+		// When Copilot API returns a JSON response with an error field, it should return that error
+		errorJSONServer := newMockServer(http.StatusOK, `{
+			"error": "API error message",
+			"details": "Detailed error information"
+		}`)
+		defer errorJSONServer.Close()
+
+		client := newMockClient(errorJSONServer)
+		response, err := client.callCopilot(context.Background(), map[string]string{"test": "data"})
+
+		require.EqualError(t, err, "copilot API error: API error message\nDetailed error information")
+		require.Empty(t, response)
+	})
+}
