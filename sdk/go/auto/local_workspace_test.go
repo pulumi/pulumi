@@ -2786,8 +2786,7 @@ func TestSaveStackSettings(t *testing.T) {
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
 	// Set the config value and save it
-	barKey := resourceConfig.MustMakeKey(pName, "bar")
-	stackConfig.Config[barKey] = resourceConfig.NewTypedValue("baz", resourceConfig.TypeString)
+	stackConfig.Config[resourceConfig.MustMakeKey(pName, "bar")] = resourceConfig.NewValue("baz")
 	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi up --

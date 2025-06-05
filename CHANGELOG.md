@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.174.0 (2025-06-04)
+
+
+### Features
+
+- [auto/go] Add PolicyPacks to preview/up options
+  [#19702](https://github.com/pulumi/pulumi/pull/19702)
+
+- [engine] Overhaul of how the import option works, the engine can now import and then update a resource in a single deployment
+  [#19339](https://github.com/pulumi/pulumi/pull/19339)
+
+- [yaml] Update YAML to 1.19.2
+  [#19727](https://github.com/pulumi/pulumi/pull/19727)
+
+- [sdkgen/python] Add sdkgen for non object method invoke return values
+  [#19660](https://github.com/pulumi/pulumi/pull/19660)
+
+
+### Bug Fixes
+
+- [engine] Fix loading of non-client language runtimes when running inline programs
+  [#19713](https://github.com/pulumi/pulumi/pull/19713)
+
+- [engine] Revert recent changes to the config system
+  [#19721](https://github.com/pulumi/pulumi/pull/19721)
+
+- [sdk] Fix of breaking change to WithMocks which splits interface for MethodCall
+  [#19687](https://github.com/pulumi/pulumi/pull/19687)
+
+
+### Miscellaneous
+
+- [cli] Ensure logs and tracing are fully written out before exiting
+  [#19714](https://github.com/pulumi/pulumi/pull/19714)
+
+- [engine] Log callbacks requests
+  [#19691](https://github.com/pulumi/pulumi/pull/19691)
+
+- [sdk/nodejs] Require Node.js >= 20
+  [#19697](https://github.com/pulumi/pulumi/pull/19697)
+
 ## 3.173.0 (2025-05-29)
 
 

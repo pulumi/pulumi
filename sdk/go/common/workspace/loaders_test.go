@@ -75,7 +75,7 @@ config:
 	require.NoError(t, err)
 	require.NotContains(t, stderr.String(), "warning: No value for configuration keys")
 	require.Len(t, projectStack.Config, 1)
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewTypedValue("a", config.TypeString))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue("a"))
 }
 
 func TestEmptyValueWarning(t *testing.T) {
@@ -100,8 +100,8 @@ config:
 	require.Contains(t, stderr.String(), "project:c")
 	require.NotContains(t, stderr.String(), "project:d")
 	require.Len(t, projectStack.Config, 4)
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewTypedValue("", config.TypeUnknown))
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewTypedValue("", config.TypeUnknown))
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewTypedValue("", config.TypeUnknown))
-	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewTypedValue("", config.TypeString))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewValue(""))
 }

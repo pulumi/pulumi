@@ -18,11 +18,13 @@ export class AnalyzerStackConfigureRequest extends jspb.Message {
     setOrganization(value: string): AnalyzerStackConfigureRequest;
     getDryRun(): boolean;
     setDryRun(value: boolean): AnalyzerStackConfigureRequest;
+    clearConfigSecretKeysList(): void;
+    getConfigSecretKeysList(): Array<string>;
+    setConfigSecretKeysList(value: Array<string>): AnalyzerStackConfigureRequest;
+    addConfigSecretKeys(value: string, index?: number): string;
 
-    hasConfig(): boolean;
-    clearConfig(): void;
-    getConfig(): google_protobuf_struct_pb.Struct | undefined;
-    setConfig(value?: google_protobuf_struct_pb.Struct): AnalyzerStackConfigureRequest;
+    getConfigMap(): jspb.Map<string, string>;
+    clearConfigMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerStackConfigureRequest.AsObject;
@@ -40,7 +42,9 @@ export namespace AnalyzerStackConfigureRequest {
         project: string,
         organization: string,
         dryRun: boolean,
-        config?: google_protobuf_struct_pb.Struct.AsObject,
+        configSecretKeysList: Array<string>,
+
+        configMap: Array<[string, string]>,
     }
 }
 

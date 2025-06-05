@@ -421,9 +421,18 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
+	return se.continueExecuteStep(payload, workerID, step)
+}
+
+func (se *stepExecutor) continueExecuteStep(payload interface{}, workerID int, step Step) error {
+	events := se.deployment.events
+
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.deployment.opts.DryRun)
 	status, stepComplete, err := step.Apply()
-	if isDiff {
+
+	// DiffSteps are special, we just use them for step worker parallelism but they shouldn't be passed to the rest of
+	// the system.
+	if _, isDiff := step.(*DiffStep); isDiff {
 		return nil
 	}
 
@@ -507,10 +516,41 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
+	// Executes view steps serially, in the order they were published to the resource status server.
+	executeViewSteps := func() error {
+		steps := se.deployment.resourceStatus.ReleaseToken(step.URN())
+		// Execute the steps in the order they were published.
+		var errs []error
+		for _, step := range steps {
+			if err := se.continueExecuteStep(step.payload, workerID, step.step); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		return errors.Join(errs...)
+	}
+
+	_, isDelete := step.(*DeleteStep)
+
+	// For delete operations, execute view steps before the post-step event. This way, any delete steps for child views
+	// are executed and saved to state before OnResourceStepPost for this resource saves the results of the step in the
+	// snapshot.
+	if isDelete {
+		if err := executeViewSteps(); err != nil {
+			return err
+		}
+	}
+
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
 			return fmt.Errorf("post-step event returned an error: %w", postErr)
+		}
+	}
+
+	// For non-delete operations, execute view steps after the post-step event.
+	if !isDelete {
+		if err := executeViewSteps(); err != nil {
+			return err
 		}
 	}
 

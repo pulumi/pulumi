@@ -7,7 +7,7 @@ paths:
       secure: value
     string: '{"bar":"baz","secure":"value"}'
     redacted: '{"bar":"baz","secure":"value"}'
-    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC7/gCsAAgZzZWN1cmUGc3RyaW5nDAcABXZhbHVlA2JhcgZzdHJpbmcMBQADYmF6
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAC7/gCsAAgNiYXIGc3RyaW5nDAUAA2JhegZzZWN1cmUGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:key.bar:
@@ -17,7 +17,6 @@ paths:
     object: EBAABnN0cmluZwwFAANiYXo=
     secure: false
     isObject: false
-    type: 1
   my:key.secure:
     value: value
     string: value
@@ -25,4 +24,3 @@ paths:
     object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: false
-    type: 1

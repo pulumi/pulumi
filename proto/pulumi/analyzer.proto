@@ -65,8 +65,13 @@ message AnalyzerStackConfigureRequest {
     string organization = 3;
     // True if this is a preview/dry run.
     bool dry_run = 4;
-    // The configuration of the stack being analyzed as a property map.
-    google.protobuf.Struct config = 5;
+
+    reserved 5; // This was used to send stack config as property values.
+
+    // A list of configuration keys whose values should be treated as secrets.
+    repeated string config_secret_keys = 6;
+    // The configuration of the stack being analyzed.
+    map<string, string> config = 7;
 }
 
 // `AnalyzerStackConfigureResponse` is the type of responses sent by a [](pulumirpc.Analyzer.ConfigureStack) call.

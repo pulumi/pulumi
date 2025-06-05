@@ -178,6 +178,20 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// PolicyPacks specifies one or more policy packs to run as part of this update
+func PolicyPacks(packs ...string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPacks = packs
+	})
+}
+
+// PolicyPackConfigs specifies one or more paths to JSON files containing the config for the policy pack
+func PolicyPackConfigs(paths ...string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPackConfigs = paths
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)

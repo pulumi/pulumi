@@ -53,7 +53,7 @@ goog.exportSymbol('proto.pulumirpc.Remediation', null, global);
  * @constructor
  */
 proto.pulumirpc.AnalyzerStackConfigureRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.AnalyzerStackConfigureRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.AnalyzerStackConfigureRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -463,6 +463,13 @@ if (goog.DEBUG && !COMPILED) {
   proto.pulumirpc.ConfigureAnalyzerRequest.displayName = 'proto.pulumirpc.ConfigureAnalyzerRequest';
 }
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.AnalyzerStackConfigureRequest.repeatedFields_ = [6];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -498,7 +505,8 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.toObject = function(includeInstanc
     project: jspb.Message.getFieldWithDefault(msg, 2, ""),
     organization: jspb.Message.getFieldWithDefault(msg, 3, ""),
     dryRun: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
-    config: (f = msg.getConfig()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    configSecretKeysList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -551,10 +559,15 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.deserializeBinaryFromReader = func
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDryRun(value);
       break;
-    case 5:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setConfig(value);
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addConfigSecretKeys(value);
+      break;
+    case 7:
+      var value = msg.getConfigMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -613,13 +626,16 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.serializeBinaryToWriter = function
       f
     );
   }
-  f = message.getConfig();
-  if (f != null) {
-    writer.writeMessage(
-      5,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+  f = message.getConfigSecretKeysList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      6,
+      f
     );
+  }
+  f = message.getConfigMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(7, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -697,40 +713,62 @@ proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.setDryRun = function(val
 
 
 /**
- * optional google.protobuf.Struct config = 5;
- * @return {?proto.google.protobuf.Struct}
+ * repeated string config_secret_keys = 6;
+ * @return {!Array<string>}
  */
-proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.getConfig = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.getConfigSecretKeysList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 6));
 };
 
 
 /**
- * @param {?proto.google.protobuf.Struct|undefined} value
- * @return {!proto.pulumirpc.AnalyzerStackConfigureRequest} returns this
-*/
-proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.setConfig = function(value) {
-  return jspb.Message.setWrapperField(this, 5, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
+ * @param {!Array<string>} value
  * @return {!proto.pulumirpc.AnalyzerStackConfigureRequest} returns this
  */
-proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.clearConfig = function() {
-  return this.setConfig(undefined);
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.setConfigSecretKeysList = function(value) {
+  return jspb.Message.setField(this, 6, value || []);
 };
 
 
 /**
- * Returns whether this field is set.
- * @return {boolean}
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.AnalyzerStackConfigureRequest} returns this
  */
-proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.hasConfig = function() {
-  return jspb.Message.getField(this, 5) != null;
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.addConfigSecretKeys = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 6, value, opt_index);
 };
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.AnalyzerStackConfigureRequest} returns this
+ */
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.clearConfigSecretKeysList = function() {
+  return this.setConfigSecretKeysList([]);
+};
+
+
+/**
+ * map<string, string> config = 7;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.getConfigMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 7, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.AnalyzerStackConfigureRequest} returns this
+ */
+proto.pulumirpc.AnalyzerStackConfigureRequest.prototype.clearConfigMap = function() {
+  this.getConfigMap().clear();
+  return this;};
 
 
 

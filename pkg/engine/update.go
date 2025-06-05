@@ -490,17 +490,17 @@ func newUpdateSource(ctx context.Context,
 	//
 
 	// Decrypt the configuration.
-	config, err := target.Config.AsDecryptedPropertyMap(ctx, target.Decrypter)
+	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
 		return nil, err
 	}
-	pconfig := resource.FromResourcePropertyMap(config)
 	analyzerOpts := &plugin.PolicyAnalyzerOptions{
-		Organization: target.Organization.String(),
-		Project:      proj.Name.String(),
-		Stack:        target.Name.String(),
-		Config:       pconfig,
-		DryRun:       opts.DryRun,
+		Organization:     target.Organization.String(),
+		Project:          proj.Name.String(),
+		Stack:            target.Name.String(),
+		Config:           config,
+		ConfigSecretKeys: target.Config.SecureKeys(),
+		DryRun:           opts.DryRun,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
 		return nil, err
@@ -653,7 +653,9 @@ func (acts *updateActions) OnResourceStepPost(
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			resultOp, ok := step.(interface{ ResultOp() display.StepOp })
+			contract.Assertf(ok, "step should implement ResultOp() for refreshes")
+			op, record = resultOp.ResultOp(), true
 		}
 
 		if step.Op() == deploy.OpRead {
@@ -672,7 +674,11 @@ func (acts *updateActions) OnResourceStepPost(
 		// not show outputs for component resources at this point: any that exist must be from a previous execution of
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
-		if step.Res().Custom || acts.Opts.Refresh && step.Op() == deploy.OpRefresh || step.Op() == deploy.OpDelete {
+		// Additionally, emit the event for views with outputs.
+		if step.Res().Custom ||
+			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
+			step.Op() == deploy.OpDelete ||
+			step.Res().ViewOf != "" {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
@@ -822,7 +828,9 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
-			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+			resultOp, ok := step.(interface{ ResultOp() display.StepOp })
+			contract.Assertf(ok, "step should implement ResultOp() for refreshes")
+			op, record = resultOp.ResultOp(), true
 		}
 
 		if step.Op() == deploy.OpRead {

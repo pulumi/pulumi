@@ -85,7 +85,7 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 		ID:       "foo",
 		Custom:   false,
 		Provider: "unimportant",
-	})
+	}, nil)
 	acts.Seen[resource.URN("urn:pulumi:stack::project::my:example:Foo::foo")] = step
 
 	err := acts.OnResourceStepPost(

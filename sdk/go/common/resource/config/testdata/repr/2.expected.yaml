@@ -19,10 +19,9 @@ paths:
     secure: false
     isObject: true
   my:parent.nested[0]:
-    value: 12321123131
+    value: "12321123131"
     string: "12321123131"
     redacted: "12321123131"
-    object: ERAABWludDY0BAcA+wW8ytZ2
+    object: GBAABnN0cmluZwwNAAsxMjMyMTEyMzEzMQ==
     secure: false
     isObject: false
-    type: 2

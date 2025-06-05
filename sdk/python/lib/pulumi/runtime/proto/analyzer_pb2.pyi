@@ -66,10 +66,27 @@ class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class ConfigEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     STACK_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
     DRY_RUN_FIELD_NUMBER: builtins.int
+    CONFIG_SECRET_KEYS_FIELD_NUMBER: builtins.int
     CONFIG_FIELD_NUMBER: builtins.int
     stack: builtins.str
     """The stack name being analyzed."""
@@ -80,8 +97,11 @@ class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
     dry_run: builtins.bool
     """True if this is a preview/dry run."""
     @property
-    def config(self) -> google.protobuf.struct_pb2.Struct:
-        """The configuration of the stack being analyzed as a property map."""
+    def config_secret_keys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """A list of configuration keys whose values should be treated as secrets."""
+    @property
+    def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """The configuration of the stack being analyzed."""
     def __init__(
         self,
         *,
@@ -89,10 +109,10 @@ class AnalyzerStackConfigureRequest(google.protobuf.message.Message):
         project: builtins.str = ...,
         organization: builtins.str = ...,
         dry_run: builtins.bool = ...,
-        config: google.protobuf.struct_pb2.Struct | None = ...,
+        config_secret_keys: collections.abc.Iterable[builtins.str] | None = ...,
+        config: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["config", b"config"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "dry_run", b"dry_run", "organization", b"organization", "project", b"project", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["config", b"config", "config_secret_keys", b"config_secret_keys", "dry_run", b"dry_run", "organization", b"organization", "project", b"project", "stack", b"stack"]) -> None: ...
 
 global___AnalyzerStackConfigureRequest = AnalyzerStackConfigureRequest
 

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Use the new resource goal in `refresh --run-program` with aliases instead of the old one
