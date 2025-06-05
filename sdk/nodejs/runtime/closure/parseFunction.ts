@@ -755,13 +755,9 @@ function computeCapturedVariableNames(file: typescript.SourceFile): CapturedVari
         node.members.forEach((m) => {
             // make all property assignments or declarations scoped to the class
             if (
-                (   m.kind === typescript.SyntaxKind.PropertyAssignment ||
-                    m.kind === typescript.SyntaxKind.PropertyDeclaration
-                ) && (
-                    typeof m.name !== "undefined"
-                ) && (
-                    m.name.kind === typescript.SyntaxKind.Identifier
-                )
+                (m.kind === ts.SyntaxKind.PropertyAssignment || m.kind === ts.SyntaxKind.PropertyDeclaration) &&
+                typeof m.name !== "undefined" &&
+                m.name.kind === ts.SyntaxKind.Identifier
             ) {
                 functionVars.add(m.name.text);
             }
