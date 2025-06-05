@@ -147,6 +147,7 @@ type ContinueResourceImportEvent interface {
 	Invalid() bool
 	Recreating() bool
 	RandomSeed() []byte
+	IsImported() bool
 }
 
 type continueResourceImportEvent struct {
@@ -159,6 +160,9 @@ type continueResourceImportEvent struct {
 	invalid    bool
 	recreating bool
 	randomSeed []byte
+	// whether the resource is actually imported, or if we're just continuing the step generation for a
+	// normal resource.
+	isImported bool
 }
 
 var _ ContinueResourceImportEvent = (*continueResourceImportEvent)(nil)
@@ -195,4 +199,8 @@ func (g *continueResourceImportEvent) Recreating() bool {
 
 func (g *continueResourceImportEvent) RandomSeed() []byte {
 	return g.randomSeed
+}
+
+func (g *continueResourceImportEvent) IsImported() bool {
+	return g.isImported
 }
