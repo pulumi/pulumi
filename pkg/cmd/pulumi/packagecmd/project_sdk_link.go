@@ -778,7 +778,7 @@ func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Prov
 	// Note that if a local folder has a name that could match an downloadable plugin, we
 	// prefer the downloadable plugin.  The user can disambiguate by prepending './' to the
 	// name.
-	if !plugin.IsLocalPluginPath(packageSource) {
+	if !plugin.IsLocalPluginPath(pctx.Base(), packageSource) {
 		// We assume this was a plugin and not a path, so load the plugin.
 		provider, err := pctx.Host.Provider(descriptor)
 		if err != nil {

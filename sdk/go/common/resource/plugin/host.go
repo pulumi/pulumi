@@ -103,7 +103,7 @@ type Host interface {
 
 // IsLocalPluginPath determines if a plugin source refers to a local path rather than a downloadable plugin.
 // A plugin is considered local if it doesn't match the plugin name regexp and doesn't have a download URL.
-func IsLocalPluginPath(source string) bool {
+func IsLocalPluginPath(ctx context.Context, source string) bool {
 	// If the source starts with ./ or ../ or / it's definitely a local path
 	if strings.HasPrefix(source, "./") || strings.HasPrefix(source, "..") || strings.HasPrefix(source, "/") {
 		return true
@@ -111,7 +111,7 @@ func IsLocalPluginPath(source string) bool {
 
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
-	pluginSpec, err := workspace.NewPluginSpec(context.TODO(), source, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(ctx, source, apitype.ResourcePlugin, nil, "", nil)
 	var pluginErr workspace.PluginVersionNotFoundError
 	if err != nil && !errors.As(err, &pluginErr) {
 		// If we can't parse it as a plugin spec, assume it's a local path
@@ -160,7 +160,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 
 	for name, pkg := range packages {
 		// Skip downloadable plugins, so that only local folder paths remain.
-		if !IsLocalPluginPath(pkg.Source) {
+		if !IsLocalPluginPath(ctx.baseContext, pkg.Source) {
 			continue
 		}
 
