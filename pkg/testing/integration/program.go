@@ -41,13 +41,13 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	//"github.com/pulumi/pulumi/pkg/v3/engine"
+	// "github.com/pulumi/pulumi/pkg/v3/operations"
+	// "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	//"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -70,6 +70,12 @@ const (
 const windowsOS = "windows"
 
 var ErrTestFailed = errors.New("test failed")
+
+type ProjInfo interface {
+	GetRoot() string
+	GetProject() *workspace.Project
+	GetPwdMain() (string, string, error)
+}
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
@@ -332,13 +338,13 @@ type ProgramTestOptions struct {
 	// ensuring dependencies. If left as nil, runs default
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
-	PrepareProject func(*engine.Projinfo) error
+	PrepareProject func(ProjInfo) error
 
 	// If not nil, will be run before the project has been prepared.
-	PrePrepareProject func(*engine.Projinfo) error
+	PrePrepareProject func(ProjInfo) error
 
 	// If not nil, will be run after the project has been prepared.
-	PostPrepareProject func(*engine.Projinfo) error
+	PostPrepareProject func(ProjInfo) error
 
 	// Array of provider plugin dependencies which come from local packages.
 	LocalProviders []LocalDependency
@@ -713,39 +719,39 @@ func init() {
 	pipMutex = fsutil.NewFileMutex(mutexPath)
 }
 
-// GetLogs retrieves the logs for a given stack in a particular region making the query provided.
-//
-// [provider] should be one of "aws" or "azure"
-func GetLogs(
-	t *testing.T,
-	provider, region string,
-	stackInfo RuntimeValidationStackInfo,
-	query operations.LogQuery,
-) *[]operations.LogEntry {
-	snap, err := stack.DeserializeDeploymentV3(
-		context.Background(),
-		*stackInfo.Deployment,
-		stack.DefaultSecretsProvider)
-	assert.NoError(t, err)
+// // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
+// //
+// // [provider] should be one of "aws" or "azure"
+// func GetLogs(
+// 	t *testing.T,
+// 	provider, region string,
+// 	stackInfo RuntimeValidationStackInfo,
+// 	query operations.LogQuery,
+// ) *[]operations.LogEntry {
+// 	snap, err := stack.DeserializeDeploymentV3(
+// 		context.Background(),
+// 		*stackInfo.Deployment,
+// 		stack.DefaultSecretsProvider)
+// 	assert.NoError(t, err)
 
-	tree := operations.NewResourceTree(snap.Resources)
-	if !assert.NotNil(t, tree) {
-		return nil
-	}
+// 	tree := operations.NewResourceTree(snap.Resources)
+// 	if !assert.NotNil(t, tree) {
+// 		return nil
+// 	}
 
-	cfg := map[config.Key]string{
-		config.MustMakeKey(provider, "region"): region,
-	}
-	ops := tree.OperationsProvider(cfg)
+// 	cfg := map[config.Key]string{
+// 		config.MustMakeKey(provider, "region"): region,
+// 	}
+// 	ops := tree.OperationsProvider(cfg)
 
-	// Validate logs from example
-	logs, err := ops.GetLogs(query)
-	if !assert.NoError(t, err) {
-		return nil
-	}
+// 	// Validate logs from example
+// 	logs, err := ops.GetLogs(query)
+// 	if !assert.NoError(t, err) {
+// 		return nil
+// 	}
 
-	return logs
-}
+// 	return logs
+// }
 
 func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	// If we're just listing tests, simply print this test's directory.
@@ -1059,7 +1065,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 			return nil
 		}
 
-		if projinfo.Proj.Runtime.Name() == "python" {
+		if projinfo.GetProject().Runtime.Name() == "python" {
 			pipenvBin, err := pt.getPipenvBin()
 			if err != nil {
 				return err
@@ -1329,7 +1335,7 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 		return fmt.Errorf("getting project info: %w", err)
 	}
 
-	switch rt := projInfo.Proj.Runtime.Name(); rt {
+	switch rt := projInfo.GetProject().Runtime.Name(); rt {
 	case NodeJSRuntime:
 		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
 			return err
@@ -1984,7 +1990,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must create
 	// a folder structure that adheres to GOPATH requirements
 	var tmpdir, projdir string
-	if projinfo.Proj.Runtime.Name() == "go" {
+	if projinfo.GetProject().Runtime.Name() == "go" {
 		targetDir, err := createTemporaryGoFolder("stackName")
 		if err != nil {
 			return "", "", fmt.Errorf("Couldn't create temporary directory: %w", err)
@@ -2013,8 +2019,8 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 
 	// Add dynamic plugin paths from ProgramTester
-	if (projinfo.Proj.Plugins == nil || projinfo.Proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
-		projinfo.Proj.Plugins = &workspace.Plugins{
+	if (projinfo.GetProject().Plugins == nil || projinfo.GetProject().Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
+		projinfo.GetProject().Plugins = &workspace.Plugins{
 			Providers: make([]workspace.PluginOptions, 0),
 		}
 	}
@@ -2029,7 +2035,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 				return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
 			}
 
-			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
+			projinfo.GetProject().Plugins.Providers = append(projinfo.GetProject().Plugins.Providers, workspace.PluginOptions{
 				Name: provider.Package,
 				Path: absPath,
 			})
@@ -2054,11 +2060,11 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return path, nil
 	}
 
-	if projinfo.Proj.Plugins != nil {
+	if projinfo.GetProject().Plugins != nil {
 		optionSets := [][]workspace.PluginOptions{
-			projinfo.Proj.Plugins.Providers,
-			projinfo.Proj.Plugins.Languages,
-			projinfo.Proj.Plugins.Analyzers,
+			projinfo.GetProject().Plugins.Providers,
+			projinfo.GetProject().Plugins.Languages,
+			projinfo.GetProject().Plugins.Analyzers,
 		}
 		for _, options := range optionSets {
 			for i, opt := range options {
@@ -2071,7 +2077,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		}
 	}
 	projfile := filepath.Join(projdir, workspace.ProjectFile+".yaml")
-	bytes, err := yaml.Marshal(projinfo.Proj)
+	bytes, err := yaml.Marshal(projinfo.GetProject())
 	if err != nil {
 		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
 	}
@@ -2133,18 +2139,19 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	return tmpdir, projdir, nil
 }
 
-func (pt *ProgramTester) getProjinfo(projectDir string) (*engine.Projinfo, error) {
+func (pt *ProgramTester) getProjinfo(projectDir string) (ProjInfo, error) {
 	// Load up the package so we know things like what language the project is.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
 	if err != nil {
 		return nil, err
 	}
-	return &engine.Projinfo{Proj: proj, Root: projectDir}, nil
+	panic(proj)
+	// return &engine.Projinfo{Proj: proj, Root: projectDir}, nil
 }
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
-func (pt *ProgramTester) prepareProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareProject(projinfo ProjInfo) error {
 	if pt.opts.PrepareProject != nil {
 		return pt.opts.PrepareProject(projinfo)
 	}
@@ -2161,8 +2168,8 @@ func (pt *ProgramTester) prepareProjectDir(projectDir string) error {
 }
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
-func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
-	if err := ptesting.WriteYarnRCForTest(projinfo.Root); err != nil {
+func (pt *ProgramTester) prepareNodeJSProject(projinfo ProjInfo) error {
+	if err := ptesting.WriteYarnRCForTest(projinfo.GetRoot()); err != nil {
 		return err
 	}
 
@@ -2282,7 +2289,7 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
-func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) preparePythonProject(projinfo ProjInfo) error {
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
@@ -2294,7 +2301,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	} else {
 		venvPath := "venv"
-		if cwd != projinfo.Root {
+		if cwd != projinfo.GetRoot() {
 			venvPath = filepath.Join(cwd, "venv")
 		}
 
@@ -2311,9 +2318,9 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 
-		projinfo.Proj.Runtime.SetOption("virtualenv", venvPath)
-		projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
-		if err = projinfo.Proj.Save(projfile); err != nil {
+		projinfo.GetProject().Runtime.SetOption("virtualenv", venvPath)
+		projfile := filepath.Join(projinfo.GetRoot(), workspace.ProjectFile+".yaml")
+		if err = projinfo.GetProject().Save(projfile); err != nil {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
@@ -2471,7 +2478,7 @@ func GoPath() (string, error) {
 }
 
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
-func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareGoProject(projinfo ProjInfo) error {
 	// Go programs are compiled, so we will compile the project first.
 	goBin, err := pt.getGoBin()
 	if err != nil {
@@ -2530,7 +2537,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	if pt.opts.RunBuild {
-		outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
+		outBin := filepath.Join(gopath, "bin", string(projinfo.GetProject().Name))
 		if runtime.GOOS == windowsOS {
 			outBin = outBin + ".exe"
 		}
@@ -2613,7 +2620,7 @@ func getModName(dir string) (string, error) {
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
-func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareDotNetProject(projinfo ProjInfo) error {
 	dotNetBin, err := pt.getDotNetBin()
 	if err != nil {
 		return fmt.Errorf("locating `dotnet` binary: %w", err)
@@ -2679,19 +2686,19 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
-func (pt *ProgramTester) prepareYAMLProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareYAMLProject(ProjInfo) error {
 	// YAML doesn't need any system setup, and should auto-install required plugins
 	return nil
 }
 
-func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) prepareJavaProject(ProjInfo) error {
 	// Java doesn't need any system setup, and should auto-install required plugins
 	return nil
 }
 
-func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
+func (pt *ProgramTester) defaultPrepareProject(projinfo ProjInfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.Runtime.Name(); rt {
+	switch rt := projinfo.GetProject().Runtime.Name(); rt {
 	case NodeJSRuntime:
 		return pt.prepareNodeJSProject(projinfo)
 	case PythonRuntime:
