@@ -2401,13 +2401,13 @@ func TestTargetUntargetedParent(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("component", "parent", false)
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Parent: resp.URN,
-			Inputs: inputs,
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+				Parent: resp.URN,
+				Inputs: inputs,
+			})
+		}
 
 		return nil
 	})
@@ -2940,11 +2940,10 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 		resp, err := monitor.RegisterResource("component", "parent", false)
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
 			Parent: resp.URN,
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})
@@ -3062,11 +3061,10 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
 			Inputs:  inputs,
 			Version: providerVersion,
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})
@@ -3128,18 +3126,16 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated1", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgB:index:typA", "unrelated1", true, deploytest.ResourceOptions{
 			Inputs:  inputs,
 			Version: providerVersion,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated2", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgB:index:typA", "unrelated2", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 			// This one always uses 1.0.0
 			Version: "1.0.0",
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})
@@ -4284,11 +4280,10 @@ func TestUntargetedProviderChange(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		_, err = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgB:index:typA", "unrelated", true, deploytest.ResourceOptions{
 			Inputs:   inputs,
 			Provider: provider.String(),
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})

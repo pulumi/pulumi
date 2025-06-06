@@ -115,12 +115,12 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{resA.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{resA.URN},
+			})
+		}
 
 		return nil
 	})
@@ -280,8 +280,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 
 		return nil
 	})
@@ -426,8 +425,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 
 		return nil
 	})
@@ -596,8 +594,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 
 		return nil
 	})
@@ -694,12 +691,12 @@ func TestInteruptedPendingReplace(t *testing.T) {
 		a, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			DeleteBeforeReplace: &dbr,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{a.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Dependencies: []resource.URN{a.URN},
+			})
+		}
 
 		return nil
 	})

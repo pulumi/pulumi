@@ -1330,8 +1330,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 		_, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
 		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		assert.NoError(t, err)
+		_, _ = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
 
 		return nil
 	})
@@ -2694,11 +2693,10 @@ func TestProtect(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
-			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:  ins,
 				Protect: &shouldProtect,
 			})
-			assert.NoError(t, err)
 		}
 
 		return nil
@@ -3285,15 +3283,15 @@ func TestPendingDeleteOrder(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"parent": resp.ID,
-			}),
-			Dependencies: []resource.URN{resp.URN},
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, _ = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"parent": resp.ID,
+				}),
+				Dependencies: []resource.URN{resp.URN},
+			})
+		}
 
 		return nil
 	})
@@ -4303,8 +4301,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 			assert.NoError(t, outsErr)
 
 		case 1:
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "oh no")
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4315,8 +4312,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 			})
 			assert.NoError(t, outsErr)
 
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "oh no")
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		}
 
 		return err

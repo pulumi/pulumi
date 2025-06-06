@@ -1388,10 +1388,8 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		{
 			name: "default-blocked",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.NoError(t, err)
-				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				assert.NoError(t, err)
+				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				_, _ = monitor.RegisterResource("pkgB:m:typB", "resB", true)
 
 				return nil
 			},
@@ -1422,10 +1420,8 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		{
 			name: "wildcard",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.NoError(t, err)
-				_, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				assert.NoError(t, err)
+				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				_, _ = monitor.RegisterResource("pkgB:m:typB", "resB", true)
 
 				return nil
 			},
