@@ -1568,7 +1568,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 			// We're generating a same step for a resource. Generate same steps for any of its views as well.
 			viewSteps := slice.Map(sg.deployment.oldViews[urn], func(res *resource.State) Step {
-				return NewViewStep(sg.deployment, OpSame, resource.StatusOK, "", res, res.Copy(), nil, nil, nil, "")
+				return NewViewStep(
+					sg.deployment, OpSame, resource.StatusOK, "", res, res.Copy(), nil, nil, nil, "", false)
 			})
 			for _, step := range viewSteps {
 				sg.sames[step.URN()] = true

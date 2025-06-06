@@ -306,7 +306,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
+			s.URN(), false /*refresh*/, false /*persisted*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -516,7 +517,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
+			s.URN(), false /*refresh*/, false /*persisted*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -697,7 +699,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
+			s.URN(), false /*refresh*/, false /*persisted*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -941,7 +944,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
+			s.URN(), false /*refresh*/, false /*persisted*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1134,7 +1138,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	resourceStatusAddress := s.deployment.resourceStatus.Address()
-	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), true /*refresh*/)
+	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), true /*refresh*/, s.Persisted())
 	if err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -1442,7 +1446,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 
 		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(s.URN(), false /*refresh*/)
+		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
+			s.URN(), false /*refresh*/, false /*persisted*/)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -1916,12 +1921,15 @@ type ViewStep struct {
 
 	// For refresh steps, the operation that corresponds to this resource after reading its current state, if any.
 	resultOp display.StepOp
+
+	// True if this is a persisted refresh step that should be respected by the snapshot system.
+	persisted bool
 }
 
 func NewViewStep(
 	deployment *Deployment, op display.StepOp, status resource.Status, err string, old, new *resource.State,
 	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
-	resultOp display.StepOp,
+	resultOp display.StepOp, persisted bool,
 ) Step {
 	return &ViewStep{
 		deployment:   deployment,
@@ -1934,6 +1942,7 @@ func NewViewStep(
 		diffs:        diffs,
 		detailedDiff: detailedDiff,
 		resultOp:     resultOp,
+		persisted:    persisted,
 	}
 }
 
@@ -1965,6 +1974,9 @@ func (s *ViewStep) Logical() bool {
 func (s *ViewStep) ResultOp() display.StepOp {
 	return s.resultOp
 }
+
+// True if this is a persisted refresh step that should be respected by the snapshot system.
+func (s *ViewStep) Persisted() bool { return s.persisted }
 
 func (s *ViewStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// ViewStep is a special step that that represents an operation for a view resource.
