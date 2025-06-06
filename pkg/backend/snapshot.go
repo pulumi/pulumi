@@ -511,8 +511,9 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// have changed.
 		// The exception to this is persisted refreshes, which are not elided and are treated as normal operations.
 		// These can either update or delete a resource.
-		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
-		if isRefreshStep && refreshStep.Persisted() {
+		persisted, ok := step.(interface{ Persisted() bool })
+		contract.Assertf(ok, "step should implement Persisted() for refreshes")
+		if persisted.Persisted() {
 			if successful {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
