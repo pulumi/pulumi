@@ -1346,7 +1346,7 @@ func TestPluginSpec_GetSource(t *testing.T) {
 				Kind:              apitype.PluginKind("resource"),
 				PluginDownloadURL: "unknown://example.com/plugin",
 			},
-			expectedErrMsg: `unknown plugin source scheme: "unknown"`,
+			expectedErrMsg: `unknown plugin source scheme: "unknown" from "unknown://example.com/plugin"`,
 		},
 	}
 
@@ -1850,12 +1850,18 @@ func TestNewPluginSpec(t *testing.T) {
 		},
 		{
 			name:   "no . in URL gets treated as local path",
-			source: "localhost/test/repo",
+			source: "quad/localhost/test/repo",
 			kind:   apitype.ResourcePlugin,
 			ExpectedPluginSpec: PluginSpec{
-				Name: "localhost/test/repo",
+				Name: "quad/localhost/test/repo",
 				Kind: apitype.ResourcePlugin,
 			},
+		},
+		{
+			name:   "registry path without registry errors",
+			source: "localhost/test/repo",
+			kind:   apitype.ResourcePlugin,
+			Error:  errors.New(`missing registry, required by "localhost/test/repo"`),
 		},
 		{
 			name:   "local plugin",
