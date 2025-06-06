@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -88,7 +89,15 @@ func (err NotFoundError) Error() string {
 func (err NotFoundError) Unwrap() error { return err.Err }
 
 func (err NotFoundError) Is(other error) bool {
-	_, ok := other.(NotFoundError)
-	_, ptr := other.(*NotFoundError)
-	return ok || ptr
+	switch other.(type) {
+	case NotFoundError, *NotFoundError,
+		// By returning true for `registry.NotFoundError`, we can return true for
+		// calling code that checks:
+		//
+		//	errors.Is(err, registry.NotFoundError)
+		registry.NotFoundError, *registry.NotFoundError:
+		return true
+	default:
+		return false
+	}
 }
