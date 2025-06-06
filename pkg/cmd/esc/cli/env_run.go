@@ -97,7 +97,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	shell := valueOrDefault(filepath.Base(envcmd.esc.environ.Get("SHELL")), "sh")
 
 	cmd := &cobra.Command{
-		Use:   "run [<org-name>/][<project-name>/]<environment-name> [flags] -- [command]",
+		Use:   "run [<org-name>/][<project-name>/]<environment-name> [flags] [--] [command]",
 		Args:  cobra.ArbitraryArgs,
 		Short: "Open the environment with the given name and run a command.",
 		Long: fmt.Sprintf("Open the environment with the given name and run a command\n"+
@@ -109,7 +109,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			"references in the command are not expanded by default. You should invoke the command\n"+
 			"inside a shell if you need environment variable expansion:\n"+
 			"\n"+
-			"    run -- %[1]s -c '\"echo $MY_ENV_VAR\"'\n"+
+			"    run <environment-name> -- %[1]s -c '\"echo $MY_ENV_VAR\"'\n"+
 			"\n"+
 			"The command to run is assumed to be non-interactive by default and its output\n"+
 			"streams are filtered to remove any secret values. Use the -i flag to run interactive\n"+
@@ -127,6 +127,10 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
+			// If -- was used but there's no arguments, it means no environment was specified before the command
+			if cmd.ArgsLenAtDash() == 0 {
+				return fmt.Errorf("no environment specified")
+			}
 			ref, args, err := envcmd.getExistingEnvRef(ctx, args)
 			if err != nil {
 				return err
