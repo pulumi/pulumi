@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.175.0 (2025-06-05)
+
+
+### Bug Fixes
+
+- [engine] Use the new resource goal in `refresh --run-program` with aliases instead of the old one
+  [#19578](https://github.com/pulumi/pulumi/pull/19578)
+
+- [engine] Fix panic when importing resources.
+  [#19750](https://github.com/pulumi/pulumi/pull/19750)
+
 ## 3.174.0 (2025-06-04)
 
 
