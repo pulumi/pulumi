@@ -74,9 +74,6 @@ type tokenInfo struct {
 	// Whether this token is for a refresh operation.
 	refresh bool
 
-	// Whether the refresh operation is persisted.
-	persisted bool
-
 	// Protects the steps slice.
 	mu sync.Mutex
 
@@ -170,7 +167,7 @@ func (rs *resourceStatusServer) Address() string {
 }
 
 // ReserveToken reserves a token for a resource status operation.
-func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh, persisted bool) (string, error) {
+func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh bool) (string, error) {
 	if rs == nil {
 		return "", nil
 	}
@@ -184,9 +181,8 @@ func (rs *resourceStatusServer) ReserveToken(urn resource.URN, refresh, persiste
 	tokenString := token.String()
 	rs.urns.Store(urn, tokenString)
 	rs.tokens.Store(tokenString, &tokenInfo{
-		urn:       urn,
-		refresh:   refresh,
-		persisted: persisted,
+		urn:     urn,
+		refresh: refresh,
 	})
 	return tokenString, nil
 }
@@ -255,7 +251,7 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 
 	// Unmarshal the steps.
 	steps, err := slice.MapError(req.Steps, func(step *pulumirpc.ViewStep) (Step, error) {
-		return rs.unmarshalViewStep(viewOf, step, info.refresh, info.persisted)
+		return rs.unmarshalViewStep(viewOf, step, info.refresh)
 	})
 	if err != nil {
 		logging.V(5).Infof("ResourceStatus: error unmarshaling steps: %v", err)
@@ -299,7 +295,7 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 }
 
 func (rs *resourceStatusServer) unmarshalViewStep(
-	viewOf resource.URN, step *pulumirpc.ViewStep, refresh, persisted bool,
+	viewOf resource.URN, step *pulumirpc.ViewStep, refresh bool,
 ) (Step, error) {
 	status, err := rs.unmarshalStepStatus(step.GetStatus())
 	if err != nil {
@@ -353,9 +349,7 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 		op = OpRefresh
 	}
 
-	return NewViewStep(
-		rs.deployment, op, status, step.GetError(), old, new, keys, diffs, detailedDiff, resultOp, persisted,
-	), nil
+	return NewViewStep(rs.deployment, op, status, step.GetError(), old, new, keys, diffs, detailedDiff, resultOp), nil
 }
 
 // unmarshalDetailedDiff unmarshals the detailed diff from a ViewStep.
