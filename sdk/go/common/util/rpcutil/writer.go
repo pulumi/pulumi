@@ -15,12 +15,12 @@
 package rpcutil
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"os"
 	"syscall"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -60,7 +60,7 @@ func (w *ptyCloser) Close() error {
 	w.pty = nil
 	w.tty = nil
 
-	return multierror.Append(err, terr, perr).ErrorOrNil()
+	return errors.Join(err, terr, perr)
 }
 
 type nullCloser struct{}

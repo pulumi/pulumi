@@ -18,12 +18,12 @@
 package cmdutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
 
-	multierror "github.com/hashicorp/go-multierror"
 	ps "github.com/mitchellh/go-ps"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -66,7 +66,7 @@ func KillChildren(pid int) error {
 		return err
 	}
 
-	var result error
+	var errs []error
 
 	for _, proc := range procs {
 		if proc.PPid() == pid {
@@ -77,19 +77,19 @@ func KillChildren(pid int) error {
 				// exits.
 				exists, existsErr := processExistsWithParent(proc.Pid(), proc.PPid())
 				if existsErr != nil || exists {
-					result = multierror.Append(result, err)
+					errs = append(errs, err)
 				}
 				continue
 			}
 
 			err = toKill.Kill()
 			if err != nil {
-				result = multierror.Append(result, err)
+				errs = append(errs, err)
 			}
 		}
 	}
 
-	return result
+	return errors.Join(errs...)
 }
 
 func processExistsWithParent(pid int, ppid int) (bool, error) {
