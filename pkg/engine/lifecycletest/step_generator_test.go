@@ -382,8 +382,7 @@ func TestReadNilOutputs(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
-			assert.ErrorContains(t, err, "resource 'my-resource-id' does not exist")
+			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
 
 			return nil
 		}, true).

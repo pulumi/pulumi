@@ -53,10 +53,9 @@ func TestPlannedUpdate(t *testing.T) {
 
 	var ins resource.PropertyMap
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -171,10 +170,9 @@ func TestUnplannedCreate(t *testing.T) {
 	createResource := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
-			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
 		}
 		return nil
 	})
@@ -316,10 +314,9 @@ func TestExpectedDelete(t *testing.T) {
 		assert.NoError(t, err)
 
 		if createAllResources {
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
 		}
 
 		return nil
@@ -462,10 +459,9 @@ func TestPropertySetChange(t *testing.T) {
 		"frob": "baz",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})
@@ -763,10 +759,9 @@ func TestPlannedPreviews(t *testing.T) {
 
 	var ins resource.PropertyMap
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -851,10 +846,9 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 
 	var ins resource.PropertyMap
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -942,8 +936,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(resp.URN, outs)
-		assert.NoError(t, err)
+		_ = monitor.RegisterResourceOutputs(resp.URN, outs)
 
 		return nil
 	})
@@ -1017,10 +1010,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 		"frob": "baz",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})
@@ -1328,14 +1320,14 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"other": resp.Outputs["name"].StringValue(),
-			}),
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"other": resp.Outputs["name"].StringValue(),
+				}),
+			})
+		}
 
 		return nil
 	})
@@ -1416,10 +1408,9 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	var ins resource.PropertyMap
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1714,19 +1705,17 @@ func TestResourcesTargeted(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})

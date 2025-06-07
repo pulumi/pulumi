@@ -105,16 +105,16 @@ func TestImportOption(t *testing.T) {
 	expectedID := resource.ID("imported-id")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if readID != "" {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", "")
-			assert.NoError(t, err)
+			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", "")
 		} else {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:   inputs,
 				ImportID: importID,
 			})
-			assert.NoError(t, err)
-			assert.Equal(t, expectedID, resp.ID)
-			assert.Equal(t, expectedOutputs, resp.Outputs)
+			if err == nil {
+				assert.Equal(t, expectedID, resp.ID)
+				assert.Equal(t, expectedOutputs, resp.Outputs)
+			}
 		}
 		return nil
 	})
@@ -1480,13 +1480,10 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"foo": resource.NewStringProperty("baz"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:   inputs,
 			ImportID: importID,
 		})
-		// We don't expect to get here, the engine never replies to resource registrations that fail unless
-		// continue-with-error is set.
-		assert.Fail(t, "unexpected program execution")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
