@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: add ConfigOptions support to Python automation API
