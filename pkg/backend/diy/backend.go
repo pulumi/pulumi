@@ -877,6 +877,30 @@ func (b *diyBackend) ListStacks(
 	return summaries, nil, nil
 }
 
+func (b *diyBackend) ListStackNames(
+	ctx context.Context, filter backend.ListStacksFilter, _ backend.ContinuationToken) (
+	[]backend.StackReference, backend.ContinuationToken, error,
+) {
+	stacks, err := b.getStacks(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
+	// aren't persisted in the diy backend.
+	filteredStacks := slice.Prealloc[backend.StackReference](len(stacks))
+	for _, stackRef := range stacks {
+		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
+		stackProject, hasProject := stackRef.Project()
+		if filter.Project != nil && hasProject && string(stackProject) != *filter.Project {
+			continue
+		}
+		filteredStacks = append(filteredStacks, stackRef)
+	}
+
+	return filteredStacks, nil, nil
+}
+
 func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {

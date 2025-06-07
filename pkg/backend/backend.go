@@ -164,6 +164,10 @@ type Backend interface {
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
+	// ListStackNames returns a list of stack references without metadata for all known stacks in the target backend.
+	// This is a more efficient method for scenarios like stack selection where only stack names are needed.
+	ListStackNames(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+		[]StackReference, ContinuationToken, error)
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.
