@@ -1464,6 +1464,19 @@ func TestParameterizedPython(t *testing.T) {
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider-py")},
 		},
+		PostPrepareProject: func(info *engine.Projinfo) error {
+			e := ptesting.NewEnvironment(t)
+			e.CWD = info.Root
+			// Get the venv
+			venv := info.Proj.Runtime.Options()["virtualenv"].(string)
+			venvPython := filepath.Join(venv, "bin", "python")
+			if runtime.GOOS == "windows" {
+				venvPython = filepath.Join(venv, "Scripts", "python.exe")
+			}
+
+			e.RunCommand(venvPython, "-m", "unittest", "test.py")
+			return nil
+		},
 	})
 }
 

@@ -351,7 +351,10 @@ func (m *mockMonitor) RegisterStackInvokeTransform(ctx context.Context, in *pulu
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterPackageResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "RegisterPackage is not implemented")
+	// Mocks don't _really_ support packages, so we just return a fake package ref.
+	return &pulumirpc.RegisterPackageResponse{
+		Ref: "mock-uuid",
+	}, nil
 }
 
 type mockEngine struct {
