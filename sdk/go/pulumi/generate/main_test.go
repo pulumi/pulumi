@@ -15,6 +15,7 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,10 +28,10 @@ func TestTemplateFilePath(t *testing.T) {
 		give string
 		want string
 	}{
-		{"foo-bar.go.template", "foo/bar.go"},
+		{"foo-bar.go.template", filepath.Join("foo", "bar.go")},
 		{"bar.go.template", "bar.go"},
-		{"fizz-buz-bar.go.template", "fizz/buz/bar.go"},
-		{"foo-bar.tmpl.template", "foo/bar.tmpl"},
+		{"fizz-buz-bar.go.template", filepath.Join("fizz", "buz", "bar.go")},
+		{"foo-bar.tmpl.template", filepath.Join("foo", "bar.tmpl")},
 	}
 
 	for _, tt := range tests {

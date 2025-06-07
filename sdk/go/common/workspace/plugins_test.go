@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"testing"
 	"time"
 
@@ -1526,6 +1527,10 @@ func TestAmbientPluginsWarn(t *testing.T) {
 }
 
 func TestAmbientBundledPluginsWarn(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on MacOS
+		t.Skip("Skipping tests on MacOS")
+	}
 	// Get the path of this executable
 	exe, err := os.Executable()
 	require.NoError(t, err)

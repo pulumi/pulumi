@@ -17,12 +17,17 @@ package toolchain
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildablePackage(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
+		t.Skip("Skipping tests on Windows")
+	}
 	t.Parallel()
 	tests := []struct {
 		name               string

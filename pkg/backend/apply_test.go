@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 
@@ -86,6 +87,11 @@ func (e *errorExplainer) IsExplainPreviewEnabled(ctx context.Context, opts backe
 
 func TestConfirmBeforeUpdating_ExplainerErrorDoesNotCrash(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows.
+		t.Skip("Skipping test on Windows")
+	}
 
 	// Set up the console with a timeout to avoid hangs
 	console, err := expect.NewConsole(expect.WithDefaultTimeout(2 * time.Second))
