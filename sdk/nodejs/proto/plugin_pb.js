@@ -13,7 +13,13 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var global =
+    (typeof globalThis !== 'undefined' && globalThis) ||
+    (typeof window !== 'undefined' && window) ||
+    (typeof global !== 'undefined' && global) ||
+    (typeof self !== 'undefined' && self) ||
+    (function () { return this; }).call(null) ||
+    Function('return this')();
 
 goog.exportSymbol('proto.pulumirpc.PackageDependency', null, global);
 goog.exportSymbol('proto.pulumirpc.PackageParameterization', null, global);
@@ -157,7 +163,7 @@ proto.pulumirpc.PluginInfo.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.PluginInfo.toObject = function(includeInstance, msg) {
   var f, obj = {
-    version: jspb.Message.getFieldWithDefault(msg, 1, "")
+version: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -287,11 +293,11 @@ proto.pulumirpc.PluginDependency.prototype.toObject = function(opt_includeInstan
  */
 proto.pulumirpc.PluginDependency.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    kind: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    server: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+kind: jspb.Message.getFieldWithDefault(msg, 2, ""),
+version: jspb.Message.getFieldWithDefault(msg, 3, ""),
+server: jspb.Message.getFieldWithDefault(msg, 4, ""),
+checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -505,7 +511,8 @@ proto.pulumirpc.PluginDependency.prototype.getChecksumsMap = function(opt_noLazy
  */
 proto.pulumirpc.PluginDependency.prototype.clearChecksumsMap = function() {
   this.getChecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 
@@ -540,7 +547,7 @@ proto.pulumirpc.PluginAttach.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.PluginAttach.toObject = function(includeInstance, msg) {
   var f, obj = {
-    address: jspb.Message.getFieldWithDefault(msg, 1, "")
+address: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -670,9 +677,9 @@ proto.pulumirpc.PackageParameterization.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.PackageParameterization.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    value: msg.getValue_asB64()
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+version: jspb.Message.getFieldWithDefault(msg, 2, ""),
+value: msg.getValue_asB64()
   };
 
   if (includeInstance) {
@@ -884,12 +891,12 @@ proto.pulumirpc.PackageDependency.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.PackageDependency.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    kind: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    server: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-    parameterization: (f = msg.getParameterization()) && proto.pulumirpc.PackageParameterization.toObject(includeInstance, f)
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+kind: jspb.Message.getFieldWithDefault(msg, 2, ""),
+version: jspb.Message.getFieldWithDefault(msg, 3, ""),
+server: jspb.Message.getFieldWithDefault(msg, 4, ""),
+checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
+parameterization: (f = msg.getParameterization()) && proto.pulumirpc.PackageParameterization.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1116,7 +1123,8 @@ proto.pulumirpc.PackageDependency.prototype.getChecksumsMap = function(opt_noLaz
  */
 proto.pulumirpc.PackageDependency.prototype.clearChecksumsMap = function() {
   this.getChecksumsMap().clear();
-  return this;};
+  return this;
+};
 
 
 /**
