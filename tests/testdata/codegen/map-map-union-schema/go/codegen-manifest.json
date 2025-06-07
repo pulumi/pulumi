@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "map-map-union-schema/doc.go",
+    "map-map-union-schema/example.go",
+    "map-map-union-schema/init.go",
+    "map-map-union-schema/internal/pulumiUtilities.go",
+    "map-map-union-schema/internal/pulumiVersion.go",
+    "map-map-union-schema/provider.go",
+    "map-map-union-schema/pulumi-plugin.json",
+    "map-map-union-schema/pulumiTypes.go"
+  ]
+}
