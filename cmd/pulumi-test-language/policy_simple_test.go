@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -161,12 +162,8 @@ func (h *PolicySimpleLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
 	if req.IsPlugin {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("could not get current working directory: %w", err)
-		}
-		if req.Info.RootDirectory != filepath.Join(cwd, "tests", "testdata", "policies", "simple") {
-			return fmt.Errorf("unexpected root directory to run plugin %s", req.Info.RootDirectory)
+		if !strings.HasSuffix(req.Info.RootDirectory, filepath.Join("policy_packs", "simple")) {
+			return fmt.Errorf("unexpected root directory to install dependencies %s", req.Info.RootDirectory)
 		}
 	} else {
 		if req.Info.RootDirectory != filepath.Join(h.tempDir, "projects", "policy-simple") {
@@ -246,6 +243,18 @@ func (h *PolicySimpleLanguageHost) Run(
 	return &pulumirpc.RunResponse{}, nil
 }
 
+func (h *PolicySimpleLanguageHost) Link(
+	ctx context.Context, req *pulumirpc.LinkRequest,
+) (*pulumirpc.LinkResponse, error) {
+	if !strings.HasSuffix(req.Info.RootDirectory, filepath.Join("policy_packs", "simple")) {
+		return nil, fmt.Errorf("unexpected root directory to link %s", req.Info.RootDirectory)
+	}
+	if req.LocalDependencies["pulumi"] != filepath.Join(h.tempDir, "artifacts", "core.sdk") {
+		return nil, fmt.Errorf("unexpected core sdk %s", req.LocalDependencies["pulumi"])
+	}
+	return &pulumirpc.LinkResponse{}, nil
+}
+
 type analyzerPlugin struct {
 	pulumirpc.UnimplementedAnalyzerServer
 }
@@ -306,11 +315,7 @@ func (a *analyzerPlugin) Analyze(
 func (h *PolicySimpleLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("could not get current working directory: %w", err)
-	}
-	if req.Info.RootDirectory != filepath.Join(cwd, "tests", "testdata", "policies", "simple") {
+	if !strings.HasSuffix(req.Info.RootDirectory, filepath.Join("policy_packs", "simple")) {
 		return fmt.Errorf("unexpected root directory to run plugin %s", req.Info.RootDirectory)
 	}
 	if req.Info.ProgramDirectory != req.Info.RootDirectory {

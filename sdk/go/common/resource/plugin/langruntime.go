@@ -168,6 +168,9 @@ type LanguageRuntime interface {
 
 	// Pack packs a library package into a language specific artifact in the given destination directory.
 	Pack(packageDirectory string, destinationDirectory string) (string, error)
+
+	// Link links a set of local dependencies into the given program directory.
+	Link(info ProgramInfo, localDependencies map[string]string) error
 }
 
 // DependencyInfo contains information about a dependency reported by a language runtime.

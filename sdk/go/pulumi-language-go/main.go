@@ -1256,7 +1256,7 @@ func (host *goLanguageHost) RunPlugin(
 			}
 		}()
 	} else {
-		cmd = exec.Command(program, req.Args...)
+		cmd = exec.CommandContext(server.Context(), program, req.Args...)
 		cmd.Dir = req.Pwd
 		cmd.Env = req.Env
 		cmd.Stdout, cmd.Stderr = stdout, stderr
@@ -1480,4 +1480,49 @@ func (host *goLanguageHost) Handshake(
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
+}
+
+func (host *goLanguageHost) Link(
+	ctx context.Context, req *pulumirpc.LinkRequest,
+) (*pulumirpc.LinkResponse, error) {
+	// Find the go.mod in the program directory, and add a replace statement to point to the given local dependency.
+	// Currently this _only_ supports "pulumi" for the core SDK.
+
+	path := filepath.Join(req.Info.ProgramDirectory, "go.mod")
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("stat go.mod: %w", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read go.mod: %w", err)
+	}
+	mod, err := modfile.Parse(path, data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("parse go.mod: %w", err)
+	}
+
+	core, ok := req.LocalDependencies["pulumi"]
+	if !ok {
+		// TODO: support other local dependencies.
+		return nil, status.Errorf(codes.InvalidArgument, "no local dependency for 'pulumi' found")
+	}
+
+	err = mod.AddReplace("github.com/pulumi/pulumi/sdk/v3", "", core, "")
+	if err != nil {
+		return nil, fmt.Errorf("add replace: %w", err)
+	}
+
+	// Write the modified go.mod back to disk.
+	data, err = mod.Format()
+	if err != nil {
+		return nil, fmt.Errorf("format go.mod: %w", err)
+	}
+	err = os.WriteFile(path, data, stat.Mode().Perm())
+	if err != nil {
+		return nil, fmt.Errorf("write go.mod: %w", err)
+	}
+
+	return &pulumirpc.LinkResponse{}, nil
 }

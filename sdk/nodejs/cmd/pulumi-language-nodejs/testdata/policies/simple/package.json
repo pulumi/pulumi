@@ -2,6 +2,7 @@
     "name": "simple-policy-pack",
     "version": "1.0.0",
     "dependencies": {
+		"typescript": "^4.0.0",
         "@pulumi/policy": "latest",
         "@pulumi/pulumi": "^3.0.0"
     },
