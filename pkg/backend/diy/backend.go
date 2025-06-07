@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -58,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1524,4 +1526,8 @@ func (b *diyBackend) getParallel() int {
 
 func (b *diyBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
 	return nil, errors.New("package registry is not supported by diy backends")
+}
+
+func (b *diyBackend) GetReadOnlyPackageRegistry() registry.Registry {
+	return unauthenticatedregistry.New(b.d, b.Env)
 }

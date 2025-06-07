@@ -466,8 +466,10 @@ class PropertyValue:
                 urn = fields["urn"].string_value
                 resource_id = fields.get("resource_id")
                 package_version = fields.get("package_version")
+                resource_id_value: Optional[PropertyValue] = None
                 if resource_id is not None:
                     resource_id_value = PropertyValue.unmarshal(resource_id)
+                package_version_str: Optional[str] = None
                 if package_version is not None:
                     if not package_version.HasField("string_value"):
                         raise ValueError(

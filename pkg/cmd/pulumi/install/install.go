@@ -191,7 +191,7 @@ func installPackagesFromProject(pctx *plugin.Context, proj *workspace.Project, r
 		fmt.Printf("Installing package '%s'...\n", name)
 
 		installSource := packageSpec.Source
-		if !plugin.IsLocalPluginPath(installSource) && packageSpec.Version != "" {
+		if !plugin.IsLocalPluginPath(pctx.Base(), installSource) && packageSpec.Version != "" {
 			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
 		}
 

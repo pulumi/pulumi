@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -62,11 +63,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-)
-
-const (
-	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
-	defaultURLEnvVar = "PULUMI_API"
 )
 
 type PulumiAILanguage string
@@ -148,7 +144,8 @@ func ValueOrDefaultURL(ws pkgWorkspace.Context, cloudURL string) string {
 	}
 
 	// Otherwise, respect the PULUMI_API override.
-	if cloudURL := os.Getenv(defaultURLEnvVar); cloudURL != "" {
+
+	if cloudURL := env.APIURL.Value(); cloudURL != "" {
 		return cloudURL
 	}
 
@@ -2372,4 +2369,8 @@ func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Ma
 
 func (b *cloudBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
 	return newCloudPackageRegistry(b.client), nil
+}
+
+func (b *cloudBackend) GetReadOnlyPackageRegistry() registry.Registry {
+	return newCloudPackageRegistry(b.client)
 }
