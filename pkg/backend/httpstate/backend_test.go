@@ -416,3 +416,139 @@ type mockTransport struct {
 func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.roundTrip(req)
 }
+
+//nolint:paralleltest // mutates global configuration
+func TestListStackNames(t *testing.T) {
+	// Arrange
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	ctx := context.Background()
+
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	require.NoError(t, err)
+
+	// Create test stacks
+	numStacks := 3
+	stackNames := make([]string, numStacks)
+	stacks := make([]backend.Stack, numStacks)
+
+	for i := 0; i < numStacks; i++ {
+		stackName := ptesting.RandomStackName()
+		stackNames[i] = stackName
+		ref, err := b.ParseStackReference(stackName)
+		require.NoError(t, err)
+
+		s, err := b.CreateStack(ctx, ref, "", nil, nil)
+		require.NoError(t, err)
+		stacks[i] = s
+	}
+
+	// Cleanup stacks
+	defer func() {
+		for _, s := range stacks {
+			_, err := b.RemoveStack(ctx, s, true)
+			require.NoError(t, err)
+		}
+	}()
+
+	// Test ListStackNames
+	filter := backend.ListStacksFilter{}
+	stackRefs, token, err := b.ListStackNames(ctx, filter, nil)
+	require.NoError(t, err)
+	assert.Nil(t, token, "continuation token should be nil for this test")
+
+	// Verify we got at least our test stacks (there might be other stacks in the org)
+	assert.GreaterOrEqual(t, len(stackRefs), numStacks)
+
+	// Verify all our test stack names are present
+	foundStacks := make(map[string]bool)
+	for _, stackRef := range stackRefs {
+		foundStacks[stackRef.Name().String()] = true
+	}
+
+	for _, expectedName := range stackNames {
+		assert.True(t, foundStacks[expectedName], "Stack %s should be in the results", expectedName)
+	}
+
+	// Verify that ListStackNames returns StackReference objects (not StackSummary)
+	assert.IsType(t, []backend.StackReference{}, stackRefs)
+}
+
+//nolint:paralleltest // mutates global configuration
+func TestListStackNamesVsListStacks(t *testing.T) {
+	// Arrange
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	ctx := context.Background()
+
+	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	require.NoError(t, err)
+
+	// Create a test stack
+	stackName := ptesting.RandomStackName()
+	ref, err := b.ParseStackReference(stackName)
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+	defer func() {
+		_, err := b.RemoveStack(ctx, s, true)
+		require.NoError(t, err)
+	}()
+
+	// Test both methods
+	filter := backend.ListStacksFilter{}
+
+	// Test ListStacks
+	summaries, token1, err := b.ListStacks(ctx, filter, nil)
+	require.NoError(t, err)
+	assert.Nil(t, token1)
+
+	// Test ListStackNames
+	stackRefs, token2, err := b.ListStackNames(ctx, filter, nil)
+	require.NoError(t, err)
+	assert.Nil(t, token2)
+
+	// Both should return the same number of stacks
+	assert.Equal(t, len(summaries), len(stackRefs))
+
+	// Verify that stack names match between the two methods
+	summaryNames := make(map[string]bool)
+	for _, summary := range summaries {
+		summaryNames[summary.Name().String()] = true
+	}
+
+	refNames := make(map[string]bool)
+	for _, stackRef := range stackRefs {
+		refNames[stackRef.String()] = true
+	}
+
+	// Our test stack should be present in both
+	found := false
+	for _, summary := range summaries {
+		if summary.Name().Name().String() == stackName {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Test stack should be found in ListStacks results")
+
+	found = false
+	for _, stackRef := range stackRefs {
+		if stackRef.Name().String() == stackName {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Test stack should be found in ListStackNames results")
+}

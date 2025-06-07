@@ -1071,6 +1071,25 @@ func (b *cloudBackend) ListStacks(
 	return backendSummaries, outContToken, nil
 }
 
+func (b *cloudBackend) ListStackNames(
+	ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
+	[]backend.StackReference, backend.ContinuationToken, error,
+) {
+	// For the cloud backend, we can reuse ListStacks since the API already returns data efficiently.
+	// We just extract the stack references from the summaries.
+	summaries, outContToken, err := b.ListStacks(ctx, filter, inContToken)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stackRefs := slice.Prealloc[backend.StackReference](len(summaries))
+	for _, summary := range summaries {
+		stackRefs = append(stackRefs, summary.Name())
+	}
+
+	return stackRefs, outContToken, nil
+}
+
 func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {

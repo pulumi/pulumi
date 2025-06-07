@@ -1,0 +1,13 @@
+changes:
+- type: fix
+  scope: cli
+  description: |
+    Fix `pulumi stack select` unnecessarily fetching stack metadata.
+    
+    The `pulumi stack select` command now only fetches stack names instead of complete metadata,
+    since the selection UI only displays stack names. This significantly improves performance,
+    especially for DIY backends where metadata fetching can be slow.
+    
+    Previously, the command was fetching the same metadata as `pulumi stack ls` (last update time,
+    resource count, etc.) but never displaying this information to the user, causing unnecessary
+    delays during stack selection. 
