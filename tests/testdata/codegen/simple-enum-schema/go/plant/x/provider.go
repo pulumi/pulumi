@@ -12,8 +12,12 @@ import (
 	"simple-enum-schema/plant/internal"
 )
 
+// The provider type for the plant package. By default, resources use package-wide configuration settings, however an explicit `Provider` instance may be created and passed during resource construction to achieve fine-grained programmatic control over provider settings.
 type Provider struct {
 	pulumi.ProviderResourceState
+
+	// The environment to use for the provider
+	Environment pulumix.Output[*ProviderEnvironment] `pulumi:"environment"`
 }
 
 // NewProvider registers a new resource with the given unique name, arguments, and options.
@@ -23,6 +27,9 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
+	if args.Environment == nil {
+		args.Environment = pulumix.Ptr(ProviderEnvironment("dev"))
+	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:plant", name, args, &resource, opts...)
@@ -33,10 +40,14 @@ func NewProvider(ctx *pulumi.Context,
 }
 
 type providerArgs struct {
+	// The environment to use for the provider
+	Environment *ProviderEnvironment `pulumi:"environment"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
+	// The environment to use for the provider
+	Environment pulumix.Input[*ProviderEnvironment]
 }
 
 func (ProviderArgs) ElementType() reflect.Type {
@@ -61,6 +72,12 @@ func (o ProviderOutput) ToOutput(ctx context.Context) pulumix.Output[Provider] {
 	return pulumix.Output[Provider]{
 		OutputState: o.OutputState,
 	}
+}
+
+// The environment to use for the provider
+func (o ProviderOutput) Environment() pulumix.Output[*ProviderEnvironment] {
+	value := pulumix.Apply[Provider](o, func(v Provider) pulumix.Output[*ProviderEnvironment] { return v.Environment })
+	return pulumix.Flatten[*ProviderEnvironment, pulumix.Output[*ProviderEnvironment]](value)
 }
 
 func init() {

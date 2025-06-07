@@ -123,4 +123,45 @@ namespace Pulumi.Plant
         [Obsolete(@"Eight inch pots are no longer supported.")]
         EightInch = 8,
     }
+
+    /// <summary>
+    /// The environment to use for the provider
+    /// </summary>
+    [EnumType]
+    public readonly struct ProviderEnvironment : IEquatable<ProviderEnvironment>
+    {
+        private readonly string _value;
+
+        private ProviderEnvironment(string value)
+        {
+            _value = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// Development environment
+        /// </summary>
+        public static ProviderEnvironment Development { get; } = new ProviderEnvironment("dev");
+        /// <summary>
+        /// Staging environment
+        /// </summary>
+        public static ProviderEnvironment Staging { get; } = new ProviderEnvironment("staging");
+        /// <summary>
+        /// Production environment
+        /// </summary>
+        public static ProviderEnvironment Production { get; } = new ProviderEnvironment("prod");
+
+        public static bool operator ==(ProviderEnvironment left, ProviderEnvironment right) => left.Equals(right);
+        public static bool operator !=(ProviderEnvironment left, ProviderEnvironment right) => !left.Equals(right);
+
+        public static explicit operator string(ProviderEnvironment value) => value._value;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override bool Equals(object? obj) => obj is ProviderEnvironment other && Equals(other);
+        public bool Equals(ProviderEnvironment other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+
+        public override string ToString() => _value;
+    }
 }
