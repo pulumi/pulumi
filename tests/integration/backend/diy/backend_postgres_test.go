@@ -44,20 +44,34 @@ import (
 	"github.com/pulumi/pulumi/tests/integration/backend/diy/pgtest"
 )
 
-// TestPostgresBackend tests core Pulumi operations on the PostgreSQL DIY backend.
-// This test exercises backend creation, stack management, deployment operations, and cleanup.
-func TestPostgresBackend(t *testing.T) {
-	t.Parallel()
-
+// skipPostgresTestIfNeeded checks if the PostgreSQL test should be skipped based on various conditions.
+// It skips tests when:
+// - Running on Windows where Linux containers are not supported by default
+// - Running on macOS GitHub Actions where Linux containers are not supported by default
+// - User requested to skip Docker tests (PULUMI_TEST_SKIP_DOCKER is set)
+func skipPostgresTestIfNeeded(t *testing.T) {
 	// Skip on Windows as it doesn't support Linux containers by default
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping PostgreSQL test on Windows - Linux containers not supported by default")
+	}
+
+	// Skip on macOS GitHub Actions as it doesn't support Linux containers by default
+	if runtime.GOOS == "darwin" && os.Getenv("GITHUB_ACTIONS") == "true" {
+		t.Skip("Skipping PostgreSQL test on macOS GitHub Actions - Linux containers not supported by default")
 	}
 
 	// Skip if Docker is not available
 	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
 		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
 	}
+}
+
+// TestPostgresBackend tests core Pulumi operations on the PostgreSQL DIY backend.
+// This test exercises backend creation, stack management, deployment operations, and cleanup.
+func TestPostgresBackend(t *testing.T) {
+	t.Parallel()
+
+	skipPostgresTestIfNeeded(t)
 
 	// Start a PostgreSQL 17 container for this test
 	pg := pgtest.New(t)
@@ -414,15 +428,7 @@ func TestPostgresBackend(t *testing.T) {
 func TestPostgresBackendMultipleTables(t *testing.T) {
 	t.Parallel()
 
-	// Skip on Windows as it doesn't support Linux containers by default
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping PostgreSQL test on Windows - Linux containers not supported by default")
-	}
-
-	// Skip if Docker is not available
-	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
-		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
-	}
+	skipPostgresTestIfNeeded(t)
 
 	// Start a PostgreSQL 17 container for this test using testcontainers
 	pg := pgtest.New(t)
@@ -486,15 +492,7 @@ func TestPostgresBackendMultipleTables(t *testing.T) {
 func TestPostgresBackendConcurrency(t *testing.T) {
 	t.Parallel()
 
-	// Skip on Windows as it doesn't support Linux containers by default
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping PostgreSQL test on Windows - Linux containers not supported by default")
-	}
-
-	// Skip if Docker is not available
-	if os.Getenv("PULUMI_TEST_SKIP_DOCKER") != "" {
-		t.Skip("Skipping test due to PULUMI_TEST_SKIP_DOCKER")
-	}
+	skipPostgresTestIfNeeded(t)
 
 	// Start a PostgreSQL 17 container for this test using testcontainers
 	pg := pgtest.New(t)
