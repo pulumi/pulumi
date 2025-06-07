@@ -1057,3 +1057,53 @@ func TestParallelCgroups(t *testing.T) {
 	// Assert that the limited parallel count is 4, i.e. 1 CPU x 4.
 	assert.Equal(t, 4, limitedParallel, "Expected --parallel=4 in limited CPU context")
 }
+
+// Quick sanity tests for running a tool plugin from source.
+func TestToolPluginFromSource(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	for _, rt := range Runtimes {
+		// YAML doesn't have plugins
+		if rt == "yaml" {
+			continue
+		}
+
+		t.Run(rt, func(t *testing.T) {
+			t.Parallel()
+
+			if rt == "dotnet" || rt == "java" {
+				t.Skip("plugin running not working yet")
+			}
+
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			path := fmt.Sprintf(".%c%s", filepath.Separator, filepath.Join("testdata", "tools", rt))
+
+			// Change to the tool directory to run `pulumi install`, this will set up venvs/node_modules etc.
+			e.CWD = filepath.Join(cwd, path)
+			e.RunCommand("pulumi", "install")
+
+			// Change back to the test directory to run `pulumi plugin run`, try with and without the --help flag.
+			e.CWD = cwd
+			stdout, stderr, err := e.RunCommandReturnExpectedError("pulumi", "plugin", "run", path, "--", "--help")
+
+			newline := "\n"
+			if runtime.GOOS == "windows" {
+				newline = "\r\n"
+			}
+			expected := "Usage: testtool [--help]" + newline + "  --help: Show this help message" + newline
+
+			assert.Equal(t, expected, stdout)
+			assert.Equal(t, "", stderr)
+			assert.ErrorContains(t, err, "exit status 1")
+
+			stdout, stderr = e.RunCommand("pulumi", "plugin", "run", path)
+			assert.Equal(t, "some output", stdout)
+			assert.Equal(t, "some error output", stderr)
+		})
+	}
+}
