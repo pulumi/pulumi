@@ -81,13 +81,15 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
  * stop the Pulumi program.
  */
 export function error(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
+    // Add timestamp to the message
+    const now = new Date().toISOString().replace("T", " ").substring(0, 19);
+    const timestampedMsg = `[${now}] ${msg}`;
     getStore().logErrorCount++; // remember the error so we can suppress leaks.
-
     const engine = getEngine();
     if (engine) {
-        return log(engine, engproto.LogSeverity.ERROR, msg, resource, streamId, ephemeral);
+        return log(engine, engproto.LogSeverity.ERROR, timestampedMsg, resource, streamId, ephemeral);
     } else {
-        console.error(`error: [runtime] ${msg}`);
+        console.error(`error: [runtime] ${timestampedMsg}`);
         return Promise.resolve();
     }
 }

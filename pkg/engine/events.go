@@ -16,6 +16,7 @@ package engine
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
@@ -165,6 +166,7 @@ type DiagEventPayload struct {
 	Severity  diag.Severity
 	StreamID  int32
 	Ephemeral bool
+	Timestamp time.Time // When the diagnostic event was created
 }
 
 // PolicyViolationEventPayload is the payload for an event with type `policy-violation`.
@@ -627,6 +629,7 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 		Severity:  sev,
 		StreamID:  d.StreamID,
 		Ephemeral: ephemeral,
+		Timestamp: time.Now(),
 	}))
 }
 
@@ -643,7 +646,10 @@ func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string, epheme
 }
 
 func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
-	diagEvent(e, d, prefix, msg, diag.Error, ephemeral)
+	// Add timestamp to all error messages
+	now := time.Now().Format("2006-01-02 15:04:05")
+	timestampedMsg := fmt.Sprintf("[%s] %s", now, msg)
+	diagEvent(e, d, prefix, timestampedMsg, diag.Error, ephemeral)
 }
 
 func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
