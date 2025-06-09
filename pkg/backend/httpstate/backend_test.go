@@ -456,18 +456,30 @@ func TestListStackNames(t *testing.T) {
 		}
 	}()
 
-	// Test ListStackNames
+	// Test ListStackNames with pagination support
 	filter := backend.ListStacksFilter{}
-	stackRefs, token, err := b.ListStackNames(ctx, filter, nil)
-	require.NoError(t, err)
-	assert.Nil(t, token, "continuation token should be nil for this test")
+	var allStackRefs []backend.StackReference
+	var token backend.ContinuationToken
+
+	// Keep fetching until we get all stacks
+	for {
+		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token)
+		require.NoError(t, err)
+
+		allStackRefs = append(allStackRefs, stackRefs...)
+
+		if nextToken == nil {
+			break
+		}
+		token = nextToken
+	}
 
 	// Verify we got at least our test stacks (there might be other stacks in the org)
-	assert.GreaterOrEqual(t, len(stackRefs), numStacks)
+	assert.GreaterOrEqual(t, len(allStackRefs), numStacks)
 
 	// Verify all our test stack names are present
 	foundStacks := make(map[string]bool)
-	for _, stackRef := range stackRefs {
+	for _, stackRef := range allStackRefs {
 		foundStacks[stackRef.Name().String()] = true
 	}
 
@@ -476,7 +488,7 @@ func TestListStackNames(t *testing.T) {
 	}
 
 	// Verify that ListStackNames returns StackReference objects (not StackSummary)
-	assert.IsType(t, []backend.StackReference{}, stackRefs)
+	assert.IsType(t, []backend.StackReference{}, allStackRefs)
 }
 
 //nolint:paralleltest // mutates global configuration
@@ -506,36 +518,58 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// Test both methods
+	// Test both methods with pagination support
 	filter := backend.ListStacksFilter{}
 
-	// Test ListStacks
-	summaries, token1, err := b.ListStacks(ctx, filter, nil)
-	require.NoError(t, err)
-	assert.Nil(t, token1)
+	// Test ListStacks with pagination
+	var allSummaries []backend.StackSummary
+	var token1 backend.ContinuationToken
 
-	// Test ListStackNames
-	stackRefs, token2, err := b.ListStackNames(ctx, filter, nil)
-	require.NoError(t, err)
-	assert.Nil(t, token2)
+	for {
+		summaries, nextToken, err := b.ListStacks(ctx, filter, token1)
+		require.NoError(t, err)
+
+		allSummaries = append(allSummaries, summaries...)
+
+		if nextToken == nil {
+			break
+		}
+		token1 = nextToken
+	}
+
+	// Test ListStackNames with pagination
+	var allStackRefs []backend.StackReference
+	var token2 backend.ContinuationToken
+
+	for {
+		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token2)
+		require.NoError(t, err)
+
+		allStackRefs = append(allStackRefs, stackRefs...)
+
+		if nextToken == nil {
+			break
+		}
+		token2 = nextToken
+	}
 
 	// Both should return the same number of stacks
-	assert.Equal(t, len(summaries), len(stackRefs))
+	assert.Equal(t, len(allSummaries), len(allStackRefs))
 
 	// Verify that stack names match between the two methods
 	summaryNames := make(map[string]bool)
-	for _, summary := range summaries {
+	for _, summary := range allSummaries {
 		summaryNames[summary.Name().String()] = true
 	}
 
 	refNames := make(map[string]bool)
-	for _, stackRef := range stackRefs {
+	for _, stackRef := range allStackRefs {
 		refNames[stackRef.String()] = true
 	}
 
 	// Our test stack should be present in both
 	found := false
-	for _, summary := range summaries {
+	for _, summary := range allSummaries {
 		if summary.Name().Name().String() == stackName {
 			found = true
 			break
@@ -544,7 +578,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	assert.True(t, found, "Test stack should be found in ListStacks results")
 
 	found = false
-	for _, stackRef := range stackRefs {
+	for _, stackRef := range allStackRefs {
 		if stackRef.Name().String() == stackName {
 			found = true
 			break
