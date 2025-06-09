@@ -698,7 +698,7 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
-	setSpecNamespace(&spec, pluginSpec)
+	setSpecNamespace(&spec, pluginSpec.PluginSpec)
 	return bind(spec)
 }
 
@@ -757,12 +757,9 @@ func SchemaFromSchemaSourceValueArgs(
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(pctx *plugin.Context, packageSource string) (plugin.Provider, error) {
-	pluginSpec, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	descriptor, err := workspace.NewPluginSpec(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
-	}
-	descriptor := workspace.PackageDescriptor{
-		PluginSpec: pluginSpec,
 	}
 
 	isExecutable := func(info fs.FileInfo) bool {

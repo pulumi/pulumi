@@ -236,12 +236,10 @@ func (m *basePluginMapper) GetMapping(
 
 	// Try the list of plugins we have and see if any of them produce a mapping we can return.
 	for _, mapperSpec := range m.pluginSpecs {
-		pluginSpec, err := workspace.NewPluginSpec(ctx, mapperSpec.name, apitype.ResourcePlugin, nil, "", nil)
+		descriptor, err := workspace.NewPluginSpec(ctx, mapperSpec.name, apitype.ResourcePlugin, nil, "", nil)
 		if err != nil {
-			return nil, fmt.Errorf("could not create plugin spec for plugin %s: %w", pluginSpec.Name, err)
+			return nil, fmt.Errorf("could not create plugin spec for plugin %s: %w", descriptor.Name, err)
 		}
-
-		descriptor := workspace.NewPackageDescriptor(pluginSpec, nil)
 
 		// If the current plugin's name matches that which we are looking for, and we have a hint that includes
 		// parameterization information, we will pass that to the plugin as part of its instantiation.

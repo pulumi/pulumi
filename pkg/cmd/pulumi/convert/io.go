@@ -38,7 +38,7 @@ func LoadConverterPlugin(
 		return nil, fmt.Errorf("could not load converter plugin: %w", err)
 	}
 
-	if versionSet := util.SetKnownPluginVersion(&pluginSpec); versionSet {
+	if versionSet := util.SetKnownPluginVersion(&pluginSpec.PluginSpec); versionSet {
 		ctx.Diag.Infof(
 			diag.Message("", "Using version %s for pulumi-converter-%s"), pluginSpec.Version, pluginSpec.Name)
 	}
@@ -54,7 +54,7 @@ func LoadConverterPlugin(
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec.PluginSpec, log)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}

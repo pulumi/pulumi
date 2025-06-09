@@ -685,7 +685,7 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log)
+					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec.PluginSpec, log)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
