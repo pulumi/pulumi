@@ -22,15 +22,21 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -82,9 +88,10 @@ type pluginInstallCmd struct {
 	reinstall bool
 	checksum  string
 
-	diag  diag.Sink
-	env   env.Env
-	color colors.Colorization
+	diag     diag.Sink
+	env      env.Env
+	color    colors.Colorization
+	registry registry.Registry
 
 	pluginGetLatestVersion func(
 		workspace.PluginSpec, context.Context,
@@ -112,6 +119,20 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 	if cmd.installPluginSpec == nil {
 		cmd.installPluginSpec = installPluginSpec
+	}
+	if cmd.registry == nil {
+		cmd.registry = registry.NewOnDemandRegistry(func() (registry.Registry, error) {
+			b, err := cmdBackend.NonInteractiveCurrentBackend(
+				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
+			)
+			if err == nil && b != nil {
+				return b.GetReadOnlyPackageRegistry(), nil
+			}
+			if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
+				return unauthenticatedregistry.New(cmd.diag, cmd.env), nil
+			}
+			return nil, fmt.Errorf("could not get registry backend: %w", err)
+		})
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -170,6 +191,31 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		if urlSet := util.SetKnownPluginDownloadURL(&pluginSpec); urlSet {
 			cmd.diag.Infof(
 				diag.Message("", "Plugin download URL set to %s"), pluginSpec.PluginDownloadURL)
+		}
+
+		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
+			!cmd.env.GetBool(env.DisableRegistryResolve) &&
+			pluginSpec.PluginDownloadURL == "" { // Don't override explicit pluginDownloadURLs
+			pkgMetadata, err := registry.ResolvePackageFromName(ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version)
+			if err == nil {
+				pluginSpec.Name = pkgMetadata.Name
+				pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
+			} else if errors.Is(err, registry.ErrNotFound) && !strings.ContainsRune(pluginSpec.Name, '/') {
+				// If the error is [registry.ErrNotFound], then this could
+				// be a Pulumi plugin that isn't in the registry.
+				//
+				// Ideally, we would have a hard-coded list such plugins
+				// so we could provide useful error messages when someone
+				// requests a non-existent plugin.
+			} else {
+				for _, suggested := range registry.GetSuggestedPackages(err) {
+					cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
+						suggested.Source, suggested.Publisher, suggested.Name,
+						suggested.Version,
+					)
+				}
+				return fmt.Errorf("Unable to resolve package from name: %w", err)
+			}
 		}
 
 		// If we don't have a version try to look one up

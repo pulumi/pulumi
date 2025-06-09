@@ -69,7 +69,8 @@ func ResolvePackageFromName(
 		// Both "private" and "pulumi" didn't exist, so we have successfully resolved to NotFound.
 		return apitype.PackageMetadata{}, fmt.Errorf("could not resolve %s: %w", name, ErrNotFound)
 	case 1:
-		var privatePackageMetadata, pulumiPackageMetadata *apitype.PackageMetadata
+		var pulumiPackageMetadata *apitype.PackageMetadata
+		var privatePackageMetadata []apitype.PackageMetadata
 		var suggested []apitype.PackageMetadata
 		for meta, err := range registry.SearchByName(ctx, &name) {
 			if err != nil {
@@ -77,27 +78,34 @@ func ResolvePackageFromName(
 			}
 
 			if meta.Source == "private" {
-				if privatePackageMetadata != nil {
-					return apitype.PackageMetadata{},
-						errorSuggestedPackages{
-							err: fmt.Errorf("%q is ambiguous, it matches both %s/%s/%s and %s/%s/%s",
-								name,
-								privatePackageMetadata.Source, privatePackageMetadata.Publisher, privatePackageMetadata.Name,
-								meta.Source, meta.Publisher, meta.Name,
-							),
-							packages: []apitype.PackageMetadata{
-								*privatePackageMetadata,
-								meta,
-							},
-						}
-				}
-				privatePackageMetadata = &meta
+				privatePackageMetadata = append(privatePackageMetadata, meta)
 			} else if meta.Source == "pulumi" && meta.Publisher == "pulumi" {
 				// We don't break here, since we might still have a dominant source: the key in "private".
 				pulumiPackageMetadata = &meta
 			} else {
 				suggested = append(suggested, meta)
 			}
+		}
+
+		if len(privatePackageMetadata) > 1 {
+			err := fmt.Errorf("%q is ambiguous, it matches both %s/%s/%s and %d other packages",
+				name,
+				privatePackageMetadata[0].Source, privatePackageMetadata[0].Publisher, privatePackageMetadata[0].Name,
+				len(privatePackageMetadata)-1,
+			)
+			if len(privatePackageMetadata) == 2 {
+				err = fmt.Errorf("%q is ambiguous, it matches both %s/%s/%s and %s/%s/%s",
+					name,
+					privatePackageMetadata[0].Source, privatePackageMetadata[0].Publisher, privatePackageMetadata[0].Name,
+					privatePackageMetadata[1].Source, privatePackageMetadata[1].Publisher, privatePackageMetadata[1].Name,
+				)
+			}
+
+			return apitype.PackageMetadata{},
+				errorSuggestedPackages{
+					err:      err,
+					packages: privatePackageMetadata,
+				}
 		}
 
 		// Search by name returns the latest package versions with the correct name.
@@ -123,8 +131,8 @@ func ResolvePackageFromName(
 			return apitype.PackageMetadata{}, err
 		}
 
-		if privatePackageMetadata != nil {
-			return applyVersion(*privatePackageMetadata)
+		if len(privatePackageMetadata) == 1 {
+			return applyVersion(privatePackageMetadata[0])
 		}
 		if pulumiPackageMetadata != nil {
 			return applyVersion(*pulumiPackageMetadata)

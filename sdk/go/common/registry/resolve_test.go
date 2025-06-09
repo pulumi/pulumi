@@ -567,6 +567,59 @@ func TestResolvePackageFromName(t *testing.T) {
 		}, GetSuggestedPackages(err))
 	})
 
+	t.Run("single/very-ambiguous-resolution", func(t *testing.T) {
+		t.Parallel()
+		mockReg := mockRegistry{
+			searchByName: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+				return func(yield func(apitype.PackageMetadata, error) bool) {
+					// Return multiple non-matching packages
+					if !yield(apitype.PackageMetadata{
+						Source:    "private",
+						Publisher: "org1",
+						Name:      "aws",
+					}, nil) {
+						return
+					}
+					if !yield(apitype.PackageMetadata{
+						Source:    "private",
+						Publisher: "org2",
+						Name:      "aws",
+					}, nil) {
+						return
+					}
+
+					if !yield(apitype.PackageMetadata{
+						Source:    "private",
+						Publisher: "org3",
+						Name:      "aws",
+					}, nil) {
+						return
+					}
+				}
+			},
+		}
+
+		_, err := ResolvePackageFromName(ctx, mockReg, "aws", nil)
+		assert.ErrorContains(t, err, `"aws" is ambiguous, it matches both private/org1/aws and 2 other package`)
+		assert.Equal(t, []apitype.PackageMetadata{
+			{
+				Source:    "private",
+				Publisher: "org1",
+				Name:      "aws",
+			},
+			{
+				Source:    "private",
+				Publisher: "org2",
+				Name:      "aws",
+			},
+			{
+				Source:    "private",
+				Publisher: "org3",
+				Name:      "aws",
+			},
+		}, GetSuggestedPackages(err))
+	})
+
 	// Invalid identifier tests
 	t.Run("invalid/empty-string", func(t *testing.T) {
 		t.Parallel()
