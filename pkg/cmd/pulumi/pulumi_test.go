@@ -167,6 +167,7 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	token := time.Now().String()
 
 	called := false
+	authHeader := ""
 	commandHeader := ""
 	flagsHeader := ""
 
@@ -174,6 +175,8 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/cli/version":
 			called = true
+
+			authHeader = r.Header.Get("Authorization")
 			commandHeader = r.Header.Get("X-Pulumi-Command")
 			flagsHeader = r.Header.Get("X-Pulumi-Flags")
 
@@ -215,6 +218,7 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	require.True(t, called, "should have called API")
+	require.Equal(t, "token "+token, authHeader)
 	require.Equal(t, metadata["Command"], commandHeader)
 	require.Equal(t, metadata["Flags"], flagsHeader)
 }
@@ -233,6 +237,8 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	token := time.Now().String()
 
 	called := false
+
+	authHeader := ""
 	commandHeader := ""
 	flagsHeader := ""
 
@@ -240,6 +246,8 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/cli/version":
 			called = true
+
+			authHeader = r.Header.Get("Authorization")
 			commandHeader = r.Header.Get("X-Pulumi-Command")
 			flagsHeader = r.Header.Get("X-Pulumi-Flags")
 
@@ -281,6 +289,7 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	require.True(t, called, "should have called API")
+	require.Empty(t, authHeader)
 	require.Empty(t, commandHeader)
 	require.Empty(t, flagsHeader)
 }
