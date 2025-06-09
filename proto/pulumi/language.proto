@@ -112,6 +112,9 @@ service LanguageRuntime {
     // [language conformance tests](language-conformance-tests), though it is intended to be used more widely in future
     // to standardise e.g. provider publishing workflows.
     rpc Pack(PackRequest) returns (PackResponse) {}
+
+    // `Link` links a local dependency into a project.
+    rpc Link(LinkRequest) returns (LinkResponse) {}
 }
 
 // A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
@@ -309,8 +312,9 @@ message RunRequest {
     // The organization of the stack being deployed into.
     string organization = 12;
 
-    // Configuration variables to apply before running the program.
-    google.protobuf.Struct configPropertyMap = 13;
+    // This is deprecated, runtimes should look at the string based config as that maintains the full textual data from
+    // the users config file.
+    google.protobuf.Struct configPropertyMap = 13 [deprecated = true];
 
     // The program to use.
     ProgramInfo info = 14;
@@ -595,4 +599,21 @@ message LanguageHandshakeRequest {
 
 // `LanguageHandshakeResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Handshake) call.
 message LanguageHandshakeResponse {
+}
+
+// `LinkRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Link) call.
+message LinkRequest {
+    // The program to use.
+    ProgramInfo info = 1;
+
+    // Local dependencies that the program should reference explicitly, instead of e.g. using the language's
+    // package system. This is a map of package names to local paths of language-specific artifacts that
+    // should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
+    // to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
+    // to be used instead of the published `@pulumi/aws` package.
+    map<string, string> local_dependencies = 2;
+}
+
+// `LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call.
+message LinkResponse {
 }

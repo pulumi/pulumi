@@ -2186,6 +2186,15 @@ func TestParameterizedNode(t *testing.T) {
 
 			return nil
 		},
+		PostPrepareProject: func(project *engine.Projinfo) error {
+			// Run the mocha tests
+			cmd := exec.Command("npx", "mocha", "--require", "ts-node/register", "*.spec.ts")
+			cmd.Dir = project.Root
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "failed to run mocha tests: %s", string(out))
+
+			return nil
+		},
 	})
 }
 

@@ -445,7 +445,9 @@ class RunRequest(google.protobuf.message.Message):
     """The organization of the stack being deployed into."""
     @property
     def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
-        """Configuration variables to apply before running the program."""
+        """This is deprecated, runtimes should look at the string based config as that maintains the full textual data from
+        the users config file.
+        """
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
@@ -1148,3 +1150,61 @@ class LanguageHandshakeResponse(google.protobuf.message.Message):
     ) -> None: ...
 
 global___LanguageHandshakeResponse = LanguageHandshakeResponse
+
+@typing_extensions.final
+class LinkRequest(google.protobuf.message.Message):
+    """`LinkRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Link) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing_extensions.final
+    class LocalDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    INFO_FIELD_NUMBER: builtins.int
+    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    @property
+    def info(self) -> global___ProgramInfo:
+        """The program to use."""
+    @property
+    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """Local dependencies that the program should reference explicitly, instead of e.g. using the language's
+        package system. This is a map of package names to local paths of language-specific artifacts that
+        should be used. For instance, in the case of a NodeJS package, this might be a map of NPM package names
+        to local paths to be used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is
+        to be used instead of the published `@pulumi/aws` package.
+        """
+    def __init__(
+        self,
+        *,
+        info: global___ProgramInfo | None = ...,
+        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["info", b"info"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["info", b"info", "local_dependencies", b"local_dependencies"]) -> None: ...
+
+global___LinkRequest = LinkRequest
+
+@typing_extensions.final
+class LinkResponse(google.protobuf.message.Message):
+    """`LinkResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Link) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___LinkResponse = LinkResponse

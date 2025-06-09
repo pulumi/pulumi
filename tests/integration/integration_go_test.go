@@ -1228,15 +1228,30 @@ func TestParameterizedGo(t *testing.T) {
 			require.NoError(t, err)
 			e.WriteTestFile("main.go", string(actualProgram))
 
+			actualProgram, err = os.ReadFile(filepath.Join(e.CWD, "actual_program_test.txt"))
+			require.NoError(t, err)
+			e.WriteTestFile("main_test.go", string(actualProgram))
+
 			// Generate the SDK for the provider.
 			path := info.Proj.Plugins.Providers[0].Path
 			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
 
 			// Add a reference to the generated SDK in go.mod.
-			return appendLines(filepath.Join(e.CWD, "go.mod"), []string{
+			err = appendLines(filepath.Join(e.CWD, "go.mod"), []string{
 				"require example.com/pulumi-pkg/sdk/go v1.0.0",
 				"replace example.com/pulumi-pkg/sdk/go => ./sdk/go",
 			})
+			require.NoError(t, err)
+
+			return nil
+		},
+		PostPrepareProject: func(info *engine.Projinfo) error {
+			e := ptesting.NewEnvironment(t)
+			e.CWD = info.Root
+
+			e.RunCommand("go", "test", "-v", "./...")
+
+			return nil
 		},
 	})
 }

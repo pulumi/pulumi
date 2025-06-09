@@ -1,26 +1,21 @@
 {
     "compilerOptions": {
         "outDir": "bin",
-        "target": "es2016",
+        "target": "es6",
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
-        "sourceMap": true,
+        "sourceMap": false,
         "stripInternal": true,
         "experimentalDecorators": true,
+        "pretty": true,
         "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "strict": true
+        "strictNullChecks": true,
     },
     "files": [
-        "doEcho.ts",
-        "doMultiEcho.ts",
-        "echo.ts",
-        "failsOnCreate.ts",
-        "failsOnDelete.ts",
-        "index.ts",
-        "provider.ts",
-        "random.ts",
-        "utilities.ts"
+        "index.ts"
     ]
 }

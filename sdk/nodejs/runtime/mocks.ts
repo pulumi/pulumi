@@ -239,6 +239,13 @@ export class MockMonitor {
             getHassupport: () => hasSupport,
         });
     }
+
+    public registerPackage(req: any, callback: (err: any, innerResponse: any) => void) {
+        // Mocks don't _really_ support packages, so we just return a fake package ref.
+        const resp = new resproto.RegisterPackageResponse();
+        resp.setRef("mock-uuid");
+        callback(null, resp);
+    }
 }
 
 /**

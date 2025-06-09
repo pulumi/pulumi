@@ -1,7 +1,10 @@
 {
     "name": "parameterized",
     "devDependencies": {
-        "typescript": "^3.0.0"
+        "@types/mocha": "^10.0.0",
+        "typescript": "^3.0.0",
+        "mocha": "^11.5.0",
+        "ts-node": "^10.0.0"
     },
     "dependencies": {
         "@pulumi/pkg": "file:./sdk/nodejs"

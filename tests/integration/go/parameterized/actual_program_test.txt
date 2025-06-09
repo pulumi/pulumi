@@ -1,0 +1,34 @@
+package main
+
+import (
+	"testing"
+
+	"example.com/pulumi-pkg/sdk/go/pkg"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/stretchr/testify/require"
+)
+
+type mocks int
+
+func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
+	return args.Name + "_id", args.Inputs, nil
+}
+
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return args.Args, nil
+}
+
+func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return args.Args, nil
+}
+
+func TestParameterized(t *testing.T) {
+	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+		_, err := pkg.NewRandom(ctx, "random", &pkg.RandomArgs{
+			Length: pulumi.Int(8),
+		})
+		return err
+	}, pulumi.WithMocks("project", "stack", mocks(1)))
+	require.NoError(t, err)
+}
