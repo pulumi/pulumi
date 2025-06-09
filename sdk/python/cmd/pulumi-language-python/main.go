@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -233,6 +233,8 @@ func parseOptions(root string, programDir string, options map[string]any) (toolc
 				pythonOptions.Typechecker = toolchain.TypeCheckerMypy
 			case "pyright":
 				pythonOptions.Typechecker = toolchain.TypeCheckerPyright
+			case "none":
+				pythonOptions.Typechecker = toolchain.TypeCheckerNone
 			default:
 				return pythonOptions, fmt.Errorf("unsupported typechecker option: %s", typechecker)
 			}
