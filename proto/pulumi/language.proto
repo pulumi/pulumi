@@ -312,8 +312,9 @@ message RunRequest {
     // The organization of the stack being deployed into.
     string organization = 12;
 
-    // Configuration variables to apply before running the program.
-    google.protobuf.Struct configPropertyMap = 13;
+    // This is deprecated, runtimes should look at the string based config as that maintains the full textual data from
+    // the users config file.
+    google.protobuf.Struct configPropertyMap = 13 [deprecated = true];
 
     // The program to use.
     ProgramInfo info = 14;

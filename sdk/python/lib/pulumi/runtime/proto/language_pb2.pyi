@@ -445,7 +445,9 @@ class RunRequest(google.protobuf.message.Message):
     """The organization of the stack being deployed into."""
     @property
     def configPropertyMap(self) -> google.protobuf.struct_pb2.Struct:
-        """Configuration variables to apply before running the program."""
+        """This is deprecated, runtimes should look at the string based config as that maintains the full textual data from
+        the users config file.
+        """
     @property
     def info(self) -> global___ProgramInfo:
         """The program to use."""
