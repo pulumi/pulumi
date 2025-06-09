@@ -666,7 +666,9 @@ func SchemaFromSchemaSource(pctx *plugin.Context, packageSource string, args []s
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close()
+	defer func() {
+		contract.IgnoreError(pctx.Host.CloseProvider(p))
+	}()
 
 	var request plugin.GetSchemaRequest
 	if len(args) > 0 {
