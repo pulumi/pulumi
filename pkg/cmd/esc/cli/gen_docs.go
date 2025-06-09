@@ -20,6 +20,29 @@ var replaceH2Pattern = regexp.MustCompile(`(?m)^## .*$`)
 // Used to promote the `###` headings to `##` in generated markdown files.
 var h3Pattern = regexp.MustCompile(`(?m)^###\s`)
 
+// generateMetaDescription creates contextual meta descriptions for ESC CLI commands
+func generateMetaDescription(title, commandName string) string {
+	baseDesc := fmt.Sprintf("Learn about the %s command.", title)
+
+	// Add specific descriptions for common ESC commands
+	descriptions := map[string]string{
+		"esc":          "Pulumi ESC (Environments, Secrets, and Configuration) - manage environments, secrets, and configuration.",
+		"esc_env":      "Manage Pulumi ESC environments. Create, configure, and organize your environment definitions.",
+		"esc_env_edit": "Edit environment definitions. Modify your ESC environment configuration interactively.",
+		"esc_env_open": "Open and activate an environment. Load environment variables and configuration into your shell.",
+		"esc_env_run":  "Run commands with environment variables loaded. Execute programs with ESC environment context.",
+		"esc_login":    "Authenticate with Pulumi ESC. Log in to access your environments and configuration.",
+		"esc_logout":   "Log out of Pulumi ESC. Clear your authentication credentials.",
+		"esc_version":  "Display the ESC CLI version. Check your current ESC installation version.",
+	}
+
+	if desc, exists := descriptions[commandName]; exists {
+		return desc
+	}
+
+	return baseDesc
+}
+
 // newGenDocsCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func newGenDocsCmd(root *cobra.Command) *cobra.Command {
@@ -42,8 +65,14 @@ func newGenDocsCmd(root *cobra.Command) *cobra.Command {
 				title := strings.ReplaceAll(fileNameWithoutExtension, "_", " ")
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
-				fmt.Fprintf(buf, "title: %q\n", title)
+				fmt.Fprintf(buf, "title: \"%s | CLI commands\"\n", title)
 				// Add redirect aliases to the front matter.
+				ymlIndent := "  " // 2 spaces
+				fmt.Fprint(buf, "aliases:\n")
+				fmt.Fprintf(buf, "%s- /docs/reference/cli/%s/\n", ymlIndent, fileNameWithoutExtension)
+				// Add meta description for SEO
+				metaDesc := generateMetaDescription(title, fileNameWithoutExtension)
+				fmt.Fprintf(buf, "meta_desc: %q\n", metaDesc)
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}
