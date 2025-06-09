@@ -1290,6 +1290,38 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		}
 	}
 
+	// Add typechecker prompt after toolchain is selected
+	if hasToolchain {
+		if _, hasTypechecker := rawOpts["typechecker"]; !hasTypechecker {
+			mypyOption := &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue: "mypy",
+				DisplayName: "mypy",
+			}
+			pyrightOption := &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue: "pyright",
+				DisplayName: "pyright",
+			}
+			noneOption := &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				StringValue: "none",
+				DisplayName: "none",
+			}
+			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
+				Key:         "typechecker",
+				Description: "The typechecker to use for type checking Python code",
+				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
+				Choices: []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
+					mypyOption,
+					pyrightOption,
+					noneOption,
+				},
+				Default: mypyOption,
+			})
+		}
+	}
+
 	return &pulumirpc.RuntimeOptionsResponse{
 		Prompts: prompts,
 	}, nil
