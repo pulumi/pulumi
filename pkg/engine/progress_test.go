@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,6 +23,11 @@ import (
 
 func TestProgressReportingCloser(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows.
+		t.Skip("Skipping test on Windows")
+	}
 
 	// Arrange.
 	events := make(chan Event)
