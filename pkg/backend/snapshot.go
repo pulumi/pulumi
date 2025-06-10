@@ -551,10 +551,10 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			step.Old().Protect, step.Op())
 
 		if !step.Old().PendingReplacement {
-			err := dsm.manager.markEntryForDeletion(&journalEntry, step.Old())
-			if err != nil {
-				panic(err)
-			}
+			dsm.manager.markEntryForDeletion(&journalEntry, step.Old())
+			// if err != nil {
+			// 	panic(err)
+			// }
 		}
 	}
 	return dsm.manager.journalMutation(journalEntry)
