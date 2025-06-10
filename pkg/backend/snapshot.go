@@ -645,13 +645,18 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		State:         nil, // We don't need to store the new state, it's already updated in the base snapshot.  We only need to do this to delete resources that are deleted by refresh.
 		DeleteOld:     -1,  // Default to -1, which means no deletion.
 	}
-	if old := step.Old(); step.New() == nil && old != nil && rsm.manager.baseSnapshot != nil {
+	refreshStep := step.(*deploy.RefreshStep)
+	if old := step.Old(); refreshStep.Persisted() && old != nil && rsm.manager.baseSnapshot != nil {
 		rsm.manager.markEntryForDeletion(&journalEntry, old)
 	}
-	// TODO: is this ther ight thing to do?
-	// if step.New() == nil {
-	// 	rsm.manager.refreshDeletes[step.Old().URN] = true
-	// }
+	if refreshStep.Persisted() {
+		if step.New() != nil {
+			journalEntry.State = step.New()
+		} else {
+			// TODO: is this the right thing to do?
+			rsm.manager.refreshDeletes[step.Old().URN] = true
+		}
+	}
 
 	return rsm.manager.journalMutation(journalEntry)
 }
