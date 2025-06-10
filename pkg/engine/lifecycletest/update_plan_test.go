@@ -52,11 +52,16 @@ func TestPlannedUpdate(t *testing.T) {
 	}
 
 	var ins resource.PropertyMap
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -89,6 +94,7 @@ func TestPlannedUpdate(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Attempt to run an update using the plan.
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"qux": []interface{}{
 			"alpha",
@@ -112,6 +118,7 @@ func TestPlannedUpdate(t *testing.T) {
 	plan.ResourcePlans["urn:pulumi:test::test::pulumi:providers:pkgA::default"].Ops = []display.StepOp{deploy.OpSame}
 
 	// Attempt to run an update using the plan.
+	expectError = false
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]interface{}{
@@ -174,7 +181,7 @@ func TestUnplannedCreate(t *testing.T) {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			assert.ErrorContains(t, err, "context canceled")
 		}
 		return nil
 	})
@@ -309,6 +316,7 @@ func TestExpectedDelete(t *testing.T) {
 		"foo": "bar",
 	})
 	createAllResources := true
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
@@ -316,10 +324,14 @@ func TestExpectedDelete(t *testing.T) {
 		assert.NoError(t, err)
 
 		if createAllResources {
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			if expectError {
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			} else {
+				assert.NoError(t, err)
+			}
 		}
 
 		return nil
@@ -350,6 +362,7 @@ func TestExpectedDelete(t *testing.T) {
 	// Now run but set the runtime to return resA and resB, given we expected resB to be deleted
 	// this should be an error
 	createAllResources = true
+	expectError = true
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resB violates plan: "+
@@ -461,11 +474,16 @@ func TestPropertySetChange(t *testing.T) {
 		"foo":  "bar",
 		"frob": "baz",
 	})
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 
 		return nil
 	})
@@ -490,6 +508,7 @@ func TestPropertySetChange(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 	})
+	expectError = true
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
@@ -762,11 +781,16 @@ func TestPlannedPreviews(t *testing.T) {
 	}
 
 	var ins resource.PropertyMap
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -799,6 +823,7 @@ func TestPlannedPreviews(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Attempt to run a new preview using the plan, given we've changed the property set this should fail
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"qux": []interface{}{
 			"alpha",
@@ -813,6 +838,7 @@ func TestPlannedPreviews(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Attempt to run an preview using the plan, such that the property set is now valid
+	expectError = false
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]interface{}{
@@ -850,11 +876,16 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	}
 
 	var ins resource.PropertyMap
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -894,6 +925,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 		"zed": 24,
@@ -942,8 +974,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(resp.URN, outs)
-		assert.NoError(t, err)
+		_ = monitor.RegisterResourceOutputs(resp.URN, outs)
 
 		return nil
 	})
@@ -1016,11 +1047,16 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 		"foo":  "bar",
 		"frob": "baz",
 	})
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 
 		return nil
 	})
@@ -1058,6 +1094,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test the plan fails if we don't pass newBazzer
+	expectError = true
 	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo":  "bar",
 		"frob": "differentBazzer",
@@ -1071,6 +1108,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check the plan succeeds if we do pass newBazzer
+	expectError = false
 	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo":  "bar",
 		"frob": "newBazzer",
@@ -1324,18 +1362,24 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	}
 
 	var ins resource.PropertyMap
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"other": resp.Outputs["name"].StringValue(),
-			}),
-		})
-		assert.NoError(t, err)
+		if err == nil {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"other": resp.Outputs["name"].StringValue(),
+				}),
+			})
+			if expectError {
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			} else {
+				assert.NoError(t, err)
+			}
+		}
 
 		return nil
 	})
@@ -1363,6 +1407,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 	// Attempt to run an update using the plan.
 	// This should fail because of the non-determinism
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"zed": "baz",
@@ -1415,11 +1460,16 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	}
 
 	var ins resource.PropertyMap
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1435,6 +1485,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan with bad inputs
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bad",
 	})
@@ -1445,6 +1496,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Generate a plan with good inputs
+	expectError = false
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "good",
 	})
@@ -1454,6 +1506,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Try and run against the plan with inputs that will fail Check
+	expectError = true
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bad",
 	})
@@ -1713,20 +1766,24 @@ func TestResourcesTargeted(t *testing.T) {
 		}),
 	}
 
+	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
 		})
-		assert.NoError(t, err)
+		if expectError {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			},
 		})
-		assert.NoError(t, err)
 
 		return nil
 	})
@@ -1754,6 +1811,7 @@ func TestResourcesTargeted(t *testing.T) {
 
 	// Check that running an update with everything targeted fails due to our plan being constrained
 	// to the resource.
+	expectError = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1766,6 +1824,7 @@ func TestResourcesTargeted(t *testing.T) {
 	assert.Error(t, err)
 
 	// Check that running an update with the same Targets as the Plan succeeds.
+	expectError = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,

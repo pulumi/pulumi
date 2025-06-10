@@ -351,7 +351,7 @@ func TestRemediateFailure(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "context canceled")
 		return nil
 	})
 	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
