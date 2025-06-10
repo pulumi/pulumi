@@ -52,9 +52,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Temporary feature flag to enable support for view resources.
-var supportsViews bool = cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW"))
-
 // TODO[pulumi/pulumi#19620]: Remove this temporary envvar when we no longer want to provide a way to disable it.
 // Temporary feature flag to disable support for refresh before update.
 var supportsRefreshBeforeUpdate bool = !cmdutil.IsTruthy(
@@ -198,7 +195,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				RootDirectory:               nil,
 				ProgramDirectory:            nil,
 				ConfigureWithUrn:            true,
-				SupportsViews:               supportsViews,
+				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
@@ -254,7 +251,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginSpec,
 				RootDirectory:               &dir,
 				ProgramDirectory:            &dir,
 				ConfigureWithUrn:            true,
-				SupportsViews:               supportsViews,
+				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
@@ -382,7 +379,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			RootDirectory:               &dir,
 			ProgramDirectory:            &dir,
 			ConfigureWithUrn:            true,
-			SupportsViews:               supportsViews,
+			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
