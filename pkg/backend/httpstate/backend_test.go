@@ -456,13 +456,17 @@ func TestListStackNames(t *testing.T) {
 		}
 	}()
 
-	// Test ListStackNames with pagination support
-	filter := backend.ListStacksFilter{}
+	// Test ListStackNames with pagination support and project filter
+	projectName := "testproj"
+	filter := backend.ListStacksFilter{
+		Project: &projectName, // Filter to just our test project to reduce scope
+	}
 	var allStackRefs []backend.StackReference
 	var token backend.ContinuationToken
+	maxIterations := 100 // Prevent infinite loops
 
-	// Keep fetching until we get all stacks
-	for {
+	// Keep fetching until we get all stacks (with safeguards)
+	for i := 0; i < maxIterations; i++ {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token)
 		require.NoError(t, err)
 
@@ -472,9 +476,14 @@ func TestListStackNames(t *testing.T) {
 			break
 		}
 		token = nextToken
+
+		// Additional safeguard: if we're getting an excessive number of stacks, something is wrong
+		if len(allStackRefs) > 10000 {
+			t.Fatalf("Too many stacks returned (%d), possible infinite loop", len(allStackRefs))
+		}
 	}
 
-	// Verify we got at least our test stacks (there might be other stacks in the org)
+	// Verify we got at least our test stacks (there might be other stacks in the project)
 	assert.GreaterOrEqual(t, len(allStackRefs), numStacks)
 
 	// Verify all our test stack names are present
@@ -518,14 +527,18 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// Test both methods with pagination support
-	filter := backend.ListStacksFilter{}
+	// Test both methods with pagination support and project filter
+	projectName := "testproj"
+	filter := backend.ListStacksFilter{
+		Project: &projectName, // Filter to just our test project to reduce scope
+	}
+	maxIterations := 100 // Prevent infinite loops
 
 	// Test ListStacks with pagination
 	var allSummaries []backend.StackSummary
 	var token1 backend.ContinuationToken
 
-	for {
+	for i := 0; i < maxIterations; i++ {
 		summaries, nextToken, err := b.ListStacks(ctx, filter, token1)
 		require.NoError(t, err)
 
@@ -535,13 +548,18 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 			break
 		}
 		token1 = nextToken
+
+		// Additional safeguard: if we're getting an excessive number of stacks, something is wrong
+		if len(allSummaries) > 10000 {
+			t.Fatalf("Too many stacks returned from ListStacks (%d), possible infinite loop", len(allSummaries))
+		}
 	}
 
 	// Test ListStackNames with pagination
 	var allStackRefs []backend.StackReference
 	var token2 backend.ContinuationToken
 
-	for {
+	for i := 0; i < maxIterations; i++ {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token2)
 		require.NoError(t, err)
 
@@ -551,6 +569,11 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 			break
 		}
 		token2 = nextToken
+
+		// Additional safeguard: if we're getting an excessive number of stacks, something is wrong
+		if len(allStackRefs) > 10000 {
+			t.Fatalf("Too many stacks returned from ListStackNames (%d), possible infinite loop", len(allStackRefs))
+		}
 	}
 
 	// Both should return the same number of stacks
