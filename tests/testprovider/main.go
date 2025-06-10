@@ -22,6 +22,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"slices"
 	"strings"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -97,6 +99,11 @@ func providerForURN(urn string) (testProvider, string, bool) {
 
 //nolint:unused
 func main() {
+	if slices.Contains(os.Args, "--help") {
+		fmt.Fprint(os.Stderr, "Usage: testprovider")
+		os.Exit(255)
+	}
+
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {

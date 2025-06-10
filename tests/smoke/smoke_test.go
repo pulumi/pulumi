@@ -519,8 +519,29 @@ func TestPluginRun(t *testing.T) {
 
 	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
-	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
-	assert.Contains(t, stderr, "flag: help requested")
+}
+
+// Test that plugin run can run a plugin from a file path, as well as from a plugin name.
+func TestPluginRunPath(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// build the test provider to a binary
+	providerDir, err := filepath.Abs("../testprovider")
+	require.NoError(t, err)
+	binaryPath := filepath.Join(e.CWD, "pulumi-resource-testprovider")
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = providerDir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Building the test provider should work: %s", string(output))
+
+	_, stderr := e.RunCommandExpectError(
+		"pulumi", "plugin", "run", "--kind=resource",
+		fmt.Sprintf(".%cpulumi-resource-testprovider", os.PathSeparator),
+		"--", "--help")
+	assert.Contains(t, stderr, "Usage: testprovider")
 }
 
 func TestInstall(t *testing.T) {
