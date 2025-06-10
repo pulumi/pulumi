@@ -15,8 +15,10 @@
 package tests
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -521,6 +523,38 @@ func TestPluginRun(t *testing.T) {
 	assert.Contains(t, stderr, "flag: help requested")
 	_, stderr = e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19767, ensure plugin run doesn't block on IO.
+func TestPluginRunIO(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// build the test provider to a binary
+	providerDir, err := filepath.Abs("../testprovider")
+	require.NoError(t, err)
+	binaryPath := filepath.Join(e.CWD, "pulumi-resource-testprovider")
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = providerDir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Building the test provider should work: %s", string(output))
+
+	cmd = exec.Command("pulumi", "plugin", "run", "--kind=resource", binaryPath, "--", "--io-test")
+	cmd.Dir = e.CWD
+	var stdout, stderr bytes.Buffer
+	pr, pw := io.Pipe()
+
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Stdin = pr
+
+	err = cmd.Run()
+	require.ErrorContains(t, err, "exit status 1")
+
+	pw.Close()
+
+	assert.Equal(t, "test stdout\n", stdout.String())
+	assert.Equal(t, "test stderr\n", stderr.String())
 }
 
 func TestInstall(t *testing.T) {

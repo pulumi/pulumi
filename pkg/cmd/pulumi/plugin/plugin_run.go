@@ -113,27 +113,28 @@ func newPluginRunCmd() *cobra.Command {
 			go func() {
 				defer wg.Done()
 				_, err := io.Copy(os.Stdout, plugin.Stdout)
-				if err != nil && !errors.Is(err, io.EOF) {
+				if err != nil {
 					fmt.Fprintf(os.Stderr, "error reading plugin stdout: %v\n", err)
 				}
 			}()
 			go func() {
 				defer wg.Done()
 				_, err := io.Copy(os.Stderr, plugin.Stderr)
-				if err != nil && !errors.Is(err, io.EOF) {
+				if err != nil {
 					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
 				}
 			}()
 			go func() {
-				defer wg.Done()
+				wg.Done()
 				_, err := io.Copy(plugin.Stdin, os.Stdin)
-				if err != nil && !errors.Is(err, io.EOF) {
+				if err != nil {
 					fmt.Fprintf(os.Stderr, "error copying plugin stdin: %v\n", err)
 				}
 			}()
 
 			// Wait for the plugin and IO to finish.
 			code, err := plugin.Wait()
+			os.Stdin.Close() // Close stdin so that the copy above can finish.
 			wg.Wait()
 			if err != nil {
 				return fmt.Errorf("plugin %s exited with error: %w", pluginDesc, err)

@@ -22,6 +22,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"slices"
 	"strings"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -97,6 +99,19 @@ func providerForURN(urn string) (testProvider, string, bool) {
 
 //nolint:unused
 func main() {
+	// If "--io-test" is in the args we're running an integration test for plugin run.
+	if slices.Contains(os.Args, "--io-test") {
+		_, err := os.Stdout.WriteString("test stdout\n")
+		if err != nil {
+			cmdutil.ExitError(fmt.Sprintf("failed to write to stdout: %v", err))
+		}
+		_, err = os.Stderr.WriteString("test stderr\n")
+		if err != nil {
+			cmdutil.ExitError(fmt.Sprintf("failed to write to stderr: %v", err))
+		}
+		os.Exit(1)
+	}
+
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {
