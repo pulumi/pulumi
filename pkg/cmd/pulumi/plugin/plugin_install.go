@@ -167,21 +167,21 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// Try and set known plugin download URLs
-		if urlSet := util.SetKnownPluginDownloadURL(&pluginSpec); urlSet {
+		if urlSet := util.SetKnownPluginDownloadURL(&pluginSpec.PluginSpec); urlSet {
 			cmd.diag.Infof(
 				diag.Message("", "Plugin download URL set to %s"), pluginSpec.PluginDownloadURL)
 		}
 
 		// If we don't have a version try to look one up
 		if version == nil && pluginSpec.Version == nil {
-			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
+			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec.PluginSpec, ctx)
 			if err != nil {
 				return err
 			}
 			pluginSpec.Version = latestVersion
 		}
 
-		installs = append(installs, pluginSpec)
+		installs = append(installs, pluginSpec.PluginSpec)
 	} else {
 		if cmd.file != "" {
 			return errors.New("--file (-f) is only valid if a specific package is being installed")

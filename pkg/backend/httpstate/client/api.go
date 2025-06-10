@@ -352,7 +352,13 @@ func pulumiAPICall(ctx context.Context,
 		if err != nil {
 			return "", nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
 		}
-		return "", nil, decodeError(respBody, resp.StatusCode, opts)
+
+		err = decodeError(respBody, resp.StatusCode, opts)
+		if resp.StatusCode == 403 {
+			err = backenderr.ForbiddenError{Err: err}
+		}
+
+		return "", nil, err
 	}
 
 	return url, resp, nil

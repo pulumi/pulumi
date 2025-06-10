@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Support Pulumi Registry identifiers whereever package specifications are supported.

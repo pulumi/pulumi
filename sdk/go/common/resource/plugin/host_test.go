@@ -152,6 +152,8 @@ func TestIsLocalPluginPath(t *testing.T) {
 func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	// Create a temporary directory for our test
 	tempDir := t.TempDir()
 
@@ -166,8 +168,9 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a context for testing
-	ctx := &Context{
-		Root: tempDir,
+	pluginCtx := &Context{
+		Root:        tempDir,
+		baseContext: ctx,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -183,7 +186,7 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	}
 
 	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "")
+	host, err := NewDefaultHost(pluginCtx, nil, false, nil, packages, nil, nil, "")
 	require.NoError(t, err)
 	defer host.Close()
 
@@ -215,6 +218,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	// Create a temporary directory for our test
 	tempDir := t.TempDir()
 
@@ -228,8 +233,9 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a context for testing
-	ctx := &Context{
-		Root: tempDir,
+	pluginCtx := &Context{
+		Root:        tempDir,
+		baseContext: ctx,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -248,7 +254,7 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "")
+	host, err := NewDefaultHost(pluginCtx, nil, false, plugins, packages, nil, nil, "")
 	require.NoError(t, err)
 	defer host.Close()
 

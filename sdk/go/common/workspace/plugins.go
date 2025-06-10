@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -446,6 +447,121 @@ func (source *gitSource) Download(
 
 func (source *gitSource) URL() string {
 	return source.url
+}
+
+var _ PluginSource = (*registrySource)(nil)
+
+type registrySource struct {
+	name      string
+	publisher string
+	source    string
+	version   semver.Version
+
+	resolvedSource PluginSource
+}
+
+func (source *registrySource) Download(ctx context.Context,
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
+	if err := source.resolve(ctx); err != nil {
+		return nil, 0, err
+	}
+	return source.resolvedSource.Download(ctx, version, opSy, arch, getHTTPResponse)
+}
+
+// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
+// plugins we can get from GitHub releases. The context supplied enables I/O to be canceled as needed.
+func (source *registrySource) GetLatestVersion(ctx context.Context,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
+	r := registry.Get(ctx)
+	if r == nil {
+		return nil, fmt.Errorf("source not equipped with a registry, could not resolve %q", source.URL())
+	}
+	pkg, err := r.GetPackage(ctx,
+		source.source, source.publisher, source.name,
+		nil /* nil version => latest */)
+	if err != nil {
+		return nil, err
+	}
+	return &pkg.Version, nil
+}
+
+// A base URL that can uniquely identify the source. Has the same structure as the PluginDownloadURL
+// schema option. Example: "github://api.github.com/pulumi/pulumi-aws".
+func (source *registrySource) URL() string {
+	return source.pkgIdentifier() + "@" + source.version.String()
+}
+
+func (source *registrySource) pkgIdentifier() string {
+	return source.source + "/" + source.publisher + "/" + source.name
+}
+
+func (source *registrySource) resolve(ctx context.Context) error {
+	// If we have already resolved the source, we don't need to do anything here.
+	if source.resolvedSource != nil {
+		return nil
+	}
+	r := registry.Get(ctx)
+	if r == nil {
+		return fmt.Errorf("source not equipped with a registry, could not resolve %q", source.URL())
+	}
+	pkg, err := r.GetPackage(ctx, source.source, source.publisher, source.name, &source.version)
+	if err != nil {
+		// Handle some specific error cases to prevent bad retires here
+		if errors.Is(err, registry.ErrNotFound) {
+			// Include a downloadError to prevent retries during downloading.
+			err = fmt.Errorf("%w%w", &downloadError{
+				code: 404,
+			}, err)
+		} else if errors.Is(err, registry.ErrForbidden) {
+			// Include a downloadError to prevent retries during downloading.
+			err = fmt.Errorf("%w%w", &downloadError{
+				code: 403,
+			}, err)
+		} else if errors.Is(err, registry.ErrUnauthorized) {
+			// Include a downloadError to prevent retries during downloading.
+			err = fmt.Errorf("%w%w", &downloadError{
+				code: 401,
+			}, err)
+		}
+		return err
+	}
+	params, err := getParameterization(pkg)
+	if err != nil {
+		return fmt.Errorf("could not get parameterization: %w", err)
+	}
+	if params != nil {
+		source.resolvedSource = newFallbackSource(params.BaseProvider.Name, apitype.ResourcePlugin)
+	} else if pkg.PluginDownloadURL != "" {
+		ps, err := newPluginSource(pkg.Name, apitype.ResourcePlugin, pkg.PluginDownloadURL, &source.version)
+		if err != nil {
+			return err
+		}
+		source.resolvedSource = ps
+	} else {
+		source.resolvedSource = newFallbackSource(pkg.Name, apitype.ResourcePlugin)
+	}
+	return nil
+}
+
+func newRegistrySource(url *url.URL, version *semver.Version) (*registrySource, error) {
+	if version == nil {
+		return nil, errors.New("registry sources must specify an absolute version")
+	}
+	parts := strings.Split(url.Opaque, "/")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("registry sources must specify a fully qualified identifier, got %q",
+			url.Opaque)
+	}
+
+	return &registrySource{
+		name:      parts[2],
+		publisher: parts[1],
+		source:    parts[0],
+		version:   *version,
+	}, nil
 }
 
 // githubSource can download a plugin from github releases
@@ -896,7 +1012,8 @@ type ProjectPlugin struct {
 
 // Spec Return a PluginSpec object for this project plugin.
 func (pp ProjectPlugin) Spec(ctx context.Context) (PluginSpec, error) {
-	return NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
+	s, err := NewPluginSpec(ctx, pp.Name, pp.Kind, pp.Version, "", nil)
+	return s.PluginSpec, err
 }
 
 // A PackageDescriptor specifies a package: the source PluginSpec that provides it, and any parameterization
@@ -1006,6 +1123,21 @@ type PluginSpec struct {
 
 type PluginVersionNotFoundError error
 
+// registryNameRegex matches strings of the form:
+//
+//	package
+//	publisher/package
+//	source/publisher/package
+//	package@version
+//	publisher/package@version
+//	source/publisher/package@version
+//
+// Here source, publisher and package must match [a-z0-9][a-z0-9-]* and version can be any
+// string.
+var registryNameRegex = sync.OnceValue(func() *regexp.Regexp {
+	return regexp.MustCompile(`^(([a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9-]*(@.*)?$`)
+})
+
 var urlRegex = sync.OnceValue(func() *regexp.Regexp {
 	return regexp.MustCompile(`^[^\./].*\.[a-z]+/[a-zA-Z0-9-/]*[a-zA-Z0-9/](@.*)?$`)
 })
@@ -1022,22 +1154,22 @@ func NewPluginSpec(
 	version *semver.Version,
 	pluginDownloadURL string,
 	checksums map[string][]byte,
-) (PluginSpec, error) {
-	spec, inference, err := parsePluginSpec(ctx, source, kind)
+) (PackageDescriptor, error) {
+	spec, inference, err := parsePluginSpec(ctx, source, kind, version)
 	if err != nil {
 		return spec, err
 	}
 
 	if version != nil {
 		if inference.explicitVersion {
-			return PluginSpec{}, errors.New("cannot specify a version when the version is part of the name")
+			return PackageDescriptor{}, errors.New("cannot specify a version when the version is part of the name")
 		}
 		spec.Version = version
 	}
 
 	if pluginDownloadURL != "" {
 		if inference.explicitPluginDownloadURL {
-			return PluginSpec{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
+			return PackageDescriptor{}, errors.New("cannot specify a plugin download URL when the plugin name is a URL")
 		}
 		spec.PluginDownloadURL = pluginDownloadURL
 	}
@@ -1052,13 +1184,48 @@ type parsePluginSpecInference struct {
 }
 
 func parsePluginSpec(
-	ctx context.Context, source string, kind apitype.PluginKind,
-) (PluginSpec, parsePluginSpecInference, error) {
+	ctx context.Context, source string, kind apitype.PluginKind, version *semver.Version,
+) (PackageDescriptor, parsePluginSpecInference, error) {
+	applyDescriptor := func(
+		s PluginSpec, i parsePluginSpecInference, err error,
+	) (PackageDescriptor, parsePluginSpecInference, error) {
+		return PackageDescriptor{PluginSpec: s}, i, err
+	}
 	if strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "git://") || urlRegex().MatchString(source) {
-		return parsePluginSpecFromURL(ctx, source, kind)
+		return applyDescriptor(parsePluginSpecFromURL(ctx, source, kind))
 	}
 
-	return parsePluginSpecFromName(ctx, source, kind)
+	if registryNameRegex().MatchString(source) && kind == apitype.ResourcePlugin {
+		mustBeRegistry := strings.ContainsRune(source, '/')
+		r := registry.Get(ctx)
+		if r == nil {
+			// If we don't have a registry and it looks like we definitely
+			// need one to resolve this format, then error here.
+			if mustBeRegistry {
+				return PackageDescriptor{}, parsePluginSpecInference{},
+					fmt.Errorf("missing registry, required by %q", source)
+			}
+			// There is no registry equipped on this ctx, and the source looks
+			// like it doesn't require a registry, so fall back to name based
+			// plugin resolution.
+			return applyDescriptor(parsePluginSpecFromName(ctx, source, kind))
+		}
+
+		spec, inference, err := parsePluginSpecFromRegistry(ctx, r, source, version)
+		// The registry didn't contain source, but the check was valid.
+		//
+		// Check if a non-registry based check would have worked. If so, use that.
+		if errors.Is(err, registry.ErrNotFound) && !mustBeRegistry {
+			s, i, e := applyDescriptor(parsePluginSpecFromName(ctx, source, kind))
+			if e == nil {
+				return s, i, e
+			}
+		}
+
+		// Return a registry based error message if resolving a raw name doesn't work.
+		return spec, inference, err
+	}
+	return applyDescriptor(parsePluginSpecFromName(ctx, source, kind))
 }
 
 func (inference *parsePluginSpecInference) parseVersion(spec string, parse func(version string) error) (string, error) {
@@ -1067,6 +1234,198 @@ func (inference *parsePluginSpecInference) parseVersion(spec string, parse func(
 		return spec[:i], parse(spec[i+1:])
 	}
 	return spec, nil
+}
+
+type parameterizationSpec struct {
+	// The base provider to parameterize.
+	BaseProvider struct {
+		// The name of the base provider.
+		Name string `json:"name" yaml:"name"`
+		// The version of the base provider.
+		Version string `json:"version" yaml:"version"`
+	} `json:"baseProvider" yaml:"baseProvider"`
+	// The parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// TODO[https://github.com/pulumi/pulumi-service/issues/29217]: Use the
+// parameterization block in GetPackageMetadata instead.
+func getParameterization(meta apitype.PackageMetadata) (*parameterizationSpec, error) {
+	resp, err := http.Get(meta.SchemaURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema: could not download schema: %w", err)
+	}
+	defer contract.IgnoreClose(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("failed to get schema: %s (%d)", resp.Status, resp.StatusCode)
+	}
+
+	var partailPackageSpec map[string]json.RawMessage
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&partailPackageSpec); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal schema: %w", err)
+	}
+	p := partailPackageSpec["parameterization"]
+	if p == nil {
+		return nil, nil
+	}
+	var params parameterizationSpec
+	if err := json.Unmarshal(p, &params); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal parameterization: %w", err)
+	}
+	return &params, nil
+}
+
+func parsePluginSpecFromRegistry(
+	ctx context.Context, r registry.Registry, spec string, version *semver.Version,
+) (PackageDescriptor, parsePluginSpecInference, error) {
+	var inference parsePluginSpecInference
+	spec, err := inference.parseVersion(spec, func(versionStr string) error {
+		v, err := semver.ParseTolerant(versionStr)
+		if err != nil {
+			return fmt.Errorf("VERSION must be valid semver: %s", versionStr)
+		}
+		version = &v
+		return nil
+	})
+	if err != nil {
+		return PackageDescriptor{}, inference, err
+	}
+
+	pluginFromMeta := func(meta apitype.PackageMetadata) (PackageDescriptor, parsePluginSpecInference, error) {
+		spec := PluginSpec{
+			Name:              meta.Name,
+			Kind:              apitype.ResourcePlugin,
+			Version:           &meta.Version,
+			PluginDownloadURL: "registry:" + meta.Source + "/" + meta.Publisher + "/" + meta.Name,
+		}
+
+		var parameterization *Parameterization
+		paramBlock, err := getParameterization(meta)
+		if err != nil {
+			return PackageDescriptor{}, inference, fmt.Errorf("failed to get parameterization: %w", err)
+		}
+		if paramBlock != nil {
+			spec.Name = paramBlock.BaseProvider.Name
+			if paramBlock.BaseProvider.Version != "" {
+				v, err := semver.ParseTolerant(paramBlock.BaseProvider.Version)
+				if err != nil {
+					return PackageDescriptor{}, inference, fmt.Errorf("failed to parameterization has invalid version: %w", err)
+				}
+				spec.Version = &v
+			}
+			parameterization = &Parameterization{
+				Name:    meta.Name,
+				Version: meta.Version,
+				Value:   paramBlock.Parameter,
+			}
+		}
+
+		return PackageDescriptor{
+			PluginSpec:       spec,
+			Parameterization: parameterization,
+		}, inference, nil
+	}
+
+	parts := strings.Split(spec, "/")
+	switch len(parts) {
+	case 3:
+		meta, err := r.GetPackage(ctx, parts[0], parts[1], parts[2], version)
+		if err != nil {
+			return PackageDescriptor{}, inference, fmt.Errorf("unable to resolve %s: %w", spec, err)
+		}
+		return pluginFromMeta(meta)
+	case 2:
+		// First check on "private"
+		pkg, err := r.GetPackage(ctx, "private", parts[0], parts[1], version)
+		if err == nil {
+			return pluginFromMeta(pkg)
+		} else if !errors.Is(err, registry.ErrNotFound) &&
+			!errors.Is(err, registry.ErrUnauthorized) &&
+			!errors.Is(err, registry.ErrForbidden) {
+			return PackageDescriptor{}, inference, fmt.Errorf("unable to check on private/%s: %w", spec, err)
+		}
+
+		// Then check on "pulumi"
+		pkg, err = r.GetPackage(ctx, "pulumi", parts[0], parts[1], version)
+		if err == nil {
+			return pluginFromMeta(pkg)
+		} else if !errors.Is(err, registry.ErrNotFound) {
+			return PackageDescriptor{}, inference, fmt.Errorf("unable to check on pulumi/%s: %w", spec, err)
+		}
+
+		// Both "private" and "pulumi" didn't exist, so the spec is invalid.
+		return PackageDescriptor{}, inference, fmt.Errorf("could not find a package for %s", spec)
+	case 1:
+		var privatePackageMetadata, pulumiPackageMetadata *apitype.PackageMetadata
+		for meta, err := range r.SearchByName(ctx, &spec) {
+			if err != nil {
+				return PackageDescriptor{}, inference, err
+			}
+
+			if meta.Source == "private" && privatePackageMetadata == nil {
+				privatePackageMetadata = &meta
+				break
+			} else if meta.Source == "pulumi" && meta.Publisher == "pulumi" {
+				pulumiPackageMetadata = &meta
+				// We don't break here, since we could still match a dominant source: the key in "private".
+			}
+		}
+
+		applyVersion := func(meta apitype.PackageMetadata) (PackageDescriptor, parsePluginSpecInference, error) {
+			if version == nil || meta.Version.Equals(*version) {
+				return pluginFromMeta(meta)
+			}
+			m, err := r.GetPackage(ctx, meta.Source, meta.Publisher, meta.Name, version)
+			if err == nil {
+				return pluginFromMeta(m)
+			}
+			if errors.Is(err, registry.ErrNotFound) {
+				return PackageDescriptor{}, inference, registryVersionMismatchError{
+					found: meta, desired: *version,
+				}
+			}
+			return PackageDescriptor{}, inference, err
+		}
+
+		if privatePackageMetadata != nil {
+			return applyVersion(*privatePackageMetadata)
+		}
+		if pulumiPackageMetadata != nil {
+			return applyVersion(*pulumiPackageMetadata)
+		}
+		var versionStr string
+		if version != nil {
+			versionStr = "@" + version.String()
+		}
+		return PackageDescriptor{}, inference, fmt.Errorf(
+			"%w: %s%s does not match a registry package", registry.ErrNotFound, spec, versionStr)
+	default:
+		return PackageDescriptor{}, inference,
+			fmt.Errorf("invalid identifier, registry identifiers must be [[SOURCE/]VERSION/]NAME[@VERSION]: %s", spec)
+	}
+}
+
+// An error indicating that the registry contains the correct "package", but not the
+// correct "package version".
+type registryVersionMismatchError struct {
+	found   apitype.PackageMetadata
+	desired semver.Version
+}
+
+func (err registryVersionMismatchError) Error() string {
+	return fmt.Sprintf("%s/%s/%s exists, but version %s was not found",
+		err.found.Source, err.found.Publisher, err.found.Name, err.desired,
+	)
+}
+
+func (err registryVersionMismatchError) Is(other error) bool {
+	switch other.(type) {
+	case registry.NotFoundError, *registry.NotFoundError:
+		return true
+	default:
+		return false
+	}
 }
 
 func parsePluginSpecFromURL(
@@ -1319,7 +1678,9 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	return nil
 }
 
-func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL string) (PluginSource, error) {
+func newPluginSource(
+	name string, kind apitype.PluginKind, pluginDownloadURL string, version *semver.Version,
+) (PluginSource, error) {
 	url, err := url.Parse(pluginDownloadURL)
 	if err != nil {
 		return nil, err
@@ -1334,8 +1695,10 @@ func newPluginSource(name string, kind apitype.PluginKind, pluginDownloadURL str
 		return newHTTPSource(name, kind, url), nil
 	case "git":
 		return newGitHTTPSSource(url)
+	case "registry":
+		return newRegistrySource(url, version)
 	default:
-		return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
+		return nil, fmt.Errorf("unknown plugin source scheme: %q from %q", url.Scheme, pluginDownloadURL)
 	}
 }
 
@@ -1345,7 +1708,7 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 
 	// The plugin has a set URL use that.
 	if spec.PluginDownloadURL != "" {
-		source, err = newPluginSource(spec.Name, spec.Kind, spec.PluginDownloadURL)
+		source, err = newPluginSource(spec.Name, spec.Kind, spec.PluginDownloadURL, spec.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -1356,7 +1719,7 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 
 	// If the plugin URL matches an override, download the plugin from the override URL.
 	if url, ok := pluginDownloadURLOverridesParsed.get(source.URL()); ok {
-		source, err = newPluginSource(spec.Name, spec.Kind, url)
+		source, err = newPluginSource(spec.Name, spec.Kind, url, spec.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -1678,7 +2041,8 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 
 			// Don't retry, since the request was processed and rejected.
 			var downloadErr *downloadError
-			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
+			if errors.As(readErr, &downloadErr) &&
+				(downloadErr.code == 404 || downloadErr.code == 403 || downloadErr.code == 401) {
 				return false, "", readErr
 			}
 
