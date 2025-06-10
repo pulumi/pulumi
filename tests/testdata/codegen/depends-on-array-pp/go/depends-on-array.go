@@ -10,8 +10,8 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		myBucket, err := s3.NewBucket(ctx, "myBucket", &s3.BucketArgs{
-			Website: &s3.BucketWebsiteArgs{
-				IndexDocument: pulumi.String("index.html"),
+			Website: &*s3.BucketWebsiteArgs{
+				IndexDocument: "index.html",
 			},
 		})
 		if err != nil {
@@ -28,7 +28,7 @@ func main() {
 		}
 		publicAccessBlock, err := s3.NewBucketPublicAccessBlock(ctx, "publicAccessBlock", &s3.BucketPublicAccessBlockArgs{
 			Bucket:          myBucket.ID(),
-			BlockPublicAcls: pulumi.Bool(false),
+			BlockPublicAcls: false,
 		})
 		if err != nil {
 			return err
@@ -36,8 +36,8 @@ func main() {
 		_, err = s3.NewBucketObject(ctx, "index.html", &s3.BucketObjectArgs{
 			Bucket:      myBucket.ID(),
 			Source:      pulumi.NewFileAsset("./index.html"),
-			ContentType: pulumi.String("text/html"),
-			Acl:         pulumi.String("public-read"),
+			ContentType: "text/html",
+			Acl:         "public-read",
 		}, pulumi.DependsOn([]pulumi.Resource{
 			publicAccessBlock,
 			ownershipControls,

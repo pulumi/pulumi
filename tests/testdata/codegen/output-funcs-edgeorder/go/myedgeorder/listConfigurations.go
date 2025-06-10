@@ -53,9 +53,9 @@ type ListConfigurationsOutputArgs struct {
 	// Holds details about product hierarchy information and filterable property.
 	ConfigurationFilters ConfigurationFiltersArrayInput `pulumi:"configurationFilters"`
 	// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
-	CustomerSubscriptionDetails CustomerSubscriptionDetailsPtrInput `pulumi:"customerSubscriptionDetails"`
+	CustomerSubscriptionDetails *CustomerSubscriptionDetailsArgs `pulumi:"customerSubscriptionDetails"`
 	// $skipToken is supported on list of configurations, which provides the next page in the list of configurations.
-	SkipToken pulumi.StringPtrInput `pulumi:"skipToken"`
+	SkipToken *string `pulumi:"skipToken"`
 }
 
 func (ListConfigurationsOutputArgs) ElementType() reflect.Type {

@@ -64,10 +64,10 @@ namespace Pulumi.Urnid
     public sealed class ResArgs : global::Pulumi.ResourceArgs
     {
         [Input("id")]
-        public Input<string>? Id { get; set; }
+        public Input<string?>? Id { get; set; }
 
         [Input("urn")]
-        public Input<string>? Urn { get; set; }
+        public Input<string?>? Urn { get; set; }
 
         public ResArgs()
         {

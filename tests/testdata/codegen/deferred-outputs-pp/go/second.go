@@ -36,8 +36,8 @@ func NewSecond(
 	}
 	password, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-password", name), &random.RandomPasswordArgs{
 		Length:  pulumi.Int(16),
-		Special: pulumi.Bool(true),
-		Numeric: pulumi.Bool(false),
+		Special: true,
+		Numeric: false,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
 		return nil, err

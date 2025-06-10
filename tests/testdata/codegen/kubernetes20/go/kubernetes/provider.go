@@ -28,7 +28,7 @@ func NewProvider(ctx *pulumi.Context,
 	}
 	if args.Kubeconfig == nil {
 		if d := utilities.GetEnvOrDefault(nil, nil, "KUBECONFIG"); d != nil {
-			args.Kubeconfig = pulumi.StringPtr(d.(string))
+			args.Kubeconfig = *string(d.(string))
 		}
 	}
 	opts = utilities.PkgResourceDefaultOpts(opts)

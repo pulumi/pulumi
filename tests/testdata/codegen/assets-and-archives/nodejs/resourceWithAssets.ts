@@ -69,7 +69,7 @@ export class ResourceWithAssets extends pulumi.CustomResource {
  * The set of arguments for constructing a ResourceWithAssets resource.
  */
 export interface ResourceWithAssetsArgs {
-    archive?: pulumi.Input<pulumi.asset.Archive>;
-    nested?: pulumi.Input<inputs.TypeWithAssetsArgs>;
+    archive?: pulumi.Input<pulumi.asset.Archive | undefined | null>;
+    nested?: pulumi.Input<inputs.TypeWithAssetsArgs | undefined | null>;
     source: pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive>;
 }

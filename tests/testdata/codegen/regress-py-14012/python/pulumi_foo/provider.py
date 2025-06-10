@@ -21,7 +21,7 @@ __all__ = ['ProviderArgs', 'Provider']
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 certmanager: Optional[pulumi.Input['ProviderCertmanagerArgs']] = None):
+                 certmanager: Optional[pulumi.Input[Optional['ProviderCertmanagerArgs']]] = None):
         """
         The set of arguments for constructing a Provider resource.
         """
@@ -30,11 +30,11 @@ class ProviderArgs:
 
     @property
     @pulumi.getter
-    def certmanager(self) -> Optional[pulumi.Input['ProviderCertmanagerArgs']]:
+    def certmanager(self) -> Optional[pulumi.Input[Optional['ProviderCertmanagerArgs']]]:
         return pulumi.get(self, "certmanager")
 
     @certmanager.setter
-    def certmanager(self, value: Optional[pulumi.Input['ProviderCertmanagerArgs']]):
+    def certmanager(self, value: Optional[pulumi.Input[Optional['ProviderCertmanagerArgs']]]):
         pulumi.set(self, "certmanager", value)
 
 
@@ -44,7 +44,7 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 certmanager: Optional[pulumi.Input[Union['ProviderCertmanagerArgs', 'ProviderCertmanagerArgsDict']]] = None,
+                 certmanager: Optional[pulumi.Input[Optional[Union['ProviderCertmanagerArgs', 'ProviderCertmanagerArgsDict']]]] = None,
                  __props__=None):
         """
         Create a Foo resource with the given unique name, props, and options.
@@ -74,7 +74,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 certmanager: Optional[pulumi.Input[Union['ProviderCertmanagerArgs', 'ProviderCertmanagerArgsDict']]] = None,
+                 certmanager: Optional[pulumi.Input[Optional[Union['ProviderCertmanagerArgs', 'ProviderCertmanagerArgsDict']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

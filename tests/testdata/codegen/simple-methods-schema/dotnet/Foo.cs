@@ -66,7 +66,7 @@ namespace Pulumi.Example
     public sealed class FooBarArgs : global::Pulumi.CallArgs
     {
         [Input("baz")]
-        public Input<Pulumi.Example.Nested.Inputs.BazArgs>? Baz { get; set; }
+        public Input<Pulumi.Example.Nested.Inputs.BazArgs?>? Baz { get; set; }
 
         [Input("bazPlain")]
         public Pulumi.Example.Nested.Inputs.BazArgs? BazPlain { get; set; }
@@ -75,7 +75,7 @@ namespace Pulumi.Example
         public Input<Pulumi.Example.Nested.Inputs.BazArgs> BazRequired { get; set; } = null!;
 
         [Input("boolValue")]
-        public Input<bool>? BoolValue { get; set; }
+        public Input<bool?>? BoolValue { get; set; }
 
         [Input("boolValuePlain")]
         public bool? BoolValuePlain { get; set; }
@@ -84,7 +84,7 @@ namespace Pulumi.Example
         public Input<bool> BoolValueRequired { get; set; } = null!;
 
         [Input("name")]
-        public Input<Pulumi.Random.RandomPet>? Name { get; set; }
+        public Input<Pulumi.Random.RandomPet?>? Name { get; set; }
 
         [Input("namePlain")]
         public Pulumi.Random.RandomPet? NamePlain { get; set; }
@@ -93,7 +93,7 @@ namespace Pulumi.Example
         public Input<Pulumi.Random.RandomPet> NameRequired { get; set; } = null!;
 
         [Input("stringValue")]
-        public Input<string>? StringValue { get; set; }
+        public Input<string?>? StringValue { get; set; }
 
         [Input("stringValuePlain")]
         public string? StringValuePlain { get; set; }
