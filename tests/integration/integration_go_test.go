@@ -1285,7 +1285,10 @@ func TestPackageAddGo(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 	randomVersion := getPluginVersion(e, "random")
 	assert.NotEmpty(t, randomVersion)
-	_, _ = e.RunCommand("pulumi", "package", "add", "random")
+	stdout, stderr := e.RunCommand("pulumi", "package", "add", "random")
+	// Regression check for https://github.com/pulumi/pulumi/issues/19764. Make sure the plugins close cleanly.
+	require.NotContains(t, stdout, "exited prematurely")
+	require.NotContains(t, stderr, "exited prematurely")
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
 	assert.NoError(t, err)
