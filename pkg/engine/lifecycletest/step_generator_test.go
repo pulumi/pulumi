@@ -383,7 +383,7 @@ func TestReadNilOutputs(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", "")
-			assert.ErrorContains(t, err, "resource 'my-resource-id' does not exist")
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 			return nil
 		}, true).
