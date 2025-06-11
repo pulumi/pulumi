@@ -1162,11 +1162,7 @@ func (g *generator) rewriteThenForAllApply(
 	}
 
 	// dummy type that will produce []interface{} for argumentTypeName
-	interfaceArrayType := &model.TupleType{
-		ElementTypes: []model.Type{
-			model.BoolType, model.StringType, model.IntType,
-		},
-	}
+	interfaceArrayType := model.NewTupleType(model.BoolType, model.StringType, model.IntType)
 
 	then.Parameters = []*model.Variable{{
 		Name:         "_args",

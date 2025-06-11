@@ -41,19 +41,16 @@ func BenchmarkLoadPackage(b *testing.B) {
 
 func TestGenEnum(t *testing.T) {
 	t.Parallel()
-	enum := &model.EnumType{
-		Elements: []cty.Value{
+	enum := model.NewEnumType(
+		"my.enum", model.StringType,
+		[]cty.Value{
 			cty.StringVal("foo"),
 			cty.StringVal("bar"),
 		},
-		Type:  model.StringType,
-		Token: "my:enum",
-		Annotations: []interface{}{
-			enumSchemaType{
-				Type: &schema.EnumType{Elements: []*schema.Enum{{Value: "foo"}, {Value: "bar"}}},
-			},
+		enumSchemaType{
+			Type: &schema.EnumType{Elements: []*schema.Enum{{Value: "foo"}, {Value: "bar"}}},
 		},
-	}
+	)
 	safeEnumFunc := func(member *schema.Enum) {}
 	unsafeEnumFunc := func(from model.Expression) {}
 
