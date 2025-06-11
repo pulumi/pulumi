@@ -185,3 +185,5 @@ Currently this disables validation of the following formats:
 This should only be used in cases where current data does not conform to the format and either cannot be migrated
 without using the system itself, or show that the validation is too strict. Over time entries in the list above will be
 removed and enforced to be validated.`)
+
+var DisableRegistryResolve = env.Bool("DISABLE_REGISTRY_RESOLVE", "Use the Pulumi Registry to resolve package names")
