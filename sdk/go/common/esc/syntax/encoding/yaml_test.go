@@ -25,6 +25,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/esc/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -176,4 +177,45 @@ baz: qux
 
 	assert.Empty(t, diags)
 	assert.Equal(t, expected, b.String())
+}
+
+func TestYAMLDeleteAllValuesThenAdd(t *testing.T) {
+	const doc = `values:
+    example1: abc`
+
+	// JSON (flow) format is expected when removing the last key from a map
+	const expectedIntermediate = `values: {}
+`
+
+	// Literal flow (more readable) is expected when adding an item to an empty map.
+	// This is notable, because without special internal handling the result would be:
+	//   values: {example2: xyz}
+	const expectedFinal = `values:
+    example2: xyz
+`
+
+	// setup
+	var docNode yaml.Node
+	err := yaml.Unmarshal([]byte(doc), &docNode)
+	require.NoError(t, err)
+	pathExample1, err := resource.ParsePropertyPath("values.example1")
+	require.NoError(t, err)
+	pathExample2, err := resource.ParsePropertyPath("values.example2")
+	require.NoError(t, err)
+
+	// remove the last key in the "values" map
+	err = YAMLSyntax{Node: &docNode}.Delete(nil, pathExample1)
+	require.NoError(t, err)
+	newYAML, err := yaml.Marshal(docNode.Content[0])
+	require.NoError(t, err)
+	require.Equal(t, expectedIntermediate, string(newYAML))
+
+	// add a key to the empty "values" map
+	var yamlValue yaml.Node
+	yamlValue.SetString("xyz")
+	_, err = YAMLSyntax{Node: &docNode}.Set(nil, pathExample2, yamlValue)
+	require.NoError(t, err)
+	newYAML, err = yaml.Marshal(docNode.Content[0])
+	require.NoError(t, err)
+	require.Equal(t, expectedFinal, string(newYAML))
 }

@@ -180,6 +180,18 @@ func (s YAMLSyntax) Set(prefix, path resource.PropertyPath, new yaml.Node) (*yam
 			}
 		}
 		if valueNode == nil {
+			if len(s.Content) == 0 && s.Style == yaml.FlowStyle {
+				// When adding a first key/value to an empty mapping in flow style (`{}`)
+				// switch to default style for improved usability. Removing the last key
+				// from a mapping results in flow style and this situation.
+				//
+				// This results in a literal style like:
+				//   values:
+				//       xyz: 123
+				// Rather than a flow style like:
+				//    values: {xyz: 123}
+				s.Style = 0
+			}
 			s.Content = append(s.Content, &yaml.Node{
 				Kind:  yaml.ScalarNode,
 				Value: key,
