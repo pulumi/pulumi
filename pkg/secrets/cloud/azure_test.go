@@ -17,8 +17,10 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -30,8 +32,11 @@ import (
 func getAzureCaller(ctx context.Context, t *testing.T) *azidentity.DefaultAzureCredential {
 	credentials, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		t.Logf("Skipping, could not load azure config: %s", err)
-		t.SkipNow()
+		t.Skipf("Skipping, could not load azure config: %s", err)
+	}
+	_, err = credentials.GetToken(ctx, policy.TokenRequestOptions{})
+	if err != nil && strings.Contains(err.Error(), "failed to acquire a token") {
+		t.Skipf("Skipping, could not acquire Azure token: %s", err)
 	}
 	return credentials
 }
