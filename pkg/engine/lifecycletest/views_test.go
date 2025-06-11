@@ -39,7 +39,7 @@ import (
 // the resources including a view, then running a second update expecting sames, then a third update that
 // should update, and finally deleting the resource and its view.
 func TestViewsBasic(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -283,7 +283,7 @@ func TestViewsBasic(t *testing.T) {
 
 // TestViewsUpdateError tests that an error from a view update step is properly propagated.
 func TestViewsUpdateError(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -445,7 +445,7 @@ func TestViewsUpdateError(t *testing.T) {
 
 // TestViewsUpdateDelete tests that a view can be deleted during an update operation.
 func TestViewsUpdateDelete(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -604,7 +604,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 
 // TestViewRefreshSame tests that same view steps work from a refresh operation.
 func TestViewsRefreshSame(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -737,7 +737,7 @@ func TestViewsRefreshSame(t *testing.T) {
 
 // TestViewsRefreshUpdate tests that an update view step works from a refresh operation.
 func TestViewsRefreshUpdate(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -874,7 +874,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 
 // TestViewsRefreshDelete tests that a delete view step works from a refresh operation.
 func TestViewsRefreshDelete(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -992,7 +992,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 
 // TestViewsImport is a basic sanity test of calling import on a stack that has views.
 func TestViewsImport(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1087,7 +1087,7 @@ func TestViewsImport(t *testing.T) {
 
 // TestViewsDeleteBeforeReplace tests that a sequence of DeleteBeforeReplace view steps works as expected.
 func TestViewsDeleteBeforeReplace(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1289,7 +1289,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 
 // TestViewsCreateBeforeReplace tests that a sequence of CreateBeforeReplace view steps works as expected.
 func TestViewsCreateBeforeReplace(t *testing.T) {
-	t.Setenv("PULUMI_ENABLE_VIEWS_PREVIEW", "1")
+	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
