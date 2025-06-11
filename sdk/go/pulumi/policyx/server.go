@@ -71,18 +71,18 @@ func (srv *analyzerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.AnalyzerHandshakeRequest,
 ) (*pulumirpc.AnalyzerHandshakeResponse, error) {
-	host, err := pulumix.NewEngine(req.GetEngineAddress())
+	engine, err := pulumix.NewEngine(req.GetEngineAddress())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create host: %w", err)
+		return nil, fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	srv.policyPack, err = srv.policyPackFactory(host)
+	srv.policyPack, err = srv.policyPackFactory(engine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy pack: %w", err)
 	}
 
 	_, err = srv.policyPack.Handshake(ctx, HandshakeRequest{
-		Host:             host,
+		Engine:           engine,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
 	})
