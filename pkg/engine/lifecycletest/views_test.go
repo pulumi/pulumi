@@ -735,6 +735,141 @@ func TestViewsRefreshSame(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 }
 
+// TestViews_RefreshBeforeUpdate_Same tests that same view steps work from a refresh operation.
+func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.CreateResponse{
+						ID:                  "new-id",
+						Properties:          req.Properties,
+						Status:              resource.StatusOK,
+						RefreshBeforeUpdate: true,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"input": resource.NewProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"result": resource.NewProperty("bar"),
+							},
+						},
+					}, req.OldViews)
+
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpSame,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+							New: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:                  req.ID,
+							Inputs:              req.Inputs,
+							Outputs:             req.State,
+							RefreshBeforeUpdate: true,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("bar"),
+	}, snap.Resources[2].Outputs)
+}
+
 // TestViewsRefreshUpdate tests that an update view step works from a refresh operation.
 func TestViewsRefreshUpdate(t *testing.T) {
 	t.Parallel()
@@ -792,7 +927,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 
 					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
 						{
-							Op:     apitype.OpSame,
+							Op:     apitype.OpUpdate,
 							Status: resource.StatusOK,
 							Old: &deploytest.ViewStepState{
 								Type:    req.OldViews[0].Type,
@@ -869,6 +1004,146 @@ func TestViewsRefreshUpdate(t *testing.T) {
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
 		"result": resource.NewStringProperty("baz"),
+	}, snap.Resources[2].Outputs)
+}
+
+// TestViews_RefreshBeforeUpdate_Update tests that an update view step works from a refresh operation that happens
+// due to RefreshBeforeUpdate being set to true on the owning resource.
+func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.CreateResponse{
+						ID:                  "new-id",
+						Properties:          req.Properties,
+						Status:              resource.StatusOK,
+						RefreshBeforeUpdate: true,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"input": resource.NewProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"result": resource.NewProperty("bar"),
+							},
+						},
+					}, req.OldViews)
+
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpUpdate,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+							New: &deploytest.ViewStepState{
+								Type: req.OldViews[0].Type,
+								Name: req.OldViews[0].Name,
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("baz"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("baz"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:                  req.ID,
+							Inputs:              req.Inputs,
+							Outputs:             req.State,
+							RefreshBeforeUpdate: true,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("baz"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 }
 
@@ -984,6 +1259,127 @@ func TestViewsRefreshDelete(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+}
+
+// TestViews_RefreshBeforeUpdate_Delete tests that a delete view step works from a refresh operation that happens
+// due to RefreshBeforeUpdate being set to true on the owning resource.
+func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.CreateResponse{
+						ID:                  "new-id",
+						Properties:          req.Properties,
+						Status:              resource.StatusOK,
+						RefreshBeforeUpdate: true,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"input": resource.NewProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"result": resource.NewProperty("bar"),
+							},
+						},
+					}, req.OldViews)
+
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpDelete,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:                  req.ID,
+							Inputs:              req.Inputs,
+							Outputs:             req.State,
+							RefreshBeforeUpdate: true,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -1492,5 +1888,341 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	}, snap.Resources[2].Inputs)
 	assert.Equal(t, resource.PropertyMap{
 		"result": resource.NewStringProperty("baz"),
+	}, snap.Resources[2].Outputs)
+}
+
+// TestViewsRefreshDriftDeleteCreate_UpdateRefresh verifies that during a `pulumi up --refresh` operation, a view can be
+// deleted from Read and created from Update. In this scenario, drift has happened and the view resource is gone and
+// should be recreated.
+func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.CreateResponse{
+						ID:         "new-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"input": resource.NewProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"result": resource.NewProperty("bar"),
+							},
+						},
+					}, req.OldViews)
+
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpDelete,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  req.Inputs,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("baz"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("baz"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.UpdateResponse{
+						Properties: req.OldOutputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an initial update to create the resources.
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	// Run `pulumi up --refresh`. In Read the view is deleted. In Update the view is recreated.
+	p.Steps = []lt.TestStep{{Op: Update}}
+	p.Options.Refresh = true
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("baz"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("baz"),
+	}, snap.Resources[2].Outputs)
+}
+
+// TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate verifies that during a `pulumi up` operation, a view can be
+// deleted from Read and created from Update when the view's owning resource is marked RefreshBeforeUpdate. In this
+// scenario, drift has happened and the view resource is gone and should be recreated.
+func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("bar"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("bar"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.CreateResponse{
+						ID:                  "new-id",
+						Properties:          req.Properties,
+						Status:              resource.StatusOK,
+						RefreshBeforeUpdate: true,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Check that the old view is expected.
+					assert.Equal(t, []plugin.View{
+						{
+							Type: tokens.Type("pkgA:m:typAView"),
+							Name: req.URN.Name() + "-child",
+							Inputs: resource.PropertyMap{
+								"input": resource.NewProperty("bar"),
+							},
+							Outputs: resource.PropertyMap{
+								"result": resource.NewProperty("bar"),
+							},
+						},
+					}, req.OldViews)
+
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpDelete,
+							Status: resource.StatusOK,
+							Old: &deploytest.ViewStepState{
+								Type:    req.OldViews[0].Type,
+								Name:    req.OldViews[0].Name,
+								Inputs:  req.OldViews[0].Inputs,
+								Outputs: req.OldViews[0].Outputs,
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:                  req.ID,
+							Inputs:              req.Inputs,
+							Outputs:             req.State,
+							RefreshBeforeUpdate: true,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					rs, err := deploytest.NewResourceStatus(req.ResourceStatusAddress)
+					require.NoError(t, err)
+					defer rs.Close()
+
+					err = rs.PublishViewSteps(req.ResourceStatusToken, []deploytest.ViewStep{
+						{
+							Op:     apitype.OpCreate,
+							Status: resource.StatusOK,
+							New: &deploytest.ViewStepState{
+								Type: tokens.Type("pkgA:m:typAView"),
+								Name: req.URN.Name() + "-child",
+								Inputs: resource.PropertyMap{
+									"input": resource.NewProperty("baz"),
+								},
+								Outputs: resource.PropertyMap{
+									"result": resource.NewProperty("baz"),
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+
+					return plugin.UpdateResponse{
+						Properties:          req.OldOutputs,
+						Status:              resource.StatusOK,
+						RefreshBeforeUpdate: true,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an initial update to create the resources.
+	// The owning resource is marked RefreshBeforeUpdate.
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.True(t, snap.Resources[1].RefreshBeforeUpdate)
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("bar"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("bar"),
+	}, snap.Resources[2].Outputs)
+
+	// Run `pulumi up`. The owner resource is marked RefreshBeforeUpdate, so it will be refreshed.
+	// In Read the view is deleted. In Update the view is recreated.
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, "new-id", snap.Resources[1].ID.String())
+	assert.True(t, snap.Resources[1].RefreshBeforeUpdate)
+	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
+	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
+	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
+	assert.Equal(t, resource.PropertyMap{
+		"input": resource.NewProperty("baz"),
+	}, snap.Resources[2].Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"result": resource.NewProperty("baz"),
 	}, snap.Resources[2].Outputs)
 }
