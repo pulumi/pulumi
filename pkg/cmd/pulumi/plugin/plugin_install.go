@@ -22,7 +22,6 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -200,13 +199,13 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			if err == nil {
 				pluginSpec.Name = pkgMetadata.Name
 				pluginSpec.PluginDownloadURL = pkgMetadata.PluginDownloadURL
-			} else if errors.Is(err, registry.ErrNotFound) && !strings.ContainsRune(pluginSpec.Name, '/') {
+			} else if errors.Is(err, registry.ErrNotFound) &&
+				registry.PulumiPublishedBeforeRegistry(pluginSpec.Name) {
 				// If the error is [registry.ErrNotFound], then this could
 				// be a Pulumi plugin that isn't in the registry.
 				//
-				// Ideally, we would have a hard-coded list such plugins
-				// so we could provide useful error messages when someone
-				// requests a non-existent plugin.
+				// We just ignore the failure in the hope that the
+				// download against GitHub will succeed.
 			} else {
 				for _, suggested := range registry.GetSuggestedPackages(err) {
 					cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),

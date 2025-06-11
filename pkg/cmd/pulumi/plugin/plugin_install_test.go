@@ -167,7 +167,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 }
 
 // We need to check that we don't break installs of versions that are not published into the registry.
-func TestGetPluginDownloadFromUnpublishedPackage(t *testing.T) {
+func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 	t.Parallel()
 
 	var pluginWasInstalled bool
@@ -226,6 +226,56 @@ func TestGetPluginDownloadFromUnpublishedPackage(t *testing.T) {
 
 	err := cmd.Run(context.Background(), []string{"resource", "random", "1.48.0"})
 	assert.NoError(t, err)
+}
+
+func TestGetPluginDownloadForMissingPackage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("with version", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := &pluginInstallCmd{
+			diag: diagtest.LogSink(t),
+			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+				assert.Fail(t, "GetLatestVersion should not have been called")
+				return nil, nil
+			},
+			registry: testMockRegistry{
+				searchByName: func(
+					ctx context.Context, name *string,
+				) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {}
+				},
+			},
+		}
+
+		err := cmd.Run(context.Background(), []string{"resource", "unknown", "1.48.0"})
+		assert.ErrorContains(t, err,
+			"Unable to resolve package from name: not found: unknown@1.48.0 does not match a registry package")
+	})
+
+	t.Run("without version", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := &pluginInstallCmd{
+			diag: diagtest.LogSink(t),
+			pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+				assert.Fail(t, "GetLatestVersion should not have been called")
+				return nil, nil
+			},
+			registry: testMockRegistry{
+				searchByName: func(
+					ctx context.Context, name *string,
+				) iter.Seq2[apitype.PackageMetadata, error] {
+					return func(yield func(apitype.PackageMetadata, error) bool) {}
+				},
+			},
+		}
+
+		err := cmd.Run(context.Background(), []string{"resource", "unknown"})
+		assert.ErrorContains(t, err,
+			"Unable to resolve package from name: not found: unknown does not match a registry package")
+	})
 }
 
 type testMockRegistry struct {
