@@ -36,6 +36,12 @@ type ResourceMonitorClient interface {
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(ctx context.Context, in *RegisterPackageRequest, opts ...grpc.CallOption) (*RegisterPackageResponse, error)
+	// WaitForShutdown blocks until the resource monitor is canceled, which will
+	// happen once all the steps have executed. This allows the language runtime
+	// to stay running and handle callback requests, even after the user program
+	// has completed. Runtime SDKs should call this after executing the user's
+	// program. This can only be called once.
+	WaitForShutdown(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type resourceMonitorClient struct {
@@ -127,6 +133,15 @@ func (c *resourceMonitorClient) RegisterPackage(ctx context.Context, in *Registe
 	return out, nil
 }
 
+func (c *resourceMonitorClient) WaitForShutdown(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/WaitForShutdown", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceMonitorServer is the server API for ResourceMonitor service.
 // All implementations must embed UnimplementedResourceMonitorServer
 // for forward compatibility
@@ -144,6 +159,12 @@ type ResourceMonitorServer interface {
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(context.Context, *RegisterPackageRequest) (*RegisterPackageResponse, error)
+	// WaitForShutdown blocks until the resource monitor is canceled, which will
+	// happen once all the steps have executed. This allows the language runtime
+	// to stay running and handle callback requests, even after the user program
+	// has completed. Runtime SDKs should call this after executing the user's
+	// program. This can only be called once.
+	WaitForShutdown(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedResourceMonitorServer()
 }
 
@@ -177,6 +198,9 @@ func (UnimplementedResourceMonitorServer) RegisterStackInvokeTransform(context.C
 }
 func (UnimplementedResourceMonitorServer) RegisterPackage(context.Context, *RegisterPackageRequest) (*RegisterPackageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterPackage not implemented")
+}
+func (UnimplementedResourceMonitorServer) WaitForShutdown(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WaitForShutdown not implemented")
 }
 func (UnimplementedResourceMonitorServer) mustEmbedUnimplementedResourceMonitorServer() {}
 
@@ -353,6 +377,24 @@ func _ResourceMonitor_RegisterPackage_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceMonitor_WaitForShutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).WaitForShutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceMonitor/WaitForShutdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).WaitForShutdown(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceMonitor_ServiceDesc is the grpc.ServiceDesc for ResourceMonitor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -395,6 +437,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterPackage",
 			Handler:    _ResourceMonitor_RegisterPackage_Handler,
+		},
+		{
+			MethodName: "WaitForShutdown",
+			Handler:    _ResourceMonitor_WaitForShutdown_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
