@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Send output about installing policy packs to stderr instead of stdout

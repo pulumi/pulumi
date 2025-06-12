@@ -1,5 +1,45 @@
 # Changelog
 
+## 3.176.0 (2025-06-12)
+
+
+### Features
+
+- [engine] Enable support for views by default
+  [#19813](https://github.com/pulumi/pulumi/pull/19813)
+
+- [cli/install] Resolve plugin download URLs by referencing the Pulumi Registry
+  [#19762](https://github.com/pulumi/pulumi/pull/19762)
+
+- [cli/plugin] Improve the error message when installing unknown resource plugins
+  [#19773](https://github.com/pulumi/pulumi/pull/19773)
+
+- [sdk/go] Add experimental policy as code SDK
+  [#19670](https://github.com/pulumi/pulumi/pull/19670)
+
+
+### Bug Fixes
+
+- [cli] Fix `package add` always reporting providers as crashing
+  [#19769](https://github.com/pulumi/pulumi/pull/19769)
+
+- [programgen] Fix panic in programgen
+
+- [cli/display] Send output about installing policy packs to stderr instead of stdout
+  [#19816](https://github.com/pulumi/pulumi/pull/19816)
+
+- [sdk/{go,nodejs,python}] Fix use of parameterized packages in mocks
+  [#19722](https://github.com/pulumi/pulumi/pull/19722)
+
+
+### Miscellaneous
+
+- [engine] Close SourceIterator
+  [#19740](https://github.com/pulumi/pulumi/pull/19740)
+
+- [pkg] Update go.opentelemetry.io/otel to v1.36.0
+  [#19822](https://github.com/pulumi/pulumi/pull/19822)
+
 ## 3.175.0 (2025-06-05)
 
 

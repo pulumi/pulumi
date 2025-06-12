@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Fix panic in programgen
