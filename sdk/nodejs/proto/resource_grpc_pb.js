@@ -296,6 +296,22 @@ registerPackage: {
     responseSerialize: serialize_pulumirpc_RegisterPackageResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterPackageResponse,
   },
+  // WaitForShutdown blocks until the resource monitor is canceled, which will
+// happen once all the steps have executed. This allows the language runtime
+// to stay running and handle callback requests, even after the user program
+// has completed. Runtime SDKs should call this after executing the user's
+// program. This can only be called once.
+waitForShutdown: {
+    path: '/pulumirpc.ResourceMonitor/WaitForShutdown',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
 };
 
 exports.ResourceMonitorClient = grpc.makeGenericClientConstructor(ResourceMonitorService);

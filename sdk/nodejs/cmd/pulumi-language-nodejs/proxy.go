@@ -247,3 +247,9 @@ func (p *monitorProxy) RegisterPackage(
 ) (*pulumirpc.RegisterPackageResponse, error) {
 	return p.target.RegisterPackage(ctx, req)
 }
+
+func (p *monitorProxy) WaitForShutdown(
+	ctx context.Context, req *emptypb.Empty,
+) (*emptypb.Empty, error) {
+	return p.target.WaitForShutdown(ctx, req)
+}

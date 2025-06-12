@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -512,6 +513,11 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 		return "", err
 	}
 	return resp.Ref, nil
+}
+
+func (rm *ResourceMonitor) WaitForShutdown(ctx context.Context) error {
+	_, err := rm.resmon.WaitForShutdown(ctx, &emptypb.Empty{})
+	return err
 }
 
 func prepareTestTimeout(timeout float64) string {
