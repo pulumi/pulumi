@@ -133,7 +133,7 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def WaitForShutdown(self, request, context):
-        """WaitForShutdown blocks until the resource monitor is canceled, which will
+        """WaitForShutdown blocks until the resource monitor is finished, which will
         happen once all the steps have executed. This allows the language runtime
         to stay running and handle callback requests, even after the user program
         has completed. Runtime SDKs should call this after executing the user's
