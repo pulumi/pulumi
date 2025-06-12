@@ -47,7 +47,7 @@ ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 
 .PHONY: build-proto build_proto
 PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
-PROTO_CKSUM = cksum ${PROTO_FILES} | sort --key=3
+PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
 build-proto: build_proto
 build_proto:
 	@printf "Protobuffer interfaces are ....... "
