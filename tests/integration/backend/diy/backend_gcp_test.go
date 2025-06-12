@@ -30,7 +30,7 @@ func TestGcpLogin(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	if _, ok := os.LookupEnv("GOOGLE_APPLICATION_CREDENTIALS"); !ok {
+	if creds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"); creds == "" {
 		t.Skip("GOOGLE_APPLICATION_CREDENTIALS not set, skipping test")
 	}
 

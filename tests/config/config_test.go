@@ -411,6 +411,9 @@ func TestConfigCommandsUsingEnvironments(t *testing.T) {
 	if getTestOrg() != pulumiTestOrg {
 		t.Skip("Skipping test because the required environment is in the moolumi org.")
 	}
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skip("Skipping test because PULUMI_ACCESS_TOKEN is not set.")
+	}
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
