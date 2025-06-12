@@ -1578,15 +1578,20 @@ func TestEvalSource(t *testing.T) {
 func TestResmonCancel(t *testing.T) {
 	t.Parallel()
 	done := make(chan error)
+	waitForShutdownChan := make(chan struct{}, 1)
+	programCompleteChan := make(chan error, 1)
 	rm := &resmon{
-		cancel: make(chan bool, 10),
-		done:   done,
+		cancel:              make(chan bool),
+		done:                done,
+		waitForShutdownChan: waitForShutdownChan,
+		programCompleteChan: programCompleteChan,
 	}
 	err := errors.New("my error")
 
 	go func() {
 		// This ensures that cancel doesn't hang.
-		done <- err
+		programCompleteChan <- err // Signal from the program to resmon that it completed.
+		done <- nil                // Signal from the GRPC server to resmon that it is done.
 	}()
 
 	// Cancel always returns nil or a joinErrors.
