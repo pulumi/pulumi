@@ -227,6 +227,9 @@ type LanguageTest struct {
 
 	// runs is a list of test runs to execute.
 	Runs []TestRun
+
+	// RunsShareSource indicates whether all runs share the same source code.
+	RunsShareSource bool
 }
 
 type TestRun struct {

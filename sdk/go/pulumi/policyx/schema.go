@@ -14,12 +14,17 @@
 
 package policyx
 
+import pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
 type EnforcementLevel int32
 
 const (
-	EnforcementLevelAdvisory  EnforcementLevel = 0 // Displayed to users, but does not block deployment.
-	EnforcementLevelMandatory EnforcementLevel = 1 // Stops deployment, cannot be overridden.
-	EnforcementLevelDisabled  EnforcementLevel = 2 // Disabled policies do not run during a deployment.
+	// Displayed to users, but does not block deployment.
+	EnforcementLevelAdvisory EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_ADVISORY)
+	// Stops deployment, cannot be overridden.
+	EnforcementLevelMandatory EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_MANDATORY)
+	// Disabled policies do not run during a deployment.
+	EnforcementLevelDisabled EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_DISABLED)
 )
 
 type PolicyConfigJSONSchemaTypes []PolicyConfigJSONSchemaType
