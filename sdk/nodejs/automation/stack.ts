@@ -662,7 +662,7 @@ Event: ${line}\n${e.toString()}`);
             throw new Error("can't enable `showSecrets` for remote workspaces");
         }
 
-	this.name = options.stackName;
+        this.name = options.stackName;
 
         const summary = await this.info(!this.isRemote && options?.showSecrets);
 
