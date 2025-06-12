@@ -295,6 +295,8 @@ type Deployment struct {
 	target *Target
 	// the old resource snapshot for comparison.
 	prev *Snapshot
+	// true if prev has resources that require a refresh before update.
+	hasRefreshBeforeUpdateResources bool
 	// a map of all old resources.
 	olds map[resource.URN]*resource.State
 	// a map of all old resource views, keyed by the owning resource's URN.
@@ -436,19 +438,22 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) error {
 	return nil
 }
 
-// buildResourceMaps produces maps of old resources and views from the previous snapshot for fast access.
-// It returns the old resources, a map of old resources keyed by URN, and a map of old resource views keyed by URN
-// of the resource they are a view of. It returns an error if there are duplicate resources in the previous snapshot.
+// buildResourceMaps produces maps of old resources and views from the previous snapshot for fast access. It returns the
+// old resources, whether the previous snapshot contained any resources that require a refresh before update, a map of
+// old resources keyed by URN, and a map of old resource views keyed by URN of the resource they are a view of. It
+// returns an error if there are duplicate resources in the previous snapshot.
 func buildResourceMaps(prev *Snapshot) (
 	[]*resource.State,
+	bool,
 	map[resource.URN]*resource.State,
 	map[resource.URN][]*resource.State,
 	error,
 ) {
+	var hasRefreshBeforeUpdateResources bool
 	olds := make(map[resource.URN]*resource.State)
 	oldViews := make(map[resource.URN][]*resource.State)
 	if prev == nil {
-		return nil, olds, oldViews, nil
+		return nil, hasRefreshBeforeUpdateResources, olds, oldViews, nil
 	}
 
 	for _, oldres := range prev.Resources {
@@ -457,9 +462,11 @@ func buildResourceMaps(prev *Snapshot) (
 			continue
 		}
 
+		hasRefreshBeforeUpdateResources = hasRefreshBeforeUpdateResources || oldres.RefreshBeforeUpdate
+
 		urn := oldres.URN
 		if olds[urn] != nil {
-			return nil, nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
+			return nil, false, nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
 		}
 		olds[urn] = oldres
 
@@ -469,7 +476,7 @@ func buildResourceMaps(prev *Snapshot) (
 		}
 	}
 
-	return prev.Resources, olds, oldViews, nil
+	return prev.Resources, hasRefreshBeforeUpdateResources, olds, oldViews, nil
 }
 
 // NewDeployment creates a new deployment from a resource snapshot plus a package to evaluate.
@@ -504,7 +511,7 @@ func NewDeployment(
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// deploymentExecutor.refresh for details.
-	oldResources, olds, oldViews, err := buildResourceMaps(prev)
+	oldResources, hasRefreshBeforeUpdateResources, olds, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -529,22 +536,23 @@ func NewDeployment(
 	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
 	deployment := &Deployment{
-		ctx:                  ctx,
-		opts:                 opts,
-		events:               events,
-		target:               target,
-		prev:                 prev,
-		plan:                 plan,
-		olds:                 olds,
-		oldViews:             oldViews,
-		source:               source,
-		localPolicyPackPaths: localPolicyPackPaths,
-		depGraph:             depGraph,
-		providers:            reg,
-		goals:                newGoals,
-		news:                 newResources,
-		newPlans:             newResourcePlan(target.Config),
-		reads:                reads,
+		ctx:                             ctx,
+		opts:                            opts,
+		events:                          events,
+		target:                          target,
+		prev:                            prev,
+		plan:                            plan,
+		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
+		olds:                            olds,
+		oldViews:                        oldViews,
+		source:                          source,
+		localPolicyPackPaths:            localPolicyPackPaths,
+		depGraph:                        depGraph,
+		providers:                       reg,
+		goals:                           newGoals,
+		news:                            newResources,
+		newPlans:                        newResourcePlan(target.Config),
+		reads:                           reads,
 	}
 
 	// Create a new resource status server for this deployment.

@@ -114,7 +114,7 @@ func NewImportDeployment(
 	}
 
 	// Produce a map of all old resources for fast access.
-	_, olds, oldViews, err := buildResourceMaps(prev)
+	_, hasRefreshBeforeUpdateResources, olds, oldViews, err := buildResourceMaps(prev)
 	if err != nil {
 		return nil, err
 	}
@@ -134,21 +134,22 @@ func NewImportDeployment(
 
 	// Return the prepared deployment.
 	return &Deployment{
-		ctx:          ctx,
-		opts:         opts,
-		events:       events,
-		target:       target,
-		prev:         prev,
-		olds:         olds,
-		oldViews:     oldViews,
-		goals:        newGoals,
-		imports:      imports,
-		isImport:     true,
-		schemaLoader: schema.NewPluginLoader(ctx.Host),
-		source:       NewErrorSource(projectName),
-		providers:    reg,
-		newPlans:     newResourcePlan(target.Config),
-		news:         &gsync.Map[resource.URN, *resource.State]{},
+		ctx:                             ctx,
+		opts:                            opts,
+		events:                          events,
+		target:                          target,
+		prev:                            prev,
+		hasRefreshBeforeUpdateResources: hasRefreshBeforeUpdateResources,
+		olds:                            olds,
+		oldViews:                        oldViews,
+		goals:                           newGoals,
+		imports:                         imports,
+		isImport:                        true,
+		schemaLoader:                    schema.NewPluginLoader(ctx.Host),
+		source:                          NewErrorSource(projectName),
+		providers:                       reg,
+		newPlans:                        newResourcePlan(target.Config),
+		news:                            &gsync.Map[resource.URN, *resource.State]{},
 	}, nil
 }
 
