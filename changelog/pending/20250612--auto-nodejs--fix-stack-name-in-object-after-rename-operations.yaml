@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/nodejs
+  description: Fix stack name in object after rename operations
