@@ -42,7 +42,7 @@ func BenchmarkLoadPackage(b *testing.B) {
 func TestGenEnum(t *testing.T) {
 	t.Parallel()
 	enum := model.NewEnumType(
-		"my.enum", model.StringType,
+		"my:enum", model.StringType,
 		[]cty.Value{
 			cty.StringVal("foo"),
 			cty.StringVal("bar"),
