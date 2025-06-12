@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: pkg
-  description: Update go.opentelemetry.io/otel to v1.36.0

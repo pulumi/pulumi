@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: engine
-  description: Close SourceIterator

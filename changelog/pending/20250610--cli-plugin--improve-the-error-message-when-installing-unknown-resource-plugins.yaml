@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/plugin
-  description: Improve the error message when installing unknown resource plugins

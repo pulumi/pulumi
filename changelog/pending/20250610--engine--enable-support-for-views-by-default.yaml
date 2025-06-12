@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Enable support for views by default

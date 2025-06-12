@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/install
-  description: Resolve plugin download URLs by referencing the Pulumi Registry
