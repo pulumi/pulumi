@@ -348,6 +348,12 @@ func (m *mockMonitor) RegisterStackInvokeTransform(ctx context.Context, in *pulu
 	panic("not implemented")
 }
 
+func (m *mockMonitor) RegisterLifecycleHook(ctx context.Context, in *pulumirpc.Callback,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	panic("not implemented")
+}
+
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterPackageResponse, error) {
@@ -355,6 +361,12 @@ func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.Registe
 	return &pulumirpc.RegisterPackageResponse{
 		Ref: "mock-uuid",
 	}, nil
+}
+
+func (m *mockMonitor) WaitForShutdown(ctx context.Context, req *emptypb.Empty,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	panic("not implemented")
 }
 
 type mockEngine struct {

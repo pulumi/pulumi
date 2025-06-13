@@ -62,12 +62,26 @@ class ResourceMonitorStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Register an invoke transform for the stack"""
+    RegisterLifecycleHook: grpc.UnaryUnaryMultiCallable[
+        pulumi.callback_pb2.Callback,
+        google.protobuf.empty_pb2.Empty,
+    ]
     RegisterPackage: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterPackageRequest,
         pulumi.resource_pb2.RegisterPackageResponse,
     ]
     """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     Multiple requests are idempotent and guaranteed to return the same result.
+    """
+    WaitForShutdown: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        google.protobuf.empty_pb2.Empty,
+    ]
+    """WaitForShutdown blocks until the resource monitor is finished, which will
+    happen once all the steps have executed. This allows the language runtime
+    to stay running and handle callback requests, even after the user program
+    has completed. Runtime SDKs should call this after executing the user's
+    program. This can only be called once.
     """
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
@@ -124,6 +138,12 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     ) -> google.protobuf.empty_pb2.Empty:
         """Register an invoke transform for the stack"""
     
+    def RegisterLifecycleHook(
+        self,
+        request: pulumi.callback_pb2.Callback,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty: ...
+    
     def RegisterPackage(
         self,
         request: pulumi.resource_pb2.RegisterPackageRequest,
@@ -131,6 +151,18 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     ) -> pulumi.resource_pb2.RegisterPackageResponse:
         """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
         Multiple requests are idempotent and guaranteed to return the same result.
+        """
+    
+    def WaitForShutdown(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: grpc.ServicerContext,
+    ) -> google.protobuf.empty_pb2.Empty:
+        """WaitForShutdown blocks until the resource monitor is finished, which will
+        happen once all the steps have executed. This allows the language runtime
+        to stay running and handle callback requests, even after the user program
+        has completed. Runtime SDKs should call this after executing the user's
+        program. This can only be called once.
         """
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

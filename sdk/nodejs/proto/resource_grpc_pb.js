@@ -283,6 +283,17 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  registerLifecycleHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_callback_pb.Callback,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_Callback,
+    requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 // Multiple requests are idempotent and guaranteed to return the same result.
 registerPackage: {
@@ -295,6 +306,22 @@ registerPackage: {
     requestDeserialize: deserialize_pulumirpc_RegisterPackageRequest,
     responseSerialize: serialize_pulumirpc_RegisterPackageResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterPackageResponse,
+  },
+  // WaitForShutdown blocks until the resource monitor is finished, which will
+// happen once all the steps have executed. This allows the language runtime
+// to stay running and handle callback requests, even after the user program
+// has completed. Runtime SDKs should call this after executing the user's
+// program. This can only be called once.
+waitForShutdown: {
+    path: '/pulumirpc.ResourceMonitor/WaitForShutdown',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 

@@ -242,8 +242,20 @@ func (p *monitorProxy) RegisterStackInvokeTransform(
 	return p.target.RegisterStackInvokeTransform(ctx, req)
 }
 
+func (p *monitorProxy) RegisterLifecycleHook(
+	ctx context.Context, req *pulumirpc.Callback,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterLifecycleHook(ctx, req)
+}
+
 func (p *monitorProxy) RegisterPackage(
 	ctx context.Context, req *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {
 	return p.target.RegisterPackage(ctx, req)
+}
+
+func (p *monitorProxy) WaitForShutdown(
+	ctx context.Context, req *emptypb.Empty,
+) (*emptypb.Empty, error) {
+	return p.target.WaitForShutdown(ctx, req)
 }

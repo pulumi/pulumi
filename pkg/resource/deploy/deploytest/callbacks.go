@@ -61,10 +61,19 @@ func (s *CallbackServer) Close() error {
 }
 
 func (s *CallbackServer) Allocate(
-	callback func(args []byte,
-	) (proto.Message, error),
+	callback func(args []byte) (proto.Message, error),
 ) (*pulumirpc.Callback, error) {
 	token := uuid.NewString()
+	return s.AllocateWithToken(callback, token)
+}
+
+func (s *CallbackServer) AllocateWithToken(
+	callback func(args []byte) (proto.Message, error),
+	token string,
+) (*pulumirpc.Callback, error) {
+	if token == "" {
+		token = uuid.NewString()
+	}
 	s.callbacks[token] = callback
 	return &pulumirpc.Callback{
 		Target: fmt.Sprintf("127.0.0.1:%d", s.handle.Port),

@@ -58,10 +58,20 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.RegisterLifecycleHook = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
+                request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
         self.RegisterPackage = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterPackage',
                 request_serializer=pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
                 response_deserializer=pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
+                )
+        self.WaitForShutdown = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/WaitForShutdown',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
 
@@ -119,9 +129,26 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RegisterLifecycleHook(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RegisterPackage(self, request, context):
         """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
         Multiple requests are idempotent and guaranteed to return the same result.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def WaitForShutdown(self, request, context):
+        """WaitForShutdown blocks until the resource monitor is finished, which will
+        happen once all the steps have executed. This allows the language runtime
+        to stay running and handle callback requests, even after the user program
+        has completed. Runtime SDKs should call this after executing the user's
+        program. This can only be called once.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -170,10 +197,20 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
+            'RegisterLifecycleHook': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterLifecycleHook,
+                    request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'RegisterPackage': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterPackage,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterPackageRequest.FromString,
                     response_serializer=pulumi_dot_resource__pb2.RegisterPackageResponse.SerializeToString,
+            ),
+            'WaitForShutdown': grpc.unary_unary_rpc_method_handler(
+                    servicer.WaitForShutdown,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -323,6 +360,23 @@ class ResourceMonitor(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def RegisterLifecycleHook(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
+            pulumi_dot_callback__pb2.Callback.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def RegisterPackage(request,
             target,
             options=(),
@@ -336,5 +390,22 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterPackage',
             pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
             pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def WaitForShutdown(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/WaitForShutdown',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

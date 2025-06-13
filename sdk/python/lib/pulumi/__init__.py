@@ -90,6 +90,14 @@ from .output import (
     deferred_output,
 )
 
+from .lifecycle_hooks import (
+    LifecycleHookArgs,
+    LifecycleHookFunction,
+    LifecycleHook,
+    LifecycleHookBinding,
+    LifecycleHookOptions,
+)
+
 from .log import (
     debug,
     info,
@@ -172,6 +180,12 @@ __all__ = [
     "UNKNOWN",
     "contains_unknowns",
     "deferred_output",
+    # lifecycle_hooks
+    "LifecycleHookArgs",
+    "LifecycleHookFunction",
+    "LifecycleHook",
+    "LifecycleHookBinding",
+    "LifecycleHookOptions",
     # log
     "debug",
     "info",
