@@ -17,6 +17,7 @@ import logging
 import sys
 import traceback
 import contextvars
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
 import grpc
@@ -77,6 +78,11 @@ class LanguageServer(LanguageRuntimeServicer):
             # The strategy here is derived from sdk/python/cmd/pulumi-language-python-exec
             result = language_pb2.RunResponse()
             loop = asyncio.new_event_loop()
+            if request.parallel is not None:
+                request.parallel = max(request.parallel, 1)
+                loop.set_default_executor(
+                    ThreadPoolExecutor(max_workers=request.parallel)
+                )
 
             loop.set_exception_handler(self._exception_handler)
             try:
