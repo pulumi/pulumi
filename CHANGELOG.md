@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.177.0 (2025-06-13)
+
+
+### Features
+
+- [sdk/yaml] Enable support for views by default
+  [#19847](https://github.com/pulumi/pulumi/pull/19847)
+
+
+### Bug Fixes
+
+- [auto/nodejs] Fix stack name in object after rename operations
+  [#19836](https://github.com/pulumi/pulumi/pull/19836)
+
+- [cli] Respect `--generate-only` when `convert`ing local SDKs
+
 ## 3.176.0 (2025-06-12)
 
 

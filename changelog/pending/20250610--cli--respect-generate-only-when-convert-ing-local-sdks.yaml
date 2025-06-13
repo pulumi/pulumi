@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Respect `--generate-only` when `convert`ing local SDKs
