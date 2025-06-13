@@ -703,9 +703,13 @@ func (eng *languageTestServer) RunLanguageTest(
 	// For each test run collect the packages reported by PCL
 	packages := []*schema.Package{}
 	for i, run := range test.Runs {
+		if i > 0 && test.RunsShareSource {
+			break
+		}
+
 		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.Runs) > 1 {
+		if len(test.Runs) > 1 && !test.RunsShareSource {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 		}
 		err = os.MkdirAll(sourceDir, 0o700)
@@ -715,7 +719,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 		// Find and copy the tests PCL code to the source dir
 		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.Runs) > 1 {
+		if len(test.Runs) > 1 && !test.RunsShareSource {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
 		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
@@ -946,34 +950,36 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	var result tests.LResult
 	for i, run := range test.Runs {
-		// Create a source directory for the test
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.Runs) > 1 {
-			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
-		}
-		err = os.MkdirAll(sourceDir, 0o700)
-		if err != nil {
-			return nil, fmt.Errorf("create source dir: %w", err)
-		}
-
-		// Find and copy the tests PCL code to the source dir
-		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.Runs) > 1 {
-			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
-		}
-		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("copy source test data: %w", err)
-		}
-
-		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-		if len(test.Runs) > 1 {
-			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
-		}
-		err = os.MkdirAll(projectDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create project dir: %w", err)
+		if i == 0 || !test.RunsShareSource {
+			// Create a source directory for the test
+			if len(test.Runs) > 1 && !test.RunsShareSource {
+				sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
+			}
+			err = os.MkdirAll(sourceDir, 0o700)
+			if err != nil {
+				return nil, fmt.Errorf("create source dir: %w", err)
+			}
+
+			// Find and copy the tests PCL code to the source dir
+			pclDir := filepath.Join("testdata", req.Test)
+			if len(test.Runs) > 1 && !test.RunsShareSource {
+				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
+			}
+			err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("copy source test data: %w", err)
+			}
+
+			// Create a directory for the project
+			if len(test.Runs) > 1 && !test.RunsShareSource {
+				projectDir = filepath.Join(projectDir, strconv.Itoa(i))
+			}
+			err = os.MkdirAll(projectDir, 0o755)
+			if err != nil {
+				return nil, fmt.Errorf("create project dir: %w", err)
+			}
 		}
 
 		// Generate the project and read in the Pulumi.yaml
@@ -996,53 +1002,55 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 		programPackages := program.PackageReferences()
 
-		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
-		var diagnostics hcl.Diagnostics
+		if i == 0 || !test.RunsShareSource {
+			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
+			var diagnostics hcl.Diagnostics
 
-		// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
-		// GenerateProject to generate a program for testing.
-		if programOverride, ok := token.ProgramOverrides[req.Test]; ok {
-			err = copyDirectory(os.DirFS(programOverride.Paths[i]), ".", projectDir, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("copy override testdata: %w", err)
-			}
-		} else {
-			diagnostics, err = languageClient.GenerateProject(
-				sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
-			}
-			if diagnostics.HasErrors() {
-				return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
-			}
-
-			// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
-			// them across here.
-			err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
-			if err != nil {
-				return nil, fmt.Errorf("copy testdata: %w", err)
-			}
-
-			snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-			if len(test.Runs) > 1 {
-				snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
-			}
-			projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
-			if err != nil {
-				return nil, fmt.Errorf("program snapshot creation: %w", err)
-			}
-			validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
-			if err != nil {
-				return nil, fmt.Errorf("program snapshot validation: %w", err)
-			}
-			if len(validations) > 0 {
-				return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-			}
-			// If we made a snapshot edit we can clean it up now
-			if projectDirSnapshot != projectDir {
-				err = os.RemoveAll(projectDirSnapshot)
+			// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
+			// GenerateProject to generate a program for testing.
+			if programOverride, ok := token.ProgramOverrides[req.Test]; ok {
+				err = copyDirectory(os.DirFS(programOverride.Paths[i]), ".", projectDir, nil, nil)
 				if err != nil {
-					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+					return nil, fmt.Errorf("copy override testdata: %w", err)
+				}
+			} else {
+				diagnostics, err = languageClient.GenerateProject(
+					sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
+				}
+				if diagnostics.HasErrors() {
+					return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
+				}
+
+				// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
+				// them across here.
+				err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
+				if err != nil {
+					return nil, fmt.Errorf("copy testdata: %w", err)
+				}
+
+				snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+				if len(test.Runs) > 1 && !test.RunsShareSource {
+					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+				}
+				projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+				if err != nil {
+					return nil, fmt.Errorf("program snapshot creation: %w", err)
+				}
+				validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+				if err != nil {
+					return nil, fmt.Errorf("program snapshot validation: %w", err)
+				}
+				if len(validations) > 0 {
+					return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
+				}
+				// If we made a snapshot edit we can clean it up now
+				if projectDirSnapshot != projectDir {
+					err = os.RemoveAll(projectDirSnapshot)
+					if err != nil {
+						return nil, fmt.Errorf("remove snapshot dir: %w", err)
+					}
 				}
 			}
 		}
