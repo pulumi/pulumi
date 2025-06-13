@@ -23,8 +23,9 @@ import (
 
 	mobytime "github.com/moby/moby/api/types/time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -72,7 +73,7 @@ func NewLogsCmd() *cobra.Command {
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				backend.DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				stackName,
 				cmdStack.LoadOnly,
 				opts,
@@ -128,7 +129,7 @@ func NewLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(ctx, stack.DefaultSecretsProvider, cfg, operations.LogQuery{
+				logs, err := backend.GetStackLogs(ctx, stack.DefaultSecretsProvider, s, cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})

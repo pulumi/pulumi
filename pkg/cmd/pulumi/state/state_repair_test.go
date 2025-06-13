@@ -282,21 +282,26 @@ func newStateRepairCmdFixture(
 		stderr: &bytes.Buffer{},
 	}
 
-	s := &backend.MockStack{
-		ImportDeploymentF: func(_ context.Context, d *apitype.UntypedDeployment) error {
-			err := json.Unmarshal(d.Deployment, &fx.imported)
-			assert.NoError(t, err)
-			return nil
-		},
-		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
-			sm := b64.NewBase64SecretsManager()
-			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}), nil
-		},
-	}
+	var s backend.Stack
 
 	b := &backend.MockBackend{
 		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
 			return s, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, d *apitype.UntypedDeployment) error {
+			err := json.Unmarshal(d.Deployment, &fx.imported)
+			assert.NoError(t, err)
+			return nil
+		},
+	}
+
+	s = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return b
+		},
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			sm := b64.NewBase64SecretsManager()
+			return deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}), nil
 		},
 	}
 

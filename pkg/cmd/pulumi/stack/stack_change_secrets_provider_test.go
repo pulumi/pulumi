@@ -96,18 +96,8 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	mockStack := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
-			}
-		},
-		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
-			return snapshot, nil
-		},
-		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
+	mockBackend := &backend.MockBackend{
+		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
 			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
 			if err != nil {
 				return nil, err
@@ -121,13 +111,29 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 				Deployment: json.RawMessage(data),
 			}, nil
 		},
-		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+		ImportDeploymentF: func(ctx context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
 			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 			if err != nil {
 				return err
 			}
 			snapshot = snap
 			return nil
+		},
+	}
+
+	mockStack := &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "testStack",
+				NameV:   tokens.MustParseStackName("testStack"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
 		},
 	}
 
@@ -198,18 +204,8 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	mockStack := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
-			}
-		},
-		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
-		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
-			return snapshot, nil
-		},
-		ExportDeploymentF: func(ctx context.Context) (*apitype.UntypedDeployment, error) {
+	mockBackend := &backend.MockBackend{
+		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
 			chk, err := stack.SerializeDeployment(ctx, snapshot, false)
 			if err != nil {
 				return nil, err
@@ -223,13 +219,29 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 				Deployment: json.RawMessage(data),
 			}, nil
 		},
-		ImportDeploymentF: func(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+		ImportDeploymentF: func(ctx context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
 			snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 			if err != nil {
 				return err
 			}
 			snapshot = snap
 			return nil
+		},
+	}
+
+	mockStack := &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "testStack",
+				NameV:   tokens.MustParseStackName("testStack"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+		SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
 		},
 		DefaultSecretManagerF: func(_ *workspace.ProjectStack) (secrets.Manager, error) {
 			return secretsManager, nil

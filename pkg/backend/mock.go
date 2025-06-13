@@ -564,28 +564,15 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 //
 
 type MockStack struct {
-	RefF            func() StackReference
-	ConfigLocationF func() StackConfigLocation
-	LoadRemoteF     func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
-	SaveRemoteF     func(ctx context.Context, project *workspace.ProjectStack) error
-	OrgNameF        func() string
-	ConfigF         func() config.Map
-	SnapshotF       func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
-	TagsF           func() map[apitype.StackTagName]string
-	BackendF        func() Backend
-	PreviewF        func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
-	UpdateF         func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	ImportF         func(ctx context.Context, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
-	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) error
-	RemoveF  func(ctx context.Context, force bool) (bool, error)
-	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
-	GetLogsF func(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
-		query operations.LogQuery) ([]operations.LogEntry, error)
-	ExportDeploymentF     func(ctx context.Context) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF     func(ctx context.Context, deployment *apitype.UntypedDeployment) error
+	RefF                  func() StackReference
+	ConfigLocationF       func() StackConfigLocation
+	LoadRemoteF           func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
+	SaveRemoteF           func(ctx context.Context, project *workspace.ProjectStack) error
+	OrgNameF              func() string
+	ConfigF               func() config.Map
+	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	TagsF                 func() map[apitype.StackTagName]string
+	BackendF              func() Backend
 	DefaultSecretManagerF func(info *workspace.ProjectStack) (secrets.Manager, error)
 }
 
@@ -653,92 +640,6 @@ func (ms *MockStack) Backend() Backend {
 		return ms.BackendF()
 	}
 	panic("not implemented: MockStack.Backend")
-}
-
-func (ms *MockStack) Preview(
-	ctx context.Context,
-	op UpdateOperation, events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	if ms.PreviewF != nil {
-		return ms.PreviewF(ctx, op)
-	}
-	panic("not implemented: MockStack.Preview")
-}
-
-func (ms *MockStack) Update(ctx context.Context,
-	op UpdateOperation, events chan<- engine.Event,
-) (sdkDisplay.ResourceChanges, error) {
-	if ms.UpdateF != nil {
-		return ms.UpdateF(ctx, op)
-	}
-	panic("not implemented: MockStack.Update")
-}
-
-func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
-	imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
-	if ms.ImportF != nil {
-		return ms.ImportF(ctx, op, imports)
-	}
-	panic("not implemented: MockStack.Import")
-}
-
-func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
-	if ms.RefreshF != nil {
-		return ms.RefreshF(ctx, op)
-	}
-	panic("not implemented: MockStack.Refresh")
-}
-
-func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, error) {
-	if ms.DestroyF != nil {
-		return ms.DestroyF(ctx, op)
-	}
-	panic("not implemented: MockStack.Destroy")
-}
-
-func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) error {
-	if ms.WatchF != nil {
-		return ms.WatchF(ctx, op, paths)
-	}
-	panic("not implemented: MockStack.Watch")
-}
-
-func (ms *MockStack) Remove(ctx context.Context, force bool) (bool, error) {
-	if ms.RemoveF != nil {
-		return ms.RemoveF(ctx, force)
-	}
-	panic("not implemented: MockStack.Remove")
-}
-
-func (ms *MockStack) Rename(ctx context.Context, newName tokens.QName) (StackReference, error) {
-	if ms.RenameF != nil {
-		return ms.RenameF(ctx, newName)
-	}
-	panic("not implemented: MockStack.Rename")
-}
-
-func (ms *MockStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	if ms.GetLogsF != nil {
-		return ms.GetLogsF(ctx, secretsProvider, cfg, query)
-	}
-	panic("not implemented: MockStack.GetLogs")
-}
-
-func (ms *MockStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
-	if ms.ExportDeploymentF != nil {
-		return ms.ExportDeploymentF(ctx)
-	}
-	panic("not implemented: MockStack.ExportDeployment")
-}
-
-func (ms *MockStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	if ms.ImportDeploymentF != nil {
-		return ms.ImportDeploymentF(ctx, deployment)
-	}
-	panic("not implemented: MockStack.ImportDeployment")
 }
 
 func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {

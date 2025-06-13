@@ -302,7 +302,7 @@ func NewRefreshCmd() *cobra.Command {
 				RefreshProgram:            runProgram,
 			}
 
-			changes, err := s.Refresh(ctx, backend.UpdateOperation{
+			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

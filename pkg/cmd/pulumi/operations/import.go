@@ -443,7 +443,7 @@ func getCurrentDeploymentForStack(
 	ctx context.Context,
 	s backend.Stack,
 ) (*deploy.Snapshot, error) {
-	deployment, err := s.ExportDeployment(ctx)
+	deployment, err := backend.ExportStackDeployment(ctx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -918,7 +918,7 @@ func NewImportCmd() *cobra.Command {
 				Experimental:         env.Experimental.Value(),
 			}
 
-			_, err = s.Import(ctx, backend.UpdateOperation{
+			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

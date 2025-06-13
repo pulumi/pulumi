@@ -71,7 +71,7 @@ func newStackExportCmd() *cobra.Command {
 			// Export the latest version of the checkpoint by default. Otherwise, we require that
 			// the backend/stack implements the ability the export previous checkpoints.
 			if version == "" {
-				deployment, err = s.ExportDeployment(ctx)
+				deployment, err = backend.ExportStackDeployment(ctx, s)
 				if err != nil {
 					return err
 				}

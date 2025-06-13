@@ -85,8 +85,24 @@ func TestNoProject(t *testing.T) {
 func TestStateDeleteURN(t *testing.T) {
 	t.Parallel()
 
+	var mockStack *backend.MockStack
+
 	var savedDeployment *apitype.UntypedDeployment
-	mockStack := &backend.MockStack{
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+			savedDeployment = deployment
+			return nil
+		},
+	}
+
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
@@ -95,16 +111,6 @@ func TestStateDeleteURN(t *testing.T) {
 					},
 				},
 			}, nil
-		},
-		ImportDeploymentF: func(_ context.Context, deployment *apitype.UntypedDeployment) error {
-			savedDeployment = deployment
-			return nil
-		},
-	}
-	mockBackend := &backend.MockBackend{
-		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
-			assert.Equal(t, "stk", ref.String())
-			return mockStack, nil
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
@@ -191,8 +197,24 @@ func TestStateDeleteDependency(t *testing.T) {
 func TestStateDeleteProtected(t *testing.T) {
 	t.Parallel()
 
+	var mockStack *backend.MockStack
+
 	var savedDeployment *apitype.UntypedDeployment
-	mockStack := &backend.MockStack{
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+			savedDeployment = deployment
+			return nil
+		},
+	}
+
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
 				Resources: []*resource.State{
@@ -202,16 +224,6 @@ func TestStateDeleteProtected(t *testing.T) {
 					},
 				},
 			}, nil
-		},
-		ImportDeploymentF: func(_ context.Context, deployment *apitype.UntypedDeployment) error {
-			savedDeployment = deployment
-			return nil
-		},
-	}
-	mockBackend := &backend.MockBackend{
-		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
-			assert.Equal(t, "stk", ref.String())
-			return mockStack, nil
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
@@ -265,20 +277,26 @@ func TestStateDeleteAll(t *testing.T) {
 		},
 	}
 
+	var mockStack *backend.MockStack
+
 	var mockDeployment *apitype.UntypedDeployment
-	mockStack := &backend.MockStack{
-		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
-			return snapshot, nil
-		},
-		ImportDeploymentF: func(_ context.Context, deployment *apitype.UntypedDeployment) error {
-			mockDeployment = deployment
-			return nil
-		},
-	}
 	mockBackend := &backend.MockBackend{
 		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
 			assert.Equal(t, "stk", ref.String())
 			return mockStack, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+			mockDeployment = deployment
+			return nil
+		},
+	}
+
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return snapshot, nil
 		},
 	}
 	ws := &pkgWorkspace.MockContext{

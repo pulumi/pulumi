@@ -942,7 +942,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			Version:    apitype.DeploymentSchemaVersionCurrent,
 			Deployment: jsonDeployment,
 		}
-		err = s.ImportDeployment(ctx, untypedDeployment)
+		err = backend.ImportStackDeployment(ctx, s, untypedDeployment)
 		if err != nil {
 			return nil, fmt.Errorf("import deployment: %w", err)
 		}
@@ -1379,7 +1379,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			eventsCts.Fulfill(events)
 		}()
 
-		plan, previewChanges, res := s.Preview(ctx, updateOperation, eventSink)
+		plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
 		close(eventSink)
 		events, err := eventsCts.Promise().Result(ctx)
 		if err != nil {
@@ -1409,7 +1409,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 			eventsCts.Fulfill(events)
 		}()
-		changes, res := s.Update(ctx, updateOperation, eventSink)
+		changes, res := backend.UpdateStack(ctx, s, updateOperation, eventSink)
 		close(eventSink)
 		events, err = eventsCts.Promise().Result(ctx)
 		if err != nil {

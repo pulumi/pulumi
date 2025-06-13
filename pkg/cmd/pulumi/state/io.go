@@ -178,7 +178,7 @@ func TotalStateEdit(
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	}
-	return s.ImportDeployment(ctx, &dep)
+	return backend.ImportStackDeployment(ctx, s, &dep)
 }
 
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the

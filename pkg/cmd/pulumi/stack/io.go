@@ -541,7 +541,7 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 	}
 
 	// Now perform the deployment.
-	if err = s.ImportDeployment(ctx, &dep); err != nil {
+	if err = backend.ImportStackDeployment(ctx, s, &dep); err != nil {
 		return fmt.Errorf("could not import deployment: %w", err)
 	}
 	return nil

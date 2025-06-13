@@ -303,7 +303,7 @@ func NewDestroyCmd() *cobra.Command {
 				DestroyProgram:            runProgram,
 			}
 
-			_, destroyErr := s.Destroy(ctx, backend.UpdateOperation{
+			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -323,7 +323,7 @@ func NewDestroyCmd() *cobra.Command {
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
 				} else if remove {
-					_, err = s.Remove(ctx, false)
+					_, err = backend.RemoveStack(ctx, s, false)
 					if err != nil {
 						return err
 					}

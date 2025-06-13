@@ -235,7 +235,7 @@ func TestPostgresBackend(t *testing.T) {
 	assert.NotNil(t, exportedDeployment.Deployment, "Deployment data should not be nil")
 
 	// Test stack-level export
-	stackExport, err := stack1.ExportDeployment(ctx)
+	stackExport, err := backend.ExportStackDeployment(ctx, stack1)
 	require.NoError(t, err, "Failed to export stack deployment")
 	require.NotNil(t, stackExport, "Stack export should not be nil")
 
@@ -244,7 +244,7 @@ func TestPostgresBackend(t *testing.T) {
 	require.NoError(t, err, "Failed to import deployment")
 
 	// Test stack-level import
-	err = stack2.ImportDeployment(ctx, exportedDeployment)
+	err = backend.ImportStackDeployment(ctx, stack2, exportedDeployment)
 	require.NoError(t, err, "Failed to import stack deployment")
 
 	// Test history and update information
@@ -376,7 +376,7 @@ func TestPostgresBackend(t *testing.T) {
 
 	// Test stack-level rename
 	anotherNewName := tokens.QName("another-" + renamedStackName)
-	anotherNewRef, err := stack2.Rename(ctx, anotherNewName)
+	anotherNewRef, err := backend.RenameStack(ctx, stack2, anotherNewName)
 	if err != nil {
 		t.Logf("Stack-level rename failed: %v", err)
 		// Continue with original reference for cleanup
@@ -403,7 +403,7 @@ func TestPostgresBackend(t *testing.T) {
 	assert.False(t, removed1, "Stack 1 should be removed without confirmation")
 
 	// Test stack removal (stack level)
-	removed2, err := stack2.Remove(ctx, true)
+	removed2, err := backend.RemoveStack(ctx, stack2, true)
 	require.NoError(t, err, "Failed to remove stack 2")
 	assert.False(t, removed2, "Stack 2 should be removed without confirmation")
 

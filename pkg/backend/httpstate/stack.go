@@ -23,9 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -231,68 +228,6 @@ func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 
 	s.snapshot.Store(&snap)
 	return snap, nil
-}
-
-func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
-	return backend.RemoveStack(ctx, s, force)
-}
-
-func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.StackReference, error) {
-	return backend.RenameStack(ctx, s, newName)
-}
-
-func (s *cloudStack) Preview(
-	ctx context.Context,
-	op backend.UpdateOperation,
-	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	return backend.PreviewStack(ctx, s, op, events)
-}
-
-func (s *cloudStack) Update(
-	ctx context.Context,
-	op backend.UpdateOperation,
-	events chan<- engine.Event,
-) (sdkDisplay.ResourceChanges,
-	error,
-) {
-	return backend.UpdateStack(ctx, s, op, events)
-}
-
-func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
-	imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
-	return backend.ImportStack(ctx, s, op, imports)
-}
-
-func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	error,
-) {
-	return backend.RefreshStack(ctx, s, op)
-}
-
-func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	error,
-) {
-	return backend.DestroyStack(ctx, s, op)
-}
-
-func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) error {
-	return backend.WatchStack(ctx, s, op, paths)
-}
-
-func (s *cloudStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
-}
-
-func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
-	return backend.ExportStackDeployment(ctx, s)
-}
-
-func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
 func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
