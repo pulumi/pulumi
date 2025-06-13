@@ -79,6 +79,10 @@ func TestAzureCloudManager(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKey(t *testing.T) {
 	ctx := context.Background()
+
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -105,6 +109,9 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 func TestAzureKeyVaultExistingState(t *testing.T) {
 	ctx := context.Background()
 
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	//nolint:lll // this includes a base64 encoded key
 	cloudState := `{
                     "url": "azurekeyvault://pulumi-testing.vault.azure.net/keys/test-key",
@@ -129,6 +136,10 @@ func TestAzureKeyVaultExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyEditProjectStack(t *testing.T) {
+	ctx := context.Background()
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -152,6 +163,9 @@ func TestAzureKeyEditProjectStack(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 	ctx := context.Background()
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -182,6 +196,10 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultAutoFix15329(t *testing.T) {
 	ctx := context.Background()
+
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	// https://github.com/pulumi/pulumi/issues/15329 result in keys like the following being written to state. We can auto-detect these because they aren't valid base64.
 	//nolint:lll // this includes a base64 encoded key
 	encryptedKey := "nLdkXrvtOYvgaVHn8FrdALMtFjgV67KoGIb6kWwz5Weo/yxAVyK7Rl0rtNxoIDnOvkvRQdCDTSrq1q8w6XZU/cvZ5FQMTMN3l1I28r7YV4HIBzDxx0G964DrfUSlxh1GhpQogcLiYor9MCGEidd5BdAqxKMHZJXUGJLCoUuuA3kWBwkeAowstpkumfXzxgxocq2BIkrfPqkfSetmLQajhBNn9dAIgxhaIaM+ubjOAFHkvYlrujE8dY7b2wNVa2ua/3tYfyIBYyg8jFRdOjxXXpXs7cZcRD3oQxa3F1DxYPl/IxuQdyHWxvmYH9SXVKn/B1z7JcOraZDTAptDgc3B0Q=="

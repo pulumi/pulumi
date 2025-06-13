@@ -720,6 +720,9 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skip("Skipping test because PULUMI_ACCESS_TOKEN is not set")
+	}
 	tests := []struct {
 		argument string
 		prompted string
