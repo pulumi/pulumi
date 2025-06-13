@@ -25,6 +25,8 @@ const (
 	EnforcementLevelMandatory EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_MANDATORY)
 	// Disabled policies do not run during a deployment.
 	EnforcementLevelDisabled EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_DISABLED)
+	// Remediated policies actually fixes problems instead of issuing diagnostics
+	EnforcementLevelRemediate EnforcementLevel = EnforcementLevel(pulumirpc.EnforcementLevel_REMEDIATE)
 )
 
 type PolicyConfigJSONSchemaTypes []PolicyConfigJSONSchemaType

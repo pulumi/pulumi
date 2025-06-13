@@ -170,6 +170,22 @@ func (p *SimpleProvider) Create(
 	}, nil
 }
 
+func (p *SimpleProvider) Update(
+	_ context.Context, req plugin.UpdateRequest,
+) (plugin.UpdateResponse, error) {
+	// URN should be of the form "simple:index:Resource"
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.UpdateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.UpdateResponse{
+		Properties: req.NewInputs,
+		Status:     resource.StatusOK,
+	}, nil
+}
+
 func (p *SimpleProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	ver := semver.MustParse("2.0.0")
 	return workspace.PluginInfo{

@@ -245,6 +245,85 @@ func (srv *analyzerServer) Analyze(
 	}, nil
 }
 
+func (srv *analyzerServer) Remediate(
+	ctx context.Context, req *pulumirpc.AnalyzeRequest,
+) (*pulumirpc.RemediateResponse, error) {
+	var rs []*pulumirpc.Remediation
+
+	pm, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+		Label:            srv.policyPack.Name() + ".remediate",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal properties for policy pack %q: %w", srv.policyPack.Name(), err)
+	}
+	props := resource.FromResourcePropertyMap(pm)
+
+	for _, p := range srv.policyPack.Policies() {
+		switch p := p.(type) {
+		case ResourceRemediationPolicy:
+			config, hasConfig := srv.config[p.Name()]
+
+			disabled := false
+			if hasConfig {
+				disabled = config.EnforcementLevel == EnforcementLevelDisabled
+			}
+
+			if !disabled {
+				args := ResourceRemediationArgs{
+					Resource: AnalyzerResource{
+						Type:                 req.GetType(),
+						Properties:           props,
+						URN:                  req.GetUrn(),
+						Name:                 req.GetName(),
+						Options:              pulumi.ResourceOptions{},
+						Provider:             AnalyzerProviderResource{},
+						Parent:               "",  /* TODO */
+						Dependencies:         nil, /* TODO */
+						PropertyDependencies: nil, /* TODO */
+					},
+					Config: config.Properties,
+				}
+
+				newProps, err := p.Remediate(ctx, args)
+				if err != nil {
+					return nil, fmt.Errorf("failed to remediate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
+				}
+
+				if newProps != nil {
+					props = *newProps
+					pm = resource.ToResourcePropertyMap(props)
+					rpcProps, err := plugin.MarshalProperties(pm, plugin.MarshalOptions{
+						Label:            srv.policyPack.Name() + ".remediate",
+						KeepUnknowns:     true,
+						KeepSecrets:      true,
+						KeepResources:    true,
+						KeepOutputValues: true,
+					})
+					if err != nil {
+						return nil, fmt.Errorf("failed to marshal properties for policy pack %q: %w", srv.policyPack.Name(), err)
+					}
+
+					rs = append(rs, &pulumirpc.Remediation{
+						PolicyName:        p.Name(),
+						Description:       p.Description(),
+						PolicyPackName:    srv.policyPack.Name(),
+						PolicyPackVersion: srv.policyPack.Version().String(),
+						Properties:        rpcProps,
+					})
+				}
+			}
+		}
+	}
+
+	return &pulumirpc.RemediateResponse{
+		Remediations: rs,
+	}, nil
+}
+
 func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.AnalyzeStackRequest) (*pulumirpc.
 	AnalyzeResponse,
 	error,
