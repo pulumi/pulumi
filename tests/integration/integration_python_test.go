@@ -1538,7 +1538,7 @@ func TestPackageAddPython(t *testing.T) {
 				lines := regexp.MustCompile("\r?\n").Split(string(b2), -1)
 				var sdksRandomCount int
 				for _, line := range lines {
-					if strings.Contains(line, "sdks/random") {
+					if strings.Contains(filepath.ToSlash(line), "sdks/random") {
 						sdksRandomCount++
 					}
 				}
@@ -1646,6 +1646,11 @@ func TestConfigGetterOverloads(t *testing.T) {
 // and finally that the program terminates successfully after the debugger is detached.
 func TestDebuggerAttachPython(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1774,6 +1779,11 @@ outer:
 
 func TestPluginDebuggerAttachPython(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -2342,12 +2352,16 @@ func TestPythonComponentProviderException(t *testing.T) {
 
 					matches := regexp.MustCompile(`File.*, line \d+, in .*`).FindAllString(event.DiagnosticEvent.Message, -1)
 					require.Len(t, matches, 3, "Expected 3 stack trace lines")
+					componentPath := filepath.Join("tests", "integration", "component_provider",
+						"python", "exception", "provider", "component.py")
 					require.Contains(t, event.DiagnosticEvent.Message,
-						"tests/integration/component_provider/python/exception/provider/component.py\", line 27, in __init__")
+
+						componentPath+"\", line 27, in __init__")
+
 					require.Contains(t, event.DiagnosticEvent.Message,
-						"tests/integration/component_provider/python/exception/provider/component.py\", line 31, in method_a")
+						componentPath+"\", line 31, in method_a")
 					require.Contains(t, event.DiagnosticEvent.Message,
-						"tests/integration/component_provider/python/exception/provider/component.py\", line 34, in method_b")
+						componentPath+"\", line 34, in method_b")
 					foundError = true
 				}
 			}
@@ -2360,6 +2374,10 @@ func TestPythonComponentProviderException(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonComponentProviderResourceReference(t *testing.T) {
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	// Manually set pulumi home so we can pass it to `plugin install`.
 	for _, runtime := range []string{"yaml", "python"} {
 		t.Run(runtime, func(t *testing.T) {

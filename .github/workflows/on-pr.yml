@@ -37,7 +37,7 @@ jobs:
   inspect:
     name: Inspect changed files
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: dorny/paths-filter@v3
         id: changes
