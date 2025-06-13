@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix policy pack versions for remediations from python policy packs

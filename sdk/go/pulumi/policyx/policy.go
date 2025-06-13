@@ -68,6 +68,14 @@ type ResourceValidationArgs struct {
 	Config map[string]any
 }
 
+// ResourceValidationArgs contains the arguments passed to a resource validation policy.
+type ResourceRemediationArgs struct {
+	// Resource is the resource being validated.
+	Resource AnalyzerResource
+	// Config is the policy configuration.
+	Config map[string]any
+}
+
 // StackValidationArgs contains the arguments passed to a stack validation policy.
 type StackValidationArgs struct {
 	// Manager is the policy manager.
@@ -96,6 +104,13 @@ type ResourceValidationPolicy interface {
 	Validate(ctx context.Context, args ResourceValidationArgs) error
 }
 
+// ResourceRemediationPolicy is a policy that remediates individual resources.
+type ResourceRemediationPolicy interface {
+	Policy
+	// Validate validates a resource.
+	Remediate(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
+}
+
 // StackValidationPolicy is a policy that validates the entire stack.
 type StackValidationPolicy interface {
 	Policy
@@ -111,6 +126,14 @@ type ResourceValidationPolicyArgs struct {
 	EnforcementLevel EnforcementLevel
 	// ValidateResource is the validation function for the policy.
 	ValidateResource func(ctx context.Context, args ResourceValidationArgs) error
+}
+
+// ResourceRemediationArgs contains the arguments for creating a resource remediation policy.
+type ResourceRemediationPolicyArgs struct {
+	// Description is the description of the policy.
+	Description string
+	// RemediateResource is the remediation function for the policy.
+	RemediateResource func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
 }
 
 // resourceValidationPolicy is an implementation of ResourceValidationPolicy.
@@ -162,5 +185,57 @@ func NewResourceValidationPolicy(
 		description:      args.Description,
 		enforcementLevel: args.EnforcementLevel,
 		validateResource: args.ValidateResource,
+	}
+}
+
+// resourceRemediationPolicy is an implementation of ResourceRemediationPolicy.
+type resourceRemediationPolicy struct {
+	name              string
+	description       string
+	remediateResource func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
+}
+
+// isPolicy marks resourceRemediationPolicy as a Policy.
+func (p *resourceRemediationPolicy) isPolicy() {}
+
+// Name returns the name of the policy.
+func (p *resourceRemediationPolicy) Name() string {
+	return p.name
+}
+
+// Description returns the description of the policy.
+func (p *resourceRemediationPolicy) Description() string {
+	return p.description
+}
+
+// EnforcementLevel returns the enforcement level of the policy.
+func (p *resourceRemediationPolicy) EnforcementLevel() EnforcementLevel {
+	return EnforcementLevelRemediate
+}
+
+// ConfigSchema returns the configuration schema for the policy, if any.
+func (p *resourceRemediationPolicy) ConfigSchema() *PolicyConfigSchema {
+	return nil
+}
+
+// Validate validates a resource using the policy's validation function.
+func (p *resourceRemediationPolicy) Remediate(
+	ctx context.Context, args ResourceRemediationArgs,
+) (*property.Map, error) {
+	if p.remediateResource == nil {
+		return nil, nil
+	}
+	return p.remediateResource(ctx, args)
+}
+
+// NewResourceRemediationPolicy creates a new ResourceRemediationPolicy with the given name and arguments.
+func NewResourceRemediationPolicy(
+	name string,
+	args ResourceRemediationPolicyArgs,
+) ResourceRemediationPolicy {
+	return &resourceRemediationPolicy{
+		name:              name,
+		description:       args.Description,
+		remediateResource: args.RemediateResource,
 	}
 }

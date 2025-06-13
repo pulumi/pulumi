@@ -448,11 +448,17 @@ func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
 			return nil, err
 		}
 
+		// The version from PulumiPolicy.yaml is used, if set, over the version from the diagnostic.
+		policyPackVersion := r.GetPolicyPackVersion()
+		if a.version != "" {
+			policyPackVersion = a.version
+		}
+
 		results[i] = Remediation{
 			PolicyName:        r.GetPolicyName(),
 			Description:       r.GetDescription(),
 			PolicyPackName:    r.GetPolicyPackName(),
-			PolicyPackVersion: r.GetPolicyPackVersion(),
+			PolicyPackVersion: policyPackVersion,
 			Properties:        tprops,
 			Diagnostic:        r.GetDiagnostic(),
 		}
