@@ -303,6 +303,7 @@ func runConvert(
 				filepath.Join(targetDirectory, "sdks"),
 				targetDirectory,
 				packageBlockDescriptors,
+				generateOnly,
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)
@@ -531,6 +532,7 @@ func generateAndLinkSdksForPackages(
 	sdkTargetDirectory string,
 	convertOutputDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
+	generateOnly bool,
 ) error {
 	for _, pkg := range pkgs {
 		tempOut, err := os.MkdirTemp("", "gen-sdk-for-dependency-")
@@ -590,7 +592,16 @@ func generateAndLinkSdksForPackages(
 		}
 
 		sdkRelPath := filepath.Join("sdks", pkg.Parameterization.Name)
-		err = packagecmd.LinkPackage(ws, language, "./", pkgSchema, sdkRelPath)
+		err = packagecmd.LinkPackage(&packagecmd.LinkPackageContext{
+			Workspace: ws,
+			Language:  language,
+			Root:      "./",
+			Pkg:       pkgSchema,
+			Out:       sdkRelPath,
+
+			// Don't install the SDK if we've been told to `--generate-only`.
+			Install: !generateOnly,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to link SDK to project: %w", err)
 		}
