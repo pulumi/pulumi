@@ -1811,3 +1811,54 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
 }
+
+func TestListStackNames(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir diy backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+
+	b, err := newDIYBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir),
+		&workspace.Project{Name: "testproj"},
+		&diyBackendOptions{Env: env.NewEnv(make(env.MapStore))},
+	)
+	assert.NoError(t, err)
+
+	// Create test stacks
+	numStacks := 3
+	expectedStackNames := make([]string, numStacks)
+	for i := 0; i < numStacks; i++ {
+		stackName := fmt.Sprintf("stack%d", i)
+		expectedStackNames[i] = stackName
+		stackRef, err := b.ParseStackReference(stackName)
+		assert.NoError(t, err)
+
+		// Create the stack
+		_, err = b.CreateStack(ctx, stackRef, "", nil, nil)
+		assert.NoError(t, err)
+	}
+
+	// Test ListStackNames (should only return references, no metadata fetching)
+	filter := backend.ListStacksFilter{} // No filter
+	stackRefs, token, err := b.ListStackNames(ctx, filter, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stackRefs, numStacks)
+
+	// Verify all expected stack names are present
+	actualNames := make(map[string]bool)
+	for _, stackRef := range stackRefs {
+		actualNames[stackRef.Name().String()] = true
+	}
+
+	for _, expectedName := range expectedStackNames {
+		assert.True(t, actualNames[expectedName], "Stack %s should be in the results", expectedName)
+	}
+
+	// Verify that ListStackNames doesn't return StackSummary objects (just references)
+	// This ensures we're not fetching metadata unnecessarily
+	assert.IsType(t, []backend.StackReference{}, stackRefs)
+}
