@@ -36,7 +36,6 @@ import (
 	"testing"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
@@ -1092,7 +1091,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	})
 	if postFn != nil {
 		if postErr := postFn(err); postErr != nil {
-			return multierror.Append(err, postErr)
+			return errors.Join(err, postErr)
 		}
 	}
 	return err

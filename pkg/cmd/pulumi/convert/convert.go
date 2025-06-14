@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/spf13/afero"
@@ -162,7 +161,7 @@ func pclGenerateProject(
 	// And then we return the combined diagnostics and errors
 	var err error
 	if bindErr != nil || copyErr != nil {
-		err = multierror.Append(bindErr, copyErr)
+		err = errors.Join(bindErr, copyErr)
 	}
 	return diagnostics, err
 }
