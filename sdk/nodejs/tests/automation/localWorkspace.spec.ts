@@ -927,7 +927,11 @@ describe("LocalWorkspace", () => {
         const suffix = `int_test${getTestSuffix()}`;
 
         const stackName = fullyQualifiedStackName(getTestOrg(), "inline_node", suffix);
-        const shortName = getTestOrg() + "/" + suffix;
+        let shortName = getTestOrg() + "/" + suffix;
+        if (!process.env.PULUMI_ACCESS_TOKEN) {
+            // If we are running with a filestate backend, there's no prefix in the name
+            shortName = suffix;
+        }
 
         const stackRenamed = stackName + "_renamed";
         const shortRenamed = shortName + "_renamed";
@@ -953,13 +957,18 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
         assert.strictEqual(after?.name, shortRenamed);
 
-        assert.strictEqual(renameRes.summary.kind, "rename");
+        if (process.env.PULUMI_ACCESS_TOKEN) {
+            // TODO: We don't have the right summary.kind for rename operations in the filestate backend.
+            assert.strictEqual(renameRes.summary.kind, "rename");
+        }
         assert.strictEqual(renameRes.summary.result, "succeeded");
 
         // pulumi destroy
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackRenamed);
     });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication

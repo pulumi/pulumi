@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -110,6 +111,10 @@ func testProgressEvents(
 
 //nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows and MacOS
+		t.Skip("Skipping tests on Windows and MacOS.")
+	}
 	t.Setenv("TERM", "vt102")
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))

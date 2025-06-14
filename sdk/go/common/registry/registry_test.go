@@ -31,6 +31,7 @@ type mockRegistry struct {
 	getPackage func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
+	searchByName func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 }
 
 func (r mockRegistry) GetPackage(
@@ -39,8 +40,8 @@ func (r mockRegistry) GetPackage(
 	return r.getPackage(ctx, source, publisher, name, version)
 }
 
-func (mockRegistry) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-	panic("unimplemented")
+func (r mockRegistry) SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+	return r.searchByName(ctx, name)
 }
 
 func TestOnDemandRegistry(t *testing.T) {

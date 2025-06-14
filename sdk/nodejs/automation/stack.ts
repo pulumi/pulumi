@@ -47,7 +47,7 @@ export class Stack {
     /**
      * The name identifying the stack.
      */
-    readonly name: string;
+    name: string;
 
     /**
      * The {@link Workspace} the stack was created from.
@@ -661,6 +661,8 @@ Event: ${line}\n${e.toString()}`);
         if (this.isRemote && options?.showSecrets) {
             throw new Error("can't enable `showSecrets` for remote workspaces");
         }
+
+        this.name = options.stackName;
 
         const summary = await this.info(!this.isRemote && options?.showSecrets);
 

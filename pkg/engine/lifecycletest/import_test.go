@@ -112,9 +112,12 @@ func TestImportOption(t *testing.T) {
 				Inputs:   inputs,
 				ImportID: importID,
 			})
-			assert.NoError(t, err)
-			assert.Equal(t, expectedID, resp.ID)
-			assert.Equal(t, expectedOutputs, resp.Outputs)
+			if err == nil {
+				assert.Equal(t, expectedID, resp.ID)
+				assert.Equal(t, expectedOutputs, resp.Outputs)
+			} else {
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			}
 		}
 		return nil
 	})
@@ -1480,13 +1483,11 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"foo": resource.NewStringProperty("baz"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
 			Inputs:   inputs,
 			ImportID: importID,
 		})
-		// We don't expect to get here, the engine never replies to resource registrations that fail unless
-		// continue-with-error is set.
-		assert.Fail(t, "unexpected program execution")
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)

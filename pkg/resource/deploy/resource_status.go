@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 
 	"github.com/gofrs/uuid"
@@ -30,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -92,10 +90,6 @@ type stepInfo struct {
 
 // newResourceStatusServer creates a new resource status server and starts listening for incoming requests.
 func newResourceStatusServer(deployment *Deployment) (*resourceStatusServer, error) {
-	if !cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_VIEWS_PREVIEW")) {
-		return nil, nil
-	}
-
 	cancel := make(chan bool)
 
 	rs := &resourceStatusServer{

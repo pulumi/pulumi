@@ -159,11 +159,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	// Before doing anything else, optionally refresh each resource in the base checkpoint. If we're using
 	// refresh programs then we don't do this, we just run the step generator in refresh mode later.
 	if ex.deployment.opts.Refresh && !ex.deployment.opts.RefreshProgram {
-		if err := ex.refresh(callerCtx); err != nil {
+		if err := ex.refresh(callerCtx, false /*refreshBeforeUpdateOnly*/); err != nil {
 			return nil, err
 		}
 		if ex.deployment.opts.RefreshOnly {
 			return nil, nil
+		}
+	} else if !ex.deployment.opts.Refresh &&
+		!ex.deployment.opts.RefreshProgram &&
+		ex.deployment.hasRefreshBeforeUpdateResources {
+		// If there are resources that require a refresh before update, run a refresh for those resources.
+		if err := ex.refresh(callerCtx, true /*refreshBeforeUpdateOnly*/); err != nil {
+			return nil, err
 		}
 	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) > 0 && !ex.deployment.opts.DryRun {
 		// Print a warning for users that there are pending operations.
@@ -181,6 +188,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if err != nil {
 		return nil, err
 	}
+	defer src.Close()
 
 	// Set up a step generator for this deployment.
 	mode := updateMode
@@ -628,7 +636,7 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context) (*Plan,
 }
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.
-func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
+func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUpdateOnly bool) error {
 	prev := ex.deployment.prev
 	if prev == nil || len(prev.Resources) == 0 {
 		return nil
@@ -656,6 +664,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		excludesActual := ex.deployment.opts.Excludes
 
 		for _, res := range prev.Resources {
+			// If we're only doing RefreshBeforeUpdate refreshes and the resource isn't
+			// marked as such, skip it.
+			if refreshBeforeUpdateOnly && !res.RefreshBeforeUpdate {
+				continue
+			}
+
 			// If the resource is known to be excluded, we can skip this step
 			// entirely at this point.
 			if excludesActual.Contains(res.URN) {
@@ -704,6 +718,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context) error {
 		targetsActual := ex.deployment.opts.Targets
 
 		for _, res := range prev.Resources {
+			// If we're only doing RefreshBeforeUpdate refreshes and the resource isn't
+			// marked as such, skip it.
+			if refreshBeforeUpdateOnly && !res.RefreshBeforeUpdate {
+				continue
+			}
+
 			// If the resource is a view, skip it. Only the owning resource
 			// should have a refresh step.
 			if res.ViewOf != "" {
@@ -809,6 +829,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	resources := []*resource.State{}
 	referenceable := make(map[resource.URN]bool)
 	olds := make(map[resource.URN]*resource.State)
+	oldViews := make(map[resource.URN][]*resource.State)
 	for _, s := range ex.deployment.prev.Resources {
 		var old, new *resource.State
 		if step, has := resourceToStep[s]; has {
@@ -873,13 +894,20 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		// Do not record resources that are pending deletion in the "olds" lookup table.
 		if !new.Delete {
 			olds[new.URN] = new
+
+			// If this resource is a view of another resource, add it to the list of views for that resource.
+			if new.ViewOf != "" {
+				oldViews[new.ViewOf] = append(oldViews[new.ViewOf], new)
+			}
 		}
 	}
 
 	undangleParentResources(olds, resources)
 
 	ex.deployment.prev.Resources = resources
-	ex.deployment.olds, ex.deployment.depGraph = olds, graph.NewDependencyGraph(resources)
+	ex.deployment.depGraph = graph.NewDependencyGraph(resources)
+	ex.deployment.olds = olds
+	ex.deployment.oldViews = oldViews
 }
 
 func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {

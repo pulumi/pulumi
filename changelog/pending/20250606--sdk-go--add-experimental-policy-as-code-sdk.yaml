@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Add experimental policy as code SDK

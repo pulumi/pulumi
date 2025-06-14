@@ -49,14 +49,6 @@ type Registry interface {
 	SearchByName(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 }
 
-var ErrNotFound = NotFoundError{}
-
-type NotFoundError struct{}
-
-func (err NotFoundError) Error() string {
-	return "not found"
-}
-
 type registryKey struct{}
 
 func Set(ctx context.Context, registry Registry) context.Context {

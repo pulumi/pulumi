@@ -2246,7 +2246,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
-	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir/package.json"))
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
 	assert.NoError(t, err)
 	packagesJSON := make(map[string]any)
 	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
@@ -2260,6 +2260,55 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	assert.True(t, ok)
 
 	assert.Equal(t, "file:sdks/supabase", cf)
+
+	// Assert that we have a node_modules directory as a result of a successful install (since we didn't pass
+	// `--generate-only`).
+	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
+	_, err = os.Stat(nodeModulesPath)
+	assert.NoError(t, err, "node_modules directory should exist after pulumi convert")
+}
+
+//nolint:paralleltest // mutates environment
+func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+
+	var err error
+	templatePath, err := filepath.Abs("convertfromterraform")
+	require.NoError(t, err)
+	err = fsutil.CopyFile(e.CWD, templatePath, nil)
+	require.NoError(t, err)
+
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand(
+		"pulumi", "convert",
+		"--from", "terraform",
+		"--language", "typescript",
+		"--out", "nodedir",
+		"--generate-only",
+	)
+
+	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
+	assert.NoError(t, err)
+	packagesJSON := make(map[string]any)
+	err = json.Unmarshal(packagesJSONBytes, &packagesJSON)
+	assert.NoError(t, err)
+
+	dependencies, ok := packagesJSON["dependencies"].(map[string]any)
+	assert.True(t, ok)
+	cf, ok := dependencies["@pulumi/supabase"]
+	assert.True(t, ok)
+	cf, ok = cf.(string)
+	assert.True(t, ok)
+
+	assert.Equal(t, "file:sdks/supabase", cf)
+
+	// Assert that we don't have a node_modules directory, since we passed `--generate-only`.
+	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
+	_, err = os.Stat(nodeModulesPath)
+	// It must be a patherror
+	var pathErr *os.PathError
+	assert.ErrorAs(t, err, &pathErr, "node_modules directory should not exist after pulumi convert --generate-only")
 }
 
 func TestConstructFailuresNode(t *testing.T) {

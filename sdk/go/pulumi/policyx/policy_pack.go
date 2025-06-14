@@ -27,8 +27,8 @@ import (
 // HandshakeRequest is sent by the engine to the analyzer to establish a connection and provide
 // necessary information for the analyzer to start up.
 type HandshakeRequest struct {
-	// The "host" of the analyzer. This is the engine that is running the analyzer.
-	Host pulumix.Engine
+	// The engine that is running the analyzer.
+	Engine pulumix.Engine
 	// A *root directory* where the analyzer's binary, `PulumiPolicy.yaml`, or other identifying source code is located.
 	// In the event that the analyzer is *not* being booted by the engine (e.g. in the case that the engine has been
 	// asked to attach to an existing running analyzer instance via a host/port number), this field will be empty.

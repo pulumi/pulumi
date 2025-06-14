@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix `package add` always reporting providers as crashing

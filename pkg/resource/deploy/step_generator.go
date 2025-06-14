@@ -676,15 +676,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
-	// If we're doing refreshes (pulumi up --refresh) then this is the point where we need to fire off a refresh
-	// step for this resource, to call back into GenerateSteps later.
+	// If we're doing refreshes then this is the point where we need to fire off a refresh step for this
+	// resource, to call back into GenerateSteps later.
 	//
 	// Only need to do refresh steps here for custom non-provider resources that have an old state.
-	//
-	// Even if refreshes are not requested on the command line, provider may have requested them for this resource
-	// and recorded a RefreshBeforeUpdate flag in the state. This is respected as well.
 	if old != nil &&
-		(sg.refresh || old.RefreshBeforeUpdate) &&
+		sg.refresh &&
 		goal.Custom &&
 		!providers.IsProviderType(goal.Type) {
 		cts := &promise.CompletionSource[*resource.State]{}

@@ -71,18 +71,18 @@ func (srv *analyzerServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.AnalyzerHandshakeRequest,
 ) (*pulumirpc.AnalyzerHandshakeResponse, error) {
-	host, err := pulumix.NewEngine(req.GetEngineAddress())
+	engine, err := pulumix.NewEngine(req.GetEngineAddress())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create host: %w", err)
+		return nil, fmt.Errorf("failed to create engine: %w", err)
 	}
 
-	srv.policyPack, err = srv.policyPackFactory(host)
+	srv.policyPack, err = srv.policyPackFactory(engine)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy pack: %w", err)
 	}
 
 	_, err = srv.policyPack.Handshake(ctx, HandshakeRequest{
-		Host:             host,
+		Engine:           engine,
 		RootDirectory:    req.RootDirectory,
 		ProgramDirectory: req.ProgramDirectory,
 	})
@@ -176,59 +176,66 @@ func (srv *analyzerServer) Analyze(
 	for _, p := range srv.policyPack.Policies() {
 		switch p := p.(type) {
 		case ResourceValidationPolicy:
-			config := srv.config[p.Name()]
+			config, hasConfig := srv.config[p.Name()]
 
-			policyManager.reportViolation = func(message string, urn string) {
-				if urn == "" {
-					urn = req.GetUrn()
+			enforcementLevel := p.EnforcementLevel()
+			if hasConfig {
+				enforcementLevel = config.EnforcementLevel
+			}
+
+			if enforcementLevel != EnforcementLevelDisabled {
+				policyManager.reportViolation = func(message string, urn string) {
+					if urn == "" {
+						urn = req.GetUrn()
+					}
+
+					violationMessage := p.Description()
+					if message != "" {
+						violationMessage += "\n" + message
+					}
+
+					ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
+						PolicyName:        p.Name(),
+						PolicyPackName:    srv.policyPack.Name(),
+						PolicyPackVersion: srv.policyPack.Version().String(),
+						Description:       p.Description(),
+						Message:           violationMessage,
+						EnforcementLevel:  pulumirpc.EnforcementLevel(enforcementLevel),
+						Urn:               urn,
+					})
 				}
 
-				violationMessage := p.Description()
-				if message != "" {
-					violationMessage += "\n" + message
-				}
-
-				ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
-					PolicyName:        p.Name(),
-					PolicyPackName:    srv.policyPack.Name(),
-					PolicyPackVersion: srv.policyPack.Version().String(),
-					Description:       p.Description(),
-					Message:           violationMessage,
-					EnforcementLevel:  pulumirpc.EnforcementLevel(p.EnforcementLevel()),
-					Urn:               urn,
+				pm, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+					Label:            fmt.Sprintf("%s.%s.analyze", srv.policyPack.Name(), p.Name()),
+					KeepUnknowns:     true,
+					KeepSecrets:      true,
+					KeepResources:    true,
+					KeepOutputValues: true,
 				})
-			}
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", p.Name(), err)
+				}
 
-			pm, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-				Label:            fmt.Sprintf("%s.%s.analyze", srv.policyPack.Name(), p.Name()),
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", p.Name(), err)
-			}
+				args := ResourceValidationArgs{
+					Manager: policyManager,
+					Config:  config.Properties,
+					Resource: AnalyzerResource{
+						Type:                 req.GetType(),
+						Properties:           resource.FromResourcePropertyMap(pm),
+						URN:                  req.GetUrn(),
+						Name:                 req.GetName(),
+						Options:              pulumi.ResourceOptions{},
+						Provider:             AnalyzerProviderResource{},
+						Parent:               "",  /* TODO */
+						Dependencies:         nil, /* TODO */
+						PropertyDependencies: nil, /* TODO */
+					},
+				}
 
-			args := ResourceValidationArgs{
-				Manager: policyManager,
-				Config:  config.Properties,
-				Resource: AnalyzerResource{
-					Type:                 req.GetType(),
-					Properties:           resource.FromResourcePropertyMap(pm),
-					URN:                  req.GetUrn(),
-					Name:                 req.GetName(),
-					Options:              pulumi.ResourceOptions{},
-					Provider:             AnalyzerProviderResource{},
-					Parent:               "",  /* TODO */
-					Dependencies:         nil, /* TODO */
-					PropertyDependencies: nil, /* TODO */
-				},
-			}
-
-			err = p.Validate(ctx, args)
-			if err != nil {
-				return nil, fmt.Errorf("failed to validate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
+				err = p.Validate(ctx, args)
+				if err != nil {
+					return nil, fmt.Errorf("failed to validate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
+				}
 			}
 		}
 	}

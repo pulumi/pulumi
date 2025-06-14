@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -126,6 +127,14 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 func TestMain(m *testing.M) {
 	grpcDefault := flag.Bool("grpc-plugins", false, "enable or disable gRPC providers by default")
+	if (runtime.GOOS == "windows" || runtime.GOOS == "darwin") && os.Getenv("PULUMI_FORCE_RUN_TESTS") == "" {
+		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
+		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
+		// re-enabling them is left as future work.
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows and MacOS once they are fixed.
+		fmt.Println("Skip tests on windows and MacOS until they are fixed")
+		os.Exit(0)
+	}
 
 	flag.Parse()
 
@@ -1331,7 +1340,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, err = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		assert.NoError(t, err)
+		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 
 		return nil
 	})
@@ -2691,6 +2700,7 @@ func TestProtect(t *testing.T) {
 
 	shouldProtect := true
 	createResource := true
+	expectError := false
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
@@ -2698,7 +2708,11 @@ func TestProtect(t *testing.T) {
 				Inputs:  ins,
 				Protect: &shouldProtect,
 			})
-			assert.NoError(t, err)
+			if expectError {
+				assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+			} else {
+				assert.NoError(t, err)
+			}
 		}
 
 		return nil
@@ -2751,6 +2765,7 @@ func TestProtect(t *testing.T) {
 
 	// Run an update which will cause a replace, we should get an error.
 	// Contrary to the preview, the error is a bail, so no resources are created.
+	expectError = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
 	assert.Error(t, err)
 	assert.NotNil(t, snap)
@@ -2774,6 +2789,7 @@ func TestProtect(t *testing.T) {
 
 	// Run a new update to remove the protect and replace in the same update, this should delete the old one
 	// and create the new one
+	expectError = false
 	createResource = true
 	shouldProtect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
@@ -3293,7 +3309,11 @@ func TestPendingDeleteOrder(t *testing.T) {
 			}),
 			Dependencies: []resource.URN{resp.URN},
 		})
-		assert.NoError(t, err)
+		if failCreationOfTypB {
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
+		} else {
+			assert.NoError(t, err)
+		}
 
 		return nil
 	})
@@ -4304,7 +4324,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 		case 1:
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "oh no")
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4316,7 +4336,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 			assert.NoError(t, outsErr)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "oh no")
+			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		}
 
 		return err

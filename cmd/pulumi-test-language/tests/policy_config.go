@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -67,12 +68,15 @@ func init() {
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
 					changes display.ResourceChanges, events []engine.Event,
 				) {
+					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, "true")
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
 					changes display.ResourceChanges, events []engine.Event,
 				) {
+					require.ErrorContains(l, err,
+						"BAIL: resource urn:pulumi:test::policy-config::simple:index:Resource::res is invalid")
 					validate(l, events, "true")
 				},
 			},
@@ -88,12 +92,15 @@ func init() {
 					l *L, projectDirectory string, err error, plan *deploy.Plan,
 					changes display.ResourceChanges, events []engine.Event,
 				) {
+					require.ErrorContains(l, err, "BAIL: step generator errored")
 					validate(l, events, "false")
 				},
 				Assert: func(l *L,
 					projectDirectory string, err error, snap *deploy.Snapshot,
 					changes display.ResourceChanges, events []engine.Event,
 				) {
+					require.ErrorContains(l, err,
+						"BAIL: resource urn:pulumi:test::policy-config::simple:index:Resource::res is invalid")
 					validate(l, events, "false")
 				},
 			},

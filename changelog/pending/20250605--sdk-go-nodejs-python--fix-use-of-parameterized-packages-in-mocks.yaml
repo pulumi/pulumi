@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go,nodejs,python
-  description: Fix use of parameterized packages in mocks
