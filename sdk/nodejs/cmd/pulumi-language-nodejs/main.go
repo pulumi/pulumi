@@ -1506,16 +1506,6 @@ func (host *nodeLanguageHost) RunPlugin(
 		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+opts.tsconfigpath)
 	}
 
-	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-	if runPath == "" {
-		runPath = defaultRunPluginPath
-	}
-
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
-	if err != nil {
-		return err
-	}
-
 	args := []string{}
 	var port int
 	if req.GetAttachDebugger() {
@@ -1527,16 +1517,28 @@ func (host *nodeLanguageHost) RunPlugin(
 		args = append(args, debugArgs...)
 	}
 
-	args = append(args, runPath)
-
 	nodeargs, err := shlex.Split(opts.nodeargs)
 	if err != nil {
 		return err
 	}
-
-	nodeargs = append(nodeargs, req.Info.ProgramDirectory)
-
 	args = append(args, nodeargs...)
+
+	if req.Kind == "resource" {
+		runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+		if runPath == "" {
+			runPath = defaultRunPluginPath
+		}
+
+		runPath, err := locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
+		if err != nil {
+			return err
+		}
+		args = append(args, runPath)
+		args = append(args, req.Info.ProgramDirectory)
+	} else {
+		args = append(args, filepath.Join(req.Info.ProgramDirectory, req.Info.EntryPoint))
+	}
+
 	args = append(args, req.Args...)
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
@@ -1557,18 +1559,22 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 		return cmd.Wait()
 	}
-	if err := run(); err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			// The program ran, but exited with a non-zero error code.  This will happen often, since user
-			// errors will trigger this.  So, the error message should look as nice as possible.
-			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				return fmt.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+
+	if err = run(); err != nil {
+		var exiterr *exec.ExitError
+		if errors.As(err, &exiterr) {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				return server.Send(&pulumirpc.RunPluginResponse{
+					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
+					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
+				})
 			}
-			return fmt.Errorf("Program exited unexpectedly: %w", exiterr)
+			if len(exiterr.Stderr) > 0 {
+				return fmt.Errorf("program exited unexpectedly: %w: %s", exiterr, exiterr.Stderr)
+			}
+			return fmt.Errorf("program exited unexpectedly: %w", exiterr)
 		}
-		// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-		return fmt.Errorf("Problem executing plugin program (could not run language executor): %w", err)
+		return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
 	}
 
 	if err := closer.Close(); err != nil {

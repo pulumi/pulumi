@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: `pulumi plugin run` can now run source based plugins (i.e. folders with a PulumiPlugin.yaml file)
