@@ -1,0 +1,5 @@
+name: l2-component-call-non-object-returns
+runtime:
+  name: nodejs
+  options:
+    typescript: false
