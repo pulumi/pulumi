@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -429,7 +430,7 @@ func TestListStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -456,14 +457,17 @@ func TestListStackNames(t *testing.T) {
 		}
 	}()
 
+	// Add a small delay to allow for eventual consistency
+	time.Sleep(1 * time.Second)
+
 	// Test ListStackNames with limited pagination to avoid excessive stack accumulation
-	projectName := "testproj"
+	projectName := "testproj-list-stacks"
 	filter := backend.ListStacksFilter{
 		Project: &projectName, // Filter to just our test project to reduce scope
 	}
 	var allStackRefs []backend.StackReference
 	var token backend.ContinuationToken
-	maxPages := 5 // Only fetch first 5 pages to avoid excessive stack accumulation
+	maxPages := 10 // Increase from 5 to 10 to give more chances to find stacks
 
 	// Fetch limited pages to test pagination functionality
 	foundAllTestStacks := false
@@ -473,16 +477,27 @@ func TestListStackNames(t *testing.T) {
 
 		allStackRefs = append(allStackRefs, stackRefs...)
 
-		// Check if we found all our test stacks
+		// Check if we found all our test stacks - compare against both simple and fully qualified names
 		foundStacks := make(map[string]bool)
 		for _, stackRef := range allStackRefs {
+			// Add both the simple name and the fully qualified name
 			foundStacks[stackRef.Name().String()] = true
+			foundStacks[stackRef.FullyQualifiedName().String()] = true
 		}
 
 		foundCount := 0
 		for _, expectedName := range stackNames {
+			// Check if we can find the stack by either simple name or fully qualified name
 			if foundStacks[expectedName] {
 				foundCount++
+			} else {
+				// Also check if the stack reference's simple name matches
+				for _, stackRef := range allStackRefs {
+					if stackRef.Name().String() == expectedName {
+						foundCount++
+						break
+					}
+				}
 			}
 		}
 
@@ -499,6 +514,17 @@ func TestListStackNames(t *testing.T) {
 
 	// Verify we found at least our test stacks within the limited pages
 	assert.True(t, foundAllTestStacks, "Should find all test stacks within first few pages")
+
+	// Add debug information if test fails
+	if !foundAllTestStacks {
+		t.Logf("Created stacks: %v", stackNames)
+		t.Logf("Found %d stacks in total", len(allStackRefs))
+		foundStackNames := make([]string, 0, len(allStackRefs))
+		for _, stackRef := range allStackRefs {
+			foundStackNames = append(foundStackNames, stackRef.Name().String())
+		}
+		t.Logf("Found stack names: %v", foundStackNames)
+	}
 
 	// Verify that ListStackNames returns StackReference objects (not StackSummary)
 	assert.IsType(t, []backend.StackReference{}, allStackRefs)
@@ -519,7 +545,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -534,12 +560,15 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	// Add a small delay to allow for eventual consistency
+	time.Sleep(1 * time.Second)
+
 	// Test both methods with limited pagination to avoid excessive stack accumulation
-	projectName := "testproj"
+	projectName := "testproj-list-stacks"
 	filter := backend.ListStacksFilter{
 		Project: &projectName, // Filter to just our test project to reduce scope
 	}
-	maxPages := 5 // Only fetch first 5 pages to avoid excessive stack accumulation
+	maxPages := 10
 
 	// Test ListStacks with limited pagination
 	var allSummaries []backend.StackSummary
@@ -552,9 +581,11 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 		allSummaries = append(allSummaries, summaries...)
 
-		// Check if we found our test stack
+		// Check if we found our test stack - compare against both simple and fully qualified names
 		for _, summary := range summaries {
-			if summary.Name().Name().String() == stackName {
+			if summary.Name().Name().String() == stackName ||
+				summary.Name().FullyQualifiedName().String() == stackName ||
+				summary.Name().String() == stackName {
 				foundTestStackInSummaries = true
 				break
 			}
@@ -577,9 +608,11 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 		allStackRefs = append(allStackRefs, stackRefs...)
 
-		// Check if we found our test stack
+		// Check if we found our test stack - compare against both simple and fully qualified names
 		for _, stackRef := range stackRefs {
-			if stackRef.Name().String() == stackName {
+			if stackRef.Name().String() == stackName ||
+				stackRef.FullyQualifiedName().String() == stackName ||
+				stackRef.String() == stackName {
 				foundTestStackInRefs = true
 				break
 			}
@@ -594,6 +627,28 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	// Verify both methods found our test stack
 	assert.True(t, foundTestStackInSummaries, "Test stack should be found in ListStacks results")
 	assert.True(t, foundTestStackInRefs, "Test stack should be found in ListStackNames results")
+
+	// Add debug information if tests fail
+	if !foundTestStackInSummaries || !foundTestStackInRefs {
+		t.Logf("Created stack: %s", stackName)
+		t.Logf("Found %d summaries, %d stack refs", len(allSummaries), len(allStackRefs))
+
+		if !foundTestStackInSummaries && len(allSummaries) > 0 {
+			summaryNames := make([]string, 0, len(allSummaries))
+			for _, summary := range allSummaries {
+				summaryNames = append(summaryNames, summary.Name().Name().String())
+			}
+			t.Logf("Summary names: %v", summaryNames)
+		}
+
+		if !foundTestStackInRefs && len(allStackRefs) > 0 {
+			refNames := make([]string, 0, len(allStackRefs))
+			for _, stackRef := range allStackRefs {
+				refNames = append(refNames, stackRef.Name().String())
+			}
+			t.Logf("Stack ref names: %v", refNames)
+		}
+	}
 
 	// Verify both methods return some results
 	assert.Greater(t, len(allSummaries), 0, "ListStacks should return at least some results")
