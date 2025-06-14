@@ -100,7 +100,12 @@ from pulumi.automation._remote_stack import RemoteStack
 
 from ._cmd import CommandResult, OnOutput, PulumiCommand
 
-from ._config import ConfigMap, ConfigValue
+from ._config import (
+    ConfigMap,
+    ConfigValue,
+    ConfigOptions,
+    GetAllConfigOptions,
+)
 
 from .errors import (
     StackNotFoundError,
@@ -181,6 +186,8 @@ __all__ = [
     # _config
     "ConfigMap",
     "ConfigValue",
+    "ConfigOptions",
+    "GetAllConfigOptions",
     # errors
     "StackNotFoundError",
     "StackAlreadyExistsError",

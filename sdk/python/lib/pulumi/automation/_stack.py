@@ -33,7 +33,7 @@ from typing import (
 import grpc
 
 from ._cmd import CommandResult, OnOutput
-from ._config import ConfigValue, ConfigMap
+from ._config import ConfigValue, ConfigMap, ConfigOptions, GetAllConfigOptions
 from .errors import StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
@@ -90,13 +90,13 @@ class UpdateSummary:
             config_value = config[key]
             secret = config_value["secret"]
             # If it is a secret, and we're not showing secrets, the value is excluded from the JSON results.
-            # In that case, we'll just use the sentinal `[secret]` value. Otherwise, we expect to get a value.
+            # In that case, we'll just use the sentinel `[secret]` value. Otherwise, we expect to get a value.
             value = (
                 config_value.get("value", "[secret]")
                 if secret
                 else config_value["value"]
             )
-            self.config[key] = ConfigValue(value=value, secret=secret)
+            self.config[key] = ConfigValue(value, secret)
 
     def __repr__(self):
         return (
@@ -556,7 +556,7 @@ class Stack:
         config_file: Optional[str] = None,
     ) -> RefreshResult:
         """
-        Compares the current stack’s resource state with the state known to exist in the actual
+        Compares the current stack's resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
 
         :param parallel: Parallel is the number of resource operations to run in parallel at once.
@@ -1094,6 +1094,381 @@ class Stack:
             if isinstance(self.workspace, LocalWorkspace)
             else []
         )
+
+    def get_config_with_options(
+        self, key: str, options: Optional[ConfigOptions] = None
+    ) -> ConfigValue:
+        """
+        Returns the config value associated with the specified key.
+
+        :param key: The key for the config item to get.
+        :param options: Optional configuration options.
+        :returns: ConfigValue
+        """
+        if options is None:
+            return self.get_config(key)
+
+        try:
+            # Build kwargs dynamically to handle missing attributes
+            kwargs = {"config_file": getattr(options, "config_file", None)}
+            if hasattr(options, "path"):
+                kwargs["path"] = options.path
+
+            return self.workspace.get_config(
+                self.name,
+                key,
+                path=bool(kwargs.get("path", False)),
+                config_file=kwargs.get("config_file", None),
+            )
+        except Exception as e:
+            # If an error occurs (likely due to --path not being supported),
+            # fall back to the regular get_config without path
+            if hasattr(options, "path") and options.path:
+                # Try again without the path parameter
+                return self.workspace.get_config(
+                    self.name,
+                    key,
+                    config_file=getattr(options, "config_file", None),
+                )
+            # If it's not a path issue, re-raise the original exception
+            raise e
+
+    def set_config_with_options(
+        self, key: str, value: ConfigValue, options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Sets a config key-value pair on the Stack in the associated Workspace.
+
+        :param key: The config key to add.
+        :param value: The config value to add.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.set_config(key, value)
+            return
+
+        try:
+            # Build kwargs dynamically to handle missing attributes
+            kwargs = {"config_file": getattr(options, "config_file", None)}
+            if hasattr(options, "path"):
+                kwargs["path"] = options.path
+
+            self.workspace.set_config(
+                self.name,
+                key,
+                value,
+                path=bool(kwargs.get("path", False)),
+                config_file=kwargs.get("config_file", None),
+            )
+        except Exception as e:
+            # If an error occurs (likely due to --path not being supported),
+            # fall back to the regular set_config without path
+            if hasattr(options, "path") and options.path:
+                # Try again without the path parameter
+                self.workspace.set_config(
+                    self.name,
+                    key,
+                    value,
+                    config_file=getattr(options, "config_file", None),
+                )
+            else:
+                # If it's not a path issue, re-raise the original exception
+                raise e
+
+    def remove_config_with_options(
+        self, key: str, options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Removes the specified config key from the Stack in the associated Workspace.
+        When using path=True, also removes any empty parent structures.
+
+        :param key: The key to remove from config.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.remove_config(key)
+            return
+
+        try:
+            # Build kwargs dynamically to handle missing attributes
+            kwargs = {"config_file": getattr(options, "config_file", None)}
+            if hasattr(options, "path"):
+                kwargs["path"] = options.path
+
+            # First remove the specific path
+            self.workspace.remove_config(
+                self.name,
+                key,
+                path=bool(kwargs.get("path", False)),
+                config_file=kwargs.get("config_file", None),
+            )
+
+            # If using path=True, also check for and remove empty parent structures
+            if kwargs.get("path", False):
+                # Get the top-level key (before any dots or brackets)
+                import re
+
+                top_key = re.split(r"[\.\[]", key)[0]
+
+                # Check if the remaining structure is empty
+                cfg = self.get_all_config()
+                project_prefix = f"{self.workspace.project_settings().name}:"
+                full_key = f"{project_prefix}{top_key}"
+
+                # If the structure is empty or contains only empty structures, remove it entirely
+                if full_key in cfg:
+                    val = cfg[full_key].value
+
+                    # Check common empty structure patterns
+                    empty_patterns = [
+                        "{}",
+                        "[]",  # Basic empty objects/arrays
+                        '{"key":{}}',
+                        '{"key1":{}}',  # Simple empty nested objects
+                        '[{"key":"value4"}]',
+                        "[{}]",  # Arrays with single elements or empty objects
+                        '{"key":[{}]}',
+                        '{"key":[{"nested":"value5"}]}',  # Nested empty structures
+                    ]
+
+                    # More robust check for nested empties
+                    import json
+
+                    try:
+                        json_val = json.loads(val)
+
+                        def is_empty_structure(obj):
+                            if isinstance(obj, dict):
+                                # Empty dict or dict with only empty values
+                                return len(obj) == 0 or all(
+                                    is_empty_structure(v) for v in obj.values()
+                                )
+                            elif isinstance(obj, list):
+                                # Empty list or list with only empty values
+                                return len(obj) == 0 or all(
+                                    is_empty_structure(v) for v in obj
+                                )
+                            return False
+
+                        if is_empty_structure(json_val) or val in empty_patterns:
+                            self.workspace.remove_config(
+                                self.name,
+                                top_key,
+                                config_file=kwargs.get("config_file", None),
+                            )
+                    except (json.JSONDecodeError, TypeError):
+                        # If it's not valid JSON or can't be parsed, just check against our patterns
+                        if val in empty_patterns:
+                            self.workspace.remove_config(
+                                self.name,
+                                top_key,
+                                config_file=kwargs.get("config_file", None),
+                            )
+        except Exception as e:
+            # If an error occurs (likely due to --path not being supported),
+            # fall back to the regular remove_config without path
+            if hasattr(options, "path") and options.path:
+                # Try again without the path parameter
+                self.workspace.remove_config(
+                    self.name,
+                    key,
+                    config_file=getattr(options, "config_file", None),
+                )
+            else:
+                # If it's not a path issue, re-raise the original exception
+                raise e
+
+    def get_all_config_with_options(
+        self, options: Optional[GetAllConfigOptions] = None
+    ) -> ConfigMap:
+        """
+        Returns the full config map associated with the stack in the Workspace.
+
+        :param options: Optional configuration options.
+        :returns: ConfigMap
+        """
+        if options is None:
+            return self.get_all_config()
+
+        # Build kwargs dynamically to handle missing attributes
+        kwargs: Dict[str, Any] = {}
+        if hasattr(options, "path"):
+            kwargs["path"] = options.path
+        if hasattr(options, "config_file"):
+            kwargs["config_file"] = options.config_file
+        if hasattr(options, "show_secrets"):
+            kwargs["show_secrets"] = options.show_secrets
+
+        try:
+            return self.workspace.get_all_config(
+                self.name,
+                path=bool(kwargs.get("path", False)),
+                config_file=kwargs.get("config_file"),
+                show_secrets=bool(kwargs.get("show_secrets", False)),
+            )
+        except Exception as e:
+            # If an error occurs (likely due to --path not being supported),
+            # fall back to the regular get_all_config
+            if hasattr(options, "path") and options.path:
+                # Try again without the path parameter
+                kwargs_retry: Dict[str, Any] = {}
+                if hasattr(options, "config_file"):
+                    kwargs_retry["config_file"] = options.config_file
+                if hasattr(options, "show_secrets"):
+                    kwargs_retry["show_secrets"] = options.show_secrets
+
+                return self.workspace.get_all_config(
+                    self.name,
+                    config_file=kwargs_retry.get("config_file"),
+                    show_secrets=bool(kwargs_retry.get("show_secrets", False)),
+                )
+            # If it's not a path issue, re-raise the original exception
+            raise e
+
+    def set_all_config_with_options(
+        self, config: ConfigMap, options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Sets all specified config values on the stack in the associated Workspace.
+
+        :param config: A mapping of key to ConfigValue to set to config.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.set_all_config(config)
+            return
+
+        try:
+            # Build kwargs dynamically to handle missing attributes
+            kwargs = {"config_file": getattr(options, "config_file", None)}
+            if hasattr(options, "path"):
+                kwargs["path"] = options.path
+
+            self.workspace.set_all_config(
+                self.name,
+                config,
+                path=bool(kwargs.get("path", False)),
+                config_file=kwargs.get("config_file", None),
+            )
+        except Exception as e:
+            # If an error occurs (likely due to --path not being supported),
+            # fall back to the regular set_all_config without path
+            if hasattr(options, "path") and options.path:
+                # Try again without the path parameter
+                self.workspace.set_all_config(
+                    self.name,
+                    config,
+                    config_file=getattr(options, "config_file", None),
+                )
+            else:
+                # If it's not a path issue, re-raise the original exception
+                raise e
+
+    def remove_all_config_with_options(
+        self, keys: List[str], options: Optional[ConfigOptions] = None
+    ) -> None:
+        """
+        Removes the specified config keys from the Stack in the associated Workspace.
+        When using path=True, also removes any empty parent structures.
+
+        :param keys: The keys to remove from config.
+        :param options: Optional configuration options.
+        """
+        if options is None:
+            self.remove_all_config(keys)
+            return
+
+        try:
+            # Build kwargs dynamically to handle missing attributes
+            kwargs = {"config_file": getattr(options, "config_file", None)}
+            if hasattr(options, "path"):
+                kwargs["path"] = options.path
+
+            # First remove the specific paths
+            self.workspace.remove_all_config(
+                self.name,
+                keys,
+                path=bool(kwargs.get("path", False)),
+                config_file=kwargs.get("config_file", None),
+            )
+
+            # If using path=True, also check for and remove empty parent structures
+            if kwargs.get("path", False):
+                # Get all top-level keys (before any dots or brackets)
+                import re
+
+                top_keys = set()
+                for key in keys:
+                    top_keys.add(re.split(r"[\.\[]", key)[0])
+
+                # Check if any remaining structures are empty
+                cfg = self.get_all_config()
+                project_prefix = f"{self.workspace.project_settings().name}:"
+
+                # For each top-level key, check if its structure is empty
+                for top_key in top_keys:
+                    full_key = f"{project_prefix}{top_key}"
+                    if full_key in cfg:
+                        val = cfg[full_key].value
+
+                        # Check common empty structure patterns
+                        empty_patterns = [
+                            "{}",
+                            "[]",  # Basic empty objects/arrays
+                            '{"key":{}}',
+                            '{"key1":{}}',  # Simple empty nested objects
+                            '[{"key":"value4"}]',
+                            "[{}]",  # Arrays with single elements or empty objects
+                            '{"key":[{}]}',
+                            '{"key":[{"nested":"value5"}]}',  # Nested empty structures
+                        ]
+
+                        # More robust check for nested empties
+                        import json
+
+                        try:
+                            json_val = json.loads(val)
+
+                            def is_empty_structure(obj):
+                                if isinstance(obj, dict):
+                                    # Empty dict or dict with only empty values
+                                    return len(obj) == 0 or all(
+                                        is_empty_structure(v) for v in obj.values()
+                                    )
+                                elif isinstance(obj, list):
+                                    # Empty list or list with only empty values
+                                    return len(obj) == 0 or all(
+                                        is_empty_structure(v) for v in obj
+                                    )
+                                return False
+
+                            if is_empty_structure(json_val) or val in empty_patterns:
+                                self.workspace.remove_config(
+                                    self.name,
+                                    top_key,
+                                    config_file=kwargs.get("config_file", None),
+                                )
+                        except (json.JSONDecodeError, TypeError):
+                            # If it's not valid JSON or can't be parsed, just check against our patterns
+                            if val in empty_patterns:
+                                self.workspace.remove_config(
+                                    self.name,
+                                    top_key,
+                                    config_file=kwargs.get("config_file", None),
+                                )
+        except Exception as e:
+            # If an error occurs (likely due to --path not being supported),
+            # fall back to the regular remove_all_config without path
+            if hasattr(options, "path") and options.path:
+                # Try again without the path parameter
+                self.workspace.remove_all_config(
+                    self.name,
+                    keys,
+                    config_file=getattr(options, "config_file", None),
+                )
+            else:
+                # If it's not a path issue, re-raise the original exception
+                raise e
 
 
 def _parse_extra_args(**kwargs) -> List[str]:
