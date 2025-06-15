@@ -462,7 +462,7 @@ func TestListStackNames(t *testing.T) {
 
 	// Test ListStackNames with limited pagination to avoid excessive stack accumulation
 	projectName := "testproj-list-stacks"
-	filter := backend.ListStacksFilter{
+	filter := backend.ListStackNamesFilter{
 		Project: &projectName, // Filter to just our test project to reduce scope
 	}
 	var allStackRefs []backend.StackReference
@@ -602,8 +602,14 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	var token2 backend.ContinuationToken
 	foundTestStackInRefs := false
 
+	// Convert to ListStackNamesFilter for the ListStackNames call
+	namesFilter := backend.ListStackNamesFilter{
+		Project:      filter.Project,
+		Organization: filter.Organization,
+	}
+
 	for page := 0; page < maxPages; page++ {
-		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token2)
+		stackRefs, nextToken, err := b.ListStackNames(ctx, namesFilter, token2)
 		require.NoError(t, err)
 
 		allStackRefs = append(allStackRefs, stackRefs...)

@@ -92,6 +92,14 @@ type ListStacksFilter struct {
 	TagValue     *string
 }
 
+// ListStackNamesFilter describes optional filters when listing stack names.
+// This filter does not contain tag fields since they cannot be efficiently
+// implemented for the DIY backend.
+type ListStackNamesFilter struct {
+	Organization *string
+	Project      *string
+}
+
 // ContinuationToken is an opaque string used for paginated backend requests. If non-nil, means
 // there are more results to be returned and the continuation token should be passed into a
 // subsequent call to the backend method. A nil continuation token means all results have been
@@ -166,7 +174,7 @@ type Backend interface {
 		[]StackSummary, ContinuationToken, error)
 	// ListStackNames returns a list of stack references without metadata for all known stacks in the target backend.
 	// This is a more efficient method for scenarios like stack selection where only stack names are needed.
-	ListStackNames(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+	ListStackNames(ctx context.Context, filter ListStackNamesFilter, inContToken ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that

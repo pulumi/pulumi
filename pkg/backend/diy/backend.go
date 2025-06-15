@@ -878,7 +878,7 @@ func (b *diyBackend) ListStacks(
 }
 
 func (b *diyBackend) ListStackNames(
-	ctx context.Context, filter backend.ListStacksFilter, _ backend.ContinuationToken) (
+	ctx context.Context, filter backend.ListStackNamesFilter, _ backend.ContinuationToken) (
 	[]backend.StackReference, backend.ContinuationToken, error,
 ) {
 	stacks, err := b.getStacks(ctx)
@@ -886,8 +886,6 @@ func (b *diyBackend) ListStackNames(
 		return nil, nil, err
 	}
 
-	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
-	// aren't persisted in the diy backend.
 	filteredStacks := slice.Prealloc[backend.StackReference](len(stacks))
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.

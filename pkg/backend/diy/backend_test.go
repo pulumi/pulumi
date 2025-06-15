@@ -1842,7 +1842,7 @@ func TestListStackNames(t *testing.T) {
 	}
 
 	// Test ListStackNames (should only return references, no metadata fetching)
-	filter := backend.ListStacksFilter{} // No filter
+	filter := backend.ListStackNamesFilter{} // No filter
 	stackRefs, token, err := b.ListStackNames(ctx, filter, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, token)

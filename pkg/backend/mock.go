@@ -67,7 +67,7 @@ type MockBackend struct {
 	RemoveStackF func(context.Context, Stack, bool) (bool, error)
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
-	ListStackNamesF func(context.Context, ListStacksFilter, ContinuationToken) (
+	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
@@ -273,7 +273,7 @@ func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter, 
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListStackNames(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+func (be *MockBackend) ListStackNames(ctx context.Context, filter ListStackNamesFilter, inContToken ContinuationToken) (
 	[]StackReference, ContinuationToken, error,
 ) {
 	if be.ListStackNamesF != nil {

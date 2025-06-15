@@ -218,7 +218,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		inContToken  backend.ContinuationToken
 	)
 	for {
-		stackRefs, outContToken, err := b.ListStackNames(ctx, backend.ListStacksFilter{Project: &project}, inContToken)
+		stackRefs, outContToken, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{Project: &project}, inContToken)
 		if err != nil {
 			return nil, fmt.Errorf("could not query backend for stacks: %w", err)
 		}

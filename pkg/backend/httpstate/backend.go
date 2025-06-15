@@ -1072,12 +1072,18 @@ func (b *cloudBackend) ListStacks(
 }
 
 func (b *cloudBackend) ListStackNames(
-	ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
+	ctx context.Context, filter backend.ListStackNamesFilter, inContToken backend.ContinuationToken) (
 	[]backend.StackReference, backend.ContinuationToken, error,
 ) {
+	// Convert ListStackNamesFilter to ListStacksFilter (without tag fields)
+	stacksFilter := backend.ListStacksFilter{
+		Organization: filter.Organization,
+		Project:      filter.Project,
+	}
+
 	// For the cloud backend, we can reuse ListStacks since the API already returns data efficiently.
 	// We just extract the stack references from the summaries.
-	summaries, outContToken, err := b.ListStacks(ctx, filter, inContToken)
+	summaries, outContToken, err := b.ListStacks(ctx, stacksFilter, inContToken)
 	if err != nil {
 		return nil, nil, err
 	}
