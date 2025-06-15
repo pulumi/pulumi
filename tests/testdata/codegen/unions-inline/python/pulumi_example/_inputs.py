@@ -27,7 +27,7 @@ MYPY = False
 if not MYPY:
     class ServerPropertiesForReplicaArgsDict(TypedDict):
         create_mode: pulumi.Input[builtins.str]
-        version: NotRequired[pulumi.Input[builtins.str]]
+        version: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     ServerPropertiesForReplicaArgsDict: TypeAlias = Mapping[str, Any]
 
@@ -35,7 +35,7 @@ elif False:
 class ServerPropertiesForReplicaArgs:
     def __init__(__self__, *,
                  create_mode: pulumi.Input[builtins.str],
-                 version: Optional[pulumi.Input[builtins.str]] = None):
+                 version: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         pulumi.set(__self__, "create_mode", 'Replica')
         if version is not None:
             pulumi.set(__self__, "version", version)
@@ -51,11 +51,11 @@ class ServerPropertiesForReplicaArgs:
 
     @property
     @pulumi.getter
-    def version(self) -> Optional[pulumi.Input[builtins.str]]:
+    def version(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "version")
 
     @version.setter
-    def version(self, value: Optional[pulumi.Input[builtins.str]]):
+    def version(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "version", value)
 
 

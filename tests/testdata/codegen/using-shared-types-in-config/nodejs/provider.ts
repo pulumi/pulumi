@@ -74,7 +74,7 @@ export interface ProviderArgs {
     /**
      * The password. It is very secret.
      */
-    password?: pulumi.Input<string>;
+    password?: pulumi.Input<string | undefined | null>;
     shared: pulumi.Input<inputs.SharedArgs>;
     /**
      * The username. Its important but not secret.

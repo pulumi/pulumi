@@ -7,5 +7,5 @@ import * as outputs from "../types/output";
 import * as enums from "../types/enums";
 
 export interface SharedArgs {
-    foo?: pulumi.Input<string>;
+    foo?: pulumi.Input<string | undefined | null>;
 }

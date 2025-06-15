@@ -24,16 +24,16 @@ MYPY = False
 
 if not MYPY:
     class ENIConfigSpecArgsDict(TypedDict):
-        security_groups: NotRequired[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]]
-        subnet: NotRequired[pulumi.Input[builtins.str]]
+        security_groups: NotRequired[pulumi.Input[NotRequired[Sequence[pulumi.Input[builtins.str]]]]]
+        subnet: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     ENIConfigSpecArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class ENIConfigSpecArgs:
     def __init__(__self__, *,
-                 security_groups: Optional[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]] = None,
-                 subnet: Optional[pulumi.Input[builtins.str]] = None):
+                 security_groups: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[builtins.str]]]]] = None,
+                 subnet: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         if security_groups is not None:
             pulumi.set(__self__, "security_groups", security_groups)
         if subnet is not None:
@@ -41,20 +41,20 @@ class ENIConfigSpecArgs:
 
     @property
     @pulumi.getter(name="securityGroups")
-    def security_groups(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]]:
+    def security_groups(self) -> Optional[pulumi.Input[Optional[Sequence[pulumi.Input[builtins.str]]]]]:
         return pulumi.get(self, "security_groups")
 
     @security_groups.setter
-    def security_groups(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[builtins.str]]]]):
+    def security_groups(self, value: Optional[pulumi.Input[Optional[Sequence[pulumi.Input[builtins.str]]]]]):
         pulumi.set(self, "security_groups", value)
 
     @property
     @pulumi.getter
-    def subnet(self) -> Optional[pulumi.Input[builtins.str]]:
+    def subnet(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "subnet")
 
     @subnet.setter
-    def subnet(self, value: Optional[pulumi.Input[builtins.str]]):
+    def subnet(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "subnet", value)
 
 

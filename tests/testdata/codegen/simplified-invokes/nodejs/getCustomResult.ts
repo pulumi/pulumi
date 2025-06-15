@@ -12,7 +12,7 @@ export function getCustomResult(a?: number, opts?: pulumi.InvokeOptions): Promis
         "a": a,
     }, opts);
 }
-export function getCustomResultOutput(a?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<outputs.CustomResult> {
+export function getCustomResultOutput(a?: pulumi.Input<number | undefined | null>, opts?: pulumi.InvokeOutputOptions): pulumi.Output<outputs.CustomResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("std:index:GetCustomResult", {
         "a": a,

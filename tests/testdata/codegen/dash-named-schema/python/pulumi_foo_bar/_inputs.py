@@ -24,24 +24,24 @@ MYPY = False
 
 if not MYPY:
     class TopLevelArgsDict(TypedDict):
-        buzz: NotRequired[pulumi.Input[builtins.str]]
+        buzz: NotRequired[pulumi.Input[NotRequired[builtins.str]]]
 elif False:
     TopLevelArgsDict: TypeAlias = Mapping[str, Any]
 
 @pulumi.input_type
 class TopLevelArgs:
     def __init__(__self__, *,
-                 buzz: Optional[pulumi.Input[builtins.str]] = None):
+                 buzz: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         if buzz is not None:
             pulumi.set(__self__, "buzz", buzz)
 
     @property
     @pulumi.getter
-    def buzz(self) -> Optional[pulumi.Input[builtins.str]]:
+    def buzz(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         return pulumi.get(self, "buzz")
 
     @buzz.setter
-    def buzz(self, value: Optional[pulumi.Input[builtins.str]]):
+    def buzz(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "buzz", value)
 
 

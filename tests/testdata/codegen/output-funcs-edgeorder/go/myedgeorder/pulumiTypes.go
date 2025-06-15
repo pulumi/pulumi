@@ -235,7 +235,7 @@ type ConfigurationFiltersInput interface {
 // Configuration filters
 type ConfigurationFiltersArgs struct {
 	// Filters specific to product
-	FilterableProperty FilterablePropertyArrayInput `pulumi:"filterableProperty"`
+	FilterableProperty []FilterablePropertyInput `pulumi:"filterableProperty"`
 	// Product hierarchy information
 	HierarchyInformation HierarchyInformationInput `pulumi:"hierarchyInformation"`
 }
@@ -582,11 +582,11 @@ type CustomerSubscriptionDetailsInput interface {
 // Holds Customer subscription details. Clients can display available products to unregistered customers by explicitly passing subscription details
 type CustomerSubscriptionDetailsArgs struct {
 	// Location placement Id of a subscription
-	LocationPlacementId pulumi.StringPtrInput `pulumi:"locationPlacementId"`
+	LocationPlacementId *string `pulumi:"locationPlacementId"`
 	// Quota ID of a subscription
 	QuotaId pulumi.StringInput `pulumi:"quotaId"`
 	// List of registered feature flags for subscription
-	RegisteredFeatures CustomerSubscriptionRegisteredFeaturesArrayInput `pulumi:"registeredFeatures"`
+	RegisteredFeatures []CustomerSubscriptionRegisteredFeaturesInput `pulumi:"registeredFeatures"`
 }
 
 func (CustomerSubscriptionDetailsArgs) ElementType() reflect.Type {
@@ -760,9 +760,9 @@ type CustomerSubscriptionRegisteredFeaturesInput interface {
 // Represents subscription registered features
 type CustomerSubscriptionRegisteredFeaturesArgs struct {
 	// Name of subscription registered feature
-	Name pulumi.StringPtrInput `pulumi:"name"`
+	Name *string `pulumi:"name"`
 	// State of subscription registered feature
-	State pulumi.StringPtrInput `pulumi:"state"`
+	State *string `pulumi:"state"`
 }
 
 func (CustomerSubscriptionRegisteredFeaturesArgs) ElementType() reflect.Type {
@@ -1300,13 +1300,13 @@ type HierarchyInformationInput interface {
 // Holds details about product hierarchy information
 type HierarchyInformationArgs struct {
 	// Represents configuration name that uniquely identifies configuration
-	ConfigurationName pulumi.StringPtrInput `pulumi:"configurationName"`
+	ConfigurationName *string `pulumi:"configurationName"`
 	// Represents product family name that uniquely identifies product family
-	ProductFamilyName pulumi.StringPtrInput `pulumi:"productFamilyName"`
+	ProductFamilyName *string `pulumi:"productFamilyName"`
 	// Represents product line name that uniquely identifies product line
-	ProductLineName pulumi.StringPtrInput `pulumi:"productLineName"`
+	ProductLineName *string `pulumi:"productLineName"`
 	// Represents product name that uniquely identifies product
-	ProductName pulumi.StringPtrInput `pulumi:"productName"`
+	ProductName *string `pulumi:"productName"`
 }
 
 func (HierarchyInformationArgs) ElementType() reflect.Type {
@@ -1382,13 +1382,13 @@ type HierarchyInformationResponseInput interface {
 // Holds details about product hierarchy information
 type HierarchyInformationResponseArgs struct {
 	// Represents configuration name that uniquely identifies configuration
-	ConfigurationName pulumi.StringPtrInput `pulumi:"configurationName"`
+	ConfigurationName *string `pulumi:"configurationName"`
 	// Represents product family name that uniquely identifies product family
-	ProductFamilyName pulumi.StringPtrInput `pulumi:"productFamilyName"`
+	ProductFamilyName *string `pulumi:"productFamilyName"`
 	// Represents product line name that uniquely identifies product line
-	ProductLineName pulumi.StringPtrInput `pulumi:"productLineName"`
+	ProductLineName *string `pulumi:"productLineName"`
 	// Represents product name that uniquely identifies product
-	ProductName pulumi.StringPtrInput `pulumi:"productName"`
+	ProductName *string `pulumi:"productName"`
 }
 
 func (HierarchyInformationResponseArgs) ElementType() reflect.Type {

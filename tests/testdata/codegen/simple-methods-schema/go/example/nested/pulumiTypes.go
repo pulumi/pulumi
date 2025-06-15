@@ -30,8 +30,8 @@ type BazInput interface {
 }
 
 type BazArgs struct {
-	Hello pulumi.StringPtrInput `pulumi:"hello"`
-	World pulumi.StringPtrInput `pulumi:"world"`
+	Hello *string `pulumi:"hello"`
+	World *string `pulumi:"world"`
 }
 
 func (BazArgs) ElementType() reflect.Type {

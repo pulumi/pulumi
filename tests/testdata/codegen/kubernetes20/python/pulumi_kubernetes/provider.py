@@ -21,14 +21,14 @@ __all__ = ['ProviderArgs', 'Provider']
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-                 kubeconfig: Optional[pulumi.Input[builtins.str]] = None,
-                 namespace: Optional[pulumi.Input[builtins.str]] = None):
+                 kube_client_settings: Optional[pulumi.Input[Optional['KubeClientSettingsArgs']]] = None,
+                 kubeconfig: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 namespace: Optional[pulumi.Input[Optional[builtins.str]]] = None):
         """
         The set of arguments for constructing a Provider resource.
-        :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input[builtins.str] kubeconfig: The contents of a kubeconfig file or the path to a kubeconfig file.
-        :param pulumi.Input[builtins.str] namespace: If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
+        :param pulumi.Input[Optional['KubeClientSettingsArgs']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[Optional[builtins.str]] kubeconfig: The contents of a kubeconfig file or the path to a kubeconfig file.
+        :param pulumi.Input[Optional[builtins.str]] namespace: If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
                
                A namespace can be specified in multiple places, and the precedence is as follows:
                1. `.metadata.namespace` set on the resource.
@@ -46,31 +46,31 @@ class ProviderArgs:
 
     @property
     @pulumi.getter(name="kubeClientSettings")
-    def kube_client_settings(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+    def kube_client_settings(self) -> Optional[pulumi.Input[Optional['KubeClientSettingsArgs']]]:
         """
         Options for tuning the Kubernetes client used by a Provider.
         """
         return pulumi.get(self, "kube_client_settings")
 
     @kube_client_settings.setter
-    def kube_client_settings(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+    def kube_client_settings(self, value: Optional[pulumi.Input[Optional['KubeClientSettingsArgs']]]):
         pulumi.set(self, "kube_client_settings", value)
 
     @property
     @pulumi.getter
-    def kubeconfig(self) -> Optional[pulumi.Input[builtins.str]]:
+    def kubeconfig(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         """
         The contents of a kubeconfig file or the path to a kubeconfig file.
         """
         return pulumi.get(self, "kubeconfig")
 
     @kubeconfig.setter
-    def kubeconfig(self, value: Optional[pulumi.Input[builtins.str]]):
+    def kubeconfig(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "kubeconfig", value)
 
     @property
     @pulumi.getter
-    def namespace(self) -> Optional[pulumi.Input[builtins.str]]:
+    def namespace(self) -> Optional[pulumi.Input[Optional[builtins.str]]]:
         """
         If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
 
@@ -82,7 +82,7 @@ class ProviderArgs:
         return pulumi.get(self, "namespace")
 
     @namespace.setter
-    def namespace(self, value: Optional[pulumi.Input[builtins.str]]):
+    def namespace(self, value: Optional[pulumi.Input[Optional[builtins.str]]]):
         pulumi.set(self, "namespace", value)
 
 
@@ -92,18 +92,18 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 kube_client_settings: Optional[pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 kubeconfig: Optional[pulumi.Input[builtins.str]] = None,
-                 namespace: Optional[pulumi.Input[builtins.str]] = None,
+                 kube_client_settings: Optional[pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]]] = None,
+                 kubeconfig: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 namespace: Optional[pulumi.Input[Optional[builtins.str]]] = None,
                  __props__=None):
         """
         The provider type for the kubernetes package.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input[builtins.str] kubeconfig: The contents of a kubeconfig file or the path to a kubeconfig file.
-        :param pulumi.Input[builtins.str] namespace: If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
+        :param pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[Optional[builtins.str]] kubeconfig: The contents of a kubeconfig file or the path to a kubeconfig file.
+        :param pulumi.Input[Optional[builtins.str]] namespace: If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
                
                A namespace can be specified in multiple places, and the precedence is as follows:
                1. `.metadata.namespace` set on the resource.
@@ -134,9 +134,9 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 kube_client_settings: Optional[pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 kubeconfig: Optional[pulumi.Input[builtins.str]] = None,
-                 namespace: Optional[pulumi.Input[builtins.str]] = None,
+                 kube_client_settings: Optional[pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]]] = None,
+                 kubeconfig: Optional[pulumi.Input[Optional[builtins.str]]] = None,
+                 namespace: Optional[pulumi.Input[Optional[builtins.str]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

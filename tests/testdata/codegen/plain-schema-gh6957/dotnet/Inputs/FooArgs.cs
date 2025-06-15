@@ -13,7 +13,7 @@ namespace Pulumi.Xyz.Inputs
     public sealed class FooArgs : global::Pulumi.ResourceArgs
     {
         [Input("a")]
-        public Input<bool>? A { get; set; }
+        public Input<bool?>? A { get; set; }
 
         public FooArgs()
         {

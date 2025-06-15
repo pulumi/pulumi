@@ -8,8 +8,8 @@ import * as outputs from "../types/output";
 export namespace crd.k8s.amazonaws.com {
     export namespace v1alpha1 {
         export interface ENIConfigSpecArgs {
-            securityGroups?: pulumi.Input<pulumi.Input<string>[]>;
-            subnet?: pulumi.Input<string>;
+            securityGroups?: pulumi.Input<pulumi.Input<string>[] | undefined | null>;
+            subnet?: pulumi.Input<string | undefined | null>;
         }
     }
 }

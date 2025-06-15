@@ -70,16 +70,16 @@ type fooBarArgs struct {
 
 // The set of arguments for the Bar method of the Foo resource.
 type FooBarArgs struct {
-	Baz                 nested.BazPtrInput
+	Baz                 *nested.BazArgs
 	BazPlain            *nested.BazArgs
 	BazRequired         nested.BazInput
-	BoolValue           pulumi.BoolPtrInput
+	BoolValue           *bool
 	BoolValuePlain      *bool
 	BoolValueRequired   pulumi.BoolInput
-	Name                random.RandomPetInput
+	Name                *random.RandomPet
 	NamePlain           *random.RandomPet
 	NameRequired        random.RandomPetInput
-	StringValue         pulumi.StringPtrInput
+	StringValue         *string
 	StringValuePlain    *string
 	StringValueRequired pulumi.StringInput
 }

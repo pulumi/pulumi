@@ -70,19 +70,19 @@ namespace Pulumi.FooBar
     public sealed class ModuleResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("optionalBool")]
-        public Input<bool>? OptionalBool { get; set; }
+        public Input<bool?>? OptionalBool { get; set; }
 
         [Input("optionalConst")]
-        public Input<string>? OptionalConst { get; set; }
+        public Input<string?>? OptionalConst { get; set; }
 
         [Input("optionalEnum")]
-        public Input<Pulumi.FooBar.EnumThing>? OptionalEnum { get; set; }
+        public Input<Pulumi.FooBar.EnumThing?>? OptionalEnum { get; set; }
 
         [Input("optionalNumber")]
-        public Input<double>? OptionalNumber { get; set; }
+        public Input<double?>? OptionalNumber { get; set; }
 
         [Input("optionalString")]
-        public Input<string>? OptionalString { get; set; }
+        public Input<string?>? OptionalString { get; set; }
 
         [Input("plainOptionalBool")]
         public bool? PlainOptionalBool { get; set; }

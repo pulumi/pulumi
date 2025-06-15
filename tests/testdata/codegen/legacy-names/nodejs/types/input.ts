@@ -8,7 +8,7 @@ import * as enums from "../types/enums";
 
 export namespace HTTP_module {
     export interface RequestArgs {
-        URL?: pulumi.Input<string>;
-        content_body?: pulumi.Input<string>;
+        URL?: pulumi.Input<string | undefined | null>;
+        content_body?: pulumi.Input<string | undefined | null>;
     }
 }
