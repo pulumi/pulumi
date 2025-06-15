@@ -15,10 +15,12 @@ utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 export * from "./types/enums";
 
 // Export sub-modules:
+import * as config from "./config";
 import * as tree from "./tree";
 import * as types from "./types";
 
 export {
+    config,
     tree,
     types,
 };

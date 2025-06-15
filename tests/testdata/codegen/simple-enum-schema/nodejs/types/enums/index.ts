@@ -64,3 +64,23 @@ export const ContainerSize = {
  * plant container sizes
  */
 export type ContainerSize = (typeof ContainerSize)[keyof typeof ContainerSize];
+
+export const ProviderEnvironment = {
+    /**
+     * Development environment
+     */
+    Development: "dev",
+    /**
+     * Staging environment
+     */
+    Staging: "staging",
+    /**
+     * Production environment
+     */
+    Production: "prod",
+} as const;
+
+/**
+ * The environment to use for the provider
+ */
+export type ProviderEnvironment = (typeof ProviderEnvironment)[keyof typeof ProviderEnvironment];
