@@ -85,8 +85,7 @@ type SnapshotManager struct {
 	journalEvents  chan JournalEntry
 	journalEntries JournalEntries // The journal entries for this plan, which are used to replay the journal and produce a snapshot.
 
-	origResources []*resource.State // The original resources that were present in the base snapshot. This is used to determine which resources have been deleted.
-	newResources  gsync.Map[*resource.State, string]
+	newResources gsync.Map[*resource.State, string]
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -187,10 +186,12 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 }
 
 func (sm *SnapshotManager) markEntryForDeletion(journalEntry *JournalEntry, toDelete *resource.State) error {
-	for i, res := range sm.origResources {
-		if res == toDelete {
-			journalEntry.DeleteOld = i
-			return nil
+	if sm.baseSnapshot != nil {
+		for i, res := range sm.baseSnapshot.Resources {
+			if res == toDelete {
+				journalEntry.DeleteOld = i
+				return nil
+			}
 		}
 	}
 	sm.newResources.Range(func(res *resource.State, uuid string) bool {
@@ -255,7 +256,6 @@ func (sm *SnapshotManager) Rebase(base *deploy.Snapshot) error {
 		//		fmt.Println("rebasing resource", res.URN, res.ID)
 		newResources = append(newResources, res)
 	}
-	sm.origResources = newResources
 	return nil
 }
 
@@ -510,12 +510,7 @@ func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (eng
 		DeleteOld: -1, // Default to -1, which means no deletion.
 	}
 	if old := step.Old(); old != nil && sm.baseSnapshot != nil {
-		for i, res := range sm.origResources {
-			if res == old {
-				journalEntry.DeleteOld = i
-				break
-			}
-		}
+		sm.markEntryForDeletion(&journalEntry, step.Old())
 		// if journalEntry.DeleteOld == -1 {
 		// 	panic("could not find old resource in base snapshot")
 		// }
@@ -653,8 +648,10 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		if step.New() != nil {
 			journalEntry.State = step.New()
 		} else {
+			rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
+			fmt.Println("should refresh delete ", step.Old().URN)
 			// TODO: is this the right thing to do?
-			rsm.manager.refreshDeletes[step.Old().URN] = true
+			//		rsm.manager.refreshDeletes[step.Old().URN] = true
 		}
 	}
 
@@ -783,8 +780,6 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// Start with a copy of the resources produced during the evaluation of the current plan.
 	resources := make([]*resource.State, 0, len(sm.resources))
 
-	// fmt.Println("snapshotting", sm.origResources)
-
 	newResources := make([]*resource.State, 0, len(sm.resources))
 	toDelete := make(map[int]struct{})
 	newToDelete := make(map[string]struct{})
@@ -816,10 +811,12 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	// Append any resources from the base plan that were not produced by the current plan.
-	for i, res := range sm.origResources {
-		if _, ok := toDelete[i]; !ok {
-			//			fmt.Println("adding existing resource:", res.URN, res.Provider, res.ID)
-			resources = append(resources, res)
+	if sm.baseSnapshot != nil {
+		for i, res := range sm.baseSnapshot.Resources {
+			if _, ok := toDelete[i]; !ok {
+				//			fmt.Println("adding existing resource:", res.URN, res.Provider, res.ID)
+				resources = append(resources, res)
+			}
 		}
 	}
 
@@ -976,13 +973,6 @@ func NewSnapshotManager(
 	baseSnap *deploy.Snapshot,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
-	var origResources []*resource.State
-	if baseSnap != nil {
-		for _, res := range baseSnap.Resources {
-			// We need to make a copy of the resources so that we can mutate them without affecting the original snapshot.
-			origResources = append(origResources, res)
-		}
-	}
 	journalEvents := make(chan JournalEntry)
 
 	manager := &SnapshotManager{
@@ -997,7 +987,6 @@ func NewSnapshotManager(
 		refreshDeletes:   make(map[resource.URN]bool),
 		journalEvents:    journalEvents,
 		journalEntries:   []JournalEntry{},
-		origResources:    origResources,
 	}
 
 	serviceLoop := manager.defaultServiceLoop
