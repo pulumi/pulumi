@@ -194,7 +194,8 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 		if pluginSpec.Kind == apitype.ResourcePlugin && // The registry only supports resource plugins
 			!cmd.env.GetBool(env.DisableRegistryResolve) &&
-			pluginSpec.PluginDownloadURL == "" { // Don't override explicit pluginDownloadURLs
+			pluginSpec.PluginDownloadURL == "" && // Don't override explicit pluginDownloadURLs
+			cmd.file == "" { // We don't need help looking up the download URL when we are not downloading a file
 			pkgMetadata, err := registry.ResolvePackageFromName(ctx, cmd.registry, pluginSpec.Name, pluginSpec.Version)
 			if err == nil {
 				pluginSpec.Name = pkgMetadata.Name

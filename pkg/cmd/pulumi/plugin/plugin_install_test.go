@@ -278,6 +278,40 @@ func TestGetPluginDownloadForMissingPackage(t *testing.T) {
 	})
 }
 
+func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var wasInstalled bool
+	defer func() { assert.True(t, wasInstalled) }()
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginSpec, ctx context.Context) (*semver.Version, error) {
+			require.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		registry: testMockRegistry{ /* empty registry will fail when used */ },
+		file:     "./pulumi-resource-some-file.tar.gz", // This is a flag: --file
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginSpec, file string,
+			sink diag.Sink, color colors.Colorization, reinstall bool,
+		) error {
+			wasInstalled = true
+			assert.Equal(t, "./pulumi-resource-some-file.tar.gz", file)
+			assert.Equal(t, workspace.PluginSpec{
+				Name:    "some-file",
+				Kind:    "resource",
+				Version: &semver.Version{Major: 1},
+			}, install)
+			return nil
+		},
+	}
+
+	assert.NoError(t, cmd.Run(ctx, []string{"resource", "some-file", "v1.0.0"}))
+}
+
 type testMockRegistry struct {
 	getPackage func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
