@@ -115,13 +115,21 @@ brew::
 .PHONY: lint_%
 lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
 
-lint_pulumi_json:: ensure
+lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
 	# JSON schema says regexps should conform to ECMA 262.
 	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
+	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
+        # on the `ensure` target here because that installs extra dependencies, that we don't
+	# need here, and don't necessarily have installed in CI.
+	cd sdk/nodejs && make ensure
 	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
 
-lint_pulumi_json_fix:: ensure
+lint_pulumi_json_fix::
+	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
+        # on the `ensure` target here because that installs extra dependencies, that we don't
+	# need here, and don't necessarily have installed in CI.
+	cd sdk/nodejs && make ensure
 	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
