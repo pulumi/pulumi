@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (nodejs || all) && !xplatform_acceptance
+//go:build nodejs || all
 
 package ints
 
@@ -2212,7 +2212,7 @@ func TestPackageAddNode(t *testing.T) {
 
 			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
-			assert.True(t, e.PathExists("sdks/random"))
+			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
 			packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "package.json"))
 			assert.NoError(t, err)
@@ -2227,7 +2227,7 @@ func TestPackageAddNode(t *testing.T) {
 			cf, ok = cf.(string)
 			assert.True(t, ok)
 
-			assert.Equal(t, "file:sdks/random", cf)
+			assert.Equal(t, "file:sdks/random", filepath.ToSlash(cf.(string)))
 		})
 	}
 }
@@ -2259,7 +2259,7 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	cf, ok = cf.(string)
 	assert.True(t, ok)
 
-	assert.Equal(t, "file:sdks/supabase", cf)
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
 
 	// Assert that we have a node_modules directory as a result of a successful install (since we didn't pass
 	// `--generate-only`).
@@ -2301,7 +2301,7 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	cf, ok = cf.(string)
 	assert.True(t, ok)
 
-	assert.Equal(t, "file:sdks/supabase", cf)
+	assert.Equal(t, "file:sdks/supabase", filepath.ToSlash(cf.(string)))
 
 	// Assert that we don't have a node_modules directory, since we passed `--generate-only`.
 	nodeModulesPath := filepath.Join(e.CWD, "nodedir", "node_modules")
@@ -2464,6 +2464,12 @@ func TestNodejsSourcemapProgramJavascript(t *testing.T) {
 
 func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")
@@ -2504,6 +2510,11 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 
 func TestPackagesInstall(t *testing.T) {
 	t.Parallel()
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packages-install")
@@ -2545,6 +2556,12 @@ func TestInstallLocalPlugin(t *testing.T) {
 
 func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 
 	e.ImportDirectory("packageadd-remote")

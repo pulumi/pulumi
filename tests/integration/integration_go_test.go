@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (go || all) && !xplatform_acceptance
+//go:build go || all
 
 package ints
 
@@ -1362,7 +1362,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.Contains(t, yamlString, "- 25.1.0")
 
 	assert.True(t, e.PathExists("sdks/netapp-cloudmanager/go.mod"))
-	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/netapp-cloudmanager/go.mod"))
+	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "netapp-cloudmanager", "go.mod"))
 	assert.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
 	assert.NoError(t, err)
@@ -1377,7 +1377,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	containsRename := false
 	containedRenames := make([]string, len(gomod.Replace))
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/netapp-cloudmanager" &&
+		if filepath.ToSlash(r.New.Path) == "./sdks/netapp-cloudmanager" &&
 			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25" {
 			containsRename = true
 		}
@@ -1412,7 +1412,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 
 	containsRename := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/supabase" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRename = true
 		}
@@ -1447,11 +1447,11 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	containsRenameSupabase := false
 	containsRenameBB := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/supabase" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRenameSupabase = true
 		}
-		if r.New.Path == "./sdks/b2" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/b2" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/b2" {
 			containsRenameBB = true
 		}
@@ -1499,6 +1499,11 @@ func newDAPRequest(seq int, command string) dap.Request {
 
 func TestDebuggerAttach(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1600,6 +1605,11 @@ outer:
 
 func TestPluginDebuggerAttach(t *testing.T) {
 	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1744,6 +1754,11 @@ func TestLogDebugGo(t *testing.T) {
 func TestRunPlugin(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#18436]: enable this test on windows
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skipping test on Windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("run_plugin"))
@@ -1773,6 +1788,10 @@ func TestRunPlugin(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestErrorNoMainPackage(t *testing.T) {
 	stderr := &bytes.Buffer{}
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("go", "go-no-main-package"),

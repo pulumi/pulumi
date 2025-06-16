@@ -193,7 +193,6 @@ jobs:
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
-              --tags all xplatform_acceptance \
               --platform windows-latest \
               --version-set current \
               --partition-module pkg 1 \
@@ -212,7 +211,6 @@ jobs:
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
-              --tags all xplatform_acceptance \
               --platform macos-latest \
               --version-set current \
               --partition-module pkg 1 \
