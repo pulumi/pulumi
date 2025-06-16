@@ -113,10 +113,10 @@ type JournalEntry struct {
 	Kind          JournalEntryKind
 	OperationUUID string // The UUID of the operation that this journal entry is associated with.
 	DeleteOld     int
-	DeleteNew     string             // UUID for the delete Operation
-	State         *resource.State    // The resource state associated with this journal entry.
-	result        chan<- error       // The result channel to send the result of the journal entry processing.
-	Operation     resource.Operation // The operation associated with this journal entry, if any.
+	DeleteNew     string              // UUID for the delete Operation
+	State         *resource.State     // The resource state associated with this journal entry.
+	result        chan<- error        // The result channel to send the result of the journal entry processing.
+	Operation     *resource.Operation // The operation associated with this journal entry, if any.
 }
 
 type JournalEntries []JournalEntry
@@ -432,10 +432,11 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 
 func (sm *SnapshotManager) doCreate(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
+	op := resource.NewOperation(step.New(), resource.OperationTypeCreating)
 	sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		Operation:     resource.NewOperation(step.New(), resource.OperationTypeCreating),
+		Operation:     &op,
 	})
 	return &createSnapshotMutation{sm, operationUUID}, nil
 }
@@ -468,10 +469,11 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 func (sm *SnapshotManager) doUpdate(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
+	op := resource.NewOperation(step.New(), resource.OperationTypeUpdating)
 	sm.journalEvents <- JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		Operation:     resource.NewOperation(step.New(), resource.OperationTypeUpdating),
+		Operation:     &op,
 	}
 
 	return &updateSnapshotMutation{sm, operationUUID}, nil
@@ -506,11 +508,12 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
+	op := resource.NewOperation(step.Old(), resource.OperationTypeDeleting)
 	journalEntry := JournalEntry{
 		Kind:          JournalEntryBegin,
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 		OperationUUID: operationUUID,
-		Operation:     resource.NewOperation(step.New(), resource.OperationTypeDeleting),
+		Operation:     &op,
 	}
 
 	sm.journalEvents <- journalEntry
@@ -574,10 +577,11 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 
 func (sm *SnapshotManager) doRead(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
+	op := resource.NewOperation(step.New(), resource.OperationTypeReading)
 	journalEntry := JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		Operation:     resource.NewOperation(step.New(), resource.OperationTypeReading),
+		Operation:     &op,
 	}
 	sm.journalEvents <- journalEntry
 	return &readSnapshotMutation{sm, operationUUID}, nil
@@ -687,10 +691,11 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 
 func (sm *SnapshotManager) doImport(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
+	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
 	sm.journalEvents <- JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		Operation:     resource.NewOperation(step.New(), resource.OperationTypeImporting),
+		Operation:     &op,
 	}
 
 	return &importSnapshotMutation{sm, operationUUID}, nil
@@ -803,7 +808,10 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
 	for _, op := range incompleteOps {
-		operations = append(operations, op.Operation)
+		if op.Operation != nil {
+			fmt.Println("appening", op.Operation.Resource.URN, "to operations")
+			operations = append(operations, *op.Operation)
+		}
 	}
 
 	// Track pending create operations from the base snapshot
