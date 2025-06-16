@@ -58,7 +58,7 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 	return result.Name
 }
 
-func SkipIfNoCredentials(t *testing.T) {
+func skipIfNoCredentials(t *testing.T) {
 	// In CI we always set GOOGLE_APPLICATION_CREDENTIALS to a filename, but that file might be
 	// empty if we have no credentials.  Check for that here.
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
@@ -75,7 +75,7 @@ func SkipIfNoCredentials(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPCloudManager(t *testing.T) {
-	SkipIfNoCredentials(t)
+	skipIfNoCredentials(t)
 	ctx := context.Background()
 	keyName := createGCPKey(ctx, t)
 	url := "gcpkms://" + keyName
@@ -84,7 +84,7 @@ func TestGCPCloudManager(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingKey(t *testing.T) {
-	SkipIfNoCredentials(t)
+	skipIfNoCredentials(t)
 	ctx := context.Background()
 
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
@@ -110,7 +110,7 @@ func TestGCPExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingState(t *testing.T) {
-	SkipIfNoCredentials(t)
+	skipIfNoCredentials(t)
 	ctx := context.Background()
 
 	//nolint:lll // this includes a base64 encoded key
@@ -136,7 +136,7 @@ func TestGCPExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPKeyEditProjectStack(t *testing.T) {
-	SkipIfNoCredentials(t)
+	skipIfNoCredentials(t)
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
 
 	//nolint:lll // this is a base64 encoded key

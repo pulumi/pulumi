@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func SkipIfNoCredentials(t *testing.T) {
+func skipIfNoCredentials(t *testing.T) {
 	// In CI we always set GOOGLE_APPLICATION_CREDENTIALS to a filename, but that file might be
 	// empty if we have no credentials.  Check for that here.
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
@@ -45,7 +45,7 @@ func TestGcpLogin(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	SkipIfNoCredentials(t)
+	skipIfNoCredentials(t)
 
 	cloudURL := "gs://pulumitesting"
 	loginAndCreateStack(t, cloudURL)
