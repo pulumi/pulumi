@@ -214,16 +214,16 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	project := string(proj.Name)
 
 	var (
-		allSummaries []backend.StackSummary
+		allStackRefs []backend.StackReference
 		inContToken  backend.ContinuationToken
 	)
 	for {
-		summaries, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project}, inContToken)
+		stackRefs, outContToken, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{Project: &project}, inContToken)
 		if err != nil {
 			return nil, fmt.Errorf("could not query backend for stacks: %w", err)
 		}
 
-		allSummaries = append(allSummaries, summaries...)
+		allStackRefs = append(allStackRefs, stackRefs...)
 
 		if outContToken == nil {
 			break
@@ -231,9 +231,9 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		inContToken = outContToken
 	}
 
-	options := slice.Prealloc[string](len(allSummaries))
-	for _, summary := range allSummaries {
-		name := summary.Name().String()
+	options := slice.Prealloc[string](len(allStackRefs))
+	for _, stackRef := range allStackRefs {
+		name := stackRef.String()
 		options = append(options, name)
 	}
 	sort.Strings(options)
