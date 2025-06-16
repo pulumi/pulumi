@@ -197,9 +197,9 @@ func (sm *SnapshotManager) markEntryForDeletion(journalEntry *JournalEntry, toDe
 	sm.newResources.Range(func(res *resource.State, uuid string) bool {
 		if res == toDelete {
 			journalEntry.DeleteNew = uuid
-			return true
+			return false
 		}
-		return false
+		return true
 	})
 	if journalEntry.DeleteOld == -1 && journalEntry.DeleteNew == "" {
 		return fmt.Errorf("could not find resource %s in base snapshot or new resources", toDelete.URN)
