@@ -530,7 +530,7 @@ func newConfigRefreshCmd(stk *string) *cobra.Command {
 
 			ps.Config = c
 			// Also restore the secrets provider from state
-			untypedDeployment, err := s.ExportDeployment(ctx)
+			untypedDeployment, err := backend.ExportStackDeployment(ctx, s)
 			if err != nil {
 				return fmt.Errorf("getting deployment: %w", err)
 			}

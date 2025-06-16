@@ -223,7 +223,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		return err
 	}
 
-	err = s.ImportDeployment(ctx, &apitype.UntypedDeployment{
+	err = backend.ImportStackDeployment(ctx, s, &apitype.UntypedDeployment{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	})

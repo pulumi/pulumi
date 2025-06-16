@@ -498,7 +498,7 @@ func NewPreviewCmd() *cobra.Command {
 				importFilePromise = buildImportFile(events)
 			}
 
-			plan, changes, res := s.Preview(ctx, backend.UpdateOperation{
+			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

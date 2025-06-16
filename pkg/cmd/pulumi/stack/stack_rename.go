@@ -21,9 +21,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -58,7 +59,7 @@ func newStackRenameCmd() *cobra.Command {
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				backend.DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				stack,
 				LoadOnly,
 				opts,
@@ -73,7 +74,7 @@ func newStackRenameCmd() *cobra.Command {
 
 			// Now perform the rename and get ready to rename the existing configuration to the new project file.
 			newStackName := args[0]
-			newStackRef, err := s.Rename(ctx, tokens.QName(newStackName))
+			newStackRef, err := backend.RenameStack(ctx, s, tokens.QName(newStackName))
 			if err != nil {
 				return err
 			}

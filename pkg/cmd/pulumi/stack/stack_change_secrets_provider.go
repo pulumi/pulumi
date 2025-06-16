@@ -215,7 +215,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	}
 
 	// Load the current checkpoint so those secrets can also be decrypted
-	checkpoint, err := currentStack.ExportDeployment(ctx)
+	checkpoint, err := backend.ExportStackDeployment(ctx, currentStack)
 	if err != nil {
 		return err
 	}
@@ -242,5 +242,5 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	}
 
 	// Import the newly changes Deployment
-	return currentStack.ImportDeployment(ctx, &dep)
+	return backend.ImportStackDeployment(ctx, currentStack, &dep)
 }
