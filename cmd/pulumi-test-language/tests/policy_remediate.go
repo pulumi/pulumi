@@ -64,7 +64,7 @@ func init() {
 	}
 
 	// This is to test that we can run a remediation policy, we run a program that makes a simple resource,
-	// and then using policy config we remeidiate it in various ways.
+	// and then using policy config we remediate it in various ways.
 	LanguageTests["policy-remediate"] = LanguageTest{
 		Providers: []plugin.Provider{&providers.SimpleProvider{}},
 		// All these runs share the same source, we're just changing the policy config.
