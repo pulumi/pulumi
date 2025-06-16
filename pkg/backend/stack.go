@@ -17,13 +17,18 @@ package backend
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
+	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -88,6 +93,167 @@ func UpdateStack(
 	events chan<- engine.Event,
 ) (display.ResourceChanges, error) {
 	return s.Backend().Update(ctx, s, op, events)
+}
+
+func ApplyStack(
+	ctx context.Context,
+	kind apitype.UpdateKind,
+	stack Stack,
+	op UpdateOperation,
+	opts ApplierOptions,
+	events chan<- engine.Event,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	resetKeepRunning := nosleep.KeepRunning()
+	defer resetKeepRunning()
+
+	b := stack.Backend()
+
+	err := b.CheckApply(ctx, stack)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stackRef := stack.Ref()
+	actionLabel := ActionLabel(kind, opts.DryRun)
+
+	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != backendDisplay.DisplayWatch {
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stackRef)
+	}
+
+	// Start the update.
+	app, appEvents, appEventsDone, err := b.BeginApply(ctx, kind, stack, &op, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	update := app.UpdateInfo()
+
+	// Spawn a display loop to show events on the CLI.
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
+	go backendDisplay.ShowEvents(
+		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, app.Permalink(),
+		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+
+	// Create a separate event channel for engine events that we'll pipe to both listening streams.
+	engineEvents := make(chan engine.Event)
+
+	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	eventsDone := make(chan bool)
+	go func() {
+		// Pull in all events from the engine and send them to the two listeners.
+		for e := range engineEvents {
+			displayEvents <- e
+
+			if appEvents != nil {
+				appEvents <- e
+			}
+
+			// If the caller also wants to see the events, stream them there also.
+			if events != nil {
+				events <- e
+			}
+		}
+
+		close(displayEvents)
+
+		if appEvents != nil {
+			close(appEvents)
+		}
+
+		close(eventsDone)
+	}()
+
+	// Create the management machinery.
+	// We only need a snapshot manager if we're doing an update.
+	var manager *SnapshotManager
+	if kind != apitype.PreviewUpdate && !opts.DryRun {
+		persister, err := app.CreateSnapshotPersister()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting snapshot persister: %w", err)
+		}
+
+		manager = NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot)
+	}
+
+	backendClient, err := app.CreateBackendClient()
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating backend client: %w", err)
+	}
+
+	engineCtx := &engine.Context{
+		Cancel:          scope.Context(),
+		Events:          engineEvents,
+		SnapshotManager: manager,
+		BackendClient:   backendClient,
+	}
+
+	if parentSpan, err := app.CreateParentSpanContext(); parentSpan != nil && err == nil {
+		engineCtx.ParentSpan = parentSpan
+	}
+
+	// Perform the update
+	start := time.Now().Unix()
+	var plan *deploy.Plan
+	var changes display.ResourceChanges
+	var updateErr error
+	switch kind {
+	case apitype.PreviewUpdate:
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
+	case apitype.UpdateUpdate:
+		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+	case apitype.ResourceImportUpdate:
+		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+	case apitype.RefreshUpdate:
+		if op.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
+	case apitype.DestroyUpdate:
+		if op.Opts.Engine.DestroyProgram {
+			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
+	case apitype.StackImportUpdate, apitype.RenameUpdate:
+		contract.Failf("unexpected %s event", kind)
+	default:
+		contract.Failf("Unrecognized update kind: %s", kind)
+	}
+	end := time.Now().Unix()
+
+	// Wait for the display to finish showing all the events.
+	<-displayDone
+
+	scope.Close() // Don't take any cancellations anymore, we're shutting down.
+	close(engineEvents)
+	if manager != nil {
+		err = manager.Close()
+		// If the snapshot manager failed to close, we should return that error.
+		// Even though all the parts of the operation have potentially succeeded, a
+		// snapshotting failure is likely to rear its head on the next
+		// operation/invocation (e.g. an invalid snapshot that fails integrity
+		// checks, or a failure to write that means the snapshot is incomplete).
+		// Reporting now should make debugging and reporting easier.
+		if err != nil {
+			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
+		}
+	}
+
+	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
+	<-eventsDone
+	if appEventsDone != nil {
+		<-appEventsDone
+	}
+
+	err = app.End(start, end, plan, changes, updateErr)
+	if err != nil {
+		return plan, changes, err
+	}
+
+	return plan, changes, nil
 }
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).

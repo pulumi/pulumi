@@ -69,53 +69,6 @@ func (b *cloudBackend) recordEngineEvents(
 	return b.client.RecordEngineEvents(ctx, update, apiEvents, tokenSource)
 }
 
-// RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
-// posting them to the Pulumi service.
-func (b *cloudBackend) recordAndDisplayEvents(
-	ctx context.Context, tokenSource *tokenSource, update client.UpdateIdentifier,
-	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
-	permalink string, events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool,
-) {
-	// We take the channel of engine events and pass them to separate components that will display
-	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
-	// they see a CancelEvent, and when finished, close the "done" channel.
-	displayEvents := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
-	displayEventsDone := make(chan bool)
-
-	persistEvents := make(chan engine.Event, 100)
-	persistEventsDone := make(chan bool)
-
-	// We close our own done channel when both of the dependent components have finished.
-	defer func() {
-		<-displayEventsDone
-		<-persistEventsDone
-		close(done)
-	}()
-
-	// Start the Go-routines for displaying and persisting events.
-	go display.ShowEvents(
-		label, action, stackRef.Name(), op.Proj.Name, permalink,
-		displayEvents, displayEventsDone, opts, isPreview)
-	go b.persistEngineEvents(
-		ctx, tokenSource, update,
-		opts.Debug, /* persist debug events */
-		persistEvents, persistEventsDone)
-
-	for e := range events {
-		displayEvents <- e
-		persistEvents <- e
-
-		// We stop reading from the event stream as soon as we see the CancelEvent,
-		// which will also signal the display/persist components to shutdown too.
-		if e.Type == engine.CancelEvent {
-			break
-		}
-	}
-
-	// Note that we don't return immediately, the defer'd function will block until
-	// the display and persistence go-routines are finished processing events.
-}
-
 func RenewLeaseFunc(
 	client *client.Client, update client.UpdateIdentifier, assumedExpires func() time.Time,
 ) func(ctx context.Context, duration time.Duration, currentToken string) (string, time.Time, error) {
