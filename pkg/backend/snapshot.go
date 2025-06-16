@@ -648,10 +648,10 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		if step.New() != nil {
 			journalEntry.State = step.New()
 		} else {
-			rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
+			//			rsm.manager.markEntryForDeletion(&journalEntry, step.Old())
 			fmt.Println("should refresh delete ", step.Old().URN)
 			// TODO: is this the right thing to do?
-			//		rsm.manager.refreshDeletes[step.Old().URN] = true
+			rsm.manager.refreshDeletes[step.Old().URN] = true
 		}
 	}
 
