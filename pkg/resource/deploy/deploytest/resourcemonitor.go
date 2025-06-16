@@ -515,8 +515,8 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 	return resp.Ref, nil
 }
 
-func (rm *ResourceMonitor) WaitForShutdown(ctx context.Context) error {
-	_, err := rm.resmon.WaitForShutdown(ctx, &emptypb.Empty{})
+func (rm *ResourceMonitor) SignalAndWaitForShutdown(ctx context.Context) error {
+	_, err := rm.resmon.SignalAndWaitForShutdown(ctx, &emptypb.Empty{})
 	return err
 }
 

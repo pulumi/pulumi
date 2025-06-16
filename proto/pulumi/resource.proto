@@ -43,12 +43,13 @@ service ResourceMonitor {
     // Multiple requests are idempotent and guaranteed to return the same result.
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
 
-    // WaitForShutdown blocks until the resource monitor is finished, which will
-    // happen once all the steps have executed. This allows the language runtime
-    // to stay running and handle callback requests, even after the user program
-    // has completed. Runtime SDKs should call this after executing the user's
-    // program. This can only be called once.
-    rpc WaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    // SignalAndWaitForShutdown lets the resource monitor now that no more
+    // events will be generated. This call blocks until the resource monitor is
+    // finished, which will happen once all the steps have executed. This allows
+    // the language runtime to stay running and handle callback requests, even
+    // after the user program has completed. Runtime SDKs should call this after
+    // executing the user's program. This can only be called once.
+    rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use

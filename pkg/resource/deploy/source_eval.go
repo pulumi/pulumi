@@ -329,8 +329,8 @@ func (iter *evalSourceIterator) forkRun(
 
 		// Signal that the program will not be generating further events. New
 		// SDKs will already have signalled to `iter.finChan` via
-		// `WaitForShutdown`, but old SDKs signal completion here when they
-		// exit.
+		// `SignalAndWaitForShutdown`, but old SDKs signal completion here when
+		// they exit.
 		iter.finChan <- err
 	}()
 }
@@ -1601,19 +1601,21 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 	return &emptypb.Empty{}, nil
 }
 
-// WaitForShutdown blocks until the resource monitor is finished, which will
-// happen once all the steps have executed. This allows the language runtime to
-// stay running and handle callback requests even after the user program has
-// completed. This can only be called once.
-func (rm *resmon) WaitForShutdown(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
-	logging.V(6).Infof("WaitForShutdown waiting ...")
+// SignalAndWaitForShutdown lets the resource monitor now that no more events
+// will be generated. This call blocks until the resource monitor is finished,
+// which will happen once all the steps have executed. This allows the language
+// runtime to stay running and handle callback requests, even after the user
+// program has completed. Runtime SDKs should call this after executing the
+// user's program. This can only be called once.
+func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	logging.V(6).Infof("SignalAndWaitForShutdown waiting ...")
 	if rm.hasWaiter.CompareAndSwap(false, true) {
 		rm.finChan <- nil        // Let the source iterator know there will be no more events ...
 		<-rm.waitForShutdownChan // and then wait for the resource monitor to tell us it's done.
 	} else {
 		return &emptypb.Empty{}, errors.New("Already waiting for shutdown")
 	}
-	logging.V(6).Infof("WaitForShutdown completed")
+	logging.V(6).Infof("SignalAndWaitForShutdown completed")
 	return &emptypb.Empty{}, nil
 }
 

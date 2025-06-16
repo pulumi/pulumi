@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWaitForShutdown(t *testing.T) {
+func TestSignalAndWaitForShutdown(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -38,13 +38,13 @@ func TestWaitForShutdown(t *testing.T) {
 		}),
 	}
 
-	callWaitForShutdown := true
+	callSignalAndWaitForShutdown := true
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
-		if callWaitForShutdown {
-			err = monitor.WaitForShutdown(context.Background())
+		if callSignalAndWaitForShutdown {
+			err = monitor.SignalAndWaitForShutdown(context.Background())
 			require.NoError(t, err)
 		}
 		return nil
@@ -65,7 +65,7 @@ func TestWaitForShutdown(t *testing.T) {
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
 	// Operation runs to completion even if we don't call WaitForShutdown
-	callWaitForShutdown = false
+	callSignalAndWaitForShutdown = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
@@ -74,7 +74,7 @@ func TestWaitForShutdown(t *testing.T) {
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
 
-func TestWaitForShutdownError(t *testing.T) {
+func TestSignalAndWaitForShutdownError(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -88,13 +88,13 @@ func TestWaitForShutdownError(t *testing.T) {
 		}),
 	}
 
-	callWaitForShutdown := true
+	callSignalAndWaitForShutdown := true
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
-		if callWaitForShutdown {
-			err = monitor.WaitForShutdown(context.Background())
+		if callSignalAndWaitForShutdown {
+			err = monitor.SignalAndWaitForShutdown(context.Background())
 			// The `RegisterResource` call above resulted in an error, causing
 			// the monitor to shutdown. However the call to `WaitForShutdown`
 			// here can race with the shutdown. If we get the call in before the
@@ -119,13 +119,13 @@ func TestWaitForShutdownError(t *testing.T) {
 	require.ErrorContains(t, err, "oh no")
 
 	// Operation runs to completion with the expected error even if we don't call WaitForShutdown
-	callWaitForShutdown = false
+	callSignalAndWaitForShutdown = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "oh no")
 }
 
-func TestWaitForShutdownContinueOnError(t *testing.T) {
+func TestSignalAndWaitForShutdownContinueOnError(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -139,13 +139,13 @@ func TestWaitForShutdownContinueOnError(t *testing.T) {
 		}),
 	}
 
-	callWaitForShutdown := true
+	callSignalAndWaitForShutdown := true
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.ErrorContains(t, err, "resource registration failed")
-		if callWaitForShutdown {
-			err = monitor.WaitForShutdown(context.Background())
+		if callSignalAndWaitForShutdown {
+			err = monitor.SignalAndWaitForShutdown(context.Background())
 			// Even though RegisterResource returned an error, we continue
 			// running and expect WaitForShutdown to return successfully because
 			// we are running with `ContinueOnError: true`.
@@ -168,7 +168,7 @@ func TestWaitForShutdownContinueOnError(t *testing.T) {
 	require.ErrorContains(t, err, "oh no")
 
 	// Operation runs to completion with the expected error even if we don't call WaitForShutdown
-	callWaitForShutdown = false
+	callSignalAndWaitForShutdown = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "oh no")

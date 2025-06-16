@@ -248,8 +248,8 @@ func (p *monitorProxy) RegisterPackage(
 	return p.target.RegisterPackage(ctx, req)
 }
 
-func (p *monitorProxy) WaitForShutdown(
+func (p *monitorProxy) SignalAndWaitForShutdown(
 	ctx context.Context, req *emptypb.Empty,
 ) (*emptypb.Empty, error) {
-	return p.target.WaitForShutdown(ctx, req)
+	return p.target.SignalAndWaitForShutdown(ctx, req)
 }
