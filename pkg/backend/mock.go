@@ -100,9 +100,9 @@ type MockBackend struct {
 
 	DefaultSecretManagerF func(ps *workspace.ProjectStack) (secrets.Manager, error)
 
-	SupportsTemplatesF          func() bool
-	ListTemplatesF              func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
-	DownloadTemplateF           func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
+	SupportsTemplatesF        func() bool
+	ListTemplatesF            func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
+	DownloadTemplateF         func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
 	GetCloudRegistryF         func() (CloudRegistry, error)
 	GetReadOnlyCloudRegistryF func() registry.Registry
 }
@@ -895,8 +895,9 @@ func (m MockTarReader) Tar() *tar.Reader {
 }
 
 type MockCloudRegistry struct {
-	PublishPackageF func(context.Context, apitype.PackagePublishOp) error
-	GetPackageF     func(
+	PublishPackageF  func(context.Context, apitype.PackagePublishOp) error
+	PublishTemplateF func(context.Context, TemplatePublishOp) error
+	GetPackageF      func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
 	SearchByNameF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
@@ -927,4 +928,11 @@ func (mr *MockCloudRegistry) SearchByName(
 		return mr.SearchByNameF(ctx, name)
 	}
 	panic("not implemented")
+}
+
+func (mr *MockCloudRegistry) PublishTemplate(ctx context.Context, op TemplatePublishOp) error {
+	if mr.PublishTemplateF != nil {
+		return mr.PublishTemplateF(ctx, op)
+	}
+	panic("not implemented: MockCloudRegistry.PublishTemplate")
 }
