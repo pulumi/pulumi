@@ -118,7 +118,8 @@ func snapshotEqual(journal, manager *deploy.Snapshot) error {
 		for _, r := range manager.Resources {
 			managerResources += fmt.Sprintf("%v, ", r.URN)
 		}
-		return fmt.Errorf("journal and manager resources differ, %d in journal(%s), %d in manager (%s)", len(journal.Resources), journalResources, len(manager.Resources), managerResources)
+		return fmt.Errorf("journal and manager resources differ, %d in journal, %d in manager",
+			len(journal.Resources), len(manager.Resources))
 	}
 
 	for _, jr := range journal.Resources {
