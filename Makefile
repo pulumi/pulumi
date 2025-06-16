@@ -115,13 +115,13 @@ brew::
 .PHONY: lint_%
 lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
 
-lint_pulumi_json::
+lint_pulumi_json:: ensure
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
 	# JSON schema says regexps should conform to ECMA 262.
 	go run github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0 pkg/codegen/schema/pulumi.json
 	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
 
-lint_pulumi_json_fix::
+lint_pulumi_json_fix:: ensure
 	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
