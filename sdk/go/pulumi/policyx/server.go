@@ -105,15 +105,10 @@ func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pu
 		schema := p.ConfigSchema()
 		var configSchema *pulumirpc.PolicyConfigSchema
 		if schema != nil {
-			// Convert the schema properties to a map[string]interface{} for JSON marshalling.
-			b, err := json.Marshal(schema.Properties)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal schema properties: %w", err)
-			}
-			var m map[string]interface{}
-			err = json.Unmarshal(b, &m)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal schema properties: %w", err)
+			// Convert the schema properties to a map[string]any for protobuf serialization.
+			m := make(map[string]any, len(schema.Properties))
+			for k, v := range schema.Properties {
+				m[k] = v
 			}
 			proto, err := structpb.NewStruct(m)
 			if err != nil {
