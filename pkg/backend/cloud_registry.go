@@ -16,13 +16,31 @@ package backend
 
 import (
 	"context"
+	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
+
+// TemplatePublishOp contains the information needed to publish a template to the registry.
+type TemplatePublishOp struct {
+	// Source is the source of the template. Typically this is 'private' for templates published to the Pulumi Registry.
+	Source string
+	// Publisher is the organization that is publishing the template.
+	Publisher string
+	// Name is the URL-safe name of the template.
+	Name string
+	// Version is the semantic version of the template that should get published.
+	Version semver.Version
+	// Archive is a reader containing the template archive (.tar.gz).
+	Archive io.Reader
+}
 
 type CloudRegistry interface {
 	registry.Registry
 	// PublishPackage publishes a package to the registry.
 	PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error
+	// PublishTemplate publishes a template to the registry.
+	PublishTemplate(ctx context.Context, op TemplatePublishOp) error
 }

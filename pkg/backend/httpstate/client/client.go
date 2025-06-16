@@ -50,6 +50,39 @@ const (
 	CopilotRequestTimeout = 20 * time.Second
 )
 
+// TemplatePublishOperationID uniquely identifies a template publish operation.
+type TemplatePublishOperationID string
+
+// StartTemplatePublishRequest is the request body for starting a template publish operation.
+type StartTemplatePublishRequest struct {
+	// Version is the semantic version of the template.
+	Version semver.Version `json:"version"`
+}
+
+// StartTemplatePublishResponse is the response from initiating a template publish.
+// It returns a presigned URL to upload the template archive.
+type StartTemplatePublishResponse struct {
+	// OperationID uniquely identifies the publishing operation.
+	OperationID TemplatePublishOperationID `json:"operationID"`
+	// UploadURLs contains the presigned URLs for uploading template artifacts.
+	UploadURLs TemplateUploadURLs `json:"uploadURLs"`
+}
+
+// TemplateUploadURLs contains the presigned URLs for uploading template artifacts.
+type TemplateUploadURLs struct {
+	// Archive is the URL for uploading the template archive.
+	Archive string `json:"archive"`
+}
+
+// PublishTemplateVersionCompleteRequest is the request body for completing a template publish operation.
+type PublishTemplateVersionCompleteRequest struct {
+	// OpID is the operation ID from the StartTemplatePublishResponse.
+	OpID TemplatePublishOperationID `json:"operationID"`
+}
+
+// PublishTemplateVersionCompleteResponse is the response from completing a template publish operation.
+type PublishTemplateVersionCompleteResponse struct{}
+
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
@@ -231,6 +264,14 @@ func publishPackagePath(source, publisher, name string) string {
 
 func completePackagePublishPath(source, publisher, name, version string) string {
 	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+}
+
+func publishTemplatePath(source, publisher, name string) string {
+	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions", source, publisher, name)
+}
+
+func completeTemplatePublishPath(source, publisher, name, version string) string {
+	return fmt.Sprintf("/api/preview/registry/templates/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
@@ -1546,6 +1587,40 @@ func (pc *Client) PublishPackage(ctx context.Context, input apitype.PackagePubli
 	err = pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
 	if err != nil {
 		return fmt.Errorf("failed to complete package publishing operation %q: %w", resp.OperationID, err)
+	}
+
+	return nil
+}
+
+func (pc *Client) StartTemplatePublish(
+	ctx context.Context,
+	source, publisher, name string,
+	version semver.Version,
+) (*StartTemplatePublishResponse, error) {
+	req := StartTemplatePublishRequest{
+		Version: version,
+	}
+	var resp StartTemplatePublishResponse
+	err := pc.restCall(ctx, "POST", publishTemplatePath(source, publisher, name), nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("start template publish failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func (pc *Client) CompleteTemplatePublish(
+	ctx context.Context,
+	source, publisher, name, version string,
+	operationID TemplatePublishOperationID,
+) error {
+	completeReq := PublishTemplateVersionCompleteRequest{
+		OpID: operationID,
+	}
+
+	requestPath := completeTemplatePublishPath(source, publisher, name, version)
+	err := pc.restCall(ctx, "POST", requestPath, nil, completeReq, nil)
+	if err != nil {
+		return fmt.Errorf("failed to complete template publishing operation %q: %w", operationID, err)
 	}
 
 	return nil

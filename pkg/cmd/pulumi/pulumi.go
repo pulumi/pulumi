@@ -70,6 +70,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
@@ -392,6 +393,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
