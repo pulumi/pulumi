@@ -113,9 +113,10 @@ type JournalEntry struct {
 	Kind          JournalEntryKind
 	OperationUUID string // The UUID of the operation that this journal entry is associated with.
 	DeleteOld     int
-	DeleteNew     string          // UUID for the delete Operation
-	State         *resource.State // The resource state associated with this journal entry.
-	result        chan<- error    // The result channel to send the result of the journal entry processing.
+	DeleteNew     string             // UUID for the delete Operation
+	State         *resource.State    // The resource state associated with this journal entry.
+	result        chan<- error       // The result channel to send the result of the journal entry processing.
+	Operation     resource.Operation // The operation associated with this journal entry, if any.
 }
 
 type JournalEntries []JournalEntry
@@ -434,7 +435,7 @@ func (sm *SnapshotManager) doCreate(step deploy.Step, operationUUID string) (eng
 	sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		State:         step.New(),
+		Operation:     resource.NewOperation(step.New(), resource.OperationTypeCreating),
 	})
 	return &createSnapshotMutation{sm, operationUUID}, nil
 }
@@ -470,7 +471,7 @@ func (sm *SnapshotManager) doUpdate(step deploy.Step, operationUUID string) (eng
 	sm.journalEvents <- JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		State:         step.New(),
+		Operation:     resource.NewOperation(step.New(), resource.OperationTypeUpdating),
 	}
 
 	return &updateSnapshotMutation{sm, operationUUID}, nil
@@ -506,14 +507,10 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doDelete(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
 	journalEntry := JournalEntry{
-		Kind:      JournalEntryBegin,
-		DeleteOld: -1, // Default to -1, which means no deletion.
-	}
-	if old := step.Old(); old != nil && sm.baseSnapshot != nil {
-		sm.markEntryForDeletion(&journalEntry, step.Old())
-		// if journalEntry.DeleteOld == -1 {
-		// 	panic("could not find old resource in base snapshot")
-		// }
+		Kind:          JournalEntryBegin,
+		DeleteOld:     -1, // Default to -1, which means no deletion.
+		OperationUUID: operationUUID,
+		Operation:     resource.NewOperation(step.New(), resource.OperationTypeDeleting),
 	}
 
 	sm.journalEvents <- journalEntry
@@ -580,7 +577,7 @@ func (sm *SnapshotManager) doRead(step deploy.Step, operationUUID string) (engin
 	journalEntry := JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		State:         step.New(),
+		Operation:     resource.NewOperation(step.New(), resource.OperationTypeReading),
 	}
 	sm.journalEvents <- journalEntry
 	return &readSnapshotMutation{sm, operationUUID}, nil
@@ -693,7 +690,7 @@ func (sm *SnapshotManager) doImport(step deploy.Step, operationUUID string) (eng
 	sm.journalEvents <- JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
-		State:         step.New(),
+		Operation:     resource.NewOperation(step.New(), resource.OperationTypeImporting),
 	}
 
 	return &importSnapshotMutation{sm, operationUUID}, nil
@@ -721,28 +718,6 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	}
 	ism.manager.newResources.Store(step.New(), ism.operationUUID)
 	return ism.manager.journalMutation(journalEntry)
-}
-
-// markDone marks a resource as having been processed. Resources that have been marked
-// in this manner won't be persisted in the snapshot.
-func (sm *SnapshotManager) markDone(state *resource.State) {
-	contract.Requiref(state != nil, "state", "must not be nil")
-	sm.dones[state] = true
-	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
-}
-
-// markOperationPending marks a resource as undergoing an operation that will now be considered pending.
-func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
-	contract.Requiref(state != nil, "state", "must not be nil")
-	sm.operations = append(sm.operations, resource.NewOperation(state, op))
-	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
-}
-
-// markOperationComplete marks a resource as having completed the operation that it previously was performing.
-func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
-	contract.Requiref(state != nil, "state", "must not be nil")
-	sm.completeOps[state] = true
-	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
 }
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
@@ -789,15 +764,18 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		}
 	}
 
+	incompleteOps := make(map[string]JournalEntry)
+
+	// Record any pending operations, if there are any outstanding that have not completed yet.
 	for _, entry := range sm.journalEntries {
 		switch entry.Kind {
 		case JournalEntryBegin:
-			// TODO: deal with pending resources
+			incompleteOps[entry.OperationUUID] = entry
 		case JournalEntrySuccess:
+			delete(incompleteOps, entry.OperationUUID)
 			// If this is a success, we need to add the resource to the list of resources.
 			_, delete := newToDelete[entry.OperationUUID]
 			if entry.State != nil && !delete {
-				//			fmt.Println("Adding new resource:", entry.State.URN, entry.State.Provider, entry.State.ID)
 				newResources = append(newResources, entry.State)
 			}
 			if entry.DeleteOld >= 0 {
@@ -814,7 +792,6 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	if sm.baseSnapshot != nil {
 		for i, res := range sm.baseSnapshot.Resources {
 			if _, ok := toDelete[i]; !ok {
-				//			fmt.Println("adding existing resource:", res.URN, res.Provider, res.ID)
 				resources = append(resources, res)
 			}
 		}
@@ -825,10 +802,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
 	var operations []resource.Operation
-	for _, op := range sm.operations {
-		if !sm.completeOps[op.Resource] {
-			operations = append(operations, op)
-		}
+	for _, op := range incompleteOps {
+		operations = append(operations, op.Operation)
 	}
 
 	// Track pending create operations from the base snapshot
