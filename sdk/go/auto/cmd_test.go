@@ -15,7 +15,9 @@
 package auto
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -304,7 +306,11 @@ func TestRunCanceled(t *testing.T) {
 		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
 	}
 	t.Logf("[%s] cmd.Run()", time.Now().Format(time.RFC3339Nano))
-	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
+	stdout := bytes.Buffer{}
+	stderr := bytes.Buffer{}
+	_, _, code, err := cmd.Run(ctx, e.CWD, nil, []io.Writer{&stdout}, []io.Writer{&stderr}, env, "preview", "-s", stackName)
+	t.Logf("stdout = %s", stdout.String())
+	t.Logf("stderr = %s", stderr.String())
 	if runtime.GOOS == "windows" {
 		require.ErrorContains(t, err, "exit status 0xffffffff")
 		require.Equal(t, 4294967295, code)
