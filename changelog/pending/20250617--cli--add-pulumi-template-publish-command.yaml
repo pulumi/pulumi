@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi template publish` command to publish templates to the Pulumi Registry
