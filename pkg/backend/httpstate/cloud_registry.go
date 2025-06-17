@@ -26,29 +26,29 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-type cloudPackageRegistry struct {
+type cloudRegistry struct {
 	cl *client.Client
 }
 
-func newCloudPackageRegistry(cl *client.Client) *cloudPackageRegistry {
-	return &cloudPackageRegistry{
+func newCloudRegistry(cl *client.Client) *cloudRegistry {
+	return &cloudRegistry{
 		cl: cl,
 	}
 }
 
-var _ backend.PackageRegistry = (*cloudPackageRegistry)(nil)
+var _ backend.CloudRegistry = (*cloudRegistry)(nil)
 
-func (r *cloudPackageRegistry) Publish(ctx ctx.Context, op apitype.PackagePublishOp) error {
+func (r *cloudRegistry) PublishPackage(ctx ctx.Context, op apitype.PackagePublishOp) error {
 	return r.cl.PublishPackage(ctx, op)
 }
 
-func (r *cloudPackageRegistry) SearchByName(
+func (r *cloudRegistry) SearchByName(
 	ctx ctx.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
 	return r.cl.SearchByName(ctx, name)
 }
 
-func (r *cloudPackageRegistry) GetPackage(
+func (r *cloudRegistry) GetPackage(
 	ctx ctx.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
 	meta, err := r.cl.GetPackage(ctx, source, publisher, name, version)

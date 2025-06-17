@@ -362,8 +362,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				tt.args.installDocsPath = installDocsPath
 			}
 
-			mockPackageRegistry := &backend.MockPackageRegistry{
-				PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
+			mockCloudRegistry := &backend.MockCloudRegistry{
+				PublishPackageF: func(ctx context.Context, op apitype.PackagePublishOp) error {
 					schemaBytes, err := io.ReadAll(op.Schema)
 					require.NoError(t, err)
 					packageSpec, err := unmarshalSchema(schemaBytes)
@@ -407,8 +407,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 			}
 
 			testutil.MockBackendInstance(t, &backend.MockBackend{
-				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
-					return mockPackageRegistry, nil
+				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
+					return mockCloudRegistry, nil
 				},
 			})
 
@@ -502,9 +502,9 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 
 			// Mock the backend
 			testutil.MockBackendInstance(t, &backend.MockBackend{
-				GetPackageRegistryF: func() (backend.PackageRegistry, error) {
-					return &backend.MockPackageRegistry{
-						PublishF: func(ctx context.Context, op apitype.PackagePublishOp) error {
+				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
+					return &backend.MockCloudRegistry{
+						PublishPackageF: func(ctx context.Context, op apitype.PackagePublishOp) error {
 							return nil
 						},
 					}, nil
@@ -546,7 +546,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			name: "error getting package registry",
 			setupBackend: func(t *testing.T) {
 				testutil.MockBackendInstance(t, &backend.MockBackend{
-					GetPackageRegistryF: func() (backend.PackageRegistry, error) {
+					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get package registry")
 					},
 				})
