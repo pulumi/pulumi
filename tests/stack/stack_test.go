@@ -921,3 +921,44 @@ func TestNewStackConflictingOrg(t *testing.T) {
 		e.RunCommand("pulumi", "destroy", "--yes", "--remove")
 	}
 }
+
+//nolint:paralleltest pulumi new is not parallel safe
+func TestEmptyStackRm(t *testing.T) {
+	// This test requires the service, as we're comparing the service and diy backends.
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	stack, err := resource.NewUniqueHex("test-stack-", 8, -1)
+	require.NoError(t, err)
+
+	// Generate only so we don't make a stack, but then install the dependencies
+	e.RunCommand("pulumi", "new", "typescript", "--generate-only", "--yes", "--force")
+	e.RunCommand("pulumi", "install")
+
+	// Run the test against the service backend first.
+	backends := []string{"", e.LocalURL()}
+
+	for _, backend := range backends {
+		e.Backend = backend
+
+		e.RunCommand("pulumi", "stack", "init", stack)
+
+		e.RunCommand("pulumi", "up", "--yes")
+		// The stack should just have the default stack resource in it
+		state, _ := e.RunCommand("pulumi", "stack", "export")
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal([]byte(state), &deployment)
+		require.NoError(t, err)
+		var v3deployment apitype.DeploymentV3
+		err = json.Unmarshal(deployment.Deployment, &v3deployment)
+		require.NoError(t, err)
+		assert.Len(t, v3deployment.Resources, 1, "stack should only have the default stack resource")
+
+		// Now try to remove the stack. This should succeed, even though there is the one resource in the stack.
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
+	}
+}
