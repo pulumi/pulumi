@@ -36,7 +36,7 @@ type ResourceMonitorClient interface {
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(ctx context.Context, in *RegisterPackageRequest, opts ...grpc.CallOption) (*RegisterPackageResponse, error)
-	// SignalAndWaitForShutdown lets the resource monitor now that no more
+	// SignalAndWaitForShutdown lets the resource monitor know that no more
 	// events will be generated. This call blocks until the resource monitor is
 	// finished, which will happen once all the steps have executed. This allows
 	// the language runtime to stay running and handle callback requests, even
@@ -160,7 +160,7 @@ type ResourceMonitorServer interface {
 	// Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 	// Multiple requests are idempotent and guaranteed to return the same result.
 	RegisterPackage(context.Context, *RegisterPackageRequest) (*RegisterPackageResponse, error)
-	// SignalAndWaitForShutdown lets the resource monitor now that no more
+	// SignalAndWaitForShutdown lets the resource monitor know that no more
 	// events will be generated. This call blocks until the resource monitor is
 	// finished, which will happen once all the steps have executed. This allows
 	// the language runtime to stay running and handle callback requests, even

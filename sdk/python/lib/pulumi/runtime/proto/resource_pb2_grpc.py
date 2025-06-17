@@ -133,7 +133,7 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def SignalAndWaitForShutdown(self, request, context):
-        """SignalAndWaitForShutdown lets the resource monitor now that no more
+        """SignalAndWaitForShutdown lets the resource monitor know that no more
         events will be generated. This call blocks until the resource monitor is
         finished, which will happen once all the steps have executed. This allows
         the language runtime to stay running and handle callback requests, even
