@@ -159,12 +159,11 @@ func (sm *SnapshotManager) journalMutation(journalEntry JournalEntry) error {
 // Note that this is completely not thread-safe and defeats the purpose of having a `mutate` callback
 // entirely, but the hope is that this state of things will not be permament.
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
-	sm.journalEvents <- JournalEntry{
+	return sm.journalMutation(JournalEntry{
 		Kind: JournalEntryOutputs,
 		// If the outputs have not changed, we do not need to write this journal entry.
 		ElideWrite: step.Old() != nil && step.New() != nil && step.Old().Outputs.DeepEquals(step.New().Outputs),
-	}
-	return nil
+	})
 }
 
 func (sm *SnapshotManager) markEntryForDeletion(journalEntry *JournalEntry, toDelete *resource.State) {
@@ -368,6 +367,7 @@ func (sm *SnapshotManager) doSame(step deploy.Step, operationUUID string) (engin
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
 		State:         step.New(),
+		ElideWrite:    true,
 	})
 	if err != nil {
 		return nil, err
@@ -390,7 +390,6 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
 	journalEntry.DeleteOld = -1 // Default to -1, which means no deletion.
-	// TODO: we should always have a base snapshot
 	if old := step.Old(); old != nil {
 		ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
@@ -401,7 +400,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		ssm.manager.newResources.Store(step.New(), ssm.operationUUID)
 	}
 
-	if isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
+	if successful && isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
 		journalEntry.ElideWrite = true
 	}
 
@@ -547,6 +546,7 @@ func (sm *SnapshotManager) doReplace(step deploy.Step, operationUUID string) (en
 	err := sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
+		ElideWrite:    true,
 	})
 	if err != nil {
 		return nil, err
@@ -658,11 +658,11 @@ func (sm *SnapshotManager) doRemovePendingReplace(
 	step deploy.Step, operationUUID string,
 ) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
-	sm.journalEvents <- JournalEntry{
+	sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
 		State:         step.Old(),
-	}
+	})
 	return &removePendingReplaceSnapshotMutation{sm, operationUUID}, nil
 }
 
@@ -689,10 +689,13 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 func (sm *SnapshotManager) doImport(step deploy.Step, operationUUID string) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
-	sm.journalEvents <- JournalEntry{
+	err := sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
 		Operation:     &op,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &importSnapshotMutation{sm, operationUUID}, nil
@@ -783,6 +786,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 				toDelete[entry.DeleteOld] = struct{}{}
 			}
 		case JournalEntryFailure:
+			delete(incompleteOps, entry.OperationUUID)
 			// TODO: what do we need to do in the failure case?
 		case JournalEntryOutputs:
 			// Nothing to do here, this is just a marker that outputs were registered.
@@ -911,9 +915,7 @@ serviceLoop:
 				hasElidedWrites = true
 				continue
 			}
-			if request.result != nil {
-				request.result <- sm.saveSnapshot()
-			}
+			request.result <- sm.saveSnapshot()
 		case <-sm.cancel:
 			break serviceLoop
 		}
