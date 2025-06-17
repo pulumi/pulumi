@@ -922,7 +922,7 @@ func TestNewStackConflictingOrg(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest pulumi new is not parallel safe
+//nolint:paralleltest // pulumi new is not parallel safe
 func TestEmptyStackRm(t *testing.T) {
 	// This test requires the service, as we're comparing the service and diy backends.
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
