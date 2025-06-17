@@ -91,6 +91,17 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterLifecycleHookRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterLifecycleHookRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterLifecycleHookRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterLifecycleHookRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterLifecycleHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterPackageRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterPackageRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterPackageRequest');
@@ -280,6 +291,17 @@ registerStackInvokeTransform: {
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_Callback,
     requestDeserialize: deserialize_pulumirpc_Callback,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  registerLifecycleHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterLifecycleHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterLifecycleHookRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterLifecycleHookRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterLifecycleHookRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

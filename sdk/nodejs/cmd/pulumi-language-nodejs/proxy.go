@@ -242,6 +242,12 @@ func (p *monitorProxy) RegisterStackInvokeTransform(
 	return p.target.RegisterStackInvokeTransform(ctx, req)
 }
 
+func (p *monitorProxy) RegisterLifecycleHook(
+	ctx context.Context, req *pulumirpc.RegisterLifecycleHookRequest,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterLifecycleHook(ctx, req)
+}
+
 func (p *monitorProxy) RegisterPackage(
 	ctx context.Context, req *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {

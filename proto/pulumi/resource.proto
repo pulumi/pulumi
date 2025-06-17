@@ -39,6 +39,8 @@ service ResourceMonitor {
     // Register an invoke transform for the stack
     rpc RegisterStackInvokeTransform(Callback) returns (google.protobuf.Empty) {}
 
+    rpc RegisterLifecycleHook(RegisterLifecycleHookRequest) returns (google.protobuf.Empty) {}
+
     // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
     // Multiple requests are idempotent and guaranteed to return the same result.
     rpc RegisterPackage(RegisterPackageRequest) returns (RegisterPackageResponse) {}
@@ -158,6 +160,17 @@ message RegisterResourceRequest {
     bool supportsResultReporting = 32; // true if the request is from an SDK that supports the result field in the response.
 
     string packageRef = 33; // a reference from RegisterPackageRequest.
+
+    message LifecycleHooksBinding {
+        repeated Callback before_create = 1;
+        repeated Callback after_create = 2;
+        repeated Callback before_update = 3;
+        repeated Callback after_update = 4;
+        repeated Callback before_delete = 5;
+        repeated Callback after_delete = 6;
+    }
+
+    LifecycleHooksBinding lifecycleHooks = 34;
 }
 
 enum Result {
@@ -281,6 +294,16 @@ message TransformInvokeOptions {
     map<string, bytes> plugin_checksums = 4;
 }
 
+message LifecycleHookRequest {
+    string urn = 1;
+    string id = 2;
+    google.protobuf.Struct outputs = 3;
+}
+
+message LifecycleHookResponse {
+    string error = 1;
+}
+
 message RegisterPackageRequest {
     string name = 1; // the plugin name.
     string version = 2; // the plugin version.
@@ -300,4 +323,8 @@ message Parameterization {
     string name = 1; // the parameterized package name.
     string version = 2; // the parameterized package version.
     bytes value = 3; // the parameter value for the parameterized package.
+}
+
+message RegisterLifecycleHookRequest {
+    Callback callback = 1; // the callback that the engine can call to run the hook.
 }
