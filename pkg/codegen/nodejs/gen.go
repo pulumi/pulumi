@@ -468,7 +468,11 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 			if err != nil {
 				return err
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: (%s) ?? %s", propertyRef, p.Name, dv))
+			propName := p.Name
+			if strings.Contains(p.Name, "-") {
+				propName = fmt.Sprintf("[%q]", p.Name)
+			}
+			defaults = append(defaults, fmt.Sprintf("%s: (%s) ?? %s", propName, propertyRef, dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
 			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
 			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
