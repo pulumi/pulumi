@@ -330,10 +330,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 	// Now that all steps have executed, we can close the resource source, which
 	// will shut down the resource monitor.
-	err = src.Close()
-	if err != nil {
-		logging.V(4).Infof("deploymentExecutor.Execute(...): resource source closed with error: %s", err)
-		return nil, result.BailError(err)
+	closeErr := src.Close()
+	if closeErr != nil {
+		logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
+		return nil, result.BailError(closeErr)
 	}
 
 	// Finalize the stack outputs.
