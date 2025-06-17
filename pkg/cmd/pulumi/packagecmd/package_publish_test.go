@@ -546,7 +546,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			name: "error getting package registry",
 			setupBackend: func(t *testing.T) {
 				testutil.MockBackendInstance(t, &backend.MockBackend{
-					GetPackageRegistryF: func() (backend.PackageRegistry, error) {
+					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get package registry")
 					},
 				})

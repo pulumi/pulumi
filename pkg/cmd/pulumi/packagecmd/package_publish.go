@@ -196,9 +196,9 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to marshal schema: %w", err)
 	}
 
-	registry, err := b.GetPackageRegistry()
+	registry, err := b.GetCloudRegistry()
 	if err != nil {
-		return fmt.Errorf("failed to get package registry: %w", err)
+		return fmt.Errorf("failed to get cloud registry: %w", err)
 	}
 
 	// We need to set the content-size header for S3 puts. For byte buffers (or deterministic readers)
@@ -244,7 +244,7 @@ func (cmd *packagePublishCmd) Run(
 		publishInput.InstallDocs = installDocsBytes
 	}
 
-	err = registry.Publish(ctx, publishInput)
+	err = registry.PublishPackage(ctx, publishInput)
 	if err != nil {
 		return fmt.Errorf("failed to publish package: %w", err)
 	}

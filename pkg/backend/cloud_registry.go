@@ -21,8 +21,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
 
-type PackageRegistry interface {
+type CloudRegistry interface {
 	registry.Registry
-	// Publish publishes a package to the package registry.
-	Publish(ctx context.Context, op apitype.PackagePublishOp) error
+	// PublishPackage publishes a package to the registry.
+	PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error
 }
