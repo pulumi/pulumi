@@ -37,6 +37,9 @@ type diyStack struct {
 	// a snapshot representing the latest deployment state, allocated on first use. It's valid for the
 	// snapshot itself to be nil.
 	snapshot atomic.Pointer[*deploy.Snapshot]
+	// tags contains metadata tags describing additional, extensible properties about this stack.
+	// Loaded on first access and cached.
+	tags atomic.Pointer[map[apitype.StackTagName]string]
 	// a pointer to the backend this stack belongs to.
 	b *diyBackend
 }
@@ -75,8 +78,24 @@ func (s *diyStack) Snapshot(ctx context.Context, secretsProvider secrets.Provide
 	s.snapshot.Store(&snap)
 	return snap, nil
 }
-func (s *diyStack) Backend() backend.Backend              { return s.b }
-func (s *diyStack) Tags() map[apitype.StackTagName]string { return nil }
+func (s *diyStack) Backend() backend.Backend { return s.b }
+
+func (s *diyStack) Tags() map[apitype.StackTagName]string {
+	if v := s.tags.Load(); v != nil {
+		return *v
+	}
+
+	// Load tags from storage
+	tags, err := s.b.loadStackTags(context.Background(), s.ref)
+	if err != nil {
+		// Log the error but return empty tags to maintain backward compatibility
+		contract.IgnoreError(err)
+		tags = make(map[apitype.StackTagName]string)
+	}
+
+	s.tags.Store(&tags)
+	return tags
+}
 
 func (s *diyStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
 	return passphrase.NewPromptingPassphraseSecretsManager(info, false /* rotatePassphraseSecretsProvider */)

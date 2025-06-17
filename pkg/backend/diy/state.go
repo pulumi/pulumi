@@ -308,6 +308,12 @@ func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) 
 	file := b.stackPath(ctx, ref)
 	backupTarget(ctx, b.bucket, file, false)
 
+	// Also remove the tags file if it exists
+	if err := b.deleteStackTags(ctx, ref); err != nil {
+		// Log the error but don't fail the removal for this
+		logging.V(5).Infof("error deleting stack tags: %v", err)
+	}
+
 	historyDir := ref.HistoryDir()
 	return removeAllByPrefix(ctx, b.bucket, historyDir)
 }
