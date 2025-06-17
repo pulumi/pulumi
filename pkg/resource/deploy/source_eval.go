@@ -151,7 +151,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
-	finChan := make(chan error)
+	finChan := make(chan error, 1)
 	// We receive from programCompleteChan during shutdown. This channel needs
 	// to be buffered because a program can exit before we are shutting down.
 	programCompleteChan := make(chan error, 1)
