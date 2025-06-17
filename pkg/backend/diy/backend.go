@@ -1546,10 +1546,10 @@ func (b *diyBackend) getParallel() int {
 	return parallel
 }
 
-func (b *diyBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
-	return nil, errors.New("package registry is not supported by diy backends")
+func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
+	return nil, errors.New("cloud registry is not supported by diy backends")
 }
 
-func (b *diyBackend) GetReadOnlyPackageRegistry() registry.Registry {
+func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	return unauthenticatedregistry.New(b.d, b.Env)
 }

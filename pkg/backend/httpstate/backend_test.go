@@ -323,7 +323,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	assert.NotNil(t, snap)
 }
 
-func TestCloudBackend_GetPackageRegistry(t *testing.T) {
+func TestCloudBackend_GetCloudRegistry(t *testing.T) {
 	t.Parallel()
 	mockClient := &client.Client{}
 	b := &cloudBackend{
@@ -331,12 +331,12 @@ func TestCloudBackend_GetPackageRegistry(t *testing.T) {
 		d:      diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 	}
 
-	registry, err := b.GetPackageRegistry()
+	registry, err := b.GetCloudRegistry()
 	assert.NoError(t, err)
 	assert.NotNil(t, registry)
 
-	_, ok := registry.(*cloudPackageRegistry)
-	assert.True(t, ok, "expected registry to be a cloudPackageRegistry")
+	_, ok := registry.(*cloudRegistry)
+	assert.True(t, ok, "expected registry to be a cloudRegistry")
 }
 
 // Bit of an integration test.

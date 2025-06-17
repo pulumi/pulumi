@@ -125,7 +125,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil,
 			)
 			if err == nil && b != nil {
-				return b.GetReadOnlyPackageRegistry(), nil
+				return b.GetReadOnlyCloudRegistry(), nil
 			}
 			if b == nil || errors.Is(err, backenderr.ErrLoginRequired) {
 				return unauthenticatedregistry.New(cmd.diag, cmd.env), nil

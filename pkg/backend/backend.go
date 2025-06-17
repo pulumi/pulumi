@@ -255,17 +255,17 @@ type Backend interface {
 	// to ListTemplates.
 	DownloadTemplate(ctx context.Context, orgName, sourceURL string) (TarReaderCloser, error)
 
-	// GetPackageRegistry returns a PackageRegistry object tied to this backend. Not
-	// all backends are required to support GetPackageRegistry. Those that don't
-	// should return a non-nil error when GetPackageRegistry is called.
+	// GetCloudRegistry returns a CloudRegistry object tied to this backend. Not
+	// all backends are required to support GetCloudRegistry. Those that don't
+	// should return a non-nil error when GetCloudRegistry is called.
 	//
-	// PackageRegistry is a superset of [registry.Registry] that supports publishing
+	// CloudRegistry is a superset of [registry.Registry] that supports publishing
 	// packages.
-	GetPackageRegistry() (PackageRegistry, error)
+	GetCloudRegistry() (CloudRegistry, error)
 
-	// GetReadOnlyPackageRegistry retusn a [registry.Registry] object tied to this
-	// backend. All backends should support GetReadOnlyPackageRegistry.
-	GetReadOnlyPackageRegistry() registry.Registry
+	// GetReadOnlyCloudRegistry retusn a [registry.Registry] object tied to this
+	// backend. All backends should support GetReadOnlyCloudRegistry.
+	GetReadOnlyCloudRegistry() registry.Registry
 }
 
 // EnvironmentsBackend is an interface that defines an optional capability for a backend to work with environments.

@@ -105,8 +105,8 @@ type MockBackend struct {
 	SupportsTemplatesF          func() bool
 	ListTemplatesF              func(_ context.Context, orgName string) (apitype.ListOrgTemplatesResponse, error)
 	DownloadTemplateF           func(_ context.Context, orgName, templateSource string) (TarReaderCloser, error)
-	GetPackageRegistryF         func() (PackageRegistry, error)
-	GetReadOnlyPackageRegistryF func() registry.Registry
+	GetCloudRegistryF         func() (CloudRegistry, error)
+	GetReadOnlyCloudRegistryF func() registry.Registry
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -493,16 +493,16 @@ func (be *MockBackend) DownloadTemplate(ctx context.Context, orgName, templateSo
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetPackageRegistry() (PackageRegistry, error) {
-	if be.GetPackageRegistryF != nil {
-		return be.GetPackageRegistryF()
+func (be *MockBackend) GetCloudRegistry() (CloudRegistry, error) {
+	if be.GetCloudRegistryF != nil {
+		return be.GetCloudRegistryF()
 	}
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetReadOnlyPackageRegistry() registry.Registry {
-	if be.GetReadOnlyPackageRegistryF != nil {
-		return be.GetReadOnlyPackageRegistryF()
+func (be *MockBackend) GetReadOnlyCloudRegistry() registry.Registry {
+	if be.GetReadOnlyCloudRegistryF != nil {
+		return be.GetReadOnlyCloudRegistryF()
 	}
 	panic("not implemented")
 }
@@ -806,24 +806,24 @@ func (m MockTarReader) Tar() *tar.Reader {
 	return tar.NewReader(&b)
 }
 
-type MockPackageRegistry struct {
-	PublishF    func(context.Context, apitype.PackagePublishOp) error
-	GetPackageF func(
+type MockCloudRegistry struct {
+	PublishPackageF func(context.Context, apitype.PackagePublishOp) error
+	GetPackageF     func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.PackageMetadata, error)
 	SearchByNameF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 }
 
-var _ PackageRegistry = (*MockPackageRegistry)(nil)
+var _ CloudRegistry = (*MockCloudRegistry)(nil)
 
-func (mr *MockPackageRegistry) Publish(ctx context.Context, op apitype.PackagePublishOp) error {
-	if mr.PublishF != nil {
-		return mr.PublishF(ctx, op)
+func (mr *MockCloudRegistry) PublishPackage(ctx context.Context, op apitype.PackagePublishOp) error {
+	if mr.PublishPackageF != nil {
+		return mr.PublishPackageF(ctx, op)
 	}
-	panic("not implemented: MockPackageRegistry.Publish")
+	panic("not implemented: MockCloudRegistry.PublishPackage")
 }
 
-func (mr *MockPackageRegistry) GetPackage(
+func (mr *MockCloudRegistry) GetPackage(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
 	if mr.GetPackageF != nil {
@@ -832,7 +832,7 @@ func (mr *MockPackageRegistry) GetPackage(
 	panic("not implemented")
 }
 
-func (mr *MockPackageRegistry) SearchByName(
+func (mr *MockCloudRegistry) SearchByName(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.PackageMetadata, error] {
 	if mr.SearchByNameF != nil {

@@ -2392,10 +2392,10 @@ func (b *cloudBackend) DefaultSecretManager(*workspace.ProjectStack) (secrets.Ma
 	return nil, nil
 }
 
-func (b *cloudBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
-	return newCloudPackageRegistry(b.client), nil
+func (b *cloudBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
+	return newCloudRegistry(b.client), nil
 }
 
-func (b *cloudBackend) GetReadOnlyPackageRegistry() registry.Registry {
-	return newCloudPackageRegistry(b.client)
+func (b *cloudBackend) GetReadOnlyCloudRegistry() registry.Registry {
+	return newCloudRegistry(b.client)
 }
