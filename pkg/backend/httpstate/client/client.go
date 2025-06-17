@@ -1103,19 +1103,6 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	return resp.Token, nil
 }
 
-// InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
-func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier,
-	token UpdateTokenSource,
-) error {
-	req := apitype.PatchUpdateCheckpointRequest{
-		IsInvalid: true,
-	}
-
-	// It is safe to retry this PATCH operation, because it is logically idempotent.
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
-}
-
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
 func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token UpdateTokenSource,
