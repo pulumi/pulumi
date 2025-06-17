@@ -301,7 +301,7 @@ func (p pulumiCommand) Run(ctx context.Context,
 		}
 		return nil
 	}
-	cmd.WaitDelay = 10 * time.Second
+	cmd.WaitDelay = 20 * time.Second
 
 	code := unknownErrorCode
 	err := cmd.Run()
