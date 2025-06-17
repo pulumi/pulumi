@@ -188,12 +188,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	if err != nil {
 		return nil, err
 	}
-
 	defer func() {
 		closeErr := src.Close()
 		if closeErr != nil {
 			logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
 			if err == nil {
+				// If we didn't see any earlier error, report the close error and bail.
 				ex.reportError("", closeErr)
 				err = result.BailError(closeErr)
 			}
