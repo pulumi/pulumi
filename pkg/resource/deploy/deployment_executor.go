@@ -382,7 +382,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if closeErr != nil {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
 		if err == nil {
-			err = closeErr
+			ex.reportError("", closeErr)
+			err = result.BailError(closeErr)
 		}
 	}
 
