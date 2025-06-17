@@ -14,8 +14,9 @@ def validate(args, report_violation):
 
     config = args.get_config()
 
-    if config["value"] != args.props["value"]:
-        report_violation("Property was " + str(args.props["value"]).lower())
+    if args.name in config["names"]:
+        if args.props["value"] != config["value"]:
+            report_violation("Property was " + str(args.props["value"]).lower())
 
 PolicyPack(
     name="config-schema",
