@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -445,8 +445,6 @@ func (m *mockStackForTesting) DefaultSecretManager(*workspace.ProjectStack) (sec
 
 // TestStackTagsDoNotInterfereWithStackDiscovery tests that stack tags files
 // do not interfere with normal stack discovery and listing operations.
-// This is a regression test for the issue where .tags.json files were being
-// discovered as stack files, causing JSON parsing errors.
 func TestStackTagsDoNotInterfereWithStackDiscovery(t *testing.T) {
 	t.Parallel()
 

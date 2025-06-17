@@ -571,7 +571,7 @@ func massageBlobPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		usr, err := user.Current()
 		if err != nil {
-			return "", fmt.Errorf("Could not determine current user to resolve `file://~` path.: %w", err)
+			return "", fmt.Errorf("could not determine current user to resolve `file://~` path.: %w", err)
 		}
 
 		if path == "~" {
@@ -584,7 +584,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("An IO error occurred while building the absolute path: %w", err)
+		return "", fmt.Errorf("an IO error occurred while building the absolute path: %w", err)
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
