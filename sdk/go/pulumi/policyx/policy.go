@@ -94,7 +94,7 @@ type Policy interface {
 	// EnforcementLevel returns the enforcement level of the policy.
 	EnforcementLevel() EnforcementLevel
 	// ConfigSchema returns the configuration schema for the policy, if any.
-	ConfigSchema() *PolicyConfigSchema
+	ConfigSchema() *ConfigSchema
 }
 
 // ResourceValidationPolicy is a policy that validates individual resources.
@@ -124,6 +124,8 @@ type ResourceValidationPolicyArgs struct {
 	Description string
 	// EnforcementLevel is the enforcement level of the policy.
 	EnforcementLevel EnforcementLevel
+	// ConfigSchema is the configuration schema for the policy, if any.
+	ConfigSchema *ConfigSchema
 	// ValidateResource is the validation function for the policy.
 	ValidateResource func(ctx context.Context, args ResourceValidationArgs) error
 }
@@ -132,6 +134,8 @@ type ResourceValidationPolicyArgs struct {
 type ResourceRemediationPolicyArgs struct {
 	// Description is the description of the policy.
 	Description string
+	// ConfigSchema is the configuration schema for the policy, if any.
+	ConfigSchema *ConfigSchema
 	// RemediateResource is the remediation function for the policy.
 	RemediateResource func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
 }
@@ -141,6 +145,7 @@ type resourceValidationPolicy struct {
 	name             string
 	description      string
 	enforcementLevel EnforcementLevel
+	configSchema     *ConfigSchema
 	validateResource func(ctx context.Context, args ResourceValidationArgs) error
 }
 
@@ -163,8 +168,8 @@ func (p *resourceValidationPolicy) EnforcementLevel() EnforcementLevel {
 }
 
 // ConfigSchema returns the configuration schema for the policy, if any.
-func (p *resourceValidationPolicy) ConfigSchema() *PolicyConfigSchema {
-	return nil
+func (p *resourceValidationPolicy) ConfigSchema() *ConfigSchema {
+	return p.configSchema
 }
 
 // Validate validates a resource using the policy's validation function.
@@ -185,6 +190,7 @@ func NewResourceValidationPolicy(
 		description:      args.Description,
 		enforcementLevel: args.EnforcementLevel,
 		validateResource: args.ValidateResource,
+		configSchema:     args.ConfigSchema,
 	}
 }
 
@@ -192,6 +198,7 @@ func NewResourceValidationPolicy(
 type resourceRemediationPolicy struct {
 	name              string
 	description       string
+	configSchema      *ConfigSchema
 	remediateResource func(ctx context.Context, args ResourceRemediationArgs) (*property.Map, error)
 }
 
@@ -214,8 +221,8 @@ func (p *resourceRemediationPolicy) EnforcementLevel() EnforcementLevel {
 }
 
 // ConfigSchema returns the configuration schema for the policy, if any.
-func (p *resourceRemediationPolicy) ConfigSchema() *PolicyConfigSchema {
-	return nil
+func (p *resourceRemediationPolicy) ConfigSchema() *ConfigSchema {
+	return p.configSchema
 }
 
 // Validate validates a resource using the policy's validation function.
@@ -237,5 +244,6 @@ func NewResourceRemediationPolicy(
 		name:              name,
 		description:       args.Description,
 		remediateResource: args.RemediateResource,
+		configSchema:      args.ConfigSchema,
 	}
 }
