@@ -658,12 +658,12 @@ func (sm *SnapshotManager) doRemovePendingReplace(
 	step deploy.Step, operationUUID string,
 ) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
-	sm.journalMutation(JournalEntry{
+	err := sm.journalMutation(JournalEntry{
 		Kind:          JournalEntryBegin,
 		OperationUUID: operationUUID,
 		State:         step.Old(),
 	})
-	return &removePendingReplaceSnapshotMutation{sm, operationUUID}, nil
+	return &removePendingReplaceSnapshotMutation{sm, operationUUID}, err
 }
 
 type removePendingReplaceSnapshotMutation struct {
