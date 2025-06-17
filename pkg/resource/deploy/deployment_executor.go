@@ -328,14 +328,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 	stepExecutorError := ex.stepExec.Errored()
 
-	// Now that all steps have executed, we can close the resource source, which
-	// will shut down the resource monitor.
-	closeErr := src.Close()
-	if closeErr != nil {
-		logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
-		return nil, result.BailError(closeErr)
-	}
-
 	// Finalize the stack outputs.
 	if e := ex.stepExec.stackOutputsEvent; e != nil {
 		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()
@@ -346,6 +338,14 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	}
 
 	logging.V(4).Infof("deploymentExecutor.Execute(...): step executor has completed")
+
+	// Now that all steps have executed, we can close the resource source, which
+	// will shut down the resource monitor.
+	closeErr := src.Close()
+	if closeErr != nil {
+		logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
+		return nil, result.BailError(closeErr)
+	}
 
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
 	// so by the time we get here everything in the map should have an empty ops list (except for unneeded
