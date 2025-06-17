@@ -46,6 +46,7 @@ from .settings import (
     _get_callbacks,
     _get_rpc_manager,
     _sync_monitor_supports_transforms,
+    _sync_monitor_supports_resource_hooks,
     handle_grpc_error,
 )
 
@@ -59,6 +60,7 @@ if TYPE_CHECKING:
         CustomTimeouts,
     )
     from ..resource import ResourceOptions
+    from ..resource_hooks import ResourceHook, ResourceHookBinding, ResourceHookFunction
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -1004,6 +1006,9 @@ def register_resource(
             else:
                 alias_urns = [alias.urn for alias in resolver.aliases]
 
+            hook_prefix = f"{ty}_{name}"
+            hooks = await _prepare_resource_hooks(opts.hooks, hook_prefix)
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -1036,6 +1041,7 @@ def register_resource(
                 transforms=callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
+                hooks=hooks,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -1233,3 +1239,66 @@ def _pkg_from_type(ty: str) -> Optional[str]:
     if len(parts) != 3:
         return None
     return parts[0]
+
+
+async def _prepare_resource_hooks(
+    hooks: Optional["ResourceHookBinding"],
+    name_prefix: str,
+) -> resource_pb2.RegisterResourceRequest.ResourceHooksBinding:
+    from ..resource_hooks import ResourceHook
+
+    proto = resource_pb2.RegisterResourceRequest.ResourceHooksBinding()
+    if not hooks:
+        return proto
+
+    for hook_type in [
+        "before_create",
+        "after_create",
+        "before_update",
+        "after_update",
+        "before_delete",
+        "after_delete",
+    ]:
+        hooks_for_type: list[Union["ResourceHook", "ResourceHookFunction"]] = getattr(
+            hooks, hook_type, []
+        )
+        for i, _hook in enumerate(hooks_for_type or []):
+            if not _sync_monitor_supports_resource_hooks():
+                raise Exception(
+                    "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
+                )
+            hook = _hook
+            # Convert callables into ResourceHooks
+            if not isinstance(hook, ResourceHook):
+                # Delete hooks can't be anonymous
+                if hook_type in ("before_delete", "after_delete"):
+                    raise ValueError(
+                        "Delete resource hooks must be ResourceHook instances"
+                    )
+                if not callable(hook):
+                    raise ValueError("Resource hook must be a Callable or ResourceHook")
+                name = f"{name_prefix}_{hook_type}_{i}"
+                hook = ResourceHook(name, hook)
+            # Wait for the hook registration to complete
+            await hook._registered
+            getattr(proto, hook_type).append(hook.name)
+
+    return proto
+
+
+def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
+    async def do_register() -> None:
+        callbacks = await _get_callbacks()
+        if callbacks is None:
+            raise Exception("No callback server registered.")
+        return callbacks.register_resource_hook(hook)
+
+    async def wrapper() -> None:
+        result, exception = await _get_rpc_manager().do_rpc(
+            "register resource hook", do_register
+        )()
+        if exception:
+            raise exception
+        return result
+
+    return asyncio.ensure_future(wrapper())
