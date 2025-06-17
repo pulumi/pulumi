@@ -328,6 +328,14 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 
 	stepExecutorError := ex.stepExec.Errored()
 
+	// Now that all steps have executed, we can close the resource source, which
+	// will shut down the resource monitor.
+	err = src.Close()
+	if err != nil {
+		logging.V(4).Infof("deploymentExecutor.Execute(...): resource source closed with error: %s", err)
+		return nil, result.BailError(err)
+	}
+
 	// Finalize the stack outputs.
 	if e := ex.stepExec.stackOutputsEvent; e != nil {
 		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()

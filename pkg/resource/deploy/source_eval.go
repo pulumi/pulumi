@@ -257,11 +257,6 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		iter.done = true
-		closeErr := iter.Close()
-		// Propagate the error collected on shutdown, unless we had a previous error.
-		if err == nil {
-			err = closeErr
-		}
 		if err != nil {
 			if result.IsBail(err) {
 				logging.V(5).Infof("EvalSourceIterator ended with bail.")
