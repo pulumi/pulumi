@@ -458,7 +458,7 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
 	for _, p := range properties {
-		propertyRef := fmt.Sprintf("val.%s", p.Name)
+		propertyRef := "val." + p.Name
 		if strings.Contains(p.Name, "-") {
 			propertyRef = fmt.Sprintf("val[\"%s\"]", p.Name)
 		}
@@ -1052,7 +1052,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				if p.Name == "__self__" {
 					fmt.Fprintf(w, "            \"%s\": this,\n", p.Name)
 				} else {
-					propRef := fmt.Sprintf("args.%s", p.Name)
+					propRef := "args." + p.Name
 					if strings.Contains(p.Name, "-") {
 						propRef = fmt.Sprintf("args[\"%s\"]", p.Name)
 					}
