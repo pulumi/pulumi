@@ -1584,7 +1584,7 @@ func TestResmonCancel(t *testing.T) {
 		cancel:              make(chan bool),
 		done:                done,
 		waitForShutdownChan: waitForShutdownChan,
-		// programCompleteChan: programCompleteChan,
+		programCompleteChan: programCompleteChan,
 	}
 	err := errors.New("my error")
 
