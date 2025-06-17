@@ -69,7 +69,8 @@ func LoadProjectStack(
 			return nil, fmt.Errorf("checking if config file %s exists: %v", configFilePath, err)
 		}
 		if err == nil {
-			fmt.Printf("Warning: config file %s exists but will be ignored because this stack uses remote config\n",
+			sink.Warningf(
+				diag.Message("", "config file %s exists but will be ignored because this stack uses remote config"),
 				configFilePath)
 		}
 		return stack.LoadRemoteConfig(ctx, project)
