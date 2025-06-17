@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add RegisterLifecycleHook to resource monitor protobufs
