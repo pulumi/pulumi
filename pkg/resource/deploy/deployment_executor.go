@@ -128,7 +128,7 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
-func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) {
+func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err error) {
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -188,6 +188,17 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		closeErr := src.Close()
+		if closeErr != nil {
+			logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
+			if err == nil {
+				ex.reportError("", closeErr)
+				err = result.BailError(closeErr)
+			}
+		}
+	}()
 
 	// Set up a step generator for this deployment.
 	mode := updateMode
@@ -373,17 +384,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (*Plan, error) 
 		// If we made any errors above wrap it in a bail
 		if err != nil {
 			err = result.BailError(err)
-		}
-	}
-
-	// Now that all steps have executed, we can close the resource source, which
-	// will shut down the resource monitor.
-	closeErr := src.Close()
-	if closeErr != nil {
-		logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
-		if err == nil {
-			ex.reportError("", closeErr)
-			err = result.BailError(closeErr)
 		}
 	}
 
