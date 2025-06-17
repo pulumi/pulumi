@@ -395,13 +395,13 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		ssm.manager.markEntryForDeletion(&journalEntry, step.Old())
 	}
 
-	sameStep := step.(*deploy.SameStep)
-	if !sameStep.IsSkippedCreate() {
+	sameStep, isSameStep := step.(*deploy.SameStep)
+	if !isSameStep || !sameStep.IsSkippedCreate() {
 		journalEntry.State = step.New()
 		ssm.manager.newResources.Store(step.New(), ssm.operationUUID)
 	}
 
-	if sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep) {
+	if isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
 		journalEntry.ElideWrite = true
 	}
 
@@ -636,11 +636,11 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		OperationUUID: rsm.operationUUID,
 		DeleteOld:     -1, // Default to -1, which means no deletion.
 	}
-	refreshStep := step.(*deploy.RefreshStep)
-	if old := step.Old(); refreshStep.Persisted() && old != nil && rsm.manager.baseSnapshot != nil {
+	refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
+	if old := step.Old(); isRefreshStep && refreshStep.Persisted() && old != nil && rsm.manager.baseSnapshot != nil {
 		rsm.manager.markEntryForDeletion(&journalEntry, old)
 	}
-	if refreshStep.Persisted() {
+	if isRefreshStep && refreshStep.Persisted() {
 		if step.New() != nil {
 			journalEntry.State = step.New()
 		} else {
@@ -944,14 +944,6 @@ func (sm *SnapshotManager) unsafeServiceLoop(
 			return
 		}
 	}
-}
-
-func (sm *SnapshotManager) End(step deploy.Step, success bool, operationUUID string) {
-	// We record the end of the step in the journal here.  We also need to send the
-	// same information to the event persister.  Note that we need to grab
-	// the position of the delete step from the base snapshot.
-	//
-	// Something like CompleteUpdate(operationUUID, deleteOld int, deleteNew deleteUUID string,State newState)
 }
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister, default secrets
